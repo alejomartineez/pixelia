@@ -1,0 +1,546 @@
+// Interfaz de la ciudad: menú Construir, ficha de edificio, castillo, expansión,
+// barra de colocación, botones flotantes y estilos (prefijo cx-).
+import { thumbnail } from '../city/models.js';
+import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL } from '../core/data.js';
+import { icon } from '../core/icons.js';
+
+export const STYLE = `
+.scene-city { background: linear-gradient(180deg, #ffcfe6 0%, #f3dbff 34%, #d6e6ff 66%, #c5f0ee 100%); overflow: hidden; }
+.scene-city::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .55;
+  background-image: radial-gradient(circle at 12% 18%, #fff 0 2px, transparent 3px), radial-gradient(circle at 82% 12%, #fff 0 2px, transparent 3px),
+  radial-gradient(circle at 70% 78%, #fff 0 2px, transparent 3px), radial-gradient(circle at 22% 86%, #fff 0 2px, transparent 3px),
+  radial-gradient(circle at 48% 6%, #fff 0 1.5px, transparent 2.5px), radial-gradient(circle at 92% 52%, #fff 0 1.5px, transparent 2.5px);
+  animation: cx-twinkle 3s steps(2) infinite; }
+@keyframes cx-twinkle { 50% { opacity: .2; } }
+.scene-city .pixel-canvas { position: absolute; inset: 0; }
+.cx-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
+.cx-ov { position: absolute; left: 0; top: 0; will-change: transform; transform-origin: 0 0; }
+.cx-ov > * { transform: translate(-50%, -100%); }
+
+.cx-timer { display: flex; align-items: center; gap: 4px; padding: 3px 8px 3px 4px; background: #fff; border: 3px solid var(--ink); border-radius: 10px;
+  box-shadow: 0 3px 0 var(--ink); white-space: nowrap; margin-bottom: 6px; }
+.cx-timer > span { display: flex; flex-direction: column; gap: 2px; }
+.cx-timer b { font-size: 13px; line-height: 1; }
+.cx-timer i { display: block; width: 50px; height: 8px; border: 2px solid var(--ink); border-radius: 6px; background: #f2e3ee; overflow: hidden; }
+.cx-timer i u { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--mint) 0 4px, var(--mint-d) 4px 6px); }
+.cx-timer.up i u { background: repeating-linear-gradient(90deg, var(--lilac) 0 4px, var(--lilac-d) 4px 6px); }
+.cx-timer img { animation: cx-hammer .5s steps(2) infinite; }
+@keyframes cx-hammer { 50% { transform: rotate(-25deg); } }
+
+.cx-bubble { position: relative; padding-bottom: 9px; animation: cx-bob 1.1s steps(4) infinite; }
+.cx-bubble .cx-bb { width: 42px; height: 42px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); display: grid; place-items: center;
+  box-shadow: inset 0 -4px 0 #eadcf0, 0 3px 0 rgba(59,35,64,.3); }
+.cx-bubble::after { content: ''; position: absolute; left: 50%; bottom: 1px; width: 10px; height: 10px; background: #fff; border: 3px solid var(--ink);
+  border-top: 0; border-left: 0; transform: translateX(-50%) rotate(45deg); }
+.cx-bubble.full .cx-bb { background: var(--gold-l); box-shadow: inset 0 -4px 0 var(--gold), 0 0 0 3px #fff, 0 3px 0 6px rgba(59,35,64,.25); }
+.cx-bubble.full::after { background: var(--gold-l); }
+.cx-bubble.gem .cx-bb { background: var(--sky-l); }
+.cx-bubble.gem::after { background: var(--sky-l); }
+@keyframes cx-bob { 0%, 100% { transform: translate(-50%, -100%); } 50% { transform: translate(-50%, calc(-100% - 6px)); } }
+.cx-bubble.pop { animation: cx-bpop .25s ease-in forwards; }
+@keyframes cx-bpop { to { transform: translate(-50%, -100%) scale(1.6); opacity: 0; } }
+
+.cx-sign { display: flex; align-items: center; gap: 4px; padding: 3px 9px 3px 5px; background: var(--pink); color: #fff; border: 3px solid var(--ink);
+  border-radius: 10px; box-shadow: inset 0 -4px 0 var(--pink-d), 0 3px 0 var(--ink); font-weight: 700; font-size: 13px; white-space: nowrap;
+  text-shadow: 0 2px 0 rgba(59,35,64,.35); margin-bottom: 4px; }
+.cx-sign.locked { background: #fff; color: var(--ink-l); text-shadow: none; box-shadow: inset 0 -4px 0 #eadcf0, 0 3px 0 var(--ink); }
+
+.cx-tag { display: flex; align-items: center; gap: 4px; padding: 3px 9px; background: #fff; border: 3px solid var(--ink); border-radius: 10px;
+  box-shadow: 0 3px 0 var(--ink); font-weight: 700; font-size: 14px; white-space: nowrap; margin-bottom: 8px; animation: cx-bob 1.1s steps(4) infinite; }
+.cx-tag::after { content: ''; position: absolute; left: 50%; bottom: -8px; width: 8px; height: 8px; background: #fff; border: 3px solid var(--ink);
+  border-top: 0; border-left: 0; transform: translateX(-50%) rotate(45deg); }
+
+.cx-pin { animation: cx-bob .8s steps(4) infinite; padding-bottom: 2px; }
+.cx-pin.bad img { filter: hue-rotate(-40deg) saturate(1.4); }
+.cx-side { position: absolute; right: calc(var(--safe-r) + 10px); bottom: calc(var(--safe-b) + 150px); z-index: 25; display: flex; flex-direction: column;
+  align-items: flex-end; gap: 10px; pointer-events: none; }
+.cx-side > * { pointer-events: auto; }
+.cx-fab { width: 50px; height: 50px; display: grid; place-items: center; background: #fff; border: 3px solid var(--ink); border-radius: 14px;
+  box-shadow: inset 0 -5px 0 #eadcf0, 0 4px 0 var(--ink); padding: 0; }
+.cx-fab:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 #eadcf0, 0 1px 0 var(--ink); }
+.cx-collect { display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; background: var(--gold); border: 3px solid var(--ink); border-radius: 14px;
+  box-shadow: inset 0 -5px 0 var(--gold-d), 0 4px 0 var(--ink); font-weight: 700; font-size: 15px; color: var(--ink); position: relative; animation: cx-wiggle 1.6s steps(2) infinite; }
+.cx-collect:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 var(--gold-d), 0 1px 0 var(--ink); }
+.cx-collect .badge { top: -10px; right: -10px; animation: none; }
+@keyframes cx-wiggle { 0%, 80%, 100% { transform: none; } 85% { transform: rotate(-4deg); } 90% { transform: rotate(4deg); } }
+.cx-side.hide { display: none; }
+
+.cx-tip { position: absolute; z-index: 30; pointer-events: none; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; animation: cx-tipbob 1s steps(3) infinite; }
+.cx-tip > span { background: #fff; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 4px 0 var(--ink); padding: 6px 12px; font-weight: 700; font-size: 15px;
+  white-space: nowrap; display: flex; align-items: center; gap: 6px; max-width: 86vw; }
+.cx-tip > i { width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 14px solid var(--ink); margin-top: -1px; }
+@keyframes cx-tipbob { 50% { margin-top: -8px; } }
+.cx-tip.fade { opacity: 0; transition: opacity .3s; }
+
+.cx-placebar { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 10px); z-index: 30; width: min(520px, calc(100% - 16px));
+  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 12px 30px rgba(59,35,64,.25); padding: 8px 10px 10px;
+  display: flex; flex-direction: column; gap: 6px; animation: cx-slideup .25s cubic-bezier(.3,1.5,.6,1); }
+@keyframes cx-slideup { from { transform: translate(-50%, 40px); opacity: 0; } }
+.cx-pb-top { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.cx-pb-top b { font-size: 17px; }
+.cx-pb-top .cost { font-size: 15px; }
+.cx-pb-top .grow { flex: 1; }
+.cx-pb-hint { font-size: 13px; color: var(--ink-l); line-height: 1.2; }
+.cx-pb-hint.bad { color: var(--coral); font-weight: 700; }
+.cx-pb-btns { display: flex; gap: 8px; }
+.cx-pb-btns .btn { flex: 1; padding: 6px 8px; font-size: 17px; }
+.cx-pb-btns .btn.cx-rot { flex: .8; }
+
+/* ---------- Modales (fuera de .scene-city) ---------- */
+.cx-modal .modal-body { padding: 12px 14px 16px; }
+.cx-build .modal-body { padding-top: 0; }
+.cx-tabs { position: sticky; top: 0; z-index: 3; background: var(--panel); margin: 0 -14px 6px; padding: 10px 12px 8px; border-bottom: 2px dashed #ecd5e6; }
+.cx-tabs .tab { position: relative; }
+.cx-tabs .tab .dot { position: absolute; top: -6px; right: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); }
+.cx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding-bottom: 6px; }
+@media (max-width: 420px) { .cx-grid { grid-template-columns: 1fr 1fr; gap: 8px; } }
+.cx-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 8px; cursor: pointer; font-family: inherit; color: var(--ink); }
+.cx-card:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.cx-card.cx-focus { outline: 4px solid var(--gold); outline-offset: -1px; animation: cx-glow 1s steps(2) infinite; }
+@keyframes cx-glow { 50% { outline-color: #fff; } }
+.cx-thumb { height: 84px; border-radius: 9px; background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ffe3f1 31% 55%, #f5e8ff 56%); display: grid; place-items: center; overflow: hidden; border: 2px solid #f0dcea; position: relative; }
+.cx-cat-casa .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ffe3f1 31% 55%, #ffd3e8 56%); }
+.cx-cat-negocio .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #fff1d1 31% 55%, #ffe6b0 56%); }
+.cx-cat-especial .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ece2ff 31% 55%, #dccbff 56%); }
+.cx-cat-deco .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #dbf8ec 31% 55%, #c4f2df 56%); }
+.cx-cat-camino .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #e1f2ff 31% 55%, #cbe7ff 56%); }
+.cx-thumb img.th { width: 84px; height: 84px; image-rendering: pixelated; }
+.cx-thumb .ph { opacity: .45; animation: pulse 1s steps(2) infinite; }
+.cx-card.locked .cx-thumb img.th { filter: grayscale(.85) opacity(.6); }
+.cx-card .nm { font-size: 15px; font-weight: 700; line-height: 1.1; min-height: 2.2em; display: flex; align-items: center; }
+.cx-gives { display: flex; flex-wrap: wrap; gap: 3px; }
+.cx-gives .chip { font-size: 12px; padding: 1px 6px 1px 3px; gap: 2px; border-width: 2px; }
+.cx-price { display: flex; align-items: center; justify-content: space-between; gap: 4px; font-size: 15px; }
+.cx-price .tm { font-size: 12px; color: var(--ink-l); display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.cx-card.poor .cx-price .cost { color: var(--coral); }
+.cx-lock { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; justify-content: center; }
+.cx-lock span { background: var(--ink); color: #fff; border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.cx-qbadge { position: absolute; top: 6px; left: 6px; background: var(--gold); border: 2px solid var(--ink); border-radius: 8px; padding: 0 6px; font-size: 12px; font-weight: 700; z-index: 1; }
+.cx-count { position: absolute; top: 6px; right: 6px; background: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 0 6px; font-size: 12px; font-weight: 700; z-index: 1; }
+.cx-builders { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-l); margin: 2px 0 8px; }
+
+.cx-info { display: flex; flex-direction: column; gap: 10px; }
+.cx-ihead { display: flex; gap: 12px; align-items: center; }
+.cx-ithumb { width: 92px; height: 92px; flex: none; border-radius: 12px; border: 3px solid var(--ink); background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ffe3f1 31% 55%, #f5e8ff 56%); display: grid; place-items: center; overflow: hidden; }
+.cx-ithumb img.th { width: 92px; height: 92px; image-rendering: pixelated; }
+.cx-imeta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cx-stars { display: flex; gap: 1px; }
+.cx-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.cx-desc { margin: 0; color: var(--ink-l); font-size: 15px; }
+.cx-box { background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 3px 0 var(--ink); }
+.cx-box h4 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+.cx-box .line { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 14px; flex-wrap: wrap; }
+.cx-box .line .muted { font-size: 13px; }
+.cx-box.busy { background: var(--mint-l); }
+.cx-box.up { background: var(--lilac-l); }
+.cx-box.ready { background: var(--gold-l); }
+.cx-box .btn { width: 100%; }
+.cx-box .req { color: var(--coral); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 4px; }
+.cx-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
+.cx-actions .btn { padding: 6px 8px; font-size: 15px; min-height: 42px; }
+.cx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cx-stat { background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 6px 8px; display: flex; align-items: center; gap: 8px; box-shadow: 0 3px 0 var(--ink); }
+.cx-stat small { display: block; font-size: 12px; color: var(--ink-l); font-weight: 700; }
+.cx-stat b { font-size: 18px; }
+.cx-exp-map { display: grid; place-items: center; padding: 6px; }
+.cx-exp-map canvas { image-rendering: pixelated; width: 132px; height: 132px; border: 3px solid var(--ink); border-radius: 10px; background: #79bb8c; }
+`;
+
+const CAT_ICON = { casa: 'home', negocio: 'shop', especial: 'sparkle', deco: 'flower', camino: 'map' };
+const thumbs = new Map();
+function thumbImg(id, level, cls = 'th') {
+  const wrap = document.createElement('span');
+  wrap.style.display = 'contents';
+  const key = id + ':' + level;
+  const put = (url) => { wrap.innerHTML = `<img class="${cls}" src="${url}" alt="" draggable="false">`; };
+  if (thumbs.has(key)) put(thumbs.get(key));
+  else {
+    wrap.innerHTML = icon('hammer', 36, 'ph');
+    Promise.resolve().then(() => thumbnail(id, level)).then(url => { if (!url) return; thumbs.set(key, url); put(url); }).catch(() => {});
+  }
+  return wrap;
+}
+
+function fmtCycle(E, sec) { return E.fmtTime(sec).replace(/ 00s$/, '').replace(/ 00m$/, ''); }
+
+/** Chips de lo que aporta un tipo de edificio (menú). */
+function givesHtml(ctx, d) {
+  const E = ctx.economy;
+  const out = [];
+  if (d.pop) out.push(`<span class="chip pink">${icon('people', 14)}+${d.pop}</span>`);
+  if (d.prod?.coins) out.push(`<span class="chip gold">${icon('coin', 14)}${d.prod.coins}/${fmtCycle(E, d.prod.cycle)}</span>`);
+  if (d.prod?.gems) out.push(`<span class="chip sky">${icon('gem', 14)}${d.prod.gems}/${fmtCycle(E, d.prod.cycle)}</span>`);
+  if (d.happy) out.push(`<span class="chip mint">${icon('smile', 14)}+${d.happy}</span>`);
+  if (d.game) out.push(`<span class="chip lilac">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Juego'}</span>`);
+  if (d.cat === 'camino') out.push(`<span class="chip">${icon('paw', 14)}Paseo</span>`);
+  return out.join('');
+}
+
+/** Ids que la misión principal pide construir (para resaltarlos). */
+export function questBuildIds(ctx) {
+  const q = ctx.quests.mainQuest();
+  if (!q || q.done) return [];
+  const E = ctx.economy;
+  const g = q.goal;
+  if (g.type === 'build') {
+    const ids = g.ids || (g.id ? [g.id] : []);
+    return ids.filter(id => g.ids ? true : E.countOf(id) === 0);
+  }
+  if (g.type === 'play' && g.game) {
+    const st = ctx.gameStatus(g.game);
+    return st.needsBuilding && E.countOf(st.needsBuilding) === 0 ? [st.needsBuilding] : [];
+  }
+  if (g.type === 'customize') return E.countOf('boutique_real') === 0 ? ['boutique_real'] : [];
+  if (g.type === 'pop') return ['casita', 'cabana', 'chalet', 'torre_cristal', 'mansion'].filter(id => E.canBuild(id).ok).slice(-1);
+  if (g.type === 'happy') return ['arbol', 'arbusto', 'banco', 'cerezo', 'fuente'].filter(id => E.canBuild(id).ok).slice(-1);
+  return [];
+}
+
+// ======================================================================
+// Menú Construir
+// ======================================================================
+let lastTab = 'casa';
+export function openBuildMenu(S, focusId = null) {
+  const { ctx } = S;
+  const { ui, economy: E, store } = ctx;
+  const qids = questBuildIds(ctx);
+  if (!focusId) focusId = qids.find(id => E.canBuild(id).ok) || null;
+  let tab = focusId ? E.def(focusId).cat : lastTab;
+  const body = ui.h('div.cx-buildwrap');
+  const m = ui.sheet({ title: 'Construir', content: body, className: 'cx-modal cx-build', onClose: () => { offs.forEach(f => f()); S.untrackModal(m); } });
+  S.trackModal(m);
+  const offs = [];
+  const rerender = () => render(false);
+  offs.push(ctx.bus.on('currency:changed', rerender), ctx.bus.on('building:built', rerender), ctx.bus.on('level:up', rerender));
+
+  function render(scrollToFocus) {
+    const scrollEl = m.body;
+    const prevScroll = scrollEl.scrollTop;
+    body.innerHTML = '';
+    const tabs = ui.h('div.tabs.cx-tabs');
+    for (const c of CATEGORIES) {
+      const hasQ = qids.some(id => E.def(id).cat === c.id);
+      const t = ui.h('button.tab' + (c.id === tab ? '.active' : ''), { html: icon(CAT_ICON[c.id], 18) + c.name + (hasQ ? '<i class="dot"></i>' : '') });
+      t.addEventListener('click', () => { if (tab === c.id) return; ctx.audio.sfx('select'); tab = c.id; lastTab = tab; focusId = null; render(false); m.body.scrollTop = 0; });
+      tabs.append(t);
+    }
+    body.append(tabs);
+    const free = E.buildersFree(), total = ctx.state.builders;
+    body.append(ui.h('div.cx-builders', { html: `${icon('hammer', 16)} Constructoras libres: <b>${free}/${total}</b>` }));
+    const grid = ui.h('div.cx-grid');
+    const list = BUILDINGS.filter(d => d.cat === tab && d.id !== 'castillo')
+      .sort((a, b) => (a.unlock - b.unlock) || ((a.cost.coins || 0) + (a.cost.gems || 0) * 200) - ((b.cost.coins || 0) + (b.cost.gems || 0) * 200));
+    let focusEl = null;
+    for (const d of list) {
+      const can = E.canBuild(d.id);
+      const cost = E.placeCost(d.id);
+      const lockedHard = !can.ok && (can.locked || can.reason === 'Ya lo tenés');
+      const card = ui.h(`button.card.cx-card.cx-cat-${d.cat}` + (lockedHard ? '.locked' : '') + (can.poor ? '.poor' : '') + (d.id === focusId ? '.cx-focus' : ''));
+      const th = ui.h('div.cx-thumb');
+      th.append(thumbImg(d.id, 1));
+      if (qids.includes(d.id)) th.append(ui.h('span.cx-qbadge', {}, '¡Misión!'));
+      if (d.max) th.append(ui.h('span.cx-count', {}, `${E.countOf(d.id)}/${d.max}`));
+      if (!can.ok) th.append(ui.h('div.cx-lock', { html: `<span>${icon(can.locked ? 'lock' : can.poor ? 'coin' : can.reason === 'Ya lo tenés' ? 'check' : 'hammer', 14)}${ui.esc(can.reason)}</span>` }));
+      card.append(th,
+        ui.h('div.nm', {}, d.name),
+        ui.h('div.cx-gives', { html: givesHtml(ctx, d) }),
+        ui.h('div.cx-price', { html: ui.costHtml(cost, 16) + (d.time > 0 ? `<span class="tm">${icon('clock', 12)}${fmtCycle(E, d.time)}</span>` : '') }));
+      card.addEventListener('click', () => {
+        const c2 = E.canBuild(d.id);
+        if (!c2.ok) {
+          ctx.audio.sfx('error');
+          const msg = c2.reason === 'Constructoras ocupadas' ? 'Tus constructoras están ocupadas. Esperá o terminá una obra.' : c2.poor ? `Te faltan monedas para ${d.name}` : c2.reason === 'Ya lo tenés' ? `Ya tenés ${d.name}` : `${d.name}: ${c2.reason}`;
+          ui.toast(msg, { icon: c2.locked ? 'lock' : 'info' });
+          card.classList.remove('bump'); void card.offsetWidth; card.classList.add('bump');
+          return;
+        }
+        ctx.audio.sfx('select');
+        m.close();
+        S.startPlacement(d.id);
+      });
+      if (d.id === focusId) focusEl = card;
+      grid.append(card);
+    }
+    body.append(grid);
+    if (scrollToFocus && focusEl) setTimeout(() => focusEl.scrollIntoView({ block: 'center', behavior: 'smooth' }), 260);
+    else scrollEl.scrollTop = prevScroll;
+  }
+  render(true);
+  return m;
+}
+
+// ======================================================================
+// Ficha de edificio
+// ======================================================================
+export function openInfo(S, uid) {
+  const { ctx } = S;
+  const { ui, economy: E, store } = ctx;
+  const b = ctx.state.city.buildings.find(o => o.uid === uid);
+  if (!b) return null;
+  const d = E.def(b);
+  const isCastle = b.id === 'castillo';
+  const body = ui.h('div.cx-info');
+  let sig = '';
+  const refs = {};
+  const m = ui.modal({ title: isCastle ? (ctx.state.player.cityName ? `${d.name}` : d.name) : d.name, content: body, className: 'cx-modal cx-info-modal', icon: isCastle ? 'castle' : null,
+    onClose: () => { clearInterval(iv); offs.forEach(f => f()); S.untrackModal(m); } });
+  S.trackModal(m);
+  const offs = [ctx.bus.on('currency:changed', () => { sig = ''; tick(); }), ctx.bus.on('builders:changed', () => { sig = ''; tick(); }),
+    ctx.bus.on('building:removed', (p) => { if (p.b.uid === uid) m.close(); })];
+
+  const btn = (label, cls, ic, onClick, disabled = false) => ui.h('button.btn.' + cls.split(' ').join('.'), { html: (ic ? icon(ic, 20) : '') + label, disabled, onclick: () => { ctx.audio.sfx('tap'); onClick(); } });
+
+  function signature() {
+    const now = Date.now();
+    const ps = E.producerStatus(b, now);
+    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level].join('|');
+  }
+
+  function render() {
+    body.innerHTML = '';
+    const now = Date.now();
+    const building = E.isConstructing(b, now), upgrading = E.isUpgrading(b, now), busy = building || upgrading;
+    // ----- cabecera -----
+    const head = ui.h('div.cx-ihead');
+    const th = ui.h('div.cx-ithumb');
+    th.append(thumbImg(b.id, building ? 1 : b.level));
+    const meta = ui.h('div.cx-imeta');
+    if (E.canUpgradeType(b)) {
+      let st = '';
+      for (let i = 0; i < E.maxLevel(b); i++) st += icon(i < b.level ? 'star' : 'starOff', 22);
+      meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, `Nivel ${b.level}`));
+    } else meta.append(ui.h('span.chip', { html: icon(CAT_ICON[d.cat], 14) + (CATEGORIES.find(c => c.id === d.cat)?.name || '') }));
+    const chips = [];
+    if (d.pop) chips.push(`<span class="chip pink">${icon('people', 14)}${E.buildingPop(b)} vecinas</span>`);
+    if (d.happy) chips.push(`<span class="chip mint">${icon('smile', 14)}+${E.buildingHappy(b)} felicidad</span>`);
+    if (d.game) chips.push(`<span class="chip lilac">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Minijuego'}</span>`);
+    if (chips.length) meta.append(ui.h('div.cx-chips', { html: chips.join('') }));
+    head.append(th, meta);
+    body.append(head, ui.h('p.cx-desc', {}, d.desc));
+
+    // ----- en obra -----
+    if (busy) {
+      const total = building ? d.time * 1000 : (E.upgradeInfo(b)?.time || 1) * 1000;
+      const box = ui.h('div.cx-box.' + (building ? 'busy' : 'up'));
+      box.append(ui.h('h4', { html: icon('hammer', 20) + (building ? 'En construcción' : `Mejorando a nivel ${b.level + 1}`) }));
+      refs.busyTime = ui.h('b');
+      refs.busyBar = ui.h('div', { html: ui.progressHtml(0, building ? '' : 'xp') });
+      box.append(ui.h('div.line', {}, ui.h('span.muted', {}, 'Falta'), refs.busyTime), refs.busyBar);
+      refs.busyTotal = total;
+      const cost = E.skipCost(b);
+      refs.skipBtn = btn(cost ? `Terminar ya ${icon('gem', 18)}${cost}` : '¡Terminar gratis!', cost ? 'sky' : 'mint', 'bolt', () => {
+        const c = E.skipCost(b);
+        if (c > ctx.state.gems) { ctx.audio.sfx('error'); ui.toast('Te faltan gemas', { icon: 'gem' }); return; }
+        if (E.skip(b.uid)) { ctx.audio.sfx('gem'); m.close(); }
+      });
+      box.append(refs.skipBtn);
+      body.append(box);
+    }
+
+    // ----- producción -----
+    const ps = E.producerStatus(b, now);
+    if (ps.producer && !busy) {
+      const cur = ps.currency === 'gems' ? 'gem' : 'coin';
+      const box = ui.h('div.cx-box' + (ps.ready ? '.ready' : ''));
+      box.append(ui.h('h4', { html: icon(cur, 20) + 'Producción' }));
+      box.append(ui.h('div.line', { html: `<span>Cada <b>${E.fmtTime(ps.cycleSec)}</b></span><span class="cost">+${E.fmtNum(ps.perCycle)} ${icon(cur, 16)}</span>` }));
+      box.append(ui.h('div.line', { html: `<span class="muted">Guarda hasta ${ps.cap} tandas</span><span class="muted">${isCastle ? '' : 'Bonus ciudad x' + E.globalMultiplier().toFixed(2)}</span>` }));
+      refs.prodBar = ui.h('div', { html: ui.progressHtml(ps.progress, 'gold') });
+      refs.prodTxt = ui.h('span.muted');
+      box.append(refs.prodBar, ui.h('div.line', {}, refs.prodTxt));
+      if (ps.ready) box.append(btn(`Cobrar ${E.fmtNum(ps.amount)} ${icon(cur, 18)}`, 'gold', null, () => { m.close(); S.collect(b.uid); }));
+      body.append(box);
+    }
+
+    // ----- castillo: estadísticas -----
+    if (isCastle) {
+      const hp = E.happiness();
+      const stats = ui.h('div.cx-stats');
+      const stat = (ic, label, val) => ui.h('div.cx-stat', { html: `${icon(ic, 26)}<span><small>${label}</small><b>${val}</b></span>` });
+      stats.append(stat('people', 'Población', E.fmtNum(E.population())), stat('smile', 'Felicidad', hp.pct + '%'),
+        stat('coin', 'Bonus producción', '+' + Math.round((E.globalMultiplier() - 1) * 100) + '%'), stat('hammer', 'Constructoras', `${E.buildersFree()}/${ctx.state.builders}`));
+      body.append(stats);
+      body.append(ui.h('p.cx-desc', { html: `La felicidad (deco) da hasta <b>+50%</b> de producción y cada nivel del castillo suma <b>+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}%</b> más.` }));
+    }
+
+    // ----- mejora -----
+    const info = E.upgradeInfo(b);
+    if (E.canUpgradeType(b) && !busy) {
+      const box = ui.h('div.cx-box.up');
+      if (!info) {
+        box.append(ui.h('h4', { html: icon('crown', 20) + '¡Nivel máximo!' }), ui.h('span.muted', {}, 'Este edificio ya está espléndido.'));
+      } else {
+        const can = E.canUpgrade(b);
+        box.append(ui.h('h4', { html: icon('up', 20) + `Mejorar a nivel ${b.level + 1}` }));
+        const fx = [];
+        if (isCastle) fx.push(`+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}% producción en toda la ciudad`);
+        else {
+          if (d.prod?.coins) fx.push(`Producción ${E.fmtNum(ps.perCycle || 0)} → ${E.fmtNum(Math.round((ps.perCycle || 0) * (1 + 0.5 * b.level) / (1 + 0.5 * (b.level - 1))))}`);
+          if (d.pop) fx.push(`Vecinas ${E.buildingPop(b)} → ${Math.round(d.pop * (1 + 0.4 * b.level))}`);
+        }
+        for (const f of fx) box.append(ui.h('div.line', { html: `<span>${icon('sparkle', 14)} ${f}</span>` }));
+        box.append(ui.h('div.line', { html: `<span class="cost">${ui.costHtml(info.cost, 18)}</span><span class="muted">${icon('clock', 14)} ${E.fmtTime(info.time)}</span>` }));
+        if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
+        box.append(btn('Mejorar', 'lilac', 'up', () => {
+          const c = E.canUpgrade(b);
+          if (!c.ok) { ctx.audio.sfx('error'); ui.toast(c.poor ? 'No te alcanza todavía' : c.reason, { icon: c.locked ? 'lock' : 'info' }); return; }
+          const res = E.startUpgrade(b.uid);
+          if (res.error) { ctx.audio.sfx('error'); ui.toast(res.error); return; }
+          m.close();
+        }, !can.ok && !can.poor));
+      }
+      body.append(box);
+    }
+
+    // ----- castillo: expandir + constructoras -----
+    if (isCastle) {
+      const ex = E.expansionInfo();
+      const box = ui.h('div.cx-box');
+      const bnd = E.landBounds();
+      box.append(ui.h('h4', { html: icon('map', 20) + 'Terreno' }));
+      if (!ex) box.append(ui.h('span.muted', {}, `¡Tu terreno ya es enorme! (${bnd.side}×${bnd.side})`));
+      else {
+        box.append(ui.h('div.line', { html: `<span>${bnd.side}×${bnd.side} → <b>${bnd.side + 2}×${bnd.side + 2}</b></span><span class="cost">${ui.costHtml(ex.cost, 18)}</span>` }));
+        const lvOk = ctx.state.player.level >= ex.reqLevel;
+        if (!lvOk) box.append(ui.h('div.req', { html: icon('lock', 14) + `Necesitás nivel ${ex.reqLevel}` }));
+        box.append(btn('Expandir', 'mint', 'plus', () => { if (S.doExpand()) m.close(); }, !lvOk));
+      }
+      body.append(box);
+      const bi = E.builderInfo();
+      const box2 = ui.h('div.cx-box');
+      box2.append(ui.h('h4', { html: icon('hammer', 20) + `Constructoras: ${ctx.state.builders}` }));
+      if (!bi) box2.append(ui.h('span.muted', {}, '¡Tenés el equipo completo!'));
+      else {
+        box2.append(ui.h('div.line', { html: `<span>Más obras al mismo tiempo</span><span class="cost">${ui.costHtml(bi.cost, 18)}</span>` }));
+        box2.append(btn('Contratar', 'sky', 'plus', async () => {
+          if (!store.canAfford(bi.cost)) { ctx.audio.sfx('error'); ui.toast('Te faltan gemas', { icon: 'gem' }); return; }
+          const ok = await ui.confirm('Contratar constructora', `¿Contratar otra constructora por ${bi.cost.gems} gemas?`, 'Contratar', 'Mejor no');
+          if (ok && E.buyBuilder()) { ctx.audio.sfx('buy'); ui.toast('¡Nueva constructora en el equipo!', { icon: 'hammer', type: 'good' }); sig = ''; tick(); }
+        }));
+      }
+      body.append(box2);
+    }
+
+    // ----- acciones -----
+    const acts = ui.h('div.cx-actions');
+    if (d.game && !building) {
+      const isW = d.game === 'wardrobe';
+      acts.append(btn(isW ? 'Vestidor' : 'Jugar', 'pink', isW ? 'dress' : 'play', () => {
+        m.close();
+        if (isW) ctx.router.go('wardrobe'); else ctx.router.openGame(d.game);
+      }));
+    }
+    if (isCastle) acts.append(btn('Vestidor', 'pink', 'dress', () => { m.close(); ctx.router.go('wardrobe'); }));
+    acts.append(btn('Mover', 'ghost', 'move', () => { m.close(); S.startMove(b.uid); }));
+    acts.append(btn('Rotar', 'ghost', 'rotate', () => { S.rotateBuilding(b.uid); }));
+    if (E.canRemove(b)) acts.append(btn('Guardar', 'ghost', 'trash', async () => {
+      const refund = Math.floor((d.cost.coins || 0) * 0.5);
+      const ok = await ui.confirm('Guardar', `¿Querés quitar ${ui.esc(d.name)}?${refund ? ` Te devolvemos ${icon('coin', 16)} ${refund}.` : ''}`, 'Quitar', 'No');
+      if (ok) { S.removeBuilding(b.uid); m.close(); }
+    }));
+    body.append(acts);
+    sig = signature();
+    tick();
+  }
+
+  function tick() {
+    if (!ctx.state.city.buildings.includes(b)) { m.close(); return; }
+    const s2 = signature();
+    if (s2 !== sig) { render(); return; }
+    const now = Date.now();
+    if (refs.busyTime && E.isBusy(b, now)) {
+      const rem = E.remainingMs(b, now);
+      refs.busyTime.textContent = E.fmtTime(rem / 1000);
+      const bar = refs.busyBar.querySelector('i');
+      if (bar) bar.style.width = Math.min(100, (1 - rem / refs.busyTotal) * 100).toFixed(1) + '%';
+      const cost = E.skipCost(b, now);
+      refs.skipBtn.innerHTML = icon('bolt', 20) + (cost ? `Terminar ya ${icon('gem', 18)}${cost}` : '¡Terminar gratis!');
+    }
+    if (refs.prodBar && refs.prodBar.isConnected) {
+      const ps = E.producerStatus(b, now);
+      const bar = refs.prodBar.querySelector('i');
+      if (bar) bar.style.width = (ps.full ? 100 : ps.progress * 100).toFixed(1) + '%';
+      refs.prodTxt.innerHTML = ps.full ? '¡Lleno! Cobralo para que siga produciendo' : ps.ready ? `Para cobrar: <b>${E.fmtNum(ps.amount)}</b> · próxima tanda en ${E.fmtTime((1 - ps.progress) * ps.cycleSec)}` : `Próxima tanda en ${E.fmtTime((1 - ps.progress) * ps.cycleSec)}`;
+    }
+  }
+  const iv = setInterval(tick, 500);
+  render();
+  return m;
+}
+
+// ======================================================================
+// Expandir terreno (desde los carteles)
+// ======================================================================
+export function openExpand(S) {
+  const { ctx } = S;
+  const { ui, economy: E } = ctx;
+  const ex = E.expansionInfo();
+  if (!ex) { ui.toast('¡Tu terreno ya está al máximo!', { icon: 'map' }); return null; }
+  const bnd = E.landBounds();
+  const body = ui.h('div.cx-info');
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = MAP_SIZE;
+  const g = cv.getContext('2d');
+  g.fillStyle = '#79bb8c'; g.fillRect(0, 0, MAP_SIZE, MAP_SIZE);
+  g.fillStyle = '#ffd166'; g.fillRect(bnd.min - 1, bnd.min - 1, bnd.side + 2, bnd.side + 2);
+  g.fillStyle = '#a3e68b'; g.fillRect(bnd.min, bnd.min, bnd.side, bnd.side);
+  for (const b of ctx.state.city.buildings) {
+    const [w, d] = E.footprint(b.id, b.rot);
+    g.fillStyle = b.id === 'castillo' ? '#b58cff' : E.def(b).cat === 'camino' ? '#d8d2e6' : '#ff7eb6';
+    g.fillRect(b.x, b.z, w, d);
+  }
+  body.append(ui.h('div.cx-exp-map', {}, cv));
+  body.append(ui.h('p.cx-desc.center', { html: `Tu terreno pasa de <b>${bnd.side}×${bnd.side}</b> a <b>${bnd.side + 2}×${bnd.side + 2}</b>: ¡más lugar para casas, negocios y jardines!` }));
+  const lvOk = ctx.state.player.level >= ex.reqLevel;
+  const box = ui.h('div.cx-box');
+  box.append(ui.h('div.line', { html: `<span>Costo</span><span class="cost">${ui.costHtml(ex.cost, 20)}</span>` }));
+  if (!lvOk) box.append(ui.h('div.req', { html: icon('lock', 14) + `Se desbloquea en nivel ${ex.reqLevel}` }));
+  body.append(box);
+  const m = ui.modal({ title: '¡Expandir!', icon: 'map', content: body, className: 'cx-modal', onClose: () => S.untrackModal(m),
+    actions: [{ label: 'Ahora no', cls: 'ghost' }, { html: `${icon('plus', 20)}Expandir`, label: 'Expandir', cls: 'mint', disabled: !lvOk, onClick: () => S.doExpand() ? undefined : false }] });
+  S.trackModal(m);
+  return m;
+}
+
+// ======================================================================
+// Barra de colocación
+// ======================================================================
+export function makePlaceBar(S, { onCancel, onRotate, onConfirm }) {
+  const { ctx } = S;
+  const { ui } = ctx;
+  const el = ui.h('div.cx-placebar');
+  const top = ui.h('div.cx-pb-top');
+  const hint = ui.h('div.cx-pb-hint');
+  const btns = ui.h('div.cx-pb-btns');
+  const bCancel = ui.h('button.btn.ghost', { html: icon('close', 20) + 'Cancelar', onclick: () => { ctx.audio.sfx('tap'); onCancel(); } });
+  const bRot = ui.h('button.btn.lilac.cx-rot', { html: icon('rotate', 20) + 'Rotar', onclick: () => { onRotate(); } });
+  const bOk = ui.h('button.btn.mint', { html: icon('check', 20) + 'Colocar', onclick: () => { onConfirm(); } });
+  btns.append(bCancel, bRot, bOk);
+  el.append(top, hint, btns);
+  let lastKey = '';
+  return {
+    el,
+    update(p) {
+      const E = ctx.economy;
+      const d = E.def(p.id);
+      const cost = p.mode === 'new' ? E.placeCost(p.id) : null;
+      const key = [p.id, p.mode, p.valid, p.reason, p.paint, p.count, cost?.coins, cost?.gems, S.lastPointer].join('|');
+      if (key === lastKey) return;
+      lastKey = key;
+      top.innerHTML = '';
+      top.append(ui.h('b', {}, (p.mode === 'move' ? 'Mover: ' : '') + d.name), ui.h('span.grow'));
+      if (cost) top.append(ui.h('span', { html: ui.costHtml(cost, 18) }));
+      if (p.count) top.append(ui.h('span.chip.mint', { html: `${icon('check', 12)}${p.count}` }));
+      const touch = S.lastPointer === 'touch' || (S.lastPointer !== 'mouse' && matchMedia('(pointer: coarse)').matches);
+      let txt;
+      if (!p.valid) txt = (p.reason === 'Fuera del terreno' ? 'Fuera de tu terreno' : p.reason === 'Hay algo ahí' ? 'Ese lugar está ocupado' : p.reason) + ' · elegí un lugar verde';
+      else if (p.paint) txt = touch ? 'Tocá o arrastrá sobre el pasto para seguir poniendo' : 'Hacé clic o arrastrá para seguir poniendo · Esc para terminar';
+      else txt = touch ? 'Arrastrá el edificio o tocá donde lo querés' : 'Mové el mouse y hacé clic para colocar · R rota · Esc cancela';
+      hint.textContent = txt;
+      hint.classList.toggle('bad', !p.valid);
+      bOk.disabled = !p.valid;
+      bCancel.innerHTML = icon(p.paint ? 'check' : 'close', 20) + (p.paint ? 'Listo' : 'Cancelar');
+      bCancel.className = 'btn ' + (p.paint ? 'gold' : 'ghost');
+    },
+  };
+}

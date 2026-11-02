@@ -3,7 +3,7 @@
 const VERSION = 'pixelia-v1';
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/three.min.js',
-  './fonts/pixelify-400.woff2', './fonts/pixelify-600.woff2', './fonts/pixelify-700.woff2',
+  './fonts/jersey10.woff2',
   './icons/icon-192.png', './icons/apple-touch-icon.png',
   './src/main.js', './src/core/bus.js', './src/core/state.js', './src/core/data.js', './src/core/economy.js', './src/core/quests.js',
   './src/core/ui.js', './src/core/icons.js', './src/core/audio.js', './src/core/voxel.js', './src/core/hud.js',

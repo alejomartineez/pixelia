@@ -125,7 +125,7 @@ export const GAMES = [
   { id: 'match3', name: 'Joyas Reales', desc: 'Combiná 3 o más joyas iguales.', building: 'joyeria', unlock: 1, color: '#ff7eb6' },
   { id: 'blocks', name: 'Bloques Mágicos', desc: 'Encajá bloques y completá filas.', building: 'torre_bloques', unlock: 2, color: '#b58cff' },
   { id: 'parking', name: 'Estacionamiento Real', desc: 'Estacioná tu auto sin chocar.', building: 'garaje', unlock: 3, color: '#6fe3c1' },
-  { id: 'driving', name: 'Paseo Real', desc: 'Maneja por la ciudad juntando gemas.', building: 'pista', unlock: 5, color: '#8fd3ff' },
+  { id: 'driving', name: 'Paseo Real', desc: 'Manejá por la ciudad juntando monedas y gemas.', building: 'pista', unlock: 5, color: '#8fd3ff' },
 ];
 export const GAME_BY_ID = Object.fromEntries(GAMES.map(g => [g.id, g]));
 
@@ -245,7 +245,7 @@ export const MAIN_QUESTS = [
   { id: 'm5', title: 'Primera partida', text: 'Jugá una partida de Joyas Reales.', goal: { type: 'play', game: 'match3', count: 1 }, reward: { gems: 3, xp: 30 } },
   { id: 'm6', title: 'Un barrio lindo', text: 'Poné 3 árboles o arbustos.', goal: { type: 'build', ids: ['arbol', 'arbusto'], count: 3 }, reward: { coins: 150, xp: 25 } },
   { id: 'm7', title: 'Más vecinas', text: 'Llegá a 15 de población.', goal: { type: 'pop', count: 15 }, reward: { coins: 200, xp: 40 } },
-  { id: 'm8', title: 'Look de princesa', text: 'Construí la Boutique Real y cambiá tu look.', goal: { type: 'customize', count: 1 }, reward: { gems: 5, xp: 40 } },
+  { id: 'm8', title: 'Look de princesa', text: 'Cambiá tu look en el Vestidor (botón de abajo).', goal: { type: 'customize', count: 1 }, reward: { gems: 5, xp: 40 } },
   { id: 'm9', title: 'Bloque a bloque', text: 'Construí la Torre de Bloques y jugá una partida.', goal: { type: 'play', game: 'blocks', count: 1 }, reward: { coins: 250, xp: 50 } },
   { id: 'm10', title: 'Helado para todas', text: 'Construí la Heladería Arcoíris.', goal: { type: 'build', id: 'heladeria', count: 1 }, reward: { coins: 250, xp: 50 } },
   { id: 'm11', title: 'Sobre ruedas', text: 'Construí el Garaje Real.', goal: { type: 'build', id: 'garaje', count: 1 }, reward: { gems: 5, xp: 60 } },

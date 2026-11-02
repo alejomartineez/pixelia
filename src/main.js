@@ -127,12 +127,17 @@ bus.on('level:up', (ev) => {
   audio.sfx('levelup');
   if (router.current === 'city' && !navigating) setTimeout(flushLevelUps, 400);
 });
+let flushing = false;
 async function flushLevelUps() {
-  while (pendingLevelUps.length) {
-    if (hasModal()) { setTimeout(flushLevelUps, 800); return; }
-    const ev = pendingLevelUps.shift();
-    await openPanel('levelup', ev);
-  }
+  if (flushing) return;
+  flushing = true;
+  try {
+    while (pendingLevelUps.length && router.current === 'city') {
+      if (hasModal()) { setTimeout(() => { flushing = false; flushLevelUps(); }, 800); return; }
+      const ev = pendingLevelUps.shift();
+      await openPanel('levelup', ev);
+    }
+  } finally { if (!pendingLevelUps.length || router.current !== 'city') flushing = false; }
 }
 
 // ---------- Arranque ----------
@@ -185,6 +190,7 @@ async function boot() {
   if ('serviceWorker' in navigator && location.protocol !== 'file:' && !params.has('nosw') && !['localhost', '127.0.0.1'].includes(location.hostname)) {
     navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW', e));
   }
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__pixeliaInstallPrompt = e; });
   window.__pixelia = { ctx, store, bus, economy, quests, data };
 }
 
