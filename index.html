@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Pixelia · Ciudad de Princesas</title>
+  <meta name="description" content="Construí tu ciudad de princesas en 3D pixel art, con minijuegos de joyas, bloques, estacionar y manejar.">
+  <meta name="theme-color" content="#ff9ccb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pixelia">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="preload" href="fonts/pixelify-400.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.min.js" } }</script>
+</head>
+<body>
+  <div id="app">
+    <div id="scene"></div>
+    <div id="hud" class="hidden"></div>
+    <div id="fx-root"></div>
+    <div id="modal-root"></div>
+    <div id="toast-root"></div>
+    <div id="fade"></div>
+    <div id="splash">
+      <div class="splash-sky"></div>
+      <div class="splash-inner">
+        <div class="splash-crown"><img src="icons/icon-192.png" alt="" width="120" height="120"></div>
+        <h1>Pixelia</h1>
+        <p class="splash-sub">Ciudad de Princesas</p>
+        <p class="splash-tap">Tocá para jugar</p>
+      </div>
+    </div>
+  </div>
+  <noscript>Este juego necesita JavaScript.</noscript>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

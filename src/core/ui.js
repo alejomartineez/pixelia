@@ -1,0 +1,185 @@
+// Componentes de interfaz compartidos (DOM). Ver DESIGN.md para clases CSS.
+import { icon } from './icons.js';
+import { audio } from './audio.js';
+import { fmtNum } from './economy.js';
+
+const $ = (sel, root = document) => root.querySelector(sel);
+
+/** Crea un elemento: h('div.panel.big', {onclick}, 'texto', otroNodo) */
+export function h(tag, attrs = {}, ...children) {
+  const [name, ...classes] = tag.split('.');
+  const el = document.createElement(name || 'div');
+  if (classes.length) el.className = classes.join(' ');
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+    else if (k === 'html') el.innerHTML = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'class') el.className += ' ' + v;
+    else el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of children.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return el;
+}
+export const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/** HTML de un costo/premio: {coins, gems, xp} */
+export function costHtml(cost = {}, size = 16) {
+  const parts = [];
+  if (cost.coins) parts.push(`<span class="cost">${icon('coin', size)}${fmtNum(cost.coins)}</span>`);
+  if (cost.gems) parts.push(`<span class="cost">${icon('gem', size)}${fmtNum(cost.gems)}</span>`);
+  if (cost.xp) parts.push(`<span class="cost">${icon('xp', size)}${fmtNum(cost.xp)}</span>`);
+  return parts.join(' ') || '<span class="cost">Gratis</span>';
+}
+
+// ---------- Toast ----------
+export function toast(text, { icon: ic, type = '' } = {}) {
+  const root = $('#toast-root');
+  const el = h('div.toast' + (type ? '.' + type : ''), { html: (ic ? icon(ic, 20) : '') + `<span>${esc(text)}</span>` });
+  root.append(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); }, 2200);
+}
+
+// ---------- Modal ----------
+const openModals = [];
+/**
+ * modal({ title, content: Node|string(html), actions: [{label, cls, onClick, close=true}], closable=true, onClose, className })
+ * Devuelve { el, body, close }.
+ */
+export function modal({ title = '', content = '', actions = [], closable = true, onClose, className = '', icon: ic } = {}) {
+  const root = $('#modal-root');
+  const back = h('div.modal-back');
+  const box = h('div.modal' + (className ? '.' + className.split(' ').join('.') : ''));
+  const head = h('div.modal-head', { html: (ic ? icon(ic, 24) : '') + `<h2>${esc(title)}</h2>` });
+  if (closable) head.append(h('button.icon-btn.modal-x', { 'aria-label': 'Cerrar', html: icon('close', 18), onclick: () => close() }));
+  const body = h('div.modal-body');
+  if (typeof content === 'string') body.innerHTML = content; else if (content) body.append(content);
+  box.append(head, body);
+  if (actions.length) {
+    const foot = h('div.modal-foot');
+    for (const a of actions) {
+      foot.append(h('button.btn.' + (a.cls || 'pink').split(' ').join('.'), {
+        html: a.html || esc(a.label),
+        disabled: a.disabled,
+        onclick: async () => { audio.sfx('tap'); const r = await a.onClick?.(); if (a.close !== false && r !== false) close(); },
+      }));
+    }
+    box.append(foot);
+  }
+  back.append(box);
+  if (closable) back.addEventListener('pointerdown', e => { if (e.target === back) close(); });
+  root.append(back);
+  requestAnimationFrame(() => back.classList.add('show'));
+  let closed = false;
+  function close() {
+    if (closed) return; closed = true;
+    back.classList.remove('show');
+    setTimeout(() => back.remove(), 220);
+    openModals.splice(openModals.indexOf(api), 1);
+    onClose?.();
+  }
+  const api = { el: box, body, close };
+  openModals.push(api);
+  audio.sfx('open');
+  return api;
+}
+export function closeAllModals() { [...openModals].forEach(m => m.close()); }
+export const hasModal = () => openModals.length > 0;
+
+export function confirm(title, text, okLabel = 'Sí', cancelLabel = 'No') {
+  return new Promise(res => {
+    let v = false;
+    modal({ title, content: `<p class="center">${text}</p>`, onClose: () => res(v),
+      actions: [{ label: cancelLabel, cls: 'ghost' }, { label: okLabel, cls: 'pink', onClick: () => { v = true; } }] });
+  });
+}
+
+/**
+ * Pantalla de premio. reward {coins, gems, xp}, stars (0..3 o undefined).
+ * buttons: [{label, value, cls}] -> resuelve con el value elegido.
+ */
+export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, stars, lines = [], buttons = [{ label: 'Genial', value: 'ok' }] } = {}) {
+  return new Promise(res => {
+    let val = buttons[buttons.length - 1].value;
+    const wrap = h('div.reward');
+    if (stars !== undefined) {
+      const st = h('div.reward-stars');
+      for (let i = 0; i < 3; i++) {
+        const s = h('span.rstar', { html: icon(i < stars ? 'star' : 'starOff', 48) });
+        s.style.animationDelay = (0.15 + i * 0.25) + 's';
+        st.append(s);
+      }
+      wrap.append(st);
+      for (let i = 0; i < stars; i++) setTimeout(() => audio.sfx('star'), 200 + i * 250);
+    }
+    if (subtitle) wrap.append(h('p.reward-sub', {}, subtitle));
+    for (const l of lines) wrap.append(h('p.reward-line', { html: l }));
+    if (reward.coins || reward.gems || reward.xp) wrap.append(h('div.reward-items', { html: costHtml(reward, 28) }));
+    modal({ title, content: wrap, closable: false, className: 'reward-modal', onClose: () => res(val),
+      actions: buttons.map(b => ({ label: b.label, cls: b.cls || 'pink', onClick: () => { val = b.value; } })) });
+    if (stars === undefined || stars > 0) confetti();
+  });
+}
+
+// ---------- Efectos ----------
+/** Texto flotante en coordenadas de pantalla (px). */
+export function floatText(x, y, html, cls = '') {
+  const el = h('div.float-text' + (cls ? '.' + cls : ''), { html, style: { left: x + 'px', top: y + 'px' } });
+  $('#fx-root').append(el);
+  setTimeout(() => el.remove(), 1100);
+}
+/** Íconos que vuelan desde (x,y) hasta el contador del HUD (data-hud="coins"|"gems"|"xp"). */
+export function flyCurrency(x, y, kind = 'coins', count = 6) {
+  const target = document.querySelector(`[data-hud="${kind}"]`);
+  const r = target?.getBoundingClientRect();
+  const tx = r ? r.left + 14 : innerWidth / 2, ty = r ? r.top + r.height / 2 : 20;
+  const name = kind === 'gems' ? 'gem' : kind === 'xp' ? 'xp' : 'coin';
+  count = Math.min(10, Math.max(1, count));
+  for (let i = 0; i < count; i++) {
+    const el = h('div.fly', { html: icon(name, 24), style: { left: x + 'px', top: y + 'px' } });
+    $('#fx-root').append(el);
+    const dx = (Math.random() - 0.5) * 70, dy = (Math.random() - 0.5) * 70;
+    const anim = el.animate([
+      { transform: 'translate(-50%,-50%) scale(.6)', opacity: 1 },
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(1.1)`, opacity: 1, offset: 0.3 },
+      { transform: `translate(calc(-50% + ${tx - x}px), calc(-50% + ${ty - y}px)) scale(.7)`, opacity: 0.9 },
+    ], { duration: 650 + i * 55, easing: 'cubic-bezier(.5,0,.6,1)' });
+    anim.onfinish = () => {
+      el.remove();
+      if (i === 0) audio.sfx(kind === 'gems' ? 'gem' : 'coin');
+      target?.classList.remove('bump'); void target?.offsetWidth; target?.classList.add('bump');
+    };
+  }
+}
+/** Confeti pixelado sobre toda la pantalla. */
+export function confetti(n = 70) {
+  const cv = h('canvas.confetti');
+  $('#fx-root').append(cv);
+  const scale = 4;
+  cv.width = Math.ceil(innerWidth / scale); cv.height = Math.ceil(innerHeight / scale);
+  const g = cv.getContext('2d');
+  const cols = ['#ff7eb6', '#b58cff', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'];
+  const parts = Array.from({ length: n }, () => ({
+    x: cv.width / 2 + (Math.random() - 0.5) * cv.width * 0.3, y: cv.height * 0.35,
+    vx: (Math.random() - 0.5) * 3.2, vy: -Math.random() * 3.5 - 1, c: cols[Math.floor(Math.random() * cols.length)], s: Math.random() < 0.3 ? 2 : 1,
+  }));
+  let t = 0;
+  (function frame() {
+    g.clearRect(0, 0, cv.width, cv.height);
+    for (const p of parts) { p.vy += 0.09; p.x += p.vx; p.y += p.vy; p.vx *= 0.99; g.fillStyle = p.c; g.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s); }
+    if (++t < 140) requestAnimationFrame(frame); else cv.remove();
+  })();
+}
+
+/** Bottom sheet (panel que sube desde abajo; en PC se ve como panel centrado). */
+export function sheet({ title = '', content, onClose, className = '' } = {}) {
+  return modal({ title, content, onClose, className: ('sheet ' + className).trim() });
+}
+
+/** Barra de progreso HTML */
+export function progressHtml(pct, cls = '') {
+  return `<div class="progress ${cls}"><i style="width:${Math.max(0, Math.min(100, pct * 100)).toFixed(1)}%"></i></div>`;
+}
+
+export const ui = { h, esc, icon, costHtml, toast, modal, confirm, rewardModal, floatText, flyCurrency, confetti, sheet, progressHtml, closeAllModals, hasModal };
