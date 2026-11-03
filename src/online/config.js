@@ -13,5 +13,5 @@
 // RLS y las funciones de schema.sql. NUNCA pongas acá la "service_role" / "secret" key.
 //
 // Para probar sin servidor: abrí el juego con ?mock=1&mockuser=ana (y otra pestaña con mockuser=bea).
-export const SUPABASE_URL = '';
-export const SUPABASE_ANON_KEY = '';
+export const SUPABASE_URL = 'https://tcyzkuvfzjgvzedhnxki.supabase.co';
+export const SUPABASE_ANON_KEY = 'sb_publishable_e5dPqiRbaNnNrD47aGqPbQ_Itby1lnu';

@@ -36,6 +36,16 @@ Entrá a https://app.netlify.com/drop y arrastrá la carpeta. Te da una URL al t
 ### Opción C — Cloudflare Pages
 Workers & Pages → Create → Pages → *Upload assets* → subir la carpeta.
 
+## Online (cuentas, amigos, visitas)
+Usa el proyecto de Supabase **Pixelia** (gratis), ya configurado en `src/online/config.js`
+(URL y clave *publishable*, que es pública a propósito; la seguridad la dan las reglas de `supabase/schema.sql`).
+- Las cuentas se crean con email y contraseña, sin email de confirmación.
+- Si cambiás `supabase/schema.sql`, volvé a correrlo entero en el SQL Editor del proyecto.
+- `node tools/test-live.mjs` prueba el servidor real con dos cuentas nuevas `@example.com`
+  (quedan en Authentication → Users; se pueden borrar desde ahí).
+- Sin servidor: `?mock=1&mockuser=ana` (y otra pestaña con `mockuser=bea`).
+- Cuando lo publiques, en Authentication → URL Configuration poné la dirección del juego como *Site URL*.
+
 ## Instalar en el iPhone
 1. Abrir la URL en **Safari**.
 2. Botón **Compartir** → **Agregar a inicio**.
