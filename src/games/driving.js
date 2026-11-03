@@ -1002,7 +1002,8 @@ export default function create(ctx) {
   function drawSky(a, b, t, dt) {
     lastSky[0] = a; lastSky[1] = b; lastSky[2] = t;
     const w = root.clientWidth || innerWidth, h = root.clientHeight || innerHeight;
-    sky.resize(w, h, Math.max(2.5, r.pixelSize)); // el cielo 2D conserva su escala de arte (soles, nubes)
+    // el cielo 2D conserva su escala de arte (soles, nubes): pixel ≥2,5 px CSS, múltiplo entero del pixel 3D
+    sky.resize(w, h, r.pixelSize * Math.max(1, Math.ceil(2.5 / r.pixelSize - 0.01)));
     // horizonte: proyección de un punto lejano del piso con la misma curva que el shader
     const cam = r.camera;
     cam.updateMatrixWorld();

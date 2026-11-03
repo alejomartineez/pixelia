@@ -18,8 +18,10 @@ export class Sky {
   }
   resize(w, h, px) {
     const W = Math.max(2, Math.ceil(w / px)), H = Math.max(2, Math.ceil(h / px));
-    if (W === this.W && H === this.H) return;
-    this.W = this.canvas.width = W; this.H = this.canvas.height = H;
+    if (W === this.W && H === this.H && px === this.px) return;
+    this.W = this.canvas.width = W; this.H = this.canvas.height = H; this.px = px;
+    // tamaño CSS exacto (px es un entero de pixeles físicos): escala entera, sin columnas dobles
+    Object.assign(this.canvas.style, { width: Math.ceil(W * px * 64) / 64 + 'px', height: Math.ceil(H * px * 64) / 64 + 'px', right: 'auto', bottom: 'auto' });
   }
   /**
    * a, b: índices de bioma; t: mezcla 0..1 hacia b; hy: altura del horizonte (0..1 de la pantalla);

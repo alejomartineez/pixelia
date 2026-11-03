@@ -197,12 +197,15 @@ export function buildWorld(scene, level, levelIndex, player) {
     const wx = (x + 0.5) / S, wz = (z + 0.5) / S;
     const ox = Math.abs(wx) - hw, oz = Math.abs(wz) - hd;
     const h = ((x * 73856093) ^ (z * 19349663)) >>> 0;
+    // variación por manchas de 2×2 vóxeles y contraste bajo: con pixeles chicos, el moteado de a un vóxel
+    // se ve como ruido / dientes de sierra en vez de textura
+    const hc = ((Math.floor(x / 2) * 73856093) ^ (Math.floor(z / 2) * 19349663)) >>> 0;
     if (ox < 0 && oz < 0) {
-      ground.set(x, 0, z, h % 23 === 0 ? '#ada2c2' : h % 9 === 0 ? '#c3b9d4' : '#b9aecc');
+      ground.set(x, 0, z, hc % 11 === 0 ? '#b3a8c7' : hc % 7 === 0 ? '#bfb5d1' : '#b9aecc');
     } else if (ox < walk && oz < walk) {
       ground.set(x, 0, z, ((Math.floor(x / 2) + Math.floor(z / 2)) % 2) ? '#fff4e6' : '#f3e2ee');
     } else {
-      const c = h % 17 === 0 ? '#ffc2dc' : h % 13 === 0 ? '#fff4fa' : h % 5 === 0 ? '#86d672' : h % 3 === 0 ? '#9be487' : '#8fdc7a';
+      const c = h % 61 === 0 ? '#ffc2dc' : h % 67 === 0 ? '#fff4fa' : hc % 5 === 0 ? '#8ad876' : hc % 3 === 0 ? '#95e081' : '#8fdc7a';
       ground.set(x, 0, z, c);
     }
   }

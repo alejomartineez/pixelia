@@ -10,6 +10,8 @@
 //   --url <query>       query string completo (reemplaza --scene). Siempre se agrega nosplash&nosw.
 //   --device iphone|iphone-se|landscape|ipad|desktop   (default iphone: 390x844 táctil; iphone-se 375x667;
 //                       landscape 844x390 táctil apaisado; ipad 820x1180; desktop 1366x800 con mouse)
+//   --dpr <n>           fuerza el devicePixelRatio (ej. 1.25, 1.5: Windows con zoom de pantalla)
+//   --size <WxH>        fuerza el tamaño de ventana (ej. 1127x739)
 //   --wait <ms>         espera tras cargar (default 2500)
 //   --shot <png>        captura final
 //   --eval <js>         expresión a evaluar al final; imprime el resultado
@@ -58,6 +60,8 @@ if (!VIEW) {
   console.error(`--device desconocido: "${device}". Opciones: ${Object.keys(VIEWS).join(', ')}`);
   await browser.close(); server.close(); process.exit(2);
 }
+if (opt('dpr', null)) VIEW.deviceScaleFactor = Number(opt('dpr'));
+if (opt('size', null)) { const [w, h] = String(opt('size')).split('x').map(Number); VIEW.width = w; VIEW.height = h; }
 await page.setViewport(VIEW);
 if (device !== 'desktop') await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
 

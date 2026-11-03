@@ -167,6 +167,8 @@ export function defaultPixelSize() {
  * opts.pixelSize: tamaño en px CSS de cada "pixel" del render. Default ≈1.5 en celular y ≈2 en PC.
  *   Se redondea a una cantidad ENTERA de pixeles físicos (según devicePixelRatio) para que todos los
  *   pixeles del render midan lo mismo en pantalla (sin columnas más anchas que otras).
+ * opts.maxRes: máximo de pixeles de render en el lado corto (default 480); si la pantalla da más,
+ *   el pixel se agranda (siempre por enteros de pixeles físicos).
  * opts.ortho: true = cámara ortográfica isométrica (ciudad); false = perspectiva (juegos de manejo)
  * opts.viewSize: alto visible del mundo para la ortográfica
  * opts.background: color de fondo (hex) o null para transparente
@@ -176,7 +178,7 @@ export function defaultPixelSize() {
  *   Los transparentes que escriben profundidad (sprites, planos con alfa) también se contornean: usar depthWrite:false.
  */
 export function createPixelRenderer(container, opts = {}) {
-  const { ortho = true, viewSize = 14, background = 0xbfe9ff, shadows = true, fov = 50 } = opts;
+  const { ortho = true, viewSize = 14, background = 0xbfe9ff, shadows = true, fov = 50, maxRes = 480 } = opts;
   let pixelSize = opts.pixelSize || defaultPixelSize();
   let dev = 1, dpr = 1;
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: background == null, powerPreference: 'high-performance' });
@@ -200,16 +202,27 @@ export function createPixelRenderer(container, opts = {}) {
     camera.userData.viewSize = viewSize;
   } else camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 500);
 
+  // el canvas va absoluto arriba a la izquierda y puede sobrar menos de un pixel de render: se recorta
+  if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+  container.style.overflow = 'hidden';
+  Object.assign(canvas.style, { position: 'absolute', left: '0', top: '0', right: 'auto', bottom: 'auto' });
+
   function resize() {
     const w = container.clientWidth || innerWidth, h = container.clientHeight || innerHeight;
     dpr = screenDpr();
+    const pw = w * dpr, ph = h * dpr;
     dev = Math.max(pixelSize >= 1.4 ? 2 : 1, Math.round(pixelSize * dpr - 0.01));
-    // buffer = pixeles físicos / dev (entero): cada pixel de render ocupa dev×dev pixeles físicos
-    const bw = Math.max(1, Math.round(w * dpr / dev)), bh = Math.max(1, Math.round(h * dpr / dev));
+    // resolución interna acotada: en monitores grandes el pixel crece en vez de afinarse
+    dev = Math.max(dev, Math.ceil(Math.min(pw, ph) / maxRes));
+    // buffer = pixeles físicos / dev (entero): cada pixel de render ocupa EXACTAMENTE dev×dev pixeles
+    // físicos. El tamaño CSS se fija a buffer×dev/dpr (no 100%) para que el navegador escale por un
+    // entero: con 100% el factor queda en 2,001 o 1,999 y salen columnas/filas dobles (dientes de sierra).
+    const bw = Math.max(1, Math.ceil(pw / dev)), bh = Math.max(1, Math.ceil(ph / dev));
     renderer.setPixelRatio(1);
     renderer.setSize(bw, bh, false);
     outline?.setSize(bw, bh);
-    canvas.style.width = '100%'; canvas.style.height = '100%';
+    // (redondeado hacia arriba a 1/64 px, la unidad de layout del navegador, para que no caiga 1 pixel físico corto)
+    canvas.style.width = Math.ceil(bw * dev / dpr * 64) / 64 + 'px'; canvas.style.height = Math.ceil(bh * dev / dpr * 64) / 64 + 'px';
     const aspect = bw / bh;
     if (camera.isOrthographicCamera) {
       const vs = camera.userData.viewSize;
@@ -248,6 +261,8 @@ export function createPixelRenderer(container, opts = {}) {
     THREE, renderer, scene, camera, canvas,
     /** Tamaño real (px CSS) de cada pixel del render, ya redondeado a pixeles físicos enteros. */
     get pixelSize() { return dev / dpr; },
+    /** Pixeles físicos por pixel de render (entero). */
+    get devicePixels() { return dev; },
     setPixelSize(n) { pixelSize = n; resize(); },
     /** Cambia el zoom de la ortográfica (alto visible en unidades de mundo) */
     setViewSize(vs) { camera.userData.viewSize = vs; resize(); },
@@ -328,9 +343,14 @@ function createOutlinePass(renderer, o) {
       void main() {
         vec4 c = texture2D(tColor, vUv);
         float dc = dist(vUv);
-        float dn = min(min(dist(vUv + vec2(texel.x, 0.0)), dist(vUv - vec2(texel.x, 0.0))),
-                       min(dist(vUv + vec2(0.0, texel.y)), dist(vUv - vec2(0.0, texel.y))));
-        if (dc - dn > thrAbs + dc * thrLin + dc * dc * thrSq)
+        vec2 ex = vec2(texel.x, 0.0), ey = vec2(0.0, texel.y);
+        float dl = dist(vUv - ex), dr = dist(vUv + ex), dd = dist(vUv - ey), du = dist(vUv + ey);
+        float thr = thrAbs + dc * thrLin + dc * dc * thrSq;
+        float dn = min(min(dl, dr), min(dd, du));
+        // agujero de 1 pixel (grieta entre piezas del piso): cerca a ambos lados -> se rellena, no se entinta
+        if (max(dl, dr) < dc - thr) c = vec4(mix(texture2D(tColor, vUv - ex).rgb, texture2D(tColor, vUv + ex).rgb, 0.5), 1.0);
+        else if (max(dd, du) < dc - thr) c = vec4(mix(texture2D(tColor, vUv - ey).rgb, texture2D(tColor, vUv + ey).rgb, 0.5), 1.0);
+        else if (dc - dn > thr)
           c = c.a > 0.0 ? vec4(mix(c.rgb, ink, strength), 1.0) : vec4(ink, 1.0);
         gl_FragColor = c;
         #include <colorspace_fragment>
