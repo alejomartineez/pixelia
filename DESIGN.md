@@ -1,8 +1,8 @@
-# Pixelia · Ciudad de Princesas — documento de diseño y contratos
+# Pixelia · Tu ciudad, tu estilo — documento de diseño y contratos
 
 PWA (HTML + ES modules, **sin build**) para iPhone **y PC**. Juego de construir ciudad (estilo city-builder casual) con minijuegos.
 Estética: **3D pixel art** (vóxeles renderizados a baja resolución y escalados sin suavizado) + UI pastel con bordes gruesos color tinta.
-Público: una chica adulta que juega casual en el celu. Tiene que ser **amigable, linda, con recompensas frecuentes y enganchante** (sesiones cortas, cosas para cobrar, metas claras), nunca frustrante (sin energía, sin muros de pago; las gemas se ganan jugando).
+Público: una pareja adulta que juega casual en el celu; neutro de género (cada jugador elige su personaje). Tiene que ser **amigable, linda, con recompensas frecuentes y enganchante** (sesiones cortas, cosas para cobrar, metas claras), nunca frustrante (sin energía, sin muros de pago; las gemas se ganan jugando).
 Idioma: **español rioplatense** (vos, tocá, construí). Nada de marcas o personajes de juegos existentes: todo original.
 
 ## Estructura
@@ -25,7 +25,9 @@ src/core/                  NO MODIFICAR salvo el dueño del núcleo
   hud.js       HUD de la ciudad
 src/city/models.js         modelos vóxel de edificios/naturaleza  (agente Modelos)
 src/scenes/city.js         escena ciudad                          (agente Ciudad)
-src/avatar/princess.js     modelo princesa                        (agente Avatar)
+src/avatar/avatar*.js      modelo del personaje (todos los tipos; princess.js = alias)  (agente Avatar)
+src/city/themes*.js        temas de ciudad + selector             (agente Ciudad)
+src/scenes/onboarding.js   primera partida: personaje, nombre, ciudad, tema
 src/avatar/car.js          modelo auto                            (agente Avatar)
 src/scenes/wardrobe.js     vestidor + taller                      (agente Avatar)
 src/scenes/panels.js       misiones, juegos, ajustes, login, nivel (agente Paneles)
@@ -77,13 +79,18 @@ export default function create(ctx) {
 - Clases CSS listas: `.btn` (+ `.pink .lilac .mint .sky .gold .ghost .small .block`), `.icon-btn`, `.panel`, `.card` (+ `.locked .selected`), `.row .col .grid .grid.tight`, `.chip`, `.badge`, `.progress` (+ `.xp .pink .gold`), `.tabs .tab .tab.active`, `.swatches .swatch`, `.scroll`, `.game-bar` (+ `.game-stat` con `<small>` y `<b>`, `.game-title`, `.spacer`), `.game-bg`, `.game-bg.pattern`, `.game-help`.
 - Feedback "jugoso": sonido (`audio.sfx`), partículas, `ui.floatText`, `ui.flyCurrency`, rebotes, confeti en logros.
 
+## Personajes, temas y contorno
+- **Personajes** (`data.js` → `AVATAR_TYPES`): Princesa, Príncipe, Chica, Chico, Hada, Mago y animalitos (Gatito, Zorrito, Conejito, Osito). La primera partida (`onboarding.js`, si `state.onboarded` es false) elige tipo (al azar al empezar), colores, nombre y ciudad; después se cambia en el Vestidor (pestaña Personaje) o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel. Textos neutros: nada de "princesa" salvo el nombre del tipo.
+- **Temas de ciudad** (`city/themes.js`): Dulce Pastel, Ciudad Moderna, Bosque Mágico, Playa Tropical, Invierno Nevado, Luces de Noche (`dark: true`, aro claro bajo el personaje). No hay modelos por tema: los colores de vóxel se re-mapean (`mapColor`) y cambian terreno, cielo, luces y naturaleza. Se guarda en `state.city.theme`, se elige gratis con `openThemePicker(ctx)` (botón paleta en la ciudad, Ajustes y onboarding), emite `city:theme` y se ve en las visitas.
+- **Pixel art fino**: `pixelSize` por defecto ≈1.5 px CSS en celular y ≈2 en PC; `createPixelRenderer({ outline: true })` agrega un contorno tinta de 1 pixel de render en los saltos de profundidad (`?outline=0|1` lo fuerza para comparar). Íconos de `icons.js` dibujados en capas sobre grilla de 24, escalados por bloques enteros (sin interpolación).
+
 ## Sonidos disponibles
 `audio.sfx(name)`: tap, open, close, coin, gem, build, place, done, levelup, error, match, combo(n), pop, clear, swoosh, star, win, lose, horn, crash, bump, select, buy.
 `audio.music(name)`: city, game, drive, calm, null. (El router pone la música de la escena según `music`.)
 
 ## Estado (store.state) — ver `defaultState()` en state.js
 - `coins, gems, player{name,cityName,level,xp}`
-- `princess{skin(index), hair, hairColor(id), dress, dressColor(id), crown, acc}`; `car{body, color(id de OUTFIT_COLORS), wheels, topper}`; `owned{hair:[],dress:[],...}`
+- `onboarded`, `avatar{type, skin(index), hair, hairColor(id), dress, dressColor(id), crown, acc}` (`state.princess` = alias no enumerable), `avatarLooks{[type]: look}`, `city.theme`; `car{body, color(id de OUTFIT_COLORS), wheels, topper}`; `owned{hair:[],dress:[],...}`
 - `city{buildings:[{uid,id,x,z,rot,level,buildEnd,upgradeEnd,lastCollect}], nextUid, expansions, flagColor, camera}`
 - `games.match3{level, stars{}}`, `games.blocks{best}`, `games.parking{level, stars{}}`, `games.driving{best}`
 - `stats{}` (usar `store.inc(key,n)` / `store.setMax`): `match3Wins`, `blocksLines`, `parkingWins`, `drivingMeters` alimentan logros.
@@ -139,3 +146,13 @@ node tools/smoke.mjs --scene <id> [--device iphone|desktop|ipad] [--cheat 15] [-
 ```
 Captura en Chrome headless, imprime errores de consola y sale con código 1 si hubo. **Guardar capturas en tu carpeta del scratchpad, no en el proyecto.** Mirá las capturas (Read del png) para juzgar cómo se ve. `window.__pixelia` expone `{ctx, store, bus, economy, quests, data}` para pasos `eval`.
 URL params: `?scene=id`, `?cheat=nivel` (+100k monedas, +1000 gemas), `?reset`, `?nosplash`.
+
+Suites de punta a punta (todas con `--out carpeta` para las capturas; salen con 1 si algo falla):
+```
+node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onboarding con toques reales (Osito, color de ropa, nombre y ciudad tipeados, estilo Bosque Mágico; verifica el guardado) → premio diario → m1–m8 → nivel + cofre → minijuego con potenciador → Pase/Álbum/Cofres/Eventos; revisa los globitos del HUD; al final recarga y confirma que no repite el onboarding
+node tools/test-visit.mjs    ana y bea (mock): amistad por código, regalito, visita (like, notita, ayudar obra) → buzón → la obra se acelera; pedido "Acelerá mi obra"
+node tools/test-social.mjs   UI social completa (intercambios con escrow, ranking, Obra en Equipo, cuenta, conflicto)
+node tools/test-mock.mjs     API de net.js con dos pestañas     ·     node tools/test-sql.mjs   schema.sql en PGlite
+node tools/test-stress.mjs   recorre escenas + paneles N veces (--rounds 3) y mide fugas (WebGL, listeners, bus, intervalos)
+node tools/gen-sw-core.mjs   regenera CORE de sw.js con todos los .js reales (--bump sube VERSION, --check solo verifica)
+```

@@ -70,7 +70,7 @@ function coneGeometry() {
   v.box(2, 4, 2, 2, 2, 2, C);
   v.box(2, 6, 2, 2, 1, 2, W);
   v.box(2, 7, 2, 2, 2, 2, C);
-  return v.toGeometry({ scale: 1 / 17, center: 'xz', jitter: 0.02 });
+  return v.toGeometry({ scale: 1 / 17, center: 'xz', jitter: 0.012 });
 }
 
 function lampModel() {
@@ -206,7 +206,7 @@ export function buildWorld(scene, level, levelIndex, player) {
       ground.set(x, 0, z, c);
     }
   }
-  const gm = ground.toMesh({ scale: 1 / S, castShadow: false, jitter: 0.03 });
+  const gm = ground.toMesh({ scale: 1 / S, castShadow: false, jitter: 0.015 });
   gm.position.y = -1 / S;
   group.add(gm);
 

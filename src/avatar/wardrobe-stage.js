@@ -2,7 +2,7 @@
 // Lo usa src/scenes/wardrobe.js. Todo lo que crea acá se libera con disposeObject / dispose().
 import * as THREE from 'three';
 import { Voxels, voxelMaterial, glowMaterial, shade, addLights } from '../core/voxel.js';
-import { princessModel } from './princess.js';
+import { avatarModel } from './avatar.js';
 import { carModel } from './car.js';
 
 const E = 1 / 8;   // vóxeles grandes (piso, paredes)
@@ -99,7 +99,7 @@ export function buildBoutique() {
     }
     w.set(x, y, z, c);
   }
-  // espejo ovalado con marco dorado (detrás de la princesa = aureola)
+  // espejo ovalado con marco dorado (detrás del personaje = aureola)
   for (let x = -7; x <= 6; x++) for (let y = 2; y <= 19; y++) {
     const d = Math.hypot((x + 0.5) / 6.6, (y + 0.5 - 11) / 8.8);
     if (d > 1) continue;
@@ -261,6 +261,10 @@ export function disposeThumbs() {
 const FRAMES = {
   head: { y: 0.77, view: 0.94, ang: 0.45, elev: 0.18 }, // entra la corona más alta (estrella) y el rodete
   body: { y: 0.53, view: 1.22, ang: 0.45, elev: 0.18 },
+  tall: { y: 0.86, view: 1.18, ang: 0.45, elev: 0.18 }, // sombreros altos y orejas de conejito
+  tallbody: { y: 0.62, view: 1.42, ang: 0.45, elev: 0.18 },
+  fur: { y: 0.47, view: 0.88, ang: 0.45, elev: 0.18 },      // pelajes: animalito sin ropa, más de cerca
+  furtall: { y: 0.56, view: 1.06, ang: 0.45, elev: 0.18 },  // ídem con orejas largas
   back: { y: 0.6, view: 1.3, ang: 2.55, elev: 0.18 },
   car: { y: 0.33, view: 1.0, ang: 0.85, elev: 0.5 },
   wheel: { y: 0, view: 0.4, ang: Math.PI / 2, elev: 0.05 },
@@ -282,7 +286,7 @@ function fitOrtho(camera, obj, margin = 0.1) {
 
 /**
  * Devuelve el dataURL de una miniatura. spec:
- *  { type:'princess', look, frame:'head'|'body'|'back' }
+ *  { type:'avatar' (o 'princess'), look, frame:'head'|'tall'|'body'|'tallbody'|'back' }
  *  { type:'car', car, frame:'car'|'wheel', driver? }
  */
 export function thumbnail(spec) {
@@ -290,7 +294,7 @@ export function thumbnail(spec) {
   if (thumbCache.has(key)) return thumbCache.get(key);
   const { renderer, scene, camera } = ensureThumbRenderer();
   let obj, fr = FRAMES[spec.frame] || FRAMES.body;
-  if (spec.type === 'princess') obj = princessModel(spec.look);
+  if (spec.type === 'princess' || spec.type === 'avatar') obj = avatarModel(spec.look);
   else if (spec.frame === 'wheel') {
     const c = carModel(spec.car);
     const w = c.userData.wheels[0];

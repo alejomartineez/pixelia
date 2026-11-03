@@ -2,7 +2,7 @@
 // UI en chests-ui.js. Los premios {chest:'plata'} en store.grant llegan acá vía el evento 'reward:chest'.
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
-import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale } from '../core/data.js';
+import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType } from '../core/data.js';
 import { stickerDropsForChest, grantStickers } from '../album/album.js';
 
 const S = () => store.state;
@@ -89,12 +89,15 @@ const pickWeighted = (weights) => {
 };
 const randInt = (a, b) => a + Math.floor(rand() * (b - a + 1));
 
-// Qué prendas se pueden sortear (que no tengas)
+// Qué prendas se pueden sortear (que no tengas): del personaje, solo las que le sirven a su tipo
+// (las demás no aparecen en su Vestidor); además, partes del auto
+const AVATAR_KINDS = new Set(['hair', 'dress', 'crown', 'acc']);
 function cosmeticPool(pool) {
   const s = S(), out = [];
   for (const [kind, list] of Object.entries(CUSTOM_CATALOG))
     for (const it of list) {
       if (it.free || store.owns(kind, it.id) || !it.price) continue;
+      if (AVATAR_KINDS.has(kind) && !fitsType(it, s.avatar?.type)) continue;
       if ((pool === 'gems') === !!it.price.gems) out.push({ kind, id: it.id, name: it.name });
     }
   return out;

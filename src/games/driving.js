@@ -1002,7 +1002,7 @@ export default function create(ctx) {
   function drawSky(a, b, t, dt) {
     lastSky[0] = a; lastSky[1] = b; lastSky[2] = t;
     const w = root.clientWidth || innerWidth, h = root.clientHeight || innerHeight;
-    sky.resize(w, h, r.pixelSize);
+    sky.resize(w, h, Math.max(2.5, r.pixelSize)); // el cielo 2D conserva su escala de arte (soles, nubes)
     // horizonte: proyección de un punto lejano del piso con la misma curva que el shader
     const cam = r.camera;
     cam.updateMatrixWorld();
@@ -1357,7 +1357,7 @@ export default function create(ctx) {
 
       const low = !!st.settings?.lowQuality;
       sky = new Sky(stage);
-      r = createPixelRenderer(stage, { ortho: false, background: null, fov: 58, shadows: !low, pixelSize: low ? 4 : undefined });
+      r = createPixelRenderer(stage, { ortho: false, background: null, fov: 58, shadows: !low, pixelSize: low ? 3 : undefined, outline: true });
       r.renderer.setClearColor(0x000000, 0);
       mats = makeMaterials(bendU);
       warmup();

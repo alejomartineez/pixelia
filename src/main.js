@@ -22,6 +22,7 @@ import { net } from './online/net.js';
 const SCENES = {
   city: () => import('./scenes/city.js'),
   wardrobe: () => import('./scenes/wardrobe.js'),
+  onboarding: () => import('./scenes/onboarding.js'),   // primera vez: elegir personaje, nombre y ciudad
   match3: () => import('./games/match3.js'),
   blocks: () => import('./games/blocks.js'),
   parking: () => import('./games/parking.js'),
@@ -41,9 +42,9 @@ const router = {
   get current() { return current?.id; },
   /** Parámetros con los que se montó la escena actual (p.ej. {visit: friendId} en la ciudad). */
   get params() { return current?.params || {}; },
-  /** ¿La ciudad está en modo visita (ciudad de una amiga)? */
+  /** ¿La ciudad está en modo visita (ciudad de una amistad)? */
   get visiting() { return current?.id === 'city' && !!current?.params?.visit; },
-  /** Cambia de escena. params se pasa a mount(). Ciudad de una amiga: go('city', {visit: friendId}). */
+  /** Cambia de escena. params se pasa a mount(). Ciudad de una amistad: go('city', {visit: friendId}). */
   async go(id, p = {}) {
     if (navigating) return false;   // doble toque / navegación en curso: se ignora
     if (!SCENES[id]) { console.error('escena desconocida', id); return false; }
@@ -201,8 +202,8 @@ function loadSocial() {
 }
 async function openSocial(tab = 'amigas') {
   const m = await loadSocial();
-  if (!m?.openSocial) { toast('Muy pronto vas a poder jugar con tus amigas', { icon: 'people' }); return; }
-  try { return await m.openSocial(ctx, tab); } catch (e) { console.error(e); toast('No se pudo abrir Amigas', { type: 'bad' }); }
+  if (!m?.openSocial) { toast('Muy pronto vas a poder jugar con tus amigos', { icon: 'people' }); return; }
+  try { return await m.openSocial(ctx, tab); } catch (e) { console.error(e); toast('No se pudo abrir Amigos', { type: 'bad' }); }
 }
 async function openAccount() {
   const m = await loadSocial();
@@ -215,7 +216,7 @@ bus.on('album:trade', (p) => {
   p.handled = true;
   loadSocial().then(m => {
     if (m) bus.emit('album:trade', { ...p, handled: false });
-    else toast('Los intercambios con amigas se activan con tu cuenta online', { icon: 'people' });
+    else toast('Los intercambios con amigos se activan con tu cuenta online', { icon: 'people' });
   });
 });
 
@@ -378,7 +379,9 @@ async function boot() {
     audio.unlock();
     splash.classList.add('hide');
     setTimeout(() => splash.remove(), 500);
-    await router.go(startScene, Object.fromEntries(params));   // en la ciudad, go() ya arranca la bienvenida/premio diario
+    // partida nueva sin ?scene=: primero el onboarding (al terminar entra a la ciudad)
+    const first = !store.state.onboarded && !params.has('scene') ? 'onboarding' : startScene;
+    await router.go(first, Object.fromEntries(params));   // en la ciudad, go() ya arranca la bienvenida/premio diario
   };
   if (skipSplash) begin();
   else {

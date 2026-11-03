@@ -1,73 +1,31 @@
 // Utilidades de UI compartidas por el Pase de Temporada, la bienvenida y el panel de eventos:
 // estilos inyectados (.ssn-*), íconos pixel de cofres/sobres y HTML de premios.
-import { icon } from '../core/icons.js';
+import { icon, registerIcon, chestLayers } from '../core/icons.js';
 import { esc } from '../core/ui.js';
 import { fmtNum } from '../core/economy.js';
 import { CHESTS } from '../chests/chests.js';
+import { HAIR_STYLES, avatarType } from '../core/data.js';
 
-// ---------- Íconos pixel propios (SVG) ----------
-function hexMix(a, b, t) {
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-  const c = (s) => Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
-  return '#' + ((c(16) << 16) | (c(8) << 8) | c(0)).toString(16).padStart(6, '0');
-}
-function pixelSvg(rows, pal) {
-  let r = '';
-  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') r += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${pal[ch]}"/>`; }));
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${rows[0].length} ${rows.length}" shape-rendering="crispEdges">${r}</svg>`);
-}
-const CHEST_MAP = [
-  '..............',
-  '...kkkkkkkk...',
-  '..kLLLLLLLLk..',
-  '.kLlwllllllLk.',
-  '.kLllllllllLk.',
-  'kkkkkkkkkkkkkk',
-  'kBttttTTttttBk',
-  'kbbbbkTTkbbbDk',
-  'kbwbbkyykbbbDk',
-  'kbbbbbkkbbbbDk',
-  'kbbbbbbbbbbbDk',
-  'kttttttttttttk',
-  '.kkkkkkkkkkkk.',
-  '..............',
-];
-const chestCache = {};
+// ---------- Íconos de cofres y sobres (dibujados en icons.js, nítidos a cualquier tamaño) ----------
+const chestDone = new Set();
+/** Ícono de un cofre con los colores de su tipo. */
 export function chestIcon(type = 'madera', size = 40) {
-  if (!chestCache[type]) {
+  if (!CHESTS[type]) type = 'madera';
+  const name = 'chest-' + type;
+  if (!chestDone.has(type)) {
+    chestDone.add(type);
     const d = CHESTS[type] || { color: '#b07a52', trim: '#d8d2e6' };
-    const base = type === 'oro' ? '#ffd166' : d.color;
-    chestCache[type] = pixelSvg(CHEST_MAP, {
-      k: '#3b2340', w: '#ffffff', y: '#ffd166',
-      L: hexMix(base, '#3b2340', 0.12), l: hexMix(base, '#ffffff', 0.28),
-      B: hexMix(base, '#3b2340', 0.1), b: base, D: hexMix(base, '#3b2340', 0.28),
-      t: d.trim, T: hexMix(d.trim, '#ffffff', 0.3),
-    });
+    registerIcon(name, chestLayers(type === 'oro' ? '#ffd166' : d.color, d.trim, type === 'oro' ? '#ff7eb6' : '#ffd166'));
   }
-  return `<img class="pi" src="${chestCache[type]}" width="${size}" height="${size}" alt="" draggable="false">`;
+  return icon(name, size);
 }
-const PACK_MAP = [
-  '..kkkkkkkkkk..',
-  '.kppppppppppk.',
-  '.kpwpwpwpwppk.',
-  '.kkkkkkkkkkkk.',
-  '.kllllllllllk.',
-  '.klwllllllLLk.',
-  '.kllllyylllLk.',
-  '.klllyyyyllLk.',
-  '.kllyyyyyylLk.',
-  '.klllyyyyllLk.',
-  '.kllyylyyllLk.',
-  '.kllllllllLLk.',
-  '.kLLLLLLLLLLk.',
-  '.kkkkkkkkkkkk.',
-];
-let packUrl = null;
+/** Ícono de un sobre de figuritas. */
 export function packIcon(size = 40) {
-  packUrl ||= pixelSvg(PACK_MAP, { k: '#3b2340', p: '#ff7eb6', w: '#ffffff', l: '#c9a8ff', L: '#9a72e8', y: '#ffd166' });
-  return `<img class="pi" src="${packUrl}" width="${size}" height="${size}" alt="" draggable="false">`;
+  return icon('pack', size);
 }
-const COSMETIC_NAME = { hair: n => `Peinado ${n}`, body: n => `Auto ${n}`, wheels: n => `Ruedas ${n}`, topper: n => `${n} para el auto` };
+// pelajes (diseños de pelo de los animalitos) se nombran como tales; el resto, por su nombre
+const isFur = (id) => !!HAIR_STYLES.find(h => h.id === id)?.types?.every(t => avatarType(t).animal);
+const COSMETIC_NAME = { hair: (n, id) => `${isFur(id) ? 'Pelaje' : 'Peinado'} ${n}`, body: n => `Auto ${n}`, wheels: n => `Ruedas ${n}`, topper: n => `${n} para el auto` };
 const COSMETIC_IC = { hair: '💇', dress: 'dress', crown: 'crown', acc: 'wand', body: 'car', wheels: '🛞', topper: 'ribbon' };
 
 /** Ícono grande de una parte de premio. */
@@ -90,7 +48,7 @@ export function partLabel(p) {
     case 'chest': return (p.n > 1 ? `${p.n}× ` : '') + (p.name || CHESTS[p.type]?.name || 'Cofre');
     case 'stickers': return `${p.n} figurita${p.n > 1 ? 's' : ''}${p.minStars > 1 ? ` (${p.minStars}★+)` : ''}`;
     case 'item': return (p.n > 1 ? `${p.n}× ` : '') + p.name;
-    case 'cosmetic': return COSMETIC_NAME[p.target] ? COSMETIC_NAME[p.target](p.name) : p.name;
+    case 'cosmetic': return COSMETIC_NAME[p.target] ? COSMETIC_NAME[p.target](p.name, p.id) : p.name;
     default: return 'Regalo';
   }
 }

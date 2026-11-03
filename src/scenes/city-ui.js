@@ -10,13 +10,13 @@ export function freeCount(id) { try { return chests.freeBuildCount(id) | 0; } ca
 function hammerCount() { try { return chests.itemCount('hammer') | 0; } catch { return 0; } }
 
 export const STYLE = `
-.scene-city { background: linear-gradient(180deg, #ffcfe6 0%, #f3dbff 34%, #d6e6ff 66%, #c5f0ee 100%); overflow: hidden; }
-.scene-city::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .55;
+.scene-city { background: var(--cx-sky, linear-gradient(180deg, #ffcfe6 0%, #f3dbff 34%, #d6e6ff 66%, #c5f0ee 100%)); overflow: hidden; transition: background .4s; }
+.scene-city::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: var(--cx-stars, .55);
   background-image: radial-gradient(circle at 12% 18%, #fff 0 2px, transparent 3px), radial-gradient(circle at 82% 12%, #fff 0 2px, transparent 3px),
   radial-gradient(circle at 70% 78%, #fff 0 2px, transparent 3px), radial-gradient(circle at 22% 86%, #fff 0 2px, transparent 3px),
   radial-gradient(circle at 48% 6%, #fff 0 1.5px, transparent 2.5px), radial-gradient(circle at 92% 52%, #fff 0 1.5px, transparent 2.5px);
   animation: cx-twinkle 3s steps(2) infinite; }
-@keyframes cx-twinkle { 50% { opacity: .2; } }
+@keyframes cx-twinkle { 50% { opacity: calc(var(--cx-stars, .55) * .36); } }
 .scene-city .pixel-canvas { position: absolute; inset: 0; }
 .cx-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 2; }
 .cx-ov { position: absolute; left: 0; top: 0; will-change: transform; transform-origin: 0 0; }
@@ -71,6 +71,20 @@ export const STYLE = `
 .cx-collect .badge { top: -10px; right: -10px; animation: none; }
 @keyframes cx-wiggle { 0%, 80%, 100% { transform: none; } 85% { transform: rotate(-4deg); } 90% { transform: rotate(4deg); } }
 .cx-side.hide { display: none; }
+/* pantallas bajas (iPhone SE): la columna de la derecha del HUD llega más abajo → botones más chicos y más pegados a la barra */
+@media (max-height: 700px) and (max-width: 759px) {
+  .cx-side { bottom: calc(var(--safe-b) + 124px); gap: 8px; }
+  .cx-fab { width: 44px; height: 44px; border-radius: 12px; }
+  .cx-fab img.pi { width: 26px; height: 26px; }
+  .cx-collect { padding: 4px 10px 4px 6px; font-size: 14px; }
+}
+/* celular apaisado: el HUD va en fila arriba → la columna arranca debajo de monedas/gemas */
+@media (max-height: 520px) {
+  .cx-side { top: calc(var(--safe-t) + 100px); bottom: auto; gap: 8px; }
+  .cx-fab { width: 44px; height: 44px; border-radius: 12px; }
+  .cx-fab img.pi { width: 26px; height: 26px; }
+  .cx-collect { padding: 4px 10px 4px 6px; font-size: 14px; }
+}
 
 .cx-tip { position: absolute; z-index: 30; pointer-events: none; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; animation: cx-tipbob 1s steps(3) infinite; }
 .cx-tip > span { background: #fff; border: 3px solid var(--ink); border-radius: 12px; box-shadow: 0 4px 0 var(--ink); padding: 6px 12px; font-weight: 700; font-size: 15px;
@@ -172,15 +186,19 @@ export const STYLE = `
 
 const CAT_ICON = { casa: 'home', negocio: 'shop', especial: 'sparkle', deco: 'flower', camino: 'map' };
 const thumbs = new Map();
+let thumbTheme = 'pastel';
+/** Tema con el que se dibujan las miniaturas del menú (el de la ciudad). */
+export function setThumbTheme(t) { thumbTheme = t || 'pastel'; }
 function thumbImg(id, level, cls = 'th') {
   const wrap = document.createElement('span');
   wrap.style.display = 'contents';
-  const key = id + ':' + level;
+  const th = thumbTheme;
+  const key = id + ':' + level + ':' + th;
   const put = (url) => { wrap.innerHTML = `<img class="${cls}" src="${url}" alt="" draggable="false">`; };
   if (thumbs.has(key)) put(thumbs.get(key));
   else {
     wrap.innerHTML = icon('hammer', 36, 'ph');
-    Promise.resolve().then(() => thumbnail(id, level)).then(url => { if (!url) return; thumbs.set(key, url); put(url); }).catch(() => {});
+    Promise.resolve().then(() => thumbnail(id, level, th)).then(url => { if (!url) return; thumbs.set(key, url); put(url); }).catch(() => {});
   }
   return wrap;
 }
@@ -233,7 +251,7 @@ function lockLabel(d, can, ctx) {
   if (can.reason === 'Constructoras ocupadas') return `${icon('hammer', 14)}Ocupadas`;
   if (can.reason === 'Ya lo tenés') return isAllUnderConstruction(ctx, d.id) ? `${icon('hammer', 14)}En obra` : `${icon('check', 14)}¡Ya lo tenés!`;
   if (can.poor) return `${icon('coin', 14)}Te faltan monedas`;
-  if (can.locked && d.popReq && !/^Nivel/.test(can.reason)) return `${icon('people', 14)}${d.popReq} vecinas`;
+  if (can.locked && d.popReq && !/^Nivel/.test(can.reason)) return `${icon('people', 14)}${d.popReq} vecinos`;
   return `${icon(can.locked ? 'lock' : 'info', 14)}${can.reason}`;
 }
 
@@ -283,7 +301,7 @@ export function openBuildMenu(S, focusId = null) {
       const cost = E.placeCost(d.id);
       const nFree = freeCount(d.id);
       const isFree = nFree > 0 || !!cost.free;
-      // con una construcción gratis no importan el nivel ni las vecinas: la cinta reemplaza al candado
+      // con una construcción gratis no importan el nivel ni los vecinos: la cinta reemplaza al candado
       const showLock = !can.ok && !(isFree && can.locked);
       const lockedHard = !can.ok && !isFree && (can.locked || can.reason === 'Ya lo tenés');
       const card = ui.h(`button.card.cx-card.cx-cat-${d.cat}` + (lockedHard ? '.locked' : '') + (can.poor && !isFree ? '.poor' : '') + (isFree ? '.cx-isfree' : '') + (d.id === focusId ? '.cx-focus' : ''));
@@ -385,7 +403,7 @@ export function openInfo(S, uid) {
       meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, `Nivel ${b.level}`));
     } else meta.append(ui.h('span.chip', { html: icon(CAT_ICON[d.cat], 14) + (CATEGORIES.find(c => c.id === d.cat)?.name || '') }));
     const chips = [];
-    if (d.pop) chips.push(`<span class="chip pink">${icon('people', 14)}${E.buildingPop(b)} vecinas</span>`);
+    if (d.pop) chips.push(`<span class="chip pink">${icon('people', 14)}${E.buildingPop(b)} vecinos</span>`);
     if (d.happy) chips.push(`<span class="chip mint">${icon('smile', 14)}+${E.buildingHappy(b)} felicidad</span>`);
     if (d.game) chips.push(`<span class="chip lilac">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Minijuego'}</span>`);
     if (chips.length) meta.append(ui.h('div.cx-chips', { html: chips.join('') }));
@@ -481,7 +499,7 @@ export function openInfo(S, uid) {
         if (isCastle) fx.push(`+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}% producción en toda la ciudad`);
         else {
           if (d.prod?.coins) fx.push(`Producción ${E.fmtNum(ps.perCycle || 0)} → ${E.fmtNum(Math.round((ps.perCycle || 0) * (1 + 0.5 * b.level) / (1 + 0.5 * (b.level - 1))))}`);
-          if (d.pop) fx.push(`Vecinas ${E.buildingPop(b)} → ${Math.round(d.pop * (1 + 0.4 * b.level))}`);
+          if (d.pop) fx.push(`Vecinos ${E.buildingPop(b)} → ${Math.round(d.pop * (1 + 0.4 * b.level))}`);
         }
         for (const f of fx) box.append(ui.h('div.line', { html: `<span>${icon('sparkle', 14)} ${f}</span>` }));
         box.append(ui.h('div.line', { html: `<span class="cost">${ui.costHtml(info.cost, 18)}</span><span class="muted">${icon('clock', 14)} ${E.fmtTime(info.time)}</span>` }));

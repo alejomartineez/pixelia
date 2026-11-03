@@ -169,7 +169,7 @@ export const CHX_CSS = `
 .chx-deck .chx-stack i:nth-child(2) { transform: translate(3px, -3px) rotate(3deg); }
 .chx-deck b { font-size: 26px; text-shadow: ${OUT2}; }
 .chx-deck small { display: block; font-size: 15px; opacity: .85; }
-.chx-tapnext { position: absolute; right: calc(var(--safe-r) + 16px); bottom: calc(var(--safe-b) + 22px); font-size: 20px; pointer-events: none; text-shadow: ${OUT2};
+.chx-tapnext { position: absolute; right: calc(var(--safe-r) + 16px); bottom: calc(var(--safe-b) + 22px); font-size: 20px; pointer-events: none; color: #fff; text-shadow: ${OUT2};
   opacity: 0; transition: opacity .3s; }
 .chx-open.cards.revealed .chx-tapnext { opacity: 1; animation: chx-blink 1.1s steps(2) infinite; }
 

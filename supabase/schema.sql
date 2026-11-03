@@ -24,10 +24,10 @@
 create table if not exists public.profiles (
   id          uuid primary key references auth.users(id) on delete cascade,
   code        text not null unique check (code ~ '^[A-HJ-NP-Z2-9]{6}$'),
-  name        text not null default 'Princesa',
+  name        text not null default 'Pixelín',
   city_name   text not null default 'Pixelia',
   level       int  not null default 1,
-  look        jsonb not null default '{}'::jsonb,   -- princesa
+  look        jsonb not null default '{}'::jsonb,   -- personaje (type + piezas)
   car         jsonb not null default '{}'::jsonb,   -- auto
   city        jsonb not null default '{}'::jsonb,   -- {buildings:[{id,x,z,rot,level}], expansions, flagColor}
   stats       jsonb not null default '{}'::jsonb,   -- {pop, happy, best:{...}, week:{id, match3, blocks, parking, driving, stars}}
@@ -192,7 +192,7 @@ begin
    where a = least(p_me, p_other) and b = greatest(p_me, p_other) and status = 'accepted'
    for update;
   if not found then
-    raise exception 'Solo podés hacer eso con tus amigas';
+    raise exception 'Solo podés hacer eso con tus amigos';
   end if;
   return f;
 end $$;
@@ -271,7 +271,7 @@ begin
   loop
     begin
       insert into public.profiles (id, code, name)
-      values (me, public.gen_code(), coalesce(nullif(left(trim(p_name), 24), ''), 'Princesa'))
+      values (me, public.gen_code(), coalesce(nullif(left(trim(p_name), 24), ''), 'Pixelín'))
       returning * into r;
       return to_jsonb(r);
     exception when unique_violation then
@@ -279,7 +279,7 @@ begin
       select * into r from public.profiles where id = me;
       if found then return to_jsonb(r); end if;
       tries := tries + 1;
-      if tries > 25 then raise exception 'No pudimos crear tu código de amiga, probá de nuevo'; end if;
+      if tries > 25 then raise exception 'No pudimos crear tu código de amistad, probá de nuevo'; end if;
     end;
   end loop;
 end $$;
@@ -413,7 +413,7 @@ begin
   select * into f from public.friendships
    where a = least(me, o.id) and b = greatest(me, o.id) for update;
   if found then
-    if f.status = 'accepted' then raise exception 'Ya son amigas con %', o.name; end if;
+    if f.status = 'accepted' then raise exception 'Ya son amigos con %', o.name; end if;
     if f.requested_by = me then raise exception 'Ya le mandaste una solicitud a %, falta que acepte', o.name; end if;
     -- ella ya me había pedido amistad: se acepta directamente
     update public.friendships set status = 'accepted', accepted_at = now()
@@ -425,7 +425,7 @@ begin
     raise exception 'Tenés muchas solicitudes sin responder. Esperá que te acepten';
   end if;
   if (select count(*) from public.friendships where me in (a, b) and status = 'accepted') >= 100 then
-    raise exception 'Llegaste al máximo de 100 amigas';
+    raise exception 'Llegaste al máximo de 100 amigos';
   end if;
   insert into public.friendships (a, b, status, requested_by)
   values (least(me, o.id), greatest(me, o.id), 'pending', me)
@@ -456,7 +456,7 @@ language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid(); t public.trades;
 begin
   delete from public.friendships where a = least(me, p_other) and b = greatest(me, p_other);
-  if not found then raise exception 'No son amigas'; end if;
+  if not found then raise exception 'No son amigos'; end if;
   for t in
     update public.trades set status = 'cancelled', resolved_at = now()
      where status = 'pending'
@@ -609,7 +609,7 @@ begin
     end if;
     -- golden: la Semana Dorada (evento calculado en el cliente) habilita 5★ sin los 14 días de amistad
     if greatest(os, rs) = 5 and f.days < 14 and (o->'golden') is distinct from 'true'::jsonb then
-      raise exception 'Las figuritas de 5 estrellas se cambian con amigas de 14 días o más';
+      raise exception 'Las figuritas de 5 estrellas se cambian con amistades de 14 días o más';
     end if;
     if public.sticker_trades_today(me) >= 5 then
       raise exception 'Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!';
@@ -801,7 +801,7 @@ begin
   select * into r from public.requests where id = p_id for update;
   if not found then raise exception 'No encontramos ese pedido'; end if;
   if r.from_id = me then raise exception 'No podés completar tu propio pedido 😅'; end if;
-  if r.filled_by is not null then raise exception 'Otra amiga ya completó ese pedido 💨'; end if;
+  if r.filled_by is not null then raise exception 'Alguien más ya completó ese pedido 💨'; end if;
   if r.expires_at <= now() then raise exception 'Ese pedido ya venció'; end if;
   perform public.pair_lock(me, r.from_id);
   update public.requests set filled_by = me, filled_at = now() where id = r.id;

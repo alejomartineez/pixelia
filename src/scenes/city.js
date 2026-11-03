@@ -9,7 +9,9 @@ import { createWorld } from './city-world.js';
 import { createCameraCtl } from './city-camera.js';
 import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
-import { STYLE, openBuildMenu, openInfo, openExpand, makePlaceBar, questBuildIds } from './city-ui.js';
+import { STYLE, openBuildMenu, openInfo, openExpand, makePlaceBar, questBuildIds, setThumbTheme } from './city-ui.js';
+import { currentThemeId, themeOf } from '../city/themes.js';
+import { openThemePicker } from '../city/themes-ui.js';
 import { createBatcher } from './city-batch.js';
 import { createVisit } from './city-visit.js';
 import { activeBoosts } from '../chests/chests.js';
@@ -37,7 +39,7 @@ function easeOutBounce(t) {
 
 export default function create(ctx) {
   const { store, bus, ui, audio, economy: E } = ctx;
-  let container, r, cam, world, life, fx, ov, styleEl, bGroup, batch, placeBar, sideEl, collectBtn, tipEl, ro;
+  let container, r, cam, world, life, fx, ov, styleEl, bGroup, batch, placeBar, sideEl, collectBtn, tipEl, ro, lights, themeId;
   const entries = new Map();
   const offs = [];
   const myModals = new Set();
@@ -50,7 +52,7 @@ export default function create(ctx) {
   const tmpV = new THREE.Vector3();
   let hoverPos = null, hoverDirty = false, hoverT = 0;
   let gameTip = null, signItems = [], collectTip = null, worldTip = null;
-  const modelOpts = () => ({ flagColor: ctx.state.city.flagColor });
+  const modelOpts = () => ({ flagColor: ctx.state.city.flagColor, theme: themeId });
   const T = () => ctx.state.tutorial;
   function setFlag(k) { if (!T()[k]) { T()[k] = true; store.markDirty(); } }
 
@@ -94,7 +96,7 @@ export default function create(ctx) {
     if (e.model) { e.root.remove(e.model); e.model = null; }
     if (e.scaffold) { e.root.remove(e.scaffold); e.scaffold = null; }
     if (mode === 'build') {
-      e.scaffold = safe(() => constructionModel(c.w, c.d), [c.w, c.d]);
+      e.scaffold = safe(() => constructionModel(c.w, c.d, themeId), [c.w, c.d]);
       e.root.add(e.scaffold);
       e.height = e.scaffold.userData.height || 0.8;
     } else {
@@ -103,7 +105,7 @@ export default function create(ctx) {
       e.root.add(e.model);
       e.height = e.model.userData.height || 1;
       if (mode === 'upgrade') {
-        e.scaffold = safe(() => constructionModel(c.w, c.d), [c.w, c.d]);
+        e.scaffold = safe(() => constructionModel(c.w, c.d, themeId), [c.w, c.d]);
         e.root.add(e.scaffold);
         e.height = Math.max(e.height, e.scaffold.userData.height || 0.8);
       }
@@ -282,7 +284,7 @@ export default function create(ctx) {
     const movingB = p.uid != null ? entries.get(p.uid)?.b : null;
     const isCon = !!movingB && E.isConstructing(movingB);
     const fp = E.footprint(p.id, 0);
-    const model = isCon ? safe(() => constructionModel(...fp), fp) : safe(() => buildingModel(p.id, p.level, modelOpts()), fp);
+    const model = isCon ? safe(() => constructionModel(...fp, themeId), fp) : safe(() => buildingModel(p.id, p.level, modelOpts()), fp);
     const mats = makeGhost(model, 0.62);
     const root = new THREE.Group();
     root.add(model);
@@ -673,6 +675,7 @@ export default function create(ctx) {
     else if (ev.code === 'KeyB') { audio.sfx('tap'); openBuildMenu(S); }
     else if (ev.code === 'KeyC') collectAll();
     else if (ev.code === 'KeyH' || ev.code === 'Home') focusCastle();
+    else if (ev.code === 'KeyT') { audio.sfx('tap'); openThemes(); }
   }
   function onBlur() { cam?.clearKeys(); }
   function onVisibility() { if (document.hidden) r.stop(); else r.start(); }
@@ -683,6 +686,12 @@ export default function create(ctx) {
     batchCollect = ready.length > 3;
     E.collectAll();
     batchCollect = false;
+  }
+  let themesOpen = false;
+  function openThemes() {
+    if (themesOpen) return;
+    themesOpen = true;
+    Promise.resolve(openThemePicker(ctx)).catch(err => console.warn('[city] temas', err)).finally(() => { themesOpen = false; });
   }
   function focusCastle() {
     const c = ctx.state.city.buildings.find(b => b.id === 'castillo');
@@ -872,9 +881,45 @@ export default function create(ctx) {
       fx.sparkle(c.x, e.height * 0.7, c.z, ['#ffd166', '#ffffff', '#ff9ccb']);
       setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Maestría ${stars}!`), 450);
     }));
+    offs.push(bus.on('city:theme', ({ theme } = {}) => setTheme(theme || currentThemeId(ctx.state))));
     offs.push(bus.on('city:flag', () => {
       for (const e of entries.values()) if (e.b.id === 'castillo') refreshEntry(e, true);
     }));
+  }
+
+  // =====================================================================
+  // Tema de la ciudad
+  // =====================================================================
+  function makeWorld() {
+    return createWorld(r, { theme: themeId, bounds: { ...E.landBounds(), canExpand: !!E.expansionInfo() }, hooks: {
+      onPoof: (x, z) => fx.poof(x, 0.3, z),
+      onTileReveal: (x, z) => { if (Math.random() < 0.5) fx.sparkle(x, 0.1, z, ['#c4f7e8', '#ffffff', '#ffd166']); },
+    } });
+  }
+  /** Cielo (CSS detrás del canvas) y luces del tema. */
+  function applyThemeLook() {
+    const T = themeOf(themeId);
+    container.style.setProperty('--cx-sky', T.sky);
+    container.style.setProperty('--cx-stars', String(T.stars));
+    const L = T.lights;
+    lights.hemi.color.setHex(L.sky); lights.hemi.groundColor.setHex(L.ground); lights.hemi.intensity = L.hemi;
+    lights.sun.color.setHex(L.sun); lights.sun.intensity = L.sunI;
+    setThumbTheme(themeId);
+  }
+  /** Cambia el tema en vivo: mundo nuevo, edificios recoloreados (geometrías cacheadas por tema). */
+  function setTheme(id) {
+    const next = themeOf(id).id;
+    if (next === themeId) return;
+    themeId = next;
+    if (placing) endPlacement(true);
+    world.dispose();
+    world = makeWorld();
+    world.setCamAngle(cam.angle);
+    for (const e of entries.values()) refreshEntry(e, true);
+    batch.markDirty();
+    rebuildSignLabels();
+    applyThemeLook();
+    life.refreshGrid();
   }
 
   function rebuildSignLabels() {
@@ -999,20 +1044,20 @@ export default function create(ctx) {
       styleEl.textContent = STYLE;
       document.head.append(styleEl);
       const lowQ = !!ctx.state.settings?.lowQuality;
-      r = createPixelRenderer(container, { background: null, viewSize: 14, pixelSize: lowQ ? 3.5 : undefined });
+      // contorno tinta alrededor de las siluetas (voxel.js): separa edificios, árboles y vecinas del pasto
+      r = createPixelRenderer(container, { background: null, viewSize: 14, pixelSize: lowQ ? 2.5 : undefined, outline: true });
       r.renderer.setClearColor(0x000000, 0);
-      const { hemi, sun } = addLights(r.scene, { shadowSize: 50, shadowRes: lowQ ? 1024 : 2048 });
-      hemi.intensity = 1.55;
+      lights = addLights(r.scene, { shadowSize: 50, shadowRes: lowQ ? 1024 : 2048 });
+      const { sun } = lights;
       sun.shadow.camera.far = 120;
-      sun.position.set(14, 26, 10);
+      // sol de costado: las dos paredes que se ven quedan con tonos distintos (se lee el volumen)
+      sun.position.set(17, 26, 5);
       sun.shadow.camera.updateProjectionMatrix();
+      themeId = currentThemeId(ctx.state);
+      applyThemeLook();
 
       fx = createParticles(r.scene);
-      const lb = E.landBounds();
-      world = createWorld(r, { bounds: { ...lb, canExpand: !!E.expansionInfo() }, hooks: {
-        onPoof: (x, z) => fx.poof(x, 0.3, z),
-        onTileReveal: (x, z) => { if (Math.random() < 0.5) fx.sparkle(x, 0.1, z, ['#c4f7e8', '#ffffff', '#ffd166']); },
-      } });
+      world = makeWorld();
       bGroup = new THREE.Group();
       bGroup.name = 'buildings';
       r.scene.add(bGroup);
@@ -1047,7 +1092,9 @@ export default function create(ctx) {
       homeBtn.addEventListener('click', focusCastle);
       const rotBtn = ui.h('button.cx-fab', { html: icon('rotate', 30), 'aria-label': 'Girar la vista', title: 'Girar la vista (Q / E)' });
       rotBtn.addEventListener('click', () => { cam.rotate(1); audio.sfx('swoosh'); });
-      sideEl.append(collectBtn, homeBtn, rotBtn);
+      const themeBtn = ui.h('button.cx-fab', { html: icon('palette', 30), 'aria-label': 'Estilo de la ciudad', title: 'Estilo de la ciudad (T)' });
+      themeBtn.addEventListener('click', () => { audio.sfx('tap'); openThemes(); });
+      sideEl.append(collectBtn, homeBtn, rotBtn, themeBtn);
       container.append(sideEl);
 
       // entrada
@@ -1071,7 +1118,7 @@ export default function create(ctx) {
       r.onFrame(frame);
       r.start();
       // gancho de depuración para pruebas headless (tools/smoke.mjs)
-      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, world, ov, S, batch, get placing() { return placing; } };
+      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placing; }, get theme() { return themeId; }, openThemes };
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },
     unmount() {

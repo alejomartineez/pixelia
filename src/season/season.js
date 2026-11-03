@@ -3,7 +3,7 @@
 // Estado en store.state.season. Todas las funciones con fecha aceptan `now` opcional (ms o Date) para pruebas.
 import { bus } from '../core/bus.js';
 import { store, todayStr } from '../core/state.js';
-import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale } from '../core/data.js';
+import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType } from '../core/data.js';
 import { toast } from '../core/ui.js';
 import { audio } from '../core/audio.js';
 import { ITEMS, CHESTS } from '../chests/chests.js';
@@ -85,7 +85,7 @@ function premiumCatalog() {
     for (const it of list) if (!it.free && it.price?.gems) out.push({ kind, id: it.id, name: it.name, gems: it.price.gems, unlock: it.unlock || 1 });
   return out.sort((a, b) => a.unlock - b.unlock || a.gems - b.gems);
 }
-const PRINCESS_KINDS = ['dress', 'hair', 'crown', 'acc'];
+const AVATAR_KINDS = ['dress', 'hair', 'crown', 'acc'];
 /** Qué prenda premium toca en cada nivel especial no cobrado (sin repetir dentro de la temporada). */
 function cosmeticPlan(index, claimed) {
   const free = premiumCatalog().filter(c => !store.owns(c.kind, c.id));
@@ -93,9 +93,11 @@ function cosmeticPlan(index, claimed) {
   TIERS.forEach((t, i) => {
     const n = i + 1;
     if (!t.cosmetic || claimed.includes(n) || !free.length) return;
-    // preferimos prendas de la princesa (más emoción); si ya tiene todas, partes del auto
-    const princess = free.filter(c => PRINCESS_KINDS.includes(c.kind));
-    const pool = princess.length ? princess : free;
+    // preferimos prendas que le sirvan a su personaje (más emoción); si ya tiene todas, partes del auto (si no, gemas)
+    const type = S().avatar?.type;
+    const mine = free.filter(c => AVATAR_KINDS.includes(c.kind) && fitsType(CUSTOM_CATALOG[c.kind].find(i => i.id === c.id), type));
+    const pool = mine.length ? mine : free.filter(c => !AVATAR_KINDS.includes(c.kind));
+    if (!pool.length) return;
     const pick = pool[(index * 5 + n * 3) % pool.length];
     free.splice(free.indexOf(pick), 1);
     plan[n] = pick;
@@ -329,9 +331,9 @@ export function welcomeBackStatus(now) {
   const counted = Math.min(days, WELCOME.maxDays);
   const big = days >= WELCOME.bigDays;
   const reward = { coins: Math.round(WELCOME.coinsPerDay * counted * rewardScale(S().player.level)), gems: big ? WELCOME.bigGems : 0 };
-  const name = S().player.name || 'Princesa';
-  const message = days >= 14 ? `¡${name}, qué alegría verte! Pixelia te estuvo esperando todo este tiempo. Las vecinas cuidaron tu ciudad y te juntaron un regalito.`
-    : days >= 7 ? `¡Volviste, ${name}! Las vecinas regaron las flores y te guardaron algo especial.`
+  const name = S().player.name || 'Pixelín';
+  const message = days >= 14 ? `¡${name}, qué alegría verte! Pixelia te estuvo esperando todo este tiempo. Los vecinos cuidaron tu ciudad y te juntaron un regalito.`
+    : days >= 7 ? `¡Volviste, ${name}! Los vecinos regaron las flores y te guardaron algo especial.`
       : `¡Hola de nuevo, ${name}! Te guardamos un regalito mientras no estabas.`;
   return { days, counted, reward, chests: big ? 2 : 1, chestType: 'madera', title: '¡Te extrañamos!', message };
 }

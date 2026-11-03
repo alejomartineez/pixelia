@@ -11,6 +11,7 @@ import { SPECIAL_BUILDERS } from './models-special.js';
 import { HOUSE_BUILDERS } from './models-houses.js';
 import { SHOP_BUILDERS } from './models-shops.js';
 import { DECO_BUILDERS } from './models-deco.js';
+import { DEFAULT_THEME, themeOf, mapColor, isGlass } from './themes.js';
 
 export const VOXELS_PER_TILE = 8;
 const S = 1 / VOXELS_PER_TILE;
@@ -29,8 +30,113 @@ function matFor(kind, opts) {
   return voxelMaterial();
 }
 
+// ---------- Tema (re-mapeo de colores al compilar) ----------
+/** Ruido fijo por vóxel (0..1) para la nieve a manchones. */
+const snowAt = (x, y, z) => (((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) >>> 0) % 997 / 997;
+/**
+ * Pasa los colores de un modelo al tema. En la grilla principal además:
+ * nieve sobre las caras de arriba expuestas (temas con `snow`) y vidrios a la capa sin luz (`litWindows`).
+ */
+function applyTheme(model, themeId) {
+  const t = themeOf(themeId);
+  if (t.id === DEFAULT_THEME) return;
+  const recolor = (v) => { for (const [k, c] of v.map) v.map.set(k, mapColor(t.id, c)); };
+  const v = model.v;
+  if (t.snow || t.litWindows) {
+    const snow = [], lit = [];
+    for (const [k, c] of v.map) {
+      const [x, y, z] = k.split(',').map(Number);
+      if (t.litWindows && isGlass(t.id, c)) { lit.push([k, x, y, z, c]); continue; }
+      if (t.snow && y >= 2 && !v.map.has(x + ',' + (y + 1) + ',' + z) && snowAt(x, y, z) < (t.snowAmount ?? 1)) snow.push(k);
+    }
+    recolor(v);
+    for (const k of snow) { const [x, , z] = k.split(','); v.map.set(k, parseInt(t.snow[(+x * 3 + +z * 5) % 7 === 0 ? 1 : 0].slice(1), 16)); }
+    for (const [k, x, y, z, c] of lit) { v.map.delete(k); model.light.set(x, y, z, mapColor(t.id, c)); }
+  } else recolor(v);
+  recolor(model.glow);
+  if (!t.litWindows) recolor(model.light);
+  for (const p of model.parts) recolor(p.v);
+}
+
+// ---------- Limpieza de "ruido" ----------
+// Con pixeles de render chicos cada vóxel ocupa 1-2 pixeles: los dameros de tonos casi iguales
+// (ladrillos, rayas de techo, manchitas) se ven como estática. Se unifican los tonos muy parecidos
+// al más usado del modelo; los detalles con contraste real (ventanas, flores, bordes) quedan.
+const CALM = 26;
+function calmColors(v) {
+  if (!v.size) return;
+  const freq = new Map();
+  for (const c of v.map.values()) freq.set(c, (freq.get(c) || 0) + 1);
+  if (freq.size < 2) return;
+  const reps = [], to = new Map();
+  const near = (a, b) => Math.abs((a >> 16) - (b >> 16)) <= CALM && Math.abs(((a >> 8) & 255) - ((b >> 8) & 255)) <= CALM && Math.abs((a & 255) - (b & 255)) <= CALM;
+  for (const [c] of [...freq].sort((p, q) => q[1] - p[1])) {
+    const r = reps.find(x => near(x, c));
+    if (r === undefined) reps.push(c); else to.set(c, r);
+  }
+  if (to.size) for (const [k, c] of v.map) { const r = to.get(c); if (r !== undefined) v.map.set(k, r); }
+}
+
+// ---------- Mallado con oclusión en los rincones ----------
+// Igual que Voxels.toGeometry pero oscurece los vértices metidos en rincones (base de paredes,
+// bajo aleros, entre bloques): las formas se leen mucho mejor sin agregar ruido.
+const FACES = [
+  { n: [1, 0, 0], c: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] },
+  { n: [-1, 0, 0], c: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] },
+  { n: [0, 1, 0], c: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]] },
+  { n: [0, -1, 0], c: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]] },
+  { n: [0, 0, 1], c: [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]] },
+  { n: [0, 0, -1], c: [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]] },
+];
+const AO = [0.6, 0.74, 0.88, 1];
+const JITTER = 0.01;
+function meshAO(v, scale) {
+  const pos = [], nor = [], col = [], idx = [];
+  const has = (x, y, z) => v.map.has(x + ',' + y + ',' + z);
+  const tmp = new THREE.Color();
+  const ao = [0, 0, 0, 0];
+  for (const [k, c] of v.map) {
+    const [x, y, z] = k.split(',').map(Number);
+    let h = (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
+    h = ((h >>> 0) % 1000) / 1000;
+    tmp.setHex(shade(c, (h - 0.5) * 2 * JITTER));
+    for (const f of FACES) {
+      const [nx, ny, nz] = f.n;
+      if (has(x + nx, y + ny, z + nz)) continue;
+      const ax = nx ? [1, 2] : ny ? [0, 2] : [0, 1]; // ejes tangentes
+      const base = pos.length / 3;
+      for (let i = 0; i < 4; i++) {
+        const cv = f.c[i];
+        const p = [x + nx, y + ny, z + nz];
+        const d1 = [0, 0, 0], d2 = [0, 0, 0];
+        d1[ax[0]] = cv[ax[0]] ? 1 : -1; d2[ax[1]] = cv[ax[1]] ? 1 : -1;
+        const s1 = has(p[0] + d1[0], p[1] + d1[1], p[2] + d1[2]) ? 1 : 0;
+        const s2 = has(p[0] + d2[0], p[1] + d2[1], p[2] + d2[2]) ? 1 : 0;
+        const cc = has(p[0] + d1[0] + d2[0], p[1] + d1[1] + d2[1], p[2] + d1[2] + d2[2]) ? 1 : 0;
+        ao[i] = s1 && s2 ? 0 : 3 - (s1 + s2 + cc);
+        const m = AO[ao[i]];
+        pos.push((x + cv[0]) * scale, (y + cv[1]) * scale, (z + cv[2]) * scale);
+        nor.push(nx, ny, nz);
+        col.push(tmp.r * m, tmp.g * m, tmp.b * m);
+      }
+      // diagonal del quad según la oclusión (evita "moños" en los degradés)
+      if (ao[0] + ao[2] >= ao[1] + ao[3]) idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      else idx.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  return g;
+}
+
 // ---------- Compilación y caché ----------
-function compile(model) {
+function compile(model, themeId = DEFAULT_THEME) {
+  calmColors(model.v); calmColors(model.glow);
+  for (const p of model.parts) calmColors(p.v);
+  applyTheme(model, themeId);
   const ox = model.W / 2, oz = model.D / 2;
   const parts = [];
   let maxY = 0;
@@ -38,7 +144,7 @@ function compile(model) {
     if (!v.size) return;
     const b = v.bounds();
     maxY = Math.max(maxY, b.max[1]);
-    const g = v.toGeometry({ scale: S });
+    const g = mat === 'light' ? v.toGeometry({ scale: S, jitter: 0 }) : meshAO(v, S);
     const px = pivot ? pivot[0] : ox, py = pivot ? pivot[1] : 0, pz = pivot ? pivot[2] : oz;
     g.translate(-px * S, -py * S, -pz * S);
     g.computeBoundingSphere(); g.computeBoundingBox();
@@ -83,7 +189,7 @@ function flagHex(c) {
   return OUTFIT_COLORS.find(o => o.id === c)?.hex || P.pink;
 }
 
-function buildTemplate(id, level, opts) {
+function buildTemplate(id, level, opts, themeId) {
   const def = BUILDING_BY_ID[id];
   const W = (def ? def.size[0] : 1) * VOXELS_PER_TILE, D = (def ? def.size[1] : 1) * VOXELS_PER_TILE;
   const m = new Model(W, D);
@@ -93,20 +199,21 @@ function buildTemplate(id, level, opts) {
     m.v.box(1, 0, 1, W - 2, 6, D - 2, P.pinkL);
     m.v.box(1, 6, 1, W - 2, 1, D - 2, P.pink);
   }
-  const tpl = compile(m);
+  const tpl = compile(m, themeId);
   // caminos: baldosa de 1 vóxel, su sombra no se ve y cuesta una pasada extra por baldosa
   if (def?.cat === 'camino') for (const p of tpl.parts) p.cast = false;
   return tpl;
 }
 
-/** Modelo de un edificio del catálogo. opts: { flagColor (id de OUTFIT_COLORS o hex), ghost } */
+/** Modelo de un edificio del catálogo. opts: { flagColor (id de OUTFIT_COLORS o hex), ghost, theme } */
 export function buildingModel(id, level = 1, opts = {}) {
   const lv = Math.max(1, Math.min(5, Math.round(level) || 1));
   const def = BUILDING_BY_ID[id];
   const flag = id === 'castillo' ? flagHex(opts.flagColor) : null;
-  const key = id + '|' + lv + (flag ? '|' + flag : '');
+  const th = themeOf(opts.theme).id;
+  const key = id + '|' + lv + (flag ? '|' + flag : '') + '|' + th;
   let tpl = tplCache.get(key);
-  if (!tpl) { tpl = buildTemplate(id, lv, { flag }); tplCache.set(key, tpl); }
+  if (!tpl) { tpl = buildTemplate(id, lv, { flag }, th); tplCache.set(key, tpl); }
   const g = instantiate(tpl, opts, { id, level: lv, size: def ? def.size.slice() : [1, 1] });
   g.name = 'building:' + id;
   return g;
@@ -114,9 +221,10 @@ export function buildingModel(id, level = 1, opts = {}) {
 
 // ---------- Obra en construcción ----------
 const consCache = new Map();
-export function constructionModel(w = 2, d = 2) {
+export function constructionModel(w = 2, d = 2, theme = DEFAULT_THEME) {
   w = Math.max(1, w | 0); d = Math.max(1, d | 0);
-  const key = w + 'x' + d;
+  const th = themeOf(theme).id;
+  const key = w + 'x' + d + '|' + th;
   let tpl = consCache.get(key);
   if (!tpl) {
     const W = w * 8, D = d * 8;
@@ -174,7 +282,7 @@ export function constructionModel(w = 2, d = 2) {
       const a = parts.crane[0];
       return (dt, t) => { a.rotation.y = Math.sin((t + ph) * 0.6) * 0.9 - 0.6; };
     });
-    tpl = compile(m);
+    tpl = compile(m, th);
     consCache.set(key, tpl);
   }
   const g = instantiate(tpl, {});
@@ -185,9 +293,10 @@ export function constructionModel(w = 2, d = 2) {
 // ---------- Naturaleza fuera del terreno ----------
 const natCache = new Map();
 const NAT_VARIANTS = 6;
-export function natureModel(kind = 'tree', seed = 0) {
+export function natureModel(kind = 'tree', seed = 0, theme = DEFAULT_THEME) {
   const s = Math.abs(Math.floor(seed)) % NAT_VARIANTS;
-  const key = kind + '|' + s;
+  const th = themeOf(theme).id;
+  const key = kind + '|' + s + '|' + th;
   let tpl = natCache.get(key);
   if (!tpl) {
     const m = new Model(8, 8);
@@ -200,11 +309,11 @@ export function natureModel(kind = 'tree', seed = 0) {
         let y = h;
         for (let i = 0; i < layers; i++) {
           const rad = 3.6 - i * 0.7;
-          const col = i % 2 ? '#3fae6a' : '#52c27a';
+          const col = i % 2 ? '#3a9a62' : '#5ccb80'; // capas bien distintas: se leen como escalones
           v.cylinder(3.5, y, 3.5, rad, 2, (x, yy, z) => (yy === y + 1 && (x + z) % 3 === 0 ? shade(col, 0.15) : col));
           y += 2;
         }
-        v.set(3, y, 3, '#52c27a'); v.set(4, y, 4, '#52c27a');
+        v.set(3, y, 3, '#5ccb80'); v.set(4, y, 4, '#5ccb80');
         if (r() < 0.5) { v.set(3, y + 1, 3, '#ffffff'); }
         break;
       }
@@ -219,11 +328,14 @@ export function natureModel(kind = 'tree', seed = 0) {
         if (r() < 0.6) { v.set(1, 0, 6, C.leaf); v.set(6, 0, 1, C.leaf); v.set(6, 1, 1, P.pink); }
         break;
       }
-      case 'flowers': {
-        for (let i = 0; i < 18; i++) {
-          const x = 1 + Math.floor(r() * 6), z = 1 + Math.floor(r() * 6);
-          v.set(x, 0, z, C.leaf);
-          flower(v, x, 1, z, pick(r, FLOWER_COLORS), r() < 0.5 ? 1 : 0);
+      case 'flowers': { // matita de hojas con flores de dos colores (no confeti de siete)
+        const a = pick(r, FLOWER_COLORS), b = r() < 0.5 ? '#ffffff' : pick(r, FLOWER_COLORS);
+        const cx = 2 + Math.floor(r() * 3), cz = 2 + Math.floor(r() * 3);
+        v.box(cx - 1, 0, cz - 1, 4, 1, 3, C.leaf); v.box(cx, 0, cz + 2, 2, 1, 1, C.leaf);
+        for (let i = 0; i < 7; i++) {
+          const x = cx - 1 + Math.floor(r() * 4), z = cz - 1 + Math.floor(r() * 4);
+          if (!v.has(x, 0, z)) continue;
+          flower(v, x, 1, z, i % 3 ? a : b, 0);
         }
         break;
       }
@@ -238,6 +350,83 @@ export function natureModel(kind = 'tree', seed = 0) {
         v.set(1, 0, 6, C.leaf); v.set(2, 0, 6, C.leaf);
         break;
       }
+      case 'palm': { // tronco anillado que se curva + hojas que caen + cocos
+        const h = 8 + Math.floor(r() * 3), lean = r() < 0.5 ? 1 : -1;
+        let x = 3, z = 3;
+        for (let y = 0; y < h; y++) {
+          if (y === Math.floor(h * 0.45) || y === Math.floor(h * 0.8)) x += lean;
+          v.set(x, y, z, y % 2 ? '#a87c46' : '#c79a5e');
+        }
+        const ty = h;
+        v.set(x, ty, z, '#3fae5a');
+        const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+        const n = 6 + Math.floor(r() * 2);
+        for (let i = 0; i < n; i++) {
+          const [dx, dz] = dirs[i];
+          const len = (dx && dz) ? 3 : 4;
+          for (let k = 1; k <= len; k++) {
+            const yy = ty - (k >= 3 ? k - 2 : 0);
+            v.set(x + dx * k, yy, z + dz * k, k === len ? '#2f9a4c' : (k + i) % 2 ? '#4cbd60' : '#3fae5a');
+            if (k === 2) v.set(x + dx * k, yy + 1, z + dz * k, '#6fd27a');
+          }
+        }
+        v.set(x + 1, ty - 1, z, '#7a5230'); v.set(x, ty - 1, z + 1, '#8a5f38');
+        if (r() < 0.6) v.set(x - 1, ty - 1, z, '#7a5230');
+        break;
+      }
+      case 'hedge': { // seto recortado (ciudad moderna)
+        const w = 4 + Math.floor(r() * 3), hh = 3 + Math.floor(r() * 2);
+        const x0 = 4 - Math.floor(w / 2);
+        v.box(x0, 0, x0, w, hh, w, (xx, yy, zz) => (yy === hh - 1 ? ((xx + zz) % 3 === 0 ? '#7cc576' : '#6ab865') : (xx + yy + zz) % 4 === 0 ? '#4a9a52' : '#57a95c'));
+        v.box(x0 - 1, 0, x0 - 1, w + 2, 1, w + 2, (xx, yy, zz) => (v.has(xx, 0, zz) ? v.get(xx, 0, zz) : '#cfc8bd'));
+        break;
+      }
+      case 'roundtree': { // arbolito "chupetín" con cantero (ciudad moderna)
+        const h = 3 + Math.floor(r() * 2);
+        v.box(2, 0, 2, 4, 1, 4, '#bdb6aa'); v.box(3, 1, 3, 2, 1, 2, '#6a5040');
+        v.box(3, 1, 3, 1, h + 1, 1, '#7a6a5c');
+        const leaf = pick(r, ['#58a86a', '#4f9e62', '#62b072']);
+        v.sphere(3.5, h + 2.6, 3.5, 2.5, 2.6, 2.5, (x, y, z) => (y >= h + 4 && (x + z) % 2 === 0 ? shade(leaf, 0.14) : (x * 3 + y + z * 5) % 7 === 0 ? shade(leaf, -0.12) : leaf));
+        break;
+      }
+      case 'glowshroom': { // hongos con pintitas que brillan + luciérnagas (bosque mágico)
+        const L = m.light;
+        const cap = pick(r, ['#8a5ee0', '#3cbf9a', '#e0528f']);
+        const mk = (x, z, hh, rad) => {
+          v.box(x, 0, z, 1, hh, 1, '#fff4e6');
+          v.sphere(x, hh + 0.2, z, rad, 1.3, rad, cap);
+          v.clear(x - 3, hh - 2, z - 3, 7, 2, 7); v.box(x, 0, z, 1, hh, 1, '#fff4e6');
+          for (let i = Math.floor(x - rad); i <= Math.ceil(x + rad); i++) for (let k = Math.floor(z - rad); k <= Math.ceil(z + rad); k++) {
+            for (let y = hh + 2; y >= hh - 1; y--) if (v.has(i, y, k)) { if ((i * 7 + k * 3) % 4 === 0) { v.remove(i, y, k); L.set(i, y, k, '#c8fff4'); } break; }
+          }
+        };
+        mk(3, 3, 4, 2.4); mk(6, 6, 2, 1.4); mk(1, 6, 1, 1);
+        L.set(6, 6, 2, '#fff3a0'); L.set(1, 8, 1, '#fff3a0'); L.set(5, 9, 5, '#fff3a0');
+        v.set(2, 0, 1, C.leaf); v.set(5, 0, 2, C.leaf);
+        break;
+      }
+      case 'snowman': {
+        v.sphere(3.5, 1.6, 3.5, 2.2, 1.8, 2.2, '#ffffff');
+        v.sphere(3.5, 4.4, 3.5, 1.6, 1.4, 1.6, '#f4f8ff');
+        v.sphere(3.5, 6.6, 3.5, 1.2, 1.2, 1.2, '#ffffff');
+        v.clear(0, -3, 0, 8, 3, 8);
+        v.box(2, 5, 2, 4, 1, 4, (x, y, z) => (v.has(x, y, z) ? '#d8433f' : null)); // bufanda
+        v.set(4, 5, 6, '#d8433f'); v.set(4, 4, 6, '#d8433f');
+        v.set(3, 7, 5, P.ink); v.set(4, 7, 5, P.ink); v.set(3, 6, 6, '#ffa64d'); v.set(3, 6, 5, '#ffa64d');
+        v.set(3, 4, 6, P.ink); v.set(3, 3, 6, P.ink);
+        v.box(2, 8, 2, 4, 1, 4, P.ink); v.box(3, 9, 3, 2, 2, 2, P.ink); v.box(3, 9, 4, 2, 1, 1, '#d8433f');
+        v.set(0, 4, 3, C.trunkD); v.set(1, 4, 3, C.trunkD); v.set(6, 4, 4, C.trunkD); v.set(7, 5, 4, C.trunkD);
+        break;
+      }
+      case 'lamp': { // farolito de plaza con luz cálida
+        v.box(3, 0, 3, 2, 1, 2, P.inkL);
+        v.box(3, 1, 3, 1, 7, 1, P.ink);
+        v.box(2, 8, 2, 3, 1, 3, P.ink);
+        m.light.box(2, 9, 2, 3, 2, 3, '#ffd77a');
+        v.box(2, 11, 2, 3, 1, 3, P.ink); v.set(3, 12, 3, P.ink);
+        v.set(5, 0, 5, C.leaf); v.set(1, 0, 4, C.leaf);
+        break;
+      }
       default: { // tree
         const h = 2 + Math.floor(r() * 2);
         v.box(3, 0, 3, 2, h + 1, 2, C.trunk);
@@ -248,7 +437,7 @@ export function natureModel(kind = 'tree', seed = 0) {
         if (r() < 0.5) bush(v, 2, h + 3, 4.5, 1.8, shade(leaf, 0.08), null, s + 9);
       }
     }
-    tpl = compile(m);
+    tpl = compile(m, th);
     natCache.set(key, tpl);
   }
   const g = instantiate(tpl, {});
@@ -258,9 +447,11 @@ export function natureModel(kind = 'tree', seed = 0) {
 
 // ---------- Nubes ----------
 const cloudCache = new Map();
-export function cloudModel(seed = 0) {
+export function cloudModel(seed = 0, theme = DEFAULT_THEME) {
   const s = Math.abs(Math.floor(seed)) % 5;
-  let geo = cloudCache.get(s);
+  const [cTop, cMid, cBot] = themeOf(theme).cloud;
+  const ck = s + '|' + themeOf(theme).id;
+  let geo = cloudCache.get(ck);
   if (!geo) {
     const r = rng(s * 13 + 5);
     const v = new Voxels();
@@ -268,12 +459,12 @@ export function cloudModel(seed = 0) {
     let x = 0;
     for (let i = 0; i < n; i++) {
       const rad = 1.8 + r() * 1.8;
-      v.sphere(x, rad * 0.6, (r() - 0.5) * 2, rad, rad * 0.75, rad * 0.9, (xx, y) => (y <= 0 ? '#e6ecff' : y >= rad ? '#ffffff' : '#f7f9ff'));
+      v.sphere(x, rad * 0.6, (r() - 0.5) * 2, rad, rad * 0.75, rad * 0.9, (xx, y) => (y <= 0 ? cBot : y >= rad ? cTop : cMid));
       x += rad * 1.1 + r();
     }
     v.clear(-10, -10, -10, 40, 10, 30);
     geo = v.toGeometry({ scale: 1 / 4, center: 'xyz', jitter: 0.015 });
-    cloudCache.set(s, geo);
+    cloudCache.set(ck, geo);
   }
   const m = new THREE.Mesh(geo, voxelMaterial());
   m.castShadow = false; m.receiveShadow = false;
@@ -309,9 +500,9 @@ function thumbRig() {
   return T;
 }
 const _box = new THREE.Box3(), _v = new THREE.Vector3();
-function renderThumb(id, level) {
+function renderThumb(id, level, theme) {
   const t = thumbRig();
-  const g = buildingModel(id, level);
+  const g = buildingModel(id, level, { theme });
   g.userData.update?.(0, 0.8);
   t.scene.add(g);
   g.updateMatrixWorld(true);
@@ -362,15 +553,16 @@ function fallbackThumb(id) {
   g.fillRect(20, 30, 56, 46); g.fillStyle = '#3b2340'; g.fillRect(20, 26, 56, 4);
   return cv.toDataURL();
 }
-/** Ícono 96x96 del edificio (dataURL), cacheado. */
-export function thumbnail(id, level = 1) {
+/** Ícono 96x96 del edificio (dataURL), cacheado. theme: id de tema de ciudad (default pastel). */
+export function thumbnail(id, level = 1, theme = DEFAULT_THEME) {
   const lv = Math.max(1, Math.min(5, Math.round(level) || 1));
-  const k = id + '|' + lv;
+  const th = themeOf(theme).id;
+  const k = id + '|' + lv + '|' + th;
   let p = thumbCache.get(k);
   if (p) return p;
   p = thumbQueue = thumbQueue.then(() => new Promise(res => {
     // cederle el hilo al juego entre miniaturas
-    const run = () => { try { res(renderThumb(id, lv)); } catch (e) { console.warn('miniatura', id, e); res(fallbackThumb(id)); } };
+    const run = () => { try { res(renderThumb(id, lv, th)); } catch (e) { console.warn('miniatura', id, e); res(fallbackThumb(id)); } };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 120 }); else setTimeout(run, 0);
   }));
   thumbCache.set(k, p);

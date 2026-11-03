@@ -173,7 +173,7 @@ input[type=text]:focus { border-color: var(--pink-d); }
 
 /* ============ HUD ============ */
 /* Celu (390px): perfil + recursos arriba; columna izquierda (stats, efectos, misión); columna derecha de botones
-   redondos (Cofres, Pase, Álbum, Evento); barra de abajo (Juegos, Misiones, Construir, Vestidor, Amigas).
+   redondos (Cofres, Pase, Álbum, Evento); barra de abajo (Juegos, Misiones, Construir, Vestidor, Amigos).
    La ciudad pone sus botones flotantes (.cx-side) abajo a la derecha, por encima de la barra. */
 #hud { position: absolute; inset: 0; pointer-events: none; z-index: 20; --rail-w: 54px; }
 #hud button, #hud .pill { pointer-events: auto; }

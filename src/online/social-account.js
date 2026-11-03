@@ -5,7 +5,7 @@ import { audio } from '../core/audio.js';
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 import { fmtNum } from '../core/economy.js';
-import { net } from './net.js';
+import { net, isDefaultName, DEFAULT_PLAYER_NAME } from './net.js';
 import { getSyncStatus, pushNow, resolveConflict, publishProfileNow } from './sync.js';
 import { socialState } from './social.js';
 import { useSocialStyle, avatarHtml, timeAgo, busy } from './social-common.js';
@@ -38,9 +38,9 @@ export function openAccountUI(ctx, opts = {}) {
     body.innerHTML = `
       <div class="soc-off-art">${icon('🏰', 40)}${icon('💌', 40)}${icon('👭', 40)}</div>
       <h3 class="center" style="font-size:21px">Jugar online, ¡muy pronto!</h3>
-      <p class="center soc-muted" style="font-size:16px">${opts.reason === 'trade' ? 'Los intercambios de figuritas son con amigas online. ' : ''}El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder crear tu cuenta, agregar amigas con un código, visitar sus ciudades, mandarse regalitos e intercambiar figuritas.</p>
+      <p class="center soc-muted" style="font-size:16px">${opts.reason === 'trade' ? 'Los intercambios de figuritas son con amigos online. ' : ''}El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder crear tu cuenta, sumar amigos con un código, visitar sus ciudades, mandarse regalitos e intercambiar figuritas.</p>
       <div class="soc-card mint soc-row">${icon('save', 28)}<span class="soc-muted">Mientras tanto, <b>tu ciudad se guarda en este dispositivo</b> y podés jugar todo igual.</span></div>`;
-    const test = h('div.soc-card.soc-sec', { html: `<b>${icon('🧪', 18)} Modo simulado (para pruebas)</b><span class="soc-muted">Simula el servidor en este navegador: abrí dos pestañas con nombres distintos y probá ser amigas.</span>` });
+    const test = h('div.soc-card.soc-sec', { html: `<b>${icon('🧪', 18)} Modo simulado (para pruebas)</b><span class="soc-muted">Simula el servidor en este navegador: abrí dos pestañas con nombres distintos y probá la amistad.</span>` });
     const row = h('div.soc-row');
     const who = h('input', { type: 'text', placeholder: 'Ej: ana', maxlength: '16', 'aria-label': 'Nombre de prueba' });
     const go = h('button.btn.gold.small', { html: 'Probar' });
@@ -62,7 +62,7 @@ export function openAccountUI(ctx, opts = {}) {
     body.innerHTML = '';
     if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('🧪', 14)} Modo simulado: las cuentas viven en este navegador` }));
     body.append(h('div.soc-row', {
-      html: `${avatarHtml(store.state.princess, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar figuritas con amigas necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus amigas.</p>`,
+      html: `${avatarHtml(store.state.princess, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar figuritas con amigos necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus amigos.</p>`,
     }));
     const seg = h('div.soc-seg');
     for (const [id, label] of [['signup', 'Crear cuenta'], ['signin', 'Ya tengo cuenta']]) {
@@ -70,25 +70,31 @@ export function openAccountUI(ctx, opts = {}) {
     }
     body.append(seg);
     const err = h('div.soc-err');
-    const name = h('input', { type: 'text', maxlength: '24', autocomplete: 'nickname', value: store.state.player.name === 'Princesa' ? '' : store.state.player.name });
+    const name = h('input', { type: 'text', maxlength: '24', autocomplete: 'nickname', value: isDefaultName(store.state.player.name) ? '' : store.state.player.name });
     const email = h('input', { type: 'email', autocomplete: 'email', inputmode: 'email', autocapitalize: 'off', spellcheck: 'false' });
     const pass = h('input', { type: 'password', autocomplete: tab === 'signup' ? 'new-password' : 'current-password', minlength: '6' });
-    if (tab === 'signup') body.append(h('label', {}, 'Tu nombre (lo ven tus amigas)', name));
+    if (tab === 'signup') body.append(h('label', {}, 'Tu nombre (lo ven tus amigos)', name));
     body.append(h('label', {}, 'Email', email), h('label', {}, tab === 'signup' ? 'Contraseña (6 o más)' : 'Contraseña', pass));
     const go = h('button.btn.pink.block', { html: tab === 'signup' ? `${icon('sparkle', 20)} Crear mi cuenta` : `${icon('key', 20)} Entrar` });
     const submit = () => busy(go, async () => {
       err.textContent = '';
+      // el nombre elegido se aplica ANTES de crear la cuenta: signUp avisa la sesión nueva (y redibuja la
+      // tarjeta "con sesión") antes de volver, así la tarjeta ya muestra el nombre nuevo. Si falla, se revierte.
+      const prevName = store.state.player.name;
+      const chosen = tab === 'signup' && name.value.trim() && isDefaultName(prevName)
+        ? [...name.value.replace(/\s+/g, ' ').trim()].slice(0, 16).join('').trim() || DEFAULT_PLAYER_NAME : null;
+      if (chosen) store.state.player.name = chosen;
       const r = tab === 'signup' ? await net.signUp(email.value, pass.value, name.value) : await net.signIn(email.value, pass.value);
-      if (r?.error) { audio.sfx('error'); err.textContent = r.error; return null; }
-      if (r?.needsConfirm) { toast(r.message, { icon: 'info' }); tab = 'signin'; drawOut(); return null; }
-      if (tab === 'signup' && name.value.trim() && store.state.player.name === 'Princesa') {
-        store.state.player.name = [...name.value.replace(/\s+/g, ' ').trim()].slice(0, 16).join('').trim() || 'Princesa';
+      const revert = () => { if (chosen && store.state.player.name === chosen) { store.state.player.name = prevName; store.markDirty(); } };
+      if (r?.error) { revert(); audio.sfx('error'); err.textContent = r.error; return null; }
+      if (r?.needsConfirm) { revert(); toast(r.message, { icon: 'info' }); tab = 'signin'; drawOut(); return null; }
+      if (chosen) {
         store.markDirty(); store.save();
         ctx?.hud?.refresh?.();
       }
       const z = socialState(); if (z) { z.skipAccount = false; store.markDirty(); }
       audio.sfx('win'); confetti(50);
-      toast(tab === 'signup' ? '¡Cuenta creada! Bienvenida a Pixelia online 💖' : `¡Hola de nuevo, ${store.state.player.name}!`, { icon: 'heart', type: 'good' });
+      toast(tab === 'signup' ? '¡Cuenta creada! ¡Ya estás en Pixelia online! 💖' : `¡Hola de nuevo, ${store.state.player.name}!`, { icon: 'heart', type: 'good' });
       publishProfileNow(true);
       return r;
     });
@@ -143,7 +149,7 @@ export function openAccountUI(ctx, opts = {}) {
     row.append(save, out);
     body.append(row);
     body.append(h('button.btn.pink.block', {
-      html: `${icon('people', 20)} Ir a mis amigas`,
+      html: `${icon('people', 20)} Ir a mis amigos`,
       onclick: () => { audio.sfx('tap'); m.close(); import('./social.js').then(mod => mod.openSocial(ctx, 'amigas')); },
     }));
   }

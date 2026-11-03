@@ -8,6 +8,7 @@ import { bus } from '../core/bus.js';
 import { fmtNum } from '../core/economy.js';
 import * as A from './album.js';
 import { renderStickerCard, renderPack, burstAt, ensureArtCss } from './album-art.js';
+import { chestIcon } from '../season/season-ui-common.js';
 
 const CHEST_NAMES = { madera: 'Cofre de Madera', plata: 'Cofre de Plata', oro: 'Cofre de Oro', real: 'Cofre Real' };
 
@@ -395,7 +396,7 @@ export function openAlbum(ctx, params = {}) {
     rew.append(h('div', { html: progressHtml(p.have / 9, p.complete ? 'gold' : 'pink') }));
     if (p.claimable) rew.append(h('button.btn.gold.block', { html: `${icon('gift', 20)} ¡Reclamar premio!`, onclick: () => doClaim(setId) }));
     else if (p.claimed) rew.append(h('div.row', { html: `${icon('check', 20)} <b>¡Set completo!</b>` }));
-    else rew.append(h('div.muted.small', {}, `Te ${9 - p.have === 1 ? 'falta 1 figurita' : `faltan ${9 - p.have} figuritas`}. Tocá una para pedírsela a tus amigas.`));
+    else rew.append(h('div.muted.small', {}, `Te ${9 - p.have === 1 ? 'falta 1 figurita' : `faltan ${9 - p.have} figuritas`}. Tocá una para pedírsela a tus amigos.`));
     side.append(rew);
     const legend = h('div.alb-legend');
     for (let s = 1; s <= 5; s++) legend.append(h('span.chip' + (s >= 5 ? '.pink' : s >= 3 ? '.gold' : s === 2 ? '.sky' : ''), {}, `${starsTxt(s)} ${A.RARITY_NAMES[s]}`));
@@ -433,13 +434,13 @@ export function openAlbum(ctx, params = {}) {
     const btns = h('div.alb-pop-btns');
     if (owned && count > 1) {
       const val = (count - 1) * A.BRILLO_VALUE[def.stars];
-      btns.append(h('button.btn.sky', { html: `${icon('people', 20)} Ofrecer a amigas`, onclick: () => trade(def.id, 'offer') }));
+      btns.append(h('button.btn.sky', { html: `${icon('people', 20)} Ofrecer a amigos`, onclick: () => trade(def.id, 'offer') }));
       btns.append(h('button.btn.gold', {
         html: `Cambiar por ${icon('sparkle', 18)}${val}`,
         onclick: () => { const r = A.convertDuplicates({ ids: [def.id] }); celebrateBrillitos(r); closePop(); },
       }));
     } else if (!owned) {
-      btns.append(h('button.btn.pink', { html: `${icon('people', 20)} Pedir a amigas`, onclick: () => trade(def.id, 'ask') }));
+      btns.append(h('button.btn.pink', { html: `${icon('people', 20)} Pedir a amigos`, onclick: () => trade(def.id, 'ask') }));
     }
     btns.append(h('button.btn.ghost', { onclick: () => { audio.sfx('close'); closePop(); } }, 'Listo'));
     box.append(btns);
@@ -451,7 +452,7 @@ export function openAlbum(ctx, params = {}) {
     audio.sfx('tap');
     const payload = { id, mode, handled: false };
     bus.emit('album:trade', payload);
-    if (!payload.handled) toast(mode === 'ask' ? 'Pedido anotado: los intercambios con amigas se activan con tu cuenta online' : 'Los intercambios con amigas se activan con tu cuenta online', { icon: 'people' });
+    if (!payload.handled) toast(mode === 'ask' ? 'Pedido anotado: los intercambios con amigos se activan con tu cuenta online' : 'Los intercambios con amigos se activan con tu cuenta online', { icon: 'people' });
     closePop();
   }
 
@@ -477,7 +478,7 @@ export function openAlbum(ctx, params = {}) {
           title: '¡Álbum completo!', subtitle: `¡Sos ${res.album.title}!`,
           reward: { gems: res.album.gems },
           lines: [icon('crown', 60), `${icon('🎁', 24)} <b>2 Cofres Reales</b>`, `Nuevo título: <b>${esc(res.album.title)}</b>`],
-          buttons: [{ label: '¡Soy una genia!', value: 'ok', cls: 'gold' }],
+          buttons: [{ label: '¡Soy una estrella!', value: 'ok', cls: 'gold' }],
         });
       }
     } finally { claiming = false; }
@@ -513,7 +514,7 @@ export function openAlbum(ctx, params = {}) {
     head.append(tog, convBtn);
     wrap.append(head);
     if (!dups.length) {
-      wrap.append(h('div.alb-empty', { html: `${icon('🔁', 48)}<b>Todavía no tenés repetidas</b><span class="muted">Abrí cofres y sobres: las repetidas se cambian por brillitos o se intercambian con amigas.</span>` }));
+      wrap.append(h('div.alb-empty', { html: `${icon('🔁', 48)}<b>Todavía no tenés repetidas</b><span class="muted">Abrí cofres y sobres: las repetidas se cambian por brillitos o se intercambian con amigos.</span>` }));
     } else {
       const grid = h('div.alb-dgrid');
       for (const d of dups) {
@@ -552,7 +553,7 @@ export function openAlbum(ctx, params = {}) {
     for (const it of A.SHOP) {
       const card = h('div.card.alb-sitem');
       if (it.kind === 'pack') card.append(renderPack(it, { small: true }));
-      else card.append(h('div.alb-chestart', { html: icon('🎁', 72) }));
+      else card.append(h('div.alb-chestart', { html: it.chest ? chestIcon(it.chest, 72) : icon('🎁', 72) })); // el mismo cofre que en Cofres
       card.append(h('b', {}, it.name), h('small', {}, it.desc));
       card.append(h('button.btn.gold', {
         disabled: b < it.cost,

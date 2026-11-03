@@ -85,7 +85,7 @@ export function openQuests(ctx, params = {}) {
       wrap.append(h('div.card.pnl-mq.pnl-allDone', { html: `
         <div class="pnl-mq-icon pnl-bob">${icon('crown', 72)}</div>
         <h3 class="pnl-mq-title">¡Completaste todas las misiones!</h3>
-        <p class="muted">Sos oficialmente la reina de Pixelia. Seguí con las diarias y los logros para juntar más gemas.</p>
+        <p class="muted">Sos oficialmente la estrella de Pixelia. Seguí con las diarias y los logros para juntar más gemas.</p>
         <div class="pnl-chips"><span class="chip gold">${icon('star', 16)} ${MAIN_QUESTS.length}/${MAIN_QUESTS.length}</span></div>` }));
       return wrap;
     }
@@ -133,7 +133,7 @@ export function openQuests(ctx, params = {}) {
         <span class="pnl-step-body"><span class="pnl-step-txt"><small>Misión ${q.index + 2 + i}</small><b class="pnl-blur">${esc(nq.title)}</b></span>
         <span class="pnl-step-rew">${rewardHtml({ coins: nq.reward.coins, gems: nq.reward.gems, chest: nq.reward.chest }, 16, { names: false }) || costHtml(nq.reward, 16)}</span></span>` }));
     });
-    if (!next.length) path.append(h('div.pnl-step.last', { html: `<span class="pnl-step-dot">${icon('crown', 18)}</span><span class="pnl-step-body"><span class="pnl-step-txt"><b>¡Última misión!</b><small>Después sos la reina total.</small></span></span>` }));
+    if (!next.length) path.append(h('div.pnl-step.last', { html: `<span class="pnl-step-dot">${icon('crown', 18)}</span><span class="pnl-step-body"><span class="pnl-step-txt"><b>¡Última misión!</b><small>Después sos una estrella total.</small></span></span>` }));
     wrap.append(path);
     return wrap;
   }

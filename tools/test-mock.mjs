@@ -87,7 +87,7 @@ try {
   ok(bf.length === 1 && bf[0].incoming && bf[0].name === 'Ana', 'bea ve la solicitud entrante');
   ok((await run(B, `return (await net.respondFriend(${JSON.stringify(a.user.id)}, true)).status`)) === 'accepted', 'bea acepta');
   bf = await run(B, `return await net.listFriends()`);
-  ok(bf[0].status === 'accepted' && bf[0].friendship.name === 'Conocidas', 'lista con nivel de amistad (Conocidas)');
+  ok(bf[0].status === 'accepted' && bf[0].friendship.name === 'Primer saludo', 'lista con nivel de amistad (Primer saludo)');
   ok((await run(C, `return (await net.requestFriend(${JSON.stringify(a.p.code)})).status`)) === 'pending' &&
      (await run(A, `return (await net.respondFriend(${JSON.stringify(cId)}, true)).status`)) === 'accepted', 'cami y ana amigas');
   const gp = await run(B, `return await net.getProfiles([${JSON.stringify(a.user.id)}, ${JSON.stringify(cId)}])`);
@@ -139,7 +139,7 @@ try {
   ok((await run(B, `return await net.leaveNote(${JSON.stringify(a.user.id)}, 'otra')`)).error?.includes('Ya le dejaste'), 'una nota por día');
   const vis = await run(A, `return await net.visitorsToMe()`);
   ok(vis[0]?.name === 'Bea' && vis[0].liked && vis[0].note === '¡Hermosa!' && vis[0].helped === 3, 'visitorsToMe con like, nota y ayudas');
-  ok((await run(C, `return await net.visit(${JSON.stringify(b.user.id)})`)).error?.includes('amigas'), 'no se visita a una no amiga');
+  ok((await run(C, `return await net.visit(${JSON.stringify(b.user.id)})`)).error?.includes('amigos'), 'no se visita a una no amiga');
 
   section('Pedidos de ayuda');
   const rq = await run(B, `return await net.createRequest('item', { items: { hammer: 1 } }, 1)`);

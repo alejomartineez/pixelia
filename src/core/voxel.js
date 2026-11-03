@@ -101,9 +101,10 @@ export class Voxels {
    * Genera BufferGeometry con caras ocultas eliminadas y colores por vértice.
    * opts.scale: tamaño de un vóxel en unidades de mundo (ej 1/8 => 8 vóxeles por tile)
    * opts.center: 'xz' centra en x/z (base en y=0) | 'xyz' | false
-   * opts.jitter: variación de brillo por vóxel (textura pixel), default 0.035
+   * opts.jitter: variación de brillo por vóxel (textura pixel), default 0.015 (con pixeles de render
+   *   chicos, más variación se ve como estática)
    */
-  toGeometry({ scale = 1, center = false, jitter = 0.035 } = {}) {
+  toGeometry({ scale = 1, center = false, jitter = 0.015 } = {}) {
     const pos = [], nor = [], col = [], idx = [];
     let off = [0, 0, 0];
     if (center && this.map.size) {
@@ -155,24 +156,39 @@ export function glowMaterial() {
 }
 
 // ---------- Render pixelado ----------
+const screenDpr = () => Math.min(4, Math.max(1, (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1));
+/** Tamaño de pixel por defecto (px CSS): más fino en celular, un poco más grueso en PC. */
+export function defaultPixelSize() {
+  return Math.min(innerWidth, innerHeight) < 500 ? 1.5 : 2;
+}
 /**
  * Crea renderer + escena + cámara con look pixel art.
  * container: elemento donde se agrega el canvas (ocupa 100%).
- * opts.pixelSize: tamaño en px CSS de cada "pixel" del render (2..4). Default 3 (2 en pantallas chicas).
+ * opts.pixelSize: tamaño en px CSS de cada "pixel" del render. Default ≈1.5 en celular y ≈2 en PC.
+ *   Se redondea a una cantidad ENTERA de pixeles físicos (según devicePixelRatio) para que todos los
+ *   pixeles del render midan lo mismo en pantalla (sin columnas más anchas que otras).
  * opts.ortho: true = cámara ortográfica isométrica (ciudad); false = perspectiva (juegos de manejo)
  * opts.viewSize: alto visible del mundo para la ortográfica
  * opts.background: color de fondo (hex) o null para transparente
  * opts.shadows: sombras (default true)
+ * opts.outline: contorno tinta de 1 pixel de render alrededor de las siluetas (saltos de profundidad).
+ *   true | { strength (0..1, default 0.8), threshold (unidades de mundo, default 0.3 en ortográfica) }.
+ *   Los transparentes que escriben profundidad (sprites, planos con alfa) también se contornean: usar depthWrite:false.
  */
 export function createPixelRenderer(container, opts = {}) {
   const { ortho = true, viewSize = 14, background = 0xbfe9ff, shadows = true, fov = 50 } = opts;
-  let pixelSize = opts.pixelSize || (Math.min(innerWidth, innerHeight) < 500 ? 2.5 : 3);
+  let pixelSize = opts.pixelSize || defaultPixelSize();
+  let dev = 1, dpr = 1;
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: background == null, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const canvas = renderer.domElement;
   canvas.className = 'pixel-canvas';
+  // ?outline=1 / ?outline=0 en la URL lo fuerza en todas las escenas (para comparar)
+  const forced = typeof location !== 'undefined' && /[?&]outline=([01])/.exec(location.search);
+  const outlineOpt = forced ? forced[1] === '1' : opts.outline;
+  let outline = outlineOpt ? createOutlinePass(renderer, outlineOpt) : null;
   container.append(canvas);
 
   const scene = new THREE.Scene();
@@ -186,10 +202,15 @@ export function createPixelRenderer(container, opts = {}) {
 
   function resize() {
     const w = container.clientWidth || innerWidth, h = container.clientHeight || innerHeight;
-    renderer.setPixelRatio(1 / pixelSize);
-    renderer.setSize(w, h, false);
+    dpr = screenDpr();
+    dev = Math.max(pixelSize >= 1.4 ? 2 : 1, Math.round(pixelSize * dpr - 0.01));
+    // buffer = pixeles físicos / dev (entero): cada pixel de render ocupa dev×dev pixeles físicos
+    const bw = Math.max(1, Math.round(w * dpr / dev)), bh = Math.max(1, Math.round(h * dpr / dev));
+    renderer.setPixelRatio(1);
+    renderer.setSize(bw, bh, false);
+    outline?.setSize(bw, bh);
     canvas.style.width = '100%'; canvas.style.height = '100%';
-    const aspect = w / h;
+    const aspect = bw / bh;
     if (camera.isOrthographicCamera) {
       const vs = camera.userData.viewSize;
       camera.left = -vs * aspect / 2; camera.right = vs * aspect / 2; camera.top = vs / 2; camera.bottom = -vs / 2;
@@ -198,7 +219,16 @@ export function createPixelRenderer(container, opts = {}) {
   }
   const ro = new ResizeObserver(resize);
   ro.observe(container);
+  // si cambia el devicePixelRatio (zoom del navegador, otra pantalla) se recalcula
+  let mq = null;
+  const onDpr = () => { resize(); watchDpr(); };
+  function watchDpr() {
+    mq?.removeEventListener?.('change', onDpr);
+    mq = typeof matchMedia === 'function' ? matchMedia(`(resolution: ${screenDpr()}dppx)`) : null;
+    mq?.addEventListener?.('change', onDpr);
+  }
   resize();
+  watchDpr();
 
   let raf = 0, running = false, last = 0;
   const loops = new Set();
@@ -207,12 +237,17 @@ export function createPixelRenderer(container, opts = {}) {
     raf = requestAnimationFrame(frame);
     const dt = Math.min(0.05, (t - (last || t)) / 1000); last = t;
     for (const fn of loops) fn(dt, t / 1000);
-    renderer.render(scene, camera);
+    draw();
+  }
+  function draw() {
+    if (outline) outline.render(scene, camera);
+    else renderer.render(scene, camera);
   }
 
   return {
     THREE, renderer, scene, camera, canvas,
-    get pixelSize() { return pixelSize; },
+    /** Tamaño real (px CSS) de cada pixel del render, ya redondeado a pixeles físicos enteros. */
+    get pixelSize() { return dev / dpr; },
     setPixelSize(n) { pixelSize = n; resize(); },
     /** Cambia el zoom de la ortográfica (alto visible en unidades de mundo) */
     setViewSize(vs) { camera.userData.viewSize = vs; resize(); },
@@ -221,7 +256,13 @@ export function createPixelRenderer(container, opts = {}) {
     onFrame(fn) { loops.add(fn); return () => loops.delete(fn); },
     start() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); },
     stop() { running = false; cancelAnimationFrame(raf); },
-    render() { renderer.render(scene, camera); },
+    render: draw,
+    /** Prende/apaga el contorno tinta (true | {strength, threshold} | false). */
+    setOutline(o) {
+      outline?.dispose(); outline = null;
+      if (o) { outline = createOutlinePass(renderer, o); resize(); }
+    },
+    get outline() { return !!outline; },
     /** Convierte coordenadas de pantalla (clientX/Y) a NDC */
     toNDC(clientX, clientY) {
       const r = canvas.getBoundingClientRect();
@@ -242,11 +283,84 @@ export function createPixelRenderer(container, opts = {}) {
     },
     dispose() {
       this.stop(); ro.disconnect(); loops.clear();
+      mq?.removeEventListener?.('change', onDpr);
+      outline?.dispose();
       disposeObject(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
       canvas.remove();
     },
+  };
+}
+
+/**
+ * Post-proceso de contorno: renderiza la escena a un target con profundidad y pinta de tinta los pixeles
+ * de fondo pegados a algo bastante más cerca (el contorno queda AFUERA de la silueta, como en los íconos).
+ * En perspectiva el umbral crece con la distancia para no rayar el piso lejano en ángulo rasante.
+ */
+function createOutlinePass(renderer, o) {
+  const cfg = typeof o === 'object' ? o : {};
+  const rt = new THREE.WebGLRenderTarget(1, 1, {
+    type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true,
+  });
+  rt.depthTexture = new THREE.DepthTexture(1, 1);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      tColor: { value: rt.texture }, tDepth: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) },
+      near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3b2340) },
+      strength: { value: cfg.strength ?? 0.8 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
+    },
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `
+      #include <packing>
+      uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel;
+      uniform float near; uniform float far; uniform vec3 ink; uniform float strength;
+      uniform float thrAbs; uniform float thrLin; uniform float thrSq;
+      varying vec2 vUv;
+      float dist(vec2 uv) {
+        float d = texture2D(tDepth, uv).x;
+        #ifdef ORTHO
+        return -orthographicDepthToViewZ(d, near, far);
+        #else
+        return -perspectiveDepthToViewZ(d, near, far);
+        #endif
+      }
+      void main() {
+        vec4 c = texture2D(tColor, vUv);
+        float dc = dist(vUv);
+        float dn = min(min(dist(vUv + vec2(texel.x, 0.0)), dist(vUv - vec2(texel.x, 0.0))),
+                       min(dist(vUv + vec2(0.0, texel.y)), dist(vUv - vec2(0.0, texel.y))));
+        if (dc - dn > thrAbs + dc * thrLin + dc * dc * thrSq)
+          c = c.a > 0.0 ? vec4(mix(c.rgb, ink, strength), 1.0) : vec4(ink, 1.0);
+        gl_FragColor = c;
+        #include <colorspace_fragment>
+      }`,
+    depthTest: false, depthWrite: false,
+  });
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
+  quad.frustumCulled = false;
+  const postScene = new THREE.Scene(); postScene.add(quad);
+  const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  let ortho = null;
+  return {
+    setSize(w, h) { rt.setSize(w, h); mat.uniforms.texel.value.set(1 / w, 1 / h); },
+    render(scene, camera) {
+      if (ortho !== !!camera.isOrthographicCamera) {
+        ortho = !!camera.isOrthographicCamera;
+        mat.defines = ortho ? { ORTHO: '' } : {};
+        mat.needsUpdate = true;
+        const u = mat.uniforms;
+        if (ortho) { u.thrAbs.value = cfg.threshold ?? 0.3; u.thrLin.value = 0; u.thrSq.value = 0; }
+        else { u.thrAbs.value = cfg.threshold ?? 0.15; u.thrLin.value = 0.03; u.thrSq.value = 0.0015; }
+      }
+      mat.uniforms.near.value = camera.near; mat.uniforms.far.value = camera.far;
+      const prev = renderer.getRenderTarget();
+      renderer.setRenderTarget(rt);
+      renderer.render(scene, camera);
+      renderer.setRenderTarget(prev);
+      renderer.render(postScene, postCam);
+    },
+    dispose() { rt.depthTexture.dispose(); rt.dispose(); quad.geometry.dispose(); mat.dispose(); },
   };
 }
 
@@ -292,7 +406,7 @@ export function makeBillboard(drawFn, w = 32, h = 32, worldHeight = 1) {
   drawFn(cv.getContext('2d'), w, h);
   const tex = new THREE.CanvasTexture(cv);
   tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.colorSpace = THREE.SRGBColorSpace;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
   sp.scale.set(worldHeight * w / h, worldHeight, 1);
   sp.renderOrder = 10;
   sp.userData.redraw = (fn) => { fn(cv.getContext('2d'), w, h); tex.needsUpdate = true; };
@@ -303,7 +417,7 @@ export function makeBillboard(drawFn, w = 32, h = 32, worldHeight = 1) {
 export function imageSprite(url, worldHeight = 1) {
   const tex = new THREE.TextureLoader().load(url);
   tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.colorSpace = THREE.SRGBColorSpace;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
   sp.scale.set(worldHeight, worldHeight, 1);
   sp.renderOrder = 10;
   return sp;

@@ -731,8 +731,7 @@ export default function create(ctx) {
       document.head.append(styleEl);
 
       r = createPixelRenderer(container, {
-        ortho: false, fov: FOV, background: 0xbfe9ff,
-        pixelSize: Math.min(innerWidth, innerHeight) < 500 ? 2 : 2.5,
+        ortho: false, fov: FOV, background: 0xbfe9ff, outline: true, // pixelSize por defecto (≈1.5 celu / 2 PC)
       });
       r.camera.near = 0.5; r.camera.far = 120; r.camera.updateProjectionMatrix();
       const { sun } = addLights(r.scene, { shadowSize: 22, shadowRes: 2048 });

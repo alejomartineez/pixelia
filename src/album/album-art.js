@@ -149,13 +149,15 @@ export function renderStickerCard(def, opts = {}) {
   win.append(el('span', 'stk-num', '#' + def.n));
   const art = document.createElement('img');
   art.className = 'stk-art';
-  art.src = iconUrl(def.emoji);
+  // data-pi: icons.js lo regenera a su tamaño real en pantalla (pixeles enteros, sin deformar)
+  art.dataset.pi = def.emoji;
+  art.src = iconUrl(def.emoji, 64);
   art.alt = ''; art.draggable = false;
   win.append(art);
   if (!owned) win.append(el('span', 'stk-bign', String(def.n)));
   const stars = el('span', 'stk-stars');
-  const starUrl = iconUrl(owned ? 'star' : 'starOff');
-  for (let i = 0; i < def.stars; i++) { const im = document.createElement('img'); im.className = 'pi'; im.src = starUrl; im.alt = ''; im.draggable = false; stars.append(im); }
+  const starIc = owned ? 'star' : 'starOff', starUrl = iconUrl(starIc, 14);
+  for (let i = 0; i < def.stars; i++) { const im = document.createElement('img'); im.className = 'pi'; im.dataset.pi = starIc; im.src = starUrl; im.alt = ''; im.draggable = false; stars.append(im); }
   win.append(stars);
   inner.append(win);
   const name = el('div', 'stk-name');
@@ -214,7 +216,7 @@ export function renderPack(item, opts = {}) {
   root.append(body);
   root.append(el('div', 'pk-top'));
   const label = el('div', 'pk-label');
-  label.innerHTML = `<img src="${iconUrl(item?.emoji || '🌸')}" alt="" draggable="false"><b>${escTxt(item?.name || 'Sobre')}</b>${opts.small ? '' : `<small>FIGURITAS</small>`}`;
+  label.innerHTML = `<img data-pi="${item?.emoji || '🌸'}" src="${iconUrl(item?.emoji || '🌸', 40)}" alt="" draggable="false"><b>${escTxt(item?.name || 'Sobre')}</b>${opts.small ? '' : `<small>FIGURITAS</small>`}`;
   root.append(label);
   return root;
 }

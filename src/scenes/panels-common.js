@@ -1,7 +1,8 @@
 // Utilidades compartidas por los paneles: estilos inyectados, "cáscara" de modal con limpieza,
 // teclado (Esc / Enter en PC), capa de efectos por encima de los modales e íconos pixel propios.
 import { audio } from '../core/audio.js';
-import { icon } from '../core/icons.js';
+import { icon, registerIcon, ICON_NAMES } from '../core/icons.js';
+import { chestIcon } from '../season/season-ui-common.js';
 import { costHtml, esc } from '../core/ui.js';
 import { CHESTS, ITEMS } from '../chests/chests.js';
 import { PANEL_CSS } from './panels-style.js';
@@ -265,84 +266,20 @@ const PAL = {
   k: '#3b2340', w: '#ffffff', p: '#ff7eb6', P: '#e0528f', q: '#ffc2dc', l: '#b58cff', L: '#8a5ee0', m: '#6fe3c1', M: '#3cbf9a',
   s: '#8fd3ff', S: '#4fa8e0', y: '#ffd166', Y: '#e8a93a', g: '#d8d2e6', G: '#a99fbf', r: '#ff6f6f', c: '#fff4e6', o: '#6b4a73',
 };
-function gridToUrl(rows, pal = PAL) {
+/** Mapa de caracteres -> canvas de 1 px por celda (icons.js lo agranda nítido al tamaño de pantalla). */
+function gridToCanvas(rows, pal = PAL) {
   const h = rows.length, w = Math.max(...rows.map(r => r.length));
   const n = Math.max(w, h);
-  let rects = '';
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = n;
+  const g = cv.getContext('2d');
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
-    if (ch !== '.' && pal[ch]) rects += `<rect x="${x + Math.floor((n - w) / 2)}" y="${y + Math.floor((n - h) / 2)}" width="1.02" height="1.02" fill="${pal[ch]}"/>`;
+    if (ch !== '.' && pal[ch]) { g.fillStyle = pal[ch]; g.fillRect(x + Math.floor((n - w) / 2), y + Math.floor((n - h) / 2), 1, 1); }
   }));
-  return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges">${rects}</svg>`);
+  return cv;
 }
-/** Lienzo de caracteres para dibujar ícono por código. */
-function canvasRows(n) { return Array.from({ length: n }, () => Array(n).fill('.')); }
-function fill(g, x, y, w, h, c) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (g[j] && i >= 0 && i < g[j].length) g[j][i] = c; }
-function block(g, x, y, s, c, light, dark) {
-  fill(g, x, y, s, s, 'k');
-  fill(g, x + 1, y + 1, s - 2, s - 2, c);
-  fill(g, x + 1, y + 1, s - 2, 1, light); fill(g, x + 1, y + 1, 1, s - 2, light);
-  fill(g, x + 1, y + s - 2, s - 2, 1, dark); fill(g, x + s - 2, y + 1, 1, s - 2, dark);
-}
-const rowsOf = (g) => g.map(r => r.join(''));
 
 const ART = {
-  match3: () => [
-    '................',
-    '............w...',
-    '...kkkkkk..www..',
-    '..kpwwppPk..w...',
-    '.kpwwpppPPk.....',
-    'kkkkkkkkkkkk....',
-    'kpwpppppPPPk....',
-    '.kpwppppPPk..kk.',
-    '..kpppppPk..kmmk',
-    '...kpppPk..kmwmM',
-    '....kpPk...kmmMM',
-    '.....kk.....kMMk',
-    '..kk.........kk.',
-    '.kyyk...........',
-    '.kyYk...........',
-    '..kk............',
-  ],
-  blocks: () => {
-    const g = canvasRows(16);
-    block(g, 5, 1, 6, 'y', 'w', 'Y');
-    block(g, 0, 6, 6, 'p', 'q', 'P');
-    block(g, 5, 6, 6, 'l', 'w', 'L');
-    block(g, 10, 6, 6, 'm', 'w', 'M');
-    block(g, 0, 11, 6, 's', 'w', 'S');
-    block(g, 10, 11, 6, 'p', 'q', 'P');
-    return rowsOf(g);
-  },
-  parking: () => {
-    const g = canvasRows(16);
-    fill(g, 2, 0, 12, 11, 'k'); fill(g, 3, 1, 10, 9, 's'); fill(g, 3, 1, 10, 1, 'w'); fill(g, 3, 9, 10, 1, 'S');
-    fill(g, 1, 1, 1, 9, 'k'); fill(g, 14, 1, 1, 9, 'k'); fill(g, 2, 0, 1, 1, '.'); fill(g, 13, 0, 1, 1, '.');
-    fill(g, 2, 10, 1, 1, '.'); fill(g, 13, 10, 1, 1, '.'); fill(g, 2, 1, 1, 9, 's'); fill(g, 13, 1, 1, 9, 'S');
-    // letra P
-    fill(g, 5, 2, 2, 7, 'w'); fill(g, 7, 2, 3, 1, 'w'); fill(g, 7, 5, 3, 1, 'w'); fill(g, 10, 3, 1, 2, 'w'); fill(g, 9, 2, 1, 1, 'w');
-    // poste
-    fill(g, 6, 11, 4, 5, 'k'); fill(g, 7, 11, 2, 4, 'g'); fill(g, 8, 11, 1, 4, 'G');
-    return rowsOf(g);
-  },
-  driving: () => [
-    '................',
-    '................',
-    '................',
-    '.....kkkkkk.....',
-    '....kswwsSsk....',
-    '...kswwssSssk...',
-    '.kkkkkkkkkkkkkk.',
-    'kypwwpppppppppPk',
-    'kpwppppppppppPPk',
-    'kppppppppppppPPk',
-    'kPPkkkPPPPkkkPPk',
-    '.kkgggkkkkgggkk.',
-    '..kgwGk..kgwGk..',
-    '..kgGGk..kgGGk..',
-    '...kkk....kkk...',
-    '................',
-  ],
   share: () => [
     '.......kk.......',
     '......kssk......',
@@ -373,39 +310,16 @@ const ART = {
     'kkkkkkkkkkkkkk',
   ],
 };
-const artCache = new Map();
-/** <img> de un ícono propio: 'match3' | 'blocks' | 'parking' | 'driving' | 'share' | 'addHome' */
+const artDone = new Set();
+/** <img> de un ícono propio: 'match3' | 'blocks' | 'parking' | 'driving' (dibujados en icons.js) | 'share' | 'addHome' */
 export function art(name, size = 48, cls = '') {
-  if (!artCache.has(name)) artCache.set(name, gridToUrl(ART[name]()));
-  return `<img class="pi ${cls}" src="${artCache.get(name)}" width="${size}" height="${size}" alt="" draggable="false">`;
+  if (ICON_NAMES.includes('game-' + name)) return icon('game-' + name, size, cls);
+  if (!artDone.has(name)) { artDone.add(name); registerIcon('art-' + name, gridToCanvas(ART[name]())); }
+  return icon('art-' + name, size, cls);
 }
 /** Cofre pixel (sin WebGL) con los colores de CHESTS[type]. */
-const hexMix = (a, b, t) => {
-  const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16);
-  const ch = (s) => Math.round(((A >> s) & 255) + (((B >> s) & 255) - ((A >> s) & 255)) * t);
-  return '#' + [16, 8, 0].map(s => ch(s).toString(16).padStart(2, '0')).join('');
-};
-const chestCache = new Map();
 export function chestArt(type, size = 32) {
-  const def = CHESTS[type] || CHESTS.madera;
-  if (!chestCache.has(def.id)) {
-    const rows = [
-      '............',
-      '..kkkkkkkk..',
-      '.kcccccccck.',
-      'kcCCCCCCCCdk',
-      'kttttttttttk',
-      'kkkkkyykkkkk',
-      'kcCCkyYkCCdk',
-      'kcCCCkkCCCdk',
-      'kcCCCCCCCCdk',
-      'kttttttttttk',
-      'kdddddddddDk',
-      '.kkkkkkkkkk.',
-    ];
-    chestCache.set(def.id, gridToUrl(rows, { ...PAL, c: hexMix(def.color, '#ffffff', 0.45), C: def.color, d: hexMix(def.color, '#3b2340', 0.3), D: hexMix(def.color, '#3b2340', 0.5), t: def.trim, y: '#ffd166', Y: '#e8a93a' }));
-  }
-  return `<img class="pi" src="${chestCache.get(def.id)}" width="${size}" height="${size}" alt="" draggable="false">`;
+  return chestIcon(CHESTS[type] ? type : 'madera', size);
 }
 
 /** Banderita pixel del castillo con el color elegido. */
@@ -424,8 +338,9 @@ export function flagArt(hex, size = 48) {
     '.ko.........',
     '.kk.........',
   ];
-  const url = gridToUrl(rows, { ...PAL, c: hex, o: '#b07a52' });
-  return `<img class="pi" src="${url}" width="${size}" height="${size}" alt="" draggable="false">`;
+  const name = 'flag-' + hex;
+  if (!ICON_NAMES.includes(name)) registerIcon(name, gridToCanvas(rows, { ...PAL, c: hex, o: '#b07a52' }));
+  return icon(name, size);
 }
 
 // ---------- Helpers de misiones ----------

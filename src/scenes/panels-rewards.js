@@ -1,6 +1,6 @@
 // Paneles festivos: premio diario (login) y subida de nivel.
 import { icon } from '../core/icons.js';
-import { BUILDINGS, GAMES, CUSTOM_CATALOG, CASTLE_LEVELS, LOGIN_REWARDS, MAX_EXPANSIONS } from '../core/data.js';
+import { BUILDINGS, GAMES, CUSTOM_CATALOG, CASTLE_LEVELS, LOGIN_REWARDS, MAX_EXPANSIONS, fitsType, avatarType } from '../core/data.js';
 import { openShell, rewardFx, burst, art, GAME_ART, rewardHtml, chestArt, chestList } from './panels-common.js';
 import { CHESTS, chestCount, levelUpChests } from '../chests/chests.js';
 
@@ -26,7 +26,7 @@ export function openLogin(ctx) {
 
   const wrap = h('div.pnl-login-wrap');
   const stage = h('div.pnl-stage');
-  const streakTxt = claimed ? `¡Ya cobraste hoy! Racha de <b>${streakNow}</b> ${streakNow === 1 ? 'día' : 'días'}` : streakNow > 1 ? `¡Volviste! Racha de <b>${streakNow}</b> días` : '¡Hola, princesa! Tu regalo de hoy:';
+  const streakTxt = claimed ? `¡Ya cobraste hoy! Racha de <b>${streakNow}</b> ${streakNow === 1 ? 'día' : 'días'}` : streakNow > 1 ? `¡Volviste! Racha de <b>${streakNow}</b> días` : '¡Hola! Tu regalo de hoy:';
   const head = h('p.pnl-streak', { html: `${icon(streakNow > 1 ? 'fire' : 'sparkle', 22)}<span>${streakTxt}</span>` });
   const grid = h('div.pnl-days');
   const cells = [];
@@ -102,7 +102,7 @@ export function openLogin(ctx) {
 
 // ---------- Subida de nivel ----------
 const KIND = {
-  hair: ['Peinado', 'ribbon'], dress: ['Vestido', 'dress'], crown: ['Corona', 'crown'], acc: ['Accesorio', 'wand'],
+  hair: ['Peinado', 'ribbon'], dress: ['Ropa', 'dress'], crown: ['Cabeza', 'crown'], acc: ['Accesorio', 'wand'],
   body: ['Auto', 'car'], wheels: ['Ruedas', 'sparkle'], topper: ['Adorno de auto', 'ribbon'],
 };
 const CAT_ICON = { casa: 'home', negocio: 'shop', deco: 'flower', especial: 'castle', camino: 'map' };
@@ -117,7 +117,12 @@ function unlocksAt(level, state) {
   const n = (level - 2) / 2;
   if (Number.isInteger(n) && n >= 0 && n < MAX_EXPANSIONS && (state?.city?.expansions ?? 0) <= n) list.push({ kind: 'Terreno', name: 'Más lugar para construir', ic: icon('map', 40) });
   for (const [kind, items] of Object.entries(CUSTOM_CATALOG)) {
-    for (const it of items.filter(i => !i.free && i.unlock === level)) list.push({ kind: KIND[kind]?.[0] || 'Ropa', name: it.name, ic: icon(KIND[kind]?.[1] || 'dress', 40) });
+    // del personaje, solo lo que le sirve a su tipo (lo demás no aparece en su Vestidor)
+    const avatarPiece = ['hair', 'dress', 'crown', 'acc'].includes(kind);
+    for (const it of items.filter(i => !i.free && i.unlock === level && (!avatarPiece || fitsType(i, state?.avatar?.type)))) {
+      const label = kind === 'hair' && avatarType(state?.avatar?.type).animal ? 'Pelaje' : KIND[kind]?.[0] || 'Ropa';
+      list.push({ kind: label, name: it.name, ic: icon(KIND[kind]?.[1] || 'dress', 40) });
+    }
   }
   return list;
 }
@@ -152,7 +157,7 @@ export function openLevelUp(ctx, params = {}) {
   const wrap = h('div.pnl-lv');
   wrap.append(h('div.pnl-lv-burst', { html: `<div class="pnl-rays spin"></div><div class="pnl-lv-star">${icon('star', 120)}<b>${level}</b></div>` }));
   wrap.append(h('h2.pnl-lv-title', {}, `¡Nivel ${level}!`));
-  wrap.append(h('p.pnl-lv-sub', {}, level >= 10 ? '¡Tu reino es cada vez más hermoso!' : '¡Tu ciudad crece, princesa!'));
+  wrap.append(h('p.pnl-lv-sub', {}, level >= 10 ? '¡Tu ciudad está cada vez más hermosa!' : '¡Tu ciudad crece!'));
   if (reward.coins || reward.gems) {
     wrap.append(h('div.pnl-lv-reward', { html: `<small>Premio</small>${costHtml(reward, 26)}` }));
   }

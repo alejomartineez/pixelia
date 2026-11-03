@@ -107,6 +107,9 @@ const CSS = `
 .scene-blocks .bk-aimhint { position: absolute; z-index: 6; translate: -50% -50%; pointer-events: none; white-space: nowrap; font-size: 16px; font-weight: 700;
   background: #fff; border: var(--line) solid var(--ink); border-radius: 12px; padding: 4px 12px; box-shadow: 0 3px 0 var(--ink); display: none; align-items: center; gap: 6px; }
 .scene-blocks .bk-aimhint.show { display: flex; animation: bk-pulse 1s steps(2) infinite; }
+.scene-blocks .bk-aimhint.tray { justify-content: center; white-space: normal; text-align: center; padding: 8px 16px; border-radius: 14px;
+  border-style: dashed; border-color: var(--pink-d); background: rgba(255, 244, 250, .9); box-shadow: none; font-size: 17px; }
+.scene-blocks .bk-aimhint.tray.show { animation: none; }
 `;
 
 const STAR_SCORES = [400, 1200, 2500];
@@ -351,7 +354,13 @@ export default function create(ctx) {
       // sobre la bandeja (mientras apuntás no se usan las piezas)
       h.style.left = ((L.tray.x + L.tray.w / 2) * L.P) + 'px';
       h.style.top = ((L.tray.y + L.tray.h / 2) * L.P) + 'px';
+      // tapa la bandeja con un velo: las piezas no se usan mientras apuntás y el cartel no queda encimado
+      h.style.width = Math.round(L.tray.w * L.P - 8) + 'px';
+      h.style.height = Math.round(L.tray.h * L.P - 8) + 'px';
+      h.classList.add('tray');
     } else {
+      h.style.width = h.style.height = '';
+      h.classList.remove('tray');
       h.style.left = ((L.bx + BOARD_ART / 2) * L.P) + 'px';
       h.style.top = ((L.by - BOARD_PAD) * L.P + 4) + 'px';
     }
@@ -829,7 +838,7 @@ export default function create(ctx) {
         el.innerHTML = icon(i < st ? 'star' : 'starOff', 24);
         if (gained && i === st - 1) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
       });
-      els.goalText.textContent = st >= 3 ? '¡Tres estrellas! ¡Sos una genia!' : `Próxima estrella: ${fmt(STAR_SCORES[st])} puntos`;
+      els.goalText.textContent = st >= 3 ? '¡Tres estrellas! ¡Sos una estrella!' : `Próxima estrella: ${fmt(STAR_SCORES[st])} puntos`;
       if (gained) later(() => audio.sfx('star'), 250);
     }
   }

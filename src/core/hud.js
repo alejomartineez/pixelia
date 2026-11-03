@@ -2,7 +2,7 @@
 //  arriba:     perfil (nivel, nombre, xp; tocarlo abre Ajustes) + monedas y gemas
 //  izquierda:  población / felicidad / constructoras, efectos activos con tiempo, misión actual
 //  derecha:    botones redondos con globito: Cofres, Pase, Álbum, Evento
-//  abajo:      Juegos · Misiones · Construir · Vestidor · Amigas
+//  abajo:      Juegos · Misiones · Construir · Vestidor · Amigos
 // Los globitos se refrescan con eventos del bus y cada 30 s; los números y los efectos, cada segundo.
 import { bus } from './bus.js';
 import { store } from './state.js';
@@ -57,15 +57,15 @@ function render() {
     <div class="hud-rail">
       <button class="rail-btn" data-act="chests" aria-label="Cofres">${chestIcon('madera', 34)}<span>Cofres</span><i class="badge" data-badge="chests"></i></button>
       <button class="rail-btn pass" data-act="pass" aria-label="Pase de Temporada"><span class="rail-ic" data-hud="passic">${icon('sparkle', 30)}</span><span>Pase</span><em class="rail-tag" data-hud="passlv"></em><i class="badge" data-badge="pass"></i></button>
-      <button class="rail-btn" data-act="album" aria-label="Álbum de figuritas">${icon('📒', 30)}<span>Álbum</span><i class="badge" data-badge="album"></i></button>
+      <button class="rail-btn" data-act="album" aria-label="Álbum de figuritas">${icon('album', 30)}<span>Álbum</span><i class="badge" data-badge="album"></i></button>
       <button class="rail-btn event" data-act="events" aria-label="Eventos"><span class="rail-ic" data-hud="evic">${icon('calendar', 30)}</span><span data-hud="evname">Eventos</span><em class="rail-tag" data-hud="evtime"></em></button>
     </div>
     <nav class="hud-bottom">
       <button class="hud-btn" data-act="games">${icon('games', 30)}<span>Juegos</span></button>
       <button class="hud-btn" data-act="quests">${icon('quest', 30)}<span>Misiones</span><i class="badge" data-badge="quests"></i></button>
       <button class="hud-btn big" data-act="build">${icon('hammer', 38)}<span>Construir</span></button>
-      <button class="hud-btn" data-act="wardrobe">${icon('dress', 30)}<span>Vestidor</span></button>
-      <button class="hud-btn" data-act="social">${icon('people', 30)}<span>Amigas</span><i class="badge" data-badge="social"></i></button>
+      <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>Vestidor</span></button>
+      <button class="hud-btn" data-act="social">${icon('people', 30)}<span>Amigos</span><i class="badge" data-badge="social"></i></button>
     </nav>`;
   lastFx = lastEv = lastPass = lastQuest = null;
   refreshDynamic();
@@ -161,7 +161,7 @@ function refreshDynamic() {
   refreshRail();
 }
 
-/** Globitos de los botones (cofres, pase, álbum, amigas, misiones). */
+/** Globitos de los botones (cofres, pase, álbum, amigos, misiones). */
 function refreshBadges() {
   if (!root) return;
   setBadge('chests', safe(() => chestBadge(), 0));

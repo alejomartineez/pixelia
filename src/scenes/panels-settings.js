@@ -1,5 +1,5 @@
 // Paneles de Ajustes y Cómo jugar.
-import { icon, iconUrl } from '../core/icons.js';
+import { icon } from '../core/icons.js';
 import { OUTFIT_COLORS } from '../core/data.js';
 import { openShell, askConfirm, art, flagArt, chestArt } from './panels-common.js';
 
@@ -57,12 +57,16 @@ export function openSettings(ctx) {
     });
     return h('label.pnl-field', {}, h('span.pnl-field-lbl', { html: `${icon(ic, 20)} ${label}` }), input);
   }
-  root.append(section(icon('crown', 24), 'Tu reino',
-    nameField('Nombre de la princesa', 'crown', () => s().player.name, v => { s().player.name = v; }, 'Princesa', 16),
+  root.append(section(icon('people', 24), 'Vos y tu ciudad',
+    nameField('Nombre de tu personaje', 'people', () => s().player.name, v => { s().player.name = v; }, 'Pixelín', 16),
     nameField('Nombre de la ciudad', 'castle', () => s().player.cityName, v => { s().player.cityName = v; }, 'Pixelia', 18),
+    // personaje y estilo de ciudad: gratis y cambiables (también desde el Vestidor y el botón paleta de la ciudad)
+    h('div.pnl-acc-btns', {},
+      h('button.btn.pink.block', { html: `${icon('dress', 20)} Cambiar personaje`, onclick: () => { sh.close(); ctx.router.go('wardrobe', { tab: 'type' }); } }),
+      h('button.btn.lilac.block', { html: `${icon('palette', 20)} Estilo de la ciudad`, onclick: () => { sh.close(); import('../city/themes-ui.js').then(m => m.openThemePicker(ctx)).catch(e => console.warn('[ajustes] temas', e)); } })),
   ));
 
-  // ---------- Cuenta y amigas ----------
+  // ---------- Cuenta y amigos ----------
   root.append(accountSection(ctx, sh, section));
 
   // ---------- Bandera ----------
@@ -98,7 +102,7 @@ export function openSettings(ctx) {
     install.append(h('p.small.muted', {}, 'Así se abre a pantalla completa, como una app de verdad, y funciona sin internet.'));
     if (!isIOS()) install.append(h('b.pnl-install-sub', { html: `${icon('star', 16)} En el iPhone:` }));
     install.append(h('div.pnl-steps', { html: [
-      ['1', `<img class="pi" src="${iconUrl('🧭')}" width="40" height="40" alt="">`, 'Abrí el juego en <b>Safari</b>'],
+      ['1', icon('🧭', 40), 'Abrí el juego en <b>Safari</b>'],
       ['2', art('share', 40), 'Tocá <b>Compartir</b> (abajo)'],
       ['3', art('addHome', 40), 'Elegí <b>Agregar a inicio</b>'],
       ['4', `<img class="pi pnl-appicon" src="icons/icon-192.png" width="40" height="40" alt="">`, '¡Listo! Tocá el ícono'],
@@ -174,7 +178,7 @@ export function openSettings(ctx) {
   root.append(h('button.btn.mint.block.pnl-helpbtn', { html: `${icon('info', 22)} Cómo jugar`, onclick: () => ctx.openPanel('help') }));
   root.append(h('section.card.pnl-credits', { html: `
     <div class="pnl-credits-crown pnl-bob">${icon('crown', 48)}</div>
-    <b class="pnl-credits-title">Pixelia · Ciudad de Princesas</b>
+    <b class="pnl-credits-title">Pixelia · Tu ciudad, tu estilo</b>
     <p>Hecho con mucho ${icon('heart', 18)} y muchos píxeles,<br>especialmente para vos.</p>
     <p class="small muted">Música y sonidos chiptune hechos a mano · Tipografía Jersey 10 (OFL) · Gráficos 3D con three.js</p>
     <span class="chip pink">${icon('sparkle', 14)} Versión 1.0</span>` }));
@@ -184,7 +188,7 @@ export function openSettings(ctx) {
   resetBtn.onclick = async () => {
     const a = await askConfirm(ctx, { title: '¿Borrar partida?', html: 'Se borra <b>toda</b> tu ciudad, tus monedas y tus logros.', ok: 'Sí, borrar', cancel: 'No', okCls: 'pnl-danger', ic: 'trash' });
     if (!a || sh.closed) return;
-    const b = await askConfirm(ctx, { title: '¿Segurísima?', html: 'Esto <b>no se puede deshacer</b>. Si querés, antes copiá tu código de respaldo.', ok: 'Borrar todo', cancel: 'Me arrepentí', okCls: 'pnl-danger', ic: 'trash' });
+    const b = await askConfirm(ctx, { title: '¿De verdad, de verdad?', html: 'Esto <b>no se puede deshacer</b>. Si querés, antes copiá tu código de respaldo.', ok: 'Borrar todo', cancel: 'Me arrepentí', okCls: 'pnl-danger', ic: 'trash' });
     if (!b) return;
     store.reset();
     location.reload();
@@ -194,7 +198,7 @@ export function openSettings(ctx) {
   return sh.done;
 }
 
-// ---------- Cuenta y amigas (online) ----------
+// ---------- Cuenta y amigos (online) ----------
 /** "hace 3 min" / "recién" a partir de un ISO o ms. */
 function agoText(t) {
   const ms = Date.now() - new Date(t).getTime();
@@ -216,7 +220,7 @@ function accountSection(ctx, sh, section) {
   const { ui, audio, bus } = ctx;
   const { h, esc } = ui;
   const box = h('div.col.pnl-acc');
-  const sec = section(icon('people', 24), 'Cuenta y amigas', box);
+  const sec = section(icon('people', 24), 'Cuenta y amigos', box);
   let net = null, sync = null, loading = true, failed = false, unavailable = false;
   let code = null, codeFor = null, codeBusy = false;
 
@@ -250,7 +254,7 @@ function accountSection(ctx, sh, section) {
     if (typeof f !== 'function') {
       unavailable = true;
       paint();
-      ui.toast('Las amigas todavía se están preparando', { icon: 'heart' });
+      ui.toast('La parte de amigos todavía se está preparando', { icon: 'heart' });
       return;
     }
     try {
@@ -266,9 +270,9 @@ function accountSection(ctx, sh, section) {
     let ok = false;
     try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(code); ok = true; } } catch { ok = false; }
     if (!ok && navigator.share) {
-      try { await navigator.share({ text: `¡Sumame en Pixelia! Mi código de amiga es ${code}` }); ok = true; } catch { ok = false; }
+      try { await navigator.share({ text: `¡Sumame en Pixelia! Mi código de amistad es ${code}` }); ok = true; } catch { ok = false; }
     }
-    if (ok) { audio.sfx('done'); ui.toast('¡Código copiado! Pasáselo a tus amigas', { icon: 'check', type: 'good' }); }
+    if (ok) { audio.sfx('done'); ui.toast('¡Código copiado! Pasáselo a tu gente', { icon: 'check', type: 'good' }); }
     else { audio.sfx('select'); ui.toast(`Tu código es ${code}`, { icon: 'info' }); }
   }
 
@@ -285,26 +289,26 @@ function accountSection(ctx, sh, section) {
     let chip, text;
     if (mode === 'off') {
       chip = `<span class="chip">${icon('home', 14)} Sin conexión</span>`;
-      text = 'Tu partida se guarda en este dispositivo. Cuando el juego esté online vas a poder visitar a tus amigas y mandarles regalitos.';
+      text = 'Tu partida se guarda en este dispositivo. Cuando el juego esté online vas a poder visitar a tus amigos y mandarles regalitos.';
     } else if (!net.ready) {
       chip = `<span class="chip sky">${icon('clock', 14)} Conectando…</span>`;
       text = 'Un segundito…';
     } else if (net.user) {
-      chip = net.online ? `<span class="chip mint">${icon('check', 14)} Conectada</span>` : `<span class="chip gold">${icon('info', 14)} Sin internet</span>`;
+      chip = net.online ? `<span class="chip mint">${icon('check', 14)} En línea</span>` : `<span class="chip gold">${icon('info', 14)} Sin internet</span>`;
       const who = net.user.email ? `Entraste como <b>${esc(net.user.email)}</b>.` : 'Entraste con tu cuenta.';
       const when = st.lastSync ? ` Guardado en la nube ${agoText(st.lastSync)}.` : '';
       text = who + when + (net.online ? '' : ' Cuando vuelva internet se sincroniza sola.');
     } else {
       chip = `<span class="chip lilac">${icon('people', 14)} Sin cuenta</span>`;
-      text = 'Creá tu cuenta para visitar las ciudades de tus amigas, mandarles regalitos, intercambiar figuritas y guardar tu partida en la nube.';
+      text = 'Creá tu cuenta para visitar las ciudades de tus amigos, mandarles regalitos, intercambiar figuritas y guardar tu partida en la nube.';
     }
     if (mode === 'mock') chip += ` <span class="chip pink">${icon('sparkle', 14)} Modo prueba</span>`;
     box.append(h('div.pnl-acc-status', { html: `<div class="pnl-chips">${chip}</div><p class="small muted">${text}</p>` }));
 
     if (net.user) {
       const codeBox = h('div.pnl-friendcode');
-      codeBox.innerHTML = `<span class="pnl-friendcode-l"><small>Tu código de amiga</small><b class="pnl-friendcode-txt">${code ? esc(code) : (codeFor ? '—' : '······')}</b></span>`;
-      if (code) codeBox.append(h('button.btn.sky.small', { html: `${icon('save', 18)} Copiar`, 'aria-label': 'Copiar código de amiga', onclick: copyCode }));
+      codeBox.innerHTML = `<span class="pnl-friendcode-l"><small>Tu código de amistad</small><b class="pnl-friendcode-txt">${code ? esc(code) : (codeFor ? '—' : '······')}</b></span>`;
+      if (code) codeBox.append(h('button.btn.sky.small', { html: `${icon('save', 18)} Copiar`, 'aria-label': 'Copiar código de amistad', onclick: copyCode }));
       box.append(codeBox);
     }
     if (st.conflict) {
@@ -312,14 +316,14 @@ function accountSection(ctx, sh, section) {
       box.append(h('button.btn.gold.block', { html: `${icon('key', 20)} Elegir partida`, onclick: () => open('conflict') }));
     }
     if (unavailable) {
-      box.append(h('p.pnl-note', { html: `${icon('heart', 18)}<span>Las amigas todavía se están preparando. ¡Muy pronto vas a poder jugar con ellas!</span>` }));
+      box.append(h('p.pnl-note', { html: `${icon('heart', 18)}<span>La parte de amigos todavía se está preparando. ¡Muy pronto vas a poder jugar con tu gente!</span>` }));
     }
     const row = h('div.pnl-acc-btns');
     if (mode !== 'off') {
       row.append(h('button.btn.lilac.block', { html: `${icon('key', 20)} ${net.user ? 'Mi cuenta' : 'Crear cuenta o entrar'}`, onclick: () => open('account') }));
-      if (net.user) row.append(h('button.btn.pink.block', { html: `${icon('people', 20)} Amigas`, onclick: () => open('social') }));
+      if (net.user) row.append(h('button.btn.pink.block', { html: `${icon('people', 20)} Amigos`, onclick: () => open('social') }));
     } else {
-      row.append(h('button.btn.lilac.block', { html: `${icon('people', 20)} Cuenta y amigas`, onclick: () => open('account') }));
+      row.append(h('button.btn.lilac.block', { html: `${icon('people', 20)} Cuenta y amigos`, onclick: () => open('account') }));
     }
     box.append(row);
   }
@@ -339,7 +343,9 @@ export function openHelp(ctx) {
     ['castle', 'Tu ciudad', [
       ['coin', 'Cobrá', 'Cuando aparece una burbujita arriba de un edificio, tocala para juntar monedas. Si se llena, deja de producir: ¡volvé seguido!'],
       ['hammer', 'Construí', 'Tocá <b>Construir</b>, elegí algo y ubicalo en el pasto. Podés rotarlo y moverlo cuando quieras.'],
-      ['people', 'Población', 'Las casas traen vecinas. Muchos negocios piden un mínimo de vecinas para abrir.'],
+      ['dress', 'Tu personaje', 'Elegí quién sos (realeza, casual, magia o animalito) y vestilo en el <b>Vestidor</b>. Cambiar de personaje es gratis y lo que compraste queda guardado.'],
+      ['palette', 'Estilo de la ciudad', 'Con el botón de la <b>paleta</b> en la ciudad (o en Ajustes) elegís cómo se ve: pastel, moderna, bosque, playa, invierno o noche. Es gratis.'],
+      ['people', 'Población', 'Las casas traen vecinos. Muchos negocios piden un mínimo de vecinos para abrir.'],
       ['smile', 'Felicidad', 'Árboles, flores y deco hacen feliz a tu ciudad: ¡todo produce hasta un 50% más!'],
       ['👷', 'Constructoras', 'Cada obra ocupa una constructora un ratito. Si faltan menos de 5 segundos, terminala gratis.'],
       ['games', 'Minijuegos', 'Construí la Joyería, la Torre, el Garaje y la Pista para jugar y ganar premios.'],
@@ -350,18 +356,18 @@ export function openHelp(ctx) {
       ['fire', 'Racha diaria', 'Entrá cada día por tu regalo. Si un día no podés, tu <b>escudo de racha</b> de la semana la cuida. Y si volvés después de unos días, ¡te espera un regalo de bienvenida!'],
       ['chest:plata', 'Cofres', 'Los ganás jugando, subiendo de nivel y con misiones, y cada 4 horas hay uno <b>gratis</b>. Traen monedas, gemas, potenciadores, prendas y construcciones sorpresa.'],
       ['bag', 'Mochila y potenciadores', 'Lo que sale de los cofres se guarda en tu <b>mochila</b>. Los potenciadores (movidas extra, bombas, relojes, escudos) se eligen antes de empezar un minijuego.'],
-      ['🃏', 'Álbum de figuritas', 'Juntá figuritas de 12 colecciones: salen en cofres y minijuegos. Completá una página para ganar un premio grande. Las repetidas se cambian por <b>brillitos</b> o se intercambian con amigas.'],
+      ['🃏', 'Álbum de figuritas', 'Juntá figuritas de 12 colecciones: salen en cofres y minijuegos. Completá una página para ganar un premio grande. Las repetidas se cambian por <b>brillitos</b> o se intercambian con amigos.'],
       ['sparkle', 'Pase de Temporada', 'Cada temporada dura 4 semanas. Todo lo que hacés suma <b>chispas</b> y cada nivel del pase trae premios gratis. ¡Sin apuro!'],
       ['calendar', 'Eventos', 'Cada semana hay eventos especiales: producción doble, lluvia de cofres, fiebre de figuritas, carrera de estrellas… Mirá el cartelito arriba de la pantalla.'],
     ]],
-    ['heart', 'Con tus amigas', [
-      ['people', 'Amigas', 'Agregalas con tu <b>código de amiga</b> (está en Amigas y en Ajustes). Cuanto más juegan juntas, más crece la amistad.'],
-      ['home', 'Visitas', 'Visitá sus ciudades, dejales un corazón y una notita, y ayudalas a terminar sus obras.'],
-      ['gift', 'Regalos', 'Mandale un regalito por día a cada amiga. Lo que te mandan llega a tu <b>Buzón</b>.'],
-      ['🙋', 'Pedidos', '¿Te falta algo? Pedí una mano (hasta 3 por día) y tus amigas te ayudan. Ayudarlas a ellas también da premios.'],
-      ['rotate', 'Intercambios', 'Cambiá figuritas repetidas, monedas u objetos con tus amigas: la otra acepta o rechaza.'],
-      ['build', 'Obra en Equipo', 'Entre todas llenan una barra semanal con 5 escalones de premios. ¡Todo lo que jugás suma!'],
-      ['trophy', 'Ranking', 'Cada semana se comparan récords y estrellas. Hay premio para todas, ¡y medalla si superás tu mejor marca!'],
+    ['heart', 'Con tus amigos', [
+      ['people', 'Amigos', 'Sumá gente con tu <b>código de amistad</b> (está en Amigos y en Ajustes). Cuanto más juegan en equipo, más crece la amistad.'],
+      ['home', 'Visitas', 'Visitá sus ciudades, dejales un corazón y una notita, y dales una mano para terminar sus obras.'],
+      ['gift', 'Regalos', 'Mandá un regalito por día a cada persona de tu lista. Lo que te mandan llega a tu <b>Buzón</b>.'],
+      ['🙋', 'Pedidos', '¿Te falta algo? Pedí una mano (hasta 3 por día) y tu gente te ayuda. Ayudar a los demás también da premios.'],
+      ['rotate', 'Intercambios', 'Cambiá figuritas repetidas, monedas u objetos con tus amigos: del otro lado aceptan o rechazan.'],
+      ['build', 'Obra en Equipo', 'Entre todos llenan una barra semanal con 5 escalones de premios. ¡Todo lo que jugás suma!'],
+      ['trophy', 'Ranking', 'Cada semana se comparan récords y estrellas. Hay premio para todos, ¡y medalla si superás tu mejor marca!'],
     ]],
   ];
   const itemIc = (ic) => (ic.startsWith('chest:') ? chestArt(ic.slice(6), 34) : icon(ic, 32));

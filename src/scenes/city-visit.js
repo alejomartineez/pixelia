@@ -1,5 +1,5 @@
-// Modo visita: la ciudad de una amiga, solo lectura (ctx.router.go('city', { visit: friendId })).
-// Se ve su ciudad con su princesa y su auto; se puede dar ❤️ (1 por día), dejar una notita (80 letras),
+// Modo visita: la ciudad de una amistad, solo lectura (ctx.router.go('city', { visit: friendId })).
+// Se ve su ciudad con su personaje y su auto; se puede dar ❤️ (1 por día), dejar una notita (80 letras),
 // ayudar en obras en curso (hasta 3 por día en cada ciudad) y volver. Nada se rompe ni se mueve.
 import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
@@ -14,6 +14,7 @@ import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
 import { createBatcher } from './city-batch.js';
 import { STYLE } from './city-ui.js';
+import { themeOf } from '../city/themes.js';
 
 const TAP_PX = 8;
 const HELPS_PER_DAY = 3;
@@ -68,12 +69,12 @@ const VSTYLE = `
 .cv-note .cv-ideas button { font-family: var(--font); font-size: 13px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 3px 8px; color: var(--ink); cursor: pointer; }
 `;
 
-const NOTE_IDEAS = ['¡Qué linda ciudad! 🌸', '¡Me encantó tu castillo! 👑', 'Pasé a saludarte 💕', '¡Sos una genia construyendo! ✨'];
+const NOTE_IDEAS = ['¡Qué linda ciudad! 🌸', '¡Me encantó tu castillo! 👑', 'Pasé a saludarte 💕', '¡Qué talento para construir! ✨'];
 
 /** Día UTC (igual que el servidor) para los límites diarios. */
 const dayKey = () => new Date().toISOString().slice(0, 10);
 
-/** Copia segura de la ciudad pública de una amiga (descarta edificios que esta versión no conoce). */
+/** Copia segura de la ciudad pública de una amistad (descarta edificios que esta versión no conoce). */
 function sanitizeCity(city, now = Date.now()) {
   const used = new Set();
   let fake = -1;
@@ -91,7 +92,8 @@ function sanitizeCity(city, now = Date.now()) {
     if (busyUntil > now) { if (raw.busyKind === 'build') b.buildEnd = busyUntil; else b.upgradeEnd = busyUntil; }
     buildings.push(b);
   }
-  return { buildings, nextUid: 1, expansions: clamp(Math.round(+city?.expansions) || 0, 0, MAX_EXPANSIONS), flagColor: city?.flagColor, camera: null };
+  // tema de su ciudad (si es uno que esta versión no conoce, o no hay, se ve como Dulce Pastel)
+  return { buildings, nextUid: 1, expansions: clamp(Math.round(+city?.expansions) || 0, 0, MAX_EXPANSIONS), flagColor: city?.flagColor, theme: themeOf(city?.theme).id, camera: null };
 }
 
 function safeModel(fn, size) {
@@ -105,7 +107,7 @@ function safeModel(fn, size) {
 export function createVisit(ctx) {
   const { store, bus, ui, audio } = ctx;
   let container, styleEl, r, cam, world, life, fx, ov, batch, bGroup, ro, topEl, barEl, loadEl, hintEl, likeBtn, noteBtn;
-  let disposed = false, net = null, host = null, hostName = 'tu amiga', vstate = null, busyAct = false, nameTag = null;
+  let disposed = false, net = null, host = null, hostName = 'tu amistad', vstate = null, busyAct = false, nameTag = null;
   const entries = new Map();
   const raycaster = new THREE.Raycaster();
   raycaster.layers.enableAll();
@@ -151,7 +153,7 @@ export function createVisit(ctx) {
     if (net.mode === 'off') return fail('Para visitar ciudades tenés que jugar online.');
     await net.init();
     if (disposed) return;
-    if (!net.user) return fail('Iniciá sesión para visitar a tus amigas.');
+    if (!net.user) return fail('Iniciá sesión para visitar a tus amigos.');
     if (id === net.user.id) return fail('¡Esa es tu ciudad! 😄');
     const res = await net.getProfiles([id]);
     if (disposed) return;
@@ -159,7 +161,7 @@ export function createVisit(ctx) {
     const p = Array.isArray(res) ? res.find(x => x && x.id === id) || res[0] : null;
     if (!p) return fail('No encontramos esa ciudad.');
     hostName = String(p.name || hostName).slice(0, 24);
-    if (p.friend === false) return fail(`Para visitar a ${hostName} tienen que ser amigas.`);
+    if (p.friend === false) return fail(`Para visitar a ${hostName}, primero agréguense con su código de amistad.`);
     if (!p.city || !Array.isArray(p.city.buildings) || !p.city.buildings.length) return fail(`${hostName} todavía no publicó su ciudad. ¡Probá más tarde!`);
     try { build(p); } catch (err) { console.error('[visit] armando la ciudad', err); return fail('Ups, no pudimos dibujar esa ciudad.'); }
     // visita del día (suma amistad); no hace falta esperarla
@@ -181,21 +183,26 @@ export function createVisit(ctx) {
       player: { level: Math.max(1, p.level | 0), name: hostName, cityName: p.city_name || '' },
     };
     const lowQ = !!ctx.state.settings?.lowQuality;
-    r = createPixelRenderer(container, { background: null, viewSize: 14, pixelSize: lowQ ? 3.5 : undefined });
+    r = createPixelRenderer(container, { background: null, viewSize: 14, pixelSize: lowQ ? 2.5 : undefined, outline: true });
     r.renderer.setClearColor(0x000000, 0);
     const { hemi, sun } = addLights(r.scene, { shadowSize: 50, shadowRes: lowQ ? 1024 : 2048 });
-    hemi.intensity = 1.55;
+    // se ve con el estilo que eligió su dueño/a: cielo, luces, terreno y colores
+    const T = themeOf(vstate.city.theme);
+    container.style.setProperty('--cx-sky', T.sky);
+    container.style.setProperty('--cx-stars', String(T.stars));
+    hemi.color.setHex(T.lights.sky); hemi.groundColor.setHex(T.lights.ground); hemi.intensity = T.lights.hemi;
+    sun.color.setHex(T.lights.sun); sun.intensity = T.lights.sunI;
     sun.shadow.camera.far = 120;
-    sun.position.set(14, 26, 10);
+    sun.position.set(17, 26, 5);
     sun.shadow.camera.updateProjectionMatrix();
     fx = createParticles(r.scene);
     const lb = landBounds(vstate);
-    world = createWorld(r, { bounds: { ...lb, canExpand: false } });
+    world = createWorld(r, { bounds: { ...lb, canExpand: false }, theme: T.id });
     bGroup = new THREE.Group();
     r.scene.add(bGroup);
     batch = createBatcher(r.scene);
     for (const b of vstate.city.buildings) createEntry(b);
-    // la vida (vecinas, su princesa y su auto) usa el estado de la amiga
+    // la vida (vecinos, su personaje y su auto) usa el estado de la amistad
     life = createLife(r, { state: vstate, economy: { population: () => population(vstate) } });
 
     const castle = vstate.city.buildings.find(b => b.id === 'castillo');
@@ -233,7 +240,7 @@ export function createVisit(ctx) {
     syncHelp();
     r.onFrame(frame);
     r.start();
-    if (window.__pixelia) window.__pixelia.visit = { r, cam, entries, life, ov, host, get state() { return vstate; }, help: (uid) => { const e = entries.get(uid); if (e) help(e); }, like, sendNote };
+    if (window.__pixelia) window.__pixelia.visit = { r, cam, entries, life, ov, host, theme: T.id, get state() { return vstate; }, help: (uid) => { const e = entries.get(uid); if (e) help(e); }, like, sendNote };
     audio.sfx('swoosh');
   }
 
@@ -263,13 +270,13 @@ export function createVisit(ctx) {
     if (e.model) { e.root.remove(e.model); e.model = null; }
     if (e.scaffold) { e.root.remove(e.scaffold); e.scaffold = null; }
     if (mode !== 'build') {
-      e.model = safeModel(() => buildingModel(b.id, b.level, { flagColor: vstate.city.flagColor }), [c.w, c.d]);
+      e.model = safeModel(() => buildingModel(b.id, b.level, { flagColor: vstate.city.flagColor, theme: vstate.city.theme }), [c.w, c.d]);
       e.model.rotation.y = b.rot * Math.PI / 2;
       e.root.add(e.model);
       e.height = e.model.userData.height || 1;
     }
     if (mode !== 'done') {
-      e.scaffold = safeModel(() => constructionModel(c.w, c.d), [c.w, c.d]);
+      e.scaffold = safeModel(() => constructionModel(c.w, c.d, vstate.city.theme), [c.w, c.d]);
       e.root.add(e.scaffold);
       e.height = Math.max(mode === 'build' ? 0 : e.height, e.scaffold.userData.height || 0.8);
     } else if (e.mode && e.mode !== 'done') {

@@ -17,7 +17,7 @@ export const THEMES = [
   { id: 'bosque', name: 'Bosque Encantado', emoji: '🍄', accent: '#5cc46e', dark: '#3c9a50', light: '#e2f6e4', sky: ['#9fe0a8', '#eaf9ec'], phrase: 'Hongos que brillan y hadas escondidas entre los árboles.' },
   { id: 'cristal', name: 'Fiesta de Cristal', emoji: '💎', accent: '#4fb6f0', dark: '#2f8fcc', light: '#dff3ff', sky: ['#9fdcff', '#e8f7ff'], phrase: 'Todo brilla: lámparas, copas y vestidos de cristal.' },
   { id: 'otono', name: 'Dulce Otoño', emoji: '🍂', accent: '#ff9a62', dark: '#e0743a', light: '#ffeadc', sky: ['#ffc39e', '#fff0e4'], phrase: 'Hojas crujientes, chocolate caliente y mantita.' },
-  { id: 'corazones', name: 'Reino de los Corazones', emoji: '💖', accent: '#ff5a7e', dark: '#d93a60', light: '#ffe1e8', sky: ['#ff9fb6', '#ffe8ee'], phrase: 'Una temporada para mimar a las que más querés.' },
+  { id: 'corazones', name: 'Reino de los Corazones', emoji: '💖', accent: '#ff5a7e', dark: '#d93a60', light: '#ffe1e8', sky: ['#ff9fb6', '#ffe8ee'], phrase: 'Una temporada para mimar a quienes más querés.' },
 ];
 
 // ---------- Costo de cada nivel (chispas) ----------
@@ -86,7 +86,7 @@ export const POINT_SOURCES = [
   { ic: 'crown', text: 'Cobrar una misión principal', pts: POINTS.mainQuest },
   { ic: 'games', text: 'Ganar un minijuego', pts: `${POINTS.gameWin} +${POINTS.perStar}/★` },
   { ic: 'up', text: 'Terminar una mejora', pts: POINTS.upgraded },
-  { ic: 'people', text: 'Ayudar o regalarle a una amiga', pts: POINTS.helped },
+  { ic: 'people', text: 'Ayudar o hacerle un regalo a alguien', pts: POINTS.helped },
   { ic: 'build', text: 'Terminar una construcción', pts: POINTS.built },
   { ic: '🃏', text: 'Pegar una figurita nueva', pts: POINTS.newSticker },
   { ic: 'coin', text: `Cobrar un edificio (hasta ${POINTS.collectDailyMax} por día)`, pts: POINTS.collect },

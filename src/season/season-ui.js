@@ -56,7 +56,7 @@ export function openSeasonPass(ctx, now) {
     return `<div class="ssn-status">
       <div class="ssn-lvl"><small>Nivel</small><b>${info.level}</b></div>
       <div class="ssn-st-mid">
-        <div class="row"><span>${maxed ? 'Próximo cofre extra' : `Nivel ${info.level + 1}`}</span><b>${icon('sparkle', 16)}${fmtNum(info.into)}/${fmtNum(info.need)}</b></div>
+        <div class="row"><span>${maxed ? 'Próximo cofre extra' : `Hacia el nivel ${info.level + 1}`}</span><b>${icon('sparkle', 16)}${fmtNum(info.into)}/${fmtNum(info.need)}</b></div>
         <div class="ssn-bar"><i style="width:${(info.pct * 100).toFixed(1)}%"></i></div>
         <span class="ssn-hint">${maxed && !info.bonus.unlocked ? '' : `Faltan <b>${fmtNum(left)}</b> chispas`}</span>
       </div>
@@ -69,7 +69,7 @@ export function openSeasonPass(ctx, now) {
     const th = THEMES.find(x => x.id === e.themeId) || info.theme;
     return `<div class="ssn-end">${chestIcon('real', 56)}
       <h4>Cofre de fin de temporada</h4>
-      <p>Terminó <b>${esc(th.name)}</b> ${icon(th.emoji, 18)} y llegaste al <b>nivel ${e.level}</b>. ${e.parts.length ? 'Todo lo que no habías cobrado ya está en tu cuenta:' : '¡Habías cobrado todo! Sos una genia.'}</p>
+      <p>Terminó <b>${esc(th.name)}</b> ${icon(th.emoji, 18)} y llegaste al <b>nivel ${e.level}</b>. ${e.parts.length ? 'Todo lo que no habías cobrado ya está en tu cuenta:' : '¡Habías cobrado todo! Sos una estrella.'}</p>
       ${e.parts.length ? partsLine(e.parts) : ''}
       <button class="btn pink small" data-ack>¡Gracias!</button></div>`;
   }
@@ -195,7 +195,7 @@ export function openWelcomeBack(ctx, now) {
     if (st.reward.coins) items.push(`<div class="ssn-wb-item" data-coins>${icon('coin', 36)}${fmtNum(st.reward.coins)}<small>monedas</small></div>`);
     if (st.reward.gems) items.push(`<div class="ssn-wb-item">${icon('gem', 36)}${st.reward.gems}<small>gemas</small></div>`);
     items.push(`<div class="ssn-wb-item">${chestIcon(st.chestType, 40)}${st.chests > 1 ? '×' + st.chests : '×1'}<small>Cofre de Madera</small></div>`);
-    const hearts = [12, 30, 62, 80, 46].map((x, i) => `<img class="pi" src="${iconUrl('heart')}" style="left:${x}%;bottom:8px;animation-delay:${i * 0.5}s" width="24" height="24" alt="">`).join('');
+    const hearts = [12, 30, 62, 80, 46].map((x, i) => `<img class="pi" data-pi="heart" src="${iconUrl('heart', 24)}" style="left:${x}%;bottom:8px;animation-delay:${i * 0.5}s" width="24" height="24" alt="">`).join('');
     const content = h('div.ssn-wb', { html: `
       <div class="ssn-wb-stage"><div class="ssn-rays"></div><div class="ssn-wb-hearts">${hearts}</div>${icon('gift', 88)}</div>
       <p>${esc(st.message)}</p>

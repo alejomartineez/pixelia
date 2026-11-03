@@ -1,34 +1,42 @@
-// Vestidor + Taller: probá peinados, vestidos, coronas, accesorios y tuneá tu auto.
+// Vestidor + Taller: elegí tu personaje (princesa, príncipe, chica, chico, hada, mago o animalito), probá peinados,
+// ropa, cosas para la cabeza, accesorios y tuneá tu auto.
 // Arriba (o a la izquierda en PC) un escenario 3D giratorio; abajo (o a la derecha) el panel con categorías.
-// Tocar una pieza la prueba al instante; si no es tuya aparece "Comprar". Los colores son gratis.
+// Tocar una pieza la prueba al instante; si no es tuya aparece "Comprar". Los colores y el tipo de personaje son gratis.
 import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { icon } from '../core/icons.js';
 import { fmtNum } from '../core/economy.js';
 import {
   HAIR_STYLES, HAIR_COLORS, SKIN_TONES, DRESS_STYLES, OUTFIT_COLORS, CROWNS, ACCESSORIES,
-  CAR_BODIES, CAR_WHEELS, CAR_TOPPERS, BUILDING_BY_ID,
+  CAR_BODIES, CAR_WHEELS, CAR_TOPPERS, BUILDING_BY_ID, CUSTOM_CATALOG,
+  AVATAR_TYPES, AVATAR_FAMILIES, avatarType, fitsType,
 } from '../core/data.js';
-import { princessModel, normalizeLook } from '../avatar/princess.js';
+import { avatarModel, normalizeLook } from '../avatar/avatar.js';
 import { carModel, carStats, normalizeCar } from '../avatar/car.js';
 import { buildBoutique, buildGarage, buildPlatform, thumbnail, hasThumb, disposeThumbs } from '../avatar/wardrobe-stage.js';
 
 const COLOR_NAMES = {
   castano: 'Castaño', negro: 'Negro', rubio: 'Rubio', pelirrojo: 'Colorado', rosa: 'Rosa', lila: 'Lila', celeste: 'Celeste',
   menta: 'Menta', blanco: 'Blanco', chocolate: 'Chocolate', fucsia: 'Fucsia', violeta: 'Violeta', azul: 'Azul', verde: 'Verde',
-  dorado: 'Dorado', durazno: 'Durazno', rojo: 'Rojo',
+  dorado: 'Dorado', durazno: 'Durazno', rojo: 'Rojo', gris: 'Gris',
 };
 const colorList = (list) => list.map(c => ({ id: c.id, hex: c.hex, name: COLOR_NAMES[c.id] || c.id }));
 
-const PRINCESS_CATS = [
-  { id: 'hair', label: 'Peinado', icon: 'ribbon', kind: 'hair', list: HAIR_STYLES, frame: 'head' },
-  { id: 'hairColor', label: 'Color de pelo', icon: 'palette', colors: colorList(HAIR_COLORS) },
-  { id: 'skin', label: 'Piel', icon: '🖐️', colors: SKIN_TONES.map((hex, i) => ({ id: i, hex, name: `Tono ${i + 1}` })) },
-  { id: 'dress', label: 'Vestido', icon: 'dress', kind: 'dress', list: DRESS_STYLES, frame: 'body' },
-  { id: 'dressColor', label: 'Color de vestido', icon: '🎨', colors: colorList(OUTFIT_COLORS) },
-  { id: 'crown', label: 'Corona', icon: 'crown', kind: 'crown', list: CROWNS, frame: 'head' },
-  { id: 'acc', label: 'Accesorio', icon: 'wand', kind: 'acc', list: ACCESSORIES, frame: 'body' },
+// Categorías del personaje. Las etiquetas cambian según el tipo (label(t) recibe la definición del tipo).
+const AVATAR_CATS = [
+  { id: 'type', label: () => 'Personaje', icon: 'sparkle', types: true },
+  { id: 'hair', label: (t) => (t.animal ? 'Pelaje' : 'Peinado'), icon: 'ribbon', kind: 'hair', list: HAIR_STYLES, frame: 'head' },
+  { id: 'hairColor', label: (t) => (t.animal ? 'Color de pelaje' : 'Color de pelo'), icon: 'palette', colors: colorList(HAIR_COLORS) },
+  { id: 'skin', label: () => 'Piel', icon: '🖐️', colors: SKIN_TONES.map((hex, i) => ({ id: i, hex, name: `Tono ${i + 1}` })), humans: true },
+  { id: 'dress', label: () => 'Ropa', icon: 'dress', kind: 'dress', list: DRESS_STYLES, frame: 'body' },
+  { id: 'dressColor', label: () => 'Color de ropa', icon: '🎨', colors: colorList(OUTFIT_COLORS) },
+  { id: 'crown', label: () => 'Cabeza', icon: 'crown', kind: 'crown', list: CROWNS, frame: 'head' },
+  { id: 'acc', label: () => 'Accesorio', icon: 'wand', kind: 'acc', list: ACCESSORIES, frame: 'body' },
 ];
+// piezas que se ven mejor de espaldas o enteras en la miniatura
+const BACK_ITEMS = new Set(['alas', 'alas_hada', 'alas_mariposa', 'mochila']);
+const TALL_ITEMS = new Set(['sombrero_mago', 'sombrero_luna', 'sombrero_estrellas', 'galera', 'casco', 'corona_rey', 'antenitas', 'gorrito', 'estrella']);
+const BODY_ITEMS = new Set(['barba', 'globo', 'baston', 'patineta', 'farolito']);
 const CAR_CATS = [
   { id: 'body', label: 'Modelo', icon: 'car', kind: 'body', list: CAR_BODIES, frame: 'car', stats: true },
   { id: 'color', label: 'Color', icon: 'palette', colors: colorList(OUTFIT_COLORS) },
@@ -36,7 +44,11 @@ const CAR_CATS = [
   { id: 'topper', label: 'Adorno', icon: 'heart', kind: 'topper', list: CAR_TOPPERS, frame: 'car' },
 ];
 // ángulo del escenario que mejor muestra cada pieza
-const FOCUS = { acc: { alas: Math.PI * 0.85 }, dress: { capa: Math.PI * 0.8 }, hair: { coleta: 1.3, rodete: 1.1, trenzas: 0.7, colitas: 0.6, ondas: 1.0, largo: 0.9 } };
+const FOCUS = {
+  acc: { alas: Math.PI * 0.85, alas_hada: Math.PI * 0.85, alas_mariposa: Math.PI * 0.85, mochila: Math.PI * 0.9, buho: -0.6 },
+  dress: { capa: Math.PI * 0.8, capa_real: Math.PI * 0.8, tunica_capa: Math.PI * 0.8, archimago: Math.PI * 0.8, capita: Math.PI * 0.8, futbol: Math.PI },
+  hair: { coleta: 1.3, rodete: 1.1, trenzas: 0.7, colitas: 0.6, ondas: 1.0, largo: 0.9 },
+};
 
 const WD_CSS = `
 .scene-wardrobe .wd { position:absolute; inset:0; display:flex; flex-direction:column; background:linear-gradient(#ffd9ec,#efe0ff); }
@@ -92,6 +104,10 @@ const WD_CSS = `
 .scene-wardrobe .wd-sw.on i { transform:translateY(-3px); outline:3px solid var(--gold-d); outline-offset:3px; }
 .scene-wardrobe .wd-sw i img { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
 .scene-wardrobe .wd-note { margin:12px 2px 0; font-size:13px; color:var(--ink-l); text-align:center; }
+.scene-wardrobe .wd-fam { margin:14px 2px 8px; font-size:14px; font-weight:700; color:var(--ink-l); display:flex; align-items:center; gap:6px; }
+.scene-wardrobe .wd-fam:first-child { margin-top:2px; }
+.scene-wardrobe .wd-typeinfo { margin:0 0 10px; padding:8px 12px; background:#fff; border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); font-size:14px; line-height:1.25; }
+.scene-wardrobe .wd-typeinfo b { font-size:16px; }
 .scene-wardrobe .wd-stats { display:flex; gap:12px; padding:8px 12px; margin:0 0 12px; background:#fff; border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); }
 .scene-wardrobe .wd-stat { flex:1; display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:700; }
 .scene-wardrobe .wd-stat span { display:flex; align-items:center; gap:4px; }
@@ -135,9 +151,9 @@ export default function create(ctx) {
   let alive = false;
 
   // ---------- estado de la escena ----------
-  let mode = 'princess';
-  let catId = 'hair';
-  const pv = {};          // look en prueba { princess, car }
+  let mode = 'avatar';
+  let catId = 'hair';   // la pestaña Personaje queda primera; se abre en Peinado como siempre
+  const pv = {};          // look en prueba { avatar, car }
   let pending = [];       // piezas probadas que no son tuyas [{target, key, kind, id}]
   let thumbQueue = [];
   let thumbRaf = 0;
@@ -148,8 +164,12 @@ export default function create(ctx) {
   const camPos = new THREE.Vector3(0, 1.3, 3.6), camLook = new THREE.Vector3(0, 0.7, 0);
   const camWant = new THREE.Vector3(), lookWant = new THREE.Vector3();
 
-  const target = () => (mode === 'princess' ? 'princess' : 'car');
-  const cats = () => (mode === 'princess' ? PRINCESS_CATS : CAR_CATS);
+  const target = () => (mode === 'avatar' ? 'avatar' : 'car');
+  const tdef = () => avatarType(pv.avatar?.type);
+  // sin "Piel" para los animalitos
+  const cats = () => (mode === 'avatar' ? AVATAR_CATS.filter(c => !(c.humans && tdef().animal)) : CAR_CATS);
+  const catLabel = (c) => (typeof c.label === 'function' ? c.label(tdef()) : c.label);
+  const itemsFor = (c) => (mode === 'avatar' ? c.list.filter(i => fitsType(i, pv.avatar.type)) : c.list);
   const cat = () => cats().find(c => c.id === catId) || cats()[0];
   const garageOk = () => ctx.economy.hasBuilt('garaje');
   const S = () => store.state;
@@ -161,7 +181,7 @@ export default function create(ctx) {
       <div class="wd-stage">
         <div class="wd-top">
           <button class="icon-btn wd-back" aria-label="Volver">${icon('back', 22)}</button>
-          <label class="wd-namebox" title="Nombre de tu princesa">${icon('crown', 22)}<input type="text" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Nombre de la princesa"></label>
+          <label class="wd-namebox" title="Nombre de tu personaje"><span class="wd-nameicon"></span><input type="text" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Nombre de tu personaje"></label>
           <div class="wd-res">
             <div class="pill wd-coins">${icon('coin', 20)}<b></b></div>
             <div class="pill wd-gems">${icon('gem', 20)}<b></b></div>
@@ -174,7 +194,7 @@ export default function create(ctx) {
       </div>
       <div class="wd-panel">
         <div class="wd-seg">
-          <button class="wd-segbtn" data-mode="princess">${icon('dress', 24)}Princesa</button>
+          <button class="wd-segbtn" data-mode="avatar"></button>
           <button class="wd-segbtn" data-mode="car">${icon('car', 24)}Auto</button>
         </div>
         <div class="tabs wd-cats"></div>
@@ -193,14 +213,14 @@ export default function create(ctx) {
     input.value = S().player.name;
     const commitName = () => {
       // mismo largo que en Ajustes (16); se corta por caracteres, no por unidades UTF-16 (no rompe emojis)
-      const v = [...input.value.replace(/\s+/g, ' ').trim()].slice(0, 16).join('').trim() || 'Princesa';
+      const v = [...input.value.replace(/\s+/g, ' ').trim()].slice(0, 16).join('').trim() || S().player.name;
       input.value = v;
       if (S().player.name !== v) {
         S().player.name = v;
         store.markDirty();
         ctx.hud.refresh?.();
         audio.sfx('select');
-        ui.toast(`¡Hola, ${v}!`, { icon: 'crown', type: 'good' });
+        ui.toast(`¡Hola, ${v}!`, { icon: tdef().emoji, type: 'good' });
       }
     };
     input.addEventListener('change', commitName);
@@ -236,8 +256,11 @@ export default function create(ctx) {
   }
 
   function renderSeg() {
+    const t = tdef();
+    root.querySelector('.wd-nameicon').innerHTML = icon(t.emoji, 22);
     for (const b of root.querySelectorAll('.wd-segbtn')) {
       b.classList.toggle('active', b.dataset.mode === mode);
+      if (b.dataset.mode === 'avatar') b.innerHTML = `${icon(t.emoji, 24)}${ui.esc(t.name)}`;
       if (b.dataset.mode === 'car') {
         const locked = !garageOk();
         b.classList.toggle('locked', locked);
@@ -247,17 +270,21 @@ export default function create(ctx) {
   }
   function renderCats() {
     const el = root.querySelector('.wd-cats');
-    el.innerHTML = cats().map(c => `<button class="tab${c.id === catId ? ' active' : ''}" data-cat="${c.id}">${icon(c.icon, 18)}${c.label}</button>`).join('');
+    el.innerHTML = cats().map(c => `<button class="tab${c.id === catId ? ' active' : ''}" data-cat="${c.id}">${icon(c.types ? tdef().emoji : c.icon, 18)}${catLabel(c)}</button>`).join('');
     el.querySelector('.active')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }
 
   function thumbSpec(c, item) {
-    if (mode === 'princess') {
-      const look = { ...pv.princess, [c.id]: item.id };
+    if (mode === 'avatar') {
+      const look = { ...pv.avatar, [c.id]: item.id };
       let frame = c.frame;
-      if (c.id === 'acc' && item.id === 'alas') frame = 'back';
-      if (c.id === 'dress' && item.id === 'capa') frame = 'body';
-      return { type: 'princess', look, frame };
+      // peinados sin sombrero que los tape; pelajes sin ropa y más de cerca (se ven manchas, rayas y patitas)
+      if (c.id === 'hair') Object.assign(look, { crown: 'ninguna', acc: 'ninguno' }, tdef().animal ? { dress: 'pelito' } : {});
+      if (BACK_ITEMS.has(item.id)) frame = 'back';
+      else if (c.id === 'hair' && tdef().animal) frame = pv.avatar.type === 'conejito' ? 'furtall' : 'fur';
+      else if (BODY_ITEMS.has(item.id)) frame = 'body';
+      else if (frame === 'head' && (TALL_ITEMS.has(item.id) || pv.avatar.type === 'conejito' || look.hair === 'barba')) frame = 'tall';
+      return { type: 'avatar', look, frame };
     }
     return { type: 'car', car: { ...pv.car, [c.id]: item.id }, frame: c.frame };
   }
@@ -269,11 +296,42 @@ export default function create(ctx) {
     return ui.costHtml(item.price || {}, 16);
   }
 
+  // look con el que se muestra cada tipo en su tarjeta (el último que usaste con ese tipo, o el inicial)
+  function typeLook(t) {
+    if (t.id === pv.avatar.type) return pv.avatar;
+    return normalizeLook({ ...t.look, ...(S().avatarLooks?.[t.id] || {}), type: t.id });
+  }
+  function typeCard(t) {
+    const on = t.id === pv.avatar.type;
+    const spec = { type: 'avatar', look: typeLook(t), frame: t.id === 'conejito' ? 'tallbody' : 'body' };
+    const cached = hasThumb(spec);
+    return `<button class="wd-card${on ? ' on' : ''}" data-type="${t.id}">
+      ${on ? `<span class="wd-check">${icon('check', 14)}</span>` : ''}
+      <span class="wd-thumb"><img class="th${cached ? ' ok' : ''}" alt="" draggable="false" ${cached ? `src="${thumbnail(spec)}"` : ''} data-k="${encodeURIComponent(JSON.stringify(spec))}"></span>
+      <span class="wd-name">${ui.esc(t.name)}</span>
+      <span class="wd-foot">${on ? '<span class="chip mint">Elegido</span>' : '<span class="chip">Gratis</span>'}</span>
+    </button>`;
+  }
+
   function renderList(resetScroll = false) {
     const c = cat();
     const el = root.querySelector('.wd-list');
     const t = target();
     let html = '';
+    if (c.types) {
+      const cur = tdef();
+      html += `<div class="wd-typeinfo">${icon(cur.emoji, 20)} <b>${ui.esc(cur.name)}</b> · ${ui.esc(cur.desc)}</div>`;
+      for (const fam of AVATAR_FAMILIES) {
+        html += `<div class="wd-fam">${icon(fam.emoji, 18)}${ui.esc(fam.name)}</div><div class="wd-grid">`;
+        html += AVATAR_TYPES.filter(x => x.family === fam.id).map(typeCard).join('');
+        html += '</div>';
+      }
+      html += `<p class="wd-note">${icon('sparkle', 14)} Cambiar de personaje es gratis. Cada uno guarda su último look.</p>`;
+      el.innerHTML = html;
+      if (resetScroll) el.scrollTop = 0;
+      queueThumbs();
+      return;
+    }
     if (c.stats) {
       const st = carStats(pv.car);
       const pips = (n, cls) => `<span class="wd-pips ${cls}">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`;
@@ -285,7 +343,7 @@ export default function create(ctx) {
       html += `<p class="wd-note">${icon('sparkle', 14)} Los colores son gratis: ¡probá todos!</p>`;
     } else {
       html += '<div class="wd-grid">';
-      for (const item of c.list) {
+      for (const item of itemsFor(c)) {
         const owned = store.owns(c.kind, item.id);
         const equipped = S()[t][c.id] === item.id;
         const trying = pv[t][c.id] === item.id && !owned;
@@ -338,7 +396,7 @@ export default function create(ctx) {
     btn.disabled = !!lockLv;
     btn.innerHTML = lockLv ? `${icon('lock', 18)}Nivel ${lockLv}` : `Comprar ${ui.costHtml(item.price || {}, 18)}`;
   }
-  const itemOf = (p) => [...PRINCESS_CATS, ...CAR_CATS].find(c => c.kind === p.kind && c.id === p.key).list.find(i => i.id === p.id);
+  const itemOf = (p) => CUSTOM_CATALOG[p.kind].find(i => i.id === p.id);
 
   // ---------------- acciones ----------------
   function setMode(m, silent = false) {
@@ -352,12 +410,29 @@ export default function create(ctx) {
     }
     if (!silent) audio.sfx('swoosh');
     mode = m;
-    catId = cats()[0].id;
+    catId = cats()[mode === 'avatar' ? 1 : 0].id;
     renderSeg(); renderCats(); renderList(true);
     applyMode();
   }
 
+  /** Cambia el tipo de personaje (gratis, al instante). */
+  function setType(typeId) {
+    if (typeId === pv.avatar.type) { hop(); audio.sfx('pop'); return; }
+    // lo probado sin comprar no pasa al otro tipo
+    pending = pending.filter(p => p.target !== 'avatar');
+    pv.avatar = normalizeLook(S().avatar);
+    store.setAvatarType(typeId);
+    pv.avatar = normalizeLook(S().avatar);
+    audio.sfx('combo', 2);
+    rebuildModel(true);
+    burst(0.9, 22);
+    spinTo(0.3);
+    renderSeg(); renderCats(); renderList(); renderBuy();
+  }
+
   function onListClick(e) {
+    const tb = e.target.closest('[data-type]');
+    if (tb) { setType(tb.dataset.type); return; }
     const b = e.target.closest('[data-id]');
     if (!b) return;
     const c = cat();
@@ -426,15 +501,15 @@ export default function create(ctx) {
     renderList(); renderBuy(); renderRes();
   }
 
-  // Look sorpresa: mezcla al azar entre lo que ya tenés
+  // Look sorpresa: mezcla al azar entre lo que ya tenés (sin cambiar el tipo de personaje)
   function surprise() {
     const t = target();
     const list = cats();
     for (const c of list) {
+      if (c.types || c.id === 'skin') continue; // el tipo y la piel no se cambian solos
       let opts;
       if (c.colors) opts = c.colors.map(x => x.id);
-      else opts = c.list.filter(i => store.owns(c.kind, i.id)).map(i => i.id);
-      if (c.id === 'skin') continue; // la piel no se cambia sola
+      else opts = itemsFor(c).filter(i => store.owns(c.kind, i.id)).map(i => i.id);
       if (!opts.length) continue;
       const id = opts[Math.floor(Math.random() * opts.length)];
       pv[t][c.id] = id;
@@ -457,7 +532,9 @@ export default function create(ctx) {
 
   // ---------------- 3D ----------------
   function buildStage(stageEl) {
-    r = createPixelRenderer(stageEl, { ortho: false, fov: 30, background: 0xffe3f1, pixelSize: Math.min(innerWidth, innerHeight) < 500 ? 2 : 3 });
+    // mismo pixel y contorno tinta que la ciudad (default de createPixelRenderer; 2.5 en baja calidad)
+    const lowQ = !!S().settings?.lowQuality;
+    r = createPixelRenderer(stageEl, { ortho: false, fov: 30, background: 0xffe3f1, pixelSize: lowQ ? 2.5 : undefined, outline: true });
     const { sun } = addLights(r.scene, { shadowSize: 9, shadowRes: 1024 });
     sun.position.set(5, 12, 9);
     const fill = new THREE.DirectionalLight(0xffd6ec, 0.7);
@@ -501,7 +578,7 @@ export default function create(ctx) {
 
   function rebuildModel(animate) {
     if (model) holder.remove(model);
-    model = mode === 'princess' ? princessModel(pv.princess) : carModel(pv.car, { driver: pv.princess });
+    model = mode === 'avatar' ? avatarModel(pv.avatar) : carModel(pv.car, { driver: pv.avatar });
     holder.add(model);
     if (animate) {
       hop();
@@ -579,9 +656,9 @@ export default function create(ctx) {
       model.scale.set(1 + sq, 1 - sq, 1 + sq);
     } else { model.position.y = 0; model.scale.set(1, 1, 1); }
 
-    if (mode === 'princess') model.userData.update(dt, false);
+    if (mode === 'avatar') model.userData.update(dt, false);
     else { carSpin *= Math.pow(0.15, dt); model.userData.update(dt, carSpin, Math.sin(t * 0.8) * 0.4); }
-    (mode === 'princess' ? platP : platG).userData.update(dt);
+    (mode === 'avatar' ? platP : platG).userData.update(dt);
 
     // brillitos
     for (const s of sparkles) {
@@ -681,9 +758,10 @@ export default function create(ctx) {
       styleEl.textContent = WD_CSS;
       document.head.append(styleEl);
 
-      pv.princess = normalizeLook(S().princess);
+      pv.avatar = normalizeLook(S().avatar);
       pv.car = normalizeCar(S().car);
       if ((params.tab === 'car' || params.mode === 'car') && garageOk()) { mode = 'car'; catId = CAR_CATS[0].id; }
+      else if (params.tab === 'type') catId = 'type'; // desde Ajustes: "Cambiar personaje"
 
       buildDom(container);
       renderRes(); renderSeg(); renderCats(); renderList(true); renderBuy();

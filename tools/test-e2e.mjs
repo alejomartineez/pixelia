@@ -1,5 +1,5 @@
 // Partida de punta a punta como jugadora nueva (sin cheat) en iPhone, con la interfaz real:
-// splash → premio diario → misiones m1–m8 (construir, cobrar, minijuego, vestidor) → subida de nivel con cofre
+// splash → onboarding (personaje Osito, nombre, ciudad, estilo Bosque Mágico; se verifica el guardado) → premio diario → misiones m1–m8 (construir, cobrar, minijuego, vestidor) → subida de nivel con cofre
 // → abrir cofre con figuritas → minijuego con potenciador → premio → Pase → Álbum → Cofres (gratis, mochila,
 // poción, martillo) → Eventos. Revisa que los globitos del HUD coincidan con los módulos en cada paso.
 // El tiempo se acelera editando timestamps (obras, producción, cofre gratis), nunca con ?cheat.
@@ -145,7 +145,7 @@ const ageProduction = (hours) => run(`for (const b of store.state.city.buildings
 
 /** Resuelve lo que esté encima: subidas de nivel (abriendo cofres), aperturas de cofre, premios. Devuelve lo que vio. */
 async function drainOverlays({ maxRounds = 40, shots = {} } = {}) {
-  const seen = [];
+  const seen = []; let quiet = 0;
   for (let i = 0; i < maxRounds; i++) {
     await sleep(350);
     const st = await ev(() => ({
@@ -158,6 +158,7 @@ async function drainOverlays({ maxRounds = 40, shots = {} } = {}) {
       reward: !!document.querySelector('.modal.reward-modal'),
       modal: !!document.querySelector('.modal'),
     }));
+    if (st.chx || st.lvl || st.login || st.welcome || st.reward) quiet = 0;
     if (st.chx) {
       if (!seen.includes('chest')) { seen.push('chest'); await sleep(900); if (shots.chest) await shot(shots.chest); }
       if (st.sum) {
@@ -181,18 +182,21 @@ async function drainOverlays({ maxRounds = 40, shots = {} } = {}) {
     if (st.login) { seen.push('login'); if (!(await tap('.modal.pnl-login .modal-foot .btn', 'Abrir', { timeout: 300 }))) await tap('.modal.pnl-login .modal-foot .btn'); continue; }
     if (st.welcome) { seen.push('welcome'); await tap('.modal[class*="welcome"] .modal-foot .btn:last-child'); continue; }
     if (st.reward) { seen.push('reward'); await tap('.modal.reward-modal .modal-foot .btn:last-child'); continue; }
-    break;
+    if (++quiet >= 4) break;
   }
   return seen;
 }
 async function closeTop() {
   for (let i = 0; i < 4 && await hasModal(); i++) {
+    if (process.env.E2E_DEBUG) console.log('    modales:', await ev(() => [...document.querySelectorAll('.modal')].map(m => m.className + ' x:' + !!m.querySelector('.modal-x')).join(' | ')));
+    if (await ev(() => !!document.querySelector('.modal.reward-modal, .chx-open'))) { await drainOverlays(); continue; }
     if (!(await tap('.modal .modal-x', null, { timeout: 400 }))) await page.keyboard.press('Escape');
     await sleep(350);
   }
 }
 /** Construye con la interfaz: Construir → pestaña → tarjeta → Colocar (n veces si se pinta) → Listo. */
 async function buildUI(id, n = 1) {
+  await drainOverlays();
   const info = await run(`const d = E.def('${id}'); const cat = ctx.data.CATEGORIES?.find(c => c.id === d.cat); return { name: d.name, cat: cat?.name || d.cat };`);
   await tap('[data-act="build"]');
   await waitFor(`!!document.querySelector('.cx-build .cx-grid')`);
@@ -217,6 +221,17 @@ async function claimMainUI() {
   await closeTop();
   return q.id;
 }
+/** Gana la partida de Joyas Reales en curso. finishNow se ignora mientras el tablero está ocupado (cascadas,
+ *  potenciadores entrando), así que se reintenta hasta que la partida termina. */
+async function winMatch3(ms = 12000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) {
+    const mode = await ev(() => { const m = document.querySelector('.scene-match3')?.__m3; if (!m) return null; if (m.mode === 'play') m.finishNow(true); return m.mode; });
+    if (mode === 'end') return true;
+    await sleep(250);
+  }
+  return false;
+}
 const mainId = () => run(`return Q.mainQuest()?.id || null`);
 
 try {
@@ -228,6 +243,60 @@ try {
   await sleep(600);
   await shot('splash');
   await tapXY(VIEW.width / 2, VIEW.height * 0.7);
+
+  // ===================================================================
+  section('Onboarding: personaje, nombre y estilo de ciudad');
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'onboarding' && !!document.querySelector('.scene-onboarding .ob-type')`, 9000), 'partida nueva entra al onboarding (no directo a la ciudad)');
+  ok(await run(`return store.state.onboarded === false`), 'todavía no figura como onboarded');
+  await sleep(900);
+  await shot('onboarding-personaje');
+  // personaje no-princesa, al fondo de la lista (obliga a scrollear): Osito
+  const OB_TYPE = 'osito', OB_NAME = 'Tofi', OB_CITY = 'Villa Prueba', OB_THEME = 'bosque';
+  ok(await tap('.scene-onboarding .ob-type[data-type="' + OB_TYPE + '"]'), `toqué el personaje ${OB_TYPE}`);
+  await sleep(600);
+  ok(await ev((t) => !!document.querySelector(`.scene-onboarding .ob-type.on[data-type="${t}"]`), OB_TYPE), 'la tarjeta del personaje queda marcada');
+  ok(await ev(() => /pelaje/i.test(document.querySelector('.scene-onboarding .ob-body')?.textContent || '')), 'con animalito ofrece "Color de pelaje"');
+  // color de ropa: el primer swatch que no está elegido
+  const dressId = await ev(() => document.querySelector('.scene-onboarding .ob-sw[data-key="dressColor"] button:not(.on)')?.dataset.id || null);
+  ok(!!dressId && await tap(`.scene-onboarding .ob-sw[data-key="dressColor"] button[data-id="${dressId}"]`), `toqué el color de ropa ${dressId}`);
+  await sleep(500);
+  await shot('onboarding-osito');
+  await tap('.scene-onboarding .ob-next');
+  ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso 2: nombre del personaje y de la ciudad');
+  await sleep(500);
+  await tap('.scene-onboarding [data-f=name]');
+  await sleep(250);
+  ok(await ev(() => document.activeElement?.dataset?.f === 'name'), 'el toque en el campo de nombre le da foco');
+  await page.keyboard.type(OB_NAME, { delay: 40 });
+  await sleep(300);
+  ok(await ev((n) => (document.querySelector('.scene-onboarding .ob-title b')?.textContent || '').includes(n), OB_NAME), 'el título saluda con el nombre escrito');
+  await tap('.scene-onboarding [data-f=city]');
+  await sleep(250);
+  await page.keyboard.type(OB_CITY, { delay: 30 });
+  await sleep(300);
+  await shot('onboarding-nombre');
+  await tap('.scene-onboarding .ob-next', 'jugar');
+  ok(await waitFor(`!!document.querySelector('.modal.tp-modal .tp-card')`, 9000), 'al terminar se abre "Estilo de tu ciudad"');
+  ok(await run(`return ctx.router.current === 'city' && store.state.onboarded === true`), 'ya en la ciudad y marcado como onboarded');
+  ok(!(await ev(() => !!document.querySelector('.modal.pnl-login'))), 'el premio diario espera a que se cierre el selector de estilo');
+  await sleep(900);
+  await shot('estilo-ciudad');
+  ok(await run(`return (store.state.city.theme || 'pastel') !== '${OB_THEME}'`), `el tema inicial no es ${OB_THEME}`);
+  await tap(`.modal.tp-modal .tp-card[data-theme="${OB_THEME}"]`);
+  await sleep(600);
+  ok(await ev((t) => !!document.querySelector(`.modal.tp-modal .tp-card.on[data-theme="${t}"]`), OB_THEME), 'la tarjeta del tema queda elegida');
+  ok(await run(`return store.state.city.theme === '${OB_THEME}'`), `tema ${OB_THEME} aplicado en vivo`);
+  await shot('estilo-elegido');
+  await tap('.modal.tp-modal .modal-foot .btn', 'Listo');
+  ok(await waitFor(`!document.querySelector('.modal.tp-modal')`, 4000), 'selector de estilo cerrado con ¡Listo!');
+  // lo guardado (localStorage, con el autoguardado del juego) refleja todas las elecciones
+  const savedOk = await waitFor(`(() => { try { const s = JSON.parse(localStorage.getItem(window.__pixelia.store.SAVE_KEY || 'pixelia.save.v1')); return s?.onboarded === true && s.avatar?.type === '${OB_TYPE}' && s.city?.theme === '${OB_THEME}'; } catch { return false; } })()`, 9000);
+  const saved = await ev(() => { try { const s = JSON.parse(localStorage.getItem(window.__pixelia.store.SAVE_KEY || 'pixelia.save.v1')); return { onboarded: s.onboarded, type: s.avatar?.type, dress: s.avatar?.dressColor, name: s.player?.name, city: s.player?.cityName, theme: s.city?.theme }; } catch (e) { return String(e); } });
+  ok(savedOk, 'el guardado tiene onboarded, personaje y tema', saved);
+  ok(saved?.type === OB_TYPE && saved?.dress === dressId, `guardado: personaje ${OB_TYPE} con ropa ${dressId}`, saved);
+  ok(saved?.name === OB_NAME && saved?.city === OB_CITY, `guardado: nombre «${OB_NAME}» y ciudad «${OB_CITY}»`, saved);
+  ok(saved?.theme === OB_THEME, `guardado: tema ${OB_THEME}`, saved);
+
   ok(await waitFor(`!!document.querySelector('.modal.pnl-login')`, 9000), 'aparece el premio diario al llegar a la ciudad');
   ok(await run(`return !Q.mainQuest() ? false : Q.mainQuest().id === 'm1' && store.state.player.level === 1`), 'nivel 1 y misión m1');
   await sleep(700);
@@ -288,7 +357,7 @@ try {
   await tap('.m3-play');
   ok(await waitFor(`window.__pixelia.ctx.router.current === 'match3' && document.querySelector('.scene-match3')?.__m3?.mode === 'play'`, 6000), 'partida empezada');
   await sleep(1500);
-  await ev(() => document.querySelector('.scene-match3').__m3.finishNow(true));
+  await winMatch3();
   ok(await waitFor(`!!document.querySelector('.modal.reward-modal')`, 15000), 'modal de premio al ganar');
   await sleep(1000);
   await shot('premio-minijuego');
@@ -324,10 +393,10 @@ try {
   await sleep(1500);
   await shot('vestidor');
   // cambiar algo: el primer swatch o ítem que no esté seleccionado
-  const look0 = await run(`return JSON.stringify(store.state.princess)`);
+  const look0 = await run(`return JSON.stringify(store.state.avatar)`);
   await tap('.scene-wardrobe .wd-list [data-id]', 'Tuyo');
   await sleep(600);
-  const changed = (await run(`return JSON.stringify(store.state.princess)`)) !== look0;
+  const changed = (await run(`return JSON.stringify(store.state.avatar)`)) !== look0;
   ok(changed, 'cambió el look en el vestidor');
   await tap('.scene-wardrobe .wd-back');
   await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 6000);
@@ -387,6 +456,7 @@ try {
 
   // ===================================================================
   section('Minijuego con potenciador (+5 movidas)');
+  await drainOverlays();
   await run(`ctx.router.openGame('match3'); return true;`);
   ok(await waitFor(`!!document.querySelector('.scene-match3 .pxb-slot')`, 9000), 'tarjeta con potenciadores');
   await sleep(500);
@@ -400,8 +470,9 @@ try {
   await sleep(1800);
   ok(await ev(() => document.querySelector('.scene-match3').__m3.boosts.includes('m3_moves')), 'el potenciador se aplicó y se consumió');
   await shot('match3-jugando');
-  await ev(() => document.querySelector('.scene-match3').__m3.finishNow(true));
-  await waitFor(`!!document.querySelector('.modal.reward-modal')`, 15000);
+  await winMatch3();
+  ok(await waitFor(`!!document.querySelector('.modal.reward-modal')`, 15000), 'modal de premio del segundo minijuego',
+    await ev(() => ({ scene: window.__pixelia.ctx.router.current, mode: document.querySelector('.scene-match3')?.__m3?.mode, modals: [...document.querySelectorAll('.modal')].map(m => m.className) })));
   await sleep(900);
   await shot('premio-minijuego-2');
   await tap('.modal.reward-modal .modal-foot .btn', 'Ciudad|Volver');
@@ -444,10 +515,24 @@ try {
   await sleep(400);
   await shot('ciudad-final');
   await checkBadges('final');
+  console.log('    social:', JSON.stringify(await run(`return { badge: ctx.social?.socialBadge?.(), tabs: ctx.social?.tabCounts?.() }`)));
   const fin = await run(`return { level: store.state.player.level, main: Q.mainQuest()?.id, coins: store.state.coins, gems: store.state.gems, chests: C.chestCount(), stickers: Object.keys(store.state.album?.have || {}).length, season: SE.seasonInfo().level }`);
   console.log('    final:', JSON.stringify(fin));
   ok(fin.main === 'm9' || +String(fin.main).slice(1) > 8, 'misiones m1–m8 completas');
-} catch (e) {
+
+  // ===================================================================
+  section('Recarga: la partida sigue con lo elegido en el onboarding');
+  await run(`store.save(); return true;`);
+  await page.goto(BASE + '?nosw', { waitUntil: 'load' });
+  ok(await waitFor(`document.getElementById('splash')?.classList.contains('ready')`, 6000), 'splash listo');
+  await sleep(400);
+  await tapXY(VIEW.width / 2, VIEW.height * 0.7);
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 9000), 'entra directo a la ciudad (sin repetir el onboarding)');
+  const again = await run(`return { type: store.state.avatar.type, name: store.state.player.name, city: store.state.player.cityName, theme: store.state.city.theme, onboarded: store.state.onboarded }`);
+  ok(again.onboarded && again.type === 'osito' && again.name === 'Tofi' && again.city === 'Villa Prueba' && again.theme === 'bosque', 'tras recargar: Osito «Tofi», «Villa Prueba», tema bosque', again);
+  await sleep(800);
+  await drainOverlays();
+  await shot('recarga-ciudad');} catch (e) {
   failN++;
   console.log('EXCEPCIÓN', e.stack || e);
   await shot('excepcion').catch(() => {});

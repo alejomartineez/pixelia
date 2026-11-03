@@ -88,7 +88,7 @@ export async function renderRanking(api, tok) {
       }));
     });
     nodes.push(list);
-    if (!net.user) nodes.push(smallConnect(api, net.mode === 'off' ? 'Cuando se active el modo online vas a competir (amistosamente) con tus amigas. ¡Igual el premio de la semana es tuyo!' : 'Entrá a tu cuenta para ver el ranking con tus amigas.'));
+    if (!net.user) nodes.push(smallConnect(api, net.mode === 'off' ? 'Cuando se active el modo online vas a competir (amistosamente) con tus amigos. ¡Igual el premio de la semana es tuyo!' : 'Entrá a tu cuenta para ver el ranking con tus amigos.'));
 
     // premio para todas
     const prize = h('div.soc-card.gold.soc-prize');
@@ -96,7 +96,7 @@ export async function renderRanking(api, tok) {
     const anyBest = Object.values(info.best).some(Boolean);
     const chips = payloadChips({ ...info.prize, gems: anyBest ? RANK_BEST_GEMS : 0 }, 18);
     if (ready.length) {
-      prize.innerHTML = `${chestIcon('madera', 48)}<div><b style="font-size:18px">¡Premio de la semana!</b><div class="soc-muted">Para todas las que jugaron. ${anyBest ? '¡Y gemas extra por tu mejor marca!' : ''}</div><div class="soc-chips" style="margin-top:4px">${chips}</div></div>`;
+      prize.innerHTML = `${chestIcon('madera', 48)}<div><b style="font-size:18px">¡Premio de la semana!</b><div class="soc-muted">Para todos los que jugaron. ${anyBest ? '¡Y gemas extra por tu mejor marca!' : ''}</div><div class="soc-chips" style="margin-top:4px">${chips}</div></div>`;
       const b = h('button.btn.gold', { html: `${icon('gift', 20)} Cobrar premio` });
       b.onclick = () => busy(b, async () => {
         const got = claimRankPrize(ready[0]);
@@ -109,12 +109,12 @@ export async function renderRanking(api, tok) {
       prize.append(b);
     } else {
       const played = info.mine.played > 0;
-      prize.innerHTML = `${chestIcon('madera', 48)}<div><b style="font-size:17px">Premio para todas · el domingo</b>
+      prize.innerHTML = `${chestIcon('madera', 48)}<div><b style="font-size:17px">Premio para todos · el domingo</b>
         <div class="soc-muted">${played ? `${icon('check', 14)} ¡Ya estás participando! ${info.daysToSunday ? `Faltan ${info.daysToSunday} día${info.daysToSunday > 1 ? 's' : ''}.` : ''}` : 'Jugá al menos un minijuego esta semana para participar.'}
         ${anyBest ? ' Con mejor marca personal sumás gemas.' : ''}</div><div class="soc-chips" style="margin-top:4px">${chips}</div></div>`;
     }
     nodes.push(prize);
-    nodes.push(h('p.soc-muted', { style: { textAlign: 'center', fontSize: '13px' }, html: 'Acá no pierde nadie: el ranking es para divertirse y el premio es para todas las que jugaron 💖' }));
+    nodes.push(h('p.soc-muted', { style: { textAlign: 'center', fontSize: '13px' }, html: 'Acá no pierde nadie: el ranking es para divertirse y el premio es para todos los que jugaron 💖' }));
     pane.replaceChildren(...nodes);
   }
 }
@@ -136,7 +136,7 @@ export async function renderTeam(api, tok) {
     const hero = h('div.soc-card.soc-coop-hero', {
       html: `<div class="soc-site">${icon(SITE[reached], 52)}</div>
         <div><h3>Obra en Equipo</h3>
-        <div class="soc-muted">${info.online ? (info.members.length > 1 ? `Entre ${info.members.length} amigas: cada una suma jugando y los premios son para todas.` : 'Sumá amigas y la obra se arma entre todas. ¡Nadie pierde!') : 'Tu meta personal de la semana. Con amigas online, la obra es compartida.'}</div>
+        <div class="soc-muted">${info.online ? (info.members.length > 1 ? `Entre ${info.members.length} amigos: cada quien suma jugando y los premios son para todos.` : 'Sumá amigos y la obra se arma entre todos. ¡Nadie pierde!') : 'Tu meta personal de la semana. Con amigos online, la obra es compartida.'}</div>
         <div class="soc-row" style="margin-top:4px"><b style="font-size:20px">${fmtNum(info.total)}</b><span class="soc-muted">/ ${fmtNum(info.goal)} puntos</span>
         <span class="soc-muted" style="margin-left:auto">${icon('clock', 14)} ${fmtLeft(info.endsInMs)}</span></div></div>`,
     });
@@ -195,13 +195,13 @@ export async function renderTeam(api, tok) {
     for (const m of info.members) {
       ms.append(h('div.soc-card.soc-mem' + (m.me ? '.me' : ''), {
         html: `${avatarHtml(m.me ? store.state.princess : lookOf(m.id), m.name, 36, m.me ? 'me' : '')}
-          <div class="soc-grow"><b class="soc-ellip" style="display:block">${esc(m.me ? `${myName()} (vos)` : m.name || 'Amiga')}</b><div class="soc-mbar"><i style="width:${(m.points / max * 100).toFixed(1)}%"></i></div></div>
+          <div class="soc-grow"><b class="soc-ellip" style="display:block">${esc(m.me ? `${myName()} (vos)` : m.name || 'Alguien')}</b><div class="soc-mbar"><i style="width:${(m.points / max * 100).toFixed(1)}%"></i></div></div>
           <b>${fmtNum(m.points)}</b>`,
       }));
     }
     if (info.pending > 0) ms.append(h('p.soc-muted', { style: { fontSize: '13px', textAlign: 'center' }, html: `${icon('rotate', 14)} ${fmtNum(info.pending)} puntos tuyos se suben en un ratito` }));
     nodes.push(ms);
-    if (!net.user) nodes.push(smallConnect(api, net.mode === 'off' ? 'Cuando se active el modo online, la obra se arma entre todas tus amigas.' : 'Entrá a tu cuenta para sumar puntos con tus amigas.'));
+    if (!net.user) nodes.push(smallConnect(api, net.mode === 'off' ? 'Cuando se active el modo online, la obra se arma entre todos tus amigos.' : 'Entrá a tu cuenta para sumar puntos con tus amigos.'));
 
     const how = h('div.soc-sec', { html: `<h4>${icon('sparkle', 20)} ¿Cómo sumo puntos?</h4>` });
     how.append(h('div.soc-how', {

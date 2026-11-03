@@ -13,7 +13,7 @@
 //
 // Estado local en state.social = { giftDay:{friendId:'YYYY-MM-DD'}, coop:{week, local, pending, claimed[], reached, carry[]},
 //                                  rank:{hist:{week:{match3,blocks,parking,driving,stars,played}}, claimed[]} }
-import { net, friendLevel, isoWeek } from './net.js';
+import { net, friendLevel, isoWeek, isDefaultName } from './net.js';
 import * as sync from './sync.js';
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
@@ -362,7 +362,7 @@ export function stickerPairProblem(offerId, askId, friend) {
   if (!a || !b) return 'Elegí una figurita de cada lado';
   if (album.stickerCount(offerId) < 2) return 'Solo podés ofrecer repetidas';
   if (Math.abs(a.stars - b.stars) > 1) return 'Tienen que tener estrellas parecidas (como mucho 1 de diferencia)';
-  if (Math.max(a.stars, b.stars) === 5 && !stickerRules(friend).fiveOk) return 'Las de 5★ se cambian con amigas de 14 días o más (o en la Semana Dorada)';
+  if (Math.max(a.stars, b.stars) === 5 && !stickerRules(friend).fiveOk) return 'Las de 5★ se cambian con amistades de 14 días o más (o en la Semana Dorada)';
   return null;
 }
 /**
@@ -473,10 +473,10 @@ export function handleConflict(ctx, conflict) {
 /** Partida con el nombre por defecto: adopta el nombre de la cuenta (el que eligió al registrarse). */
 async function adoptAccountName() {
   const s = store.state;
-  if (!net.user || !s || s.player.name !== 'Princesa') return;
+  if (!net.user || !s || !isDefaultName(s.player.name)) return;
   const p = await net.getMyProfile();
   const n = typeof p?.name === 'string' ? [...p.name.trim()].slice(0, 16).join('') : '';
-  if (n && n !== 'Princesa' && s.player.name === 'Princesa') {
+  if (n && !isDefaultName(n) && isDefaultName(s.player.name)) {
     s.player.name = n;
     store.markDirty(); store.save();
     ctxRef?.hud?.refresh?.();

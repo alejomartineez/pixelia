@@ -1,8 +1,8 @@
 // Utilidades compartidas de la UI de cofres: estilos inyectados (.chx-*), miniaturas de cofres
-// (un solo WebGLRenderer offscreen, cacheadas como dataURL) y textos/HTML de premios.
+// (un solo WebGLRenderer offscreen, registradas como íconos nítidos) y textos/HTML de premios.
 import * as THREE from 'three';
 import { addLights, disposeObject } from '../core/voxel.js';
-import { icon } from '../core/icons.js';
+import { icon, iconUrl, registerIcon, watchIcon } from '../core/icons.js';
 import { fmtNum } from '../core/economy.js';
 import { GAME_BY_ID } from '../core/data.js';
 import { CHESTS, RARITIES, ITEMS } from './chests.js';
@@ -81,21 +81,27 @@ export function chestThumbs() {
 }
 /** Img de un cofre: si la miniatura no está lista, se completa sola cuando termine. */
 export function thumbImg(type, cls = 'chx-thumb') {
-  const url = thumbUrl(type);
-  return `<img class="${cls}" data-thumb="${type}" src="${url || TRANSPARENT}" alt="" draggable="false">`;
+  // lista: <img data-pi> que icons.js ajusta a sus pixeles físicos exactos (sin deformar los pixeles)
+  if (thumbUrl(type)) return `<img class="${cls}" data-pi="${THUMB_ICON + type}" src="${iconUrl(THUMB_ICON + type, 96)}" alt="" draggable="false">`;
+  return `<img class="${cls}" data-thumb="${type}" src="${TRANSPARENT}" alt="" draggable="false">`;
 }
+const THUMB_ICON = 'chest3d-';
 const TRANSPARENT = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 export function fillThumbs(root) {
   chestThumbs().then(urls => {
     for (const img of root.querySelectorAll('img[data-thumb]')) {
-      const u = urls[img.dataset.thumb];
-      if (u && img.src !== u) img.src = u;
+      const type = img.dataset.thumb;
+      if (!urls[type]) continue;
+      img.removeAttribute('data-thumb');
+      img.dataset.pi = THUMB_ICON + type;
+      img.src = iconUrl(THUMB_ICON + type, img.clientWidth || 96);
+      watchIcon(img);
     }
   });
 }
 
 function renderThumbs() {
-  const N = 60; // px de render (se muestran agrandados con image-rendering: pixelated)
+  const N = 72; // px de render (icons.js los agranda con bloques enteros al tamaño de pantalla)
   let renderer = null;
   try {
     const cv = document.createElement('canvas');
@@ -119,7 +125,8 @@ function renderThumbs() {
       cam.lookAt(0, cy, 0);
       scene.add(g);
       renderer.render(scene, cam);
-      thumbUrls[type] = outlined(cv);
+      registerIcon(THUMB_ICON + type, outlined(cv));
+      thumbUrls[type] = THUMB_ICON + type;
       scene.remove(g);
       disposeObject(g);
     }
@@ -131,7 +138,7 @@ function renderThumbs() {
   return thumbUrls;
 }
 
-/** Copia el render a un canvas 2D y le pone contorno tinta de 1px (look pixel art). */
+/** Copia el render a un canvas 2D y le pone contorno tinta de 1px (look pixel art). Devuelve el canvas. */
 function outlined(src) {
   const w = src.width, hgt = src.height;
   const cv = document.createElement('canvas');
@@ -154,5 +161,5 @@ function outlined(src) {
     }
   }
   g.putImageData(img, 0, 0);
-  return cv.toDataURL();
+  return cv;
 }

@@ -57,6 +57,8 @@ export const PARKING_CSS = `
 .scene-parking .pk-rev { width: 78px; height: 86px; background: var(--sky); box-shadow: inset 0 -7px 0 var(--sky-d), 0 5px 0 var(--ink); }
 .scene-parking .pk-rev.on { box-shadow: inset 0 -3px 0 var(--sky-d), 0 1px 0 var(--ink); }
 .scene-parking .pk-gas svg { filter: drop-shadow(0 2px 0 rgba(59,35,64,.35)); }
+/* blanco con contorno tinta: se lee bien sobre el rosa */
+.scene-parking .pk-gas span { text-shadow: 1.5px 0 var(--ink), -1.5px 0 var(--ink), 0 1.5px var(--ink), 0 -1.5px var(--ink), 1.5px 1.5px var(--ink), -1.5px 1.5px var(--ink), 1.5px -1.5px var(--ink), -1.5px -1.5px var(--ink); }
 @media (max-width: 360px) {
   .scene-parking .pk-left, .scene-parking .pk-right { width: 68px; height: 68px; }
   .scene-parking .pk-gas { width: 78px; }

@@ -29,11 +29,11 @@ async function ensureFriends() {
 function pickFriend(ctx, { title = '¿Con quién?', hint = () => '' } = {}) {
   return new Promise(async (resolve) => {
     let chosen = null;
-    const box = h('div.soc-fpick', { html: loadingHtml('Buscando a tus amigas…') });
+    const box = h('div.soc-fpick', { html: loadingHtml('Buscando a tus amigos…') });
     const m = edModal(title, 'people', box, () => resolve(chosen));
     const friends = await ensureFriends();
     if (!friends.length) {
-      box.innerHTML = emptyHtml('🌷', 'Todavía no tenés amigas', 'Agregalas con su código en la pestaña Amigas y después intercambian.');
+      box.innerHTML = emptyHtml('🌷', 'Todavía no tenés amigos', 'Sumalos con su código en la pestaña Amigos y después intercambian.');
       return;
     }
     box.replaceChildren(...friends.map(f => h('button', {
@@ -138,7 +138,7 @@ export async function openTradeEditor(ctx, opts = {}) {
     const mine = dups.map(d => ({ id: d.id, cnt: d.count, off: d.stars === 5 && !rules.fiveOk }));
     const gg = stickerGrid(mine, offerSt, id => { offerSt = id; if (askSt && stickerPairProblem(offerSt, askSt, friend)?.includes('parecidas')) askSt = null; draw(); },
       it => (fal && !fal[it.id] ? '¡Le falta!' : ''));
-    gBox.append(gg || h('div', { html: emptyHtml('🃏', 'No tenés repetidas', 'Abrí cofres y sobres: las repetidas se pueden cambiar con amigas.') }));
+    gBox.append(gg || h('div', { html: emptyHtml('🃏', 'No tenés repetidas', 'Abrí cofres y sobres: las repetidas se pueden cambiar con amigos.') }));
     // lo que recibo
     const rBox = h('div.soc-pane-box.get', { html: `<h5>${icon('🃏', 20)} Vos recibís <small>${fal ? `repetidas de ${esc(friend.name)}` : 'una que te falte'}</small></h5>` });
     let cand = fal
@@ -233,7 +233,7 @@ export async function openRequestCreator(ctx, opts = {}) {
   m.el.append(foot);
   const kindsEl = h('div.soc-kinds');
   const area = h('div.soc-pane-box', { style: { minHeight: '80px' } });
-  body.append(h('p.soc-muted', { html: 'Tus amigas ven tu pedido durante 24 horas. La primera que ayuda te lo manda a tu buzón.' }), kindsEl, area, err);
+  body.append(h('p.soc-muted', { html: 'Tus amigos ven tu pedido durante 24 horas. Quien ayude primero te lo manda a tu buzón.' }), kindsEl, area, err);
   if (opts.sticker) {
     body.append(h('button.btn.ghost.small', {
       html: `${icon('🔄', 18)} O proponé un intercambio por esta figurita`,
@@ -262,10 +262,10 @@ export async function openRequestCreator(ctx, opts = {}) {
     area.innerHTML = '';
     if (!kind) { area.innerHTML = `<div class="soc-muted" style="text-align:center;padding:16px">Elegí qué necesitás 👆</div>`; return; }
     if (kind === 'sticker') {
-      area.append(h('h5', { html: `${icon('🃏', 18)} ¿Qué figurita te falta? <small>las que tienen tus amigas, primero</small>` }));
+      area.append(h('h5', { html: `${icon('🃏', 18)} ¿Qué figurita te falta? <small>las que tienen tus amigos, primero</small>` }));
       const miss = STICKERS.filter(s => stickerCount(s.id) === 0).map(s => ({ id: s.id, who: friendsWith(s.id), s }))
         .sort((a, b) => (b.who.length > 0) - (a.who.length > 0) || a.s.n - b.s.n);
-      if (!miss.length) { area.append(h('div', { html: emptyHtml('👑', '¡No te falta ninguna!', 'Completaste el álbum. Sos una genia.') })); return; }
+      if (!miss.length) { area.append(h('div', { html: emptyHtml('👑', '¡No te falta ninguna!', 'Completaste el álbum. Sos una estrella.') })); return; }
       const g = h('div.soc-pickgrid');
       for (const it of miss) {
         const b = h('button.soc-pick' + (sticker === it.id ? '.on' : ''), { 'aria-label': `Figurita ${it.s.n}` });
@@ -277,7 +277,7 @@ export async function openRequestCreator(ctx, opts = {}) {
       area.append(g);
       if (sticker) {
         const d = stickerDef(sticker);
-        area.append(h('small.soc-muted', { html: `Elegiste la <b>#${d.n}</b> de ${esc(d.setName)} (${'★'.repeat(d.stars)}). Te la puede dar una amiga que la tenga repetida.` }));
+        area.append(h('small.soc-muted', { html: `Elegiste la <b>#${d.n}</b> de ${esc(d.setName)} (${'★'.repeat(d.stars)}). Te la puede dar alguien que la tenga repetida.` }));
       }
     } else if (kind === 'item') {
       area.append(h('h5', { html: `${icon('🔨', 18)} ¿Qué objeto?` }));
@@ -319,7 +319,7 @@ export async function openRequestCreator(ctx, opts = {}) {
     const r = await createHelpRequest(kind, p);
     if (r?.error) { audio.sfx('error'); err.textContent = r.error; return null; }
     audio.sfx('swoosh'); confetti(30);
-    toast('¡Pedido publicado! Tus amigas lo van a ver', { icon: '🤝', type: 'good' });
+    toast('¡Pedido publicado! Tus amigos lo van a ver', { icon: '🤝', type: 'good' });
     m.close();
     opts.onDone?.();
     return r;

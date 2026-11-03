@@ -124,7 +124,7 @@ let fv = await rows('bea', 'friends_view');
 ok(fv.length === 1 && fv[0].incoming === true && fv[0].status === 'pending' && fv[0].name === 'Ana', 'bea ve la solicitud entrante');
 ok((await rows('ana', 'friends_view'))[0].incoming === false, 'ana la ve como saliente');
 ok((await rpc('ana', 'respond_friend', [U.bea, true])).error, 'quien pidió no puede aceptarse a sí misma');
-ok((await rpc('bea', 'send_gift', [U.ana, 'gift', { coins: 50 }])).error?.includes('amigas'), 'antes de aceptar no se pueden mandar regalos');
+ok((await rpc('bea', 'send_gift', [U.ana, 'gift', { coins: 50 }])).error?.includes('amigos'), 'antes de aceptar no se pueden mandar regalos');
 ok((await rpc('bea', 'respond_friend', [U.ana, true])).status === 'accepted', 'bea acepta');
 ok((await rpc('cami', 'request_friend', [pa.code])).status === 'pending', 'cami pide amistad a ana');
 ok((await rpc('ana', 'request_friend', [pc.code])).status === 'accepted', 'si las dos se piden, se acepta sola');
@@ -221,7 +221,7 @@ section('Visitas, likes y notas');
 let v = await rpc('cami', 'visit', [U.ana]);
 ok(v.first === true, 'primera visita del día → first');
 ok((await rpc('cami', 'visit', [U.ana])).first === false, 'segunda visita → no first');
-ok((await rpc('bea', 'visit', [U.cami])).error?.includes('amigas'), 'no se puede visitar a una no amiga');
+ok((await rpc('bea', 'visit', [U.cami])).error?.includes('amigos'), 'no se puede visitar a una no amiga');
 ok((await rpc('cami', 'give_like', [U.ana])).ok, 'like');
 ok((await rpc('cami', 'give_like', [U.ana])).error?.includes('Ya le diste'), 'segundo like del día falla');
 ok((await rpc('cami', 'leave_note', [U.ana, 'x'.repeat(81)])).error?.includes('80'), 'nota de más de 80 letras rechazada');
@@ -258,7 +258,7 @@ ok(frq.length === 3 && frq[0].from_name === 'Bea', 'ana ve los 3 pedidos de bea'
 ok((await rows('cami', 'list_friend_requests')).length === 0, 'cami (no amiga de bea) no los ve');
 ok((await as('cami', 'select * from requests')).rows.length === 0, 'RLS requests: cami no lee pedidos de no amigas');
 ok((await rpc('bea', 'fill_request', [rq.id])).error?.includes('propio'), 'no podés llenar tu propio pedido');
-ok((await rpc('cami', 'fill_request', [rq.id])).error?.includes('amigas'), 'una no amiga no puede llenarlo');
+ok((await rpc('cami', 'fill_request', [rq.id])).error?.includes('amigos'), 'una no amiga no puede llenarlo');
 const fl = await rpc('ana', 'fill_request', [rq.id]);
 ok(fl.ok && fl.payload.items.hammer === 1, 'ana completa el pedido');
 ok((await rpc('ana', 'fill_request', [rq.id])).error?.includes('ya completó'), 'no se puede completar dos veces');
@@ -299,7 +299,7 @@ const tpend = await rpc('ana', 'propose_trade', [U.cami, { gems: 3 }, { coins: 1
 ok((await rpc('cami', 'remove_friend', [U.ana])).ok, 'cami borra a ana');
 ok((await su('select status from trades where id = $1', [tpend.id])).rows[0].status === 'cancelled', 'intercambios pendientes se cancelan');
 ok((await rows('ana', 'my_inbox')).some(g => g.ref === tpend.id && g.payload.gems === 3), '…con devolución a quien ofreció');
-ok((await rpc('ana', 'send_gift', [U.cami, 'gift', {}])).error?.includes('amigas'), 'ya no se pueden mandar regalos');
+ok((await rpc('ana', 'send_gift', [U.cami, 'gift', {}])).error?.includes('amigos'), 'ya no se pueden mandar regalos');
 ok((await rows('ana', 'get_profiles', [[U.cami]]))[0].city === null, 'ya no se ve su ciudad');
 
 // ---------------------------------------------------------------------

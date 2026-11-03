@@ -10,7 +10,7 @@
 //   'online:conflict' { local:{level,xp,coins,gems,buildings,at}, cloud:{...} }
 //   'online:applied'  { payload, summary, source }   (después de acreditar un regalo)
 //   'online:speedup'  { uid, minutes }               (una ayuda adelantó una obra)
-import { net, isoWeek } from './net.js';
+import { net, isoWeek, isDefaultName } from './net.js';
 import { store } from '../core/state.js';
 import { bus } from '../core/bus.js';
 import { population, happiness } from '../core/economy.js';
@@ -26,7 +26,6 @@ const META_KEY = (() => {
   return 'pixelia.sync';
 })();
 const PUSH_EVERY_MS = 20e3;
-const DEFAULT_NAME = 'Princesa';
 const PROFILE_MIN_MS = 60e3;
 const INBOX_EVERY_MS = 60e3;
 
@@ -217,6 +216,11 @@ export async function pushNow(opts = {}) {
     // otro dispositivo guardó en el medio: preguntar
     const cloud = await net.pullSave();
     if (cloud && !cloud.error) {
+      // misma partida (o casi: otra pestaña, una recarga a mitad de camino) → no molestar, se pisa con la local
+      if (!opts.retried && (stateHash(cloud.data) === stateHash(s) || similar(summary(s), summary(cloud.data)))) {
+        writeMeta({ userId: uid, rev: cloud.rev, hash: readMeta().hash });
+        return pushNow({ ...opts, force: true, retried: true });
+      }
       pendingConflict = { local: summary(s), cloud: summary(cloud.data, cloud.updated_at), cloudData: cloud.data, rev: cloud.rev };
       bus.emit('online:conflict', conflictInfo());
     }
@@ -239,7 +243,7 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
   try { pop = population(s, now); happy = happiness(s, now).pct; } catch {}
   return {
     // con el nombre por defecto no se pisa el nombre de la cuenta (el que eligió al registrarse)
-    name: s.player?.name && s.player.name !== DEFAULT_NAME ? s.player.name : undefined,
+    name: s.player?.name && !isDefaultName(s.player.name) ? s.player.name : undefined,
     cityName: s.player?.cityName, level: s.player?.level,
     look: s.princess, car: s.car,
     city: {
@@ -252,6 +256,7 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
       }),
       expansions: s.city?.expansions || 0,
       flagColor: s.city?.flagColor,
+      theme: s.city?.theme || 'pastel',
     },
     stats: {
       pop, happy,

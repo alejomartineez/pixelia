@@ -53,9 +53,11 @@ export function fmtLeft(ms) {
 }
 
 // ---------- Avatar pixel ----------
-const FACE = [
-  '.....y..y.....',
-  '....yyyyyy....',
+// Carita 14×14 según el tipo de personaje: persona de pelo largo o corto (según el peinado) o animalito
+// (orejas propias y hocico, pelaje = hairColor). Arriba se dibuja lo que lleve en la cabeza (corona, sombrero, gorra…).
+const FACE_LONG = [
+  '..............',
+  '..............',
   '...hhhhhhhh...',
   '..hhhhhhhhhh..',
   '.hhhsssssshhh.',
@@ -69,6 +71,122 @@ const FACE = [
   '...dddddddd...',
   '..dddddddddd..',
 ];
+const FACE_SHORT = [
+  '..............',
+  '..............',
+  '....hhhhhh....',
+  '...hhhhhhhh...',
+  '..hhhhhhhhhh..',
+  '..hssssssssh..',
+  '..ssksssskss..',
+  '..spssssssps..',
+  '..ssssmmssss..',
+  '...ssssssss...',
+  '.....ssss.....',
+  '...dddddddd...',
+  '..dddddddddd..',
+  '..dddddddddd..',
+];
+const BEARD = [[8, '..shhhmmhhhs..'], [9, '...hhhhhhhh...'], [10, '....hhhhhh....']];
+// animalitos: f pelaje, e oreja por dentro, w hocico/pancita clarita, n nariz, k ojos, p cachetes
+const FACE_ANIMAL = {
+  gatito: [
+    '..............',
+    '..ff......ff..',
+    '..fef....fef..',
+    '..ffffffffff..',
+    '.ffffffffffff.',
+    '.ffffffffffff.',
+    '.fffkffffkfff.',
+    '.ffpffffffpff.',
+    '.fffffwwfffff.',
+    '.ffffwnnwffff.',
+    '..ffffwwffff..',
+    '....ffffff....',
+    '...dddddddd...',
+    '..dddddddddd..',
+  ],
+  zorrito: [
+    '.f..........f.',
+    '.ff........ff.',
+    '.fef......fef.',
+    '.ffffffffffff.',
+    '.ffffffffffff.',
+    '.ffffffffffff.',
+    '.fffkffffkfff.',
+    '.wffffffffffw.',
+    '.wwwffffffwww.',
+    '..wwwwnnwwww..',
+    '...wwwwwwww...',
+    '....wwwwww....',
+    '...dddddddd...',
+    '..dddddddddd..',
+  ],
+  conejito: [
+    '...ff....ff...',
+    '...fe....ef...',
+    '...fe....ef...',
+    '..ffffffffff..',
+    '.ffffffffffff.',
+    '.ffffffffffff.',
+    '.fffkffffkfff.',
+    '.ffpffffffpff.',
+    '.fffffwwfffff.',
+    '.fffffnnfffff.',
+    '..ffffwwffff..',
+    '....ffffff....',
+    '...dddddddd...',
+    '..dddddddddd..',
+  ],
+  osito: [
+    '..............',
+    '..fff....fff..',
+    '..fef....fef..',
+    '..ffffffffff..',
+    '.ffffffffffff.',
+    '.ffffffffffff.',
+    '.fffkffffkfff.',
+    '.ffffffffffff.',
+    '.ffffwwwwffff.',
+    '.fffwwnnwwfff.',
+    '..ffwwwwwwff..',
+    '....ffffff....',
+    '...dddddddd...',
+    '..dddddddddd..',
+  ],
+};
+const LONG_HAIR = new Set(['largo', 'coleta', 'trenzas', 'rizos', 'colitas', 'ondas']);
+// lo que va en la cabeza → forma (y color fijo, si no usa el de la ropa)
+const HEADWEAR = {
+  tiara: ['crown'], corona: ['crown'], estrella: ['crown'], corona_p: ['crown'], corona_rey: ['crown'], laurel: ['crown', '#9bd35a'],
+  corona_cristal: ['crown', '#9ff0ff'],
+  flores: ['flowers'], diadema: ['flowers', '#6cc35d'],
+  'moño': ['bow', '#ff7eb6'], lacito: ['bow', '#ff7eb6'],
+  sombrero_mago: ['wizard'], sombrero_luna: ['wizard', '#4f5bd6'], sombrero_estrellas: ['wizard', '#3b3f9e'],
+  galera: ['tophat', '#3b2340'], gorrito: ['party'],
+  gorra: ['cap'], gorro: ['beanie'], piluso: ['beanie', '#f2e2b8'], casco: ['beanie', '#b8bfd0'], capucha: ['beanie'],
+};
+// [fila, patrón] para personas (cabeza arriba en la fila 2) y para animalitos (entre las orejas)
+const HW_HUMAN = {
+  crown: [[0, '.....y..y.....'], [1, '....yyyyyy....']],
+  flowers: [[1, '...gpgygpgyg..'], [2, '...gggggggg...']],
+  bow: [[1, '.........b.b..'], [2, '.........bbb..'], [3, '..........b...']],
+  wizard: [[0, '......tt......'], [1, '.....tttt.....'], [2, '....tttttt....'], [3, '...tttyttttt..'], [4, '.tttttttttttt.']],
+  tophat: [[0, '....tttttt....'], [1, '....tttttt....'], [2, '....rrrrrr....'], [3, '..tttttttttt..']],
+  party: [[0, '......y.......'], [1, '......t.......'], [2, '.....tyt......'], [3, '....tytyt.....']],
+  cap: [[2, '....tttttt....'], [3, '...tttttttt...'], [4, '..tttttttttttt']],
+  beanie: [[1, '.....tttt.....'], [2, '...tttttttt...'], [3, '..tttttttttt..'], [4, '..rrrrrrrrrr..']],
+};
+const HW_ANIMAL = {
+  crown: [[1, '.....y..y.....'], [2, '.....yyyy.....']],
+  flowers: [[2, '....gpgygp....']],
+  bow: [[1, '.........bb.b.'], [2, '..........bbb.']],
+  wizard: [[0, '......tt......'], [1, '.....tttt.....'], [2, '....ttyttt....'], [3, '...tttttttt...']],
+  tophat: [[0, '.....tttt.....'], [1, '.....rrrr.....'], [2, '....tttttt....']],
+  party: [[0, '......y.......'], [1, '......t.......'], [2, '.....tyt......']],
+  cap: [[2, '....tttttt....'], [3, '...tttttttttt.']],
+  beanie: [[2, '....tttttt....'], [3, '...rrrrrrrr...']],
+};
 const avatarCache = new Map();
 const hexOf = (list, id, def) => list.find(c => c.id === id)?.hex || def;
 function shade(hex, t) {
@@ -76,28 +194,45 @@ function shade(hex, t) {
   const f = c => Math.max(0, Math.min(255, Math.round(c * (1 - t))));
   return '#' + ((f(n >> 16 & 255) << 16) | (f(n >> 8 & 255) << 8) | f(n & 255)).toString(16).padStart(6, '0');
 }
-/** Carita pixel a partir del look de la princesa (piel, pelo, vestido). Sin look: colores según el nombre. */
+const lighten = (hex, t) => {
+  const n = parseInt(hex.slice(1), 16);
+  const f = c => Math.round(c + (255 - c) * t);
+  return '#' + ((f(n >> 16 & 255) << 16) | (f(n >> 8 & 255) << 8) | f(n & 255)).toString(16).padStart(6, '0');
+};
+/** Carita pixel a partir del look del personaje (tipo, peinado, colores, cabeza). Sin look: colores según el nombre. */
 export function avatarUrl(look, seed = '') {
   let l = look && typeof look === 'object' && Object.keys(look).length ? look : null;
   if (!l) {
     let hsh = 0; for (const ch of String(seed)) hsh = (hsh * 31 + ch.charCodeAt(0)) | 0;
     hsh = Math.abs(hsh);
-    l = { skin: hsh % 4, hairColor: HAIR_COLORS[hsh % HAIR_COLORS.length].id, dressColor: OUTFIT_COLORS[(hsh >> 3) % 8].id };
+    l = { skin: hsh % 4, hairColor: HAIR_COLORS[hsh % HAIR_COLORS.length].id, dressColor: OUTFIT_COLORS[(hsh >> 3) % 8].id, hair: hsh & 1 ? 'largo' : 'cortito', crown: 'ninguna' };
   }
-  const key = `${l.skin}|${l.hairColor}|${l.dressColor}|${l.crown || ''}`;
+  const animal = FACE_ANIMAL[l.type];
+  const key = `${l.type || ''}|${l.hair || ''}|${l.skin}|${l.hairColor}|${l.dressColor}|${l.dress || ''}|${l.crown || ''}`;
   if (avatarCache.has(key)) return avatarCache.get(key);
   const skin = SKIN_TONES[l.skin | 0] || SKIN_TONES[0];
   const hair = hexOf(HAIR_COLORS, l.hairColor, '#7a4a2a');
   const dress = hexOf(OUTFIT_COLORS, l.dressColor, '#ff7eb6');
-  const pal = { y: '#ffd166', h: hair, s: skin, k: '#3b2340', p: '#ff9cc2', m: '#e0528f', d: dress };
-  if (l.crown === 'ninguna' || l.crown === 'ninguno') pal.y = null;
+  const [hwKind, hwCol] = HEADWEAR[l.crown] || [];
+  const hat = hwCol || shade(dress, 0.15);
+  const pal = {
+    h: hair, s: skin, k: '#3b2340', p: '#ff9cc2', m: '#e0528f', d: animal && l.dress === 'pelito' ? shade(hair, 0.12) : dress,
+    f: hair, e: '#ffb3c8', w: l.type === 'zorrito' ? '#fff4ea' : lighten(hair, 0.55), n: '#3b2340',
+    y: hwKind === 'crown' ? (hwCol || '#ffd166') : '#ffd166', g: hwCol || '#6cc35d', b: hwCol || '#ff7eb6',
+    t: hat, r: hwKind === 'tophat' ? '#ff7eb6' : lighten(hat, 0.45),
+  };
+  if (hwKind === 'flowers') pal.p = '#ff9cc2';
+  const rows = (animal || (LONG_HAIR.has(l.hair) || !l.hair ? FACE_LONG : FACE_SHORT)).slice();
+  const over = (list) => { for (const [y, pat] of list) rows[y] = [...pat].map((ch, x) => (ch === '.' ? rows[y][x] : ch)).join(''); };
+  if (!animal && l.hair === 'barba') over(BEARD);
+  if (hwKind) over((animal ? HW_ANIMAL : HW_HUMAN)[hwKind]);
   let r = '';
-  FACE.forEach((row, y) => [...row].forEach((ch, x) => {
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
     const c = pal[ch];
     if (c) r += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${c}"/>`;
   }));
-  // brillo del pelo
-  r += `<rect x="4" y="2" width="2" height="1" fill="${shade(hair, -0.35)}" opacity=".7"/>`;
+  // brillo del pelo/pelaje (si no lo tapa un sombrero)
+  if (!['wizard', 'tophat', 'cap', 'beanie'].includes(hwKind)) r += `<rect x="${animal ? 4 : 5}" y="${animal ? 4 : 3}" width="2" height="1" fill="${lighten(hair, 0.35)}" opacity=".7"/>`;
   const url = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" shape-rendering="crispEdges">${r}</svg>`);
   avatarCache.set(key, url);
   return url;

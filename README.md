@@ -1,8 +1,12 @@
-# Pixelia · Ciudad de Princesas 👑
+# Pixelia · Tu ciudad, tu estilo 👑
 
-Juego de construir tu ciudad de princesas en **3D pixel art**, con minijuegos:
+Juego de construir tu ciudad a tu estilo en **3D pixel art**, con minijuegos:
 **Joyas Reales** (combiná 3), **Bloques Mágicos** (encastrar bloques), **Estacionamiento Real** y **Paseo Real** (manejar).
 Funciona en iPhone (instalable como app, offline) y en PC (mouse + teclado).
+
+Al empezar elegís tu personaje (princesa, príncipe, chica, chico, hada, mago o un animalito), tu nombre, el de tu
+ciudad y su estilo (pastel, moderna, bosque, playa, invierno o noche). Todo se puede cambiar después desde el Vestidor
+y Ajustes.
 
 Es 100% estático: HTML + JavaScript, sin servidor ni base de datos. El progreso se guarda en el navegador
 (y se puede exportar/importar con un código desde Ajustes).
@@ -38,7 +42,7 @@ Workers & Pages → Create → Pages → *Upload assets* → subir la carpeta.
 3. Se abre a pantalla completa como una app y funciona sin internet.
 
 ## Actualizar
-Después de cambiar archivos, subí `VERSION` en `sw.js` (por ejemplo `pixelia-v2`) para que los iPhone bajen la versión nueva.
+Después de cambiar archivos, corré `node tools/gen-sw-core.mjs --bump` (regenera la lista de archivos de `sw.js` y sube `VERSION`) para que los iPhone bajen la versión nueva.
 
 ## Estructura
 Ver [DESIGN.md](DESIGN.md).

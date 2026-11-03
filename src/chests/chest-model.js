@@ -199,13 +199,13 @@ export function chestModel(type = 'madera') {
   const group = new THREE.Group();
   group.name = 'chest-' + p.type;
 
-  const baseGeo = buildBase(p).toGeometry({ scale: S, jitter: p.type === 'madera' ? 0.05 : 0.025 });
+  const baseGeo = buildBase(p).toGeometry({ scale: S, jitter: p.type === 'madera' ? 0.03 : 0.012 });
   baseGeo.translate(-W / 2 * S, 0, -D / 2 * S);
   const base = new THREE.Mesh(baseGeo, new THREE.MeshLambertMaterial({ vertexColors: true }));
   base.name = 'base';
   group.add(base);
 
-  const lidGeo = buildLid(p).toGeometry({ scale: S, jitter: p.type === 'madera' ? 0.05 : 0.025 });
+  const lidGeo = buildLid(p).toGeometry({ scale: S, jitter: p.type === 'madera' ? 0.03 : 0.012 });
   lidGeo.translate(-W / 2 * S, -BH * S, 0); // origen en la bisagra (borde de atrás, arriba de la base)
   const lidMesh = new THREE.Mesh(lidGeo, base.material);
   lidMesh.name = 'lid-mesh';

@@ -8,7 +8,7 @@
 // Replica las reglas de schema.sql (límites diarios, amistad, atomicidad, devoluciones) y los
 // mensajes de error. Cada operación corre bajo navigator.locks → atómica entre pestañas.
 // Los días se cuentan en UTC (como el servidor). debug.advanceDays(n) simula "mañana".
-import { isoWeek } from './net.js';
+import { isoWeek, DEFAULT_PLAYER_NAME } from './net.js';
 
 const KEY = 'pixelia.mockdb';
 const SESSION_KEY = 'pixelia.mocksession';
@@ -61,7 +61,7 @@ const nextId = db => db.seq++;
 function isFriend(db, a, b) { return db.friendships[pk(a, b)]?.status === 'accepted'; }
 function pairLock(db, me, other) {
   const f = db.friendships[pk(me, other)];
-  if (!f || f.status !== 'accepted') E('Solo podés hacer eso con tus amigas');
+  if (!f || f.status !== 'accepted') E('Solo podés hacer eso con tus amigos');
   return f;
 }
 function bump(db, a, b, pts = 1) {
@@ -116,7 +116,7 @@ const RPC = {
     if (db.profiles[me]) return clone(db.profiles[me]);
     const used = new Set(Object.values(db.profiles).map(p => p.code));
     let code; do code = genCode(); while (used.has(code));
-    const n = String(p_name || '').trim().slice(0, 24) || 'Princesa';
+    const n = String(p_name || '').trim().slice(0, 24) || DEFAULT_PLAYER_NAME;
     db.profiles[me] = { id: me, code, name: n, city_name: 'Pixelia', level: 1, look: {}, car: {}, city: {}, stats: {}, updated_at: nowIso(db), last_seen: nowIso(db) };
     return clone(db.profiles[me]);
   },
@@ -180,14 +180,14 @@ const RPC = {
     if (o.id === me) E('Ese es tu propio código 😄');
     const f = db.friendships[pk(me, o.id)];
     if (f) {
-      if (f.status === 'accepted') E(`Ya son amigas con ${o.name}`);
+      if (f.status === 'accepted') E(`Ya son amigos con ${o.name}`);
       if (f.requested_by === me) E(`Ya le mandaste una solicitud a ${o.name}, falta que acepte`);
       f.status = 'accepted'; f.accepted_at = nowIso(db);
       return { id: o.id, name: o.name, status: 'accepted' };
     }
     const mine = Object.values(db.friendships);
     if (mine.filter(x => x.requested_by === me && x.status === 'pending').length >= 30) E('Tenés muchas solicitudes sin responder. Esperá que te acepten');
-    if (friendIds(db, me).length >= 100) E('Llegaste al máximo de 100 amigas');
+    if (friendIds(db, me).length >= 100) E('Llegaste al máximo de 100 amigos');
     const [a, b] = me < o.id ? [me, o.id] : [o.id, me];
     db.friendships[pk(a, b)] = { a, b, status: 'pending', requested_by: me, points: 0, days: 0, last_day: null, created_at: nowIso(db), accepted_at: null };
     return { id: o.id, name: o.name, status: 'pending' };
@@ -201,7 +201,7 @@ const RPC = {
   },
   remove_friend(db, me, { p_other }) {
     const k = pk(me, p_other);
-    if (!db.friendships[k]) E('No son amigas');
+    if (!db.friendships[k]) E('No son amigos');
     delete db.friendships[k];
     for (const t of db.trades) {
       if (t.status === 'pending' && ((t.from_id === me && t.to_id === p_other) || (t.from_id === p_other && t.to_id === me))) {
@@ -282,7 +282,7 @@ const RPC = {
       if (!ok(o.stars) || !ok(r.stars)) E('Las estrellas van de 1 a 5');
       if (Math.abs(o.stars - r.stars) > 1) E('Las figuritas tienen que tener estrellas parecidas (como mucho 1 de diferencia)');
       // golden: Semana Dorada (eventFlag('trade5'), calculado en el cliente) habilita 5★ sin los 14 días
-      if (Math.max(o.stars, r.stars) === 5 && f.days < 14 && o.golden !== true) E('Las figuritas de 5 estrellas se cambian con amigas de 14 días o más');
+      if (Math.max(o.stars, r.stars) === 5 && f.days < 14 && o.golden !== true) E('Las figuritas de 5 estrellas se cambian con amistades de 14 días o más');
       if (stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!');
     }
     const t = { id: nextId(db), from_id: me, to_id: p_to, offer: o, request: r, status: 'pending', is_sticker: st, day: today(db), created_at: nowIso(db), resolved_at: null };
@@ -388,7 +388,7 @@ const RPC = {
     const r = db.requests.find(x => x.id === p_id);
     if (!r) E('No encontramos ese pedido');
     if (r.from_id === me) E('No podés completar tu propio pedido 😅');
-    if (r.filled_by) E('Otra amiga ya completó ese pedido 💨');
+    if (r.filled_by) E('Alguien más ya completó ese pedido 💨');
     if (Date.parse(r.expires_at) <= nowMs(db)) E('Ese pedido ya venció');
     pairLock(db, me, r.from_id);
     r.filled_by = me; r.filled_at = nowIso(db);

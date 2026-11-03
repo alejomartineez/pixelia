@@ -1,7 +1,7 @@
 // Autos vóxel adorables. API (ver DESIGN.md):
 //   carModel(car, opts) -> THREE.Group  (largo ≈ 1 unidad en Z, frente a +Z, base y=0)
 //     car = store.state.car = { body, color, wheels, topper }
-//     opts.driver: look de princesa para sentarla al volante (cabeza + torso)
+//     opts.driver: look del personaje (cualquier tipo) para sentarlo al volante (cabeza + torso)
 //     opts.scale: escala uniforme opcional
 //     group.userData.size = {w, l, h}  (sin contar a la conductora)
 //     group.userData.wheels = mallas de ruedas (giran); userData.frontWheels = pivotes que doblan
@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { Voxels, voxelMaterial, shade, hexToInt } from '../core/voxel.js';
 import { OUTFIT_COLORS, CAR_BODIES, CAR_WHEELS, CAR_TOPPERS } from '../core/data.js';
-import { princessModel, PRINCESS_VOXEL } from './princess.js';
+import { avatarModel as princessModel, PRINCESS_VOXEL } from './avatar.js';
 
 /** Tamaño de un vóxel de auto en unidades de mundo (16 vóxeles = 1 unidad). */
 export const CAR_VOXEL = 1 / 16;

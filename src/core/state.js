@@ -2,7 +2,7 @@
 // Toda mutación de monedas/gemas/xp pasa por acá para que el HUD y las misiones se enteren.
 import { bus } from './bus.js';
 import {
-  CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE,
+  CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
 } from './data.js';
 
 const BASE_KEY = 'pixelia.save.v1';
@@ -42,10 +42,13 @@ export function defaultState() {
     v: VERSION,
     created: Date.now(),
     lastSeen: Date.now(),
-    player: { name: 'Princesa', cityName: 'Pixelia', level: 1, xp: 0 },
+    player: { name: 'Pixelín', cityName: 'Pixelia', level: 1, xp: 0 },
+    onboarded: false, // la primera vez se elige personaje, nombre y ciudad (scenes/onboarding.js)
     coins: 600,
     gems: 15,
-    princess: { skin: 0, hair: 'largo', hairColor: 'castano', dress: 'clasico', dressColor: 'rosa', crown: 'tiara', acc: 'ninguno' },
+    // personaje del jugador. state.princess es un alias de state.avatar (código y saves viejos)
+    avatar: { type: 'princesa', ...avatarType('princesa').look },
+    avatarLooks: {}, // último look usado con cada tipo: { [type]: look } (al volver a un tipo se recupera)
     car: { body: 'convertible', color: 'rosa', wheels: 'clasica', topper: 'ninguno' },
     owned: freeOwned(),
     city: {
@@ -79,6 +82,37 @@ export function defaultState() {
   };
 }
 
+/**
+ * Saves viejos: el look vivía en state.princess (siempre princesa) → state.avatar con type.
+ * Un save viejo ya se jugó: no se le muestra el onboarding. Se aplica antes de deepFill.
+ */
+/** Partida recién empezada (mismo criterio que isPristine de online/sync.js). */
+function isFreshGame(s) {
+  return (s.player?.level || 1) <= 1 && (s.player?.xp || 0) < 20 && (s.city?.buildings?.length || 0) <= 1 && !(s.stats?.coinsEarned > 200);
+}
+function migrate(s) {
+  if (!s || typeof s !== 'object') return s;
+  const old = Object.getOwnPropertyDescriptor(s, 'princess')?.value;
+  if (!s.avatar || typeof s.avatar !== 'object') s.avatar = { type: 'princesa', ...(old && typeof old === 'object' ? old : {}) };
+  if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'princesa';
+  delete s.princess;
+  if (s.onboarded === undefined) s.onboarded = true;
+  // el nombre por defecto viejo era 'Princesa': ahora el juego es neutro
+  if (s.player && s.player.name === 'Princesa') s.player.name = 'Pixelín';
+  // una partida que ya avanzó (p. ej. jugada entrando con ?scene=) no repite el onboarding ni pisa sus nombres
+  if (s.onboarded === false && !isFreshGame(s)) s.onboarded = true;
+  return s;
+}
+/** state.princess → state.avatar (no enumerable: no se guarda dos veces ni cambia el hash de sincronización). */
+function withAlias(s) {
+  Object.defineProperty(s, 'princess', {
+    configurable: true, enumerable: false,
+    get() { return s.avatar; },
+    set(v) { if (v && typeof v === 'object') s.avatar = { type: s.avatar?.type || 'princesa', ...v }; },
+  });
+  return s;
+}
+
 // Mezcla profunda: completa claves faltantes de un save viejo con los defaults
 function deepFill(target, def) {
   for (const k of Object.keys(def)) {
@@ -99,12 +133,12 @@ export const store = {
     try { raw = localStorage.getItem(KEY); } catch {}
     if (raw) {
       try {
-        state = deepFill(JSON.parse(raw), defaultState());
+        state = withAlias(deepFill(migrate(JSON.parse(raw)), defaultState()));
         // asegurar que lo gratis esté siempre en owned (por si se agregan items nuevos)
         const free = freeOwned();
         for (const k of Object.keys(free)) state.owned[k] = [...new Set([...(state.owned[k] || []), ...free[k]])];
-      } catch (e) { console.warn('save corrupto, empezando de nuevo', e); state = defaultState(); }
-    } else state = defaultState();
+      } catch (e) { console.warn('save corrupto, empezando de nuevo', e); state = withAlias(defaultState()); }
+    } else state = withAlias(defaultState());
     return state;
   },
 
@@ -118,7 +152,7 @@ export const store = {
 
   reset() {
     try { localStorage.removeItem(KEY); } catch {}
-    state = defaultState();
+    state = withAlias(defaultState());
     store.save();
   },
 
@@ -126,7 +160,7 @@ export const store = {
   importCode(code) {
     const parsed = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
     if (!parsed || typeof parsed !== 'object' || !parsed.city) throw new Error('Código inválido');
-    state = deepFill(parsed, defaultState());
+    state = withAlias(deepFill(migrate(parsed), defaultState()));
     store.save();
   },
 
@@ -220,13 +254,38 @@ export const store = {
     dirty = true;
     return true;
   },
-  /** Cambia una pieza del look (target 'princess' | 'car'). */
+  /**
+   * Cambia una pieza del look (target 'avatar' | 'princess' | 'car'). 'princess' es alias de 'avatar';
+   * para el personaje el evento customize:changed sale con target 'princess' (compatibilidad).
+   */
   setLook(target, key, value) {
-    const obj = state[target];
+    const obj = target === 'avatar' ? state.avatar : state[target];
     if (!obj || obj[key] === value) return;
     obj[key] = value;
     dirty = true;
-    bus.emit('customize:changed', { target, key, value });
+    bus.emit('customize:changed', { target: target === 'avatar' ? 'princess' : target, key, value });
+  },
+  /**
+   * Cambia el tipo de personaje (gratis). Guarda el look actual del tipo viejo y recupera el último look
+   * del tipo nuevo; lo que no sirva para ese tipo o no sea tuyo vuelve al look inicial del tipo.
+   */
+  setAvatarType(type) {
+    const a = state.avatar;
+    if (!AVATAR_TYPE_BY_ID[type] || a.type === type) return false;
+    const { type: oldType, ...cur } = a;
+    state.avatarLooks[oldType] = cur;
+    const def = avatarType(type).look;
+    const prev = state.avatarLooks[type] || {};
+    const next = { type, skin: prev.skin ?? cur.skin ?? def.skin, hairColor: prev.hairColor ?? def.hairColor, dressColor: prev.dressColor ?? def.dressColor };
+    for (const kind of ['hair', 'dress', 'crown', 'acc']) {
+      const want = prev[kind] ?? def[kind];
+      const item = CUSTOM_CATALOG[kind].find(i => i.id === want);
+      next[kind] = item && fitsType(item, type) && store.owns(kind, want) ? want : def[kind];
+    }
+    state.avatar = next;
+    dirty = true;
+    bus.emit('customize:changed', { target: 'princess', key: 'type', value: type });
+    return true;
   },
 };
 

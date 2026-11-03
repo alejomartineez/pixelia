@@ -16,7 +16,7 @@ import {
 } from './social-common.js';
 import { connectCard } from './social-ui.js';
 
-const nameOf = (id) => cache.friends?.find(f => f.id === id)?.name || 'Una amiga';
+const nameOf = (id) => cache.friends?.find(f => f.id === id)?.name || 'Alguien';
 const lookOf = (id) => cache.friends?.find(f => f.id === id)?.look || null;
 
 // ---------- Pedidos ----------
@@ -58,7 +58,7 @@ export async function renderRequests(api, tok) {
     const mine = h('div.soc-sec');
     const head = h('div.soc-card.sky.soc-mine', {
       html: `${icon('🤝', 40)}<div class="soc-grow"><b style="font-size:18px">Pedí una mano</b>
-        <div class="soc-muted">Hasta 3 pedidos por día. Tus amigas te ayudan y ganan premios.</div>
+        <div class="soc-muted">Hasta 3 pedidos por día. Tu gente te ayuda y gana premios.</div>
         <div class="soc-row" style="margin-top:4px"><span class="soc-slots">${[0, 1, 2].map(i => `<i class="${i < used ? 'used' : ''}"></i>`).join('')}</span><small class="soc-muted">${3 - used} disponible${3 - used === 1 ? '' : 's'} hoy</small></div></div>`,
     });
     const ask = h('button.btn.pink', { html: `${icon('plus', 18)} Pedir`, disabled: used >= 3 });
@@ -70,8 +70,8 @@ export async function renderRequests(api, tok) {
 
     // --- pedidos de amigas ---
     const fr = cache.friendReqs || [];
-    const sec = h('div.soc-sec', { html: `<h4>${icon('people', 22)} Pedidos de tus amigas<small>${fr.length}</small></h4>` });
-    if (!fr.length) sec.append(h('div.soc-card', { html: emptyHtml('🌤️', 'Nadie necesita nada por ahora', 'Cuando una amiga pida una mano, aparece acá. Ayudar te da monedas, chispas del pase y amistad.') }));
+    const sec = h('div.soc-sec', { html: `<h4>${icon('people', 22)} Pedidos de tus amigos<small>${fr.length}</small></h4>` });
+    if (!fr.length) sec.append(h('div.soc-card', { html: emptyHtml('🌤️', 'Nadie necesita nada por ahora', 'Cuando alguien pida una mano, aparece acá. Ayudar te da monedas, chispas del pase y amistad.') }));
     for (const r of fr) sec.append(friendRequestCard(api, r));
     nodes.push(sec);
     pane.replaceChildren(...nodes);
@@ -82,7 +82,7 @@ function myRequestCard(r) {
   const w = requestWhat(r, 32);
   const expired = !r.filled_by && Date.parse(r.expires_at) <= Date.now();
   const tag = r.filled_by
-    ? `<span class="soc-tag ok">${icon('check', 14)} ${esc(r.filled_by_name || 'Una amiga')} te ayudó ${timeAgo(r.filled_at)}</span>`
+    ? `<span class="soc-tag ok">${icon('check', 14)} ${esc(r.filled_by_name || 'Alguien')} te ayudó ${timeAgo(r.filled_at)}</span>`
     : expired ? '<span class="soc-tag old">Venció</span>'
     : `<span class="soc-tag wait">${icon('clock', 14)} Vence en ${fmtLeft(Date.parse(r.expires_at) - Date.now())}</span>`;
   const c = h('div.soc-card.soc-need', { style: expired ? { opacity: '.7' } : null });
@@ -96,7 +96,7 @@ function friendRequestCard(api, r) {
   const reward = helperReward(r);
   const c = h('div.soc-card.soc-need');
   c.append(needIcon(w), h('div.soc-grow', {
-    html: `<div class="soc-row">${avatarHtml(lookOf(r.from_id), r.from_name, 28)}<b class="soc-ellip">${esc(r.from_name || 'Amiga')}</b><small class="soc-muted" style="margin-left:auto">${fmtLeft(Date.parse(r.expires_at) - Date.now())}</small></div>
+    html: `<div class="soc-row">${avatarHtml(lookOf(r.from_id), r.from_name, 28)}<b class="soc-ellip">${esc(r.from_name || 'Alguien')}</b><small class="soc-muted" style="margin-left:auto">${fmtLeft(Date.parse(r.expires_at) - Date.now())}</small></div>
       <div style="margin-top:3px"><b>${esc(w.title)}</b></div><div class="soc-muted">${esc(w.sub)}${w.sticker ? ` · tenés ${stickerCount(w.sticker)}` : ''}</div>`,
   }));
   const acts = h('div.soc-acts');
@@ -110,7 +110,7 @@ function friendRequestCard(api, r) {
     audio.sfx('win');
     flyFrom(btn, res.reward);
     confetti(40);
-    toast(`¡Le diste una mano a ${r.from_name || 'tu amiga'}! 💖`, { icon: 'heart', type: 'good' });
+    toast(`¡Le diste una mano a ${r.from_name || 'alguien'}! 💖`, { icon: 'heart', type: 'good' });
     setTimeout(() => api.rerender(), 650);
     return res;
   });
@@ -126,12 +126,12 @@ function needText(r) {
 
 // ---------- Buzón ----------
 const KIND = {
-  gift: { ic: 'gift', t: g => `Regalito de ${g.from_name || 'una amiga'}` },
-  help: { ic: '🔨', t: g => `${g.from_name || 'Una amiga'} te ayudó con una obra` },
-  trade: { ic: '🔄', t: g => (/devoluci/i.test(g.note || '') ? 'Te devolvieron lo de un intercambio' : `Entrega del intercambio con ${g.from_name || 'una amiga'}`) },
-  sticker: { ic: '🃏', t: g => `${g.from_name || 'Una amiga'} te regaló una figurita` },
-  like: { ic: 'heart', t: g => `A ${g.from_name || 'una amiga'} le encantó tu ciudad` },
-  request_fill: { ic: '🤝', t: g => `${g.from_name || 'Una amiga'} completó tu pedido` },
+  gift: { ic: 'gift', t: g => `Regalito de ${g.from_name || 'alguien'}` },
+  help: { ic: '🔨', t: g => `${g.from_name || 'Alguien'} te ayudó con una obra` },
+  trade: { ic: '🔄', t: g => (/devoluci/i.test(g.note || '') ? 'Te devolvieron lo de un intercambio' : `Entrega del intercambio con ${g.from_name || 'alguien'}`) },
+  sticker: { ic: '🃏', t: g => `${g.from_name || 'Alguien'} te regaló una figurita` },
+  like: { ic: 'heart', t: g => `A ${g.from_name || 'alguien'} le encantó tu ciudad` },
+  request_fill: { ic: '🤝', t: g => `${g.from_name || 'Alguien'} completó tu pedido` },
 };
 
 export async function renderInbox(api, tok) {
@@ -154,7 +154,7 @@ export async function renderInbox(api, tok) {
     // cobrar todo
     const top = h('div.soc-card.soc-claimall', {
       html: `${icon('📮', 44)}<div class="soc-grow"><b style="font-size:18px">${inbox.length ? `Tenés ${inbox.length} cosita${inbox.length > 1 ? 's' : ''} para cobrar` : 'Tu buzón está al día ✨'}</b>
-        <div class="soc-muted">${inbox.length ? 'Regalos, ayudas y entregas de tus amigas.' : 'Cuando tus amigas te manden algo, aparece acá.'}</div></div>`,
+        <div class="soc-muted">${inbox.length ? 'Regalos, ayudas y entregas de tus amigos.' : 'Cuando tus amigos te manden algo, aparece acá.'}</div></div>`,
     });
     if (inbox.length) {
       const all = h('button.btn.gold', { html: `${icon('gift', 20)} Cobrar todo` });
@@ -187,7 +187,7 @@ export async function renderInbox(api, tok) {
     }
     const vis = (cache.visitors || []).filter(v => v.visited || v.liked || v.note || v.helped);
     const sv = h('div.soc-sec', { html: `<h4>${icon('home', 22)} Visitas a tu ciudad<small>últimos 7 días</small></h4>` });
-    if (!vis.length) sv.append(h('div.soc-card', { html: emptyHtml('🏡', 'Todavía no pasó nadie', 'Cuando una amiga visite tu ciudad, te va a dejar corazones, ayudas y notitas.') }));
+    if (!vis.length) sv.append(h('div.soc-card', { html: emptyHtml('🏡', 'Todavía no pasó nadie', 'Cuando alguien visite tu ciudad, te va a dejar corazones, ayudas y notitas.') }));
     for (const v of vis.slice(0, 20)) sv.append(visitRow(v));
     nodes.push(sv);
     pane.replaceChildren(...nodes);
@@ -207,7 +207,7 @@ function celebrate(el, total, count) {
   if (st) bits.push(`${st} figurita${st > 1 ? 's' : ''}`);
   toast(bits.length ? `¡Cobraste ${bits.join(', ')}!` : `¡Listo! ${count} cosita${count > 1 ? 's' : ''} cobrada${count > 1 ? 's' : ''}`, { icon: 'gift', type: 'good' });
   if (total.likes) setTimeout(() => toast(`+${total.likes} corazón${total.likes > 1 ? 'es' : ''} para tu ciudad ❤️`, { icon: 'heart' }), 700);
-  if (total.speedups) setTimeout(() => toast(`¡Tus amigas adelantaron ${total.speedups} obra${total.speedups > 1 ? 's' : ''}!`, { icon: 'hammer', type: 'good' }), 1300);
+  if (total.speedups) setTimeout(() => toast(`¡Tus amigos adelantaron ${total.speedups} obra${total.speedups > 1 ? 's' : ''}!`, { icon: 'hammer', type: 'good' }), 1300);
 }
 
 function giftRow(api, g) {
@@ -251,7 +251,7 @@ export function sidesEl(offer, request, labels = ['Te da', 'Te pide']) {
 function tradeCard(api, t) {
   const c = h('div.soc-card.soc-trade' + (t.outgoing ? '' : '.tint'));
   c.append(h('div.soc-row', {
-    html: `${avatarHtml(lookOf(t.other_id), t.other_name, 34)}<div class="soc-grow"><b>${esc(t.other_name || 'Amiga')}</b>
+    html: `${avatarHtml(lookOf(t.other_id), t.other_name, 34)}<div class="soc-grow"><b>${esc(t.other_name || 'Alguien')}</b>
       <div class="soc-muted">${t.outgoing ? `Esperando que responda · ${timeAgo(t.created_at)}` : `Te propone un intercambio · ${timeAgo(t.created_at)}`}</div></div>`,
   }));
   c.append(t.outgoing ? sidesEl(t.offer, t.request, ['Ofreciste', 'Pediste']) : sidesEl(t.offer, t.request));
@@ -294,7 +294,7 @@ function tradeCard(api, t) {
   return c;
 }
 function resolvedRow(t) {
-  const txt = t.status === 'accepted' ? `${esc(t.other_name || 'Tu amiga')} aceptó tu intercambio 🎉` : t.status === 'declined' ? `${esc(t.other_name || 'Tu amiga')} prefirió no cambiar` : 'Cancelaste un intercambio';
+  const txt = t.status === 'accepted' ? `${esc(t.other_name || 'Alguien')} aceptó tu intercambio 🎉` : t.status === 'declined' ? `${esc(t.other_name || 'Alguien')} prefirió no cambiar` : 'Cancelaste un intercambio';
   return h('div.soc-card.soc-row', { style: { opacity: '.75' }, html: `${icon(t.status === 'accepted' ? 'check' : 'info', 22)}<span class="soc-grow">${txt}</span><small class="soc-muted">${timeAgo(t.resolved_at)}</small>` });
 }
 function visitRow(v) {
@@ -303,7 +303,7 @@ function visitRow(v) {
   if (v.helped) chips.push(`<span class="soc-chip">${icon('🔨', 16)} Ayudó ${v.helped}</span>`);
   const day = v.day === utcDay() ? 'hoy' : timeAgo(v.at);
   return h('div.soc-card.soc-visit', {
-    html: `${avatarHtml(lookOf(v.id), v.name, 42)}<div class="soc-grow"><b>${esc(v.name || 'Una amiga')}</b> <span class="soc-muted">pasó por tu ciudad · ${day}</span>
+    html: `${avatarHtml(lookOf(v.id), v.name, 42)}<div class="soc-grow"><b>${esc(v.name || 'Alguien')}</b> <span class="soc-muted">pasó por tu ciudad · ${day}</span>
       ${chips.length ? `<div class="soc-chips" style="margin-top:3px">${chips.join('')}</div>` : ''}
       ${v.note ? `<div class="soc-note">“${esc(v.note)}”</div>` : ''}</div>`,
   });

@@ -98,7 +98,7 @@ function cached(key, fn) {
  * Mallado "greedy": junta caras vecinas coplanares del mismo color en un solo quad.
  * Mismo look que Voxels.toGeometry pero con muchísimos menos triángulos (clave para 60fps en iPhone).
  */
-function greedyGeometry(v, { scale = 1 / 8, center = 'xz', jitter = 0.03 } = {}) {
+function greedyGeometry(v, { scale = 1 / 8, center = 'xz', jitter = 0.015 } = {}) {
   const b = v.bounds();
   const mn = b.min, D = [b.max[0] - mn[0], b.max[1] - mn[1], b.max[2] - mn[2]];
   const vol = new Int32Array(D[0] * D[1] * D[2]);
@@ -164,7 +164,7 @@ function greedyGeometry(v, { scale = 1 / 8, center = 'xz', jitter = 0.03 } = {})
   g.computeBoundingSphere(); g.computeBoundingBox();
   return g;
 }
-const vgeo = (v, scale = 1 / 8, center = 'xz', jitter = 0.035) => greedyGeometry(v, { scale, center, jitter });
+const vgeo = (v, scale = 1 / 8, center = 'xz', jitter = 0.015) => greedyGeometry(v, { scale, center, jitter });
 
 // =====================================================================
 // PISO DE LA RUTA (greedy meshing, solo caras visibles)
@@ -739,7 +739,7 @@ export function decoGeo(kind) {
 export function decoExtraGeo(kind) {
   const ex = DECO[kind]?.extra;
   if (!ex) return null;
-  return cached('decoX:' + kind, () => greedyGeometry(ex.fn(), { scale: ex.scale, center: 'xyz', jitter: 0.03 }));
+  return cached('decoX:' + kind, () => greedyGeometry(ex.fn(), { scale: ex.scale, center: 'xyz', jitter: 0.015 }));
 }
 
 // Qué aparece en cada franja según bioma. Listas [tipo, peso]; null = vacío.
@@ -840,7 +840,7 @@ const ITEM_FN = {
 };
 const ITEM_SCALE = { coin: 1 / 19, gem: 1 / 18, heart: 1 / 12, magnet: 1 / 12, shield: 1 / 12, turbo: 1 / 12 };
 export function itemGeo(kind) {
-  return cached('item:' + kind, () => greedyGeometry(ITEM_FN[kind](), { scale: ITEM_SCALE[kind], center: 'xyz', jitter: 0.02 }));
+  return cached('item:' + kind, () => greedyGeometry(ITEM_FN[kind](), { scale: ITEM_SCALE[kind], center: 'xyz', jitter: 0.012 }));
 }
 
 function coneVox(v, ox, oz) {
@@ -873,7 +873,7 @@ const OBST_FN = {
 };
 const OBST_SCALE = { barrier: 1 / 8, cones: 1 / 9, puddle: 1 / 8 };
 export function obstacleGeo(kind) {
-  return cached('obst:' + kind, () => greedyGeometry(OBST_FN[kind](), { scale: OBST_SCALE[kind], center: 'xz', jitter: 0.03 }));
+  return cached('obst:' + kind, () => greedyGeometry(OBST_FN[kind](), { scale: OBST_SCALE[kind], center: 'xz', jitter: 0.015 }));
 }
 
 /** Burbuja del escudo */

@@ -9,16 +9,16 @@ export { renderStickerCard, renderPack } from './album-art.js';
 // ---------- Datos ----------
 // Cada set: [id, nombre, emoji, color, oscuro, claro, figuritas ordenadas por estrellas (3×1★, 2×2★, 2×3★, 1×4★, 1×5★)]
 const RAW = [
-  ['princesas', 'Princesas', '👸', '#ff7eb6', '#e0528f', '#ffd6e8', [
-    ['🥱', 'Princesa con Sueñito'], ['🪞', 'Espejito Chusma'], ['👠', 'Tacos que Matan'],
+  ['princesas', 'Realeza', '👑', '#ff7eb6', '#e0528f', '#ffd6e8', [
+    ['🥱', 'Siestita Real'], ['🪞', 'Espejito Chusma'], ['🛡️', 'Escudo Abollado'],
     ['💌', 'Cartita de Amor'], ['🫖', 'Té con Masitas'],
     ['🦢', 'Cisne Divina'], ['🪄', 'Varita Medio Rota'],
-    ['💃', 'Princesa Bailonga'], ['👸', 'La Princesa de Pixelia']]],
-  ['vestidos', 'Vestidos', '👗', '#b58cff', '#8a5ee0', '#e9ddff', [
+    ['💃', 'Corona Bailonga'], ['🏰', 'La Realeza de Pixelia']]],
+  ['vestidos', 'Ropa y Estilo', '👕', '#b58cff', '#8a5ee0', '#e9ddff', [
     ['🧦', 'Medias Desparejas'], ['🧤', 'Guantes de Gala'], ['👒', 'Capelina Playera'],
     ['🎀', 'Moño Gigante'], ['👛', 'Carterita Mini'],
     ['👗', 'Vestido con Volados'], ['🧥', 'Tapado de Abuela Chic'],
-    ['🩰', 'Zapatillas de Ballet'], ['👰', 'El Vestido Soñado']]],
+    ['👟', 'Zapatillas Flúo'], ['🛍️', 'El Placard Soñado']]],
   ['autitos', 'Autitos', '🚗', '#8fd3ff', '#4fa8e0', '#daf2ff', [
     ['🚲', 'Bici con Canasto'], ['🛴', 'Monopatín Veloz'], ['🚕', 'Taxi Apurado'],
     ['🚙', 'Camioneta Familiera'], ['🛵', 'Motito Delivery'],
@@ -68,7 +68,7 @@ const RAW = [
     ['🎈', 'Globo Escapista'], ['🎉', 'Cotillón Ruidoso'], ['🥤', 'Gaseosa sin Gas'],
     ['🎁', 'Regalo Misterioso'], ['🍕', 'Pizza de Muzza'],
     ['🪅', 'Piñata Llenita'], ['🎊', 'Lluvia de Papelitos'],
-    ['🎆', 'Fuegos Artificiales'], ['🥳', 'La Reina de la Fiesta']]],
+    ['🎆', 'Fuegos Artificiales'], ['🥳', 'El Alma de la Fiesta']]],
 ];
 const STARS_BY_INDEX = [1, 1, 1, 2, 2, 3, 3, 4, 5];
 // Orden en la página (casillero → índice en la lista): la 5★ queda en el centro, como figurita estrella.

@@ -240,7 +240,8 @@ export function bush(v, cx, y, cz, r, c = C.leaf, flowers = null, seed = 3) {
       if (v.has(i, j, k) && !v.has(i, j + 1, k)) pts.push([i, j, k]);
       else if (v.has(i, j, k) && (!v.has(i + 1, j, k) || !v.has(i, j, k + 1)) && R() < 0.3) pts.push([i, j, k]);
     }
-    for (const p of pts) if (R() < 0.38) v.set(p[0], p[1], p[2], typeof flowers === 'function' ? flowers(R) : (Array.isArray(flowers) ? pick(R, flowers) : flowers));
+    // pocas flores: muchas pintitas sueltas se ven como ruido con pixeles de render chicos
+    for (const p of pts) if (R() < 0.2) v.set(p[0], p[1], p[2], typeof flowers === 'function' ? flowers(R) : (Array.isArray(flowers) ? pick(R, flowers) : flowers));
   }
 }
 /** Arbolito redondo (copa esférica). */

@@ -75,7 +75,7 @@ export function playChestOpening(ctx, type, drops = []) {
     (document.getElementById('app') || document.body).append(root);
 
     // ---------- 3D ----------
-    const R = createPixelRenderer(stage, { ortho: false, background: null, shadows: false, fov: 30, pixelSize: Math.min(innerWidth, innerHeight) < 500 ? 3 : 4 });
+    const R = createPixelRenderer(stage, { ortho: false, background: null, shadows: false, fov: 30, pixelSize: Math.min(innerWidth, innerHeight) < 500 ? 2 : 2.5, outline: true });
     const { scene, camera } = R;
     const lights = addLights(scene);
     lights.sun.castShadow = false;

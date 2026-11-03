@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Voxels, disposeObject } from '../core/voxel.js';
 import { princessModel, randomLook } from '../avatar/princess.js';
 import { carModel } from '../avatar/car.js';
+import { themeOf } from '../city/themes.js';
 import { footprint, def, isConstructing, landBounds } from '../core/economy.js';
 import { MAP, HALF, ROAD_H, angleDelta, mulberry } from './city-common.js';
 
@@ -162,6 +163,11 @@ export function createLife(r, ctx) {
     let prevPos = null;
     if (player) { prevPos = [player.fx, player.fz]; group.remove(player.obj); disposeObject(player.obj); }
     const obj = princessModel(ctx.state.princess, { player: true });
+    // aro de luz bajo los pies: en los temas oscuros el personaje no se pierde contra el piso
+    const glow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.62, depthWrite: false }));
+    glow.rotation.x = -Math.PI / 2; glow.position.y = 0.012; glow.renderOrder = -1;
+    glow.visible = !!themeOf(ctx.state.city?.theme).dark;
+    obj.add(glow); obj.userData.glow = glow;
     const w = makeWalker(obj, { speed: 0.55, region: castleRegion(), lane: [0, 0], turnRate: 7 });
     w.kind = 'player';
     w.baseScale = PLAYER_SCALE;
@@ -251,7 +257,11 @@ export function createLife(r, ctx) {
 
   function update(dt, t) {
     for (const w of npcs) { stepWalker(w, dt); w.obj.userData.update?.(dt, w.moving); }
-    if (player) { stepWalker(player, dt); player.obj.userData.update?.(dt, player.moving); }
+    if (player) {
+      stepWalker(player, dt); player.obj.userData.update?.(dt, player.moving);
+      const glow = player.obj.userData.glow;
+      if (glow) glow.visible = !!themeOf(ctx.state.city?.theme).dark; // el tema cambia en vivo
+    }
     if (car && car.obj.visible) {
       if (!car.parked) stepWalker(car, dt);
       const steer = car.parked ? 0 : Math.max(-1, Math.min(1, angleDelta(car.obj.rotation.y, car.heading) * 2));
