@@ -227,16 +227,28 @@ const HAIR = {
   rizos: {
     top: 14, long: true,
     back(v, h) {
+      const curl = (x, y, z) => {
+        const r = hash3(x, y, z);
+        const blob = (((x + 20) >> 1) + ((y + 20) >> 1) + ((z + 20) >> 1)) & 1;
+        return blob ? h.b : (r < 0.55 ? h.l : h.d);
+      };
       v.sphere(-0.5, 6, -1, 8.2, 8, 6.8, (x, y, z) => {
         // hueco de la cara y del cuerpo
         if (z >= 3 && y <= 7 && x >= -6 && x <= 5) return null;
         if (y < 0 && x >= -6 && x <= 5 && z >= -3) return null;
         if (y < -1 && z > -4 && (x < -6 || x > 5) && z > 1) return null;
-        const r = hash3(x, y, z);
-        if (r < 0.1) return null;
-        const blob = (((x + 20) >> 1) + ((y + 20) >> 1) + ((z + 20) >> 1)) & 1;
-        return blob ? h.b : (r < 0.55 ? h.l : h.d);
+        if (hash3(x, y, z) < 0.1 && y < 11) return null;
+        return curl(x, y, z);
       });
+      // copete achatado: base firme para coronas/flores (si no, flotan sobre la bola de rulos)
+      for (let y = 11; y <= 13; y++) {
+        const i = y === 13 ? 1 : 0;
+        for (let x = -6 + i; x <= 5 - i; x++) for (let z = -5 + i; z <= 4 - i; z++) {
+          const ex = x === -6 + i || x === 5 - i, ez = z === -5 + i || z === 4 - i;
+          if ((ex && ez) || v.has(x, y, z)) continue;
+          v.set(x, y, z, curl(x, y, z));
+        }
+      }
     },
     front(v, h) {
       for (let x = -5; x <= 4; x++) { v.set(x, 9, 4, h.b); v.set(x, 8, 4, (x & 1) ? h.l : h.b); }
@@ -258,7 +270,7 @@ const HAIR = {
     top: 12, long: true,
     back(v, h) {
       const wave = (y) => [0, 1, 1, 0, -1, -1][((y % 6) + 60) % 6] * (y < 4 ? 1 : 0);
-      const tipC = mix(h.l, 0x9ff0ff, 0.45);
+      const tipC = mix(h.ll, 0xd9a8ff, 0.5); // puntas lila pastel (con celeste el castaño quedaba gris)
       sides(v, h, -9, -5, 3, wave);
       back(v, h, -11, wave, { y: -7, c: tipC });
       for (let y = -9; y <= -7; y++) for (let z = -5; z <= 3; z++) {
@@ -624,7 +636,7 @@ function buildArm(v, style, p) {
   }
 }
 
-function buildCape(v, p) {
+function buildCape(v, p, overHair = false) {
   const cd = shade(p.c, -0.25), lining = p.ll;
   for (let y = -10; y <= 0; y++) {
     const w = 4 + Math.floor((-y) / 4);
@@ -633,21 +645,22 @@ function buildCape(v, p) {
       v.set(x, y, -1, ((x + y) & 3) === 0 && y < -1 && y > -10 ? shade(cd, -0.06) : c);
     }
   }
-  for (let x = -4; x <= 3; x++) { v.set(x, 1, -1, WHITE); v.set(x, 0, 0, x === -4 || x === 3 ? WHITE : null); }
-  v.set(-4, 1, 0, WHITE); v.set(3, 1, 0, WHITE);
+  for (let x = -4; x <= 3; x++) { v.set(x, 1, -1, WHITE); if (!overHair) v.set(x, 0, 0, x === -4 || x === 3 ? WHITE : null); }
+  if (!overHair) { v.set(-4, 1, 0, WHITE); v.set(3, 1, 0, WHITE); }
 }
 
 // =====================================================================
 //                               ACCESORIOS
 // =====================================================================
 function buildWand(v) {
-  // en coords de la mano derecha (brazo local), apuntando hacia adelante/arriba
-  for (let y = -6; y <= -1; y++) v.set(0, y, 1, (y & 1) ? 0xffffff : 0xff9cc8);
-  const star = [[0, 0], [0, 1], [0, 2], [-1, 1], [1, 1], [-1, 0], [1, 0]];
-  for (const [x, dy] of star) v.set(x, dy, 1, GOLD);
-  v.set(0, 1, 1, 0xfff7c2); v.set(0, 3, 1, GOLD_L);
-  v.set(-2, 1, 1, GOLD); v.set(1, 1, 1, GOLD);
-  v.set(0, 1, 2, 0xffffff);
+  // en coords del brazo derecho (mano en y=-5, exterior +x). Sale de la mano hacia adelante y afuera:
+  // con el brazo levantado la estrella queda al costado de la cara (antes quedaba enterrada en la cabeza).
+  [[0, -5, 1], [0, -5, 2], [1, -5, 3], [1, -4, 4], [2, -4, 5], [2, -4, 6]].forEach(([x, y, z], i) => v.set(x, y, z, (i & 1) ? 0xffffff : 0xff9cc8));
+  const star = ['..#..', '.###.', '#####', '.###.', '.#.#.'];
+  star.forEach((row, i) => [...row].forEach((ch, j) => {
+    if (ch === '#') v.set(j + 1, -1 - i, 7, (i === 2 && j === 2) ? 0xfff7c2 : (j < 2 && i < 3 ? GOLD_L : GOLD));
+  }));
+  v.set(3, -3, 8, 0xffffff); v.set(3, -3, 6, GOLD_D);
 }
 function buildBag(v, p) {
   const bc = shade(p.c, -0.1);
@@ -776,7 +789,8 @@ export function princessModel(lookIn = {}, opts = {}) {
     const g = cachedGeo(`c|${look.crown}|${look.dressColor}|${look.hairColor}`, (v) => CROWN_BUILD[look.crown](v, outfitHex(look.dressColor), hairHex(look.hairColor)));
     if (g) {
       const m = meshOf(g);
-      m.position.set(0, (hairDef.top - 12) * S, (hairDef.crownZ || 0) * S);
+      // la corona de flores rodea toda la cabeza: no se corre hacia adelante (si no, sobresale de la frente)
+      m.position.set(0, (hairDef.top - 12) * S, (look.crown === 'flores' ? 0 : hairDef.crownZ || 0) * S);
       head.add(m);
     }
   }
@@ -784,8 +798,9 @@ export function princessModel(lookIn = {}, opts = {}) {
   // capa
   let cape = null;
   if (dress.cape) {
-    cape = pivot(0, 9.5, -2);
-    cape.add(meshOf(cachedGeo(`cape|${look.dressColor}`, (v) => buildCape(v, p))));
+    // con pelo largo la capa va por fuera del pelo (si no, el pelo la tapa entera)
+    cape = pivot(0, 9.5, hairDef.long ? -6 : -2);
+    cape.add(meshOf(cachedGeo(`cape|${look.dressColor}|${hairDef.long ? 1 : 0}`, (v) => buildCape(v, p, !!hairDef.long))));
     body.add(cape);
   }
 
@@ -815,7 +830,7 @@ export function princessModel(lookIn = {}, opts = {}) {
     }
     case 'alas': {
       const g = cachedGeo('x|ala', buildWing);
-      const z = hairDef.long ? -7.3 : -2.3;
+      const z = (hairDef.long ? -7.3 : -2.3) - (cape ? 2 : 0); // detrás de la capa
       for (const s of [-1, 1]) {
         const pv = pivot(s * 0.5, 6.5, z);
         const m = meshOf(g);

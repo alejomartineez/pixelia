@@ -121,9 +121,11 @@ export function openLevelUp(ctx, params = {}) {
   const { h, esc, costHtml } = ui;
   const level = Number(params.level) || ctx.state.player.level;
   const reward = params.reward || {};
+  // si subió varios niveles de golpe, las ventanas salen de a una: el botón avisa que viene otra
+  const more = ctx.state.player.level > level;
   const sh = openShell(ctx, 'levelup:' + level, {
     title: '¡Subiste de nivel!', ic: 'star', className: 'pnl-md pnl-levelup reward-modal', closable: false,
-    actions: [{ html: `${icon('sparkle', 20)} ¡Genial!`, cls: 'pink' }],
+    actions: [{ html: more ? `${icon('sparkle', 20)} ¡Genial! Ver nivel ${level + 1}` : `${icon('sparkle', 20)} ¡Genial!`, cls: 'pink' }],
   });
   if (!sh) return;
 

@@ -30,12 +30,13 @@ const router = {
   get current() { return current?.id; },
   /** Cambia de escena. params se pasa a mount(). */
   async go(id, p = {}) {
-    if (navigating) return;
-    if (!SCENES[id]) { console.error('escena desconocida', id); return; }
+    if (navigating) return false;   // doble toque / navegación en curso: se ignora
+    if (!SCENES[id]) { console.error('escena desconocida', id); return false; }
     navigating = true;
     closeAllModals();
     fadeEl.classList.add('show');
     await new Promise(r => setTimeout(r, 180));
+    let failed = false;
     try {
       if (current?.instance) { try { current.instance.unmount(); } catch (e) { console.error(e); } }
       sceneEl.innerHTML = '';
@@ -52,12 +53,15 @@ const router = {
     } catch (e) {
       console.error('Error cargando escena', id, e);
       toast('Ups, algo falló cargando ' + id, { icon: 'info', type: 'bad' });
-      if (id !== 'city') { navigating = false; return router.go('city'); }
+      failed = true;
     } finally {
       fadeEl.classList.remove('show');
       navigating = false;
     }
-    if (id === 'city') flushLevelUps();
+    // volver a la ciudad recién cuando terminó el finally (si no, el candado de navegación se libera a mitad de camino)
+    if (failed) return id !== 'city' ? router.go('city') : false;
+    if (id === 'city') { flushLevelUps(); maybeShowLogin(); }
+    return true;
   },
   /** Abre un minijuego verificando que esté desbloqueado. */
   openGame(gameId, p = {}) {
@@ -82,7 +86,14 @@ function gameStatus(gameId) {
  * result: { game, score, stars(0..3), won(bool), coins(base), gems, xp, title?, lines?:[html], newBest? }
  * Las monedas base se multiplican por rewardScale(nivel). Devuelve 'again' | 'city'.
  */
-async function endGame(result) {
+let ending = null;
+function endGame(result) {
+  // si un juego llama dos veces seguidas (doble toque, timers), no duplicar premios ni apilar modales
+  if (ending) return ending;
+  ending = finishGame(result).finally(() => { ending = null; });
+  return ending;
+}
+async function finishGame(result) {
   const s = store.state;
   const scale = data.rewardScale(s.player.level);
   const reward = {
@@ -127,17 +138,35 @@ bus.on('level:up', (ev) => {
   audio.sfx('levelup');
   if (router.current === 'city' && !navigating) setTimeout(flushLevelUps, 400);
 });
+const cityIdle = () => router.current === 'city' && !navigating && !hasModal() && !flushing && !pendingLevelUps.length;
 let flushing = false;
 async function flushLevelUps() {
   if (flushing) return;
   flushing = true;
   try {
-    while (pendingLevelUps.length && router.current === 'city') {
+    while (pendingLevelUps.length && router.current === 'city' && !navigating) {
       if (hasModal()) { setTimeout(() => { flushing = false; flushLevelUps(); }, 800); return; }
       const ev = pendingLevelUps.shift();
       await openPanel('levelup', ev);
     }
-  } finally { if (!pendingLevelUps.length || router.current !== 'city') flushing = false; }
+  } finally { if (!pendingLevelUps.length || router.current !== 'city' || navigating) flushing = false; }
+}
+
+// ---------- Premio diario ----------
+// Se muestra en la ciudad cuando no hay otro modal (p.ej. después de las subidas de nivel),
+// y también al volver a la app en un día nuevo (iOS deja la PWA abierta en segundo plano).
+let loginOpen = false, loginWait = 0;
+function maybeShowLogin() {
+  if (loginOpen || loginWait || !quests.loginStatus()) return;
+  let tries = 0;
+  const attempt = () => {
+    loginWait = 0;
+    if (loginOpen || !quests.loginStatus()) return;
+    if (!cityIdle()) { if (++tries < 40 && router.current === 'city') loginWait = setTimeout(attempt, 700); return; }
+    loginOpen = true;
+    Promise.resolve(openPanel('login')).finally(() => { loginOpen = false; });
+  };
+  loginWait = setTimeout(attempt, 600);
 }
 
 // ---------- Arranque ----------
@@ -161,24 +190,32 @@ async function boot() {
   economy.tick();
   setInterval(() => economy.tick(), 1000);
 
+  // iOS solo habilita el audio dentro de un gesto; touchend/click son los más confiables en Safari
   const unlock = () => audio.unlock();
-  addEventListener('pointerdown', unlock, { passive: true });
-  addEventListener('keydown', unlock);
+  for (const ev of ['pointerdown', 'touchend', 'click', 'keydown']) addEventListener(ev, unlock, { passive: true, capture: true });
+  addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    economy.tick();
+    if (router.current === 'city') maybeShowLogin();
+  });
 
   // Evitar zoom con doble toque/pinch del navegador en iOS
   document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('gesturechange', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 
   const splash = document.getElementById('splash');
   const startScene = params.get('scene') || 'city';
   const skipSplash = params.has('scene') || params.has('nosplash');
 
+  let started = false;
   const begin = async () => {
+    if (started) return;
+    started = true;
     audio.unlock();
     splash.classList.add('hide');
     setTimeout(() => splash.remove(), 500);
-    await router.go(startScene, Object.fromEntries(params));
-    if (startScene === 'city' && quests.loginStatus()) setTimeout(() => openPanel('login'), 600);
+    await router.go(startScene, Object.fromEntries(params));   // en la ciudad, go() ya muestra el premio diario
   };
   if (skipSplash) begin();
   else {

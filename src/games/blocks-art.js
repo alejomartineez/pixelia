@@ -56,10 +56,16 @@ export function blockSprite(color, s, variant = 'n') {
     const o = Math.floor((s - 5) / 2);
     const pts = [];
     STAR5.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') pts.push([o + x, o + y]); }));
-    g.fillStyle = p.out;
-    for (const [x, y] of pts) { g.fillRect(x - 1, y, 3, 1); g.fillRect(x, y - 1, 1, 3); }
+    // sombra corrida abajo-derecha (un contorno completo la empastaba y no se leía como estrella)
+    g.fillStyle = p.dark;
+    for (const [x, y] of pts) g.fillRect(x + 1, y + 1, 1, 1);
     g.fillStyle = '#ffffff';
     for (const [x, y] of pts) g.fillRect(x, y, 1, 1);
+  } else if (variant === 's' && s >= 5) {
+    // en la bandeja (bloques chicos): crucecita blanca para que se note que es regalo
+    const m = Math.floor(s / 2);
+    g.fillStyle = '#ffffff';
+    g.fillRect(m - 1, m, 3, 1); g.fillRect(m, m - 1, 1, 3);
   }
   cache.set(key, c);
   return c;

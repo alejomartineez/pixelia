@@ -1,7 +1,7 @@
 // Paneles de Ajustes y Cómo jugar.
 import { icon, iconUrl } from '../core/icons.js';
 import { OUTFIT_COLORS } from '../core/data.js';
-import { openShell, art, flagArt } from './panels-common.js';
+import { openShell, askConfirm, art, flagArt } from './panels-common.js';
 
 const isStandalone = () => !!(navigator.standalone || matchMedia?.('(display-mode: standalone)').matches);
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -93,6 +93,7 @@ export function openSettings(ctx) {
     install.append(h('div.pnl-note.good', { html: `${icon('check', 22)}<span>¡Ya tenés Pixelia instalada! Abrila desde tu pantalla de inicio cuando quieras.</span>` }));
   } else {
     install.append(h('p.small.muted', {}, 'Así se abre a pantalla completa, como una app de verdad, y funciona sin internet.'));
+    if (!isIOS()) install.append(h('b.pnl-install-sub', { html: `${icon('star', 16)} En el iPhone:` }));
     install.append(h('div.pnl-steps', { html: [
       ['1', `<img class="pi" src="${iconUrl('🧭')}" width="40" height="40" alt="">`, 'Abrí el juego en <b>Safari</b>'],
       ['2', art('share', 40), 'Tocá <b>Compartir</b> (abajo)'],
@@ -100,21 +101,27 @@ export function openSettings(ctx) {
       ['4', `<img class="pi pnl-appicon" src="icons/icon-192.png" width="40" height="40" alt="">`, '¡Listo! Tocá el ícono'],
     ].map(([n, ic, t]) => `<div class="pnl-stepc"><i>${n}</i>${ic}<span>${t}</span></div>`).join('') }));
     const deferred = window.__pixeliaInstallPrompt;
-    if (deferred && typeof deferred.prompt === 'function') {
-      install.append(h('button.btn.lilac.block', {
-        html: `${icon('plus', 20)} Instalar en esta compu`,
-        onclick: async () => { try { await deferred.prompt(); } catch (e) { console.warn(e); } },
-      }));
+    if (!isIOS() && deferred && typeof deferred.prompt === 'function') {
+      const btn = h('button.btn.lilac.block', { html: `${icon('plus', 20)} Instalar en esta compu` });
+      btn.onclick = async () => {
+        // el aviso de instalación del navegador se puede usar una sola vez
+        btn.disabled = true;
+        try { await deferred.prompt(); } catch (e) { console.warn(e); }
+        window.__pixeliaInstallPrompt = null;
+        btn.remove();
+      };
+      install.append(btn);
     } else if (!isIOS()) {
       install.append(h('p.pnl-note', { html: `${icon('info', 18)}<span><b>En la compu:</b> en Chrome o Edge tocá el botón de instalar que aparece a la derecha de la barra de direcciones.</span>` }));
     }
   }
-  root.append(section(icon('home', 24), 'Instalar en el iPhone', install));
+  root.append(section(icon('home', 24), isIOS() || isStandalone() ? 'Instalar en el iPhone' : 'Instalar como app', install));
 
   // ---------- Copia de seguridad ----------
   const exportBox = h('div.col.hidden');
   const exportArea = h('textarea.pnl-code', { readonly: true, rows: '3', 'aria-label': 'Código de tu partida' });
-  exportBox.append(h('p.small.muted', {}, 'Mantené apretado (o Ctrl+C) para copiar este código y guardalo en un lugar seguro:'), exportArea);
+  const exportHint = h('p.small.muted', {}, '');
+  exportBox.append(exportHint, exportArea);
   const copyBtn = h('button.btn.sky.block', { html: `${icon('save', 20)} Copiar código` });
   copyBtn.onclick = async () => {
     store.save();
@@ -122,21 +129,26 @@ export function openSettings(ctx) {
     exportArea.value = code;
     let ok = false;
     try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(code); ok = true; } } catch { ok = false; }
+    // el cuadro se muestra siempre: así se ve qué se copió y se puede volver a copiar a mano
+    exportBox.classList.remove('hidden');
     if (!ok) {
-      exportBox.classList.remove('hidden');
       exportArea.focus(); exportArea.select();
       try { ok = document.execCommand('copy'); } catch { ok = false; }
     }
+    exportHint.textContent = ok
+      ? '¡Listo! Pegalo en tus notas o mandátelo por chat. Este es tu código:'
+      : 'Mantené apretado (o Ctrl+C) para copiar este código y guardalo en un lugar seguro:';
     if (ok) { audio.sfx('done'); ui.toast('¡Código copiado! Guardalo bien', { icon: 'check', type: 'good' }); }
     else { audio.sfx('select'); ui.toast('Copialo a mano desde el cuadro', { icon: 'info' }); }
   };
-  const importArea = h('textarea.pnl-code', { rows: '3', placeholder: 'Pegá acá un código de partida…', 'aria-label': 'Código para cargar', spellcheck: 'false', autocomplete: 'off' });
+  const importArea = h('textarea.pnl-code', { rows: '3', placeholder: 'Pegá acá un código de partida…', 'aria-label': 'Código para cargar', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off' });
   importArea.addEventListener('keydown', e => { if (e.key !== 'Escape') e.stopPropagation(); });
   const importBtn = h('button.btn.lilac.block', { html: `${icon('key', 20)} Cargar partida` });
   importBtn.onclick = async () => {
-    const code = importArea.value.trim();
+    // al pegar desde un chat pueden colarse espacios, saltos de línea o comillas: dejamos solo base64
+    const code = importArea.value.replace(/[^A-Za-z0-9+/=]/g, '');
     if (!code) { audio.sfx('error'); ui.toast('Primero pegá el código', { icon: 'info' }); importArea.focus(); return; }
-    const ok = await ui.confirm('¿Cargar partida?', 'Tu partida actual se va a reemplazar por la del código.', 'Cargar', 'Mejor no');
+    const ok = await askConfirm(ctx, { title: '¿Cargar partida?', html: 'Tu partida actual se va a reemplazar por la del código.', ok: 'Cargar', cancel: 'Mejor no', ic: 'key' });
     if (!ok) return;
     try {
       store.importCode(code);
@@ -167,9 +179,9 @@ export function openSettings(ctx) {
   // ---------- Borrar ----------
   const resetBtn = h('button.btn.block.pnl-danger', { html: `${icon('trash', 20)} Borrar partida` });
   resetBtn.onclick = async () => {
-    const a = await ui.confirm('¿Borrar partida?', 'Se borra <b>toda</b> tu ciudad, tus monedas y tus logros.', 'Sí, borrar', 'No');
-    if (!a) return;
-    const b = await ui.confirm('¿Segurísima?', 'Esto <b>no se puede deshacer</b>. Si querés, antes copiá tu código de respaldo.', 'Borrar todo', 'Me arrepentí');
+    const a = await askConfirm(ctx, { title: '¿Borrar partida?', html: 'Se borra <b>toda</b> tu ciudad, tus monedas y tus logros.', ok: 'Sí, borrar', cancel: 'No', okCls: 'pnl-danger', ic: 'trash' });
+    if (!a || sh.closed) return;
+    const b = await askConfirm(ctx, { title: '¿Segurísima?', html: 'Esto <b>no se puede deshacer</b>. Si querés, antes copiá tu código de respaldo.', ok: 'Borrar todo', cancel: 'Me arrepentí', okCls: 'pnl-danger', ic: 'trash' });
     if (!b) return;
     store.reset();
     location.reload();

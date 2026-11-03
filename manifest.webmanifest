@@ -2,6 +2,7 @@
   "name": "Pixelia · Ciudad de Princesas",
   "short_name": "Pixelia",
   "description": "Construí tu ciudad de princesas en 3D pixel art y jugá minijuegos.",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -82,8 +82,12 @@ export function ensureDaily() {
   if (s.quests.daily?.date === today) return;
   const pool = DAILY_POOL.filter(q => (q.minLevel || 1) <= s.player.level);
   const picks = seededPick(today + s.created, pool, 3);
-  s.quests.daily = { date: today, list: picks.map(q => ({ id: q.id, progress: 0, claimed: false })), bonusClaimed: false };
+  // el objetivo escalado se congela al elegirlo: si subís de nivel a mitad del día no se aleja una misión ya cumplida
+  s.quests.daily = { date: today, list: picks.map(q => ({ id: q.id, progress: 0, claimed: false, count: dailyCount(q, s.player.level) })), bonusClaimed: false };
   changed();
+}
+function dailyCount(q, level) {
+  return q.scale ? Math.round(q.goal.count * rewardScale(level) / 10) * 10 : q.goal.count;
 }
 export function dailyQuests() {
   ensureDaily();
@@ -92,7 +96,7 @@ export function dailyQuests() {
   return s.quests.daily.list.map(entry => {
     const q = DAILY_POOL.find(d => d.id === entry.id);
     if (!q) return null;
-    const count = q.scale ? Math.round(q.goal.count * scale / 10) * 10 : q.goal.count;
+    const count = entry.count || dailyCount(q, s.player.level);
     const reward = { ...q.reward };
     if (reward.coins) reward.coins = Math.round(reward.coins * scale);
     return { ...q, goal: { ...q.goal, count }, reward, progress: Math.min(entry.progress, count), done: entry.progress >= count, claimed: entry.claimed };

@@ -259,12 +259,27 @@ export function disposeThumbs() {
 }
 
 const FRAMES = {
-  head: { y: 0.7, view: 0.8, ang: 0.45, elev: 0.18 },
+  head: { y: 0.77, view: 0.94, ang: 0.45, elev: 0.18 }, // entra la corona más alta (estrella) y el rodete
   body: { y: 0.53, view: 1.22, ang: 0.45, elev: 0.18 },
   back: { y: 0.6, view: 1.3, ang: 2.55, elev: 0.18 },
   car: { y: 0.33, view: 1.0, ang: 0.85, elev: 0.5 },
   wheel: { y: 0, view: 0.4, ang: Math.PI / 2, elev: 0.05 },
 };
+const _box = new THREE.Box3(), _v = new THREE.Vector3();
+/** Ajusta una cámara ortográfica (ya orientada) para que entre todo obj, cuadrado y centrado. */
+function fitOrtho(camera, obj, margin = 0.1) {
+  camera.updateMatrixWorld(true);
+  obj.updateMatrixWorld(true);
+  _box.setFromObject(obj);
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (let i = 0; i < 8; i++) {
+    _v.set(i & 1 ? _box.max.x : _box.min.x, i & 2 ? _box.max.y : _box.min.y, i & 4 ? _box.max.z : _box.min.z).applyMatrix4(camera.matrixWorldInverse);
+    x0 = Math.min(x0, _v.x); x1 = Math.max(x1, _v.x); y0 = Math.min(y0, _v.y); y1 = Math.max(y1, _v.y);
+  }
+  const half = Math.max(x1 - x0, y1 - y0) * (1 + margin) / 2, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  camera.left = cx - half; camera.right = cx + half; camera.top = cy + half; camera.bottom = cy - half;
+}
+
 /**
  * Devuelve el dataURL de una miniatura. spec:
  *  { type:'princess', look, frame:'head'|'body'|'back' }
@@ -284,14 +299,15 @@ export function thumbnail(spec) {
   } else {
     obj = carModel(spec.car, { driver: spec.driver || null });
     const s = obj.userData.size;
-    fr = { ...fr, view: Math.max(0.95, s.l * 0.82, s.h * 1.35), y: s.h * 0.42 };
+    fr = { ...fr, y: s.h * 0.42, fit: true };
   }
   scene.add(obj);
   const target = new THREE.Vector3(0, fr.y, 0);
-  camera.left = -fr.view / 2; camera.right = fr.view / 2; camera.top = fr.view / 2; camera.bottom = -fr.view / 2;
-  camera.updateProjectionMatrix();
   camera.position.set(Math.sin(fr.ang) * 10 * Math.cos(fr.elev), fr.y + Math.sin(fr.elev) * 10, Math.cos(fr.ang) * 10 * Math.cos(fr.elev));
   camera.lookAt(target);
+  if (fr.fit) fitOrtho(camera, obj, 0.1); // autos: encuadre según la caja real (los adornos altos no se cortan)
+  else { camera.left = -fr.view / 2; camera.right = fr.view / 2; camera.top = fr.view / 2; camera.bottom = -fr.view / 2; }
+  camera.updateProjectionMatrix();
   renderer.render(scene, camera);
   const url = renderer.domElement.toDataURL('image/png');
   scene.remove(obj);

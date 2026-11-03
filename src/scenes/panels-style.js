@@ -7,6 +7,9 @@ export const PANEL_CSS = `
   background-size: 20px 20px;
 }
 .modal.pnl .modal-head h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* dedos: la X y los botones chicos de cobrar llegan a ~44px de alto */
+.modal.pnl .modal-x { width: 42px; height: 42px; }
+.modal.pnl .btn.small { min-height: 42px; }
 .modal.pnl-md { width: min(520px, 100%); }
 .pnl-gap { gap: 12px; }
 .pnl-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
@@ -174,7 +177,7 @@ export const PANEL_CSS = `
 .pnl-appicon { border-radius: 9px; border: 2px solid var(--ink); }
 .pnl-note { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; font-size: 14px; background: var(--gold-l); border: 2px solid var(--ink); border-radius: 10px; line-height: 1.25; }
 .pnl-note.good { background: var(--mint-l); align-items: center; }
-.pnl-code { width: 100%; resize: none; padding: 8px 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; line-height: 1.25; color: var(--ink);
+.pnl-code { width: 100%; resize: none; padding: 8px 10px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; line-height: 1.25; color: var(--ink);
   background: #fff; border: var(--line) solid var(--ink); border-radius: 10px; outline: none; touch-action: pan-y; word-break: break-all; }
 .pnl-code::placeholder { font-family: var(--font); color: var(--ink-ll); }
 .pnl-code:focus { border-color: var(--pink-d); }
@@ -185,6 +188,9 @@ export const PANEL_CSS = `
 .pnl-credits-title { font-size: 19px; }
 .pnl-credits p { margin: 2px 0; }
 .pnl-danger { --bg: var(--coral); --bg-d: #d94a57; }
+.pnl-install-sub { display: flex; align-items: center; gap: 6px; font-size: 15px; margin: 2px 0 4px; }
+.modal.pnl-confirm { width: min(400px, 100%); }
+.pnl-confirm-txt { margin: 4px 0 2px; text-align: center; font-size: 18px; line-height: 1.25; }
 .pnl-dangerzone { padding: 8px 0 6px; }
 
 /* ---------- Ayuda ---------- */
@@ -262,7 +268,7 @@ export const PANEL_CSS = `
 .pnl-unlock { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #fff; border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 2px 0 var(--ink); text-align: left;
   animation: pnlEnter .35s both; }
 .pnl-unlock.hot { background: var(--gold-l); }
-.pnl-unlock-ic { flex: none; width: 50px; height: 50px; display: grid; place-items: center; background: var(--sky-l); border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
+.pnl-unlock-ic { flex: none; width: 52px; height: 52px; display: grid; place-items: center; background: var(--sky-l); border: 2px solid var(--ink); border-radius: 10px; overflow: hidden; }
 .pnl-unlock.hot .pnl-unlock-ic { background: #fff; }
 .pnl-unlock-txt { display: flex; flex-direction: column; min-width: 0; }
 .pnl-unlock-txt small { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-l); font-weight: 700; }

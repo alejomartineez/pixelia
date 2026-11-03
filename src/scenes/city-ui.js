@@ -45,8 +45,10 @@ export const STYLE = `
   text-shadow: 0 2px 0 rgba(59,35,64,.35); margin-bottom: 4px; }
 .cx-sign.locked { background: #fff; color: var(--ink-l); text-shadow: none; box-shadow: inset 0 -4px 0 #eadcf0, 0 3px 0 var(--ink); }
 
-.cx-tag { display: flex; align-items: center; gap: 4px; padding: 3px 9px; background: #fff; border: 3px solid var(--ink); border-radius: 10px;
-  box-shadow: 0 3px 0 var(--ink); font-weight: 700; font-size: 14px; white-space: nowrap; margin-bottom: 8px; animation: cx-bob 1.1s steps(4) infinite; }
+.cx-tagwrap { padding-bottom: 12px; }
+.cx-tag { position: relative; display: flex; align-items: center; gap: 4px; padding: 3px 9px; background: #fff; border: 3px solid var(--ink); border-radius: 10px;
+  box-shadow: 0 3px 0 var(--ink); font-weight: 700; font-size: 14px; white-space: nowrap; animation: cx-bobY 1.1s steps(4) infinite; }
+@keyframes cx-bobY { 50% { transform: translateY(-6px); } }
 .cx-tag::after { content: ''; position: absolute; left: 50%; bottom: -8px; width: 8px; height: 8px; background: #fff; border: 3px solid var(--ink);
   border-top: 0; border-left: 0; transform: translateX(-50%) rotate(45deg); }
 
@@ -92,6 +94,11 @@ export const STYLE = `
 .cx-tabs { position: sticky; top: 0; z-index: 3; background: var(--panel); margin: 0 -14px 6px; padding: 10px 12px 8px; border-bottom: 2px dashed #ecd5e6; }
 .cx-tabs .tab { position: relative; }
 .cx-tabs .tab .dot { position: absolute; top: -6px; right: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); }
+@media (max-width: 520px) {
+  .cx-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; overflow: visible; padding: 10px 8px 8px; margin: 0 -14px 6px; }
+  .cx-tabs .tab { flex-direction: column; gap: 1px; padding: 4px 2px 3px; font-size: 13px; line-height: 1; min-width: 0; white-space: nowrap; }
+  .cx-tabs .tab .dot { top: -5px; right: -5px; width: 12px; height: 12px; }
+}
 .cx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding-bottom: 6px; }
 @media (max-width: 420px) { .cx-grid { grid-template-columns: 1fr 1fr; gap: 8px; } }
 .cx-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 8px; cursor: pointer; font-family: inherit; color: var(--ink); }
@@ -114,7 +121,9 @@ export const STYLE = `
 .cx-price .tm { font-size: 12px; color: var(--ink-l); display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
 .cx-card.poor .cx-price .cost { color: var(--coral); }
 .cx-lock { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; justify-content: center; }
-.cx-lock span { background: var(--ink); color: #fff; border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.cx-lock span { background: var(--ink); color: #fff; border-radius: 8px; padding: 2px 8px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 3px;
+  white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.cx-lock span img { flex: none; }
 .cx-qbadge { position: absolute; top: 6px; left: 6px; background: var(--gold); border: 2px solid var(--ink); border-radius: 8px; padding: 0 6px; font-size: 12px; font-weight: 700; z-index: 1; }
 .cx-count { position: absolute; top: 6px; right: 6px; background: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 0 6px; font-size: 12px; font-weight: 700; z-index: 1; }
 .cx-builders { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-l); margin: 2px 0 8px; }
@@ -196,6 +205,15 @@ export function questBuildIds(ctx) {
   return [];
 }
 
+/** Etiqueta corta del candado de una tarjeta (entra en una línea en el celu). */
+function lockLabel(d, can) {
+  if (can.reason === 'Constructoras ocupadas') return `${icon('hammer', 14)}Ocupadas`;
+  if (can.reason === 'Ya lo tenés') return `${icon('check', 14)}¡Ya lo tenés!`;
+  if (can.poor) return `${icon('coin', 14)}Te faltan monedas`;
+  if (can.locked && d.popReq && !/^Nivel/.test(can.reason)) return `${icon('people', 14)}${d.popReq} vecinas`;
+  return `${icon(can.locked ? 'lock' : 'info', 14)}${can.reason}`;
+}
+
 // ======================================================================
 // Menú Construir
 // ======================================================================
@@ -203,12 +221,15 @@ let lastTab = 'casa';
 export function openBuildMenu(S, focusId = null) {
   const { ctx } = S;
   const { ui, economy: E, store } = ctx;
+  S.buildMenu?.close();
   const qids = questBuildIds(ctx);
+  if (focusId && (!E.def(focusId) || focusId === 'castillo')) focusId = null;
   if (!focusId) focusId = qids.find(id => E.canBuild(id).ok) || null;
   let tab = focusId ? E.def(focusId).cat : lastTab;
   const body = ui.h('div.cx-buildwrap');
-  const m = ui.sheet({ title: 'Construir', content: body, className: 'cx-modal cx-build', onClose: () => { offs.forEach(f => f()); S.untrackModal(m); } });
+  const m = ui.sheet({ title: 'Construir', content: body, className: 'cx-modal cx-build', onClose: () => { offs.forEach(f => f()); S.untrackModal(m); if (S.buildMenu === m) S.buildMenu = null; } });
   S.trackModal(m);
+  S.buildMenu = m;
   const offs = [];
   const rerender = () => render(false);
   offs.push(ctx.bus.on('currency:changed', rerender), ctx.bus.on('building:built', rerender), ctx.bus.on('level:up', rerender));
@@ -240,7 +261,7 @@ export function openBuildMenu(S, focusId = null) {
       th.append(thumbImg(d.id, 1));
       if (qids.includes(d.id)) th.append(ui.h('span.cx-qbadge', {}, '¡Misión!'));
       if (d.max) th.append(ui.h('span.cx-count', {}, `${E.countOf(d.id)}/${d.max}`));
-      if (!can.ok) th.append(ui.h('div.cx-lock', { html: `<span>${icon(can.locked ? 'lock' : can.poor ? 'coin' : can.reason === 'Ya lo tenés' ? 'check' : 'hammer', 14)}${ui.esc(can.reason)}</span>` }));
+      if (!can.ok) th.append(ui.h('div.cx-lock', { html: `<span>${lockLabel(d, can)}</span>` }));
       card.append(th,
         ui.h('div.nm', {}, d.name),
         ui.h('div.cx-gives', { html: givesHtml(ctx, d) }),
@@ -267,6 +288,17 @@ export function openBuildMenu(S, focusId = null) {
   }
   render(true);
   return m;
+}
+
+/** Confirmación Sí/No que la ciudad registra (Esc o tocar afuera = No). */
+function askYesNo(S, title, html, okLabel, cancelLabel) {
+  const { ui } = S.ctx;
+  return new Promise(res => {
+    let v = false;
+    const m = ui.modal({ title, content: `<p class="center">${html}</p>`, className: 'cx-modal', onClose: () => { S.untrackModal(m); res(v); },
+      actions: [{ label: cancelLabel, cls: 'ghost' }, { label: okLabel, cls: 'pink', onClick: () => { v = true; } }] });
+    S.trackModal(m);
+  });
 }
 
 // ======================================================================
@@ -414,7 +446,7 @@ export function openInfo(S, uid) {
         box2.append(ui.h('div.line', { html: `<span>Más obras al mismo tiempo</span><span class="cost">${ui.costHtml(bi.cost, 18)}</span>` }));
         box2.append(btn('Contratar', 'sky', 'plus', async () => {
           if (!store.canAfford(bi.cost)) { ctx.audio.sfx('error'); ui.toast('Te faltan gemas', { icon: 'gem' }); return; }
-          const ok = await ui.confirm('Contratar constructora', `¿Contratar otra constructora por ${bi.cost.gems} gemas?`, 'Contratar', 'Mejor no');
+          const ok = await askYesNo(S, 'Contratar constructora', `¿Contratar otra constructora por ${icon('gem', 16)} ${bi.cost.gems}?`, 'Contratar', 'Mejor no');
           if (ok && E.buyBuilder()) { ctx.audio.sfx('buy'); ui.toast('¡Nueva constructora en el equipo!', { icon: 'hammer', type: 'good' }); sig = ''; tick(); }
         }));
       }
@@ -435,7 +467,7 @@ export function openInfo(S, uid) {
     acts.append(btn('Rotar', 'ghost', 'rotate', () => { S.rotateBuilding(b.uid); }));
     if (E.canRemove(b)) acts.append(btn('Guardar', 'ghost', 'trash', async () => {
       const refund = Math.floor((d.cost.coins || 0) * 0.5);
-      const ok = await ui.confirm('Guardar', `¿Querés quitar ${ui.esc(d.name)}?${refund ? ` Te devolvemos ${icon('coin', 16)} ${refund}.` : ''}`, 'Quitar', 'No');
+      const ok = await askYesNo(S, 'Guardar', `¿Querés quitar ${ui.esc(d.name)}?${refund ? ` Te devolvemos ${icon('coin', 16)} ${refund}.` : ''}`, 'Quitar', 'No');
       if (ok) { S.removeBuilding(b.uid); m.close(); }
     }));
     body.append(acts);
@@ -534,8 +566,8 @@ export function makePlaceBar(S, { onCancel, onRotate, onConfirm }) {
       const touch = S.lastPointer === 'touch' || (S.lastPointer !== 'mouse' && matchMedia('(pointer: coarse)').matches);
       let txt;
       if (!p.valid) txt = (p.reason === 'Fuera del terreno' ? 'Fuera de tu terreno' : p.reason === 'Hay algo ahí' ? 'Ese lugar está ocupado' : p.reason) + ' · elegí un lugar verde';
-      else if (p.paint) txt = touch ? 'Tocá o arrastrá sobre el pasto para seguir poniendo' : 'Hacé clic o arrastrá para seguir poniendo · Esc para terminar';
-      else txt = touch ? 'Arrastrá el edificio o tocá donde lo querés' : 'Mové el mouse y hacé clic para colocar · R rota · Esc cancela';
+      else if (p.paint) txt = touch ? 'Tocá el pasto para poner más · arrastrá desde la pieza para pintar' : 'Clic para poner más · arrastrá para pintar · Esc termina';
+      else txt = touch ? 'Arrastrá el edificio o tocá donde lo querés' : 'Hacé clic donde lo querés · arrastrá para mover la vista · R rota · Esc cancela';
       hint.textContent = txt;
       hint.classList.toggle('bad', !p.valid);
       bOk.disabled = !p.valid;

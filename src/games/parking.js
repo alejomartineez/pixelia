@@ -127,6 +127,7 @@ export default function create(ctx) {
       const set = touch[k];
       const on = (e) => {
         e.preventDefault();
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         try { btn.setPointerCapture(e.pointerId); } catch {}
         set.add(e.pointerId);
         btn.classList.add('on');
@@ -141,6 +142,13 @@ export default function create(ctx) {
       btn.addEventListener('pointercancel', off);
       btn.addEventListener('lostpointercapture', off);
       btn.addEventListener('contextmenu', e => e.preventDefault());
+    }
+  }
+  // red de seguridad: si la captura falló (o el navegador no la soporta), un dedo que se suelta
+  // fuera del botón igual llega acá y no deja el auto acelerando para siempre
+  function releasePointer(e) {
+    for (const k in touch) {
+      if (touch[k].delete(e.pointerId) && !touch[k].size) root?.querySelector(`.pk-btn[data-k="${k}"]`)?.classList.remove('on');
     }
   }
 
@@ -184,7 +192,7 @@ export default function create(ctx) {
           <button class="btn ghost pk-levels">${icon('map', 20)} Niveles</button>
           <button class="btn pink pk-play">${icon('play', 20)} ¡Jugar!</button>
         </div>
-        <small class="pk-card-keys">Enter para jugar · también podés tocar Acelerar</small>
+        <small class="pk-card-keys">Enter o ↑ para jugar</small>
       </div>`;
     $.intro.classList.add('show');
     $.intro.querySelector('.pk-play').addEventListener('click', () => { audio.sfx('select'); startPlay(); });
@@ -198,7 +206,9 @@ export default function create(ctx) {
     goalTimer = 6; // el objetivo se ve unos segundos y después se esconde para no tapar el lugar
   }
 
+  let levelsModal = null;
   function openLevels() {
+    if (levelsModal) return;
     const wrap = document.createElement('div');
     wrap.className = 'pk-lvgrid';
     const max = unlocked();
@@ -225,7 +235,7 @@ export default function create(ctx) {
     head.innerHTML = `${icon('star', 20)} <b>${total}</b> / ${LEVEL_COUNT * 3} estrellas`;
     const box = document.createElement('div');
     box.append(head, wrap);
-    m = ui.modal({ title: 'Niveles', content: box, icon: 'car', className: 'pk-levels-modal' });
+    m = levelsModal = ui.modal({ title: 'Niveles', content: box, icon: 'car', className: 'pk-levels-modal', onClose: () => { levelsModal = null; } });
   }
 
   let pauseModal = null;
@@ -235,6 +245,7 @@ export default function create(ctx) {
     const prev = phase;
     phase = 'paused';
     clearKeys();
+    dropFocus();
     let action = 'resume';
     pauseModal = ui.modal({
       title: 'Pausa', icon: 'pause',
@@ -263,19 +274,26 @@ export default function create(ctx) {
     placeCar(car, level.start[0], level.start[1], level.start[2] * DEG);
     setBox(carBox, car.x, car.z, car.a);
     elapsed = 0; touches = 0; hold = 0; shake = 0; hitFlash = 0; globalCool = 0; lastShownSec = -1;
-    status.inside = status.aligned = status.done = false; status.hold = 0;
+    status.inside = status.aligned = status.done = false; status.hold = 0; status.fill = 0;
     for (const o of world.statics) o.cool = 0;
     clearKeys();
     syncPlayer(0);
     cam.init = false;
+    hintTimer = 0; hintSticky = '';
+    // siempre volver a 'intro' antes de arrancar: si venía de 'paused' (Reiniciar), startPlay no hacía nada y el juego quedaba congelado
+    phase = 'intro';
     refreshBar();
     showHint('');
     if (autoStart) { $.goal.textContent = level.goal; startPlay(); }
-    else { phase = 'intro'; showIntro(); }
+    else showIntro();
   }
+
+  // que un botón con foco (¡Jugar!, pausa) no se active con Espacio/Enter mientras manejás
+  function dropFocus() { const a = document.activeElement; if (a && root?.contains(a)) a.blur(); }
 
   function startPlay() {
     if (phase !== 'intro') return;
+    dropFocus();
     hideIntro();
     phase = 'play';
     audio.sfx('horn');
@@ -297,6 +315,7 @@ export default function create(ctx) {
     const k = KEYMAP[e.code];
     if (e.code === 'Escape') {
       if (phase === 'paused') { pauseModal?.close(); }
+      else if (levelsModal) levelsModal.close();
       else if (!ui.hasModal()) openPause();
       e.preventDefault();
       return;
@@ -360,7 +379,9 @@ export default function create(ctx) {
           const vn = vx * colOut.nx + vz * colOut.nz;
           if (vn < 0) {
             const impact = -vn;
-            car.v = -car.v * 0.32;
+            // choque de frente: rebote; roce en ángulo: frena un poco y se desliza (el empuje ya quitó la parte normal)
+            const head = impact / Math.max(Math.abs(car.v), 1e-3);
+            car.v = head > 0.55 ? -car.v * 0.32 : car.v * (0.92 - head * 0.6);
             if (impact > 0.18 && (o.cool || 0) <= 0 && globalCool <= 0 && phase === 'play') {
               o.cool = 0.8;
               o.wob = 0.45;
@@ -425,8 +446,8 @@ export default function create(ctx) {
     if (hintTimer > 0) return;
     if (status.inside && status.aligned) {
       if (hold > 0.02) showHint('¡Perfecto! Quedate quietita…', status.hold, 'good');
-      else showHint('¡Adentro! Frená y soltá todo', 0, 'good');
-    } else if (status.inside && !status.aligned) showHint('Enderezá un poquito el auto', 0, '');
+      else showHint('¡Adentro! Soltá todo para frenar', 0, 'good');
+    } else if ((status.inside || status.fill >= 0.5) && !status.aligned) showHint('Enderezá un poquito el auto', 0, '');
     else if (status.fill >= 0.5) showHint('¡Casi! Metete un poquito más', 0, '');
     else showHint('');
   }
@@ -528,6 +549,7 @@ export default function create(ctx) {
     wob.position.y = phase === 'won' ? Math.abs(Math.sin(performance.now() / 120)) * 0.06 : 0;
   }
 
+  let lastIns = null;
   function uiInsets() {
     // píxeles ocupados arriba (barra) y abajo (controles) para centrar la acción en el hueco libre
     const h = root.clientHeight || innerHeight;
@@ -544,7 +566,7 @@ export default function create(ctx) {
     const w = root.clientWidth || innerWidth, hgt = root.clientHeight || innerHeight;
     const aspect = w / hgt;
     const tanH = Math.tan(FOV / 2 * DEG);
-    const ins = uiInsets();
+    const ins = lastIns = uiInsets();
     const freeFrac = Math.max(0.4, (ins.h - ins.top - ins.bottom) / ins.h);
     const [W, D] = level.area;
     const fitW = (W + 1.6) / (2 * tanH * aspect);
@@ -554,12 +576,26 @@ export default function create(ctx) {
     const maxVisW = aspect < 0.8 ? 6.8 : aspect < 1.2 ? 9 : 99;
     const maxByW = maxVisW / (2 * tanH * aspect);
     const maxByD = 5.6 * Math.sin(PITCH) / (tanH * freeFrac);
-    d = Math.min(d, Math.max(Math.min(maxByW, maxByD), 9));
-    // seguir al auto (mezclado con el lugar), limitado al área
+    // ...pero si el auto y el lugar no entran juntos, alejar un poco (hasta ~9.2 de ancho) para que el lugar se vea siempre
+    const spot = world.spot;
+    const MX = 1.05, MZ = 0.95;  // margen alrededor del auto (con su aro) / lugar
+    const needByW = (Math.abs(car.x - spot.x) + MX * 2) / (2 * tanH * aspect);
+    const needByD = (Math.abs(car.z - spot.z) + MZ * 2) * Math.sin(PITCH) / (2 * tanH * freeFrac);
+    const capByW = Math.max(maxVisW, 9.2) / (2 * tanH * aspect);
+    const need = Math.min(Math.max(needByW, needByD), capByW);
+    d = Math.min(d, Math.max(Math.min(maxByW, maxByD), need, 9));
+    // seguir al auto, pero manteniendo el lugar en cuadro cuando se puede; limitado al área
     const hwVis = d * tanH * aspect, hdVis = d * tanH * freeFrac / Math.sin(PITCH);
     const limX = Math.max(0, W / 2 + 0.8 - hwVis), limZ = Math.max(0, D / 2 + 0.9 - hdVis);
-    const tx = clamp(car.x * 0.7 + world.spot.x * 0.3, -limX, limX);
-    const tz = clamp(car.z * 0.7 + world.spot.z * 0.3, -limZ, limZ);
+    const keepBoth = (c, s, half, m) => {
+      const want = c * 0.7 + s * 0.3, r = Math.max(0, half - m);
+      // rango de centros que deja al auto en cuadro; dentro de ese rango, el que más acerca al lugar
+      const lo = Math.max(c - r, s - r), hi = Math.min(c + r, s + r);
+      if (lo <= hi) return clamp(want, lo, hi);
+      return clamp(s, c - r, c + r);
+    };
+    const tx = clamp(keepBoth(car.x, spot.x, hwVis, MX), -limX, limX);
+    const tz = clamp(keepBoth(car.z, spot.z, hdVis, MZ), -limZ, limZ);
     if (!cam.init) { cam.x = tx; cam.z = tz; cam.d = d; cam.init = true; }
     const k = 1 - Math.exp(-dt * 3.2);
     cam.x += (tx - cam.x) * k; cam.z += (tz - cam.z) * k; cam.d += (d - cam.d) * k;
@@ -580,16 +616,18 @@ export default function create(ctx) {
   }
 
   // indicador en el borde de la pantalla cuando el lugar queda fuera de vista
-  let projV = null;
+  let projV = null, hintLow = false;
   function updatePointer() {
     if (!projV) projV = new r.THREE.Vector3();
     const show = phase === 'play' || phase === 'paused';
     const w = root.clientWidth, h = root.clientHeight;
     projV.set(world.spot.x, 0.2, world.spot.z).project(r.camera);
     const px = (projV.x + 1) / 2 * w, py = (1 - projV.y) / 2 * h;
-    const ins = uiInsets();
+    const ins = lastIns || uiInsets();
     const x0 = 34, x1 = w - 34, y0 = ins.top + 10, y1 = h - Math.max(ins.bottom, 30) - 10;
     const inside = projV.z < 1 && px > x0 && px < x1 && py > y0 && py < y1;
+    // la pista va en la mitad opuesta al lugar, para no taparlo justo cuando estás estacionando
+    if (projV.z < 1 && (hintLow ? py > h * 0.56 : py < h * 0.44)) { hintLow = !hintLow; $.hint.classList.toggle('low', hintLow); }
     if (!show || inside) { if (!$.pointer.hidden) $.pointer.hidden = true; return; }
     const cx = clamp(px, x0, x1), cy = clamp(py, y0, y1);
     const ang = Math.atan2(py - cy, px - cx);
@@ -665,7 +703,13 @@ export default function create(ctx) {
       listen(window, 'keydown', onKeyDown);
       listen(window, 'keyup', onKeyUp);
       listen(window, 'blur', clearKeys);
-      listen(document, 'visibilitychange', () => { if (document.hidden && phase === 'play') openPause(); });
+      listen(window, 'pointerup', releasePointer);
+      listen(window, 'pointercancel', releasePointer);
+      listen(document, 'visibilitychange', () => {
+        if (!document.hidden) return;
+        clearKeys();
+        if (phase === 'play') openPause();
+      });
 
       const wanted = Number(params.level);
       const start = wanted >= 1 && wanted <= LEVEL_COUNT ? wanted : unlocked();
@@ -676,6 +720,7 @@ export default function create(ctx) {
       window.__parking = {
         get car() { return car; }, get phase() { return phase; }, get level() { return lvNum; },
         get touches() { return touches; }, get status() { return status; }, get spot() { return world?.spot; },
+        get elapsed() { return elapsed; },
         load: (n) => loadLevel(n), play: () => startPlay(),
       };
     },

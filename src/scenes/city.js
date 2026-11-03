@@ -10,6 +10,7 @@ import { createCameraCtl } from './city-camera.js';
 import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
 import { STYLE, openBuildMenu, openInfo, openExpand, makePlaceBar, questBuildIds } from './city-ui.js';
+import { createBatcher } from './city-batch.js';
 
 const TAP_PX = 8;
 
@@ -33,7 +34,7 @@ function easeOutBounce(t) {
 
 export default function create(ctx) {
   const { store, bus, ui, audio, economy: E } = ctx;
-  let container, r, cam, world, life, fx, ov, styleEl, bGroup, placeBar, sideEl, collectBtn, tipEl, ro;
+  let container, r, cam, world, life, fx, ov, styleEl, bGroup, batch, placeBar, sideEl, collectBtn, tipEl, ro;
   const entries = new Map();
   const offs = [];
   const myModals = new Set();
@@ -41,8 +42,9 @@ export default function create(ctx) {
   let syncAcc = 0, disposed = false, batchCollect = false;
   let okMat, badMat, tileGeo, tileTex;
   const raycaster = new THREE.Raycaster();
+  raycaster.layers.enableAll(); // las mallas de edificios quietos están en otra capa (se dibujan instanciadas)
   const tmpV = new THREE.Vector3();
-  let hoverPos = null, hoverDirty = false;
+  let hoverPos = null, hoverDirty = false, hoverT = 0;
   let gameTip = null, signItems = [], collectTip = null, worldTip = null;
   const modelOpts = () => ({ flagColor: ctx.state.city.flagColor });
   const T = () => ctx.state.tutorial;
@@ -72,8 +74,9 @@ export default function create(ctx) {
     const root = new THREE.Group();
     root.userData.uid = b.uid;
     bGroup.add(root);
-    const e = { b, root, model: null, scaffold: null, mode: null, level: 0, rot: -1, anim: anim ? { type: anim, t: 0 } : null, timer: null, bubble: null, height: 1, placedAt: 0 };
+    const e = { b, root, model: null, scaffold: null, mode: null, level: 0, rot: -1, anim: anim ? { type: anim, t: 0 } : null, timer: null, bubble: null, height: 1, placedAt: 0, live: true };
     entries.set(b.uid, e);
+    batch.markDirty();
     refreshEntry(e);
     return e;
   }
@@ -81,8 +84,9 @@ export default function create(ctx) {
     const b = e.b, now = Date.now();
     const mode = E.isConstructing(b, now) ? 'build' : E.isUpgrading(b, now) ? 'upgrade' : 'done';
     const c = footCenter(b.id, b.x, b.z, b.rot);
-    e.root.position.x = c.x; e.root.position.z = c.z;
+    if (e.root.position.x !== c.x || e.root.position.z !== c.z) { e.root.position.x = c.x; e.root.position.z = c.z; batch.markDirty(); }
     if (!force && mode === e.mode && b.level === e.level && b.rot === e.rot) return false;
+    batch.markDirty();
     if (e.model) { e.root.remove(e.model); e.model = null; }
     if (e.scaffold) { e.root.remove(e.scaffold); e.scaffold = null; }
     if (mode === 'build') {
@@ -111,6 +115,7 @@ export default function create(ctx) {
     bGroup.remove(e.root);
     ov.remove(e.timer); ov.remove(e.bubble);
     entries.delete(uid);
+    batch.markDirty();
   }
 
   function ensureTimer(e) {
@@ -120,6 +125,7 @@ export default function create(ctx) {
     e.timer.b = el.querySelector('b'); e.timer.u = el.querySelector('u');
     return e.timer;
   }
+  let popSfx = false, quietPops = true;
   function ensureBubble(e, ps) {
     const cls = 'cx-bubble' + (ps.currency === 'gems' ? ' gem' : '') + (ps.full ? ' full' : '');
     if (e.bubble) { if (e.bubble.el.className !== cls) e.bubble.el.className = cls; return; }
@@ -127,7 +133,8 @@ export default function create(ctx) {
     el.className = cls;
     e.bubble = ov.add(el, topPos(e, 0.2));
     e.bubble.uid = e.b.uid;
-    audio.sfx('pop');
+    // un solo "pop" por tanda (al entrar a la ciudad aparecen todas juntas sin sonar)
+    if (!quietPops) popSfx = true;
   }
   function removeBubble(e, animate = false) {
     if (!e.bubble) return;
@@ -155,9 +162,15 @@ export default function create(ctx) {
         t.el.classList.toggle('up', E.isUpgrading(b, now));
       } else if (e.timer) { ov.remove(e.timer); e.timer = null; }
       const ps = E.producerStatus(b, now);
-      if (ps.producer && ps.ready && !busy && !hidden) { ensureBubble(e, ps); ready++; }
-      else removeBubble(e);
+      if (ps.producer && ps.ready && !busy) {
+        // durante la colocación se ocultan (sin destruirlas, así no vuelven a "aparecer" todas con sonido)
+        ensureBubble(e, ps);
+        e.bubble.hidden = hidden || !e.root.visible;
+        if (!e.bubble.hidden) ready++;
+      } else removeBubble(e);
     }
+    if (popSfx) { popSfx = false; audio.sfx('pop'); }
+    quietPops = false;
     for (const it of signItems) it.hidden = !!placing;
     if (collectBtn) {
       collectBtn.style.display = ready >= 3 && !placing ? '' : 'none';
@@ -258,7 +271,7 @@ export default function create(ctx) {
     if (!e) return;
     const b = e.b;
     e.root.visible = false;
-    removeBubble(e); if (e.timer) { ov.remove(e.timer); e.timer = null; }
+    if (e.timer) { ov.remove(e.timer); e.timer = null; }
     beginPlacing({ mode: 'move', id: b.id, rot: b.rot, x: b.x, z: b.z, level: E.isConstructing(b) ? 1 : b.level, uid });
   }
   function beginPlacing(p) {
@@ -270,14 +283,16 @@ export default function create(ctx) {
     const root = new THREE.Group();
     root.add(model);
     r.scene.add(root);
-    placing = { ...p, ghost: root, model, mats, tiles: [], valid: false, reason: '', paint: false, count: 0, lastPaint: null, t: 0, isConstructionGhost: isCon };
+    placing = { ...p, ghost: root, model, mats, tiles: [], valid: false, reason: '', paint: false, count: 0, lastPaint: null, t: 0, isConstructionGhost: isCon, hoverAt: performance.now(), settled: null };
     world.showGrid(true);
     ctx.hud.hide();
     sideEl.classList.add('hide');
     placing.pin = ov.add(ui.h('div.cx-pin', { html: icon('👇', 36) }), new THREE.Vector3());
     placeBar = makePlaceBar(S, { onCancel: () => endPlacement(), onRotate: rotatePlacing, onConfirm: confirmPlacement });
+    placeBar.el.addEventListener('pointerenter', onBarEnter);
     container.append(placeBar.el);
     updateGhost();
+    syncStatus();
     if (!T().place) setTimeout(() => setFlag('place'), 4000);
   }
   function endPlacement(silent = false) {
@@ -407,8 +422,24 @@ export default function create(ctx) {
   function hoverGhost(cx, cy) {
     const p = r.pickGround(cx, cy);
     if (!p || !placing) return;
-    if (placing.paint) moveGhostTo(Math.floor(p.x + HALF), Math.floor(p.z + HALF));
-    else { const [x, z] = cornerFromWorld(placing.id, placing.rot, p.x, p.z); moveGhostTo(x, z); }
+    const [x, z] = placing.paint ? landClampCorner(placing.id, Math.floor(p.x + HALF), Math.floor(p.z + HALF), placing.rot) : cornerFromWorld(placing.id, placing.rot, p.x, p.z);
+    if (x === placing.x && z === placing.z) return;
+    // recordar dónde estuvo quieto el fantasma: al ir con el mouse a la barra lo cruzamos por la ciudad
+    const now = performance.now();
+    if (now - placing.hoverAt > 280) placing.settled = { x: placing.x, z: placing.z, rot: placing.rot, left: now };
+    placing.hoverAt = now;
+    moveGhostTo(x, z);
+  }
+  /** El mouse llegó a la barra (Rotar/Colocar): el fantasma vuelve a donde estaba quieto antes de cruzar. */
+  function onBarEnter(ev) {
+    const p = placing;
+    if (!p || ev.pointerType !== 'mouse' || p.paint || !p.settled) return;
+    const st = p.settled;
+    p.settled = null;
+    if (performance.now() - st.left > 2500 || st.rot !== p.rot || (st.x === p.x && st.z === p.z)) return;
+    p.x = st.x; p.z = st.z;
+    p.hoverAt = performance.now();
+    updateGhost();
   }
 
   function rotateBuilding(uid) {
@@ -528,7 +559,9 @@ export default function create(ctx) {
     pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY });
     if (pointers.size === 1) {
       gesture = 'pending';
-      down = { x: ev.clientX, y: ev.clientY, onGhost: pointerOnGhost(ev.clientX, ev.clientY), type: ev.pointerType };
+      // con mouse el fantasma ya sigue al puntero: arrastrar mueve la cámara (salvo al pintar caminos/deco)
+      const grabGhost = ev.pointerType !== 'mouse' || !!placing?.paint;
+      down = { x: ev.clientX, y: ev.clientY, onGhost: grabGhost && pointerOnGhost(ev.clientX, ev.clientY), type: ev.pointerType };
       cam.stop();
     } else if (pointers.size === 2) {
       if (gesture === 'pan') cam.endGrab();
@@ -581,12 +614,23 @@ export default function create(ctx) {
     cam.zoomAt(ev.clientX, ev.clientY, Math.exp(clamp(dy, -200, 200) * 0.0018));
   }
   const keyMap = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Equal: 'in', NumpadAdd: 'in', Minus: 'out', NumpadSubtract: 'out' };
+  /** Caja del modal que está arriba de todo (o null). */
+  function topModalBox() {
+    const root = document.getElementById('modal-root');
+    const backs = root ? [...root.children].filter(c => c.classList.contains('modal-back') && c.classList.contains('show')) : [];
+    return backs.length ? backs[backs.length - 1].querySelector('.modal') : null;
+  }
   function onKey(ev) {
     const tag = ev.target?.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    // Enter/Espacio sobre un botón con foco: que lo maneje el botón (si no, se ejecutaría dos veces)
+    if (tag === 'BUTTON' && (ev.code === 'Enter' || ev.code === 'Space')) return;
     const isDown = ev.type === 'keydown';
     if (isDown && ev.key === 'Escape') {
-      if (myModals.size) { [...myModals].pop().close(); ev.preventDefault(); return; }
+      // solo cerramos nuestro modal si es el de arriba (los paneles manejan su propio Esc)
+      const top = topModalBox();
+      const mine = top && [...myModals].find(m => m.el === top);
+      if (mine) { mine.close(); ev.preventDefault(); return; }
       if (placing && !ui.hasModal()) { endPlacement(); ev.preventDefault(); return; }
     }
     if (ui.hasModal()) { cam.clearKeys(); return; }
@@ -639,10 +683,11 @@ export default function create(ctx) {
   function hideTip() { if (tipEl) tipEl.style.display = 'none'; }
   function clearGameTip() { if (gameTip) { ov.remove(gameTip.item); gameTip = null; } }
   function setWorldTip(kind, e, html) {
-    if (worldTip && worldTip.kind === kind && worldTip.e === e) return;
+    if (worldTip && worldTip.kind === kind && worldTip.e === e) { worldTip.item.pos.copy(topPos(e, 0.2)); return; }
     if (worldTip) ov.remove(worldTip.item);
-    const el = ui.h('div.cx-tag', { html });
-    el.style.marginBottom = kind === 'collect' ? '70px' : '10px';
+    // el cartelito va arriba de la burbuja (cobrar) o del techo (jugar), sin taparlos
+    const el = ui.h('div.cx-tagwrap', {}, ui.h('div.cx-tag', { html }));
+    el.style.paddingBottom = kind === 'collect' ? '64px' : '12px';
     worldTip = { kind, e, item: ov.add(el, topPos(e, 0.2)) };
   }
   function clearWorldTip() { if (worldTip) { ov.remove(worldTip.item); worldTip = null; } }
@@ -782,10 +827,11 @@ export default function create(ctx) {
     if (world.signs.length === 0) world.refreshSigns(true);
     const lvOk = ctx.state.player.level >= ex.reqLevel;
     for (const s of world.signs) {
-      const el = ui.h('div.cx-sign', { html: `${icon('plus', 16)}¡Expandir!` });
+      // si todavía no llega al nivel, el cartel lo dice (así sabe cuándo podrá crecer)
+      const el = ui.h('div.cx-sign' + (lvOk ? '' : '.locked'), { html: lvOk ? `${icon('plus', 16)}¡Expandir!` : `${icon('lock', 14)}Nivel ${ex.reqLevel}` });
       const it = ov.add(el, s.pos);
-      it.label = lvOk;
-      if (!lvOk) el.style.visibility = 'hidden';
+      it.label = true;
+      it.hidden = !!placing;
       signItems.push(it);
     }
   }
@@ -801,7 +847,11 @@ export default function create(ctx) {
       e.model?.userData.update?.(dt, t);
       e.scaffold?.userData.update?.(dt, t);
       if (e.anim) animateEntry(e, dt);
+      // animándose u oculto (mientras se mueve) -> se dibuja suelto; quieto -> instanciado
+      const live = !!e.anim || !e.root.visible;
+      if (live !== e.live) { e.live = live; batch.markDirty(); }
     }
+    batch.update(entries.values());
     life.setCamAngle(cam.angle);
     life.update(dt, t);
     fx.update(dt);
@@ -815,8 +865,9 @@ export default function create(ctx) {
       okMat.opacity = pulse + 0.1; badMat.opacity = pulse + 0.15;
       p.model.userData.update?.(dt, t);
     }
-    if (hoverDirty && !placing && !cam.dragging) {
-      hoverDirty = false;
+    hoverT += dt;
+    if (hoverDirty && hoverT > 0.08 && !placing && !cam.dragging) {
+      hoverDirty = false; hoverT = 0; // el raycast contra toda la ciudad es caro: ~12 veces por segundo alcanza
       const hv = hoverPos && (hitBubble(hoverPos.x, hoverPos.y) || hitSign(hoverPos.x, hoverPos.y) || hitWalker(life.player, hoverPos.x, hoverPos.y, 30) || raycastBuilding(hoverPos.x, hoverPos.y) != null);
       r.canvas.style.cursor = hv ? 'pointer' : '';
     }
@@ -855,6 +906,7 @@ export default function create(ctx) {
       bGroup = new THREE.Group();
       bGroup.name = 'buildings';
       r.scene.add(bGroup);
+      batch = createBatcher(r.scene);
       for (const b of ctx.state.city.buildings) createEntry(b);
       life = createLife(r, ctx);
 
@@ -871,7 +923,7 @@ export default function create(ctx) {
       badMat = new THREE.MeshBasicMaterial({ map: tileTex, color: 0xff6f6f, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false });
       tileGeo = new THREE.PlaneGeometry(0.96, 0.96);
 
-      cam = createCameraCtl(r, ctx.state.city.camera, { onChange: (c) => { ctx.state.city.camera = c; store.markDirty(); } });
+      cam = createCameraCtl(r, ctx.state.city.camera, { onChange: (c) => { ctx.state.city.camera = c; store.markDirty(); }, limit: () => E.landBounds().side / 2 + 2.5 });
       ov = createOverlays(container, r);
       ro = new ResizeObserver(() => { cam.applyProj(); ov.resize(); });
       ro.observe(container);
@@ -908,10 +960,13 @@ export default function create(ctx) {
       syncStatus();
       r.onFrame(frame);
       r.start();
+      // gancho de depuración para pruebas headless (tools/smoke.mjs)
+      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, world, ov, S, batch, get placing() { return placing; } };
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },
     unmount() {
       disposed = true;
+      if (window.__pixelia?.city?.r === r) delete window.__pixelia.city;
       offs.forEach(f => f()); offs.length = 0;
       removeEventListener('keydown', onKey);
       removeEventListener('keyup', onKey);
@@ -927,6 +982,7 @@ export default function create(ctx) {
       life?.dispose();
       world?.dispose();
       fx?.dispose();
+      batch?.dispose();
       entries.clear();
       okMat?.dispose(); badMat?.dispose(); tileGeo?.dispose(); tileTex?.dispose();
       r?.dispose();

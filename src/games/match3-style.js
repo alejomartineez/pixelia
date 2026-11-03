@@ -86,7 +86,7 @@ export const M3_CSS = `
 .scene-match3 .m3-pre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
   padding: calc(var(--safe-t) + 74px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 14px) calc(var(--safe-l) + 12px); overflow-y: auto; }
 .scene-match3 .m3-card { position: relative; width: min(420px, 100%); text-align: center; display: flex; flex-direction: column; gap: 12px;
-  background: var(--panel); border: 3px solid var(--ink); border-radius: 18px; padding: 36px 16px 16px;
+  background: var(--panel); border: 3px solid var(--ink); border-radius: 18px; padding: 44px 16px 16px;
   box-shadow: 0 6px 0 var(--ink), 0 18px 40px rgba(59,35,64,.25); animation: m3in .35s cubic-bezier(.3,1.6,.6,1); flex: none; }
 .scene-match3 .m3-ribbon { position: absolute; top: -28px; left: 50%; transform: translateX(-50%); }
 .scene-match3 .m3-ribbon span { position: relative; z-index: 1; display: block; white-space: nowrap; font-size: 30px; font-weight: 700; color: #fff; padding: 6px 30px 8px;
@@ -124,6 +124,17 @@ export const M3_CSS = `
 .scene-match3 .m3-node.locked .m3-nstars { opacity: .35; }
 .scene-match3 .m3-path { flex: none; width: 14px; height: 6px; background: repeating-linear-gradient(90deg, var(--gold-d) 0 4px, transparent 4px 7px); }
 .scene-match3 .m3-path.locked { opacity: .35; }
+/* Jersey es condensada: los rótulos chiquitos necesitan un poco más de tamaño para leerse bien */
+.scene-match3 .game-stat small { font-size: 13px; }
+@media (min-width: 760px) {
+  .scene-match3 .m3-card { width: min(460px, 100%); }
+  .scene-match3 .m3-pregoal { font-size: 21px; }
+  .scene-match3 .m3-pregoal small { font-size: 15px; }
+  .scene-match3 .m3-tip { font-size: 16px; }
+  .scene-match3 .m3-meta .chip { font-size: 16px; }
+  .scene-match3 .m3-map-title { font-size: 17px; }
+  .scene-match3 .m3-foot .chip, .scene-match3 .m3-helptext, .scene-match3 .m3-hintbtn { font-size: 17px; }
+}
 @media (max-height: 700px) {
   .scene-match3 .m3-pre { justify-content: flex-start; gap: 18px; padding-top: calc(var(--safe-t) + 84px); }
   .scene-match3 .m3-tip { display: none; }

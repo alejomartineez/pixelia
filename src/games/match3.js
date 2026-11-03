@@ -59,6 +59,7 @@ export default function create(ctx) {
   // ---------- utilidades ----------
   const now = () => performance.now();
   let speed = 1; // el bonus final corre más rápido
+  let bonusing = false;
   const wait = ms => new Promise(res => { const id = setTimeout(() => { timers.delete(id); res(); }, ms / speed); timers.add(id); });
   function tween(dur, fn, ease = t => t, delay = 0) {
     return new Promise(res => tweens.push({ t0: now() + delay / speed, dur: Math.max(1, dur / speed), fn, ease, res }));
@@ -147,7 +148,7 @@ export default function create(ctx) {
     for (const el of flyEls) el.remove();
     flyEls.clear();
     shakeT = 0; if (wrap) wrap.style.transform = '';
-    speed = 1;
+    speed = 1; bonusing = false;
   }
 
   // ---------- loop ----------
@@ -594,7 +595,7 @@ export default function create(ctx) {
       }
     });
     hudEls.moves.textContent = disp.moves;
-    hudEls.movesBox.classList.toggle('low', disp.moves <= 3);
+    hudEls.movesBox.classList.toggle('low', disp.moves <= 3 && mode === 'play');
   }
   function updateScoreDisplay(dt) {
     if (!hudEls || !engine || mode === 'menu') return;
@@ -644,6 +645,7 @@ export default function create(ctx) {
     return { r, c, ax, ay, ok: engine?.active(r, c) && !!engine.grid[r][c] };
   }
   function onDown(e) {
+    if (bonusing) { e.preventDefault(); if (speed < 4) { speed = 4; audio.sfx('tap'); } return; }
     if (mode !== 'play' || !engine) return;
     e.preventDefault();
     lastAction = now(); hint = null;
@@ -706,8 +708,12 @@ export default function create(ctx) {
 
   async function checkEnd() {
     if (mode !== 'play') return;
+    if (!engine.goalsDone() && engine.moves > 0) return;
+    mode = 'end'; busy = true; selected = null; hint = null;
+    // si quedó abierto el "¿Salir del nivel?" (tocó volver durante la última cascada), esperar a que lo cierre:
+    // así nunca se apilan el cartel de premio y la confirmación
+    while (ui.hasModal()) { await wait(150); if (!alive) return; }
     if (engine.goalsDone()) {
-      mode = 'end'; busy = true; selected = null; hint = null;
       await wait(250);
       banner('¡Objetivo cumplido!', 'gold', 1200);
       audio.sfx('done');
@@ -716,8 +722,7 @@ export default function create(ctx) {
       if (engine.moves > 0 || engine.hasSpecials()) await doBonus();
       if (!alive) return;
       finish(true);
-    } else if (engine.moves <= 0) {
-      mode = 'end'; busy = true; selected = null; hint = null;
+    } else {
       await wait(300);
       banner('¡Sin movidas!', 'lilac', 1400);
       await wait(1300);
@@ -728,6 +733,10 @@ export default function create(ctx) {
 
   async function doBonus() {
     speed = 1.8;
+    bonusing = true;
+    // tocar el tablero acelera el bonus (puede ser largo si sobraron muchas movidas)
+    footEl.innerHTML = '';
+    footEl.append(ui.h('span.m3-helptext', {}, 'Tocá el tablero para acelerar'));
     if (engine.moves > 0) {
       banner('¡Bonus!', 'pink', 1100);
       audio.sfx('levelup');
@@ -744,6 +753,8 @@ export default function create(ctx) {
       await wait(120);
     }
     speed = 1;
+    bonusing = false;
+    footEl.innerHTML = '';
     disp.snap = null; disp.score = engine.score; refreshHud();
     await wait(700);
   }
@@ -955,6 +966,8 @@ export default function create(ctx) {
       if (params.autoplay != null) startLevel(menuLevel);
       lastNow = 0;
       raf = requestAnimationFrame(frame);
+      // la fuente puede terminar de cargar después: la barra cambia de alto y el tablero se reubica
+      document.fonts?.ready.then(() => { if (alive) layout(); });
     },
     unmount() {
       alive = false;

@@ -143,10 +143,10 @@ input[type=text]:focus { border-color: var(--pink-d); }
 .modal-foot { display: flex; gap: 10px; padding: 0 16px 16px; }
 .modal-foot .btn { flex: 1; }
 .modal.wide { width: min(720px, 100%); }
-.modal.sheet { width: min(720px, 100%); height: min(78vh, 680px); }
+.modal.sheet { width: min(720px, 100%); height: min(78vh, 680px); height: min(78dvh, 680px); }
 @media (max-width: 600px) {
   .modal-back:has(.sheet) { align-items: end; padding: 0; }
-  .modal.sheet { width: 100%; height: 76vh; border-radius: 18px 18px 0 0; border-bottom: 0; padding-bottom: var(--safe-b); transform: translateY(40px); }
+  .modal.sheet { width: 100%; height: 76vh; height: 76dvh; border-radius: 18px 18px 0 0; border-bottom: 0; padding-bottom: var(--safe-b); transform: translateY(40px); }
 }
 .reward-modal .modal-head { background: linear-gradient(var(--gold), var(--gold-d)); color: var(--ink); }
 .reward-modal .modal-head h2 { text-shadow: 0 2px 0 rgba(255,255,255,.6); }
@@ -192,16 +192,26 @@ input[type=text]:focus { border-color: var(--pink-d); }
 .hud-quest b { font-size: 14px; }
 .hud-quest small { font-size: 12px; color: var(--ink-l); line-height: 1.15; }
 .hud-quest .progress { height: 9px; }
-.hud-quest.done { background: var(--gold-l); animation: pulse 1s steps(2) infinite; }
+/* (no usar `pulse`: escalar 15% una tarjeta de 250px la corre y la corta contra el borde izquierdo) */
+.hud-quest.done { background: var(--gold-l); transform-origin: left center; animation: qready 1.2s steps(2) infinite; }
+@keyframes qready { 50% { transform: scale(1.03); box-shadow: 0 3px 0 var(--ink), 0 0 0 3px var(--gold); } }
 .hud-bottom { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 8px); display: flex; align-items: flex-end; gap: 6px;
   width: min(560px, calc(100% - 16px)); justify-content: space-between; }
 .hud-btn { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 2px 4px; background: #fff; border: var(--line) solid var(--ink);
   border-radius: 14px; box-shadow: inset 0 -5px 0 #eadcf0, var(--shadow); font-size: 12px; font-weight: 700; }
 .hud-btn:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 #eadcf0, 0 1px 0 var(--ink); }
 .hud-btn.big { flex: 1.3; background: var(--pink); color: #fff; box-shadow: inset 0 -6px 0 var(--pink-d), var(--shadow); padding: 10px 2px 6px; text-shadow: 0 2px 0 rgba(59,35,64,.35); font-size: 14px; }
-@media (min-width: 900px) {
-  .hud-btn { font-size: 14px; }
-  .hud-quest { width: 290px; }
+@media (min-width: 760px) {
+  .hud-btn { font-size: 15px; }
+  .hud-btn.big { font-size: 17px; }
+  .hud-quest { width: 300px; top: calc(var(--safe-t) + 112px); }
+  .hud-quest b { font-size: 16px; }
+  .hud-quest small { font-size: 14px; }
+  .hud-name b { font-size: 17px; max-width: 170px; }
+  .hud-name { min-width: 110px; }
+  .pill { font-size: 20px; min-width: 110px; }
+  .pill.sm { font-size: 16px; }
+  .hud-stats { top: calc(var(--safe-t) + 70px); }
 }
 
 /* ============ Barra superior de minijuegos (usar en todos los juegos) ============ */

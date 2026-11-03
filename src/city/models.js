@@ -59,6 +59,8 @@ function instantiate(tpl, opts = {}, extra = {}) {
     m.position.copy(p.pos);
     m.castShadow = opts.ghost ? false : p.cast;
     m.receiveShadow = !opts.ghost;
+    // las partes sin nombre no se animan: la ciudad puede dibujarlas instanciadas (pocas llamadas de dibujo)
+    m.userData.static = !p.name;
     if (p.name) (named[p.name] || (named[p.name] = [])).push(m);
     g.add(m);
   }
@@ -91,7 +93,10 @@ function buildTemplate(id, level, opts) {
     m.v.box(1, 0, 1, W - 2, 6, D - 2, P.pinkL);
     m.v.box(1, 6, 1, W - 2, 1, D - 2, P.pink);
   }
-  return compile(m);
+  const tpl = compile(m);
+  // caminos: baldosa de 1 vóxel, su sombra no se ve y cuesta una pasada extra por baldosa
+  if (def?.cat === 'camino') for (const p of tpl.parts) p.cast = false;
+  return tpl;
 }
 
 /** Modelo de un edificio del catálogo. opts: { flagColor (id de OUTFIT_COLORS o hex), ghost } */

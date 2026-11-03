@@ -189,6 +189,23 @@ export function openShell(ctx, name, { title = '', ic, sheet = false, className 
   return shell;
 }
 
+/**
+ * Confirmación (Sí/No) con la misma cáscara: Esc o tocar afuera = cancelar (el confirm del núcleo no escucha Esc).
+ * Si ya hay una igual abierta (doble toque) resuelve false en vez de apilar otra.
+ */
+export function askConfirm(ctx, { title, html, ok = 'Sí', cancel = 'No', okCls = 'pink', ic } = {}) {
+  return new Promise(res => {
+    let v = false;
+    const sh = openShell(ctx, 'confirm:' + title, {
+      title, ic, className: 'pnl-confirm',
+      actions: [{ label: cancel, cls: 'ghost' }, { label: ok, cls: okCls, onClick: () => { v = true; } }],
+    });
+    if (!sh) { res(false); return; }
+    sh.body.innerHTML = `<p class="pnl-confirm-txt">${html}</p>`;
+    sh.done.then(() => res(v));
+  });
+}
+
 // ---------- Íconos pixel propios (minijuegos, bandera, compartir) ----------
 const PAL = {
   k: '#3b2340', w: '#ffffff', p: '#ff7eb6', P: '#e0528f', q: '#ffc2dc', l: '#b58cff', L: '#8a5ee0', m: '#6fe3c1', M: '#3cbf9a',

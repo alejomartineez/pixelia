@@ -9,12 +9,13 @@ const ACH_ICON = {
   a_match3: () => art('match3', 32), a_blocks: () => art('blocks', 32), a_parking: () => art('parking', 32),
   a_driving: () => art('driving', 32), a_fashion: () => icon('dress', 32), a_streak: () => icon('fire', 32),
 };
-const pad = (n) => String(n).padStart(2, '0');
+// "3 h 39 min" / "39 min" (un "03:39" se confundía con minutos:segundos)
 function untilMidnight() {
   const now = new Date();
   const mid = new Date(now); mid.setHours(24, 0, 0, 0);
   const mins = Math.max(1, Math.ceil((mid - now) / 60000));
-  return `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
+  const hh = Math.floor(mins / 60), mm = mins % 60;
+  return hh ? `${hh} h ${mm} min` : `${mm} min`;
 }
 
 export function openQuests(ctx, params = {}) {
@@ -80,8 +81,11 @@ export function openQuests(ctx, params = {}) {
     if (q.done) {
       const btn = h('button.btn.gold.block.pnl-glow', { html: `${icon('gift', 24)} ¡Cobrar premio!` });
       btn.onclick = () => {
+        // un cobro por botón: si no, un doble toque cobraba también la misión siguiente (si ya estaba lista)
+        if (btn.disabled) return;
+        btn.disabled = true;
         const reward = quests.claimMain();
-        if (!reward) return;
+        if (!reward) { btn.disabled = false; return; }
         audio.sfx('done');
         hold(900);
         card.classList.add('claimed');
@@ -144,7 +148,7 @@ export function openQuests(ctx, params = {}) {
       if (q.claimed) side.innerHTML = `<span class="pnl-done">${icon('check', 28)}</span>`;
       else if (q.done) {
         const b = h('button.btn.gold.small.pnl-glow', {}, 'Cobrar');
-        b.onclick = () => { const r = quests.claimDaily(q.id); if (r) { audio.sfx('done'); hold(450); rewardFx(b, r, { confetti: false }); burst(...center(b), 40); } };
+        b.onclick = () => { if (b.disabled) return; b.disabled = true; const r = quests.claimDaily(q.id); if (r) { audio.sfx('done'); hold(450); rewardFx(b, r, { confetti: false }); burst(...center(b), 40); } };
         side.append(b);
       } else {
         const act = goalAction(ctx, q.goal, close);
@@ -168,8 +172,10 @@ export function openQuests(ctx, params = {}) {
     if (bonus.ready) {
       const b = h('button.btn.pink.small.pnl-glow', {}, 'Abrir');
       b.onclick = () => {
+        if (b.disabled) return;
+        b.disabled = true;
         const r = quests.claimDailyBonus();
-        if (!r) return;
+        if (!r) { b.disabled = false; return; }
         audio.sfx('win');
         hold(700);
         chest.querySelector('.pnl-chest-ic')?.classList.add('pnl-pop');
@@ -206,7 +212,8 @@ export function openQuests(ctx, params = {}) {
         side.append(h('span.pnl-gemrew', { html: costHtml({ gems: a.reward }, 18) }));
         if (a.ready) {
           const b = h('button.btn.gold.small.pnl-glow', {}, 'Cobrar');
-          b.onclick = () => { const r = quests.claimAchievement(a.id); if (r) { audio.sfx('star'); hold(450); rewardFx(b, r, { confetti: false }); burst(...center(b), 50); } };
+          // un tier por toque: un doble toque no debe cobrar el tier siguiente sin que se vea
+          b.onclick = () => { if (b.disabled) return; b.disabled = true; const r = quests.claimAchievement(a.id); if (r) { audio.sfx('star'); hold(450); rewardFx(b, r, { confetti: false }); burst(...center(b), 50); } };
           side.append(b);
         }
       }

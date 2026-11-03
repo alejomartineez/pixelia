@@ -68,6 +68,8 @@ const CSS = `
 .scene-driving .drv-turbo button:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 #eadcf0, 0 1px 0 var(--ink); }
 .scene-driving .drv-turbo kbd { font: inherit; font-size: 12px; padding: 0 5px; border: 2px solid var(--ink); border-radius: 6px; background: #fff; color: var(--ink); text-shadow: none; }
 @keyframes drv-ready { 50% { transform: scale(1.05); } }
+.scene-driving .drv-turbo button.nope { animation: drv-nope .3s steps(4); }
+@keyframes drv-nope { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 .scene-driving .drv-segs { display: flex; gap: 3px; }
 .scene-driving .drv-segs i { width: 22px; height: 13px; border: 2px solid var(--ink); background: #f2e3ee; border-radius: 4px; position: relative; overflow: hidden; }
 .scene-driving .drv-segs i u { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: repeating-linear-gradient(90deg, #ffd166 0 4px, #e8a93a 4px 6px); }
@@ -150,7 +152,8 @@ export default function create(ctx) {
 
   // ---------- estado de juego ----------
   let phase = 'intro';             // intro | countdown | run | crash | ended
-  let paused = false, pauseModal = null;
+  let paused = false, pauseModal = null, resumeT = 0, resumeShown = 0, queuedDir = 0;
+  const lastSky = [0, 0, 0];
   let p = 0, v = 0, runStart = 0, cd = 0, cdShown = -1, crashT = 0, time = 0;
   let lane = 1, carX = 0, steer = 0, lives = MAX_LIVES, coins = 0, gems = 0;
   let charge = 0, turboT = 0, magnetT = 0, shield = false, invulnT = 0, skidT = 0, wobbleT = 0, shake = 0;
@@ -196,6 +199,57 @@ export default function create(ctx) {
     });
   }
 
+  /**
+   * Autos del tránsito: funde carrocería + conductora + adorno en una sola malla (las ruedas siguen girando aparte).
+   * Pasa de ~12 a 5 draw calls por auto (x2 con sombras). Las geometrías originales son compartidas: no se liberan.
+   */
+  function flattenCar(car) {
+    car.updateMatrixWorld(true);
+    const wheels = new Set(car.userData.wheels || []);
+    const parts = [];
+    let mat = null;
+    car.traverseVisible(o => {
+      if (!o.isMesh || wheels.has(o) || Array.isArray(o.material)) return;
+      const g = o.geometry;
+      if (!g.index || !g.attributes.normal || !g.attributes.color) return;
+      if (mat && o.material !== mat) return;
+      mat = o.material;
+      parts.push(o);
+    });
+    if (parts.length < 2) return;
+    let nv = 0, ni = 0;
+    for (const m of parts) { nv += m.geometry.attributes.position.count; ni += m.geometry.index.count; }
+    const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), idx = new Uint32Array(ni);
+    const inv = new THREE.Matrix4().copy(car.matrixWorld).invert(), mtx = new THREE.Matrix4(), nm = new THREE.Matrix3(), v = new THREE.Vector3();
+    let vo = 0, io = 0;
+    for (const m of parts) {
+      mtx.multiplyMatrices(inv, m.matrixWorld); nm.getNormalMatrix(mtx);
+      const { position: P, normal: N, color: C } = m.geometry.attributes, I = m.geometry.index;
+      for (let i = 0; i < P.count; i++) {
+        v.fromBufferAttribute(P, i).applyMatrix4(mtx); pos[(vo + i) * 3] = v.x; pos[(vo + i) * 3 + 1] = v.y; pos[(vo + i) * 3 + 2] = v.z;
+        v.fromBufferAttribute(N, i).applyMatrix3(nm).normalize(); nor[(vo + i) * 3] = v.x; nor[(vo + i) * 3 + 1] = v.y; nor[(vo + i) * 3 + 2] = v.z;
+        col[(vo + i) * 3] = C.getX(i); col[(vo + i) * 3 + 1] = C.getY(i); col[(vo + i) * 3 + 2] = C.getZ(i);
+      }
+      const flip = mtx.determinant() < 0;   // piezas espejadas (alas): invertir el orden para no perder las caras
+      for (let i = 0; i < I.count; i += 3) {
+        idx[io + i] = I.getX(i) + vo;
+        idx[io + i + 1] = I.getX(flip ? i + 2 : i + 1) + vo;
+        idx[io + i + 2] = I.getX(flip ? i + 1 : i + 2) + vo;
+      }
+      vo += P.count; io += I.count;
+      m.parent.remove(m);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    g.computeBoundingSphere();
+    const merged = new THREE.Mesh(g, mat);
+    merged.castShadow = true; merged.receiveShadow = true;
+    car.add(merged);
+  }
+
   function buildScene() {
     const { scene } = r;
     scene.fog = new THREE.Fog(0xffe2f1, 34, 98);
@@ -212,24 +266,15 @@ export default function create(ctx) {
     mats.outerL.side = THREE.DoubleSide;
     scene.add(outerL, outerR);
 
-    // tramos
+    // tramos: piso + todo el decorado estático fusionado en 1 malla (y otra para lo brillante) por tramo
     for (let i = 0; i < N_CHUNKS; i++) {
       const group = new THREE.Group();
       const ground = new THREE.Mesh(groundGeo(0, 0), mats.base);
       ground.receiveShadow = true; ground.castShadow = false; ground.frustumCulled = false;
-      group.add(ground);
-      const slots = [];
-      for (let s = 0; s < 21; s++) {
-        const m = new THREE.Mesh(decoGeo('tree0'), mats.base);
-        m.frustumCulled = false; m.castShadow = true; m.receiveShadow = true; m.visible = false;
-        const ex = new THREE.Mesh(decoGeo('tree0'), mats.base);
-        ex.frustumCulled = false; ex.castShadow = true; ex.visible = false;
-        m.add(ex);
-        group.add(m);
-        slots.push({ mesh: m, extra: ex, spin: false });
-      }
+      const base = mergedMesh(mats.base), glow = mergedMesh(mats.glow);
+      group.add(ground, base, glow);
       scene.add(group);
-      chunks.push({ group, ground, slots, z0: 0, bi: -1, shadow: true });
+      chunks.push({ group, ground, base, glow, extras: [], z0: 0, bi: -1, shadow: true });
     }
 
     // auto propio con la princesa
@@ -258,6 +303,7 @@ export default function create(ctx) {
       };
       const look = typeof princessMod.randomLook === 'function' ? princessMod.randomLook(1000 + i * 37) : null;
       const car = carMod.carModel(spec, look ? { driver: look } : {});
+      flattenCar(car);
       car.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       bendify(car, bendCache);
       const holder = new THREE.Group();
@@ -278,7 +324,7 @@ export default function create(ctx) {
         obstacles.push({ kind, mesh: m, active: false, lane: 0, x: 0, z: 0, y: 0, w, l });
       }
     };
-    addObst('barrier', 10, 1.05, 0.45);
+    addObst('barrier', 10, 1.05, 0.38);   // hitbox <= modelo (1.25 x 0.375)
     addObst('cones', 10, 1.0, 0.75);
     addObst('puddle', 6, 0.95, 1.6);
 
@@ -321,6 +367,69 @@ export default function create(ctx) {
   // =====================================================================
   // Tramos de ruta
   // =====================================================================
+  // Malla "fusionada" reutilizable: buffers preasignados que se reescriben al reciclar el tramo
+  // (1 draw call por tramo en vez de ~20). Solo crece si un tramo necesita más vértices que nunca.
+  function mergedMesh(mat) {
+    const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
+    mesh.frustumCulled = false; mesh.castShadow = true; mesh.receiveShadow = true; mesh.visible = false;
+    mesh.userData.cap = 0;
+    return mesh;
+  }
+  function ensureCap(mesh, n) {
+    if (n <= mesh.userData.cap) return;
+    let cap = 8192;
+    while (cap < n) cap *= 2;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(cap * 3), 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('normal', new THREE.BufferAttribute(new Int8Array(cap * 3), 3, true).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cap * 3), 3).setUsage(THREE.DynamicDrawUsage));
+    // todas las geometrías vóxel son quads (4 vértices + 6 índices en el mismo orden): el índice es fijo
+    const idx = new Uint32Array(cap / 4 * 6);
+    for (let q = 0, v = 0; q < idx.length; q += 6, v += 4) { idx[q] = v; idx[q + 1] = v + 1; idx[q + 2] = v + 2; idx[q + 3] = v; idx[q + 4] = v + 2; idx[q + 5] = v + 3; }
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    g.setDrawRange(0, 0);
+    mesh.geometry.dispose();
+    mesh.geometry = g;
+    mesh.userData.cap = cap;
+  }
+  function writeMerged(mesh, list) {
+    let n = 0;
+    for (const it of list) n += decoGeo(it.kind).attributes.position.count;
+    mesh.visible = n > 0;
+    if (!n) return;
+    ensureCap(mesh, n);
+    const g = mesh.geometry;
+    const P = g.attributes.position.array, N = g.attributes.normal.array, C = g.attributes.color.array;
+    let o = 0;
+    for (const it of list) {
+      const src = decoGeo(it.kind);
+      const sp = src.attributes.position.array, sn = src.attributes.normal.array, sc = src.attributes.color.array;
+      // las rotaciones son siempre múltiplos de 90° alrededor de Y
+      const c = Math.round(Math.cos(it.rot)), s = Math.round(Math.sin(it.rot)), k = it.scale;
+      const end = src.attributes.position.count * 3;
+      for (let i = 0; i < end; i += 3, o += 3) {
+        const px = sp[i], pz = sp[i + 2], nx = sn[i], nz = sn[i + 2];
+        P[o] = (c * px + s * pz) * k + it.x; P[o + 1] = sp[i + 1] * k; P[o + 2] = (c * pz - s * px) * k + it.z;
+        N[o] = (c * nx + s * nz) * 127; N[o + 1] = sn[i + 1] * 127; N[o + 2] = (c * nz - s * nx) * 127;
+        C[o] = sc[i]; C[o + 1] = sc[i + 1]; C[o + 2] = sc[i + 2];
+      }
+    }
+    g.setDrawRange(0, n / 4 * 6);
+    for (const a of [g.attributes.position, g.attributes.normal, g.attributes.color]) { a.clearUpdateRanges(); a.addUpdateRange(0, n * 3); a.needsUpdate = true; }
+  }
+  function chunkExtra(ch, i) {
+    if (!ch.extras[i]) {
+      const pivot = new THREE.Group();
+      const blade = new THREE.Mesh(decoGeo('tree0'), mats.base);
+      blade.frustumCulled = false; blade.castShadow = ch.shadow;
+      pivot.add(blade);
+      ch.group.add(pivot);
+      ch.extras[i] = { pivot, blade };
+    }
+    return ch.extras[i];
+  }
+  const decoBase = [], decoGlow = [];
+
   function dressChunk(ch) {
     const idx = Math.round(ch.z0 / CHUNK_LEN);
     const R = rng(idx * 7919 + 13);
@@ -330,27 +439,23 @@ export default function create(ctx) {
     ch.ground.geometry = groundGeo(bi, ((idx % 2) + 2) % 2);
     const biome = BIOMES[bi];
     const deco = BIOME_DECO[biome.id];
-    let si = 0;
+    let si = 0, ei = 0;
+    decoBase.length = 0; decoGlow.length = 0;
     const put = (kind, x, z, side) => {
-      const slot = ch.slots[si++];
-      if (!slot) return;
+      if (si++ >= 21) return;
       const info = DECO_INFO[kind];
-      const mesh = slot.mesh;
-      mesh.geometry = decoGeo(kind);
-      mesh.material = info.glow ? mats.glow : mats.base;
-      mesh.position.set(x, 0, z);
       let rot = 0;
       if (info.orient === 'face') rot = side < 0 ? Math.PI / 2 : side > 0 ? -Math.PI / 2 : 0;
       else if (info.orient === 'along') rot = Math.PI / 2 + (R() < 0.5 ? Math.PI : 0);
       else if (info.orient === 'any') rot = R.int(4) * Math.PI / 2;
-      mesh.rotation.set(0, rot, 0);
-      mesh.scale.setScalar(info.scale || 1);
-      mesh.visible = true;
+      const scale = info.scale || 1;
+      (info.glow ? decoGlow : decoBase).push({ kind, x, z, rot, scale });
       if (info.extra) {
-        slot.extra.geometry = decoExtraGeo(kind);
-        slot.extra.position.set(info.extra.pos[0], info.extra.pos[1], info.extra.pos[2]);
-        slot.extra.visible = true; slot.spin = true;
-      } else { slot.extra.visible = false; slot.spin = false; }
+        const ex = chunkExtra(ch, ei++);
+        ex.pivot.position.set(x, 0, z); ex.pivot.rotation.set(0, rot, 0); ex.pivot.scale.setScalar(scale); ex.pivot.visible = true;
+        ex.blade.geometry = decoExtraGeo(kind);
+        ex.blade.position.set(info.extra.pos[0], info.extra.pos[1], info.extra.pos[2]);
+      }
     };
     for (const side of [-1, 1]) {
       const key = side < 0 ? 'L' : 'R';
@@ -377,7 +482,9 @@ export default function create(ctx) {
       }
     }
     if (m > 30 && R() < deco.overChance) put(pickWeighted(deco.over, R), 0, -10, 0);
-    for (; si < ch.slots.length; si++) { ch.slots[si].mesh.visible = false; ch.slots[si].spin = false; }
+    for (; ei < ch.extras.length; ei++) ch.extras[ei].pivot.visible = false;
+    writeMerged(ch.base, decoBase);
+    writeMerged(ch.glow, decoGlow);
   }
 
   function resetChunks() {
@@ -392,8 +499,8 @@ export default function create(ctx) {
       ch.group.position.z = p - ch.z0;
       ch.group.visible = ch.z0 - p < 104;
       const near = ch.z0 - p < 24;
-      if (near !== ch.shadow) { ch.shadow = near; for (const s of ch.slots) { s.mesh.castShadow = near; s.extra.castShadow = near; } }
-      for (const s of ch.slots) if (s.spin && s.mesh.visible) s.extra.rotation.z += dt * 1.3;
+      if (near !== ch.shadow) { ch.shadow = near; ch.base.castShadow = near; ch.glow.castShadow = near; for (const e of ch.extras) e.blade.castShadow = near; }
+      for (const e of ch.extras) if (e.pivot.visible) e.blade.rotation.z += dt * 1.3;
     }
   }
 
@@ -556,16 +663,18 @@ export default function create(ctx) {
   // Acciones del jugador
   // =====================================================================
   function steerTo(dir) {
-    if (phase !== 'run' || paused || skidT > 0) return;
+    if (phase !== 'run' || paused || resumeT > 0) return;
+    // patinando no se puede doblar, pero el toque no se pierde: se aplica apenas termina
+    if (skidT > 0) { queuedDir = dir; return; }
     const nl = lane + dir;
     if (nl < 0 || nl > 2) { wobbleT = 0.25; return; }
     lane = nl;
     audio.sfx('swoosh');
   }
   function useTurbo() {
-    if (phase !== 'run' || paused) return;
+    if (phase !== 'run' || paused || resumeT > 0) return;
     if (turboT > 0) return;
-    if (charge < 1) { audio.sfx('error'); el.turboBtn.classList.remove('bump'); void el.turboBtn.offsetWidth; el.turboBtn.classList.add('bump'); return; }
+    if (charge < 1) { audio.sfx('error'); el.turboBtn.classList.remove('nope'); void el.turboBtn.offsetWidth; el.turboBtn.classList.add('nope'); return; }
     charge -= 1; turboT = TURBO_TIME;
     audio.sfx('swoosh'); audio.sfx('horn');
     updateTurboUI(true);
@@ -696,7 +805,7 @@ export default function create(ctx) {
     if (turboT > 0) { turboT -= dt; if (turboT <= 0) { turboT = 0; updateTurboUI(true); } }
     if (magnetT > 0) { magnetT -= dt; if (magnetT <= 0) { magnetT = 0; renderPowers(); } }
     if (invulnT > 0) invulnT = Math.max(0, invulnT - dt);
-    if (skidT > 0) skidT = Math.max(0, skidT - dt);
+    if (skidT > 0) { skidT = Math.max(0, skidT - dt); if (skidT === 0 && queuedDir) { const d = queuedDir; queuedDir = 0; steerTo(d); } }
     if (wobbleT > 0) wobbleT = Math.max(0, wobbleT - dt);
     if (coinSfxT > 0) coinSfxT -= dt;
     shake = Math.max(0, shake - dt * 1.6);
@@ -785,11 +894,13 @@ export default function create(ctx) {
         c.z += (p - c.z) * f; c.x += (carX - c.x) * f; c.y += (0.5 - c.y) * f;
         dz = c.z - p;
       }
-      if (dz < -3) { deactivateCoin(i); continue; }
+      // las que quedaron atrás se achican y desaparecen (si no, pasan gigantes y borrosas junto a la cámara)
+      const cs = dz < -0.75 ? 1 + (dz + 0.75) / 1.2 : 1;
+      if (cs <= 0.05) { deactivateCoin(i); continue; }
       if (phase === 'run' && Math.abs(dz) < 0.75 && Math.abs(c.x - carX) < 0.72) { collectCoin(i); continue; }
       dummy.position.set(c.x, c.y + Math.sin(time * 4 + c.ph) * 0.05, -dz);
       dummy.rotation.set(0, time * 3.2 + c.ph, 0);
-      dummy.scale.setScalar(1);
+      dummy.scale.setScalar(cs);
       dummy.updateMatrix();
       coinIM.setMatrixAt(i, dummy.matrix);
     }
@@ -884,6 +995,7 @@ export default function create(ctx) {
   }
 
   function drawSky(a, b, t, dt) {
+    lastSky[0] = a; lastSky[1] = b; lastSky[2] = t;
     const w = root.clientWidth || innerWidth, h = root.clientHeight || innerHeight;
     sky.resize(w, h, r.pixelSize);
     // horizonte: proyección de un punto lejano del piso con la misma curva que el shader
@@ -925,7 +1037,7 @@ export default function create(ctx) {
     el.speed.classList.toggle('on', turboT > 0);
   }
   function renderRunUI() {
-    if (phase === 'intro') return;
+    if (phase === 'intro' || phase === 'ended') return;   // al terminar, el HUD queda con lo que se acreditó
     const m = Math.max(0, Math.floor(p - runStart));
     if (m !== shown.m) { el.dist.textContent = m.toLocaleString('es-AR') + ' m'; shown.m = m; }
     if (shown.lives !== lives) renderLives();
@@ -1011,6 +1123,7 @@ export default function create(ctx) {
     p = 0; runStart = -debugStart; v = 0;
     lane = 1; carX = 0; steer = 0;
     lives = MAX_LIVES; coins = 0; gems = 0; charge = 1; turboT = 0; magnetT = 0; shield = false; invulnT = 0; skidT = 0; crashT = 0; shake = 0;
+    resumeT = 0; queuedDir = 0; wobbleT = 0;
     shieldMesh.visible = false;
     nextRowZ = 26; lastPowerM = 0; lastGemM = 0; lastStatic = [-1e9, -1e9, -1e9];
     lastBiome = -1; recordPassed = false;
@@ -1052,9 +1165,12 @@ export default function create(ctx) {
     const newBest = meters > prevBest && meters > 0;
     if (newBest) { st.games.driving.best = meters; store.markDirty(); }
     const stars = meters >= 2000 ? 3 : meters >= 1000 ? 2 : meters >= 400 ? 1 : 0;
-    const lines = [`${icon('coin', 20)} Juntaste <b>${coins}</b> monedas en el camino`];
-    if (gems) lines.push(`${icon('gem', 20)} ¡Y <b>${gems}</b> ${gems === 1 ? 'gema' : 'gemas'}!`);
+    const lines = [];
+    if (coins) lines.push(`${icon('coin', 20)} Juntaste <b>${coins}</b> ${coins === 1 ? 'moneda' : 'monedas'} en el camino`);
+    if (gems) lines.push(`${icon('gem', 20)} ${coins ? '¡Y' : '¡Encontraste'} <b>${gems}</b> ${gems === 1 ? 'gema' : 'gemas'}!`);
     if (!newBest && prevBest) lines.push(`${icon('trophy', 20)} Récord: ${prevBest.toLocaleString('es-AR')} m`);
+    const nextStar = [400, 1000, 2000][stars];
+    if (nextStar) lines.push(`${icon('star', 20)} Próxima estrella: <b>${nextStar.toLocaleString('es-AR')} m</b>`);
     const choice = await ctx.endGame({
       game: 'driving', score: meters, stars, won: true,
       coins: coins + Math.floor(meters / 50), gems, xp: 10 + Math.floor(meters / 100), newBest,
@@ -1080,36 +1196,53 @@ export default function create(ctx) {
       onClose: () => {
         pauseModal = null;
         if (unmounted) return;
-        if (action === 'finish') { paused = false; finishRun(); }
+        if (action === 'finish') { paused = false; quitRun(); }
         else resume();
       },
     });
   }
-  function resume() { paused = false; }
+  // al volver de la pausa: 3-2-1 cortito para no chocar de golpe con lo que venía
+  function resume() {
+    paused = false;
+    if (phase === 'run') { resumeT = 1.5; resumeShown = 0; }
+  }
+  function tickResume(dt) {
+    resumeT -= dt;
+    const n = Math.ceil(resumeT / 0.5);
+    if (n > 0 && n !== resumeShown) { resumeShown = n; showCount(String(n)); audio.sfx('select'); }
+    if (resumeT <= 0) resumeT = 0;
+  }
+  // terminar antes de tiempo: si todavía no arrancó (cuenta regresiva) no hay premio que dar
+  function quitRun() {
+    if (phase === 'countdown') { ctx.router.go('city'); return; }
+    finishRun();
+  }
   async function askBack() {
-    if (phase === 'intro') { audio.sfx('tap'); ctx.router.go('city'); return; }
+    if (phase === 'intro' || phase === 'countdown') { audio.sfx('tap'); ctx.router.go('city'); return; }
     if (phase === 'ended' || phase === 'crash') return;
     if (paused) return;
     paused = true;
     const ok = await ui.confirm('¿Terminar el paseo?', 'Volvés a la ciudad con lo que juntaste hasta acá.', 'Terminar', 'Seguir');
     if (unmounted) return;
-    paused = false;
-    if (ok) finishRun();
+    if (ok) { paused = false; quitRun(); }
+    else resume();
   }
 
   // =====================================================================
   // Entrada (touch / mouse / teclado)
   // =====================================================================
   function bindInput() {
-    let ptr = null;
+    // un registro por dedo: tocar rápido con los dos pulgares (izq. y der. superpuestos) no pierde toques
+    const ptrs = new Map();
     const onDown = (e) => {
       if (e.target.closest('button, .drv-intro, .game-bar, .modal-back')) return;
       if (phase !== 'run' || paused) return;
-      ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), fired: false };
+      ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, t: performance.now(), fired: false });
       try { root.setPointerCapture(e.pointerId); } catch {}
     };
     const onMove = (e) => {
-      if (!ptr || e.pointerId !== ptr.id || ptr.fired) return;
+      const ptr = ptrs.get(e.pointerId);
+      if (!ptr || ptr.fired) return;
       const dx = e.clientX - ptr.x, dy = e.clientY - ptr.y;
       if (Math.abs(dx) > 26 || Math.abs(dy) > 26) {
         ptr.fired = true;
@@ -1118,11 +1251,12 @@ export default function create(ctx) {
       }
     };
     const onUp = (e) => {
-      if (!ptr || e.pointerId !== ptr.id) return;
+      const ptr = ptrs.get(e.pointerId);
+      if (!ptr) return;
+      ptrs.delete(e.pointerId);
       if (!ptr.fired && performance.now() - ptr.t < 450) steerTo(e.clientX < (root.getBoundingClientRect().left + root.clientWidth / 2) ? -1 : 1);
-      ptr = null;
     };
-    const onCancel = () => { ptr = null; };
+    const onCancel = (e) => { ptrs.delete(e.pointerId); };
     root.addEventListener('pointerdown', onDown);
     root.addEventListener('pointermove', onMove);
     root.addEventListener('pointerup', onUp);
@@ -1130,7 +1264,8 @@ export default function create(ctx) {
 
     const onKey = (e) => {
       const k = e.code || e.key;
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(k)) e.preventDefault();
+      // con un modal abierto, Espacio/Enter tienen que poder activar sus botones
+      if (!ui.hasModal() && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(k)) e.preventDefault();
       if (e.repeat) return;
       if (k === 'Escape' || k === 'KeyP') {
         if (pauseModal) { pauseModal.close(); return; }
@@ -1194,9 +1329,21 @@ export default function create(ctx) {
       resetRun();
       v = 5;
       bindInput();
-      r.onFrame((dt) => { if (unmounted) return; if (!paused) update(dt); else drawSky(biomeIndexAt(Math.max(0, p - runStart)), biomeIndexAt(Math.max(0, p - runStart)), 0, 0); });
+      r.onFrame((dt) => {
+        if (unmounted) return;
+        if (!paused && resumeT > 0) tickResume(dt);
+        if (!paused && resumeT <= 0) update(dt);
+        else drawSky(lastSky[0], lastSky[1], lastSky[2], 0);   // congelado: mismo cielo (sin saltos de bioma)
+      });
       r.start();
-      root.drvDebug = () => ({ phase, p, m: p - runStart, v, lives, coins, gems, charge, calls: r.renderer.info.render.calls, tris: r.renderer.info.render.triangles, biome: BIOMES[biomeIndexAt(p - runStart)].id });
+      root.drvDebug = () => {
+        let nodes = 0; r.scene.traverse(() => nodes++);
+        return { phase, p, m: p - runStart, v, lives, coins, gems, charge, calls: r.renderer.info.render.calls, tris: r.renderer.info.render.triangles, biome: BIOMES[biomeIndexAt(p - runStart)].id,
+          nodes, children: r.scene.children.length, mem: { ...r.renderer.info.memory }, programs: r.renderer.info.programs?.length,
+          active: { obst: obstacles.filter(e => e.active).length, items: items.filter(e => e.active).length, coins: coinList.filter(c => c.active).length } };
+      };
+      // simulación rápida para pruebas (smoke): avanza `sec` segundos de juego; god = no pierde vidas
+      root.drvSim = (sec, god = true) => { for (let t = 0; t < sec; t += 1 / 60) { if (god) lives = MAX_LIVES; if (!paused) update(1 / 60); } return root.drvDebug(); };
     },
     unmount() {
       unmounted = true;

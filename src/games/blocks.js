@@ -77,9 +77,9 @@ const CSS = `
 .bk-cont .chip { font-size: 15px; }
 `;
 
-const STAR_SCORES = [500, 1500, 3000];
+const STAR_SCORES = [400, 1200, 2500];
 const STAR_AT = [1 / 3, 2 / 3, 1];
-const starsFor = (s) => (s >= 3000 ? 3 : s >= 1500 ? 2 : s >= 500 ? 1 : 0);
+const starsFor = (s) => (s >= STAR_SCORES[2] ? 3 : s >= STAR_SCORES[1] ? 2 : s >= STAR_SCORES[0] ? 1 : 0);
 function goalFraction(s) {
   let prev = 0;
   for (let i = 0; i < 3; i++) {
@@ -166,7 +166,7 @@ export default function create(ctx) {
 
   function loadSaved() {
     const sv = bstate().saved;
-    if (!sv || !Array.isArray(sv.grid) || sv.grid.length !== N * N || !Array.isArray(sv.tray)) return false;
+    if (!sv || !Array.isArray(sv.grid) || sv.grid.length !== N * N || !Array.isArray(sv.tray) || sv.tray.length !== 3) return false;
     if (!sv.tray.every(p => p === null || (p && SHAPES[p.shape] && COLORS[p.color]))) return false;
     G = {
       grid: Int8Array.from(sv.grid.map(v => (v >= 0 && v < COLORS.length ? v : EMPTY))),
@@ -253,12 +253,15 @@ export default function create(ctx) {
       tray = { x: tx, y: ty, w: trayW, h: trayH, vertical: false, slots };
     }
     const minSlot = Math.min(...tray.slots.map(s => Math.min(s.w, s.h)));
-    tray.cell = clamp(Math.floor((minSlot - 5) / 4), 5, 7);
+    tray.cell = clamp(Math.floor((minSlot - 5) / 4), 5, 8);
     L = {
       P, W, H, landscape, bx, by, gx: bx + FRAME, gy: by + FRAME, tray,
       boardImg: boardCanvas(N, CELL, FRAME),
       trayImg: trayCanvas(tray.w, tray.h, tray.slots, tray.vertical),
     };
+    // cuánto se levanta la pieza sobre el dedo: si abajo del tablero no hay lugar (celular apaisado),
+    // se levanta menos para que la última fila siga siendo alcanzable con el dedo dentro de la pantalla
+    L.lift = clamp(ch - (L.gy + N * CELL) * P - 12, 20, TOUCH_LIFT);
     placeGoal(cw, safe);
     // adornos de fondo
     deco.length = 0;
@@ -324,7 +327,7 @@ export default function create(ctx) {
   // ---------------- Arrastre ----------------
   function dragTarget() {
     const sh = SHAPES[drag.piece.shape];
-    const lift = drag.touch ? TOUCH_LIFT / L.P + (sh.h * CELL) / 2 : 0;
+    const lift = drag.touch ? L.lift / L.P + (sh.h * CELL) / 2 : 0;
     return { x: drag.px, y: drag.py - lift };
   }
 
@@ -469,7 +472,8 @@ export default function create(ctx) {
       if (G.grace === 0) G.streak = 0;
     }
     G.score += gained;
-    const sp = artToScreen(cx, cy - CELL);
+    // dentro del tablero: en los bordes el texto quedaba medio afuera / sobre el marco
+    const sp = artToScreen(clamp(cx, L.gx + CELL * 1.5, L.gx + CELL * (N - 1.5)), Math.max(L.gy + CELL, cy - CELL));
     ui.floatText(sp.x, sp.y, `+${fmt(gained)}`, '');
     updateBar();
 
@@ -496,6 +500,9 @@ export default function create(ctx) {
     banner('¡Sin lugar!', 'Ninguna pieza entra', 'sad');
     shake();
     await wait(1700);
+    // si hay otro modal abierto (ayuda, "¿volver?"), esperar a que se cierre para no apilarlos
+    while (ui.hasModal()) await wait(300);
+    if (!G || G.over) return;
     if (!G.continueUsed) {
       const yes = await offerContinue();
       if (!alive) return;
@@ -569,11 +576,12 @@ export default function create(ctx) {
     const stars = starsFor(score);
     const choice = await ctx.endGame({
       game: 'blocks', score, stars, won: true,
-      coins: Math.min(300, Math.floor(score / 25)),
+      coins: Math.min(300, 5 + Math.floor(score / 25)),
       gems: newBest && score >= 1000 ? 1 : 0,
       xp: 10 + Math.floor(lines / 2),
       newBest,
-      title: newBest ? '¡Récord nuevo!' : stars >= 2 ? '¡Qué partida!' : '¡Muy bien!',
+      // el "¡Nuevo récord!" ya lo agrega endGame como línea: el título no lo repite
+      title: stars >= 3 ? '¡Partidón!' : stars >= 2 ? '¡Qué partida!' : newBest ? '¡Te superaste!' : '¡Muy bien!',
       lines: [`${icon('sparkle', 18)} Líneas limpiadas: <b>${fmt(lines)}</b>`],
       againLabel: 'Otra partida',
     });

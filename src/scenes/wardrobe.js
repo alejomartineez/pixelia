@@ -79,6 +79,8 @@ const WD_CSS = `
 .scene-wardrobe .wd-card.locked .wd-thumb img.th { filter:saturate(.55) brightness(.97); }
 .scene-wardrobe .wd-lock { position:absolute; right:-4px; bottom:-4px; }
 .scene-wardrobe .wd-name { font-size:13px; font-weight:700; line-height:1.1; text-align:center; min-height:2.2em; display:flex; align-items:center; justify-content:center; padding:0 2px; }
+.scene-wardrobe .wd-mini { display:flex; align-items:center; gap:2px; font-size:13px; font-weight:700; color:var(--ink-l); line-height:1; }
+.scene-wardrobe .wd-mini i { width:6px; }
 .scene-wardrobe .wd-foot { font-size:13px; min-height:20px; display:flex; align-items:center; justify-content:center; }
 .scene-wardrobe .wd-foot .chip { font-size:12px; padding:1px 7px; }
 .scene-wardrobe .wd-check { position:absolute; top:-9px; right:-7px; width:26px; height:26px; display:grid; place-items:center; border-radius:50%; background:var(--mint); border:var(--line) solid var(--ink); }
@@ -144,6 +146,7 @@ export default function create(ctx) {
   let turntable, holder, model = null, boutique, garage, platP, platG, sparkles = [];
   let rot = 0.35, rotVel = 0, idleT = 0, focus = null, hopT = 1, dragging = false, carSpin = 0;
   const camPos = new THREE.Vector3(0, 1.3, 3.6), camLook = new THREE.Vector3(0, 0.7, 0);
+  const camWant = new THREE.Vector3(), lookWant = new THREE.Vector3();
 
   const target = () => (mode === 'princess' ? 'princess' : 'car');
   const cats = () => (mode === 'princess' ? PRINCESS_CATS : CAR_CATS);
@@ -158,7 +161,7 @@ export default function create(ctx) {
       <div class="wd-stage">
         <div class="wd-top">
           <button class="icon-btn wd-back" aria-label="Volver">${icon('back', 22)}</button>
-          <label class="wd-namebox" title="Nombre de tu princesa">${icon('crown', 22)}<input type="text" maxlength="14" autocomplete="off" spellcheck="false" aria-label="Nombre de la princesa"></label>
+          <label class="wd-namebox" title="Nombre de tu princesa">${icon('crown', 22)}<input type="text" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Nombre de la princesa"></label>
           <div class="wd-res">
             <div class="pill wd-coins">${icon('coin', 20)}<b></b></div>
             <div class="pill wd-gems">${icon('gem', 20)}<b></b></div>
@@ -189,7 +192,8 @@ export default function create(ctx) {
     const input = $('.wd-namebox input');
     input.value = S().player.name;
     const commitName = () => {
-      const v = input.value.replace(/\s+/g, ' ').trim().slice(0, 14).trim() || 'Princesa';
+      // mismo largo que en Ajustes (16); se corta por caracteres, no por unidades UTF-16 (no rompe emojis)
+      const v = [...input.value.replace(/\s+/g, ' ').trim()].slice(0, 16).join('').trim() || 'Princesa';
       input.value = v;
       if (S().player.name !== v) {
         S().player.name = v;
@@ -292,6 +296,7 @@ export default function create(ctx) {
           ${equipped ? `<span class="wd-check">${icon('check', 14)}</span>` : ''}
           <span class="wd-thumb"><img class="th${cached ? ' ok' : ''}" alt="" draggable="false" ${cached ? `src="${thumbnail(spec)}"` : ''} data-k="${encodeURIComponent(JSON.stringify(spec))}">${locked ? `<span class="wd-lock">${icon('lock', 24)}</span>` : ''}</span>
           <span class="wd-name">${ui.esc(item.name)}</span>
+          ${c.stats ? `<span class="wd-mini" aria-label="Velocidad ${item.speed}, manejo ${item.handling}">${icon('bolt', 12)}${item.speed}<i></i>${icon('star', 12)}${item.handling}</span>` : ''}
           <span class="wd-foot">${itemFoot(c, item, owned, equipped)}</span>
         </button>`;
       }
@@ -340,7 +345,9 @@ export default function create(ctx) {
     if (m === mode) return;
     if (m === 'car' && !garageOk()) {
       audio.sfx('error');
-      ui.toast(`Construí el ${BUILDING_BY_ID.garaje.name} para tunear tu auto`, { icon: 'lock' });
+      const enObra = S().city.buildings.some(b => b.id === 'garaje');
+      ui.toast(enObra ? `¡Tu ${BUILDING_BY_ID.garaje.name} está en obra! Cuando termine vas a poder tunear tu auto`
+        : `Construí el ${BUILDING_BY_ID.garaje.name} para tunear tu auto`, { icon: enObra ? 'hammer' : 'lock' });
       return;
     }
     if (!silent) audio.sfx('swoosh');
@@ -442,6 +449,8 @@ export default function create(ctx) {
 
   function goBack() {
     root?.querySelector('.wd-namebox input')?.blur();
+    // lo probado sin comprar no se queda puesto: avisarlo para que no parezca un error
+    if (pending.length) ui.toast('Lo que probaste sin comprar quedó en el vestidor', { icon: 'dress' });
     store.save();
     ctx.router.go(params.back && params.back !== 'wardrobe' ? params.back : 'city');
   }
@@ -487,7 +496,7 @@ export default function create(ctx) {
     holder.position.y = (car ? platG : platP).userData.top;
     rebuildModel(false);
     rot = car ? 0.6 : 0.35; rotVel = 0; idleT = 0;
-    if (instant) { const [p, l] = camTarget(); camPos.copy(p); camLook.copy(l); }
+    if (instant) { camTarget(); camPos.copy(camWant); camLook.copy(lookWant); }
   }
 
   function rebuildModel(animate) {
@@ -517,6 +526,7 @@ export default function create(ctx) {
     }
   }
 
+  // calcula a dónde tiene que ir la cámara (en camWant / lookWant, sin crear objetos por frame)
   function camTarget() {
     const w = r.canvas.clientWidth || 1, h = r.canvas.clientHeight || 1;
     const aspect = w / h;
@@ -524,12 +534,12 @@ export default function create(ctx) {
     const phone = h < 520;
     const big = h >= 700;
     let dist = car ? (phone ? 4.3 : big ? 4.7 : 4.5) : (phone ? 4.1 : big ? 5.2 : 4.7);
-    const look = new THREE.Vector3(0, car ? 0.3 : 0.62, 0);
+    const look = lookWant.set(0, car ? 0.3 : 0.62, 0);
     if (phone) look.y += car ? 0.1 : 0.08; // la barra de arriba tapa un poco
     const need = car ? 1.1 : 0.85; // ancho mínimo visible
     if (aspect < need) dist *= need / aspect;
     const lift = car ? 1.2 : 0.45;
-    return [new THREE.Vector3(0, look.y + lift * (dist / 4), dist), look];
+    camWant.set(0, look.y + lift * (dist / 4), dist);
   }
 
   function spinTo(angle) {
@@ -597,9 +607,9 @@ export default function create(ctx) {
     }
 
     // cámara suave
-    const [p, l] = camTarget();
+    camTarget();
     const f = Math.min(1, dt * 4);
-    camPos.lerp(p, f); camLook.lerp(l, f);
+    camPos.lerp(camWant, f); camLook.lerp(lookWant, f);
     r.camera.position.copy(camPos);
     r.camera.lookAt(camLook);
   }

@@ -60,9 +60,29 @@ const collectFromCost = (cost, colors, types) => (types === 5 ? (colors === 1 ? 
 const scoreFromCost = (cost, types) => (types === 5 ? (cost - 1.5) / 2.3 : (cost - 2.5) / 3.9) * 1000;
 const ppm = types => (types === 5 ? 430 : 260); // puntos por jugada aproximados
 
-/** Configuración del nivel n (1..∞). Siempre igual para el mismo n. */
+/** Configuración del nivel n (1..∞). Siempre igual para el mismo n (cacheada). */
+const cfgCache = new Map();
 export function levelConfig(n) {
   n = Math.max(1, Math.floor(n));
+  if (!cfgCache.has(n)) {
+    // red de seguridad: si una jugadora distraída necesita más movidas que la fórmula, se las damos;
+    // y si serían demasiadas, el nivel se suaviza (sin cristales dobles, con 5 colores y por último
+    // con el tablero lleno)
+    let cfg, fair;
+    for (let ease = 0; ease <= 3; ease++) {
+      cfg = baseConfig(n, ease);
+      fair = fairMoves(cfg);
+      if (fair <= SOFT_MAX_MOVES) break;
+      if (ease === 0 && !cfg.ice.some(row => row.some(v => v > 1))) ease = 1; // sin cristales dobles: directo a 5 colores
+    }
+    cfg.moves = Math.max(cfg.moves, Math.min(MAX_MOVES, fair));
+    cfgCache.set(n, cfg);
+  }
+  const c = cfgCache.get(n);
+  return { ...c, stars: c.stars.slice() };
+}
+
+function baseConfig(n, ease = 0) {
   const R = mulberry32(n * 7919 + 1013);
   const pick = arr => arr[Math.floor(R() * arr.length)];
   const breather = n > 6 && n % 5 === 0;
@@ -83,16 +103,18 @@ export function levelConfig(n) {
     const E = {
       1: () => { goals = [{ kind: 'score', target: 1500 }]; moves = 20; cost = 5; },
       2: () => { goals = [{ kind: 'collect', type: 0, count: 15 }]; moves = 20; cost = 8; },
-      3: () => { iceGrid = grid((r, c) => (ICE.centroChico[0](r, c) ? 1 : 0)); goals = [{ kind: 'ice' }]; moves = 20; cost = 7; },
+      3: () => { iceGrid = grid((r, c) => (ICE.centroChico[0](r, c) ? 1 : 0)); goals = [{ kind: 'ice' }]; moves = 22; cost = 7; },
       4: () => { goals = [{ kind: 'collect', type: 1, count: 16 }, { kind: 'collect', type: 2, count: 16 }]; moves = 22; cost = 10; },
       5: () => { goals = [{ kind: 'score', target: 4000 }]; moves = 22; cost = 11; },
-      6: () => { iceGrid = grid((r, c) => (ICE.centro[0](r, c) ? 1 : 0)); goals = [{ kind: 'ice' }]; moves = 20; cost = 9; },
+      6: () => { iceGrid = grid((r, c) => (ICE.centro[0](r, c) ? 1 : 0)); goals = [{ kind: 'ice' }]; moves = 24; cost = 9; },
     };
     E[n]();
   } else {
     // ¿6 colores? cada vez más seguido
     types = R() < Math.min(0.8, 0.15 + hard * 0.9) ? 6 : 5;
+    if (ease >= 2) types = 5;
     if (n >= 9 && (R() < 0.35 + hard * 0.4 || n % 4 === 0)) { shape = SHAPE_KEYS[(n * 3 + Math.floor(R() * 5)) % SHAPE_KEYS.length]; mask = shapeMask(shape); }
+    if (ease >= 3) { shape = 'lleno'; mask = grid(() => true); }
     const cells = mask.flat().filter(Boolean).length;
     const sizeK = Math.sqrt(64 / cells);
     const kinds = ['collect', 'ice', 'score', 'collect2', 'ice', 'icecollect'];
@@ -112,7 +134,9 @@ export function levelConfig(n) {
       if (colors === 2) goals.push({ kind: 'collect', type: fixColor(colorB, a), count });
     } else {
       // cristales: elegir patrón + capas que entren en un rango razonable de movimientos
-      const twoLayers = n >= 12 && R() < Math.min(0.7, 0.2 + hard);
+      const twoLayers = n >= 12 && R() < Math.min(0.7, 0.2 + hard) && ease < 1;
+      // cristales dobles + juntar joyas era demasiado largo (y chocaba con el tope de movidas): solo cristales
+      if (twoLayers && kind === 'icecollect') kind = 'ice';
       // qué parte del patrón queda dentro de la forma del tablero
       const overlap = k => {
         let all = 0, inside = 0;
@@ -138,7 +162,7 @@ export function levelConfig(n) {
         cost = L * 1.4;
       }
     }
-    moves = Math.max(14, Math.min(30, Math.round(cost * slack)));
+    moves = Math.max(18, Math.min(30, Math.round(cost * slack)));
   }
 
   // umbrales de estrellas: 1 = ganar; 2 y 3 según puntaje esperado (incluye el bonus de movimientos sobrantes)
@@ -153,6 +177,36 @@ export function levelConfig(n) {
 
   const tip = TIPS[n] || GENERIC_TIPS[n % GENERIC_TIPS.length];
   return { n, shape, mask, ice: iceGrid, types, moves, goals, stars: [t1, t2, t3], tip };
+}
+
+// ---------- Red de seguridad de dificultad ----------
+// Juega partidas deterministas sin límite de movidas con una jugadora "distraída" (a veces busca el
+// objetivo mirando solo la jugada inmediata, a veces hace lo primero que ve) y mide cuántas movidas
+// necesita. Si el percentil 90 (con margen) supera lo que da la fórmula, el nivel recibe más movidas.
+const MAX_MOVES = 36, SOFT_MAX_MOVES = 30;
+function movesNeeded(cfg, seed) {
+  const rnd = mulberry32(seed);
+  const e = new Engine({ ...cfg, moves: 99 }, rnd);
+  let used = 0;
+  while (!e.goalsDone() && used < 70) {
+    const ms = e.findMoves();
+    let m = ms[Math.floor(rnd() * ms.length)];
+    if (rnd() < 0.6) {
+      const goalTypes = e.goalTypes();
+      let best = -1;
+      for (const x of ms) { const v = e.moveValue(x.a, x.b, goalTypes) + rnd(); if (v > best) { best = v; m = x; } }
+    }
+    e.play(m.a, m.b);
+    used++;
+  }
+  return used;
+}
+function fairMoves(cfg, runs = 12) {
+  const need = [];
+  for (let i = 0; i < runs; i++) need.push(movesNeeded(cfg, cfg.n * 7907 + i * 131));
+  need.sort((a, b) => a - b);
+  const q = need[Math.round(0.9 * (runs - 1))];
+  return Math.ceil(q * (cfg.n <= 10 ? 1.25 : 1.15));
 }
 
 // ---------- Calibración de estrellas ----------
@@ -200,8 +254,8 @@ export function calibrateStars(cfg, runs = 8) {
     scores.sort((a, b) => a - b);
     const q = p => scores[Math.round(p * (scores.length - 1))];
     const r100 = v => Math.round(v / 100) * 100;
-    t2 = r100(q(0.3));
-    t3 = r100(q(0.7));
+    t2 = r100(q(0.1));
+    t3 = r100(q(0.45));
   }
   t2 = Math.max(t2, t1 + 300);
   t3 = Math.max(t3, t2 + 400);

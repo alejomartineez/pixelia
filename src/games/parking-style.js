@@ -18,12 +18,14 @@ export const PARKING_CSS = `
 
 .scene-parking .pk-hint {
   position: absolute; top: calc(var(--safe-t) + 104px); left: 50%; transform: translate(-50%, 0) scale(.6);
-  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 210px; max-width: 92vw;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 210px; width: max-content; max-width: 92vw;
   background: #fff; border: var(--line) solid var(--ink); border-radius: 14px; box-shadow: var(--shadow);
   padding: 6px 14px; font-size: 17px; font-weight: 700; text-align: center; opacity: 0; pointer-events: none;
   transition: opacity .15s, transform .2s cubic-bezier(.3,1.7,.6,1);
 }
 .scene-parking .pk-hint.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+.scene-parking .pk-hint.low { top: auto; bottom: calc(var(--safe-b) + 150px); }
+@media (min-width: 900px) and (min-height: 600px) { .scene-parking .pk-hint.low { bottom: calc(var(--safe-b) + 64px); } }
 .scene-parking .pk-hint.good { background: var(--mint-l); }
 .scene-parking .pk-hint.warn { background: #ffe1e6; }
 .scene-parking .pk-hint .progress { width: 100%; height: 10px; display: none; }
@@ -71,6 +73,9 @@ export const PARKING_CSS = `
 }
 @media (hover: hover) and (pointer: fine) and (max-width: 980px) {
   .scene-parking .pk-keys { bottom: calc(var(--safe-b) + 150px); white-space: normal; text-align: center; width: max-content; max-width: 90vw; }
+}
+@media (hover: hover) and (pointer: fine) and (max-width: 980px) {
+  .scene-parking .pk-hint.low { bottom: calc(var(--safe-b) + 200px); }
 }
 
 /* ---------- Indicador del lugar fuera de pantalla ---------- */

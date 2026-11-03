@@ -4,7 +4,7 @@
 
 let ctx = null, master = null, sfxGain = null, musicGain = null;
 let settings = { music: true, sfx: true };
-let currentSong = null, songTimer = null, songStep = 0, nextTime = 0;
+let currentSong = null, songTimer = null, songStep = 0, nextTime = 0, unlocking = null;
 
 function ensure() {
   if (ctx) return ctx;
@@ -104,9 +104,17 @@ function scheduleSong() {
 
 export const audio = {
   unlock() {
-    ensure();
-    if (ctx?.state === 'suspended') ctx.resume();
-    if (currentSong && !songTimer) audio.music(currentSong, true);
+    if (!ensure()) return;
+    const startSong = () => { if (currentSong && !songTimer && ctx.state === 'running') audio.music(currentSong, true); };
+    // resume() es asíncrono: la música recién puede arrancar cuando el contexto pasa a 'running'
+    // (en iOS el estado también puede ser 'interrupted' tras una llamada o al volver de segundo plano)
+    if (ctx.state !== 'running') {
+      if (!unlocking) {
+        // iOS a veces necesita "tocar" el contexto con un sonido mudo dentro del gesto
+        try { const b = ctx.createBuffer(1, 1, 22050), s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0); } catch {}
+        unlocking = ctx.resume().catch(() => {}).then(() => { unlocking = null; startSong(); });
+      }
+    } else startSong();
   },
   configure(s) {
     settings = { ...settings, ...s };

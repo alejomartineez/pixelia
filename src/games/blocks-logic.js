@@ -117,17 +117,57 @@ function pickShape(d, rng, allow) {
 }
 
 /**
+ * ¿Se pueden colocar todas las piezas (en algún orden, limpiando líneas entre medio)?
+ * Búsqueda en profundidad con presupuesto de nodos compartido ({left}): si se agota, responde false (conservador).
+ */
+export function solvable(grid, ids, budget = { left: 1500 }) {
+  const g = Int8Array.from(grid);
+  function rec(left) {
+    if (!left.length) return true;
+    for (let k = 0; k < left.length; k++) {
+      if (left.indexOf(left[k]) !== k) continue; // misma forma ya probada
+      const sh = SHAPES[left[k]];
+      const rest = left.filter((_, j) => j !== k);
+      for (let gy = 0; gy <= N - sh.h; gy++) for (let gx = 0; gx <= N - sh.w; gx++) {
+        if (!fits(g, sh, gx, gy)) continue;
+        if (--budget.left < 0) return false;
+        if (rest.length === 0) return true;
+        const { rows, cols } = wouldComplete(g, sh, gx, gy);
+        let ok;
+        if (rows.length || cols.length) {
+          const snap = Int8Array.from(g);
+          for (const [x, y] of sh.cells) g[idx(gx + x, gy + y)] = 0;
+          clearLines(g, rows, cols);
+          ok = rec(rest);
+          g.set(snap);
+        } else {
+          for (const [x, y] of sh.cells) g[idx(gx + x, gy + y)] = 0;
+          ok = rec(rest);
+          for (const [x, y] of sh.cells) g[idx(gx + x, gy + y)] = EMPTY;
+        }
+        if (ok) return true;
+        if (budget.left < 0) return false;
+      }
+    }
+    return false;
+  }
+  return rec(ids);
+}
+
+/**
  * Tres piezas nuevas. d = dificultad 0..1.
- * Garantiza que al menos una entre (siempre posible: un bloque suelto entra en cualquier tablero no lleno)
+ * Amable: busca primero una bandeja que se pueda colocar entera (en algún orden); si no encuentra,
+ * garantiza que al menos una entre (siempre posible: un bloque suelto entra en cualquier tablero no lleno)
  * y, con el tablero cargado, a veces regala una pieza que completa una línea.
  */
 export function generateTray(grid, d, rng = Math.random) {
   let tray = null;
-  for (let attempt = 0; attempt < 30; attempt++) {
+  const budget = { left: 4000 }; // tope total de búsqueda (unos pocos ms en el peor caso)
+  for (let attempt = 0; attempt < 40; attempt++) {
     const t = [pickShape(d, rng), pickShape(d, rng), pickShape(d, rng)];
     const fams = new Set(t.map(id => SHAPES[id].fam));
-    if (fams.size === 1 && attempt < 25) continue; // evitar tres iguales
-    if (t.some(id => canPlaceAnywhere(grid, SHAPES[id]))) { tray = t; break; }
+    if (fams.size === 1 && attempt < 35) continue; // evitar tres iguales
+    if (attempt < 24 && budget.left > 0 ? solvable(grid, t, budget) : t.some(id => canPlaceAnywhere(grid, SHAPES[id]))) { tray = t; break; }
   }
   if (!tray) {
     tray = [pickShape(d, rng), pickShape(d, rng), pickShape(d, rng)];

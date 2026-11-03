@@ -156,11 +156,39 @@ export class Engine {
     }
     return res;
   }
+  /** valor "a simple vista" de una jugada: joyas que combina, cristales debajo y joyas del objetivo */
+  moveValue(a, b, goalTypes) {
+    const A = this.grid[a[0]][a[1]], B = this.grid[b[0]][b[1]];
+    if (this.isComboSwap(A, B)) return 12;
+    this.grid[a[0]][a[1]] = B; this.grid[b[0]][b[1]] = A;
+    let v = 0;
+    for (const [r, c] of [a, b]) {
+      const t = this.tc(r, c);
+      if (t < 0) continue;
+      let c0 = c, c1 = c, r0 = r, r1 = r;
+      while (this.tc(r, c0 - 1) === t) c0--; while (this.tc(r, c1 + 1) === t) c1++;
+      while (this.tc(r0 - 1, c) === t) r0--; while (this.tc(r1 + 1, c) === t) r1++;
+      let n = 0;
+      const cell = (y, x) => { n++; v += 1 + (this.ice[y][x] > 0 ? 3 : 0) + (goalTypes.has(t) ? 2 : 0); };
+      if (c1 - c0 >= 2) for (let x = c0; x <= c1; x++) cell(r, x);
+      if (r1 - r0 >= 2) for (let y = r0; y <= r1; y++) cell(y, c);
+      if (n >= 4) v += 3;
+    }
+    this.grid[a[0]][a[1]] = A; this.grid[b[0]][b[1]] = B;
+    return v;
+  }
+  /** tipos de joya que todavía faltan juntar */
+  goalTypes() {
+    return new Set(this.cfg.goals.filter(g => g.kind === 'collect' && !this.goalProgress(g).done).map(g => g.type));
+  }
+  /** la jugada más útil para la pista (prioriza cristales y joyas del objetivo) */
   bestMove() {
     const m = this.findMoves();
     if (!m.length) return null;
-    const top = Math.max(...m.map(x => x.score));
-    const best = m.filter(x => x.score === top);
+    const gt = this.goalTypes();
+    for (const x of m) x.value = this.moveValue(x.a, x.b, gt);
+    const top = Math.max(...m.map(x => x.value));
+    const best = m.filter(x => x.value === top);
     return best[Math.floor(this.rand() * best.length)];
   }
 

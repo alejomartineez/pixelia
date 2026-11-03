@@ -8,7 +8,8 @@ export const U_MAX = 34;   // zoom mínimo (se ve toda la isla)
 const PITCH = 0.62;
 const LIMIT = HALF + 1.5;
 
-export function createCameraCtl(r, saved, { onChange } = {}) {
+/** limit(): medio lado (en unidades) del área donde puede quedar el centro de la cámara (el terreno + un margen). */
+export function createCameraCtl(r, saved, { onChange, limit } = {}) {
   const cam = r.camera;
   const size = () => ({ w: r.canvas.clientWidth || innerWidth, h: r.canvas.clientHeight || innerHeight });
   const phone = Math.min(innerWidth, innerHeight) < 600;
@@ -37,8 +38,9 @@ export function createCameraCtl(r, saved, { onChange } = {}) {
     cam.updateProjectionMatrix();
   }
   function apply() {
-    st.x = clamp(st.x, -LIMIT, LIMIT);
-    st.z = clamp(st.z, -LIMIT, LIMIT);
+    const L = Math.min(LIMIT, limit?.() ?? LIMIT);
+    st.x = clamp(st.x, -L, L);
+    st.z = clamp(st.z, -L, L);
     applyProj();
     target.set(st.x, 0, st.z);
     setIsoCamera(cam, target, st.angle, 60, PITCH);

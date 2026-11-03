@@ -73,7 +73,7 @@ const lv = [];
   lv.push(L({
     name: 'Primer lugar', area: [6, 8], start: [0, 2.6, 180],
     goal: 'Manejá derechito y estacioná en el lugar que brilla.',
-    tip: 'Mantené Acelerar y soltalo cuando llegues. ¡Frená adentro!',
+    tip: 'Mantené Acelerar y soltalo un poquito antes de llegar. Para frenar, tocá Reversa.',
     stalls: top, spot: spotOf(top[2]), cars: park(top, [0, 4]), cones: [], walls: [], par: 12, limit: 90,
   }));
 }

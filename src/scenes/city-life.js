@@ -102,11 +102,19 @@ export function createLife(r, ctx) {
   let camFacing = Math.PI / 4;
 
   // ---------- Vecinas ----------
+  /** Solo las piezas grandes (vestido, cabeza) proyectan sombra: misma silueta, muchas menos pasadas de sombra. */
+  function lightShadows(obj, keep = 2) {
+    const ms = [];
+    obj.traverse(o => { if (o.isMesh && o.castShadow) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); ms.push(o); } });
+    ms.sort((a, b) => (b.geometry.boundingSphere?.radius || 0) - (a.geometry.boundingSphere?.radius || 0));
+    for (const o of ms.slice(keep)) o.castShadow = false;
+  }
   const npcs = [];
   let lookSeed = 1;
   function targetNpcCount() { return Math.min(16, Math.floor(ctx.economy.population() / 5)); }
   function spawnNpc() {
     const obj = princessModel(randomLook(lookSeed * 7919 + 17), { npc: true });
+    lightShadows(obj);
     lookSeed++;
     const w = makeWalker(obj, { speed: 0.65 + rnd() * 0.35 });
     w.baseScale = NPC_SCALE;

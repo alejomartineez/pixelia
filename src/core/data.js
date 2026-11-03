@@ -240,7 +240,7 @@ export const CUSTOM_CATALOG = {
 export const MAIN_QUESTS = [
   { id: 'm1', title: '¡Bienvenida, princesa!', text: 'Construí una Casita Rosa para tus primeras vecinas.', goal: { type: 'build', id: 'casita', count: 1 }, reward: { coins: 100, xp: 20 } },
   { id: 'm2', title: 'Pan para todas', text: 'Construí la Panadería Dulce.', goal: { type: 'build', id: 'panaderia', count: 1 }, reward: { coins: 120, xp: 25 } },
-  { id: 'm3', title: 'A cobrar', text: 'Tocá los edificios para recolectar 100 monedas.', goal: { type: 'collect', count: 100 }, reward: { coins: 80, gems: 2, xp: 20 } },
+  { id: 'm3', title: 'A cobrar', text: 'Tocá las burbujitas de los edificios para cobrar 60 monedas.', goal: { type: 'collect', count: 60 }, reward: { coins: 80, gems: 2, xp: 20 } },
   { id: 'm4', title: 'Brillos y joyas', text: 'Construí la Joyería Mágica.', goal: { type: 'build', id: 'joyeria', count: 1 }, reward: { coins: 100, xp: 25 } },
   { id: 'm5', title: 'Primera partida', text: 'Jugá una partida de Joyas Reales.', goal: { type: 'play', game: 'match3', count: 1 }, reward: { gems: 3, xp: 30 } },
   { id: 'm6', title: 'Un barrio lindo', text: 'Poné 3 árboles o arbustos.', goal: { type: 'build', ids: ['arbol', 'arbusto'], count: 3 }, reward: { coins: 150, xp: 25 } },

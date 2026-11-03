@@ -112,8 +112,10 @@ export function placeBuilding(id, x, z, rot = 0, state = S()) {
   return b;
 }
 function finishConstruction(b) {
+  // si la obra terminó mientras la app estaba cerrada, la producción arranca desde que terminó (progreso offline)
+  const end = b.buildEnd || Date.now();
   b.buildEnd = 0;
-  b.lastCollect = Date.now();
+  b.lastCollect = Math.min(Date.now(), end);
   store.inc('built');
   store.addXp(def(b).xp || 0);
   bus.emit('building:built', { b });
@@ -230,9 +232,10 @@ export function startUpgrade(uid, state = S()) {
   return b;
 }
 function finishUpgrade(b) {
+  const end = b.upgradeEnd || Date.now();
   b.upgradeEnd = 0;
   b.level++;
-  b.lastCollect = Date.now();
+  b.lastCollect = Math.min(Date.now(), end);
   store.inc('upgrades');
   store.addXp(Math.round((def(b).xp || 20) * 0.8 * b.level));
   bus.emit('building:upgraded', { b, level: b.level });
