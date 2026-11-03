@@ -6,9 +6,12 @@ import {
   BUILDING_BY_ID, MAP_SIZE, START_LAND, LAND_STEP, MAX_EXPANSIONS, MAX_BUILDING_LEVEL,
   CASTLE_LEVELS, CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST,
 } from './data.js';
+import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild } from '../chests/chests.js';
+import { eventMult } from '../season/events.js';
 
 const S = () => store.state;
 export const def = (b) => BUILDING_BY_ID[typeof b === 'string' ? b : b.id];
+const XP_COLLECT_MAX = 6;   // xp por cobro: raíz de los ciclos, tope 6 (igual que antes con almacenes de 6 tandas)
 
 // ---------- Geometría ----------
 /** Tamaño [w, d] según rotación (rot impar intercambia). */
@@ -66,48 +69,104 @@ export function population(state = S(), now = Date.now()) {
 export function happinessPoints(state = S(), now = Date.now()) {
   return state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingHappy(b)), 0);
 }
-/** Felicidad 0..100 (%) y bonus de producción 0..0.5 */
+/** Felicidad 0..100 (%) y bonus de producción 0..0.5. Con el Perfume de Alegría activo: al máximo (boosted: true). */
 export function happiness(state = S(), now = Date.now()) {
   const pts = happinessPoints(state, now);
+  if (happyBoostActive(now)) return { points: pts, pct: 100, bonus: 0.5, boosted: true };
   const ratio = pts / Math.max(10, population(state, now));
   return { points: pts, pct: Math.min(100, Math.round(ratio * 80)), bonus: Math.min(0.5, ratio * 0.4) };
 }
+/** Multiplicador temporal: poción de producción × evento "Doble Producción". */
+export function boostMultiplier(now = Date.now()) {
+  return prodBoostMult(now) * eventMult('production');
+}
+/** Bonus de toda la ciudad: felicidad × castillo × pociones × eventos (la maestría es aparte, por edificio). */
 export function globalMultiplier(state = S(), now = Date.now()) {
-  return (1 + happiness(state, now).bonus) * (1 + CASTLE_BONUS_PER_LEVEL * (castleLevel(state) - 1));
+  return (1 + happiness(state, now).bonus) * (1 + CASTLE_BONUS_PER_LEVEL * (castleLevel(state) - 1)) * boostMultiplier(now);
+}
+
+// ---------- Maestría por tipo de edificio ----------
+// Monedas producidas (cobradas) por tipo → 1..5 estrellas, +3% de producción por estrella.
+// Umbrales: 500, 2k, 8k, 25k, 80k × (costo del edificio / 100).
+export const MASTERY_STEPS = [500, 2000, 8000, 25000, 80000];
+export const MASTERY_BONUS = 0.03;
+const masteryScale = (id) => Math.max(1, (def(id)?.cost?.coins || 100) / 100);
+/** {stars 0..5, total, next (total para la próxima estrella o null), progress 0..1, bonus 0..0.15, steps} */
+export function masteryInfo(id, state = S()) {
+  const total = state.stats?.['prod_' + id] || 0;
+  const steps = MASTERY_STEPS.map(v => Math.round(v * masteryScale(id)));
+  let stars = 0;
+  while (stars < steps.length && total >= steps[stars]) stars++;
+  const prev = stars ? steps[stars - 1] : 0;
+  const next = stars < steps.length ? steps[stars] : null;
+  const progress = next ? Math.min(1, (total - prev) / (next - prev)) : 1;
+  return { stars, total, next, progress, bonus: stars * MASTERY_BONUS, steps };
+}
+export const masteryMult = (id, state = S()) => 1 + masteryInfo(id, state).bonus;
+
+// ---------- Almacenamiento ("siesta") ----------
+// Cada productor de monedas guarda varias horas para que volver después de un rato dé una cosecha linda.
+// Las primeras `prod.cap` tandas salen a ritmo normal (como cuando estás jugando); después la ciudad
+// "duerme la siesta": sigue juntando hasta llenar el almacén, pero a SIESTA_RATE del ritmo.
+// Balance (node tools/sim-economy.mjs, 7 días): almacén de 6 tandas (antes) vs siesta 3-4 h al 8% (ahora).
+//   casual (4 sesiones de 10 min por día): producción 0,79M → 1,45M (x1,8), nivel 14 → 14 al día 7.
+//   frecuente (8 sesiones de 5 min):        producción 2,88M → 4,45M (x1,5).
+// Volver después de 3 h a una panadería da ~400 monedas base (antes 120). Las mejoras duplican su costo en cada
+// nivel (UPGRADE_COST_MULT) para que haya en qué gastar a mediano plazo.
+export const STORAGE_HOURS = { negocio: 3, casa: 4, especial: 3 };
+export const SIESTA_RATE = 0.08;
+/** Ciclos que guarda un edificio antes de llenarse. */
+export function storageCap(id) {
+  const d = def(id);
+  if (!d?.prod) return 0;
+  if (d.prod.gems) return d.prod.cap;   // las gemas no se estiran: siguen siendo escasas
+  const hours = STORAGE_HOURS[d.cat] || 3;
+  return Math.max(d.prod.cap, Math.ceil(hours * 3600 / d.prod.cycle));
 }
 
 // ---------- Construir ----------
-/** Costo de construir otra unidad: casas y negocios se encarecen un 15% por cada copia. */
+/** Construcciones gratis ganadas en cofres para este edificio. */
+export const freeBuilds = (id) => freeBuildCount(id);
+/**
+ * Costo de construir otra unidad: casas y negocios se encarecen un 15% por cada copia.
+ * Con una construcción gratis (cofre) devuelve {coins:0, gems:0, free:true}.
+ */
 export function placeCost(id, state = S()) {
+  if (freeBuildCount(id) > 0) return { coins: 0, gems: 0, free: true };
   const d = def(id);
   const n = countOf(id, state);
   const mult = (d.cat === 'casa' || d.cat === 'negocio') ? 1 + 0.15 * n : 1;
   return { coins: Math.round((d.cost.coins || 0) * mult), gems: d.cost.gems || 0 };
 }
-/** ¿Puede construir? (sin mirar ubicación). reason es texto para mostrar. */
+/**
+ * ¿Puede construir? (sin mirar ubicación). reason es texto para mostrar.
+ * Con una construcción gratis se ignoran nivel y población (se respetan el máximo y las constructoras) → {ok, free:true}.
+ */
 export function canBuild(id, state = S(), now = Date.now()) {
   const d = def(id);
   if (!d) return { ok: false, reason: '???' };
-  if (d.unlock > state.player.level) return { ok: false, reason: `Nivel ${d.unlock}`, locked: true };
+  const free = freeBuildCount(id) > 0;
+  if (!free && d.unlock > state.player.level) return { ok: false, reason: `Nivel ${d.unlock}`, locked: true };
   if (d.max && countOf(id, state) >= d.max) return { ok: false, reason: 'Ya lo tenés' };
-  if (d.popReq && population(state, now) < d.popReq) return { ok: false, reason: `Necesita ${d.popReq} vecinas`, locked: true };
+  if (!free && d.popReq && population(state, now) < d.popReq) return { ok: false, reason: `Necesita ${d.popReq} vecinas`, locked: true };
   if (d.time > 0 && buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
-  if (!store.canAfford(placeCost(id, state))) return { ok: false, reason: 'No te alcanza', poor: true };
-  return { ok: true };
+  if (!free && !store.canAfford(placeCost(id, state))) return { ok: false, reason: 'No te alcanza', poor: true };
+  return free ? { ok: true, free: true } : { ok: true };
 }
-/** Construye. Devuelve el edificio creado o {error}. */
+/** Construye (consume la construcción gratis si hay). Devuelve el edificio creado o {error}. */
 export function placeBuilding(id, x, z, rot = 0, state = S()) {
   const now = Date.now();
   const can = canBuild(id, state, now);
   if (!can.ok) return { error: can.reason };
   const pos = canPlace(id, x, z, rot, null, state);
   if (!pos.ok) return { error: pos.reason };
-  if (!store.spend(placeCost(id, state), 'build:' + id)) return { error: 'No te alcanza' };
+  if (can.free) { if (!consumeFreeBuild(id)) return { error: 'No te queda esa construcción gratis' }; }
+  else if (!store.spend(placeCost(id, state), 'build:' + id)) return { error: 'No te alcanza' };
   const d = def(id);
   const b = { uid: state.city.nextUid++, id, x, z, rot, level: 1, buildEnd: d.time > 0 ? now + d.time * 1000 : 0, upgradeEnd: 0, lastCollect: now };
   state.city.buildings.push(b);
   store.markDirty();
-  bus.emit('building:placed', { b });
+  bus.emit('building:placed', { b, free: !!can.free });
   if (!b.buildEnd) finishConstruction(b);
   return b;
 }
@@ -151,16 +210,29 @@ export function producerStatus(b, now = Date.now(), state = S()) {
   const d = def(b);
   if (!d.prod) return { producer: false };
   const currency = d.prod.gems ? 'gems' : 'coins';
-  if (isBusy(b, now)) return { producer: true, currency, paused: true, ready: false, amount: 0, progress: 0, full: false };
+  const cap = storageCap(d.id);
+  if (isBusy(b, now)) return { producer: true, currency, paused: true, ready: false, amount: 0, progress: 0, full: false, cap };
   const cycleMs = d.prod.cycle * 1000;
   const elapsed = Math.max(0, now - b.lastCollect);
-  const cycles = Math.min(d.prod.cap, Math.floor(elapsed / cycleMs));
-  const full = cycles >= d.prod.cap;
+  const cycles = Math.min(cap, Math.floor(elapsed / cycleMs));
+  const full = cycles >= cap;
+  const awake = currency === 'gems' ? cap : Math.min(cap, d.prod.cap);   // tandas a ritmo normal
+  const siesta = Math.max(0, cycles - awake);
+  const effective = cycles - siesta + siesta * SIESTA_RATE;
   const progress = full ? 1 : (elapsed % cycleMs) / cycleMs;
   let per;
   if (currency === 'gems') per = d.prod.gems;
-  else per = d.prod.coins * (1 + 0.5 * (b.level - 1)) * (d.id === 'castillo' ? 1 : globalMultiplier(state, now));
-  return { producer: true, currency, ready: cycles > 0, amount: Math.round(per * cycles), cycles, cap: d.prod.cap, progress, full, perCycle: Math.round(per), cycleSec: d.prod.cycle };
+  else {
+    // el castillo no se da bonus a sí mismo (felicidad/castillo) pero sí recibe pociones y eventos
+    const city = d.id === 'castillo' ? boostMultiplier(now) : globalMultiplier(state, now);
+    per = d.prod.coins * (1 + 0.5 * (b.level - 1)) * city * masteryMult(d.id, state);
+  }
+  return {
+    producer: true, currency, ready: cycles > 0, amount: Math.round(per * effective), cycles, cap, progress, full,
+    perCycle: Math.round(per), cycleSec: d.prod.cycle,
+    awakeCap: awake, siesta: siesta > 0, siestaRate: SIESTA_RATE,       // "durmiendo la siesta": junta más lento
+    fullInSec: full ? 0 : Math.max(0, (cap * cycleMs - elapsed) / 1000),   // cuánto falta para llenarse
+  };
 }
 /** Cobra un edificio. Devuelve {amount, currency} o null. */
 export function collect(uid, state = S()) {
@@ -170,10 +242,17 @@ export function collect(uid, state = S()) {
   const st = producerStatus(b, now, state);
   if (!st.producer || !st.ready || st.amount <= 0) return null;
   const d = def(b);
+  const before = st.currency === 'coins' ? masteryInfo(d.id, state).stars : 0;
   // conserva el progreso parcial del ciclo actual (si no estaba lleno)
   b.lastCollect = st.full ? now : b.lastCollect + st.cycles * d.prod.cycle * 1000;
-  store.grant({ [st.currency]: st.amount, xp: Math.max(1, Math.round(st.cycles)) }, 'collect');
-  if (st.currency === 'coins') store.inc('collected', st.amount);
+  // xp: crece más lento que los ciclos (con almacenes de varias horas no debe dispararse)
+  store.grant({ [st.currency]: st.amount, xp: Math.min(XP_COLLECT_MAX, Math.max(1, Math.round(Math.sqrt(st.cycles)))) }, 'collect');
+  if (st.currency === 'coins') {
+    store.inc('collected', st.amount);
+    store.inc('prod_' + d.id, st.amount);
+    const after = masteryInfo(d.id, state).stars;
+    if (after > before) bus.emit('building:mastery', { id: d.id, stars: after, b });
+  }
   bus.emit('production:collected', { b, amount: st.amount, currency: st.currency });
   return { amount: st.amount, currency: st.currency };
 }
@@ -193,6 +272,9 @@ export function canUpgradeType(b) {
   return d.id === 'castillo' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
 }
 export function maxLevel(b) { return def(b).id === 'castillo' ? CASTLE_LEVELS.length + 1 : MAX_BUILDING_LEVEL; }
+// costo de mejora = costo base × factor (nivel actual → siguiente). Se duplica en cada nivel: las mejoras son el
+// gran sumidero de monedas a mediano plazo (cada nivel da +50% de producción).
+const UPGRADE_COST_MULT = [0, 1.7, 3.4, 6.8, 13.6];
 /** {cost, time(seg), reqLevel} de la próxima mejora o null si está al máximo. */
 export function upgradeInfo(b) {
   if (!canUpgradeType(b) || b.level >= maxLevel(b)) return null;
@@ -203,7 +285,7 @@ export function upgradeInfo(b) {
   }
   const base = d.cost.coins || 200;
   return {
-    cost: { coins: Math.round(base * (0.8 + 0.9 * b.level)), gems: b.level >= 3 ? b.level - 2 : 0 },
+    cost: { coins: Math.round(base * UPGRADE_COST_MULT[b.level]), gems: b.level >= 3 ? b.level - 2 : 0 },
     time: Math.max(15, Math.round((d.time || 10) * (b.level + 1))),
     reqLevel: d.unlock + b.level * 2,
   };
@@ -309,10 +391,11 @@ export function fmtTime(sec) {
   if (m) return `${m}m ${String(s).padStart(2, '0')}s`;
   return `${s}s`;
 }
-/** 1234 -> 1.2k */
+/** 12345 -> "12.345" · 123456 -> "123k" · 1234567 -> "1,2M" (abrevia desde 100.000) */
 export function fmtNum(n) {
-  n = Math.round(n);
-  if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.0', '') + 'M';
-  if (n >= 1e4) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace('.0', '') + 'k';
+  n = Math.round(Number(n) || 0);
+  const a = Math.abs(n);
+  if (a >= 1e6) return (n / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace('.0', '').replace('.', ',') + 'M';
+  if (a >= 1e5) return Math.trunc(n / 1e3) + 'k';
   return n.toLocaleString('es-AR');
 }

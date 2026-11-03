@@ -3,6 +3,7 @@
 //   princessModel(look, opts) -> THREE.Group  (altura ≈ 1 unidad, mira a +Z, base en y=0)
 //     group.userData.update(dt, moving)  — camina (piernas/brazos/rebote) o idle (respira, parpadea)
 //     opts.seated: true  -> solo torso/cabeza/brazos (para sentarla en el auto), brazos al volante
+//     opts.npc / opts.lowDetail: versión liviana para vecinas (3 mallas: cuerpo fusionado + 2 piernas)
 //   randomLook(seed) -> look válido determinista (vecinas NPC)
 // Las geometrías se cachean por pieza+colores: crear muchas princesas es barato.
 import * as THREE from 'three';
@@ -721,6 +722,7 @@ function buildCat(v) {
  */
 export function princessModel(lookIn = {}, opts = {}) {
   const look = normalizeLook(lookIn);
+  if ((opts.npc || opts.lowDetail) && !opts.seated) return lowDetailModel(look, opts);
   const seated = !!opts.seated;
   const p = dressPal(look);
   const hairDef = HAIR[look.hair] || HAIR.largo;
@@ -902,6 +904,110 @@ export function princessModel(lookIn = {}, opts = {}) {
     }
     if (blinkLeft > 0) blinkLeft -= dt;
     eyes.scale.y = blinkLeft > 0 ? 0.18 : 1;
+  };
+  root.userData.update(0, false);
+  return root;
+}
+
+// =====================================================================
+//                    VERSIÓN LIVIANA (vecinas de la ciudad)
+// Todas las piezas quietas (torso, cabeza, ojos, pelo, corona, brazos, capa, accesorios) se fusionan en
+// UNA geometría (cacheada por look); solo las piernas siguen sueltas para caminar. ~10 mallas -> 3.
+// =====================================================================
+/** Fusiona mallas (con sus matrices de mundo) en una geometría con position/normal/color. */
+function mergeMeshes(meshes) {
+  const pos = [], nor = [], col = [], idx = [];
+  const v = new THREE.Vector3(), n = new THREE.Vector3(), nm = new THREE.Matrix3();
+  for (const o of meshes) {
+    const g = o.geometry;
+    const P = g?.attributes.position, N = g?.attributes.normal, C = g?.attributes.color;
+    if (!P || !N) continue;
+    const m = o.matrixWorld;
+    nm.getNormalMatrix(m);
+    const base = pos.length / 3;
+    for (let i = 0; i < P.count; i++) {
+      v.fromBufferAttribute(P, i).applyMatrix4(m);
+      n.fromBufferAttribute(N, i).applyMatrix3(nm).normalize();
+      pos.push(v.x, v.y, v.z); nor.push(n.x, n.y, n.z);
+      if (C) col.push(C.getX(i), C.getY(i), C.getZ(i)); else col.push(1, 1, 1);
+    }
+    // con escala negativa (piezas espejadas) hay que dar vuelta los triángulos
+    const flip = m.determinant() < 0;
+    const I = g.index;
+    const cnt = I ? I.count : P.count;
+    for (let i = 0; i + 2 < cnt; i += 3) {
+      const a = I ? I.getX(i) : i, b = I ? I.getX(i + 1) : i + 1, c = I ? I.getX(i + 2) : i + 2;
+      if (flip) idx.push(base + a, base + c, base + b); else idx.push(base + a, base + b, base + c);
+    }
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  out.setIndex(pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1));
+  out.computeBoundingSphere(); out.computeBoundingBox();
+  return out;
+}
+
+function lowDetailModel(look, opts = {}) {
+  const key = 'npc|' + [look.skin, look.hair, look.hairColor, look.dress, look.dressColor, look.crown, look.acc].join('|');
+  let merged = geoCache.get(key);
+  if (!merged) {
+    // se arma una vez la princesa completa en pose neutra y se "hornea" todo menos las piernas
+    const full = princessModel(look, {});
+    const P = full.userData.parts;
+    P.body.position.set(0, 0, 0); P.body.rotation.set(0, 0, 0);
+    P.torso.scale.set(1, 1, 1);
+    P.head.position.set(0, 10 * S, 0); P.head.rotation.set(0, 0, 0);
+    P.eyes.scale.y = 1;
+    for (const sw of P.swings) sw.pv.rotation.set(0.04, 0, 0);
+    for (const w of P.wings) w.pv.rotation.y = w.s * 0.3;
+    if (P.cape) P.cape.rotation.x = 0.1;
+    if (P.cat) P.cat.position.y = 0;
+    full.updateMatrixWorld(true);
+    const legMeshes = new Set();
+    for (const pv of P.legs) pv.traverse(o => { if (o.isMesh) legMeshes.add(o); });
+    const list = [];
+    full.traverse(o => { if (o.isMesh && o.visible && !legMeshes.has(o)) list.push(o); });
+    merged = mergeMeshes(list);
+    geoCache.set(key, merged);
+  }
+  const p = dressPal(look);
+  const dress = DRESS[look.dress] || DRESS.clasico;
+  const hairDef = HAIR[look.hair] || HAIR.largo;
+  const legGeo = cachedGeo(`l|${look.dress}|${look.dressColor}|${look.skin}`, (v) => dress.leg(v, p));
+
+  const root = new THREE.Group();
+  root.name = 'princess-npc';
+  const body = new THREE.Group();
+  root.add(body);
+  const main = meshOf(merged);
+  body.add(main);
+  const legs = [];
+  if (legGeo) for (const s of [-1, 1]) {
+    const pv = pivot(s, 4, 0);
+    const m = meshOf(legGeo);
+    m.castShadow = false;
+    if (s < 0) m.scale.x = -1;
+    pv.add(m); body.add(pv); legs.push(pv);
+  }
+  if (opts.scale) root.scale.setScalar(opts.scale);
+
+  let t = Math.random() * 10, walk = 0, phase = 0;
+  root.userData.look = look;
+  root.userData.lowDetail = true;
+  root.userData.height = (21 + (hairDef.top - 12)) * S * (opts.scale || 1);
+  root.userData.parts = { body, torso: main, legs };
+  root.userData.update = (dt = 0.016, moving = false) => {
+    dt = Math.min(dt, 0.1);
+    t += dt;
+    walk += ((moving ? 1 : 0) - walk) * Math.min(1, dt * 9);
+    if (walk > 0.01) phase += dt * 11;
+    const sw = Math.sin(phase) * walk;
+    const idle = 1 - walk;
+    for (let i = 0; i < legs.length; i++) legs[i].rotation.x = (i ? -sw : sw) * 0.75;
+    body.position.y = Math.abs(Math.sin(phase)) * 0.045 * walk + Math.sin(t * 2.4) * 0.004 * idle;
+    body.rotation.z = Math.sin(phase) * 0.04 * walk + Math.sin(t * 0.9) * 0.015 * idle;
   };
   root.userData.update(0, false);
   return root;

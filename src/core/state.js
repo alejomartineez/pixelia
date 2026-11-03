@@ -5,8 +5,25 @@ import {
   CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE,
 } from './data.js';
 
-const KEY = 'pixelia.save.v1';
+const BASE_KEY = 'pixelia.save.v1';
 const VERSION = 1;
+
+/**
+ * Clave de guardado. En modo online simulado (?mock=1&mockuser=ana) cada jugadora simulada tiene su
+ * propia partida ('pixelia.save.v1.mock.ana'), así dos pestañas no comparten el mismo localStorage.
+ */
+function saveKey() {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (q.has('mock') && q.get('mock') !== '0') {
+      const u = (q.get('mockuser') || '').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+      return BASE_KEY + '.mock' + (u ? '.' + u : '');
+    }
+  } catch {}
+  return BASE_KEY;
+}
+export const SAVE_KEY = saveKey();
+const KEY = SAVE_KEY;
 
 export function todayStr(d = new Date()) {
   const p = n => String(n).padStart(2, '0');
@@ -54,6 +71,11 @@ export function defaultState() {
     },
     tutorial: {},   // flags libres para tips mostrados una vez: tutorial[key] = true
     settings: { music: true, sfx: true, lowQuality: false },
+    // módulos de progresión (cada uno completa sus propios campos al iniciar: initChests/initAlbum/initSeason/initEvents)
+    chests: {},
+    album: {},
+    season: {},
+    events: {},
   };
 }
 
@@ -121,15 +143,33 @@ export const store = {
     bus.emit('currency:changed', { coins: state.coins, gems: state.gems, delta: { coins: -(cost.coins || 0), gems: -(cost.gems || 0) }, reason });
     return true;
   },
-  /** Suma premios {coins, gems, xp}. source: 'collect'|'game'|'quest'|'levelup'|'login'|... */
+  /**
+   * Suma premios. reward: {coins, gems, xp, chest, stickers}. source: 'collect'|'game'|'quest'|'levelup'|'login'|...
+   *  - chest: 'madera'|'plata'|'oro'|'real' (o {type, n}); chests: cantidad (default 1) → emite 'reward:chest' {type, n, source}
+   *  - stickers: n (o {n, minStars}) → emite 'reward:stickers' {n, minStars, source}; el álbum deja el resultado en payload.result
+   * Devuelve { stickers: [{id, stars, isNew, count}] } (vacío si no hubo figuritas).
+   */
   grant(reward = {}, source = '') {
+    const out = { stickers: [] };
+    if (!reward || typeof reward !== 'object') return out;
     const coins = Math.max(0, Math.round(reward.coins || 0));
     const gems = Math.max(0, Math.round(reward.gems || 0));
     if (coins) { state.coins += coins; store.inc('coinsEarned', coins); bus.emit('coins:earned', { amount: coins, source }); }
     if (gems) { state.gems += gems; store.inc('gemsEarned', gems); bus.emit('gems:earned', { amount: gems, source }); }
     if (coins || gems) bus.emit('currency:changed', { coins: state.coins, gems: state.gems, delta: { coins, gems }, reason: source });
     if (reward.xp) store.addXp(reward.xp);
+    if (reward.chest) {
+      const type = typeof reward.chest === 'object' ? reward.chest.type : reward.chest;
+      const n = Math.max(1, Math.round((typeof reward.chest === 'object' ? reward.chest.n : reward.chests) || 1));
+      if (type) bus.emit('reward:chest', { type, n, source });
+    }
+    if (reward.stickers) {
+      const st = typeof reward.stickers === 'object' ? reward.stickers : { n: reward.stickers };
+      const payload = { n: Math.max(0, Math.round(st.n || 0)), minStars: st.minStars || 1, source };
+      if (payload.n) { bus.emit('reward:stickers', payload); out.stickers = payload.result || []; }
+    }
     dirty = true;
+    return out;
   },
 
   // ---------- Experiencia / nivel ----------

@@ -272,7 +272,7 @@ const RPC = {
     if (db.trades.filter(t => t.from_id === me && t.status === 'pending').length >= 5) E('Tenés 5 intercambios esperando respuesta. Esperá a que te contesten o cancelá alguno');
     const st = 'stickers' in o || 'stickers' in r;
     if (st) {
-      const onlySt = x => Object.keys(x).every(k => k === 'stickers' || k === 'stars');
+      const onlySt = x => Object.keys(x).every(k => k === 'stickers' || k === 'stars' || k === 'golden');
       if (!onlySt(o) || !onlySt(r)) E('En un intercambio de figuritas solo van figuritas (sin monedas ni objetos)');
       if (!('stickers' in o && 'stickers' in r)) E('Hace falta una figurita de cada lado');
       const one = x => Object.keys(x.stickers).length === 1 && Object.values(x.stickers).reduce((a, b) => a + b, 0) === 1;
@@ -281,7 +281,8 @@ const RPC = {
       const ok = s => s >= 1 && s <= 5 && s === Math.trunc(s);
       if (!ok(o.stars) || !ok(r.stars)) E('Las estrellas van de 1 a 5');
       if (Math.abs(o.stars - r.stars) > 1) E('Las figuritas tienen que tener estrellas parecidas (como mucho 1 de diferencia)');
-      if (Math.max(o.stars, r.stars) === 5 && f.days < 14) E('Las figuritas de 5 estrellas se cambian con amigas de 14 días o más');
+      // golden: Semana Dorada (eventFlag('trade5'), calculado en el cliente) habilita 5★ sin los 14 días
+      if (Math.max(o.stars, r.stars) === 5 && f.days < 14 && o.golden !== true) E('Las figuritas de 5 estrellas se cambian con amigas de 14 días o más');
       if (stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!');
     }
     const t = { id: nextId(db), from_id: me, to_id: p_to, offer: o, request: r, status: 'pending', is_sticker: st, day: today(db), created_at: nowIso(db), resolved_at: null };

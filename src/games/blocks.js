@@ -7,6 +7,7 @@ import {
   generateTray, linePoints, filledCount,
 } from './blocks-logic.js';
 import { COLORS, STAR_COLOR, BOARD_PAD, blockSprite, sparkleSprite, heartSprite, boardCanvas, trayCanvas } from './blocks-art.js';
+import { itemCount, consumeItem, boosterIcon, gameEvent, injectBoosterStyle } from './boosters.js';
 
 const CELL = 12;                    // px de arte por celda del tablero
 const FRAME = 6;                    // grosor del marco
@@ -17,6 +18,7 @@ const CLEAN_BONUS = 500;            // tablero limpio
 const CONTINUE_COST = 3;            // gemas para seguir
 const TOUCH_LIFT = 64;              // px CSS que la pieza se dibuja por encima del dedo
 const STYLE_ID = 'blocks-scene-style';
+const BOMB_ID = 'blk_bomb';          // potenciador de la mochila: limpia un 3x3
 
 const CSS = `
 .scene-blocks { overflow: hidden; touch-action: none; }
@@ -75,6 +77,36 @@ const CSS = `
 .bk-cont .bk-cont-ill { display: flex; gap: 10px; align-items: center; justify-content: center; }
 .bk-cont .bk-cont-ill img { image-rendering: pixelated; }
 .bk-cont .chip { font-size: 15px; }
+.modal.bk-cont-modal .modal-foot { flex-wrap: wrap; }
+.modal.bk-cont-modal .modal-foot .btn { flex: 1 1 40%; }
+.modal.bk-cont-modal .modal-foot .btn.ghost { order: 3; flex-basis: 100%; }
+.bk-cont .bk-cont-bomb { display: flex; align-items: center; gap: 8px; text-align: left; background: #fff; border: 2px solid var(--ink); border-radius: 12px; padding: 6px 10px; font-size: 15px; line-height: 1.2; }
+/* potenciador: Bomba de Bloques */
+.scene-blocks .bk-bomb { position: absolute; z-index: 5; translate: -50% 0; display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 5px 14px 5px 6px;
+  background: #fff; color: var(--ink); font: inherit; border: var(--line) solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink); cursor: pointer; white-space: nowrap;
+  -webkit-tap-highlight-color: transparent; transition: transform .12s, background-color .15s; }
+.scene-blocks .bk-bomb:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.scene-blocks .game-bar .bk-bomb { position: relative; left: auto !important; top: auto !important; translate: none; min-height: 44px; }
+.scene-blocks .bk-bomb-ic { position: relative; flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; background: var(--mint-l); border: 2px solid var(--mint-d); }
+.scene-blocks .bk-bomb-ic i { position: absolute; right: -8px; bottom: -7px; min-width: 22px; height: 20px; padding: 0 5px; border-radius: 10px; display: grid; place-items: center; font-style: normal;
+  background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; border: 2px solid #fff; }
+.scene-blocks .bk-bomb-txt { display: flex; flex-direction: column; line-height: 1.1; text-align: left; }
+.scene-blocks .bk-bomb-txt b { font-size: 15px; }
+.scene-blocks .bk-bomb-txt small { font-size: 12px; color: var(--ink-l); }
+.scene-blocks .bk-bomb.empty { cursor: default; background: #f6f0f8; border-color: var(--ink-ll); box-shadow: 0 3px 0 var(--ink-ll); }
+.scene-blocks .bk-bomb.empty .bk-bomb-ic { filter: grayscale(1); opacity: .55; border-color: var(--ink-ll); background: #eee6f1; }
+.scene-blocks .bk-bomb.empty .bk-bomb-ic i { background: var(--ink-ll); }
+.scene-blocks .bk-bomb.empty b { color: var(--ink-l); }
+.scene-blocks .bk-bomb.aim { background: var(--pink); color: #fff; box-shadow: inset 0 -5px 0 var(--pink-d), 0 4px 0 var(--ink); animation: bk-pulse .9s steps(2) infinite; }
+.scene-blocks .bk-bomb.aim small { color: #fff; }
+.scene-blocks .bk-bomb.aim .bk-bomb-ic { background: #fff; }
+.scene-blocks .bk-bomb.compact { padding: 4px; min-height: 44px; }
+.scene-blocks .bk-bomb.compact .bk-bomb-txt { display: none; }
+.scene-blocks .bk-bomb.nope { animation: bk-shake .3s; }
+.scene-blocks .bk-bomb.hide { display: none; }
+.scene-blocks .bk-aimhint { position: absolute; z-index: 6; translate: -50% -50%; pointer-events: none; white-space: nowrap; font-size: 16px; font-weight: 700;
+  background: #fff; border: var(--line) solid var(--ink); border-radius: 12px; padding: 4px 12px; box-shadow: 0 3px 0 var(--ink); display: none; align-items: center; gap: 6px; }
+.scene-blocks .bk-aimhint.show { display: flex; animation: bk-pulse 1s steps(2) infinite; }
 `;
 
 const STAR_SCORES = [400, 1200, 2500];
@@ -128,6 +160,8 @@ export default function create(ctx) {
   const clears = [];     // bloques que se están limpiando {x, y, c, t0, spawned}
   const parts = [];      // partículas
   const deco = [];       // adornos del fondo
+  let aiming = null;     // modo apuntar de la bomba: { cell: {x,y}|null, ptr: id|null, fromStuck }
+  const booms = [];      // ondas de explosión {x, y, t0}
 
   const later = (fn, ms) => {
     const id = setTimeout(() => { timers.delete(id); if (alive) fn(); }, ms);
@@ -263,6 +297,7 @@ export default function create(ctx) {
     // se levanta menos para que la última fila siga siendo alcanzable con el dedo dentro de la pantalla
     L.lift = clamp(ch - (L.gy + N * CELL) * P - 12, 20, TOUCH_LIFT);
     placeGoal(cw, safe);
+    placeBomb(cw, ch, safe);
     // adornos de fondo
     deco.length = 0;
     const cols = ['#ffb3d6', '#d6c2ff', '#b9f0de', '#bfe4ff', '#ffe3a3'];
@@ -287,6 +322,39 @@ export default function create(ctx) {
     el.classList.toggle('hide', gap < 50);
     el.style.left = ((L.bx + BOARD_ART / 2) * L.P) + 'px';
     el.style.top = (barBottom + Math.max(4, (gap - 44) / 2)) + 'px';
+  }
+
+  /** Botón de la bomba: abajo de la bandeja en el celu vertical; en la barra si no hay lugar (PC / apaisado). */
+  function placeBomb(cw, ch, safe) {
+    const b = els.bomb;
+    if (!b) return;
+    const wide = cw >= 760;
+    const trayBottom = (L.tray.y + L.tray.h) * L.P;
+    const below = ch - safe.b - trayBottom;
+    b.classList.remove('compact');
+    if (!wide && !L.landscape && below >= 64) {
+      if (b.parentNode !== root) root.append(b);
+      b.style.left = (cw / 2) + 'px';
+      b.style.top = (trayBottom + Math.max(6, Math.min(18, (below - 54) / 2))) + 'px';
+    } else {
+      if (b.parentNode !== els.bar) els.bar.insertBefore(b, els.help);
+      b.style.left = b.style.top = '';
+      b.classList.toggle('compact', !wide);
+    }
+    placeAimHint();
+  }
+  function placeAimHint() {
+    const h = els.aimHint;
+    if (!h || !L) return;
+    if (h.parentNode !== root) root.append(h);
+    if (!L.landscape) {
+      // sobre la bandeja (mientras apuntás no se usan las piezas)
+      h.style.left = ((L.tray.x + L.tray.w / 2) * L.P) + 'px';
+      h.style.top = ((L.tray.y + L.tray.h / 2) * L.P) + 'px';
+    } else {
+      h.style.left = ((L.bx + BOARD_ART / 2) * L.P) + 'px';
+      h.style.top = ((L.by - BOARD_PAD) * L.P + 4) + 'px';
+    }
   }
 
   /** Tamaño de celda de una pieza en la bandeja (las de 5 se achican un poco si no entran). */
@@ -362,6 +430,17 @@ export default function create(ctx) {
   }
 
   function onDown(e) {
+    if (aiming) {
+      if (!G || G.over || !L) return;
+      if (e.button !== undefined && e.button > 0) return;
+      const c = aimCellAt(toArt(e));
+      if (!c) return;                 // fuera del tablero: se sigue apuntando
+      e.preventDefault();
+      try { canvas.setPointerCapture(e.pointerId); } catch {}
+      aiming.cell = c; aiming.ptr = e.pointerId;
+      audio.sfx('tap');
+      return;
+    }
     if (!G || busy || drag || G.over || !L) return;
     if (e.button !== undefined && e.button > 0) return;
     const p = toArt(e);
@@ -382,6 +461,14 @@ export default function create(ctx) {
   }
 
   function onMove(e) {
+    if (aiming) {
+      if (!L) return;
+      if (aiming.ptr === e.pointerId || (aiming.ptr == null && e.pointerType === 'mouse')) {
+        const c = aimCellAt(toArt(e));
+        if (c) aiming.cell = c; else if (aiming.ptr == null) aiming.cell = null;
+      }
+      return;
+    }
     if (drag && e.pointerId === drag.id) {
       const p = toArt(e);
       drag.px = p.x; drag.py = p.y;
@@ -395,6 +482,12 @@ export default function create(ctx) {
   }
 
   function onUp(e) {
+    if (aiming && aiming.ptr === e.pointerId) {
+      aiming.ptr = null;
+      const c = aimCellAt(toArt(e)) || aiming.cell;
+      if (c) explode(c);
+      return;
+    }
     if (!drag || e.pointerId !== drag.id) return;
     const d = drag;
     drag = null;
@@ -406,6 +499,7 @@ export default function create(ctx) {
   }
 
   function onCancel(e) {
+    if (aiming && e && aiming.ptr === e.pointerId) { aiming.ptr = null; return; }
     if (!drag || (e && e.pointerId !== drag.id)) return;
     const d = drag;
     drag = null;
@@ -503,35 +597,36 @@ export default function create(ctx) {
     // si hay otro modal abierto (ayuda, "¿volver?"), esperar a que se cierre para no apilarlos
     while (ui.hasModal()) await wait(300);
     if (!G || G.over) return;
-    if (!G.continueUsed) {
-      const yes = await offerContinue();
+    const bombs = itemCount(BOMB_ID);
+    if (!G.continueUsed || bombs > 0) {
+      const how = await offerContinue(!G.continueUsed, bombs);
       if (!alive) return;
-      if (yes) { doContinue(); return; }
+      if (how === 'gems') { doContinue(); return; }
+      if (how === 'bomb') { stuckT = 0; busy = false; startAim(true); return; }
     }
     await finish();
   }
 
-  function offerContinue() {
+  /** Devuelve 'gems' | 'bomb' | false. withGems: todavía puede pagar para seguir; bombs: bombas en la mochila. */
+  function offerContinue(withGems = true, bombs = 0) {
     return new Promise(res => {
       let val = false;
       const gems = ctx.state.gems;
       const can = gems >= CONTINUE_COST;
       const st = pieceImage([[0, 0]], STAR_COLOR, 12, 's');
-      const content = ui.h('div.bk-cont', {
-        html: `<p>¡Te puedo hacer lugar!</p>
-          <div class="bk-cont-ill">${icon('wand', 44)}
+      const bombHtml = bombs > 0
+        ? `<div class="bk-cont-bomb">${boosterIcon(BOMB_ID, 36)}<span>Tenés <b>${bombs}</b> ${bombs === 1 ? 'Bomba' : 'Bombas'} de Bloques: limpiá un 3×3 donde quieras, ¡gratis!</span></div>` : '';
+      const gemsHtml = withGems
+        ? `<div class="bk-cont-ill">${icon('wand', 44)}
           <b>+</b><img src="${st.url}" width="36" height="36" alt=""><img src="${st.url}" width="36" height="36" alt=""><img src="${st.url}" width="36" height="36" alt=""></div>
           <p class="small muted">Limpio el centro del tablero y te doy 3 estrellitas de un bloque.</p>
           <span class="chip ${can ? 'sky' : ''}">Tenés ${icon('gem', 16)} ${fmt(gems)}</span>
-          ${can ? '' : '<p class="small muted">Te faltan gemas. ¡Las ganás jugando y con misiones!</p>'}`,
-      });
-      ui.modal({
-        title: '¿Seguir jugando?', icon: 'sparkle', content, closable: false, onClose: () => res(val),
-        actions: [
-          { label: 'Terminar', cls: 'ghost' },
-          { html: `Seguir ${icon('gem', 20)} ${CONTINUE_COST}`, cls: 'mint', disabled: !can, onClick: () => { val = true; } },
-        ],
-      });
+          ${can ? '' : '<p class="small muted">Te faltan gemas. ¡Las ganás jugando y con misiones!</p>'}` : '';
+      const content = ui.h('div.bk-cont', { html: `<p>¡Te puedo hacer lugar!</p>${bombHtml}${gemsHtml}` });
+      const actions = [{ label: 'Terminar', cls: 'ghost' }];
+      if (bombs > 0) actions.push({ html: `${boosterIcon(BOMB_ID, 20)} Usar bomba`, cls: 'lilac', onClick: () => { val = 'bomb'; } });
+      if (withGems) actions.push({ html: `Seguir ${icon('gem', 20)} ${CONTINUE_COST}`, cls: 'mint', disabled: !can, onClick: () => { val = 'gems'; } });
+      ui.modal({ title: '¿Seguir jugando?', icon: 'sparkle', content, closable: false, onClose: () => res(val), actions, className: actions.length > 2 ? 'bk-cont-modal' : '' });
     });
   }
 
@@ -562,10 +657,93 @@ export default function create(ctx) {
     saveGame();
   }
 
+  // ---------------- Bomba de Bloques (potenciador de cofres) ----------------
+  function renderBomb() {
+    const b = els.bomb;
+    if (!b) return;
+    const n = itemCount(BOMB_ID);
+    b.classList.toggle('empty', n <= 0 && !aiming);
+    b.classList.toggle('aim', !!aiming);
+    const title = aiming ? '¿Dónde explota?' : 'Bomba';
+    const sub = aiming ? 'Tocá acá para cancelar' : n > 0 ? 'Limpia un área de 3×3' : 'Conseguilo en cofres';
+    b.innerHTML = `<span class="bk-bomb-ic">${boosterIcon(BOMB_ID, 28)}<i>×${n}</i></span><span class="bk-bomb-txt"><b>${title}</b><small>${sub}</small></span>`;
+    b.setAttribute('aria-pressed', aiming ? 'true' : 'false');
+    b.setAttribute('aria-label', aiming ? 'Cancelar bomba' : n > 0 ? `Bomba de Bloques (tenés ${n})` : 'Bomba de Bloques: conseguilo en cofres');
+    b.title = n > 0 || aiming ? 'Bomba de Bloques: limpia un área de 3×3' : 'Bomba de Bloques: conseguilo en cofres';
+    els.aimHint?.classList.toggle('show', !!aiming);
+  }
+  function onBombBtn(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (aiming) { audio.sfx('tap'); cancelAim(); return; }
+    if (!G || G.over || drag || !L) return;
+    if (itemCount(BOMB_ID) <= 0) {
+      audio.sfx('error');
+      els.bomb.classList.remove('nope'); void els.bomb.offsetWidth; els.bomb.classList.add('nope');
+      return;
+    }
+    if (busy) return;
+    startAim(false);
+  }
+  function startAim(fromStuck) {
+    if (drag) onCancel();
+    aiming = { cell: null, ptr: null, fromStuck };
+    hoverSlot = -1;
+    canvas.style.cursor = 'crosshair';
+    audio.sfx('select');
+    renderBomb();
+    placeAimHint();
+  }
+  function cancelAim() {
+    const was = aiming;
+    aiming = null;
+    if (canvas) canvas.style.cursor = 'default';
+    renderBomb();
+    if (was?.fromStuck && G && !G.over) checkStuck();
+  }
+  /** celda central del 3x3 (siempre entero dentro del tablero) o null si el punto está afuera */
+  function aimCellAt(p) {
+    const x = Math.floor((p.x - L.gx) / CELL), y = Math.floor((p.y - L.gy) / CELL);
+    if (x < 0 || y < 0 || x >= N || y >= N) return null;
+    return { x: clamp(x, 1, N - 2), y: clamp(y, 1, N - 2) };
+  }
+  function explode(cell) {
+    if (!G || G.over) { cancelAim(); return; }
+    if (!consumeItem(BOMB_ID)) { cancelAim(); return; }
+    aiming = null;
+    canvas.style.cursor = 'default';
+    const now = performance.now();
+    let n = 0;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = cell.x + dx, y = cell.y + dy, i = idx(x, y);
+      if (G.grid[i] !== EMPTY) { clears.push({ x, y, c: G.grid[i], t0: now + 70 + (Math.abs(dx) + Math.abs(dy)) * 45, spawned: false }); n++; }
+      G.grid[i] = EMPTY; G.spark[i] = 0;
+    }
+    const bx = L.gx + (cell.x + 0.5) * CELL, by = L.gy + (cell.y + 0.5) * CELL;
+    booms.push({ x: bx, y: by, t0: now });
+    const cols = ['#ffd166', '#ff7eb6', '#ffffff', '#b58cff', '#6fe3c1'];
+    for (let k = 0; k < 22; k++) {
+      const a = (k / 22) * Math.PI * 2 + Math.random() * 0.3, sp = 45 + Math.random() * 75;
+      parts.push({ x: bx, y: by, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30, life: 0, max: 0.5 + Math.random() * 0.45, col: cols[k % cols.length], s: k % 2 ? 2 : 1, spark: k % 4 === 0 });
+    }
+    audio.sfx('bump');
+    later(() => audio.sfx('clear'), 80);
+    if (navigator.vibrate) { try { navigator.vibrate([20, 40, 20]); } catch {} }
+    shake();
+    banner('¡Bum!', n ? `${n} ${n === 1 ? 'bloque' : 'bloques'} menos` : '', 'gold');
+    stuckT = 0;
+    busy = false;
+    renderBomb();
+    updateBar();
+    saveGame();
+    later(checkStuck, 400);
+  }
+
   async function finish() {
     if (!G || G.over) return;
     G.over = true;
     busy = true;
+    if (aiming) { aiming = null; renderBomb(); }
     const score = G.score, lines = G.lines;
     const st = bstate();
     const newBest = score > (st.best || 0) && score > 0;
@@ -609,6 +787,10 @@ export default function create(ctx) {
     els.goalFill = els.goal.querySelector('.bk-goal-track > i');
     els.goalStars = [...els.goal.querySelectorAll('.bk-goal-star')];
     els.goalText = els.goal.querySelector('small');
+    els.bomb = ui.h('button.bk-bomb', { type: 'button' });
+    els.bomb.addEventListener('click', onBombBtn);
+    els.aimHint = ui.h('div.bk-aimhint', { html: `${boosterIcon(BOMB_ID, 20)} Tocá dónde querés que explote` });
+    renderBomb();
     return bar;
   }
 
@@ -688,6 +870,7 @@ export default function create(ctx) {
 
   async function onBack() {
     audio.sfx('tap');
+    if (aiming) { cancelAim(); return; }
     if (drag) onCancel();
     if (!G || G.placed === 0 || G.over) { ctx.router.go('city'); return; }
     const ok = await ui.confirm('¿Volver a la ciudad?', 'Tu partida queda guardada para que sigas después.', 'Volver', 'Seguir jugando');
@@ -707,15 +890,22 @@ export default function create(ctx) {
         step(img(row, 1.5), 'Completá una <b>fila</b> o una <b>columna</b> entera y… ¡puf, se limpia!') +
         step(icon('fire', 36), 'Limpiá <b>varias juntas</b> o <b>seguidas</b> para hacer combos. La racha sigue si limpiás al menos una vez cada 3 piezas.') +
         step(img(sq, 2.5), 'Si ninguna pieza entra, termina la partida. ¡Pensá bien dónde va cada una!') +
+        step(boosterIcon(BOMB_ID, 36), 'Con una <b>Bomba de Bloques</b> (sale en los cofres) limpiás un área de 3×3 donde quieras.') +
         `<p class="bk-help-tip">Tu partida se guarda sola si salís.</p>`,
     });
     ui.modal({
       title: 'Bloques Mágicos', icon: 'sparkle', content, closable: !first,
       actions: [{ label: first ? '¡A jugar!' : 'Entendido', cls: 'pink' }],
       onClose: () => {
-        if (first) { ctx.state.tutorial.blocks = true; store.markDirty(); }
+        if (first) { ctx.state.tutorial.blocks = true; store.markDirty(); later(eventToast, 400); }
       },
     });
+  }
+
+  /** aviso del evento activo para Bloques (los premios extra los aplica endGame del núcleo) */
+  function eventToast() {
+    const ev = gameEvent('blocks');
+    if (ev) ui.toast(`¡${ev.title}! Premios ×${String(Math.round(ev.mult * 100) / 100).replace('.', ',')}`, { icon: ev.emoji, type: 'good' });
   }
 
   // ---------------- Dibujo ----------------
@@ -830,6 +1020,55 @@ export default function create(ctx) {
       g.drawImage(blockSprite(c.c, s, 'n'), sx + o, sy + o);
     }
 
+    // ondas de la bomba
+    for (let k = booms.length - 1; k >= 0; k--) {
+      const b = booms[k];
+      const t = (now - b.t0) / 460;
+      if (t >= 1) { booms.splice(k, 1); continue; }
+      const e = 1 - Math.pow(1 - t, 3);
+      if (t < 0.22) {
+        g.globalAlpha = (0.22 - t) / 0.22;
+        g.fillStyle = '#fff6d6';
+        g.fillRect(b.x - CELL * 1.5, b.y - CELL * 1.5, CELL * 3, CELL * 3);
+      }
+      const r = Math.round(4 + e * CELL * 2.4);
+      g.globalAlpha = 1 - t;
+      g.fillStyle = t < 0.5 ? '#ffffff' : '#ffd166';
+      g.fillRect(b.x - r, b.y - r, r * 2, 2); g.fillRect(b.x - r, b.y + r - 2, r * 2, 2);
+      g.fillRect(b.x - r, b.y - r, 2, r * 2); g.fillRect(b.x + r - 2, b.y - r, 2, r * 2);
+      const r2 = Math.round(r * 0.6);
+      g.fillStyle = '#ff7eb6';
+      g.fillRect(b.x - r2, b.y - r2, r2 * 2, 1); g.fillRect(b.x - r2, b.y + r2 - 1, r2 * 2, 1);
+      g.fillRect(b.x - r2, b.y - r2, 1, r2 * 2); g.fillRect(b.x + r2 - 1, b.y - r2, 1, r2 * 2);
+      g.globalAlpha = 1;
+    }
+    // apuntando la bomba: el 3x3 elegido titila
+    if (aiming) {
+      const blink = Math.floor(now / 160) % 2;
+      g.fillStyle = blink ? '#ff7eb6' : '#ffffff';
+      const bw = N * CELL;
+      g.fillRect(gx - 2, gy - 2, bw + 4, 1); g.fillRect(gx - 2, gy + bw + 1, bw + 4, 1);
+      g.fillRect(gx - 2, gy - 2, 1, bw + 4); g.fillRect(gx + bw + 1, gy - 2, 1, bw + 4);
+      const c = aiming.cell;
+      if (c) {
+        const x0 = gx + (c.x - 1) * CELL, y0 = gy + (c.y - 1) * CELL, w = CELL * 3;
+        g.globalAlpha = 0.3 + 0.2 * Math.sin(now / 80);
+        g.fillStyle = '#ffffff';
+        g.fillRect(x0, y0, w, w);
+        g.globalAlpha = 1;
+        g.fillStyle = '#e0528f';
+        const L4 = 4, o = blink;
+        const ax0 = x0 - 1 - o, ay0 = y0 - 1 - o, ax1 = x0 + w + o, ay1 = y0 + w + o;
+        g.fillRect(ax0, ay0, w + 2 + o * 2, 1); g.fillRect(ax0, ay1, w + 2 + o * 2, 1);
+        g.fillRect(ax0, ay0, 1, w + 2 + o * 2); g.fillRect(ax1, ay0, 1, w + 2 + o * 2);
+        g.fillStyle = '#3b2340';
+        g.fillRect(ax0 - 1, ay0 - 1, L4, 2); g.fillRect(ax0 - 1, ay0 - 1, 2, L4);
+        g.fillRect(ax1 - L4 + 2, ay0 - 1, L4, 2); g.fillRect(ax1, ay0 - 1, 2, L4);
+        g.fillRect(ax0 - 1, ay1, L4, 2); g.fillRect(ax0 - 1, ay1 - L4 + 2, 2, L4);
+        g.fillRect(ax1 - L4 + 2, ay1, L4, 2); g.fillRect(ax1, ay1 - L4 + 2, 2, L4);
+      }
+    }
+
     // bandeja
     g.drawImage(L.trayImg, L.tray.x, L.tray.y);
     for (let i = 0; i < 3; i++) {
@@ -885,6 +1124,7 @@ export default function create(ctx) {
   // ---------------- Ciclo de vida ----------------
   function onKey(e) {
     if (e.key !== 'Escape') return;
+    if (aiming) { cancelAim(); return; }
     if (drag) { onCancel(); return; }
     if (ui.hasModal()) return;
     onBack();
@@ -901,6 +1141,7 @@ export default function create(ctx) {
         st.id = STYLE_ID; st.textContent = CSS;
         document.head.append(st);
       }
+      injectBoosterStyle();
       root.append(ui.h('div.game-bg.pattern'));
       canvas = ui.h('canvas.bk-canvas.pixel-canvas');
       root.append(canvas);
@@ -923,7 +1164,8 @@ export default function create(ctx) {
       listen(document, 'visibilitychange', () => { if (document.visibilityState === 'hidden') saveGame(); });
 
       // acceso de depuración para pruebas automáticas
-      root.__blocks = { get G() { return G; }, get L() { return L; }, place: (slot, x, y) => placePiece(slot, x, y), check: () => checkStuck() };
+      root.__blocks = { get G() { return G; }, get L() { return L; }, get aiming() { return aiming; }, place: (slot, x, y) => placePiece(slot, x, y), check: () => checkStuck(),
+        bomb: () => onBombBtn(new Event('click')), explode: (x, y) => { if (aiming) explode({ x: clamp(x, 1, N - 2), y: clamp(y, 1, N - 2) }); }, cellCenter: (x, y) => artToScreen(L.gx + (x + 0.5) * CELL, L.gy + (y + 0.5) * CELL) };
       const resumed = loadSaved();
       if (!resumed) newGame();
       raf = requestAnimationFrame(frame);
@@ -931,7 +1173,9 @@ export default function create(ctx) {
         later(() => ui.toast('¡Seguimos tu partida!', { icon: 'sparkle', type: 'good' }), 350);
         later(checkStuck, 500);
       }
+      // semana con premios extra para este juego: aviso al entrar (después de la ayuda, si es la primera vez)
       if (!ctx.state.tutorial.blocks) later(() => showHelp(true), 300);
+      else later(eventToast, resumed ? 1500 : 700);
     },
     unmount() {
       if (G && !G.over) saveGame();
@@ -945,7 +1189,9 @@ export default function create(ctx) {
       root?.querySelectorAll('.bk-banner').forEach(b => b.remove());
       if (canvas) { canvas.width = 0; canvas.height = 0; }
       drag = null; G = null; L = null; root = null; canvas = null; g = null;
-      parts.length = 0; clears.length = 0; pops.length = 0; returning.length = 0; deco.length = 0;
+      parts.length = 0; clears.length = 0; pops.length = 0; returning.length = 0; deco.length = 0; booms.length = 0;
+      aiming = null;
+      els.bomb?.remove(); els.aimHint?.remove();
     },
   };
 }

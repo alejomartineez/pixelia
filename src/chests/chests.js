@@ -3,6 +3,7 @@
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale } from '../core/data.js';
+import { stickerDropsForChest, grantStickers } from '../album/album.js';
 
 const S = () => store.state;
 
@@ -167,7 +168,23 @@ export function addChest(type, n = 1, source = '') {
   store.markDirty();
   bus.emit('chests:changed', { added: type, n, source });
 }
-/** Abre un cofre del inventario. Devuelve la lista de premios (ya acreditados) o null. */
+// Rareza de la carta de figuritas según la mejor figurita del sobre (1–2★ común … 5★ legendaria)
+const STAR_RARITY = { 1: 'comun', 2: 'comun', 3: 'rara', 4: 'epica', 5: 'legendaria' };
+/** Carta "Figuritas" para la apertura: kind 'stickers', stickers: [{id, stars, isNew, count}]. */
+function stickerDrop(got, type) {
+  const best = Math.max(...got.map(g => g.stars));
+  const fresh = got.filter(g => g.isNew).length;
+  return {
+    item: 'stickers', kind: 'stickers', rarity: STAR_RARITY[best] || 'comun', icon: '🌟', amount: got.length,
+    name: got.length === 1 ? '1 figurita' : `${got.length} figuritas`, stickers: got, fresh, chest: type,
+  };
+}
+
+/**
+ * Abre un cofre del inventario. Devuelve la lista de premios (ya acreditados) o null.
+ * Además de los objetos, cada cofre trae figuritas del álbum (madera 2, plata 3, oro 4, real 6): van en una
+ * carta {kind:'stickers'} ubicada según su rareza.
+ */
 export function openChest(type) {
   const c = cs();
   if (!c.inv[type]) return null;
@@ -176,6 +193,18 @@ export function openChest(type) {
   applyDrops(drops);
   c.opened++;
   c.sinceLegend = drops.some(d => d.rarity === 'legendaria') ? 0 : c.sinceLegend + 1;
+  const sd = stickerDropsForChest(type);
+  if (sd.n > 0) {
+    let got = [];
+    try { got = grantStickers(sd.n, { minStars: sd.minStars, source: 'chest:' + type }); } catch (e) { console.error(e); }
+    if (got.length) {
+      const card = stickerDrop(got, type);
+      const ord = RARITIES[card.rarity].order;
+      let at = drops.findIndex(d => RARITIES[d.rarity].order > ord);
+      if (at < 0) at = drops.length;
+      drops.splice(at, 0, card);
+    }
+  }
   store.inc('chestsOpened');
   store.markDirty();
   store.save();

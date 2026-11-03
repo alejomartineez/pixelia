@@ -23,18 +23,43 @@ export function h(tag, attrs = {}, ...children) {
 }
 export const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/** HTML de un costo/premio: {coins, gems, xp} */
-export function costHtml(cost = {}, size = 16) {
+/**
+ * Íconos de premios especiales. main.js registra los dibujos pixel de cofres y sobres
+ * (rewardArt.chest(type, size) / rewardArt.pack(size)); si no, se usa un regalo/emoji.
+ */
+export const rewardArt = { chest: null, pack: null, chestName: null };
+/**
+ * HTML de un costo/premio: {coins, gems, xp}. Con opts.extras = true también dibuja {chest, chests, stickers}
+ * (por defecto no, porque los paneles muestran el cofre aparte con su nombre).
+ */
+export function costHtml(cost = {}, size = 16, opts = {}) {
   const parts = [];
   if (cost.coins) parts.push(`<span class="cost">${icon('coin', size)}${fmtNum(cost.coins)}</span>`);
   if (cost.gems) parts.push(`<span class="cost">${icon('gem', size)}${fmtNum(cost.gems)}</span>`);
   if (cost.xp) parts.push(`<span class="cost">${icon('xp', size)}${fmtNum(cost.xp)}</span>`);
+  if (opts.extras && cost.chest) {
+    const type = typeof cost.chest === 'object' ? cost.chest.type : cost.chest;
+    const n = (typeof cost.chest === 'object' ? cost.chest.n : cost.chests) || 1;
+    const name = rewardArt.chestName?.(type) || 'Cofre';
+    const art = rewardArt.chest ? rewardArt.chest(type, Math.round(size * 1.15)) : icon('gift', size);
+    parts.push(`<span class="cost cost-chest" title="${esc(name)}" aria-label="${esc(name)}">${art}${n > 1 ? '×' + n : ''}</span>`);
+  }
+  if (opts.extras && cost.stickers) {
+    const n = typeof cost.stickers === 'object' ? cost.stickers.n : cost.stickers;
+    const art = rewardArt.pack ? rewardArt.pack(Math.round(size * 1.15)) : icon('🃏', size);
+    parts.push(`<span class="cost cost-pack" title="Figuritas" aria-label="${n} figuritas">${art}×${n}</span>`);
+  }
   return parts.join(' ') || '<span class="cost">Gratis</span>';
 }
 
 // ---------- Toast ----------
+const TOAST_MAX = 3;
 export function toast(text, { icon: ic, type = '' } = {}) {
   const root = $('#toast-root');
+  if (!root) return;
+  // como mucho 3 a la vez: el más viejo se va
+  const live = [...root.children].filter(t => !t.classList.contains('gone'));
+  while (live.length >= TOAST_MAX) { const old = live.shift(); old.classList.add('gone'); old.classList.remove('show'); setTimeout(() => old.remove(), 200); }
   const el = h('div.toast' + (type ? '.' + type : ''), { html: (ic ? icon(ic, 20) : '') + `<span>${esc(text)}</span>` });
   root.append(el);
   requestAnimationFrame(() => el.classList.add('show'));
@@ -79,13 +104,26 @@ export function modal({ title = '', content = '', actions = [], closable = true,
     openModals.splice(openModals.indexOf(api), 1);
     onClose?.();
   }
-  const api = { el: box, body, close };
+  const api = { el: box, body, close, closable };
   openModals.push(api);
   audio.sfx('open');
   return api;
 }
 export function closeAllModals() { [...openModals].forEach(m => m.close()); }
 export const hasModal = () => openModals.length > 0;
+
+// Esc cierra el modal de arriba (si se puede cerrar) y no deja que la tecla llegue al juego de abajo.
+// Va en la fase de captura de `document`: las animaciones de pantalla completa (cofres, sobres) escuchan en
+// la captura de `window`, que corre antes, y frenan la tecla ellas mismas.
+if (typeof document !== 'undefined') {
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !openModals.length) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const top = openModals[openModals.length - 1];
+    if (top.closable && !e.repeat) { audio.sfx('close'); top.close(); }
+  }, true);
+}
 
 export function confirm(title, text, okLabel = 'Sí', cancelLabel = 'No') {
   return new Promise(res => {
@@ -96,12 +134,14 @@ export function confirm(title, text, okLabel = 'Sí', cancelLabel = 'No') {
 }
 
 /**
- * Pantalla de premio. reward {coins, gems, xp}, stars (0..3 o undefined).
- * buttons: [{label, value, cls}] -> resuelve con el value elegido.
+ * Pantalla de premio. reward {coins, gems, xp, chest, stickers}, stars (0..3 o undefined).
+ * lines: [html | Node]. buttons: [{label, value, cls, html}] -> resuelve con el value elegido.
+ * Si el modal se cierra sin tocar un botón (p.ej. al cambiar de escena) resuelve con dismissValue
+ * (por defecto 'city' si algún botón la tiene, si no el value del primer botón).
  */
-export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, stars, lines = [], buttons = [{ label: 'Genial', value: 'ok' }] } = {}) {
+export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, stars, lines = [], buttons = [{ label: 'Genial', value: 'ok' }], dismissValue, className = '' } = {}) {
   return new Promise(res => {
-    let val = buttons[buttons.length - 1].value;
+    let val = dismissValue !== undefined ? dismissValue : buttons.some(b => b.value === 'city') ? 'city' : buttons[0].value;
     const wrap = h('div.reward');
     if (stars !== undefined) {
       const st = h('div.reward-stars');
@@ -114,10 +154,13 @@ export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, sta
       for (let i = 0; i < stars; i++) setTimeout(() => audio.sfx('star'), 200 + i * 250);
     }
     if (subtitle) wrap.append(h('p.reward-sub', {}, subtitle));
-    for (const l of lines) wrap.append(h('p.reward-line', { html: l }));
-    if (reward.coins || reward.gems || reward.xp) wrap.append(h('div.reward-items', { html: costHtml(reward, 28) }));
-    modal({ title, content: wrap, closable: false, className: 'reward-modal', onClose: () => res(val),
-      actions: buttons.map(b => ({ label: b.label, cls: b.cls || 'pink', onClick: () => { val = b.value; } })) });
+    for (const l of lines) {
+      if (l == null || l === '') continue;
+      if (l.nodeType) wrap.append(l); else wrap.append(h('p.reward-line', { html: l }));
+    }
+    if (reward.coins || reward.gems || reward.xp) wrap.append(h('div.reward-items', { html: costHtml({ coins: reward.coins, gems: reward.gems, xp: reward.xp }, 28) }));
+    modal({ title, content: wrap, closable: false, className: ('reward-modal ' + className).trim(), onClose: () => res(val),
+      actions: buttons.map(b => ({ label: b.label, html: b.html, cls: b.cls || 'pink', onClick: () => { val = b.value; } })) });
     if (stars === undefined || stars > 0) confetti();
   });
 }

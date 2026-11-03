@@ -3,6 +3,11 @@
 import { thumbnail } from '../city/models.js';
 import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL } from '../core/data.js';
 import { icon } from '../core/icons.js';
+import * as chests from '../chests/chests.js';
+
+/** Construcciones gratis guardadas (de cofres) para ese edificio. Nunca rompe si el módulo falla. */
+export function freeCount(id) { try { return chests.freeBuildCount(id) | 0; } catch { return 0; } }
+function hammerCount() { try { return chests.itemCount('hammer') | 0; } catch { return 0; } }
 
 export const STYLE = `
 .scene-city { background: linear-gradient(180deg, #ffcfe6 0%, #f3dbff 34%, #d6e6ff 66%, #c5f0ee 100%); overflow: hidden; }
@@ -151,6 +156,16 @@ export const STYLE = `
 .cx-stat { background: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 6px 8px; display: flex; align-items: center; gap: 8px; box-shadow: 0 3px 0 var(--ink); }
 .cx-stat small { display: block; font-size: 12px; color: var(--ink-l); font-weight: 700; }
 .cx-stat b { font-size: 18px; }
+.cx-free { position: absolute; left: -4px; right: -4px; bottom: 8px; display: flex; justify-content: center; z-index: 2; pointer-events: none; }
+.cx-free span { background: var(--pink); color: #fff; border: 2px solid var(--ink); border-radius: 6px; padding: 1px 10px; font-size: 13px; font-weight: 700;
+  box-shadow: 0 2px 0 var(--ink); text-shadow: 0 1px 0 rgba(59,35,64,.4); transform: rotate(-4deg); white-space: nowrap; animation: cx-freebob 1.2s steps(2) infinite; }
+@keyframes cx-freebob { 50% { transform: rotate(-4deg) translateY(-2px); } }
+.cx-card.cx-isfree { border-color: var(--pink-d); box-shadow: 0 4px 0 var(--pink-d); }
+.cx-card.cx-isfree .cx-thumb { border-color: var(--pink); }
+.cx-freecost { color: var(--pink-d); font-weight: 700; }
+.cx-tabs .tab .dot.free { background: var(--pink); }
+.cx-mastery .cx-stars img { width: 18px; height: 18px; }
+.cx-mastery { background: #fffaf0; }
 .cx-exp-map { display: grid; place-items: center; padding: 6px; }
 .cx-exp-map canvas { image-rendering: pixelated; width: 132px; height: 132px; border: 3px solid var(--ink); border-radius: 10px; background: #79bb8c; }
 `;
@@ -199,16 +214,24 @@ export function questBuildIds(ctx) {
     const st = ctx.gameStatus(g.game);
     return st.needsBuilding && E.countOf(st.needsBuilding) === 0 ? [st.needsBuilding] : [];
   }
-  if (g.type === 'customize') return E.countOf('boutique_real') === 0 ? ['boutique_real'] : [];
+  // personalizar se hace en el vestidor (la princesa o el castillo): no hace falta construir la boutique
+  if (g.type === 'customize') return [];
   if (g.type === 'pop') return ['casita', 'cabana', 'chalet', 'torre_cristal', 'mansion'].filter(id => E.canBuild(id).ok).slice(-1);
   if (g.type === 'happy') return ['arbol', 'arbusto', 'banco', 'cerezo', 'fuente'].filter(id => E.canBuild(id).ok).slice(-1);
   return [];
 }
 
+/** ¿Todas las copias de este edificio están todavía en obra? (para decir "En obra" en vez de "Ya lo tenés") */
+function isAllUnderConstruction(ctx, id) {
+  const E = ctx.economy, now = Date.now();
+  const list = ctx.state.city.buildings.filter(b => b.id === id);
+  return list.length > 0 && list.every(b => E.isConstructing(b, now));
+}
+
 /** Etiqueta corta del candado de una tarjeta (entra en una línea en el celu). */
-function lockLabel(d, can) {
+function lockLabel(d, can, ctx) {
   if (can.reason === 'Constructoras ocupadas') return `${icon('hammer', 14)}Ocupadas`;
-  if (can.reason === 'Ya lo tenés') return `${icon('check', 14)}¡Ya lo tenés!`;
+  if (can.reason === 'Ya lo tenés') return isAllUnderConstruction(ctx, d.id) ? `${icon('hammer', 14)}En obra` : `${icon('check', 14)}¡Ya lo tenés!`;
   if (can.poor) return `${icon('coin', 14)}Te faltan monedas`;
   if (can.locked && d.popReq && !/^Nivel/.test(can.reason)) return `${icon('people', 14)}${d.popReq} vecinas`;
   return `${icon(can.locked ? 'lock' : 'info', 14)}${can.reason}`;
@@ -232,7 +255,7 @@ export function openBuildMenu(S, focusId = null) {
   S.buildMenu = m;
   const offs = [];
   const rerender = () => render(false);
-  offs.push(ctx.bus.on('currency:changed', rerender), ctx.bus.on('building:built', rerender), ctx.bus.on('level:up', rerender));
+  offs.push(ctx.bus.on('currency:changed', rerender), ctx.bus.on('building:built', rerender), ctx.bus.on('level:up', rerender), ctx.bus.on('chests:changed', rerender));
 
   function render(scrollToFocus) {
     const scrollEl = m.body;
@@ -241,7 +264,8 @@ export function openBuildMenu(S, focusId = null) {
     const tabs = ui.h('div.tabs.cx-tabs');
     for (const c of CATEGORIES) {
       const hasQ = qids.some(id => E.def(id).cat === c.id);
-      const t = ui.h('button.tab' + (c.id === tab ? '.active' : ''), { html: icon(CAT_ICON[c.id], 18) + c.name + (hasQ ? '<i class="dot"></i>' : '') });
+      const hasFree = !hasQ && BUILDINGS.some(d => d.cat === c.id && freeCount(d.id) > 0);
+      const t = ui.h('button.tab' + (c.id === tab ? '.active' : ''), { html: icon(CAT_ICON[c.id], 18) + c.name + (hasQ ? '<i class="dot"></i>' : hasFree ? '<i class="dot free"></i>' : '') });
       t.addEventListener('click', () => { if (tab === c.id) return; ctx.audio.sfx('select'); tab = c.id; lastTab = tab; focusId = null; render(false); m.body.scrollTop = 0; });
       tabs.append(t);
     }
@@ -250,27 +274,39 @@ export function openBuildMenu(S, focusId = null) {
     body.append(ui.h('div.cx-builders', { html: `${icon('hammer', 16)} Constructoras libres: <b>${free}/${total}</b>` }));
     const grid = ui.h('div.cx-grid');
     const list = BUILDINGS.filter(d => d.cat === tab && d.id !== 'castillo')
-      .sort((a, b) => (a.unlock - b.unlock) || ((a.cost.coins || 0) + (a.cost.gems || 0) * 200) - ((b.cost.coins || 0) + (b.cost.gems || 0) * 200));
+      .sort((a, b) => (a.unlock - b.unlock) || ((a.cost.coins || 0) + (a.cost.gems || 0) * 200) - ((b.cost.coins || 0) + (b.cost.gems || 0) * 200))
+      // las construcciones gratis (de cofres) primero
+      .sort((a, b) => (freeCount(b.id) > 0) - (freeCount(a.id) > 0));
     let focusEl = null;
     for (const d of list) {
       const can = E.canBuild(d.id);
       const cost = E.placeCost(d.id);
-      const lockedHard = !can.ok && (can.locked || can.reason === 'Ya lo tenés');
-      const card = ui.h(`button.card.cx-card.cx-cat-${d.cat}` + (lockedHard ? '.locked' : '') + (can.poor ? '.poor' : '') + (d.id === focusId ? '.cx-focus' : ''));
+      const nFree = freeCount(d.id);
+      const isFree = nFree > 0 || !!cost.free;
+      // con una construcción gratis no importan el nivel ni las vecinas: la cinta reemplaza al candado
+      const showLock = !can.ok && !(isFree && can.locked);
+      const lockedHard = !can.ok && !isFree && (can.locked || can.reason === 'Ya lo tenés');
+      const card = ui.h(`button.card.cx-card.cx-cat-${d.cat}` + (lockedHard ? '.locked' : '') + (can.poor && !isFree ? '.poor' : '') + (isFree ? '.cx-isfree' : '') + (d.id === focusId ? '.cx-focus' : ''));
       const th = ui.h('div.cx-thumb');
       th.append(thumbImg(d.id, 1));
       if (qids.includes(d.id)) th.append(ui.h('span.cx-qbadge', {}, '¡Misión!'));
       if (d.max) th.append(ui.h('span.cx-count', {}, `${E.countOf(d.id)}/${d.max}`));
-      if (!can.ok) th.append(ui.h('div.cx-lock', { html: `<span>${lockLabel(d, can)}</span>` }));
+      if (showLock) th.append(ui.h('div.cx-lock', { html: `<span>${lockLabel(d, can, ctx)}</span>` }));
+      if (isFree) {
+        const rb = ui.h('div.cx-free', { html: `<span>¡Gratis!${nFree > 1 ? ' x' + nFree : ''}</span>` });
+        if (showLock) rb.style.bottom = '34px';
+        th.append(rb);
+      }
+      const priceHtml = isFree ? `<span class="cost cx-freecost">${icon('🎁', 16)}¡Gratis!</span>` : ui.costHtml(cost, 16);
       card.append(th,
         ui.h('div.nm', {}, d.name),
         ui.h('div.cx-gives', { html: givesHtml(ctx, d) }),
-        ui.h('div.cx-price', { html: ui.costHtml(cost, 16) + (d.time > 0 ? `<span class="tm">${icon('clock', 12)}${fmtCycle(E, d.time)}</span>` : '') }));
+        ui.h('div.cx-price', { html: priceHtml + (d.time > 0 ? `<span class="tm">${icon('clock', 12)}${fmtCycle(E, d.time)}</span>` : '') }));
       card.addEventListener('click', () => {
         const c2 = E.canBuild(d.id);
         if (!c2.ok) {
           ctx.audio.sfx('error');
-          const msg = c2.reason === 'Constructoras ocupadas' ? 'Tus constructoras están ocupadas. Esperá o terminá una obra.' : c2.poor ? `Te faltan monedas para ${d.name}` : c2.reason === 'Ya lo tenés' ? `Ya tenés ${d.name}` : `${d.name}: ${c2.reason}`;
+          const msg = c2.reason === 'Constructoras ocupadas' ? 'Tus constructoras están ocupadas. Esperá o terminá una obra.' : c2.poor ? `Te faltan monedas para ${d.name}` : c2.reason === 'Ya lo tenés' ? (isAllUnderConstruction(ctx, d.id) ? `${d.name} ya está en obra` : `Ya tenés ${d.name}`) : `${d.name}: ${c2.reason}`;
           ui.toast(msg, { icon: c2.locked ? 'lock' : 'info' });
           card.classList.remove('bump'); void card.offsetWidth; card.classList.add('bump');
           return;
@@ -318,14 +354,20 @@ export function openInfo(S, uid) {
     onClose: () => { clearInterval(iv); offs.forEach(f => f()); S.untrackModal(m); } });
   S.trackModal(m);
   const offs = [ctx.bus.on('currency:changed', () => { sig = ''; tick(); }), ctx.bus.on('builders:changed', () => { sig = ''; tick(); }),
-    ctx.bus.on('building:removed', (p) => { if (p.b.uid === uid) m.close(); })];
+    ctx.bus.on('building:removed', (p) => { if (p.b.uid === uid) m.close(); }), ctx.bus.on('chests:changed', () => { sig = ''; tick(); })];
 
   const btn = (label, cls, ic, onClick, disabled = false) => ui.h('button.btn.' + cls.split(' ').join('.'), { html: (ic ? icon(ic, 20) : '') + label, disabled, onclick: () => { ctx.audio.sfx('tap'); onClick(); } });
 
   function signature() {
     const now = Date.now();
     const ps = E.producerStatus(b, now);
-    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level].join('|');
+    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level, hammerCount(), masteryStars()].join('|');
+  }
+  function mastery() {
+    if (typeof E.masteryInfo !== 'function' || !d.prod) return null;
+    try { const mi = E.masteryInfo(b.id); return mi && Number.isFinite(+(mi.stars ?? mi.level)) ? mi : null; } catch { return null; }
+  }
+  function masteryStars() { const mi = mastery(); return mi ? +(mi.stars ?? mi.level) : -1;
   }
 
   function render() {
@@ -366,6 +408,19 @@ export function openInfo(S, uid) {
         if (E.skip(b.uid)) { ctx.audio.sfx('gem'); m.close(); }
       });
       box.append(refs.skipBtn);
+      const nh = hammerCount();
+      if (nh > 0) {
+        box.append(btn(`Martillo Mágico (${nh})`, 'gold', '🔨', () => {
+          let res;
+          try { res = chests.useCityItem('hammer', { uid: b.uid }); } catch (err) { console.warn('[city] martillo', err); res = { ok: false, msg: 'No se pudo usar el martillo' }; }
+          if (!res?.ok) { ctx.audio.sfx('error'); ui.toast(res?.msg || 'No se pudo usar el martillo', { icon: 'info' }); return; }
+          store.markDirty();
+          ctx.audio.sfx('build');
+          m.close();
+          E.tick();
+          ui.toast(res.msg || '¡Obra terminada!', { icon: '🔨', type: 'good' });
+        }));
+      }
       body.append(box);
     }
 
@@ -376,11 +431,29 @@ export function openInfo(S, uid) {
       const box = ui.h('div.cx-box' + (ps.ready ? '.ready' : ''));
       box.append(ui.h('h4', { html: icon(cur, 20) + 'Producción' }));
       box.append(ui.h('div.line', { html: `<span>Cada <b>${E.fmtTime(ps.cycleSec)}</b></span><span class="cost">+${E.fmtNum(ps.perCycle)} ${icon(cur, 16)}</span>` }));
-      box.append(ui.h('div.line', { html: `<span class="muted">Guarda hasta ${ps.cap} tandas</span><span class="muted">${isCastle ? '' : 'Bonus ciudad x' + E.globalMultiplier().toFixed(2)}</span>` }));
+      box.append(ui.h('div.line', { html: `<span class="muted">Guarda hasta ${ps.cap * ps.cycleSec >= 3600 ? Math.round(ps.cap * ps.cycleSec / 3600) + ' h' : E.fmtTime(ps.cap * ps.cycleSec)}</span><span class="muted">${isCastle ? '' : 'Bonus ciudad x' + E.globalMultiplier().toFixed(2)}</span>` }));
       refs.prodBar = ui.h('div', { html: ui.progressHtml(ps.progress, 'gold') });
       refs.prodTxt = ui.h('span.muted');
       box.append(refs.prodBar, ui.h('div.line', {}, refs.prodTxt));
       if (ps.ready) box.append(btn(`Cobrar ${E.fmtNum(ps.amount)} ${icon(cur, 18)}`, 'gold', null, () => { m.close(); S.collect(b.uid); }));
+      body.append(box);
+    }
+
+    // ----- maestría (si la economía ya la tiene) -----
+    const mi = !isCastle && mastery();
+    if (mi) {
+      const stars = Math.max(0, Math.min(5, Math.round(+(mi.stars ?? mi.level) || 0)));
+      let st = '';
+      for (let i = 0; i < 5; i++) st += icon(i < stars ? 'star' : 'starOff', 18);
+      const pct = Number.isFinite(+mi.bonusPct) ? Math.round(+mi.bonusPct) : Math.round((Number.isFinite(+mi.bonus) ? +mi.bonus : stars * 0.03) * 100);
+      const box = ui.h('div.cx-box.cx-mastery');
+      box.append(ui.h('h4', { html: icon('🏅', 20) + 'Maestría' }));
+      box.append(ui.h('div.line', { html: `<span class="cx-stars">${st}</span><span class="muted">${pct ? `+${pct}% producción` : 'Producí para ganar estrellas'}</span>` }));
+      const prog = Number.isFinite(+mi.progress) ? Math.max(0, Math.min(1, +mi.progress)) : null;
+      if (stars < 5 && prog != null) box.append(ui.h('div', { html: ui.progressHtml(prog, 'gold') }));
+      const made = Number.isFinite(+(mi.total ?? mi.produced)) ? +(mi.total ?? mi.produced) : null;
+      const next = Number.isFinite(+mi.next) ? +mi.next : null;
+      if (made != null) box.append(ui.h('div.line', { html: `<span class="muted">Producido por tus ${ui.esc(d.name)}: <b>${E.fmtNum(made)}</b>${next && stars < 5 ? ` / ${E.fmtNum(next)}` : ''}</span>` }));
       body.append(box);
     }
 
@@ -462,6 +535,7 @@ export function openInfo(S, uid) {
         if (isW) ctx.router.go('wardrobe'); else ctx.router.openGame(d.game);
       }));
     }
+    if (b.id === 'garaje' && !building) acts.append(btn('Taller', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
     if (isCastle) acts.append(btn('Vestidor', 'pink', 'dress', () => { m.close(); ctx.router.go('wardrobe'); }));
     acts.append(btn('Mover', 'ghost', 'move', () => { m.close(); S.startMove(b.uid); }));
     acts.append(btn('Rotar', 'ghost', 'rotate', () => { S.rotateBuilding(b.uid); }));
@@ -492,7 +566,10 @@ export function openInfo(S, uid) {
       const ps = E.producerStatus(b, now);
       const bar = refs.prodBar.querySelector('i');
       if (bar) bar.style.width = (ps.full ? 100 : ps.progress * 100).toFixed(1) + '%';
-      refs.prodTxt.innerHTML = ps.full ? '¡Lleno! Cobralo para que siga produciendo' : ps.ready ? `Para cobrar: <b>${E.fmtNum(ps.amount)}</b> · próxima tanda en ${E.fmtTime((1 - ps.progress) * ps.cycleSec)}` : `Próxima tanda en ${E.fmtTime((1 - ps.progress) * ps.cycleSec)}`;
+      refs.prodTxt.innerHTML = ps.full ? '¡Lleno! Cobralo para que siga produciendo'
+        : ps.siesta ? `Para cobrar: <b>${E.fmtNum(ps.amount)}</b> · la ciudad duerme la siesta: junta más lento (lleno en ${E.fmtTime(ps.fullInSec)})`
+        : ps.ready ? `Para cobrar: <b>${E.fmtNum(ps.amount)}</b> · próxima tanda en ${E.fmtTime((1 - ps.progress) * ps.cycleSec)}`
+        : `Próxima tanda en ${E.fmtTime((1 - ps.progress) * ps.cycleSec)}`;
     }
   }
   const iv = setInterval(tick, 500);
@@ -556,12 +633,14 @@ export function makePlaceBar(S, { onCancel, onRotate, onConfirm }) {
       const E = ctx.economy;
       const d = E.def(p.id);
       const cost = p.mode === 'new' ? E.placeCost(p.id) : null;
-      const key = [p.id, p.mode, p.valid, p.reason, p.paint, p.count, cost?.coins, cost?.gems, S.lastPointer].join('|');
+      const nFree = p.mode === 'new' ? freeCount(p.id) : 0;
+      const key = [p.id, p.mode, p.valid, p.reason, p.paint, p.count, cost?.coins, cost?.gems, cost?.free, nFree, S.lastPointer].join('|');
       if (key === lastKey) return;
       lastKey = key;
       top.innerHTML = '';
       top.append(ui.h('b', {}, (p.mode === 'move' ? 'Mover: ' : '') + d.name), ui.h('span.grow'));
-      if (cost) top.append(ui.h('span', { html: ui.costHtml(cost, 18) }));
+      if (cost && (nFree > 0 || cost.free)) top.append(ui.h('span.chip.pink', { html: `${icon('🎁', 14)}¡Gratis!${nFree > 1 ? ' x' + nFree : ''}` }));
+      else if (cost) top.append(ui.h('span', { html: ui.costHtml(cost, 18) }));
       if (p.count) top.append(ui.h('span.chip.mint', { html: `${icon('check', 12)}${p.count}` }));
       const touch = S.lastPointer === 'touch' || (S.lastPointer !== 'mouse' && matchMedia('(pointer: coarse)').matches);
       let txt;

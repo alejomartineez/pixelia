@@ -7,6 +7,8 @@ import { icon } from '../core/icons.js';
 import { esc } from '../core/ui.js';
 import { injectStyle, rarityVars, chestVars, thumbImg, fillThumbs, chestThumbs } from './chests-ui-common.js';
 import { playChestOpening } from './chests-ui-opening.js';
+import { stickerDropsForChest } from '../album/album.js';
+import { packIcon } from '../season/season-ui-common.js';
 
 export { playChestOpening };
 
@@ -50,7 +52,11 @@ function guaranteeChip(def) {
   const txt = def.guarantee === 'legendaria' ? '¡Legendaria segura!' : `Garantiza ${r.name} o más`;
   return `<span class="chx-rchip" style="${rarityVars(r.id)}"><i></i>${txt}</span>`;
 }
-const slotsChip = (def) => `<span class="chx-rchip" style="--rcl:#fff">${icon('gift', 14)}${def.slots} premios</span>`;
+const slotsChip = (def) => {
+  const st = stickerDropsForChest(def.id);
+  return `<span class="chx-rchip" style="--rcl:#fff">${icon('gift', 14)}${def.slots} premios</span>`
+    + (st.n ? `<span class="chx-rchip" style="--rcl:#f3ebff">${packIcon(16)}+${st.n} figuritas</span>` : '');
+};
 
 // ---------- "¿Qué puede salir?" ----------
 function showWhat(ctx, type) {
@@ -66,7 +72,8 @@ function showWhat(ctx, type) {
     title: def.name, icon: 'gift', className: 'chx-whatmodal',
     content: `<p class="center">${g}</p><p class="center small muted">Probabilidad de cada premio:</p>
       <div class="chx-whatlist">${rows}</div>
-      <p class="center small muted" style="margin-top:10px">${icon('sparkle', 16)} Racha de suerte: nunca pasan más de ${C.PITY_LEGENDARY} cofres sin una Legendaria.</p>`,
+      <p class="center small muted" style="margin-top:10px">${packIcon(16)} Además trae <b>${stickerDropsForChest(type).n} figuritas</b> para tu Álbum${stickerDropsForChest(type).minStars > 1 ? ` (una de ${stickerDropsForChest(type).minStars}★ o más)` : ''}.</p>
+      <p class="center small muted">${icon('sparkle', 16)} Racha de suerte: nunca pasan más de ${C.PITY_LEGENDARY} cofres sin una Legendaria.</p>`,
     actions: [{ label: '¡Entendido!', cls: 'pink' }],
   });
 }

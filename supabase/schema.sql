@@ -585,8 +585,8 @@ begin
   -- Figuritas: 1 por lado, solo figuritas, estrellas parecidas.
   st := (o ? 'stickers') or (r ? 'stickers');
   if st then
-    if exists (select 1 from jsonb_object_keys(o) k where k not in ('stickers', 'stars'))
-       or exists (select 1 from jsonb_object_keys(r) k where k not in ('stickers', 'stars')) then
+    if exists (select 1 from jsonb_object_keys(o) k where k not in ('stickers', 'stars', 'golden'))
+       or exists (select 1 from jsonb_object_keys(r) k where k not in ('stickers', 'stars', 'golden')) then
       raise exception 'En un intercambio de figuritas solo van figuritas (sin monedas ni objetos)';
     end if;
     if not (o ? 'stickers' and r ? 'stickers') then
@@ -607,7 +607,8 @@ begin
     if abs(os - rs) > 1 then
       raise exception 'Las figuritas tienen que tener estrellas parecidas (como mucho 1 de diferencia)';
     end if;
-    if greatest(os, rs) = 5 and f.days < 14 then
+    -- golden: la Semana Dorada (evento calculado en el cliente) habilita 5★ sin los 14 días de amistad
+    if greatest(os, rs) = 5 and f.days < 14 and (o->'golden') is distinct from 'true'::jsonb then
       raise exception 'Las figuritas de 5 estrellas se cambian con amigas de 14 días o más';
     end if;
     if public.sticker_trades_today(me) >= 5 then

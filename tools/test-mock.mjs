@@ -122,6 +122,9 @@ try {
 
   section('Figuritas');
   const S = (id, s) => `{ stickers: { ${id}: 1 }, stars: ${s} }`;
+  { const g = await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, { stickers: { g: 1 }, stars: 5, golden: true }, ${S('h', 5)})`);
+    ok(g.ok === true, '5★ con golden (Semana Dorada) no exige 14 días');
+    if (g.ok) await run(A, `return await net.cancelTrade(${g.id})`); }
   ok((await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, ${S('a', 2)}, ${S('b', 4)})`)).error?.includes('parecidas'), 'estrellas ±1');
   ok((await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, ${S('a', 5)}, ${S('b', 5)})`)).error?.includes('14 días'), '5★ requiere 14 días');
   ok((await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, { stickers: { a: 1 }, stars: 3, coins: 1 }, ${S('b', 3)})`)).error?.includes('solo van figuritas'), 'no mezclar');
@@ -174,9 +177,10 @@ try {
     await sync.pushNow();
     const cloud = await net.pullSave();
     const { store } = await import('/src/core/state.js');
-    const before = { coins: store.state.coins, hammer: store.state.chests?.items?.hammer || 0 };
-    const sum = sync.applyGiftPayload({ coins: 10, gems: 1, items: { hammer: 2, nope: 5 }, stickers: { s7: 1 } });
-    const after = { coins: store.state.coins, hammer: store.state.chests.items.hammer, st: store.state.stickers?.s7 };
+    const al = await import('/src/album/album.js');
+    const before = { coins: store.state.coins, hammer: store.state.chests?.items?.hammer || 0, st: al.stickerCount('princesas-1') };
+    const sum = sync.applyGiftPayload({ coins: 10, gems: 1, items: { hammer: 2, nope: 5 }, stickers: { 'princesas-1': 1 } });
+    const after = { coins: store.state.coins, hammer: store.state.chests.items.hammer, st: al.stickerCount('princesas-1') - before.st };
     const ded = sync.deductPayload({ items: { hammer: 1 } });
     const tooMuch = sync.deductPayload({ gems: 1e9 });
     const claimed = await sync.claimAllAndApply();

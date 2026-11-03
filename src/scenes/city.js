@@ -11,6 +11,9 @@ import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
 import { STYLE, openBuildMenu, openInfo, openExpand, makePlaceBar, questBuildIds } from './city-ui.js';
 import { createBatcher } from './city-batch.js';
+import { createVisit } from './city-visit.js';
+import { activeBoosts } from '../chests/chests.js';
+import { eventMult } from '../season/events.js';
 
 const TAP_PX = 8;
 
@@ -39,6 +42,7 @@ export default function create(ctx) {
   const offs = [];
   const myModals = new Set();
   let placing = null;
+  let visit = null;
   let syncAcc = 0, disposed = false, batchCollect = false;
   let okMat, badMat, tileGeo, tileTex;
   const raycaster = new THREE.Raycaster();
@@ -370,6 +374,11 @@ export default function create(ctx) {
         p.paint = true; p.count++;
         const cb = E.canBuild(p.id);
         if (!cb.ok) { ui.toast(cb.poor ? '¡Se terminaron las monedas para más!' : cb.reason, { icon: 'coin' }); endPlacement(true); return; }
+        // al tocar (no al pintar arrastrando) el fantasma salta al lugar libre más cercano para seguir poniendo
+        if (gesture !== 'ghost') {
+          const nx = nearestFreeTile(p.id, p.x, p.z, p.rot, p.lastDir);
+          if (nx) { p.lastDir = [Math.sign(nx[0] - p.x), Math.sign(nx[1] - p.z)]; p.x = nx[0]; p.z = nx[1]; }
+        }
         updateGhost();
       } else endPlacement(true);
     } else {
@@ -380,6 +389,24 @@ export default function create(ctx) {
       endPlacement(true);
       if (e) e.anim = { type: 'drop', t: 0 };
     }
+  }
+  /** Tile libre más cercano en espiral alrededor de (x,z); prefiere seguir en la misma dirección. */
+  function nearestFreeTile(id, x0, z0, rot, dir = null) {
+    const L = E.landBounds();
+    for (let rr = 1; rr <= 10; rr++) {
+      let best = null, bestScore = Infinity;
+      for (let dx = -rr; dx <= rr; dx++) for (let dz = -rr; dz <= rr; dz++) {
+        if (Math.max(Math.abs(dx), Math.abs(dz)) !== rr) continue;
+        const x = x0 + dx, z = z0 + dz;
+        if (x < L.min || z < L.min || x >= L.max || z >= L.max) continue;
+        if (!E.canPlace(id, x, z, rot).ok) continue;
+        let sc = Math.hypot(dx, dz);
+        if (dir && (dir[0] || dir[1])) sc -= 0.35 * (dx * dir[0] + dz * dir[1]) / Math.max(1, Math.hypot(dx, dz));
+        if (sc < bestScore) { bestScore = sc; best = [x, z]; }
+      }
+      if (best) return best;
+    }
+    return null;
   }
   function shakeGhost() { if (placing) placing.shake = 0.35; }
   function pointerOnGhost(cx, cy) {
@@ -480,7 +507,7 @@ export default function create(ctx) {
     for (const it of signItems) {
       if (!it.onScreen) continue;
       const dx = it.sx - x, dy = it.sy - 16 - y;
-      if (it.label && Math.abs(dx) < 56 && Math.abs(dy) < 30) return true;
+      if (it.label && !it.covered && Math.abs(dx) < 56 && Math.abs(dy) < 30) return true;
       const dy2 = it.sy + 30 - y;
       if (Math.abs(dx) < 26 && Math.abs(dy2) < 30) return true;
     }
@@ -690,6 +717,30 @@ export default function create(ctx) {
     el.style.paddingBottom = kind === 'collect' ? '64px' : '12px';
     worldTip = { kind, e, item: ov.add(el, topPos(e, 0.2)) };
   }
+  /** Burbuja para el cartelito "¡Tocá para cobrar!": una cuyo cartel (arriba) no tape otras burbujas. */
+  function pickTipBubble() {
+    const k = ov.scale;
+    const list = [...entries.values()].filter(e => e.bubble && e.bubble.onScreen && !e.bubble.hidden);
+    if (!list.length) return null;
+    const TW = 190 * k / 2, TOP = (64 + 34) * k, BOT = 58 * k; // cartel: ancho y franja vertical sobre la burbuja
+    const covers = (e) => list.some(o => o !== e && Math.abs(o.bubble.sx - e.bubble.sx) < TW + 22 * k
+      && o.bubble.sy - 52 * k < e.bubble.sy - BOT && o.bubble.sy > e.bubble.sy - TOP);
+    // que el cartel no quede debajo del HUD de arriba ni afuera de la pantalla
+    const hb = document.querySelector('#hud:not(.hidden) .hud-stats')?.getBoundingClientRect();
+    const minY = (hb && hb.height ? hb.bottom : 110) + 6;
+    const W = container.clientWidth || innerWidth;
+    const fits = (e) => e.bubble.sy - TOP > minY && e.bubble.sx - TW > 4 && e.bubble.sx + TW < W - 4;
+    const good = (e) => fits(e) && !covers(e);
+    // la actual se queda mientras siga sirviendo (que no salte de burbuja en burbuja)
+    if (worldTip?.kind === 'collect' && list.includes(worldTip.e) && good(worldTip.e)) return worldTip.e;
+    let pool = list.filter(good);
+    if (!pool.length) pool = list.filter(fits);
+    if (!pool.length) return null;
+    // la más cercana al centro de la pantalla
+    const cx = W / 2, cy = (container.clientHeight || innerHeight) / 2;
+    const dist = (e) => Math.hypot(e.bubble.sx - cx, e.bubble.sy - cy);
+    return pool.reduce((a, e) => (dist(e) < dist(a) ? e : a), pool[0]);
+  }
   function clearWorldTip() { if (worldTip) { ov.remove(worldTip.item); worldTip = null; } }
   function updateTutorial() {
     const blocked = placing || myModals.size || ui.hasModal();
@@ -707,8 +758,8 @@ export default function create(ctx) {
       if (rc.width) showTip(tipText, rc.left + rc.width / 2, rc.top - 6); else hideTip();
     } else hideTip();
     // cobrar
-    const firstBubble = [...entries.values()].find(e => e.bubble && e.bubble.onScreen);
-    if (!T().collect && firstBubble && !blocked) setWorldTip('collect', firstBubble, `${icon('coin', 18)}¡Tocá para cobrar!`);
+    const firstBubble = !T().collect && !blocked ? pickTipBubble() : null;
+    if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}¡Tocá para cobrar!`);
     else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('games', 18)}¡Tocala para jugar!`);
     else clearWorldTip();
     if (gameTip && performance.now() > gameTip.until) gameTip = null;
@@ -814,6 +865,13 @@ export default function create(ctx) {
       else if (target === 'car') life.rebuildCar();
     }));
     offs.push(bus.on('builders:changed', () => syncStatus()));
+    offs.push(bus.on('building:mastery', ({ b, stars } = {}) => {
+      const e = b && entries.get(b.uid);
+      if (!e) return;
+      const c = e.root.position;
+      fx.sparkle(c.x, e.height * 0.7, c.z, ['#ffd166', '#ffffff', '#ff9ccb']);
+      setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Maestría ${stars}!`), 450);
+    }));
     offs.push(bus.on('city:flag', () => {
       for (const e of entries.values()) if (e.b.id === 'castillo') refreshEntry(e, true);
     }));
@@ -874,6 +932,56 @@ export default function create(ctx) {
     syncAcc += dt;
     if (syncAcc > 0.25) { syncAcc = 0; syncStatus(); }
     ov.update();
+    declutterSigns();
+    boostFx(dt);
+  }
+
+  /** Los carteles "¡Expandir!" se esconden si chocan con un reloj de obra o una burbuja (esos tienen prioridad). */
+  const elW = (it, def) => it.w || ((it.w = it.el.offsetWidth) || def);
+  function declutterSigns() {
+    if (!signItems.length) return;
+    const k = ov.scale;
+    for (const sg of signItems) {
+      if (!sg.onScreen) continue;
+      const sw = elW(sg, 100) * k / 2, sb = sg.sy - 4 * k, st = sb - 30 * k;
+      let hit = false;
+      for (const e of entries.values()) {
+        for (const it of [e.timer, e.bubble]) {
+          if (!it || !it.onScreen) continue;
+          const isT = it === e.timer;
+          const w = (isT ? elW(it, 90) : 46) * k / 2, b = it.sy - (isT ? 6 : 0) * k, t = b - (isT ? 36 : 52) * k;
+          if (Math.abs(it.sx - sg.sx) < w + sw && t < sb && b > st) { hit = true; break; }
+        }
+        if (hit) break;
+      }
+      if (hit !== !!sg.covered) { sg.covered = hit; sg.el.style.visibility = hit ? 'hidden' : ''; }
+    }
+  }
+
+  /** Brillitos dorados suaves sobre los negocios mientras hay poción de producción o evento de doble producción. */
+  let boostAcc = 0, boostIdx = 0, boostCheck = 0, boostOn = false;
+  function boostFx(dt) {
+    boostCheck -= dt;
+    if (boostCheck <= 0) {
+      boostCheck = 1;
+      let on = false;
+      try { on = !!activeBoosts().prod || eventMult('production') > 1; } catch { on = false; }
+      boostOn = on;
+    }
+    if (!boostOn || placing || document.hidden) return;
+    boostAcc += dt;
+    if (boostAcc < 0.32) return;
+    boostAcc = 0;
+    const now = Date.now();
+    const shops = [];
+    for (const e of entries.values()) {
+      const d = E.def(e.b);
+      if (d.cat === 'negocio' && d.prod && e.root.visible && !E.isBusy(e.b, now)) shops.push(e);
+    }
+    if (!shops.length) return;
+    const e = shops[boostIdx++ % shops.length];
+    const c = e.root.position;
+    fx.burst(c.x, e.height * 0.55, c.z, { n: 4, colors: ['#ffd166', '#ffd166', '#fff0c2', '#ffffff'], speed: 0.35, up: 0.9, gravity: -0.35, size: 0.075, life: 1.6, spread: Math.max(0.6, e.height * 0.6), drag: 2.2 });
   }
 
   // =====================================================================
@@ -883,6 +991,8 @@ export default function create(ctx) {
     hud: true,
     music: 'city',
     async mount(el, params = {}) {
+      // modo visita (contrato): ciudad de una amiga, solo lectura
+      if (params?.visit) { visit = createVisit(ctx); return visit.mount(el, params); }
       container = el;
       styleEl = document.createElement('style');
       styleEl.id = 'city-style';
@@ -966,6 +1076,7 @@ export default function create(ctx) {
     },
     unmount() {
       disposed = true;
+      if (visit) { const v = visit; visit = null; v.unmount(); return; }
       if (window.__pixelia?.city?.r === r) delete window.__pixelia.city;
       offs.forEach(f => f()); offs.length = 0;
       removeEventListener('keydown', onKey);

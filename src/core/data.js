@@ -242,24 +242,24 @@ export const MAIN_QUESTS = [
   { id: 'm2', title: 'Pan para todas', text: 'Construí la Panadería Dulce.', goal: { type: 'build', id: 'panaderia', count: 1 }, reward: { coins: 120, xp: 25 } },
   { id: 'm3', title: 'A cobrar', text: 'Tocá las burbujitas de los edificios para cobrar 60 monedas.', goal: { type: 'collect', count: 60 }, reward: { coins: 80, gems: 2, xp: 20 } },
   { id: 'm4', title: 'Brillos y joyas', text: 'Construí la Joyería Mágica.', goal: { type: 'build', id: 'joyeria', count: 1 }, reward: { coins: 100, xp: 25 } },
-  { id: 'm5', title: 'Primera partida', text: 'Jugá una partida de Joyas Reales.', goal: { type: 'play', game: 'match3', count: 1 }, reward: { gems: 3, xp: 30 } },
+  { id: 'm5', title: 'Primera partida', text: 'Jugá una partida de Joyas Reales.', goal: { type: 'play', game: 'match3', count: 1 }, reward: { gems: 3, xp: 30, chest: 'madera' } },
   { id: 'm6', title: 'Un barrio lindo', text: 'Poné 3 árboles o arbustos.', goal: { type: 'build', ids: ['arbol', 'arbusto'], count: 3 }, reward: { coins: 150, xp: 25 } },
   { id: 'm7', title: 'Más vecinas', text: 'Llegá a 15 de población.', goal: { type: 'pop', count: 15 }, reward: { coins: 200, xp: 40 } },
   { id: 'm8', title: 'Look de princesa', text: 'Cambiá tu look en el Vestidor (botón de abajo).', goal: { type: 'customize', count: 1 }, reward: { gems: 5, xp: 40 } },
-  { id: 'm9', title: 'Bloque a bloque', text: 'Construí la Torre de Bloques y jugá una partida.', goal: { type: 'play', game: 'blocks', count: 1 }, reward: { coins: 250, xp: 50 } },
+  { id: 'm9', title: 'Bloque a bloque', text: 'Construí la Torre de Bloques y jugá una partida.', goal: { type: 'play', game: 'blocks', count: 1 }, reward: { coins: 250, xp: 50, chest: 'madera' } },
   { id: 'm10', title: 'Helado para todas', text: 'Construí la Heladería Arcoíris.', goal: { type: 'build', id: 'heladeria', count: 1 }, reward: { coins: 250, xp: 50 } },
   { id: 'm11', title: 'Sobre ruedas', text: 'Construí el Garaje Real.', goal: { type: 'build', id: 'garaje', count: 1 }, reward: { gems: 5, xp: 60 } },
-  { id: 'm12', title: 'Estacionamiento perfecto', text: 'Ganá 3 estrellas en Estacionamiento Real.', goal: { type: 'stars', game: 'parking', count: 3 }, reward: { coins: 400, xp: 60 } },
+  { id: 'm12', title: 'Estacionamiento perfecto', text: 'Ganá 3 estrellas en Estacionamiento Real.', goal: { type: 'stars', game: 'parking', count: 3 }, reward: { coins: 400, xp: 60, chest: 'plata' } },
   { id: 'm13', title: 'Más terreno', text: 'Expandí tu ciudad una vez.', goal: { type: 'expand', count: 1 }, reward: { gems: 5, xp: 60 } },
   { id: 'm14', title: 'Un castillo mejor', text: 'Mejorá el castillo a nivel 2.', goal: { type: 'castle', count: 2 }, reward: { gems: 8, xp: 80 } },
-  { id: 'm15', title: '¡A pasear!', text: 'Construí la Pista Arcoíris y jugá Paseo Real.', goal: { type: 'play', game: 'driving', count: 1 }, reward: { coins: 600, xp: 80 } },
+  { id: 'm15', title: '¡A pasear!', text: 'Construí la Pista Arcoíris y jugá Paseo Real.', goal: { type: 'play', game: 'driving', count: 1 }, reward: { coins: 600, xp: 80, chest: 'plata' } },
   { id: 'm16', title: 'Ciudad feliz', text: 'Llegá a 40 de felicidad.', goal: { type: 'happy', count: 40 }, reward: { gems: 8, xp: 100 } },
   { id: 'm17', title: 'Gran ciudad', text: 'Llegá a 60 de población.', goal: { type: 'pop', count: 60 }, reward: { coins: 1000, xp: 120 } },
-  { id: 'm18', title: 'Mejora todo', text: 'Mejorá 5 edificios.', goal: { type: 'upgrade', count: 5 }, reward: { gems: 10, xp: 150 } },
+  { id: 'm18', title: 'Mejora todo', text: 'Mejorá 5 edificios.', goal: { type: 'upgrade', count: 5 }, reward: { gems: 10, xp: 150, chest: 'oro' } },
   { id: 'm19', title: 'Al cine', text: 'Construí el Cine Estelar.', goal: { type: 'build', id: 'cine', count: 1 }, reward: { gems: 10, xp: 200 } },
-  { id: 'm20', title: 'Reina de Pixelia', text: 'Llegá al nivel 12.', goal: { type: 'level', count: 12 }, reward: { gems: 20, xp: 0 } },
+  { id: 'm20', title: 'Reina de Pixelia', text: 'Llegá al nivel 12.', goal: { type: 'level', count: 12 }, reward: { gems: 20, xp: 0, chest: 'oro' } },
   { id: 'm21', title: 'Castillo de ensueño', text: 'Mejorá el castillo a nivel 4.', goal: { type: 'castle', count: 4 }, reward: { gems: 25, xp: 300 } },
-  { id: 'm22', title: 'Metrópolis rosa', text: 'Llegá a 150 de población.', goal: { type: 'pop', count: 150 }, reward: { gems: 30, xp: 400 } },
+  { id: 'm22', title: 'Metrópolis rosa', text: 'Llegá a 150 de población.', goal: { type: 'pop', count: 150 }, reward: { gems: 30, xp: 400, chest: 'real' } },
 ];
 
 // Pool de misiones diarias (se eligen 3 por día con semilla de la fecha)
@@ -276,11 +276,12 @@ export const DAILY_POOL = [
   { id: 'd_customize', title: 'Cambiá tu look', goal: { type: 'customize', count: 1 }, reward: { coins: 100, xp: 15 }, minLevel: 2 },
   { id: 'd_blockscore', title: 'Hacé 1500 puntos en Bloques', goal: { type: 'score', game: 'blocks', count: 1500 }, reward: { gems: 3, xp: 30 }, minLevel: 2 },
 ];
-export const DAILY_BONUS_ALL = { gems: 5, xp: 50 }; // por completar las 3
+export const DAILY_BONUS_ALL = { gems: 3, xp: 50, chest: 'plata' }; // por completar las 3 (el cofre trae 3 figuritas)
 
-// Recompensa por login diario (racha de 7 días, después se repite)
+// Recompensa por login diario (racha de 7 días, después se repite). El día 7 trae Cofre de Plata.
+// La racha perdona: 1 escudo por semana (season.streakWithShield) pausa la racha si faltás un día.
 export const LOGIN_REWARDS = [
-  { coins: 150 }, { coins: 250 }, { gems: 3 }, { coins: 400 }, { gems: 5 }, { coins: 700 }, { gems: 12, coins: 500 },
+  { coins: 150 }, { coins: 250 }, { gems: 3 }, { coins: 400 }, { gems: 5 }, { coins: 700 }, { gems: 10, coins: 500, chest: 'plata' },
 ];
 
 // Logros con niveles (tiers). stat: clave de state.stats
@@ -294,4 +295,7 @@ export const ACHIEVEMENTS = [
   { id: 'a_driving', name: 'Conductora', desc: 'Manejá {n} metros en total', stat: 'drivingMeters', tiers: [2000, 10000, 40000, 100000, 300000], reward: [3, 5, 8, 12, 20] },
   { id: 'a_fashion', name: 'Fashionista', desc: 'Comprá {n} prendas o partes', stat: 'bought', tiers: [2, 6, 12, 20, 30], reward: [3, 5, 8, 12, 20] },
   { id: 'a_streak', name: 'Fiel a Pixelia', desc: 'Entrá {n} días seguidos', stat: 'bestStreak', tiers: [2, 5, 7, 14, 30], reward: [3, 5, 8, 12, 25] },
+  { id: 'a_chests', name: 'Cazatesoros', desc: 'Abrí {n} cofres', stat: 'chestsOpened', tiers: [3, 15, 40, 100, 250], reward: [3, 5, 8, 12, 20] },
+  { id: 'a_stickers', name: 'Coleccionista', desc: 'Conseguí {n} figuritas distintas', stat: 'stickersNew', tiers: [10, 30, 60, 90, 108], reward: [3, 5, 10, 15, 30] },
+  { id: 'a_season', name: 'Estrella de Temporada', desc: 'Llegá al nivel {n} del Pase', stat: 'seasonLevelBest', tiers: [5, 10, 20, 30], reward: [3, 6, 10, 20] },
 ];

@@ -59,6 +59,7 @@ export function dropNote(d) {
     case 'item': return it?.use === 'game' ? `A tu mochila · para ${GAME_BY_ID[it.game]?.name || 'un juego'}` : 'Guardado en tu mochila';
     case 'cosmetic': return CAR_KINDS.has(d.cosmeticKind) ? 'Pieza nueva · estrenala en el Taller' : 'Prenda nueva · estrenala en el Vestidor';
     case 'build': return 'Construcción gratis · colocala desde Construir';
+    case 'stickers': return d.fresh ? `¡${d.fresh === 1 ? 'Una nueva' : d.fresh + ' nuevas'} para tu Álbum!` : 'Repetidas · cambialas por brillitos';
     default: return '';
   }
 }

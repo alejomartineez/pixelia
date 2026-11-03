@@ -15,9 +15,18 @@ import { store } from '../core/state.js';
 import { bus } from '../core/bus.js';
 import { population, happiness } from '../core/economy.js';
 import { ITEMS, CHESTS, addChest, chestCount } from '../chests/chests.js';
+import { STICKERS } from '../album/album.js';
 
-const META_KEY = 'pixelia.sync';          // { userId, rev, hash } de la última sincronización
+// { userId, rev, hash } de la última sincronización. En modo simulado va por jugadora (como el guardado).
+const META_KEY = (() => {
+  try {
+    const q = new URLSearchParams(location.search);
+    if (net.mode === 'mock') return 'pixelia.sync.mock.' + (q.get('mockuser') || '').trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+  } catch {}
+  return 'pixelia.sync';
+})();
 const PUSH_EVERY_MS = 20e3;
+const DEFAULT_NAME = 'Princesa';
 const PROFILE_MIN_MS = 60e3;
 const INBOX_EVERY_MS = 60e3;
 
@@ -130,10 +139,12 @@ function startTimers() {
 async function reconcile() {
   const s = store.state;
   const meta = readMeta();
+  const uid = net.user?.id;
   const cloud = await net.pullSave();
+  if (!net.user || net.user.id !== uid) return null;        // cerró sesión o cambió de cuenta mientras tanto
   if (cloud?.error) { emitStatus(); return null; }          // sin red: seguimos local y reintentamos con el timer
   if (!cloud) { await pushNow({ force: true }); return null; } // primera vez en la nube
-  const sameLine = meta.userId === net.user.id;
+  const sameLine = meta.userId === uid;
   // la nube no cambió desde nuestra última sincronización → la local manda
   if (sameLine && meta.rev === cloud.rev) { await pushNow(); return null; }
   const loc = summary(s), cl = summary(cloud.data, cloud.updated_at);
@@ -149,6 +160,13 @@ async function reconcile() {
 
 /** Reemplaza la partida local con la de la nube y recarga (el estado está referenciado en todo el juego). */
 function adoptCloud(cloud, reload = true) {
+  if (!net.user) return;
+  // la nube tiene exactamente la misma partida: no hace falta reemplazar ni recargar
+  if (stateHash(cloud.data) === stateHash(store.state)) {
+    lastPushedHash = stateHash(store.state);
+    writeMeta({ userId: net.user.id, rev: cloud.rev, hash: lastPushedHash });
+    return;
+  }
   store.importCode(btoa(unescape(encodeURIComponent(JSON.stringify(cloud.data)))));
   lastPushedHash = stateHash(store.state);
   writeMeta({ userId: net.user.id, rev: cloud.rev, hash: lastPushedHash });
@@ -188,12 +206,14 @@ export async function pushNow(opts = {}) {
   if (store.dirty) store.save();
   const s = store.state;
   const meta = readMeta();
-  const rev = meta.userId === net.user.id ? meta.rev ?? null : null;
+  const uid = net.user.id;
+  const rev = meta.userId === uid ? meta.rev ?? null : null;
   pushing = true;
-  const r = await net.pushSave(s, rev, { force: !!opts.force });
-  pushing = false;
+  let r;
+  try { r = await net.pushSave(s, rev, { force: !!opts.force }); } finally { pushing = false; }
   if (r?.error) { emitStatus(); return r; }
   if (r?.conflict) {
+    if (net.user?.id !== uid) return r;   // cerró sesión en el medio
     // otro dispositivo guardó en el medio: preguntar
     const cloud = await net.pullSave();
     if (cloud && !cloud.error) {
@@ -205,7 +225,7 @@ export async function pushNow(opts = {}) {
   }
   lastPushedHash = stateHash(s);
   lastSync = r.updated_at || new Date().toISOString();
-  writeMeta({ userId: net.user.id, rev: r.rev, hash: lastPushedHash });
+  writeMeta({ userId: uid, rev: r.rev, hash: lastPushedHash });   // uid capturado: la subida fue de esa cuenta aunque haya salido en el medio
   emitStatus();
   return r;
 }
@@ -218,13 +238,16 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
   let pop = 0, happy = 0;
   try { pop = population(s, now); happy = happiness(s, now).pct; } catch {}
   return {
-    name: s.player?.name, cityName: s.player?.cityName, level: s.player?.level,
+    // con el nombre por defecto no se pisa el nombre de la cuenta (el que eligió al registrarse)
+    name: s.player?.name && s.player.name !== DEFAULT_NAME ? s.player.name : undefined,
+    cityName: s.player?.cityName, level: s.player?.level,
     look: s.princess, car: s.car,
     city: {
       buildings: (s.city?.buildings || []).map(b => {
         const o = { id: b.id, x: b.x, z: b.z, rot: b.rot, level: b.level, uid: b.uid };
         const end = Math.max(b.buildEnd || 0, b.upgradeEnd || 0);
         if (end > now) o.busyUntil = end;     // obra en curso: las amigas pueden ayudar
+        if (end > now) o.busyKind = (b.buildEnd || 0) > now ? 'build' : 'upgrade';   // obra nueva o mejora
         return o;
       }),
       expansions: s.city?.expansions || 0,
@@ -237,8 +260,27 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
         parking: g.parking?.level || 1, driving: g.driving?.best || 0,
       },
       week,
+      album: albumCode(s),
     },
   };
+}
+
+/**
+ * Álbum compacto para el perfil público: un carácter base 36 por figurita (orden de STICKERS),
+ * con la cantidad que tiene (tope 35). Sirve para que las amigas vean qué repetidas tenés y qué te falta.
+ * -> { v:1, c:'0102…' } (108 caracteres)
+ */
+export function albumCode(s = store.state) {
+  const have = s?.album?.have || {};
+  return { v: 1, c: STICKERS.map(st => Math.min(35, Math.max(0, have[st.id] | 0)).toString(36)).join('') };
+}
+/** Decodifica albumCode -> { id: count } (solo las que tiene). null si no hay datos. */
+export function decodeAlbum(a) {
+  const c = a?.c;
+  if (typeof c !== 'string' || !c) return null;
+  const out = {};
+  STICKERS.forEach((st, i) => { const n = parseInt(c[i] || '0', 36) || 0; if (n) out[st.id] = n; });
+  return out;
 }
 export async function publishProfileNow(force = false) {
   if (!net.user) return null;
@@ -310,9 +352,12 @@ export async function claimAllAndApply() {
 let stickerAdder = null;
 /** El sistema de figuritas puede registrar cómo se suman: fn(id, n). Por defecto: state.stickers[id] += n. */
 export function setStickerAdder(fn) { stickerAdder = fn; }
-let stickerTaker = null;
-/** fn(id, n) -> boolean: cómo se descuentan figuritas (para escrow). Por defecto: state.stickers[id]. */
-export function setStickerTaker(fn) { stickerTaker = fn; }
+let stickerTaker = null, stickerCanTake = null;
+/**
+ * fn(id, n) -> boolean: cómo se descuentan figuritas (para escrow). Por defecto: state.stickers[id].
+ * canFn(id, n) -> boolean (opcional): si se pueden descontar, para canAffordPayload (sin tocar nada).
+ */
+export function setStickerTaker(fn, canFn = null) { stickerTaker = fn; stickerCanTake = canFn; }
 
 const posInt = v => Math.max(0, Math.floor(Number(v) || 0));
 const entries = o => (o && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o) : []);
@@ -369,20 +414,27 @@ export function canAffordPayload(p = {}) {
   const s = store.state;
   if (posInt(p.coins) > s.coins || posInt(p.gems) > s.gems) return false;
   for (const [id, n] of entries(p.items)) if ((s.chests?.items?.[id] || 0) < posInt(n)) return false;
-  if (!stickerTaker) for (const [id, n] of entries(p.stickers)) if ((s.stickers?.[id] || 0) < posInt(n)) return false;
+  for (const [id, n] of entries(p.stickers)) {
+    if (stickerTaker) { if (stickerCanTake && !stickerCanTake(id, posInt(n))) return false; }
+    else if ((s.stickers?.[id] || 0) < posInt(n)) return false;
+  }
   return true;
 }
 /** Descuenta un payload (escrow al proponer intercambio / al aceptar / al completar un pedido). -> boolean */
 export function deductPayload(p = {}, reason = 'online') {
   if (!canAffordPayload(p)) return false;
   const s = store.state;
+  // figuritas primero: si el sistema de figuritas se niega, no se descontó nada más
+  const taken = [];
+  for (const [id, n] of entries(p.stickers)) if (posInt(n)) {
+    if (stickerTaker) {
+      if (!stickerTaker(id, posInt(n))) { for (const [tid, tn] of taken) stickerAdder?.(tid, tn); return false; }
+      taken.push([id, posInt(n)]);
+    } else s.stickers[id] -= posInt(n);
+  }
   if (posInt(p.coins) || posInt(p.gems)) store.spend({ coins: posInt(p.coins), gems: posInt(p.gems) }, reason);
   let items = false;
   for (const [id, n] of entries(p.items)) if (posInt(n)) { s.chests.items[id] -= posInt(n); items = true; }
-  for (const [id, n] of entries(p.stickers)) if (posInt(n)) {
-    if (stickerTaker) { if (!stickerTaker(id, posInt(n))) return false; }
-    else s.stickers[id] -= posInt(n);
-  }
   if (items) bus.emit('chests:changed', { used: 'online' });
   store.markDirty();
   store.save();

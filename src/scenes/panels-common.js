@@ -2,6 +2,8 @@
 // teclado (Esc / Enter en PC), capa de efectos por encima de los modales e íconos pixel propios.
 import { audio } from '../core/audio.js';
 import { icon } from '../core/icons.js';
+import { costHtml, esc } from '../core/ui.js';
+import { CHESTS, ITEMS } from '../chests/chests.js';
 import { PANEL_CSS } from './panels-style.js';
 
 // ---------- Estilos (con conteo de referencias: se quitan cuando no queda ningún panel) ----------
@@ -110,7 +112,7 @@ export function floatUp(x, y, html) {
 }
 
 /** Efecto de premio completo desde un elemento: íconos volando + confeti. */
-export function rewardFx(fromEl, reward = {}, { confetti = true } = {}) {
+export function rewardFx(fromEl, reward = {}, { confetti = true, chestText = true } = {}) {
   const r = fromEl?.getBoundingClientRect?.();
   const x = r && r.width ? r.left + r.width / 2 : innerWidth / 2;
   const y = r && r.width ? r.top + r.height / 2 : innerHeight / 2;
@@ -118,7 +120,59 @@ export function rewardFx(fromEl, reward = {}, { confetti = true } = {}) {
   if (reward.coins) { setTimeout(() => flyTo(x, y, 'coins', 3 + reward.coins / 60), delay); delay += 120; }
   if (reward.gems) { setTimeout(() => flyTo(x, y, 'gems', 2 + reward.gems / 2), delay); delay += 120; }
   if (reward.xp) setTimeout(() => flyTo(x, y, 'xp', 3), delay);
+  const chests = chestList(reward);
+  if (chests.length && chestText) setTimeout(() => floatUp(x, y - 30, `${chestArt(chests[0].type, 30)} ¡${esc(CHESTS[chests[0].type].name)}!`), delay + 150);
   if (confetti) burst(x, y, 70);
+}
+
+// ---------- Premios con cofres, figuritas y objetos ----------
+/** Cofres de un premio: reward.chest puede ser 'plata' | {type, n} | ['madera', 'plata']; reward.chests = cantidad. */
+export function chestList(reward = {}) {
+  const raw = reward?.chest;
+  if (!raw) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  const out = [];
+  for (const c of list) {
+    const type = typeof c === 'string' ? c : c?.type;
+    if (!CHESTS[type]) continue;
+    const n = Math.max(1, Math.round((typeof c === 'object' ? c.n : null) ?? (list.length === 1 ? reward.chests : 1) ?? 1) || 1);
+    const prev = out.find(o => o.type === type);
+    if (prev) prev.n += n; else out.push({ type, n });
+  }
+  return out;
+}
+/** Cantidad de figuritas de un premio: número | {n, minStars} | {id: cantidad}. */
+export function stickerCount(st) {
+  if (!st) return 0;
+  if (typeof st === 'number') return Math.max(0, Math.round(st));
+  if (typeof st === 'object') {
+    if (typeof st.n === 'number') return Math.max(0, Math.round(st.n));
+    return Object.values(st).reduce((s, v) => s + (Number(v) || 0), 0);
+  }
+  return 0;
+}
+/**
+ * HTML de un premio completo: monedas/gemas/xp + cofres (con su nombre) + figuritas + objetos de mochila.
+ * names=false: solo íconos y cantidades (para celdas chicas).
+ */
+export function rewardHtml(reward = {}, size = 16, { names = true } = {}) {
+  if (!reward || typeof reward !== 'object') return '';
+  const parts = [];
+  if (reward.coins || reward.gems || reward.xp) parts.push(costHtml(reward, size));
+  for (const { type, n } of chestList(reward)) {
+    const nm = CHESTS[type].name;
+    parts.push(`<span class="cost pnl-rw" title="${esc(nm)}">${chestArt(type, Math.round(size * 1.25))}${names ? `<span>${esc(nm)}</span>` : ''}${n > 1 || !names ? `<span>×${n}</span>` : ''}</span>`);
+  }
+  const st = stickerCount(reward.stickers);
+  if (st) parts.push(`<span class="cost pnl-rw" title="Figuritas">${icon('🃏', size)}<span>${names ? `${st} figurita${st === 1 ? '' : 's'}` : '×' + st}</span></span>`);
+  if (reward.items && typeof reward.items === 'object') {
+    for (const [id, n] of Object.entries(reward.items)) {
+      const it = ITEMS[id];
+      if (!it || !n) continue;
+      parts.push(`<span class="cost pnl-rw" title="${esc(it.name)}">${icon(it.icon, size)}<span>${names ? esc(it.name) + (n > 1 ? ' ×' + n : '') : '×' + n}</span></span>`);
+    }
+  }
+  return parts.join(' ');
 }
 
 // ---------- Cáscara de panel ----------
@@ -325,6 +379,35 @@ export function art(name, size = 48, cls = '') {
   if (!artCache.has(name)) artCache.set(name, gridToUrl(ART[name]()));
   return `<img class="pi ${cls}" src="${artCache.get(name)}" width="${size}" height="${size}" alt="" draggable="false">`;
 }
+/** Cofre pixel (sin WebGL) con los colores de CHESTS[type]. */
+const hexMix = (a, b, t) => {
+  const A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16);
+  const ch = (s) => Math.round(((A >> s) & 255) + (((B >> s) & 255) - ((A >> s) & 255)) * t);
+  return '#' + [16, 8, 0].map(s => ch(s).toString(16).padStart(2, '0')).join('');
+};
+const chestCache = new Map();
+export function chestArt(type, size = 32) {
+  const def = CHESTS[type] || CHESTS.madera;
+  if (!chestCache.has(def.id)) {
+    const rows = [
+      '............',
+      '..kkkkkkkk..',
+      '.kcccccccck.',
+      'kcCCCCCCCCdk',
+      'kttttttttttk',
+      'kkkkkyykkkkk',
+      'kcCCkyYkCCdk',
+      'kcCCCkkCCCdk',
+      'kcCCCCCCCCdk',
+      'kttttttttttk',
+      'kdddddddddDk',
+      '.kkkkkkkkkk.',
+    ];
+    chestCache.set(def.id, gridToUrl(rows, { ...PAL, c: hexMix(def.color, '#ffffff', 0.45), C: def.color, d: hexMix(def.color, '#3b2340', 0.3), D: hexMix(def.color, '#3b2340', 0.5), t: def.trim, y: '#ffd166', Y: '#e8a93a' }));
+  }
+  return `<img class="pi" src="${chestCache.get(def.id)}" width="${size}" height="${size}" alt="" draggable="false">`;
+}
+
 /** Banderita pixel del castillo con el color elegido. */
 export function flagArt(hex, size = 48) {
   const rows = [
@@ -351,9 +434,11 @@ export const GAME_ART = { match3: 'match3', blocks: 'blocks', parking: 'parking'
 /** Ícono (HTML) para un objetivo de misión. */
 export function goalIcon(goal, size = 32) {
   if (goal.game && GAME_ART[goal.game]) return art(GAME_ART[goal.game], size);
+  if (goal.type === 'chest' || goal.type === 'chests' || goal.type === 'openChest') return chestArt(goal.chest || 'madera', size);
   const map = {
     build: 'hammer', upgrade: 'up', collect: 'coin', earn: 'coin', play: 'games', stars: 'star', score: 'trophy',
     customize: 'dress', buy: 'shop', level: 'xp', pop: 'people', happy: 'smile', expand: 'map', castle: 'castle',
+    sticker: '🃏', stickers: '🃏', album: '🃏', season: 'sparkle', friend: 'people', friends: 'people', help: 'heart', gift: 'gift', visit: 'home',
   };
   return icon(map[goal.type] || 'quest', size);
 }

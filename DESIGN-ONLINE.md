@@ -12,9 +12,13 @@ src/online/net.js           fachada: elige adaptador (supabase | mock | off) y e
 src/online/net-supabase.js  adaptador real (vendor/supabase.min.js → createClient)
 src/online/net-mock.js      adaptador simulado en localStorage compartido entre pestañas (?mock=1&mockuser=ana) para probar sin servidor
 src/online/sync.js          sincronización de partida + publicación del perfil público (throttle) + inbox
-src/online/social-*.js      UI: cuenta, amigas, visitas, regalos, intercambios, buzón, ranking
+src/online/social.js        lógica social + contrato con el núcleo (initSocial, openSocial, openAccount, handleConflict, socialBadge)
+src/online/social-*.js      UI: ui (hoja + Amigas), mail (Pedidos + Buzón), week (Ranking + Equipo), trade (intercambio + pedido),
+                            account (cuenta + elegir partida), common (avatar pixel, chips, helpers), style (CSS .soc-*)
 supabase/schema.sql         tablas, RLS, funciones RPC (correr una vez en el SQL editor de Supabase)
 tools/test-sql.mjs          valida schema.sql en PGlite (Postgres en Node) con auth.uid() simulado
+tools/test-mock.mjs         API de net.js con dos pestañas (ana/bea) sobre el adaptador mock
+tools/test-social.mjs       la UI social de punta a punta con dos jugadoras + capturas iPhone/PC (--out carpeta)
 ```
 
 ## Modelo de datos (Postgres)
@@ -86,3 +90,25 @@ Todo lo de abajo está en `supabase/schema.sql`, en los dos adaptadores (`net-su
 **Extras de la API** (además de la lista de arriba): `net.claimAll()` (cobra todo atómico), `pushSave(data, rev, {force})` devuelve `{conflict:true}` si otro dispositivo guardó, helpers `friendLevel(days)`, `isoWeek()`, `friendlyError(e)`. El like va por la RPC `give_like` (`like` es palabra reservada en SQL). Regalos `help` llevan `{minutes, uid}` y al cobrarlos `applyGiftPayload` adelanta esa obra. El perfil público incluye `uid` y `busyUntil` de las obras en curso para que la visita sepa dónde ayudar.
 
 **sync.js** — `initSync(ctx)`, `resolveConflict('local'|'cloud')`, `pushNow()`, `publishProfileNow(force)`, `refreshInbox()`, `claimAndApply(gift)`, `claimAllAndApply()`, `applyGiftPayload(payload, source)`, `canAffordPayload(p)`, `deductPayload(p)`, `buildPublicProfile(state)`, `getSyncStatus()`, `stateHash()`, `setStickerAdder(fn)` / `setStickerTaker(fn)` (el sistema de figuritas registra cómo sumar/restar; por defecto usa `state.stickers[id]`). Eventos: `online:status`, `online:inbox`, `online:conflict`, `online:applied`, `online:speedup`, `stickers:received`.
+
+**Figuritas 5★ en la Semana Dorada** — el evento se calcula en el cliente (`eventFlag('trade5')`, events.js). Si está activo y la amistad tiene < 14 días, el cliente agrega `golden: true` al `offer` de un intercambio de figuritas y el servidor (y el mock) lo aceptan sin los 14 días. Es un permiso de confianza entre amigas, como el resto de la economía.
+
+**Perfil público** — `stats.album = { v:1, c }`: un carácter base 36 por figurita (orden de `STICKERS`) con la cantidad que tiene (tope 35). `sync.albumCode(state)` / `sync.decodeAlbum(a)`. La UI lo usa para mostrar "¡Le falta!" / "La tiene repe" y para ofrecer solo repetidas reales de la amiga. Con el nombre por defecto ("Princesa") el perfil **no** manda `name` (no pisa el nombre que eligió al registrarse) y social.js adopta el nombre de la cuenta en la partida.
+
+`setStickerTaker(fn, canFn)`: `canFn(id, n)` opcional para que `canAffordPayload` sepa si se pueden descontar figuritas (el álbum nunca deja una figurita en 0: solo se dan repetidas). `deductPayload` descuenta primero las figuritas y, si el álbum se niega, no toca nada más.
+
+## UI social (`src/online/social.js` + `social-*.js`)
+
+Contrato con el núcleo: `initSocial(ctx)` (después de `initSync`), `openSocial(ctx, tab)` con tabs `'amigas' | 'pedidos' | 'buzon' | 'ranking' | 'equipo'`, `openAccount(ctx)`, `handleConflict(ctx, conflict) -> Promise<'local'|'cloud'|null>` (una sola a la vez; también se abre sola con `online:conflict`), `socialBadge()` (sincrónico) + bus `social:badge {count}`.
+Badge = solicitudes entrantes + buzón sin cobrar + intercambios pendientes para mí + escalones de Obra en Equipo para cobrar + premio semanal del ranking.
+Emite `social:helped {kind:'request'}` (pedido cumplido → +20 chispas del pase) y `social:gift {sent:true}` (regalito). Maneja `album:trade {id, mode}` (pone `handled = true`): `offer` → editor de intercambio (elige amiga), `ask` → crear pedido con esa figurita; sin cuenta abre la pantalla de cuenta.
+
+Estado local `state.social`: `giftDay` (regalito enviado hoy por amiga, día UTC), `coop {week, local, pending, claimed[], reached, carry[]}`, `rank {hist{semana: {match3, blocks, parking, driving, stars, played}}, claimed[]}`.
+
+- **Amigas**: código grande (copiar / `navigator.share`), agregar por código, solicitudes entrantes/salientes, lista con avatar pixel (look de la princesa), nivel, "se conectó hace 2 h", nivel de amistad con barra hasta el próximo. Acciones: Visitar (`ctx.router.go('city', {visit: id})`), Regalito (monedas `GIFT_COINS[nivel de amistad] × rewardScale`; 25% un objeto común; 25% una repetida 1–2★ propia si tiene 3 o más), Cambiar.
+- **Intercambio**: figuritas 1×1 (tus repetidas ↔ repetidas de la amiga, ±1★, 5★ con 14 días o Semana Dorada) o monedas/gemas/objetos de mochila. Escrow: se descuenta recién cuando el servidor aceptó la propuesta; al aceptar se descuenta lo pedido; entregas y devoluciones llegan al buzón.
+- **Pedidos**: hasta 3 por día (figurita que falta — marcando qué amigas la tienen repetida —, objeto, monedas, o acelerar una obra 30 min). Quien ayuda entrega lo pedido (la obra no cuesta nada) y gana monedas (`helperReward`), chispas y amistad.
+- **Buzón**: intercambios para responder (ambos lados), regalos/ayudas/entregas/likes/pedidos cumplidos con "Cobrar" y "Cobrar todo" (vuelo de monedas + confeti), tus intercambios enviados (cancelar) y visitas de la semana con notitas.
+- **Ranking**: semana ISO, categorías nivel/estrellas/juegos, podio pixel, "¡Mejor marca personal!" (supera tus semanas anteriores), premio de participación para todas (domingo; la semana anterior queda cobrable).
+- **Obra en Equipo**: puntos por bus (ganar minijuego 30, obra terminada 20, mejora 40, pedido cumplido 50, regalito/ayuda 10), se suben con `addCoopPoints` cada 30 s; meta = 1000 × amigas con puntos (sin conexión: meta personal de 1000); 5 escalones cobrables una vez por semana (los no cobrados pasan a "semanas anteriores", no se pierden).
+- **Cuenta**: crear cuenta / entrar / "Jugar sin cuenta"; con sesión: estado de sincronización, "Guardar ahora", cerrar sesión. Sin servidor (`net.mode === 'off'`) explica que el online llega cuando se configure y ofrece el modo simulado (`?mock=1&mockuser=…`).

@@ -109,6 +109,12 @@ export const PARKING_CSS = `
 .scene-parking .pk-card-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; font-size: 13px; font-weight: 700; color: var(--ink-l); }
 .scene-parking .pk-card-meta span { display: inline-flex; align-items: center; gap: 3px; }
 .scene-parking .pk-card-btns { display: flex; gap: 10px; width: 100%; margin-top: 4px; }
+.scene-parking .pk-card-event { display: flex; justify-content: center; width: 100%; margin-top: 2px; }
+.scene-parking .pk-card-boost { width: 100%; margin-top: 2px; }
+.scene-parking .pk-hits { position: relative; }
+.scene-parking .pk-freeb { position: absolute; left: 50%; bottom: -15px; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 2px; white-space: nowrap;
+  font-style: normal; font-size: 11px; font-weight: 700; padding: 0 6px 0 3px; border-radius: 8px; background: var(--mint-l); border: 2px solid var(--ink); line-height: 16px; }
+.scene-parking .pk-freeb[hidden] { display: none; }
 .scene-parking .pk-card-btns .btn { flex: 1; }
 .scene-parking .pk-card-btns .pk-play { flex: 1.4; font-size: 20px; }
 .scene-parking .pk-card-keys { display: none; font-size: 12px; color: var(--ink-l); }

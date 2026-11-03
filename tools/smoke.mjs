@@ -8,12 +8,14 @@
 // Opciones:
 //   --scene <id>        escena inicial (city, wardrobe, match3, blocks, parking, driving)
 //   --url <query>       query string completo (reemplaza --scene). Siempre se agrega nosplash&nosw.
-//   --device iphone|desktop|ipad   (default iphone: 390x844 @3x táctil)
+//   --device iphone|iphone-se|landscape|ipad|desktop   (default iphone: 390x844 táctil; iphone-se 375x667;
+//                       landscape 844x390 táctil apaisado; ipad 820x1180; desktop 1366x800 con mouse)
 //   --wait <ms>         espera tras cargar (default 2500)
 //   --shot <png>        captura final
 //   --eval <js>         expresión a evaluar al final; imprime el resultado
 //   --steps <json>      archivo con pasos: [{"tap":[x,y]}, {"drag":[x1,y1,x2,y2]}, {"key":"ArrowLeft"},
-//                       {"wait":500}, {"eval":"js"}, {"shot":"a.png"}, {"click":"css selector"}]
+//                       {"wait":500}, {"eval":"js"}, {"shot":"a.png"}, {"click":"css selector"},
+//                       {"wheel":[x,y,dy]} (rueda del mouse en x,y; dy>0 aleja)]
 //   --fresh             borra el guardado antes (default: sí; usar --keep para conservarlo)
 //   --cheat <nivel>     agrega monedas/gemas y sube al nivel indicado
 //
@@ -44,11 +46,18 @@ const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Applic
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage();
 const device = opt('device', 'iphone');
-const VIEW = {
+const VIEWS = {
   iphone: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  'iphone-se': { width: 375, height: 667, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+  landscape: { width: 844, height: 390, deviceScaleFactor: 2, isMobile: true, hasTouch: true, isLandscape: true },
   ipad: { width: 820, height: 1180, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
   desktop: { width: 1366, height: 800, deviceScaleFactor: 1, isMobile: false, hasTouch: false },
-}[device];
+};
+const VIEW = VIEWS[device];
+if (!VIEW) {
+  console.error(`--device desconocido: "${device}". Opciones: ${Object.keys(VIEWS).join(', ')}`);
+  await browser.close(); server.close(); process.exit(2);
+}
 await page.setViewport(VIEW);
 if (device !== 'desktop') await page.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1');
 
@@ -95,6 +104,7 @@ if (stepsFile) {
     if (s.tap) await tap(...s.tap);
     if (s.click) await page.click(s.click).catch(e => errors.push('STEP click ' + s.click + ': ' + e.message));
     if (s.drag) await drag(...s.drag);
+    if (s.wheel) { const [wx, wy, dy] = s.wheel; await page.mouse.move(wx, wy); await page.mouse.wheel({ deltaY: dy }); }
     if (s.key) await page.keyboard.press(s.key);
     if (s.keydown) await page.keyboard.down(s.keydown);
     if (s.keyup) await page.keyboard.up(s.keyup);

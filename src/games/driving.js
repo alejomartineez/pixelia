@@ -10,6 +10,7 @@ import {
   LANES, LANE_W, CHUNK_LEN, BIOME_LEN, BIOMES, BIOME_DECO, DECO_INFO, biomeIndexAt, rng, pickWeighted,
   applyBend, makeMaterials, groundGeo, outerGeo, decoGeo, decoExtraGeo, itemGeo, obstacleGeo, shieldGeo, particleGeo, warmup,
 } from './driving-world.js';
+import { boosterRow, consumeSelected, eventChipHtml, boosterIcon, itemCount } from './boosters.js';
 import { Sky } from './driving-sky.js';
 
 const STYLE_ID = 'driving-scene-style';
@@ -76,11 +77,11 @@ const CSS = `
 .scene-driving .drv-turbo .ready .drv-segs i { background: #fff7dc; }
 
 .scene-driving .drv-banner { position: absolute; z-index: 8; left: 50%; top: calc(var(--safe-t) + 120px); transform: translateX(-50%); pointer-events: none; white-space: nowrap;
-  display: flex; align-items: center; gap: 8px; font-size: 30px; font-weight: 700; color: #fff; opacity: 0;
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 8px; font-size: 30px; font-weight: 700; color: #fff; opacity: 0;
   text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 6px 0 var(--pink-d); }
 .scene-driving .drv-banner.show { animation: drv-banner 2.4s cubic-bezier(.2,.9,.3,1) forwards; }
 .scene-driving .drv-banner.gold { color: var(--gold); }
-.scene-driving .drv-banner small { display: block; font-size: 16px; }
+.scene-driving .drv-banner small { display: block; flex-basis: 100%; text-align: center; font-size: 16px; }
 @keyframes drv-banner { 0% { opacity: 0; transform: translate(-50%, -10px) scale(.4); } 12% { opacity: 1; transform: translate(-50%, 0) scale(1.12); } 22% { transform: translate(-50%, 0) scale(1); }
   80% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -30px) scale(.95); } }
 
@@ -127,6 +128,8 @@ const CSS = `
 .scene-driving .drv-legend span { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; background: rgba(255,255,255,.75); border-radius: 9px; padding: 3px 5px; line-height: 1.05; }
 .scene-driving .drv-legend span.bad { background: #ffe1e6; }
 .scene-driving .drv-go { font-size: 24px; min-height: 56px; }
+.scene-driving .drv-event { display: flex; justify-content: center; }
+.scene-driving .drv-event:empty, .scene-driving .drv-boost:empty { display: none; }
 .scene-driving .drv-go img { margin-right: 2px; }
 .scene-driving:not(.touch) .drv-only-touch, .scene-driving.touch .drv-only-kb { display: none !important; }
 @media (min-width: 900px) and (min-aspect-ratio: 1/1) {
@@ -142,6 +145,8 @@ const CSS = `
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 function lerp(a, b, t) { return a + (b - a) * t; }
 function smooth(t) { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); }
+
+const BOOST_ID = 'drv_shield'; // Escudo de Viaje (mochila de cofres): empezás con escudo y turbo cargado
 
 export default function create(ctx) {
   const { store, ui, audio } = ctx;
@@ -1088,6 +1093,7 @@ export default function create(ctx) {
         <div class="drv-card">
           <div class="drv-logo">${icon('car', 44)}<span>Paseo Real</span></div>
           <p class="drv-sub">Salí a pasear por Pixelia: esquivá el tránsito, juntá monedas y llegá lo más lejos que puedas.</p>
+          <div class="drv-event">${eventChipHtml('driving', ui.esc)}</div>
           <div class="drv-rec"><span class="chip gold">${icon('trophy', 18)} ${best ? `Récord: <b>${best.toLocaleString('es-AR')} m</b>` : '¡Primer paseo!'}</span><span class="chip lilac">${icon('star', 18)} 400 · 1000 · 2000 m</span></div>
           <div class="drv-ctrls">
             <div class="drv-ctrl drv-only-touch"><div class="drv-ill"><div class="drv-phone"><i>${icon('👈', 18)}</i><i>${icon('👉', 18)}</i></div></div>Tocá un costado o deslizá<small>para cambiar de carril</small></div>
@@ -1100,6 +1106,7 @@ export default function create(ctx) {
             <span>${icon('🧲', 20)} Imán</span><span>${icon('🛡️', 20)} Escudo</span><span>${icon('bolt', 20)} Turbo</span>
             <span class="bad">${icon('🚗', 20)} Tránsito</span><span class="bad">${icon('🚧', 20)} Conos</span><span class="bad">${icon('💧', 20)} Charcos</span>
           </div>
+          <div class="drv-boost"></div>
           <button class="btn pink block drv-go" data-act="go">${icon('🏁', 26)}¡Arrancar!</button>
         </div>
       </div>`;
@@ -1109,8 +1116,10 @@ export default function create(ctx) {
       bar: q('.game-bar'), lives: q('.drv-lives b'), dist: q('[data-v="dist"]'), coins: q('[data-v="coins"]'), coinsStat: q('[data-v="coinsStat"]'),
       powers: q('.drv-powers'), banner: q('.drv-banner'), count: q('.drv-count'), hint: q('.drv-hint'), turbo: q('.drv-turbo'), turboBtn: q('.drv-turbo button'),
       segs: [...container.querySelectorAll('.drv-segs u')], intro: q('.drv-intro'), flash: q('.drv-flash'), speed: q('.drv-speed'),
+      boost: q('.drv-boost'),
     });
     renderLives();
+    renderBoostSlot();
   }
 
   // =====================================================================
@@ -1133,10 +1142,36 @@ export default function create(ctx) {
     shown.m = -1;
   }
 
-  function startRun() {
+  // potenciador elegido en la tarjeta (opt-in: se gasta al arrancar)
+  const boostSel = new Set();
+  let cardAgain = false; // la tarjeta volvió a mostrarse después de un paseo (para elegir el potenciador)
+  function renderBoostSlot() {
+    if (!el.boost) return;
+    el.boost.innerHTML = '';
+    el.boost.append(boosterRow([BOOST_ID], boostSel, { audio, title: 'Potenciador' }));
+  }
+  function showCardAgain() {
+    cardAgain = true;
+    renderBoostSlot();
+    const best = ctx.state.games.driving?.best || 0;
+    const rec = root.querySelector('.drv-rec .chip.gold');
+    if (rec) rec.innerHTML = `${icon('trophy', 18)} ${best ? `Récord: <b>${best.toLocaleString('es-AR')} m</b>` : '¡Primer paseo!'}`;
+    el.intro.classList.remove('hide');
+    el.bar.classList.add('dim');
+  }
+  function startRun(boosts) {
     if (unmounted || !(phase === 'intro' || phase === 'ended')) return;
+    if (!boosts) boosts = consumeSelected(boostSel);
+    cardAgain = false;
     stage.classList.add('fade');
     resetRun();
+    if (boosts.has(BOOST_ID)) {
+      shield = true; shieldMesh.visible = true;
+      charge = 3;
+      renderPowers(); updateTurboUI(true);
+      showBanner(`${boosterIcon(BOOST_ID, 30)} ¡Escudo de Viaje!<small>Arrancás con escudo y turbo lleno</small>`, 'gold');
+      setTimeout(() => { if (!unmounted) audio.sfx('star'); }, 250);
+    }
     requestAnimationFrame(() => stage?.classList.remove('fade'));
     phase = 'countdown'; cd = 0; cdShown = -1;
     el.intro.classList.add('hide');
@@ -1178,7 +1213,8 @@ export default function create(ctx) {
       subtitle: `Recorriste ${meters.toLocaleString('es-AR')} m`, lines, againLabel: 'Otra vuelta',
     });
     if (unmounted) return;
-    if (choice === 'again') startRun();
+    // "Otra vuelta": si tenés Escudos de Viaje, primero la tarjeta para elegir si usarlo
+    if (choice === 'again') { if (itemCount(BOOST_ID) > 0) showCardAgain(); else startRun(); }
   }
 
   function pause() {
@@ -1218,7 +1254,7 @@ export default function create(ctx) {
     finishRun();
   }
   async function askBack() {
-    if (phase === 'intro' || phase === 'countdown') { audio.sfx('tap'); ctx.router.go('city'); return; }
+    if (phase === 'intro' || phase === 'countdown' || (cardAgain && phase === 'ended')) { audio.sfx('tap'); ctx.router.go('city'); return; }
     if (phase === 'ended' || phase === 'crash') return;
     if (paused) return;
     paused = true;
@@ -1270,12 +1306,12 @@ export default function create(ctx) {
       if (k === 'Escape' || k === 'KeyP') {
         if (pauseModal) { pauseModal.close(); return; }
         if (ui.hasModal()) return;
-        if (phase === 'intro') { if (k === 'Escape') ctx.router.go('city'); return; }
+        if (phase === 'intro' || (cardAgain && phase === 'ended')) { if (k === 'Escape') ctx.router.go('city'); return; }
         pause();
         return;
       }
       if (ui.hasModal()) return;
-      if (phase === 'intro' && (k === 'Enter' || k === 'Space' || k === 'NumpadEnter')) { startRun(); return; }
+      if ((phase === 'intro' || (cardAgain && phase === 'ended')) && (k === 'Enter' || k === 'Space' || k === 'NumpadEnter')) { startRun(); return; }
       if (k === 'ArrowLeft' || k === 'KeyA') steerTo(-1);
       else if (k === 'ArrowRight' || k === 'KeyD') steerTo(1);
       else if (k === 'ArrowUp' || k === 'KeyW' || k === 'Space') useTurbo();

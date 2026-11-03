@@ -204,6 +204,16 @@ export const CHX_CSS = `
 .chx-amt img { filter: drop-shadow(0 3px 0 rgba(59,35,64,.3)); }
 .chx-note { margin: 2px 10px 12px; font-size: 14px; line-height: 1.1; text-align: center; color: var(--ink-l); }
 .chx-card.r3 .chx-front { box-shadow: inset 0 0 0 4px var(--rc), 0 7px 0 var(--ink), 0 0 36px 8px rgba(255,209,102,.75); }
+/* Carta de figuritas: abanico de cartas del álbum */
+.chx-card { --cw: min(62vw, 300px, 38vh); }
+.chx-card.chx-stickers .chx-icwrap::before { width: 210px; height: 210px; margin: -105px 0 0 -105px; }
+.chx-stkfan { position: relative; z-index: 1; display: flex; justify-content: center; align-items: center; padding-top: 6px; }
+.chx-stkw { flex: none; width: calc(var(--cw) * .34); margin: 0 calc(var(--cw) * -.035); transform: translateY(var(--dy)) rotate(var(--rot));
+  animation: chx-stkin .5s calc(var(--i) * .09s + .2s) cubic-bezier(.2,1.5,.5,1) both; }
+.chx-stkfan.many .chx-stkw { width: calc(var(--cw) * .25); margin: 0 calc(var(--cw) * -.05); }
+.chx-stkw .stk { width: 100%; }
+.chx-card:not(.flip) .chx-stkw { animation-play-state: paused; }
+@keyframes chx-stkin { from { transform: translateY(40px) rotate(0deg) scale(.4); opacity: 0; } }
 .chx-sparkle { position: absolute; width: 6px; height: 6px; background: #fff; box-shadow: 6px 0 #fff, -6px 0 #fff, 0 6px #fff, 0 -6px #fff; animation: chx-twinkle .8s steps(2) infinite; }
 
 /* Resumen */

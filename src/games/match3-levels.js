@@ -210,56 +210,63 @@ function fairMoves(cfg, runs = 12) {
 }
 
 // ---------- Calibración de estrellas ----------
-// Simula unas partidas deterministas con una jugadora "virtual" que mira objetivos y puntaje,
-// y usa la distribución de puntajes finales (con bonus) para los umbrales de 2 y 3 estrellas.
+// Simula partidas deterministas con jugadoras "virtuales" (la mitad distraídas, la mitad atentas al
+// objetivo), siempre con las movidas BASE del nivel (los potenciadores no cambian los umbrales).
+// Cada partida ganada corre el bonus final completo (movidas sobrantes -> rayadas -> detonación), así
+// los umbrales quedan en la misma escala que el puntaje real. 2 estrellas ~ el 70% de las partidas
+// ganadas, 3 estrellas ~ el 30%; entre 2 y 3 siempre hay al menos ~2 movidas sobrantes de diferencia.
+// 1 estrella = cumplir el objetivo (t1 solo ubica la primera estrella en la barra de puntos).
+const STAR_RUNS = 24, Q2 = 0.3, Q3 = 0.7;
 const starCache = new Map();
-function cloneEngine(e) {
-  const c = Object.create(Engine.prototype);
-  Object.assign(c, e);
-  c.grid = e.grid.map(r => r.map(g => g && { ...g }));
-  c.ice = e.ice.map(r => r.slice());
-  c.collected = e.collected.slice();
-  return c;
+function simWin(cfg, seed, greedy) {
+  const rnd = mulberry32(seed);
+  const e = new Engine(cfg, rnd);
+  let guard = 0;
+  while (e.moves > 0 && !e.goalsDone() && guard++ < 90) {
+    const ms = e.findMoves();
+    if (!ms.length) { e.shuffle(); continue; }
+    let m = ms[Math.floor(rnd() * ms.length)];
+    if (rnd() < greedy) {
+      const gt = e.goalTypes();
+      let best = -1;
+      for (const x of ms) { const v = e.moveValue(x.a, x.b, gt) + rnd(); if (v > best) { best = v; m = x; } }
+    }
+    e.play(m.a, m.b);
+  }
+  if (!e.goalsDone()) return null;
+  const left = e.moves, atGoal = e.score;
+  while (e.bonusConvert());
+  for (let k = 0; k < 4 && e.hasSpecials(); k++) e.bonusDetonate();
+  return { left, atGoal, score: e.score };
 }
-function evalEngine(e) {
-  let v = 0;
-  for (const g of e.cfg.goals) { const p = e.goalProgress(g); v += (p.have / p.need) * 1000; }
-  return v + e.score * 0.05;
-}
-export function calibrateStars(cfg, runs = 8) {
-  if (starCache.has(cfg.n)) return starCache.get(cfg.n);
-  const scores = [];
+export function calibrateStars(cfg, runs = STAR_RUNS) {
+  if (starCache.has(cfg.n)) return starCache.get(cfg.n).slice();
+  const wins = [];
   for (let i = 0; i < runs; i++) {
-    const rnd = mulberry32(cfg.n * 101 + i);
-    const e = new Engine(cfg, rnd);
-    let guard = 0;
-    while (e.moves > 0 && !e.goalsDone() && guard++ < 80) {
-      const ms = e.findMoves();
-      if (!ms.length) { e.shuffle(); continue; }
-      let m = ms[Math.floor(rnd() * ms.length)];
-      if (rnd() < 0.75) {
-        let best = -1;
-        for (const x of ms) { const c = cloneEngine(e); c.play(x.a, x.b); const v = evalEngine(c) + rnd(); if (v > best) { best = v; m = x; } }
-      }
-      e.play(m.a, m.b);
-    }
-    if (e.goalsDone()) {
-      while (e.bonusConvert());
-      for (let k = 0; k < 4 && e.hasSpecials(); k++) e.bonusDetonate();
-      scores.push(e.score);
-    }
+    const r = simWin(cfg, cfg.n * 101 + i, i % 2 ? 0.8 : 0.5);
+    if (r) wins.push(r);
   }
+  const r100 = v => Math.round(v / 100) * 100;
+  const scoreGoal = cfg.goals.find(g => g.kind === 'score');
   let [t1, t2, t3] = cfg.stars;
-  if (scores.length >= 3) {
-    scores.sort((a, b) => a - b);
-    const q = p => scores[Math.round(p * (scores.length - 1))];
-    const r100 = v => Math.round(v / 100) * 100;
-    t2 = r100(q(0.1));
-    t3 = r100(q(0.45));
+  let perMove = 380;
+  if (wins.length >= 4) {
+    const leftTotal = wins.reduce((a, r) => a + r.left, 0);
+    if (leftTotal > 0) perMove = wins.reduce((a, r) => a + (r.score - r.atGoal), 0) / leftTotal;
+    const sc = wins.map(r => r.score).sort((a, b) => a - b);
+    const q = p => sc[Math.round(p * (sc.length - 1))];
+    t2 = r100(q(Q2));
+    t3 = r100(q(Q3));
+    if (!scoreGoal) {
+      // la 1ª estrella de la barra cerca de donde suele quedar el puntaje al cumplir el objetivo
+      const ag = wins.map(r => r.atGoal).sort((a, b) => a - b);
+      t1 = Math.max(100, r100(ag[Math.floor(ag.length * 0.25)] * 0.8));
+    }
   }
+  if (scoreGoal) t1 = scoreGoal.target;
   t2 = Math.max(t2, t1 + 300);
-  t3 = Math.max(t3, t2 + 400);
+  t3 = Math.max(t3, t2 + Math.max(400, r100(perMove * 2)));
   const res = [t1, t2, t3];
   starCache.set(cfg.n, res);
-  return res;
+  return res.slice();
 }

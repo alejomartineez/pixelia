@@ -107,6 +107,12 @@ export const M3_CSS = `
 .scene-match3 .m3-tip { display: flex; gap: 8px; align-items: flex-start; text-align: left; margin: 0; font-size: 14px; line-height: 1.3; color: var(--ink-l);
   background: var(--gold-l); border: 2px dashed var(--gold-d); border-radius: 10px; padding: 8px 10px; }
 .scene-match3 .m3-tip img { margin-top: 1px; }
+/* con potenciadores + evento la tarjeta puede no entrar: margen automático en vez de centrar (así no se corta arriba) */
+.scene-match3 .m3-pre { justify-content: flex-start; }
+.scene-match3 .m3-pre > :first-child { margin-top: auto; }
+.scene-match3 .m3-pre > :last-child { margin-bottom: auto; }
+.scene-match3 .m3-event { display: flex; justify-content: center; }
+.scene-match3 .m3-skip { background: rgba(255,255,255,.92); animation: m3breathe 1.2s ease-in-out infinite; }
 .scene-match3 .m3-play { font-size: 22px; min-height: 56px; animation: m3breathe 1.5s ease-in-out infinite; }
 .scene-match3 .m3-map { width: min(640px, 100%); flex: none; background: rgba(255,255,255,.88); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 4px 0 var(--ink); padding: 8px 0 4px; }
 .scene-match3 .m3-map-title { display: flex; align-items: center; gap: 6px; padding: 0 14px; font-size: 15px; font-weight: 700; }
@@ -137,6 +143,7 @@ export const M3_CSS = `
 }
 @media (max-height: 700px) {
   .scene-match3 .m3-pre { justify-content: flex-start; gap: 18px; padding-top: calc(var(--safe-t) + 84px); }
+  .scene-match3 .m3-pre > :first-child { margin-top: 0; }
   .scene-match3 .m3-tip { display: none; }
 }
 .float-text.m3-pts { font-size: 20px; color: #fff4c2; }

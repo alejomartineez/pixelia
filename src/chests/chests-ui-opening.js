@@ -9,6 +9,28 @@ import { h, esc } from '../core/ui.js';
 import { CHESTS, RARITIES } from './chests.js';
 import { chestModel } from './chest-model.js';
 import { injectStyle, rarityVars, chestVars, bestRarity, dropAmountHtml, dropNote, dropKindLabel, mix } from './chests-ui-common.js';
+import { renderStickerCard, stickerDef } from '../album/album.js';
+import { packIcon } from '../season/season-ui-common.js';
+
+/** Ícono de un premio (las figuritas usan el sobrecito pixel). */
+const dropIcon = (d, size) => d.kind === 'stickers' ? packIcon(size) : icon(d.icon || 'gift', size);
+/** Abanico de figuritas (cartas del álbum) para la carta "Figuritas". */
+function stickerFan(d) {
+  const fan = h('div.chx-stkfan');
+  const list = d.stickers || [];
+  const n = list.length;
+  list.forEach((g, i) => {
+    const card = renderStickerCard(stickerDef(g.id), { isNew: g.isNew, count: g.count, showCount: false });
+    const mid = (n - 1) / 2;
+    const w = h('span.chx-stkw', {}, card);
+    w.style.setProperty('--rot', ((i - mid) * (n > 4 ? 7 : 9)).toFixed(1) + 'deg');
+    w.style.setProperty('--dy', (Math.abs(i - mid) * (n > 4 ? 4 : 6)).toFixed(0) + 'px');
+    w.style.setProperty('--i', String(i));
+    fan.append(w);
+  });
+  if (n > 3) fan.classList.add('many');
+  return fan;
+}
 
 const TAPS = 3;
 const AUTO_OPEN_MS = 2500;
@@ -274,22 +296,26 @@ export function playChestOpening(ctx, type, drops = []) {
         <div class="chx-flipper">
           <div class="chx-face chx-back">${icon('crown', 84)}<b>?</b></div>
           <div class="chx-face chx-front">
-            <div class="chx-banner">${esc(r.name)}</div>
-            <div class="chx-icwrap">${icon(d.icon || 'gift', 96)}</div>
+            <div class="chx-banner">${esc(d.kind === 'stickers' ? 'Figuritas' : r.name)}</div>
+            <div class="chx-icwrap">${d.kind === 'stickers' ? '' : icon(d.icon || 'gift', 96)}</div>
             <div class="chx-klabel">${esc(dropKindLabel(d))}</div>
             <div class="chx-cname">${esc(d.name)}</div>
-            <div class="chx-amt">${dropAmountHtml(d, 36)}</div>
+            <div class="chx-amt">${d.kind === 'stickers' ? '' : dropAmountHtml(d, 36)}</div>
             <div class="chx-note">${esc(dropNote(d))}</div>
             ${sparkles}
           </div>
         </div>` });
+      if (d.kind === 'stickers') {
+        el.classList.add('chx-stickers');
+        el.querySelector('.chx-icwrap').append(stickerFan(d));
+      }
       return el;
     }
     function nextCard() {
       if (cardEl) {
         const old = cardEl, d = drops[idx];
         // la carta vuela a la fila de "conseguidos"
-        const slot = h('span', { style: rarityVars(d.rarity), html: icon(d.icon || 'gift', 26) });
+        const slot = h('span', { style: rarityVars(d.rarity), html: dropIcon(d, 26) });
         got.append(slot);
         const a = old.getBoundingClientRect(), b = slot.getBoundingClientRect();
         old.style.setProperty('--tox', Math.round(b.left + b.width / 2 - (a.left + a.width / 2)) + 'px');
@@ -324,7 +350,8 @@ export function playChestOpening(ctx, type, drops = []) {
       root.classList.add('revealed');
       tapNext.textContent = idx >= drops.length - 1 ? 'Tocá para ver todo ›' : 'Tocá para seguir ›';
       const d = drops[idx], r = RARITIES[d.rarity] || RARITIES.comun;
-      if (d.kind === 'coins') sfx('coin'); else if (d.kind === 'gems') sfx('gem'); else if (d.kind === 'xp') sfx('star'); else sfx('pop');
+      if (d.kind === 'coins') sfx('coin'); else if (d.kind === 'gems') sfx('gem'); else if (d.kind === 'xp') sfx('star');
+      else if (d.kind === 'stickers') { sfx('swoosh'); later(120, () => sfx('pop')); } else sfx('pop');
       if (r.order === 2) later(90, () => sfx('star'));
       if (r.order >= 3) {
         later(60, () => sfx('levelup'));
@@ -348,13 +375,15 @@ export function playChestOpening(ctx, type, drops = []) {
       drops.forEach((d, i) => {
         const r = RARITIES[d.rarity] || RARITIES.comun;
         grid.append(h('div.chx-mini', { style: rarityVars(d.rarity) + `animation-delay:${0.08 + i * 0.07}s`, html:
-          `<small>${esc(r.name)}</small>${icon(d.icon || 'gift', 48)}<b>${esc(d.name)}</b><em>${dropAmountHtml(d, 18)}</em>` }));
+          `<small>${esc(d.kind === 'stickers' ? 'Álbum' : r.name)}</small>${dropIcon(d, 48)}<b>${esc(d.name)}</b><em>${d.kind === 'stickers' ? (d.fresh ? `¡${d.fresh} nueva${d.fresh > 1 ? 's' : ''}!` : 'Repetidas') : dropAmountHtml(d, 18)}</em>` }));
       });
       const okBtn = h('button.btn.pink.block', { html: `${icon('heart', 22)} ¡Genial!` });
       okBtn.addEventListener('pointerdown', e => e.stopPropagation());
       okBtn.addEventListener('click', e => { e.stopPropagation(); finish(); });
       const hasBuild = drops.some(d => d.kind === 'build'), hasItem = drops.some(d => d.kind === 'item');
-      const tip = hasBuild ? 'Las construcciones gratis se colocan desde Construir.' : hasItem ? 'Los objetos quedaron en tu mochila.' : '';
+      const hasStk = drops.some(d => d.kind === 'stickers' && d.fresh);
+      const tip = hasBuild ? 'Las construcciones gratis se colocan desde Construir.' : hasItem ? 'Los objetos quedaron en tu mochila.'
+        : hasStk ? 'Las figuritas nuevas ya están en tu Álbum.' : '';
       sumEl = h('div.chx-sum', {},
         h('div.chx-sumbox', {},
           h('div.chx-sumhead', { html: `${icon('crown', 32)}<h2>¡Tu botín!</h2>${icon('crown', 32)}` }),

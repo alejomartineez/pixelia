@@ -206,6 +206,9 @@ ok((await rpc('ana', 'propose_trade', [U.bea, S('a', 3), { coins: 5 }])).error, 
 ok((await rpc('ana', 'propose_trade', [U.bea, { stickers: { a: 2 }, stars: 3 }, S('b', 3)])).error?.includes('de a una'), 'solo 1 figurita por lado');
 ok((await rpc('ana', 'propose_trade', [U.bea, S('a', 2), S('b', 4)])).error?.includes('parecidas'), 'estrellas fuera de ±1 rechazado');
 ok((await rpc('ana', 'propose_trade', [U.bea, S('a', 5), S('b', 4)])).error?.includes('14 días'), '5 estrellas exige 14 días de amistad');
+{ const g = await rpc('ana', 'propose_trade', [U.bea, { ...S('g', 5), golden: true }, S('h', 5)]);
+  ok(g.ok === true, '5 estrellas con golden (Semana Dorada) no exige 14 días');
+  if (g.ok) await rpc('ana', 'cancel_trade', [g.id]); }
 await su(`update friendships set days = 14 where a = least($1::uuid, $2::uuid) and b = greatest($1::uuid, $2::uuid)`, [U.ana, U.bea]);
 const st1 = await rpc('ana', 'propose_trade', [U.bea, S('a', 5), S('b', 4)]);
 ok(st1.ok, 'con 14 días sí se puede 5★');

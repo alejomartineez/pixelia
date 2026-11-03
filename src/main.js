@@ -1,12 +1,23 @@
 // Arranque, router de escenas y contexto compartido (ctx) que reciben todas las escenas.
+//
+// Orden de arranque: store.load → applyDebugParams → initChests → initAlbum → initSeason → initEvents → initQuests
+// → HUD → (online) initSync → social.initSocial. Al entrar a la ciudad se muestran, de a uno y sin pisarse:
+// regalo de bienvenida ("¡Te extrañamos!") → premio diario → subidas de nivel.
 import { bus } from './core/bus.js';
 import { store } from './core/state.js';
 import * as data from './core/data.js';
 import * as economy from './core/economy.js';
 import * as quests from './core/quests.js';
-import { ui, toast, rewardModal, closeAllModals, hasModal } from './core/ui.js';
+import { ui, h, esc, toast, rewardModal, closeAllModals, hasModal, rewardArt } from './core/ui.js';
+import { icon } from './core/icons.js';
 import { audio } from './core/audio.js';
 import { hud } from './core/hud.js';
+import * as chests from './chests/chests.js';
+import * as album from './album/album.js';
+import * as season from './season/season.js';
+import * as events from './season/events.js';
+import { chestIcon, packIcon } from './season/season-ui-common.js';
+import { net } from './online/net.js';
 
 const SCENES = {
   city: () => import('./scenes/city.js'),
@@ -19,7 +30,7 @@ const SCENES = {
 
 const sceneEl = document.getElementById('scene');
 const fadeEl = document.getElementById('fade');
-let current = null;       // { id, instance }
+let current = null;       // { id, instance, params }
 let navigating = false;
 const pendingLevelUps = [];
 
@@ -28,7 +39,11 @@ const params = new URLSearchParams(location.search);
 // ---------- Router ----------
 const router = {
   get current() { return current?.id; },
-  /** Cambia de escena. params se pasa a mount(). */
+  /** Parámetros con los que se montó la escena actual (p.ej. {visit: friendId} en la ciudad). */
+  get params() { return current?.params || {}; },
+  /** ¿La ciudad está en modo visita (ciudad de una amiga)? */
+  get visiting() { return current?.id === 'city' && !!current?.params?.visit; },
+  /** Cambia de escena. params se pasa a mount(). Ciudad de una amiga: go('city', {visit: friendId}). */
   async go(id, p = {}) {
     if (navigating) return false;   // doble toque / navegación en curso: se ignora
     if (!SCENES[id]) { console.error('escena desconocida', id); return false; }
@@ -42,14 +57,14 @@ const router = {
       sceneEl.innerHTML = '';
       const mod = await SCENES[id]();
       const instance = mod.default(ctx);
-      current = { id, instance };
+      current = { id, instance, params: p || {} };
       const container = document.createElement('div');
       container.className = 'scene-root scene-' + id;
       sceneEl.append(container);
       if (instance.hud === false) hud.hide(); else hud.show();
       audio.music(instance.music ?? (id === 'city' ? 'city' : 'game'));
       await instance.mount(container, p);
-      bus.emit('scene:changed', { id });
+      bus.emit('scene:changed', { id, params: p || {} });
     } catch (e) {
       console.error('Error cargando escena', id, e);
       toast('Ups, algo falló cargando ' + id, { icon: 'info', type: 'bad' });
@@ -59,8 +74,8 @@ const router = {
       navigating = false;
     }
     // volver a la ciudad recién cuando terminó el finally (si no, el candado de navegación se libera a mitad de camino)
-    if (failed) return id !== 'city' ? router.go('city') : false;
-    if (id === 'city') { flushLevelUps(); maybeShowLogin(); }
+    if (failed) return id !== 'city' || p?.visit ? router.go('city') : false;
+    if (id === 'city' && !p?.visit) runArrival();
     return true;
   },
   /** Abre un minijuego verificando que esté desbloqueado. */
@@ -81,11 +96,15 @@ function gameStatus(gameId) {
   return { ok: true };
 }
 
+// ---------- Fin de partida ----------
 /**
  * Fin de partida de cualquier minijuego.
- * result: { game, score, stars(0..3), won(bool), coins(base), gems, xp, title?, lines?:[html], newBest? }
- * Las monedas base se multiplican por rewardScale(nivel). Devuelve 'again' | 'city'.
+ * result: { game, score, stars(0..3), won(bool), coins(base), gems, xp, title?, subtitle?, lines?:[html], newBest?, againLabel? }
+ * Las monedas base se multiplican por rewardScale(nivel) y por el evento activo del juego (eventMult(game+'Rewards')).
+ * Además: cofre (rollGameChest, con segunda tirada en "Lluvia de Cofres"), figurita (35% al ganar, x eventMult('stickers'))
+ * y chispas del Pase (las suma season.js al escuchar minigame:finished). Devuelve 'again' | 'city'.
  */
+const GAME_STICKER_CHANCE = 0.35;
 let ending = null;
 function endGame(result) {
   // si un juego llama dos veces seguidas (doble toque, timers), no duplicar premios ni apilar modales
@@ -95,29 +114,72 @@ function endGame(result) {
 }
 async function finishGame(result) {
   const s = store.state;
+  const t0 = Date.now();
+  const stars = Math.max(0, Math.min(3, result.stars || 0));
   const scale = data.rewardScale(s.player.level);
+  const mult = safe(() => events.eventMult(result.game + 'Rewards'), 1);
   const reward = {
-    coins: Math.round((result.coins || 0) * scale),
-    gems: result.gems || 0,
+    coins: Math.round((result.coins || 0) * scale * mult),
+    gems: Math.round((result.gems || 0) * mult),
     xp: Math.round((result.xp ?? 10) * Math.sqrt(scale)),
   };
   store.grant(reward, 'game:' + result.game);
   store.inc('played_' + result.game);
   store.inc('gamesPlayed');
-  bus.emit('minigame:finished', { game: result.game, score: result.score || 0, stars: result.stars || 0, won: !!result.won });
+
+  // cofre por ganar (+ tiradas extra si hay evento de cofres)
+  const chestsWon = [];
+  if (result.won) {
+    const rolls = Math.max(1, Math.round(safe(() => events.eventMult('chestDrop'), 1)));
+    for (let i = 0; i < rolls; i++) { const t = safe(() => chests.rollGameChest({ won: true, stars }), null); if (t) chestsWon.push(t); }
+  }
+  // figurita
+  let sticker = null;
+  if (result.won && Math.random() < GAME_STICKER_CHANCE * safe(() => events.eventMult('stickers'), 1)) {
+    const p = { n: 1, minStars: 1, source: 'game' };
+    bus.emit('reward:stickers', p);
+    sticker = p.result?.[0] || null;
+  }
+  bus.emit('minigame:finished', { game: result.game, score: result.score || 0, stars, won: !!result.won });
   store.save();
   audio.sfx(result.won === false ? 'lose' : 'win');
+
+  const sp = safe(() => season.lastMinigamePoints(), null);
+  const chispas = sp && sp.at >= t0 ? sp.pts : 0;
+  const lines = [];
+  if (result.newBest) lines.push(`${icon('trophy', 22)} <b>¡Nuevo récord!</b>`);
+  lines.push(...(result.lines || []));
+  if (mult > 1 && (reward.coins || reward.gems)) lines.push(`${icon('⚡', 18)} ¡Premio x${String(mult).replace('.', ',')} por el evento!`);
+  const extras = h('div.rw-extras');
+  for (const type of chestsWon) {
+    const def = chests.CHESTS[type];
+    extras.append(h('div.rw-extra.rw-chest', { style: `--c:${def?.color || '#ffd166'}`, html:
+      `<span class="rw-art">${chestIcon(type, 46)}</span><span class="rw-txt"><small>¡Ganaste un cofre!</small><b>${esc(def?.name || 'Cofre')}</b><em>Abrilo desde Cofres</em></span>` }));
+  }
+  if (sticker) {
+    const def = album.stickerDef(sticker.id);
+    const card = h('span.rw-art.rw-stk');
+    if (def) card.append(album.renderStickerCard(def, { isNew: sticker.isNew, showCount: false }));
+    extras.append(h('div.rw-extra.rw-sticker', { style: `--c:${def?.color || '#ff7eb6'}` }, card,
+      h('span.rw-txt', { html: `<small>${sticker.isNew ? '¡Figurita nueva!' : 'Figurita repetida'}</small><b>${esc(def?.name || 'Figurita')}</b><em>${'★'.repeat(sticker.stars)}${sticker.isNew ? ' · ya está en tu Álbum' : ' · cambiala por brillitos'}</em>` })));
+  }
+  if (chispas) extras.append(h('div.rw-chispas', { html: `${icon('sparkle', 20)}<b>+${chispas}</b> chispas del Pase` }));
+  if (extras.childElementCount) lines.push(extras);
+
   const choice = await rewardModal({
     title: result.title || (result.won === false ? '¡Casi!' : '¡Muy bien!'),
-    subtitle: result.subtitle || (result.score != null ? `Puntaje: ${result.score.toLocaleString('es-AR')}` : ''),
+    subtitle: result.subtitle || (result.score != null ? `Puntaje: ${Number(result.score).toLocaleString('es-AR')}` : ''),
     stars: result.stars,
-    lines: [...(result.newBest ? ['🏆 <b>¡Nuevo récord!</b>'] : []), ...(result.lines || [])],
+    lines,
     reward,
     buttons: [{ label: 'Ciudad', value: 'city', cls: 'ghost' }, { label: result.againLabel || 'Otra vez', value: 'again', cls: 'pink' }],
+    dismissValue: 'city',
+    className: 'game-reward',
   });
   if (choice === 'city') router.go('city');
   return choice;
 }
+function safe(fn, def) { try { return fn(); } catch (e) { console.error(e); return def; } }
 
 async function openPanel(name, p = {}) {
   try {
@@ -126,47 +188,135 @@ async function openPanel(name, p = {}) {
   } catch (e) { console.error(e); toast('No se pudo abrir el panel'); }
 }
 
+// ---------- Social (src/online/social.js, carga diferida) ----------
+let socialP = null;
+/** Carga social.js una sola vez y llama initSocial(ctx). Devuelve el módulo o null si todavía no existe. */
+function loadSocial() {
+  return (socialP ||= import('./online/social.js').then(m => {
+    ctx.social = m;
+    try { m.initSocial?.(ctx); } catch (e) { console.error('[social] init', e); }
+    hud.refreshBadges();
+    return m;
+  }).catch(e => { console.warn('[social] no disponible', e); socialP = null; return null; }));
+}
+async function openSocial(tab = 'amigas') {
+  const m = await loadSocial();
+  if (!m?.openSocial) { toast('Muy pronto vas a poder jugar con tus amigas', { icon: 'people' }); return; }
+  try { return await m.openSocial(ctx, tab); } catch (e) { console.error(e); toast('No se pudo abrir Amigas', { type: 'bad' }); }
+}
+async function openAccount() {
+  const m = await loadSocial();
+  if (!m?.openAccount) { toast('Las cuentas online llegan muy pronto', { icon: 'people' }); return; }
+  try { return await m.openAccount(ctx); } catch (e) { console.error(e); }
+}
+// Intercambiar desde el álbum antes de que social.js esté cargado: se carga y se reenvía el pedido.
+bus.on('album:trade', (p) => {
+  if (ctx.social || !p || p.handled) return;
+  p.handled = true;
+  loadSocial().then(m => {
+    if (m) bus.emit('album:trade', { ...p, handled: false });
+    else toast('Los intercambios con amigas se activan con tu cuenta online', { icon: 'people' });
+  });
+});
+
+// ---------- Paneles de progresión ----------
+const lazyUi = (loader, fail) => async (...args) => {
+  try { return await loader(...args); } catch (e) { console.error(e); toast(fail, { type: 'bad' }); }
+};
+const openChests = lazyUi(p => import('./chests/chests-ui.js').then(m => m.openChestsPanel(ctx, p || {})), 'No se pudieron abrir los cofres');
+const openAlbum = lazyUi(p => import('./album/album-ui.js').then(m => m.openAlbum(ctx, p || {})), 'No se pudo abrir el álbum');
+const openSeasonPass = lazyUi(() => season.openSeasonPass(ctx), 'No se pudo abrir el Pase');
+const openEvents = lazyUi(() => events.openEventsPanel(ctx), 'No se pudieron abrir los eventos');
+
 export const ctx = {
   store, bus, ui, audio, data, economy, quests, router, hud,
   get state() { return store.state; },
   endGame, openPanel, gameStatus,
+  // progresión y social
+  chests, album, season, events, net,
+  social: null,      // módulo social.js cuando está cargado
+  sync: null,        // módulo sync.js cuando hay modo online
+  openChests, openAlbum, openSeasonPass, openEvents, openSocial, openAccount,
 };
 
-// ---------- Subidas de nivel ----------
+// ---------- Llegada a la ciudad: bienvenida → premio diario → subidas de nivel ----------
+const OVERLAYS = '.chx-open, .alb-open';
+const cityReady = () => router.current === 'city' && !navigating && !router.visiting;
+const cityIdle = () => cityReady() && !hasModal() && !document.querySelector(OVERLAYS);
+/** Espera a que la ciudad esté libre (sin modales ni animaciones). false si se fue de la ciudad o pasó maxMs. */
+function waitIdle(maxMs = 60e3) {
+  return new Promise(res => {
+    const t0 = Date.now();
+    const check = () => {
+      if (!cityReady() || Date.now() - t0 > maxMs) return res(false);
+      if (cityIdle()) return res(true);
+      setTimeout(check, 350);
+    };
+    setTimeout(check, 250);
+  });
+}
+let arrival = null, arrivalAgain = false;
+async function arrivalSteps() {
+  if (!(await waitIdle())) return false;
+  if (season.welcomeBackStatus()) {
+    await season.openWelcomeBack(ctx);
+    if (!(await waitIdle())) return false;
+  }
+  if (quests.loginStatus()) {
+    await openPanel('login');
+    if (!(await waitIdle())) return false;
+  }
+  return true;
+}
+/** Muestra en orden lo pendiente al llegar a la ciudad. Si se pide de nuevo mientras corre, repasa al terminar. */
+function runArrival() {
+  if (arrival) { arrivalAgain = true; return arrival; }
+  arrival = (async () => {
+    try {
+      let ok = true;
+      do { arrivalAgain = false; ok = await arrivalSteps(); } while (ok && arrivalAgain);
+    } catch (e) { console.error(e); }
+    finally {
+      arrival = null;
+      if (pendingLevelUps.length && cityReady()) setTimeout(flushLevelUps, 300);
+    }
+  })();
+  return arrival;
+}
+
 bus.on('level:up', (ev) => {
   pendingLevelUps.push(ev);
   audio.sfx('levelup');
-  if (router.current === 'city' && !navigating) setTimeout(flushLevelUps, 400);
+  if (cityReady() && !arrival) setTimeout(flushLevelUps, 400);
 });
-const cityIdle = () => router.current === 'city' && !navigating && !hasModal() && !flushing && !pendingLevelUps.length;
 let flushing = false;
 async function flushLevelUps() {
-  if (flushing) return;
+  if (flushing || arrival) return;
   flushing = true;
   try {
-    while (pendingLevelUps.length && router.current === 'city' && !navigating) {
-      if (hasModal()) { setTimeout(() => { flushing = false; flushLevelUps(); }, 800); return; }
+    while (pendingLevelUps.length && cityReady()) {
+      if (!cityIdle() && !(await waitIdle())) break;
       const ev = pendingLevelUps.shift();
       await openPanel('levelup', ev);
     }
-  } finally { if (!pendingLevelUps.length || router.current !== 'city' || navigating) flushing = false; }
+  } catch (e) { console.error(e); }
+  finally { flushing = false; }
 }
+// bienvenida que aparece al volver a la app después de días en segundo plano (iPhone deja la PWA abierta)
+bus.on('season:welcome', () => { if (cityReady()) runArrival(); });
 
-// ---------- Premio diario ----------
-// Se muestra en la ciudad cuando no hay otro modal (p.ej. después de las subidas de nivel),
-// y también al volver a la app en un día nuevo (iOS deja la PWA abierta en segundo plano).
-let loginOpen = false, loginWait = 0;
-function maybeShowLogin() {
-  if (loginOpen || loginWait || !quests.loginStatus()) return;
-  let tries = 0;
-  const attempt = () => {
-    loginWait = 0;
-    if (loginOpen || !quests.loginStatus()) return;
-    if (!cityIdle()) { if (++tries < 40 && router.current === 'city') loginWait = setTimeout(attempt, 700); return; }
-    loginOpen = true;
-    Promise.resolve(openPanel('login')).finally(() => { loginOpen = false; });
-  };
-  loginWait = setTimeout(attempt, 600);
+// ---------- Online ----------
+async function startOnline() {
+  try {
+    const sync = await import('./online/sync.js');
+    ctx.sync = sync;
+    // las figuritas que llegan/salen por regalos e intercambios pasan por el álbum
+    sync.setStickerAdder?.((id, n) => album.giveStickers({ [id]: n }, 'online'));
+    sync.setStickerTaker?.((id, n) => album.takeStickers(id, n), (id, n) => album.stickerCount(id) - n >= 1);
+    const st = await sync.initSync(ctx);
+    const social = await loadSocial();
+    if (st?.conflict && social?.handleConflict) await social.handleConflict(ctx, st.conflict);
+  } catch (e) { console.warn('[online]', e); }
 }
 
 // ---------- Arranque ----------
@@ -181,11 +331,20 @@ function applyDebugParams() {
   }
 }
 
+function initProgression() {
+  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['quests', quests.initQuests]];
+  for (const [name, fn] of steps) { try { fn(); } catch (e) { console.error('[init] ' + name, e); } }
+  // íconos pixel de cofres y sobres en los premios (costHtml)
+  rewardArt.chest = (type, size) => chestIcon(type, size);
+  rewardArt.pack = (size) => packIcon(size);
+  rewardArt.chestName = (type) => chests.CHESTS[type]?.name || 'Cofre';
+}
+
 async function boot() {
   store.load();
   applyDebugParams();
   audio.configure(store.state.settings);
-  quests.initQuests();
+  initProgression();
   hud.init(document.getElementById('hud'), ctx);
   economy.tick();
   setInterval(() => economy.tick(), 1000);
@@ -196,13 +355,17 @@ async function boot() {
   addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     economy.tick();
-    if (router.current === 'city') maybeShowLogin();
+    if (cityReady()) runArrival();
   });
 
   // Evitar zoom con doble toque/pinch del navegador en iOS
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('gesturechange', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
+
+  // online: sync primero y después social; sin servidor, social igual se carga (Obra en Equipo personal, buzón vacío)
+  if (net.mode !== 'off') startOnline();
+  else setTimeout(loadSocial, 1500);
 
   const splash = document.getElementById('splash');
   const startScene = params.get('scene') || 'city';
@@ -215,7 +378,7 @@ async function boot() {
     audio.unlock();
     splash.classList.add('hide');
     setTimeout(() => splash.remove(), 500);
-    await router.go(startScene, Object.fromEntries(params));   // en la ciudad, go() ya muestra el premio diario
+    await router.go(startScene, Object.fromEntries(params));   // en la ciudad, go() ya arranca la bienvenida/premio diario
   };
   if (skipSplash) begin();
   else {
@@ -228,7 +391,7 @@ async function boot() {
     navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW', e));
   }
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__pixeliaInstallPrompt = e; });
-  window.__pixelia = { ctx, store, bus, economy, quests, data };
+  window.__pixelia = { ctx, store, bus, economy, quests, data, chests, album, season, events, net };
 }
 
 boot();

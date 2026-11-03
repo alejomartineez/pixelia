@@ -1,7 +1,8 @@
 // Paneles festivos: premio diario (login) y subida de nivel.
 import { icon } from '../core/icons.js';
 import { BUILDINGS, GAMES, CUSTOM_CATALOG, CASTLE_LEVELS, LOGIN_REWARDS, MAX_EXPANSIONS } from '../core/data.js';
-import { openShell, rewardFx, burst, art, GAME_ART } from './panels-common.js';
+import { openShell, rewardFx, burst, art, GAME_ART, rewardHtml, chestArt, chestList } from './panels-common.js';
+import { CHESTS, chestCount, levelUpChests } from '../chests/chests.js';
 
 // ---------- Premio diario ----------
 export function openLogin(ctx) {
@@ -33,11 +34,12 @@ export function openLogin(ctx) {
     const d = i + 1;
     const state = d < day ? 'past' : d === day ? (claimed ? 'past today' : 'today') : 'future';
     const big = d === LOGIN_REWARDS.length;
-    const ic = big ? icon('gift', 40) : icon(rw.gems ? 'gem' : 'coin', 30);
-    const cell = h('div.pnl-day.' + state.split(' ').join('.') + (big ? '.big' : ''), { html: `
+    const chest = chestList(rw)[0];
+    const ic = chest ? chestArt(chest.type, big ? 44 : 32) : big ? icon('gift', 40) : icon(rw.gems ? 'gem' : 'coin', 30);
+    const cell = h('div.pnl-day.' + state.split(' ').join('.') + (big ? '.big' : '') + (chest ? '.chest' : ''), { html: `
       <small>Día ${d}</small>
       <span class="pnl-day-ic">${ic}</span>
-      <span class="pnl-day-rw">${costHtml(rw, 14)}</span>
+      <span class="pnl-day-rw">${rewardHtml(rw, 14, { names: big }) || costHtml(rw, 14)}</span>
       <span class="pnl-day-check">${icon('check', 22)}</span>` });
     cells.push(cell);
     grid.append(cell);
@@ -47,11 +49,19 @@ export function openLogin(ctx) {
     if (claimed) {
       stage.innerHTML = `<div class="pnl-rays"></div><div class="pnl-stage-ic">${icon('calendar', 72)}</div><p class="pnl-stage-txt">Volvé mañana por el <b>día ${(day % LOGIN_REWARDS.length) + 1}</b></p>`;
     } else {
-      stage.innerHTML = `<div class="pnl-rays"></div><div class="pnl-stage-ic pnl-bob">${icon('gift', 88)}</div><p class="pnl-stage-txt">Día ${day}: ${costHtml(status.reward, 20)}</p>`;
+      const ch = chestList(status.reward)[0];
+      stage.innerHTML = `<div class="pnl-rays"></div><div class="pnl-stage-ic pnl-bob">${ch ? chestArt(ch.type, 88) : icon('gift', 88)}</div><p class="pnl-stage-txt">Día ${day}: ${rewardHtml(status.reward, 20) || costHtml(status.reward, 20)}</p>`;
     }
   }
   paintStage();
-  wrap.append(head, stage, grid);
+  wrap.append(head);
+  // escudo de racha: si ayer faltó, la racha se pausó en vez de reiniciarse
+  if (status?.shielded) {
+    wrap.append(h('div.pnl-shield', { html: `
+      <span class="pnl-shield-ic pnl-pop">${icon('🛡️', 40)}</span>
+      <span><b>¡Tu racha se salvó!</b><small>Ayer no pudiste entrar, pero tu escudo de la semana la cuidó. ¡Seguimos sumando días!</small></span>` }));
+  }
+  wrap.append(stage, grid);
   sh.body.append(wrap);
 
   function claim() {
@@ -67,13 +77,16 @@ export function openLogin(ctx) {
     sh.later(650, () => {
       audio.sfx('buy');
       stage.classList.add('open');
-      stage.innerHTML = `<div class="pnl-rays spin"></div><div class="pnl-stage-reward pnl-pop">${costHtml(reward, 34)}</div><p class="pnl-stage-txt">¡Es todo tuyo!</p>`;
+      const ch = chestList(reward)[0];
+      const coinsGems = (reward.coins || reward.gems || reward.xp) ? costHtml(reward, ch ? 28 : 34) : '';
+      stage.innerHTML = `<div class="pnl-rays spin"></div><div class="pnl-stage-reward pnl-pop">${ch ? `<span class="pnl-stage-chest">${chestArt(ch.type, 48)}</span>` : ''}${coinsGems}</div>`
+        + `<p class="pnl-stage-txt">${ch ? `¡${CHESTS[ch.type].name}! Te espera en Cofres` : '¡Es todo tuyo!'}</p>`;
       const cell = cells[day - 1];
       cell.classList.remove('today'); cell.classList.add('past', 'today', 'pnl-pop');
-      rewardFx(stage, reward);
+      rewardFx(stage, reward, { chestText: false });
       burst(innerWidth / 2, innerHeight * 0.3, 110);
       const st = ctx.state.login.streak || 1;
-      head.innerHTML = `${icon('fire', 22)}<span>Racha de <b>${st}</b> ${st === 1 ? 'día' : 'días'}. ¡Volvé mañana!</span>`;
+      head.innerHTML = `${icon(status?.shielded ? '🛡️' : 'fire', 22)}<span>Racha de <b>${st}</b> ${st === 1 ? 'día' : 'días'}. ¡Volvé mañana!</span>`;
       primaryBtn.disabled = false;
       primaryBtn.innerHTML = `${icon('heart', 20)} ¡Gracias!`;
       sh.escAction = () => sh.close();
@@ -123,9 +136,16 @@ export function openLevelUp(ctx, params = {}) {
   const reward = params.reward || {};
   // si subió varios niveles de golpe, las ventanas salen de a una: el botón avisa que viene otra
   const more = ctx.state.player.level > level;
+  // cofres que se ganaron por subir a este nivel (ya están en el inventario: los suma chests.js al escuchar level:up)
+  let chests = [];
+  try { chests = (levelUpChests(level) || []).filter(t => CHESTS[t]); } catch (e) { console.warn('levelUpChests', e); }
+  const canOpen = chests.some(t => chestCount(t) > 0);
+  let openNow = false;
+  const actions = canOpen
+    ? [{ label: 'Después', cls: 'ghost' }, { html: `${icon('gift', 20)} Abrir ahora`, cls: 'gold', onClick: () => { openNow = true; } }]
+    : [{ html: more ? `${icon('sparkle', 20)} ¡Genial! Ver nivel ${level + 1}` : `${icon('sparkle', 20)} ¡Genial!`, cls: 'pink' }];
   const sh = openShell(ctx, 'levelup:' + level, {
-    title: '¡Subiste de nivel!', ic: 'star', className: 'pnl-md pnl-levelup reward-modal', closable: false,
-    actions: [{ html: more ? `${icon('sparkle', 20)} ¡Genial! Ver nivel ${level + 1}` : `${icon('sparkle', 20)} ¡Genial!`, cls: 'pink' }],
+    title: '¡Subiste de nivel!', ic: 'star', className: 'pnl-md pnl-levelup reward-modal', closable: false, actions,
   });
   if (!sh) return;
 
@@ -135,6 +155,16 @@ export function openLevelUp(ctx, params = {}) {
   wrap.append(h('p.pnl-lv-sub', {}, level >= 10 ? '¡Tu reino es cada vez más hermoso!' : '¡Tu ciudad crece, princesa!'));
   if (reward.coins || reward.gems) {
     wrap.append(h('div.pnl-lv-reward', { html: `<small>Premio</small>${costHtml(reward, 26)}` }));
+  }
+  if (chests.length) {
+    const box = h('div.pnl-lv-chests');
+    chests.forEach((t, i) => {
+      box.append(h('div.pnl-lv-chest', { style: { animationDelay: (0.45 + i * 0.12) + 's' }, html: `
+        <span class="pnl-lv-chest-ic ${i === 0 ? 'pnl-shake' : ''}">${chestArt(t, 48)}</span><b>${esc(CHESTS[t].name)}</b>` }));
+    });
+    wrap.append(h('h4.pnl-lv-h', { html: `${icon('gift', 18)} ¡${chests.length > 1 ? 'Cofres' : 'Un cofre'} de regalo!` }), box);
+    if (!canOpen) wrap.append(h('p.pnl-lv-next', { html: `${icon('info', 16)}<span>Te ${chests.length > 1 ? 'esperan' : 'espera'} en <b>Cofres</b>.</span>` }));
+    else if (more) wrap.append(h('p.pnl-lv-next', { html: `${icon('sparkle', 16)}<span>Después vas a ver el <b>nivel ${level + 1}</b>.</span>` }));
   }
   const items = unlocksAt(level, ctx.state);
   if (items.length) {
@@ -180,6 +210,27 @@ export function openLevelUp(ctx, params = {}) {
   sh.later(250, () => burst(innerWidth / 2, innerHeight * 0.32, 120));
   sh.later(900, () => burst(innerWidth / 2, innerHeight * 0.32, 60));
   sh.escAction = () => sh.close();
-  sh.keyHandler = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sh.close(); } };
-  return sh.done;
+  // Enter = botón principal (el último: "Abrir ahora" o "¡Genial!")
+  sh.keyHandler = (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    const btns = sh.el.querySelectorAll('.modal-foot .btn');
+    if (btns.length) btns[btns.length - 1].click(); else sh.close();
+  };
+  // "Abrir ahora": al cerrar la ventana se abren los cofres de este nivel de a uno (la promesa espera a que terminen,
+  // así la siguiente subida de nivel no aparece encima de la animación)
+  return sh.done.then(async (res) => {
+    if (!openNow) return res;
+    try {
+      const ui = await import('../chests/chests-ui.js');
+      for (const t of chests) {
+        if (chestCount(t) <= 0) continue;
+        await ui.openChestFlow(ctx, t);
+      }
+    } catch (e) {
+      console.warn('openChestFlow', e);
+      ctx.ui.toast('Tus cofres te esperan en Cofres', { icon: 'gift' });
+    }
+    return res;
+  });
 }

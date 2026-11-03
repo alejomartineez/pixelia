@@ -3,6 +3,7 @@ import { bus } from './bus.js';
 import { store, todayStr } from './state.js';
 import { MAIN_QUESTS, DAILY_POOL, DAILY_BONUS_ALL, ACHIEVEMENTS, LOGIN_REWARDS, rewardScale } from './data.js';
 import { population, happinessPoints, castleLevel, def } from './economy.js';
+import { streakWithShield, consumeStreakShield, seasonInfo } from '../season/season.js';
 
 const S = () => store.state;
 const changed = () => { store.markDirty(); bus.emit('quests:changed'); };
@@ -145,20 +146,23 @@ export function claimAchievement(id) {
 }
 
 // ---------- Login diario ----------
-/** Devuelve {day(1..7), reward} si hay premio para cobrar hoy, si no null. */
+/**
+ * Devuelve {streak, day(1..7), reward, all, shielded} si hay premio para cobrar hoy, si no null.
+ * Racha que perdona: si faltaste un solo día y queda el escudo de la semana, la racha sigue (shielded: true).
+ */
 export function loginStatus() {
   const s = S();
   const today = todayStr();
   if (s.login.last === today) return null;
-  const y = new Date(); y.setDate(y.getDate() - 1);
-  const streak = s.login.last === todayStr(y) ? s.login.streak + 1 : 1;
+  const { streak, shielded } = streakWithShield(s.login);
   const day = ((streak - 1) % LOGIN_REWARDS.length) + 1;
-  return { streak, day, reward: LOGIN_REWARDS[day - 1], all: LOGIN_REWARDS };
+  return { streak, day, reward: LOGIN_REWARDS[day - 1], all: LOGIN_REWARDS, shielded };
 }
 export function claimLogin() {
   const st = loginStatus();
   if (!st) return null;
   const s = S();
+  if (st.shielded) consumeStreakShield();
   s.login.last = todayStr();
   s.login.streak = st.streak;
   store.setMax('bestStreak', st.streak);
@@ -181,6 +185,10 @@ export function claimableCount() {
 const TRACKED = ['building:built', 'building:upgraded', 'production:collected', 'coins:earned', 'minigame:finished', 'customize:changed', 'item:bought'];
 export function initQuests() {
   ensureDaily();
+  // logro "Estrella de Temporada": mejor nivel del pase alcanzado (sobrevive al cambio de temporada)
+  try { store.setMax('seasonLevelBest', seasonInfo().level); } catch {}
+  bus.on('season:level', ({ level } = {}) => { if (level) store.setMax('seasonLevelBest', level); bus.emit('quests:changed'); });
+  for (const ev of ['chests:changed', 'album:changed']) bus.on(ev, () => bus.emit('quests:changed'));
   bus.on('*', ({ name, payload }) => {
     if (!TRACKED.includes(name)) {
       if (name === 'level:up' || name === 'city:expanded' || name === 'building:upgraded') bus.emit('quests:changed');

@@ -6,6 +6,10 @@ import { Engine, ROWS, COLS, RAINBOW } from './match3-engine.js';
 import { levelConfig, calibrateStars, GEM_NAMES } from './match3-levels.js';
 import { sprites, gemSprite, buildBoard, gemIconUrl, CELL, MARGIN, ART, GEMS } from './match3-sprites.js';
 import { M3_CSS } from './match3-style.js';
+import { boosterRow, consumeSelected, eventChipHtml, itemCount, boosterIcon } from './boosters.js';
+
+const BOOSTERS = ['m3_moves', 'm3_bomb'];
+const EXTRA_MOVES = 5, BOMBS = 2;
 
 const COMBO_TEXT = ['', '', '¡Genial!', '¡Divino!', '¡Increíble!'];
 const HINT_DELAY = 5000;
@@ -55,6 +59,9 @@ export default function create(ctx) {
   let menuLevel = 1;
   let firstMoveDone = false;
   let frozen = false; // solo para pruebas: congela el cuadro actual
+  const boostSel = new Set(); // potenciadores elegidos en la tarjeta previa
+  let boostsUsed = new Set(); // potenciadores activos en el nivel en curso
+  let skipBonus = false;
 
   // ---------- utilidades ----------
   const now = () => performance.now();
@@ -113,6 +120,7 @@ export default function create(ctx) {
     cellCenter(r, c) { return screenOfCell(r, c); },
     fx(kind, r, c, extra = {}) { effects.push({ kind, r, c, color: GEMS[extra.type ?? 0].fx, size: 1.7, targets: [], ...extra, t0: now() - (extra.at || 0), dur: extra.dur || 400 }); },
     freeze(on) { frozen = !!on; },
+    get boosts() { return [...boostsUsed]; }, get boostSel() { return [...boostSel]; }, get bonusing() { return bonusing; }, get speed() { return speed; },
     say(text, n = 2, isBanner = false) { if (isBanner) banner(text, n); else comboText(text, n); },
     finishNow(won) { if (engine && mode === 'play' && !busy) { if (won) engine.cfg.goals.forEach(gl => { if (gl.kind === 'collect') engine.collected[gl.type] = gl.count; if (gl.kind === 'score') engine.score = Math.max(engine.score, gl.target); if (gl.kind === 'ice') { engine.iceLeft = 0; } }); else engine.moves = 0; checkEnd(); } },
   };
@@ -148,7 +156,7 @@ export default function create(ctx) {
     for (const el of flyEls) el.remove();
     flyEls.clear();
     shakeT = 0; if (wrap) wrap.style.transform = '';
-    speed = 1; bonusing = false;
+    speed = 1; bonusing = false; skipBonus = false;
   }
 
   // ---------- loop ----------
@@ -605,10 +613,12 @@ export default function create(ctx) {
     const next = cur + Math.max(1, (target - cur) * Math.min(1, dt * 10));
     disp.shownScore = next >= target - 1 ? target : next;
     hudEls.score.textContent = fmt(disp.shownScore);
-    const [t1, t2, t3] = cfg.stars;
+    const [, , t3] = cfg.stars;
     hudEls.fill.style.width = clamp((disp.shownScore / t3) * 100, 0, 100) + '%';
+    const [, t2] = cfg.stars;
     const goalsOk = cfg.goals.every(gl => engine.goalProgress(gl, disp.snap || engine).done);
-    const lit = (goalsOk && disp.shownScore >= t1 ? 1 : 0) + (goalsOk && disp.shownScore >= t2 ? 1 : 0) + (goalsOk && disp.shownScore >= t3 ? 1 : 0);
+    // 1 estrella = cumplir el objetivo (igual que engine.starsFor); 2 y 3 según el puntaje
+    const lit = goalsOk ? 1 + (disp.shownScore >= t2 ? 1 : 0) + (disp.shownScore >= t3 ? 1 : 0) : 0;
     if (lit !== disp.starsLit) {
       for (let i = 0; i < 3; i++) {
         const sp = hudEls.stars[i];
@@ -645,7 +655,7 @@ export default function create(ctx) {
     return { r, c, ax, ay, ok: engine?.active(r, c) && !!engine.grid[r][c] };
   }
   function onDown(e) {
-    if (bonusing) { e.preventDefault(); if (speed < 4) { speed = 4; audio.sfx('tap'); } return; }
+    if (bonusing) { e.preventDefault(); skipNow(); return; }
     if (mode !== 'play' || !engine) return;
     e.preventDefault();
     lastAction = now(); hint = null;
@@ -731,32 +741,61 @@ export default function create(ctx) {
     }
   }
 
+  // Bonus final: cada movida sobrante se vuelve una rayada y después explotan todas.
+  // Con muchas movidas va más rápido (y de a varias); tocar el tablero o "Saltear" lo resuelve al instante.
   async function doBonus() {
-    speed = 1.8;
     bonusing = true;
-    // tocar el tablero acelera el bonus (puede ser largo si sobraron muchas movidas)
+    skipBonus = false;
+    const left = engine.moves;
+    speed = left > 12 ? 3 : left > 6 ? 2.4 : 1.8;
     footEl.innerHTML = '';
-    footEl.append(ui.h('span.m3-helptext', {}, 'Tocá el tablero para acelerar'));
+    footEl.append(ui.h('button.btn.ghost.small.m3-skip', { html: `${icon('sparkle', 16)} Tocá para saltear`, onclick: (e) => { e.stopPropagation(); skipNow(); } }));
     if (engine.moves > 0) {
       banner('¡Bonus!', 'pink', 1100);
       audio.sfx('levelup');
       await wait(800);
-      while (engine.moves > 0 && alive) {
-        const ph = engine.bonusConvert();
+      while (engine.moves > 0 && alive && !skipBonus) {
+        // de a 1, 2 o 3 a la vez según cuántas queden
+        const per = engine.moves > 14 ? 3 : engine.moves > 7 ? 2 : 1;
+        const phs = [];
+        for (let i = 0; i < per && engine.moves > 0; i++) phs.push(engine.bonusConvert());
         hudEls.movesBox.classList.remove('bump'); void hudEls.movesBox.offsetWidth; hudEls.movesBox.classList.add('bump');
-        await playConvert(ph);
+        await Promise.all(phs.map(ph => playConvert(ph)));
       }
-      await wait(300);
+      if (!skipBonus) await wait(300);
     }
-    for (let k = 0; k < 4 && engine.hasSpecials() && alive; k++) {
+    for (let k = 0; k < 4 && engine.hasSpecials() && alive && !skipBonus; k++) {
       await playPhases(engine.bonusDetonate());
       await wait(120);
     }
+    if (!alive) return;
     speed = 1;
+    if (skipBonus) finishBonusNow();
     bonusing = false;
     footEl.innerHTML = '';
-    disp.snap = null; disp.score = engine.score; refreshHud();
-    await wait(700);
+    disp.snap = null; disp.score = engine.score; disp.moves = engine.moves; refreshHud();
+    await wait(skipBonus ? 500 : 700);
+  }
+  function skipNow() {
+    if (!bonusing || skipBonus) return;
+    skipBonus = true;
+    speed = 6; // lo que esté animándose termina enseguida
+    audio.sfx('tap');
+    footEl.innerHTML = '';
+  }
+  /** resuelve el resto del bonus sin animar cada paso: un flash y el tablero final */
+  function finishBonusNow() {
+    let guard = 0;
+    while (engine.bonusConvert() && guard++ < 99);
+    for (let k = 0; k < 4 && engine.hasSpecials(); k++) engine.bonusDetonate();
+    syncViewsFromEngine();
+    const t0 = now();
+    effects.push({ kind: 'flash', t0, dur: 520 }, { kind: 'ring', r: 3.5, c: 3.5, color: '#ffd166', size: 5, t0, dur: 600 });
+    for (let i = 0; i < 10; i++) burst(Math.floor(Math.random() * ROWS), Math.floor(Math.random() * COLS), GEMS[i % 6].fx, 8, 110);
+    for (const v of views.values()) { v.flash = 1; tween(320, p => { v.flash = 1 - p; }); }
+    audio.sfx('clear'); audio.sfx('star');
+    shake(0.3);
+    hint = null;
   }
 
   async function finish(won) {
@@ -786,7 +825,8 @@ export default function create(ctx) {
     const choice = await ctx.endGame(result);
     if (!alive) return;
     if (choice === 'again') {
-      if (won) showMenu(n + 1); else startLevel(n);
+      // al reintentar, si tiene potenciadores pasa por la tarjeta para poder elegirlos
+      if (won || BOOSTERS.some(id => itemCount(id) > 0)) showMenu(won ? n + 1 : n); else startLevel(n);
     }
   }
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -848,8 +888,11 @@ export default function create(ctx) {
     for (const gl of c.goals) goals.append(ui.h('div.m3-pregoal', { html: `<span class="m3-pgi">${goalIcon(gl, 44)}</span><span>${goalText(gl, c)}</span>` }));
     const meta = ui.h('div.m3-meta', { html: `<span class="chip pink">${icon('wand', 16)} ${c.moves} movidas</span>${c.shape !== 'lleno' ? `<span class="chip lilac">${icon('sparkle', 16)} Tablero ${shapeName(c.shape)}</span>` : ''}` });
     const tip = ui.h('p.m3-tip', { html: `${icon('info', 16)} ${c.tip}` });
-    const play = ui.h('button.btn.pink.block.m3-play', { html: `${icon('play', 22)} ¡Jugar!`, onclick: () => { audio.sfx('tap'); startLevel(n); } });
-    card.append(ribbon, starsRow, goals, meta, tip, play);
+    const evHtml = eventChipHtml('match3', ui.esc);
+    const ev = evHtml ? ui.h('div.m3-event', { html: evHtml }) : null;
+    const boosts = boosterRow(BOOSTERS, boostSel, { audio });
+    const play = ui.h('button.btn.pink.block.m3-play', { html: `${icon('play', 22)} ¡Jugar!`, onclick: () => { audio.sfx('tap'); startLevel(n, consumeSelected(boostSel)); } });
+    card.append(ribbon, starsRow, goals, meta, ...(ev ? [ev] : []), boosts, tip, play);
   }
   function shapeName(s) { return { esquinas: 'esquinitas', centro: 'con laguna', corazon: 'corazón', diamante: 'diamante', cruz: 'cruz', reloj: 'reloj de arena', columnas: 'columnas', castillo: 'castillo', puente: 'puente' }[s] || s; }
   function renderMap(map) {
@@ -899,13 +942,17 @@ export default function create(ctx) {
   }
 
   // ---------- empezar nivel ----------
-  function startLevel(n) {
+  /** boosts: Set de potenciadores ya consumidos de la mochila para este intento */
+  function startLevel(n, boosts = new Set()) {
     resetAsync();
     const st = m3state();
     level = clamp(n, 1, st.level);
     cfg = levelConfig(level);
-    cfg.stars = calibrateStars(cfg);
+    cfg.stars = calibrateStars(cfg); // siempre con las movidas base: los potenciadores no mueven los umbrales
     engine = new Engine(cfg);
+    boostsUsed = new Set(boosts);
+    if (boostsUsed.has('m3_moves')) engine.moves += EXTRA_MOVES;
+    const bombCells = boostsUsed.has('m3_bomb') ? placeBombs(BOMBS) : [];
     boardCanvas = buildBoard(cfg.mask);
     clipPath = new Path2D();
     for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (cfg.mask[r][c]) clipPath.rect(cellX(c), cellY(r), CELL, CELL);
@@ -939,11 +986,56 @@ export default function create(ctx) {
       ps.push(tween(420, p => { v.y = v.y0 - 9 * (1 - p); }, fallEase, delay));
     }
     audio.sfx('swoosh');
-    Promise.all(ps).then(() => {
+    Promise.all(ps).then(async () => {
+      if (!alive || mode !== 'play') return;
+      if (boostsUsed.size) await showBoosts(bombCells);
       if (!alive || mode !== 'play') return;
       busy = false; lastAction = now();
       banner(`Nivel ${level}`, 'pink', 1000);
     });
+  }
+  /** pone n bombas en celdas comunes, lejos de los bordes y separadas entre sí. Devuelve [[r,c],...] */
+  function placeBombs(n) {
+    const cand = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      const gm = engine.grid[r][c];
+      if (!engine.active(r, c) || !gm || gm.special || gm.type >= RAINBOW) continue;
+      const edge = Math.min(r, c, ROWS - 1 - r, COLS - 1 - c);
+      cand.push({ r, c, w: (edge >= 2 ? 3 : edge === 1 ? 2 : 0.6) * (0.5 + Math.random()) });
+    }
+    cand.sort((a, b) => b.w - a.w);
+    const out = [];
+    for (const k of cand) {
+      if (out.length >= n) break;
+      if (out.some(([r, c]) => Math.abs(r - k.r) + Math.abs(c - k.c) < 3)) continue;
+      engine.grid[k.r][k.c].special = 'bomb';
+      out.push([k.r, k.c]);
+    }
+    return out;
+  }
+  /** presentación de los potenciadores al empezar */
+  async function showBoosts(bombCells) {
+    if (boostsUsed.has('m3_moves')) {
+      banner(`¡+${EXTRA_MOVES} movidas!`, 'gold', 1100);
+      audio.sfx('star');
+      const r = hudEls?.movesBox.getBoundingClientRect();
+      if (r) ui.floatText(r.left + r.width / 2, r.bottom + 6, `${boosterIcon('m3_moves', 22)} +${EXTRA_MOVES}`, 'm3-pts');
+      hudEls?.movesBox.classList.remove('bump'); void hudEls?.movesBox.offsetWidth; hudEls?.movesBox.classList.add('bump');
+      await wait(900);
+    }
+    if (bombCells.length) {
+      if (!boostsUsed.has('m3_moves')) { banner('¡Bombas de Joyas!', 'gold', 1100); }
+      audio.sfx('gem');
+      for (const [r, c] of bombCells) {
+        const gm = engine.grid[r][c];
+        const v = gm && views.get(gm.id);
+        effects.push({ kind: 'ring', r, c, color: '#ffd166', size: 1.6, t0: now(), dur: 450 });
+        sparkles(r, c, 8, '#fff0c2');
+        if (v) tween(360, p => { v.flash = 1 - p; v.scale = 1 + 0.35 * Math.sin(p * Math.PI); });
+        await wait(160);
+      }
+      await wait(500);
+    }
   }
 
   return {

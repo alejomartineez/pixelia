@@ -7,12 +7,15 @@ import * as carLib from '../avatar/car.js';
 import { LEVELS, LEVEL_COUNT } from './parking-levels.js';
 import { buildWorld } from './parking-world.js';
 import { PARKING_CSS } from './parking-style.js';
+import { boosterRow, consumeSelected, eventChipHtml, boosterIcon } from './boosters.js';
 import {
   makeCar, placeCar, stepCar, makeBox, setBox, collideBoxes, circleVsBox, spotCheck,
   CAR_HW, CAR_HL, CONE_R, DEG, clamp,
 } from './parking-physics.js';
 
 const MAX_TOUCHES = 5;
+const BOOST_ID = 'park_time';  // Reloj Extra (mochila de cofres): +30 s y 2 toques gratis
+const BOOST_TIME = 30, BOOST_FREE = 2;
 const HOLD_TIME = 1.0;     // segundos quieta adentro para ganar
 const FOV = 34;
 const PITCH = 58 * DEG;
@@ -45,6 +48,9 @@ export default function create(ctx) {
   let phase = 'intro';          // intro | play | paused | won | lost
   let elapsed = 0, touches = 0, hold = 0, lastShownSec = -1;
   let shake = 0, puffT = 0, hitFlash = 0, globalCool = 0;
+  // potenciador: elegido en la tarjeta / activo en el intento / nivel ya pagado (Reiniciar lo conserva)
+  const boostSel = new Set();
+  let timeBonus = 0, freeTouches = 0, paidLevel = 0;
   const status = { inside: false, aligned: false, fill: 0, angleOff: 0, hold: 0, done: false };
   const keys = { gas: false, rev: false, left: false, right: false, brake: false };
   const touch = { gas: new Set(), rev: new Set(), left: new Set(), right: new Set() };
@@ -89,7 +95,7 @@ export default function create(ctx) {
         <div class="game-title pk-title">Nivel 1</div>
         <div class="spacer"></div>
         <div class="game-stat pk-time"><small>Tiempo</small><b>0:00</b></div>
-        <div class="game-stat pk-hits"><small>Toques</small><b>0/${MAX_TOUCHES}</b></div>
+        <div class="game-stat pk-hits"><small>Toques</small><b>0/${MAX_TOUCHES}</b><i class="pk-freeb" hidden></i></div>
         <button class="icon-btn pk-pause" aria-label="Pausa">${icon('pause', 22)}</button>
       </div>
       <div class="pk-goal"></div>
@@ -162,7 +168,10 @@ export default function create(ctx) {
   function refreshBar() {
     $.title.textContent = `Nivel ${lvNum}`;
     setStat($.hits, `${touches}/${MAX_TOUCHES}`, touches >= 3);
-    const left = level.limit - elapsed;
+    const fb = $.hits.querySelector('.pk-freeb');
+    fb.hidden = freeTouches <= 0;
+    if (freeTouches > 0) fb.innerHTML = `${boosterIcon(BOOST_ID, 14)}${freeTouches} gratis`;
+    const left = level.limit + timeBonus - elapsed;
     setStat($.time, fmtTime(left), phase === 'play' && left <= 15);
   }
 
@@ -188,12 +197,15 @@ export default function create(ctx) {
           <span>${icon('clock', 16)} ${fmtTime(level.limit)}</span>
           <span>${icon('star', 16)}${icon('star', 16)}${icon('star', 16)} sin toques y en menos de ${level.par} s</span>
         </div>
+        ${eventChipHtml('parking', ui.esc) ? `<div class="pk-card-event">${eventChipHtml('parking', ui.esc)}</div>` : ''}
+        <div class="pk-card-boost"></div>
         <div class="pk-card-btns">
           <button class="btn ghost pk-levels">${icon('map', 20)} Niveles</button>
           <button class="btn pink pk-play">${icon('play', 20)} ¡Jugar!</button>
         </div>
         <small class="pk-card-keys">Enter o ↑ para jugar</small>
       </div>`;
+    $.intro.querySelector('.pk-card-boost').append(boosterRow([BOOST_ID], boostSel, { audio, title: 'Potenciador' }));
     $.intro.classList.add('show');
     $.intro.querySelector('.pk-play').addEventListener('click', () => { audio.sfx('select'); startPlay(); });
     $.intro.querySelector('.pk-levels').addEventListener('click', () => { audio.sfx('tap'); openLevels(); });
@@ -280,25 +292,39 @@ export default function create(ctx) {
     syncPlayer(0);
     cam.init = false;
     hintTimer = 0; hintSticky = '';
+    timeBonus = 0; freeTouches = 0;
     // siempre volver a 'intro' antes de arrancar: si venía de 'paused' (Reiniciar), startPlay no hacía nada y el juego quedaba congelado
     phase = 'intro';
     refreshBar();
     showHint('');
-    if (autoStart) { $.goal.textContent = level.goal; startPlay(); }
-    else showIntro();
+    // Reiniciar (pausa / R) el mismo nivel conserva el Reloj Extra que ya se gastó en este nivel
+    if (autoStart) { $.goal.textContent = level.goal; startPlay(paidLevel === lvNum ? new Set([BOOST_ID]) : new Set()); }
+    else { paidLevel = 0; showIntro(); }
   }
 
   // que un botón con foco (¡Jugar!, pausa) no se active con Espacio/Enter mientras manejás
   function dropFocus() { const a = document.activeElement; if (a && root?.contains(a)) a.blur(); }
 
-  function startPlay() {
+  /** boosts: potenciadores para este intento (por defecto, los elegidos en la tarjeta: se gastan acá) */
+  function startPlay(boosts) {
     if (phase !== 'intro') return;
+    if (!boosts) boosts = consumeSelected(boostSel);
     dropFocus();
     hideIntro();
     phase = 'play';
     audio.sfx('horn');
     const p = screenOf(car.x, 0.6, car.z);
     if (p) ui.floatText(p.x, p.y - 30, '¡Vamos!', 'pk-go');
+    if (boosts.has(BOOST_ID)) {
+      timeBonus = BOOST_TIME; freeTouches = BOOST_FREE; paidLevel = lvNum;
+      lastShownSec = -1;
+      refreshBar();
+      bump($.time); bump($.hits);
+      setTimeout(() => { if (!dead) audio.sfx('star'); }, 200);
+      const r = $.time.getBoundingClientRect();
+      ui.floatText(r.left + r.width / 2, r.bottom + 16, `${boosterIcon(BOOST_ID, 22)} +${BOOST_TIME} s`, 'pk-go');
+      showHint(`¡Reloj Extra! +${BOOST_TIME} s y ${BOOST_FREE} toques gratis`, 0, 'good', 2.6);
+    }
   }
 
   // ---------- Entrada ----------
@@ -344,6 +370,18 @@ export default function create(ctx) {
   }
 
   function registerTouch(x, z, strong) {
+    if (freeTouches > 0) {
+      // toque gratis del Reloj Extra: no cuenta (ni para perder ni para las estrellas)
+      freeTouches--;
+      globalCool = 0.35; shake = 0.15; hitFlash = 0.2;
+      audio.sfx('bump');
+      world.fx.burst(x, 0.3, z, 6, 1.2);
+      const p = screenOf(x, 0.5, z);
+      if (p) ui.floatText(p.x, p.y, '¡Toque gratis!', 'pk-go');
+      bump($.hits);
+      refreshBar();
+      return;
+    }
     touches++;
     globalCool = 0.35;
     shake = strong ? 0.3 : 0.2;
@@ -424,7 +462,7 @@ export default function create(ctx) {
     updateHint();
     if (hold >= HOLD_TIME) { win(); return; }
 
-    const left = level.limit - elapsed;
+    const left = level.limit + timeBonus - elapsed;
     const sec = Math.ceil(left);
     if (sec !== lastShownSec) { lastShownSec = sec; refreshBar(); if (sec <= 10 && sec > 0) audio.sfx('tap'); }
     if (left <= 0) lose('time');
@@ -488,6 +526,7 @@ export default function create(ctx) {
 
   async function finish(won, reason) {
     if (dead) return;
+    paidLevel = 0;
     const st = pstate();
     const n = lvNum;
     let choice;
@@ -720,8 +759,8 @@ export default function create(ctx) {
       window.__parking = {
         get car() { return car; }, get phase() { return phase; }, get level() { return lvNum; },
         get touches() { return touches; }, get status() { return status; }, get spot() { return world?.spot; },
-        get elapsed() { return elapsed; },
-        load: (n) => loadLevel(n), play: () => startPlay(),
+        get elapsed() { return elapsed; }, get freeTouches() { return freeTouches; }, get timeBonus() { return timeBonus; },
+        load: (n) => loadLevel(n), play: () => startPlay(), touch: () => { if (phase === 'play') registerTouch(car.x, car.z, false); },
       };
     },
     unmount() {

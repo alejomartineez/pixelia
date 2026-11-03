@@ -277,6 +277,79 @@ export const PANEL_CSS = `
 .pnl-lv-empty { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 12px; text-align: left; font-size: 15px; background: var(--mint-l); border: 2px solid var(--ink); border-radius: 12px; }
 .pnl-lv-next { display: flex; align-items: center; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 10px 0 0; font-size: 14px; color: var(--ink-l); }
 
+/* ---------- Premios con cofres / figuritas / objetos ---------- */
+.pnl-rw { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.pnl-rw > span { font-size: inherit; }
+.pnl-q-rew .pnl-rw > span:not(:first-child), .pnl-reward .pnl-rw > span { font-weight: 700; }
+.pnl-newchip { font-size: 11px; padding: 0 6px; }
+.pnl-gemrew { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+
+/* ---------- Escudo de racha (premio diario) ---------- */
+.pnl-shield { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 12px; text-align: left;
+  background: linear-gradient(135deg, var(--sky-l), var(--mint-l)); border: var(--line) solid var(--ink); border-radius: 14px; box-shadow: 0 3px 0 var(--ink); }
+.pnl-shield-ic { flex: none; display: grid; place-items: center; width: 52px; height: 52px; background: #fff; border: 2px solid var(--ink); border-radius: 50%; }
+.pnl-shield > span:last-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pnl-shield b { font-size: 18px; color: var(--ink); }
+.pnl-shield small { font-size: 13px; color: var(--ink-l); line-height: 1.2; }
+.pnl-day.chest.big { background: linear-gradient(135deg, #eef3fb, var(--sky-l)); }
+.pnl-day.big .pnl-day-rw { font-size: 13px; }
+.pnl-stage-reward { align-items: center; }
+.pnl-stage-chest { display: grid; place-items: center; }
+
+/* ---------- Cofres al subir de nivel ---------- */
+.pnl-lv-chests { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; }
+.pnl-lv-chest { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 104px; padding: 8px 10px 6px; background: linear-gradient(#fff, var(--gold-l));
+  border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); animation: pnlPop .45s cubic-bezier(.3,1.8,.6,1) both; }
+.pnl-lv-chest b { font-size: 14px; line-height: 1.1; }
+.pnl-lv-chest-ic { display: grid; place-items: center; width: 56px; height: 56px; }
+.pnl-levelup .modal-foot .btn.ghost { flex: 0 0 auto; min-width: 110px; }
+
+/* ---------- Minijuegos: eventos y mochila ---------- */
+.pnl-evstrip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.pnl-evcard { flex: 1 1 220px; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 6px 10px; text-align: left; cursor: pointer; font: inherit; color: var(--ink);
+  background: linear-gradient(135deg, #fff, var(--ec, var(--gold))); border: var(--line) solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+.pnl-evcard:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.pnl-evcard-ic { flex: none; display: grid; place-items: center; width: 40px; height: 40px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; }
+.pnl-evcard-txt { display: flex; flex-direction: column; min-width: 0; }
+.pnl-evcard-txt b { font-size: 16px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pnl-evcard-txt small { display: flex; align-items: center; gap: 3px; font-size: 13px; font-weight: 700; color: var(--ink-l); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pnl-evchip { background: color-mix(in srgb, var(--ec, var(--gold)) 45%, #fff); }
+.pnl-bag { padding: 0; margin-bottom: 12px; overflow: hidden; }
+.pnl-bag-head { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 12px; text-align: left; font: inherit; color: var(--ink); background: linear-gradient(135deg, #fff, var(--lilac-l)); border: 0; cursor: pointer; min-height: 56px; }
+.pnl-bag-ic { flex: none; display: grid; place-items: center; width: 42px; height: 42px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; }
+.pnl-bag-txt { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.pnl-bag-txt b { font-size: 17px; line-height: 1.1; }
+.pnl-bag-txt small { font-size: 13px; color: var(--ink-l); }
+.pnl-bag-txt small b { font-size: inherit; color: var(--ink); }
+.pnl-bag-arrow { flex: none; display: grid; place-items: center; width: 32px; height: 32px; }
+.pnl-bag-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; border-top: 2px dashed var(--ink-ll); }
+.pnl-bag-row { display: flex; flex-direction: column; gap: 6px; }
+.pnl-bag-game { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.pnl-bag-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.pnl-bag-item { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; }
+.pnl-bag-item > span { display: flex; flex-direction: column; min-width: 0; line-height: 1.1; }
+.pnl-bag-item b { font-size: 13px; }
+.pnl-bag-item small { font-size: 13px; font-weight: 700; color: var(--pink-d); }
+.pnl-bag-item.none { opacity: .5; background: #f6eff8; }
+.pnl-bag-item.none small { color: var(--ink-l); }
+
+/* ---------- Ajustes: cuenta y amigas ---------- */
+.pnl-acc { gap: 10px; }
+.pnl-acc-status { display: flex; flex-direction: column; gap: 6px; }
+.pnl-acc-status .pnl-chips { justify-content: flex-start; }
+.pnl-acc-status p { margin: 0; line-height: 1.25; word-break: break-word; }
+.pnl-acc-btns { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+@media (min-width: 480px) { .pnl-acc-btns:has(> :nth-child(2)) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pnl-friendcode { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: linear-gradient(135deg, var(--pink-l), var(--lilac-l));
+  border: var(--line) solid var(--ink); border-radius: 12px; }
+.pnl-friendcode-l { display: flex; flex-direction: column; min-width: 0; }
+.pnl-friendcode small { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; font-weight: 700; color: var(--ink-l); }
+.pnl-friendcode-txt { font-size: 30px; letter-spacing: 6px; line-height: 1.05; color: var(--ink); font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; }
+
+/* ---------- Ayuda en grupos ---------- */
+.pnl-help-groups { display: flex; flex-direction: column; gap: 14px; }
+.pnl-help-h { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 18px; padding-bottom: 6px; border-bottom: 2px dashed #f0d2e2; }
+
 @media (max-width: 380px) {
   .pnl-tabs { gap: 6px; padding: 12px 10px 10px; }
   .pnl-tabs .tab { font-size: 14px; gap: 3px; }
