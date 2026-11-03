@@ -28,12 +28,28 @@ const BASE = `http://127.0.0.1:${server.address().port}/`;
 const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
-async function open(query) {
+async function open(query, { emptyConfig = false } = {}) {
   const page = await browser.newPage();
+  if (emptyConfig) {
+    // Simula un config.js vacío (el real ya apunta al Supabase del proyecto).
+    await page.setRequestInterception(true);
+    page.on('request', r => r.url().endsWith('/src/online/config.js')
+      ? r.respond({ contentType: 'text/javascript', body: "export const SUPABASE_URL = ''; export const SUPABASE_ANON_KEY = '';" })
+      : r.continue());
+  }
   page.on('pageerror', e => errors.push('PAGEERROR: ' + (e.stack || e.message)));
   page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE.ERROR: ' + m.text()); });
   await page.goto(BASE + query + '&nosplash&nosw', { waitUntil: 'load' });
+  await booted(page);
   return page;
+}
+/** Espera a que el juego termine de arrancar (y en mock, a que entre la sesión de ?mockuser). */
+async function booted(page) {
+  await page.waitForFunction(() => {
+    const P = window.__pixelia, q = new URLSearchParams(location.search);
+    return P && P.net && (!q.get('mockuser') || P.net.user);
+  }, { timeout: 20000 }).catch(() => {});
+  await new Promise(r => setTimeout(r, 300));
 }
 /** Corre código async en la página con `net`, `m` (net.js) y `sync` (sync.js) disponibles. */
 const run = (page, code) => page.evaluate(async (code) => {
@@ -50,7 +66,7 @@ const section = t => console.log('\n■', t);
 try {
   // ---------------------------------------------------------------
   section('Modo off');
-  const off = await open('?scene=city&reset');
+  const off = await open('?scene=city&reset', { emptyConfig: true });
   const offr = await run(off, `return { mode: net.mode, user: net.user, g: await net.sendGift('x','gift',{}), f: await net.listFriends(), s: await net.signIn('a@b.c','123456') }`);
   ok(offr.mode === 'off' && offr.user === null, 'sin config ni ?mock → modo off, user null');
   ok(offr.g.error === 'Modo sin conexión' && offr.f.error === 'Modo sin conexión' && offr.s.error === 'Modo sin conexión', 'todo devuelve { error: "Modo sin conexión" } sin tirar');
@@ -61,6 +77,7 @@ try {
   const A = await open('?scene=city&mock=1&mockuser=ana&reset');
   await A.evaluate(() => { localStorage.removeItem('pixelia.mockdb'); localStorage.removeItem('pixelia.sync'); });
   await A.reload({ waitUntil: 'load' });
+  await booted(A);
   const B = await open('?scene=city&mock=1&mockuser=bea');
   const a = await run(A, `return { mode: net.mode, user: net.user, p: await net.getMyProfile() }`);
   const b = await run(B, `return { user: net.user, p: await net.getMyProfile() }`);

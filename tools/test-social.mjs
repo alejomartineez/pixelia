@@ -54,8 +54,15 @@ async function setDevice(page, device) {
   await ev(page, `const { todayStr } = await import('/src/core/state.js'); P.store.state.login.last = todayStr(); ctx.ui.closeAllModals();`);
   await sleep(500);
 }
-async function open(query, device = 'iphone') {
+async function open(query, device = 'iphone', { emptyConfig = false } = {}) {
   const page = await browser.newPage();
+  if (emptyConfig) {
+    // Simula un config.js vacío (el real ya apunta al Supabase del proyecto).
+    await page.setRequestInterception(true);
+    page.on('request', r => r.url().endsWith('/src/online/config.js')
+      ? r.respond({ contentType: 'text/javascript', body: "export const SUPABASE_URL = ''; export const SUPABASE_ANON_KEY = '';" })
+      : r.continue());
+  }
   await page.setViewport(VIEW[device]);
   if (device === 'iphone') await page.setUserAgent(UA_IPHONE);
   const tag = (query.match(/mockuser=(\w+)/) || [, query.includes('mock') ? 'mock' : 'off'])[1];
@@ -328,7 +335,7 @@ try {
   await click(A, '.soc-cf .soc-card:not(.rec) .btn');
   ok((await cfP) === 'local', 'elegir partida resuelve la promesa de handleConflict');
 
-  const O = await open('?scene=city&reset');
+  const O = await open('?scene=city&reset', 'iphone', { emptyConfig: true });
   await ev(O, `const { todayStr } = await import('/src/core/state.js'); P.store.state.login.last = todayStr(); ctx.ui.closeAllModals(); await ctx.openAccount();`);
   await O.waitForSelector('.modal.soc-account', { timeout: 8000, polling: 150 });
   ok(await O.$eval('.modal.soc-account', el => el.textContent.includes('se configure el servidor')), 'modo off: explica que el online llega cuando se configure el servidor');

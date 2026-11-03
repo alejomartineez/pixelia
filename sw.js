@@ -4,12 +4,12 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v8';
+const VERSION = 'pixelia-v9';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
-  './vendor/three.min.js', './fonts/jersey10.woff2', './icons/apple-touch-icon.png', './icons/icon-192.png', './icons/icon-512.png',
-  './icons/icon-maskable-512.png',
+  './vendor/three.min.js', './fonts/jersey10.woff2', './icons/apple-touch-icon.png', './icons/favicon-32.png', './icons/icon-192.png',
+  './icons/icon-512.png', './icons/icon-maskable-512.png',
   './src/main.js',
   './src/album/album-art.js', './src/album/album-ui.js', './src/album/album.js',
   './src/avatar/avatar-heads.js', './src/avatar/avatar-kit.js', './src/avatar/avatar-outfits.js', './src/avatar/avatar-props.js', './src/avatar/avatar.js',

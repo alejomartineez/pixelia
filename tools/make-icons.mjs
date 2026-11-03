@@ -79,4 +79,5 @@ make(192, 'icon-192.png');
 make(512, 'icon-512.png');
 make(180, 'apple-touch-icon.png');
 make(512, 'icon-maskable-512.png', 0.2);
+make(32, 'favicon-32.png', 0);   // sin margen: celdas de 2 px exactos, nítido en la pestaña
 console.log('íconos generados en', OUT);

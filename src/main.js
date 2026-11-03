@@ -341,7 +341,11 @@ function initProgression() {
   rewardArt.chestName = (type) => chests.CHESTS[type]?.name || 'Cofre';
 }
 
+// preloader inline de index.html (window.__boot); en páginas de herramientas puede no existir
+const bootUi = window.__boot || null;
+
 async function boot() {
+  bootUi?.started();
   store.load();
   applyDebugParams();
   audio.configure(store.state.settings);
@@ -368,26 +372,47 @@ async function boot() {
   if (net.mode !== 'off') startOnline();
   else setTimeout(loadSocial, 1500);
 
+  // Splash = preloader de index.html (mismo fondo y logo): mientras se ve, se baja la primera escena (con three.js).
+  // Normal: cuando está todo, pasa a "Tocá para jugar" (el toque desbloquea el audio en iOS) y se va al montar la escena.
+  // ?nosplash / ?scene=: no espera el toque; el preloader queda encima (sin capturar toques) hasta que la escena se monta.
   const splash = document.getElementById('splash');
   const startScene = params.get('scene') || 'city';
   const skipSplash = params.has('scene') || params.has('nosplash');
+  // partida nueva sin ?scene=: primero el onboarding (al terminar entra a la ciudad)
+  const first = !store.state.onboarded && !params.has('scene') ? 'onboarding' : startScene;
+  const cssReady = new Promise(r => (bootUi ? bootUi.whenCss(r) : r()));
+  // si la primera escena (o three.js) no baja, el preloader muestra "No pudimos abrir Pixelia" + Reintentar
+  // en vez de ofrecer "Tocá para jugar" y dejar una pantalla vacía
+  let bootFailed = false;
+  const failBoot = () => { bootFailed = true; splash.classList.remove('ready', 'passive'); bootUi?.fail(); };
+  const scenePrefetch = (SCENES[first]?.() || Promise.resolve())
+    .then(() => { bootUi?.tick('scene'); return true; }, e => { console.warn('[boot] precarga de escena', e); return false; });
+  // onboarding: la ciudad se baja de fondo mientras se elige personaje
+  if (first === 'onboarding') scenePrefetch.then(ok => ok && setTimeout(() => SCENES.city().catch(() => {}), 1500));
 
   let started = false;
   const begin = async () => {
-    if (started) return;
+    if (started || bootFailed) return;
     started = true;
     audio.unlock();
+    splash.classList.remove('ready');
+    bootUi?.start();
+    await cssReady;   // sin estilos, #scene no tiene tamaño y la escena se montaría en 0x0
+    const ok = await router.go(first, Object.fromEntries(params));   // en la ciudad, go() ya arranca la bienvenida/premio diario
+    if (!ok) { failBoot(); return; }   // no se pudo montar ninguna escena (ni la ciudad de respaldo): el preloader queda con el aviso
+    bootUi?.done();
     splash.classList.add('hide');
     setTimeout(() => splash.remove(), 500);
-    // partida nueva sin ?scene=: primero el onboarding (al terminar entra a la ciudad)
-    const first = !store.state.onboarded && !params.has('scene') ? 'onboarding' : startScene;
-    await router.go(first, Object.fromEntries(params));   // en la ciudad, go() ya arranca la bienvenida/premio diario
   };
-  if (skipSplash) begin();
+  if (skipSplash) { splash.classList.add('passive'); begin(); }
   else {
-    splash.classList.add('ready');
-    splash.addEventListener('click', begin, { once: true });
+    splash.addEventListener('click', begin);
     addEventListener('keydown', function k(e) { if (e.key === 'Enter' || e.key === ' ') { removeEventListener('keydown', k); begin(); } });
+    Promise.all([scenePrefetch, cssReady]).then(([ok]) => {
+      if (!ok) { failBoot(); return; }
+      bootUi?.ready();
+      setTimeout(() => { if (!started) splash.classList.add('ready'); }, bootUi ? 300 : 0);   // deja ver la barra llena
+    });
   }
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:' && !params.has('nosw') && !['localhost', '127.0.0.1'].includes(location.hostname)) {
