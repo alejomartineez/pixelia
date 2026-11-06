@@ -1,17 +1,20 @@
 {
-  "name": "tools",
+  "name": "pixelia-tools",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Herramientas de desarrollo y pruebas de Pixelia",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "node serve.mjs",
+    "serve:lan": "node serve.mjs --lan",
+    "test": "node test-e2e.mjs && node test-stress.mjs && node test-visit.mjs && node test-mock.mjs && node test-social.mjs && node test-sql.mjs",
+    "test:live": "node test-live.mjs",
+    "bump": "node gen-sw-core.mjs --bump",
+    "check": "node gen-sw-core.mjs --check"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "@electric-sql/pglite": "^0.5.14",
     "puppeteer-core": "^25.16.0"
-  }
+  },
+  "private": true
 }

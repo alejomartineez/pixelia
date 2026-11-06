@@ -13,13 +13,13 @@ Es 100% estático: HTML + JavaScript, sin servidor ni base de datos. El progreso
 
 ## Probar en la PC
 
-Cualquier servidor estático sirve, por ejemplo:
-
 ```bash
-npx serve .
+cd tools
+npm install        # solo la primera vez (Chrome headless y PGlite para las pruebas)
+npm run serve      # http://127.0.0.1:5173/  ·  npm run serve:lan para abrirlo desde el celu
 ```
 
-y abrí la dirección que muestra. (Abrir `index.html` con doble clic no funciona: los módulos JS necesitan http.)
+Cualquier otro servidor estático también sirve (por ejemplo `npx serve .`). Pruebas: `npm test`. (Abrir `index.html` con doble clic no funciona: los módulos JS necesitan http.)
 
 Atajos para probar: `?cheat=15` (monedas, gemas y nivel 15), `?reset` (borra la partida), `?scene=match3` (abre una escena directo).
 
