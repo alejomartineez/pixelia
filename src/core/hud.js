@@ -1,5 +1,5 @@
 // HUD de la ciudad.
-//  arriba:     perfil (nivel, nombre, xp; tocarlo abre Ajustes) + monedas y gemas
+//  arriba:     perfil (nivel, nombre, xp; tocarlo abre Ajustes) + botón de Ajustes + monedas y gemas
 //  izquierda:  población / felicidad / constructoras, efectos activos con tiempo, misión actual
 //  derecha:    botones redondos con globito: Cofres, Pase, Álbum, Evento
 //  abajo:      Juegos · Misiones · Construir · Vestidor · Amigos
@@ -38,8 +38,8 @@ function render() {
           <b data-hud="name">${esc(s.player.name)}</b>
           <span class="hud-xp" data-hud="xp">${progressHtml(xp.pct, 'xp')}</span>
         </span>
-        <i class="hud-gear" aria-hidden="true">${icon('gear', 16)}</i>
       </button>
+      <button class="hud-cfg" data-act="settings" aria-label="Ajustes" title="Ajustes">${icon('gear', 28)}<span>Ajustes</span></button>
       <div class="hud-res">
         <div class="pill" data-hud="coins">${icon('coin', 20)}<b>${fmtNum(s.coins)}</b></div>
         <div class="pill gem" data-hud="gems">${icon('gem', 20)}<b>${fmtNum(s.gems)}</b></div>
