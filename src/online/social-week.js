@@ -25,7 +25,7 @@ function celebrateGot(el, got) {
 function weekLabel(w) { return `Semana ${Number(String(w).split('W')[1]) || ''}`; }
 function smallConnect(api, text) {
   const c = h('div.soc-card.sky.soc-row', { html: `${icon('people', 30)}<span class="soc-grow soc-muted">${text}</span>` });
-  if (net.mode !== 'off') c.append(h('button.btn.pink.small', { html: 'Entrar', onclick: () => { audio.sfx('tap'); openAccount(api.ctx); } }));
+  if (net.mode !== 'off') c.append(h('button.btn.primary.small', { html: 'Entrar', onclick: () => { audio.sfx('tap'); openAccount(api.ctx); } }));
   return c;
 }
 
@@ -44,7 +44,7 @@ export async function renderRanking(api, tok) {
 
   function draw() {
     const info = rankInfo();
-    const me = { id: 'me', name: myName(), level: store.state.player.level, week: info.mine, me: true, look: store.state.princess };
+    const me = { id: 'me', name: myName(), level: store.state.player.level, week: info.mine, me: true, look: store.state.avatar };
     let rows = net.user && board ? board.map(r => (r.me ? { ...me, id: r.id } : { ...r, look: lookOf(r.id) })) : [me];
     const val = r => (cat === 'level' ? r.level || 1 : r.week?.[cat] || 0);
     rows = rows.map(r => ({ ...r, v: val(r) })).sort((a, b) => b.v - a.v || (b.me ? 1 : 0) - (a.me ? 1 : 0) || String(a.name).localeCompare(String(b.name)));
@@ -120,7 +120,7 @@ export async function renderRanking(api, tok) {
 }
 
 // ---------- Obra en Equipo ----------
-const SITE = ['🚧', '🧱', '🏗️', '🏠', '🏡', '🏰'];
+const SITE = ['🚧', '🧱', '🏗️', '🏠', '🏡', '🏛️'];
 export async function renderTeam(api, tok) {
   const { pane } = api;
   if (net.user && !cache.coop) pane.innerHTML = loadingHtml('Mirando la obra…');
@@ -194,7 +194,7 @@ export async function renderTeam(api, tok) {
     const max = Math.max(1, ...info.members.map(m => m.points));
     for (const m of info.members) {
       ms.append(h('div.soc-card.soc-mem' + (m.me ? '.me' : ''), {
-        html: `${avatarHtml(m.me ? store.state.princess : lookOf(m.id), m.name, 36, m.me ? 'me' : '')}
+        html: `${avatarHtml(m.me ? store.state.avatar : lookOf(m.id), m.name, 36, m.me ? 'me' : '')}
           <div class="soc-grow"><b class="soc-ellip" style="display:block">${esc(m.me ? `${myName()} (vos)` : m.name || 'Alguien')}</b><div class="soc-mbar"><i style="width:${(m.points / max * 100).toFixed(1)}%"></i></div></div>
           <b>${fmtNum(m.points)}</b>`,
       }));

@@ -1,18 +1,18 @@
 // Modelo vóxel del personaje del jugador (y de las vecinas), estilo chibi tierno: cabeza grande, ojitos con brillo
-// en alta resolución, cachetes rosas. Tipos: princesa, príncipe, chica, chico, hada, mago y animalitos
-// (gatito, zorrito, conejito, osito), cada uno con su ropa y accesorios (ver data.js → AVATAR_TYPES).
+// en alta resolución, cachetes rosados. Tipos: chica, chico y animalitos (gatito, zorrito, conejito, osito), cada uno
+// con su ropa y accesorios (ver data.js → AVATAR_TYPES). Los tipos viejos (princesa, príncipe, hada, mago) se traducen.
 // API:
-//   avatarModel(look, opts) -> THREE.Group  (altura ≈ 1 unidad, mira a +Z, base en y=0)   [alias: princessModel]
+//   avatarModel(look, opts) -> THREE.Group  (altura ≈ 1 unidad, mira a +Z, base en y=0)
 //     look = store.state.avatar = { type, skin, hair, hairColor, dress, dressColor, crown, acc }
 //     group.userData.update(dt, moving)  — camina (piernas/brazos/rebote) o idle (respira, parpadea, mueve la cola)
 //     opts.seated: true  -> sin piernas ni falda, brazos al frente (para manejar el auto)
 //     opts.npc / opts.lowDetail: versión liviana para vecinas (3 mallas: cuerpo fusionado + 2 piernas)
 //   randomLook(seed) -> look válido determinista de cualquier tipo (vecinas NPC)
-//   normalizeLook(look) -> look completo y válido para su tipo (looks viejos sin type = princesa)
+//   normalizeLook(look) -> look completo y válido para su tipo (looks viejos: ver LEGACY_TYPES/LEGACY_ITEMS)
 // Las geometrías se cachean por pieza+colores: crear muchos personajes es barato.
 import * as THREE from 'three';
 import {
-  AVATAR_TYPES, avatarType, fitsType, SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, HAIR_STYLES, DRESS_STYLES, CROWNS, ACCESSORIES,
+  AVATAR_TYPES, avatarType, fitsType, LEGACY_TYPES, LEGACY_ITEMS, SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS, HAIR_STYLES, DRESS_STYLES, CROWNS, ACCESSORIES,
 } from '../core/data.js';
 import {
   S, AVATAR_VOXEL, cachedGeo, cacheGet, cacheSet, meshOf, pivot, hairPal, hairHex, outfitHex, furPal, paintFur,
@@ -28,13 +28,12 @@ import {
 } from './avatar-props.js';
 
 export { AVATAR_VOXEL };
-/** Alias viejo (car.js y otros). */
-export const PRINCESS_VOXEL = AVATAR_VOXEL;
 
-/** Completa/corrige un look: tipo válido (default princesa) y piezas que sirvan para ese tipo. */
+/** Completa/corrige un look: tipo válido (default chica; los de realeza se traducen) y piezas que sirvan para ese tipo. */
 export function normalizeLook(look = {}) {
   look = look && typeof look === 'object' ? look : {};
-  const t = avatarType(look.type);
+  const t = avatarType(LEGACY_TYPES[look.type] || (look.type === undefined ? 'chica' : look.type));
+  const old = (kind, id) => LEGACY_ITEMS[kind]?.[id] || id;
   const def = t.look;
   const piece = (list, id, d) => { const it = list.find(i => i.id === id); return it && fitsType(it, t.id) ? id : d; };
   const color = (list, id, d) => (list.some(i => i.id === id) ? id : d);
@@ -47,8 +46,8 @@ export function normalizeLook(look = {}) {
     hairColor: color(HAIR_COLORS, look.hairColor, def.hairColor),
     dress: piece(DRESS_STYLES, look.dress, def.dress),
     dressColor: color(OUTFIT_COLORS, look.dressColor, def.dressColor),
-    crown: piece(CROWNS, look.crown, def.crown),
-    acc: piece(ACCESSORIES, look.acc, def.acc),
+    crown: piece(CROWNS, old('crown', look.crown), def.crown),
+    acc: piece(ACCESSORIES, old('acc', look.acc), def.acc),
   };
 }
 
@@ -305,8 +304,6 @@ export function avatarModel(lookIn = {}, opts = {}) {
   root.userData.update(0, false);
   return root;
 }
-/** Alias compatible: el modelo de antes se llamaba princessModel. */
-export const princessModel = avatarModel;
 
 // =====================================================================
 //                    VERSIÓN LIVIANA (vecinas de la ciudad)

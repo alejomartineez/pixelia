@@ -10,21 +10,21 @@ import * as A from './album.js';
 import { renderStickerCard, renderPack, burstAt, ensureArtCss } from './album-art.js';
 import { chestIcon } from '../season/season-ui-common.js';
 
-const CHEST_NAMES = { madera: 'Cofre de Madera', plata: 'Cofre de Plata', oro: 'Cofre de Oro', real: 'Cofre Real' };
+const CHEST_NAMES = { madera: 'Cofre de Madera', plata: 'Cofre de Plata', oro: 'Cofre de Oro', real: 'Cofre de Diamante' };
 
 const CSS = `
 .modal.alb { position: relative; width: min(1060px, 100%); height: min(800px, 100%); }
 .modal-back:has(.modal.alb) { padding: calc(var(--safe-t) + 8px) calc(var(--safe-r) + 8px) calc(var(--safe-b) + 8px) calc(var(--safe-l) + 8px); }
-.modal.alb .modal-head { background: linear-gradient(#c79bff, #9a63e6); padding: 10px 10px 9px 14px; }
+.modal.alb .modal-head { background: linear-gradient(#9ab1e7, #5c82d9); padding: 10px 10px 9px 14px; }
 .modal.alb .modal-head h2 { font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .modal.alb .modal-body { padding: 0; display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden;
-  background-color: #fffaf3; background-image: linear-gradient(rgba(181,140,255,.13) 2px, transparent 2px); background-size: 100% 28px; }
+  background-color: #fffaf3; background-image: linear-gradient(rgba(127,158,232,.13) 2px, transparent 2px); background-size: 100% 28px; }
 .alb-bri { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px 2px 5px; background: #fff; color: var(--ink); border: var(--line) solid var(--ink); border-radius: 99px;
   box-shadow: 0 3px 0 var(--ink); font-size: 18px; text-shadow: none; flex: none; }
 .alb-bri b { min-width: 22px; text-align: right; }
 .alb-bar { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px 12px 12px; background: var(--panel-2); border-bottom: 3px solid var(--ink); }
 .alb-bar .tab { position: relative; justify-content: center; font-size: 16px; min-height: 42px; padding: 6px 4px; }
-.alb-bar .tab.active { background: var(--lilac); }
+.alb-bar .tab.active { background: var(--second); }
 .alb-bar .tab .badge { top: -10px; right: -6px; }
 .alb-pane { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; padding: 14px 14px 22px; }
 .alb-in { animation: albIn .25s cubic-bezier(.3,1.4,.6,1) both; }
@@ -35,16 +35,16 @@ const CSS = `
 /* ---------- Portada ---------- */
 .alb-home { display: flex; flex-direction: column; gap: 14px; }
 .alb-cover { position: relative; padding: 14px 14px 14px 30px; color: #fff; border: 3px solid var(--ink); border-radius: 8px 16px 16px 8px;
-  background: linear-gradient(135deg, #ffa8d2, #ff7eb6 55%, #f0679f); box-shadow: inset 0 -6px 0 rgba(224,82,143,.7), 0 4px 0 var(--ink); overflow: hidden; }
-.alb-cover::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 16px; background: #c94a82; border-right: 3px solid var(--ink);
+  background: linear-gradient(135deg, #f2a88b, #ee8a5c 55%, #eb774a); box-shadow: inset 0 -6px 0 rgba(200,103,61,.7), 0 4px 0 var(--ink); overflow: hidden; }
+.alb-cover::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 16px; background: #bf5f39; border-right: 3px solid var(--ink);
   background-image: repeating-linear-gradient(transparent 0 8px, rgba(255,255,255,.75) 8px 12px); background-size: 4px 100%; background-repeat: no-repeat; background-position: center; }
 .alb-cover::after { content: ''; position: absolute; right: -2px; top: -2px; width: 26px; height: 26px; background: var(--gold); border-left: 3px solid var(--ink); border-bottom: 3px solid var(--ink);
   border-radius: 0 0 0 10px; box-shadow: inset 3px -3px 0 #fff3c4; }
 .alb-cover-top { display: flex; align-items: center; gap: 10px; }
-.alb-cover-top small { display: block; font-size: 13px; letter-spacing: .12em; opacity: .95; text-shadow: 0 2px 0 rgba(59,35,64,.35); }
+.alb-cover-top small { display: block; font-size: 13px; letter-spacing: .12em; opacity: .95; text-shadow: 0 2px 0 rgba(61,47,42,.35); }
 .alb-cover-top h3 { font-size: 34px; letter-spacing: .03em;
-  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 6px 0 var(--pink-d); }
-.alb-cover-num { display: flex; align-items: baseline; gap: 6px; margin: 10px 0 6px; text-shadow: 0 2px 0 rgba(59,35,64,.4); }
+  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 6px 0 var(--primary-d); }
+.alb-cover-num { display: flex; align-items: baseline; gap: 6px; margin: 10px 0 6px; text-shadow: 0 2px 0 rgba(61,47,42,.4); }
 .alb-cover-num b { font-size: 40px; line-height: .9; }
 .alb-cover-num span { font-size: 20px; }
 .alb-cover-num em { margin-left: auto; font-style: normal; font-size: 15px; }
@@ -54,21 +54,21 @@ const CSS = `
 .alb-final span { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: 15px; }
 .alb-final.done { background: var(--gold-l); }
 .alb-sets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.alb-tile { --c: #ff7eb6; --cd: #e0528f; --cl: #ffd6e8; position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 9px 5px 8px;
-  background: var(--cl); border: 3px solid var(--ink); border-radius: 12px; box-shadow: inset 0 -5px 0 rgba(59,35,64,.1), 0 3px 0 var(--ink); text-align: center; }
-.alb-tile:active { transform: translateY(2px); box-shadow: inset 0 -3px 0 rgba(59,35,64,.1), 0 1px 0 var(--ink); }
+.alb-tile { --c: #ee8a5c; --cd: #c8673d; --cl: #fde9d8; position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 9px 5px 8px;
+  background: var(--cl); border: 3px solid var(--ink); border-radius: 12px; box-shadow: inset 0 -5px 0 rgba(61,47,42,.1), 0 3px 0 var(--ink); text-align: center; }
+.alb-tile:active { transform: translateY(2px); box-shadow: inset 0 -3px 0 rgba(61,47,42,.1), 0 1px 0 var(--ink); }
 .alb-tile-em { width: 50px; height: 50px; display: grid; place-items: center; background: var(--c); border: 3px solid var(--ink); border-radius: 50%; box-shadow: inset 0 -5px 0 var(--cd), inset 0 4px 0 rgba(255,255,255,.4); }
 .alb-tile-name { min-height: 30px; display: grid; place-items: center; font-size: 15px; font-weight: 700; line-height: .95; }
 .alb-tile-prog { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; }
 .alb-mini { display: grid; grid-template-columns: repeat(3, 8px); gap: 2px; padding: 2px; background: #fff; border: 2px solid var(--ink); border-radius: 4px; }
-.alb-mini i { width: 8px; height: 8px; background: #eadcf0; }
+.alb-mini i { width: 8px; height: 8px; background: #f0e8dc; }
 .alb-mini i.on { background: var(--c); box-shadow: inset 0 -2px 0 var(--cd); }
 .alb-mini i.gold { background: var(--gold); box-shadow: inset 0 -2px 0 var(--gold-d); }
 .alb-tile .btn.small { min-height: 30px; padding: 2px 10px; font-size: 14px; width: 100%; }
 .alb-tile.claimable { background: linear-gradient(var(--gold-l), #fff); animation: albGlow 1.1s steps(2) infinite; }
-@keyframes albGlow { 50% { box-shadow: inset 0 -5px 0 rgba(59,35,64,.1), 0 3px 0 var(--ink), 0 0 0 4px rgba(255,209,102,.8); } }
+@keyframes albGlow { 50% { box-shadow: inset 0 -5px 0 rgba(61,47,42,.1), 0 3px 0 var(--ink), 0 0 0 4px rgba(255,209,102,.8); } }
 .alb-done-chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 8px; background: var(--mint); border: 2px solid var(--ink); border-radius: 99px; font-size: 13px; font-weight: 700; }
-.alb-tile .badge { top: -9px; right: -7px; animation: none; background: var(--pink); }
+.alb-tile .badge { top: -9px; right: -7px; animation: none; background: var(--primary); }
 @media (min-width: 560px) { .alb-sets { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (min-width: 860px) {
   .alb-home { display: grid; grid-template-columns: 300px minmax(0, 1fr); align-items: start; gap: 18px; }
@@ -78,7 +78,7 @@ const CSS = `
 }
 
 /* ---------- Página de set ---------- */
-.alb-page { --c: #ff7eb6; --cd: #e0528f; --cl: #ffd6e8; display: flex; flex-direction: column; gap: 12px; }
+.alb-page { --c: #ee8a5c; --cd: #c8673d; --cl: #fde9d8; display: flex; flex-direction: column; gap: 12px; }
 .alb-page-head { display: flex; align-items: center; gap: 8px; }
 .alb-page-head .icon-btn { flex: none; }
 .alb-page-title { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
@@ -99,7 +99,7 @@ const CSS = `
 .alb-rew-items .cost { gap: 4px; }
 .alb-legend { display: flex; flex-wrap: wrap; gap: 6px; }
 .alb-miss { display: flex; flex-direction: column; gap: 6px; }
-.alb-miss-row { display: flex; align-items: center; gap: 8px; font-size: 15px; padding: 3px 0; border-bottom: 2px dotted #eadcf0; }
+.alb-miss-row { display: flex; align-items: center; gap: 8px; font-size: 15px; padding: 3px 0; border-bottom: 2px dotted #f0e8dc; }
 .alb-miss-row:last-child { border-bottom: 0; }
 .alb-miss-row b { min-width: 34px; color: var(--ink-l); }
 .alb-miss-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -114,7 +114,7 @@ const CSS = `
 @media (min-width: 860px) and (max-height: 720px) { .alb-page { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); } }
 
 /* ---------- Detalle ---------- */
-.alb-pop { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(59,35,64,.55); animation: albFade .15s both; }
+.alb-pop { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(61,47,42,.55); animation: albFade .15s both; }
 .alb-pop-box { width: min(330px, 100%); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 16px 16px; text-align: center;
   background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 6px 0 var(--ink); animation: albPop .35s cubic-bezier(.3,1.6,.6,1) both; }
 .alb-pop-card { width: 168px; }
@@ -126,7 +126,7 @@ const CSS = `
 @keyframes albPop { from { transform: scale(.6); opacity: 0; } }
 
 /* ---------- Repetidas ---------- */
-.alb-dhead { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: linear-gradient(135deg, #fff, var(--lilac-l)); }
+.alb-dhead { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: linear-gradient(135deg, #fff, var(--second-l)); }
 .alb-dhead-top { display: flex; align-items: center; gap: 12px; }
 .alb-dhead-ic { flex: none; width: 60px; height: 60px; display: grid; place-items: center; background: var(--gold-l); border: 3px solid var(--ink); border-radius: 14px; box-shadow: inset 0 -4px 0 var(--gold); }
 .alb-dhead-txt { display: flex; flex-direction: column; gap: 3px; font-size: 18px; }
@@ -158,14 +158,14 @@ const CSS = `
 
 /* ---------- Apertura de sobre ---------- */
 .alb-open { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; overflow: hidden;
-  padding: calc(var(--safe-t) + 16px) 12px calc(var(--safe-b) + 16px); background: radial-gradient(circle at 50% 45%, #7a5585, #3b2340 72%); animation: albFade .2s both; touch-action: none; }
+  padding: calc(var(--safe-t) + 16px) 12px calc(var(--safe-b) + 16px); background: radial-gradient(circle at 50% 45%, #78594d, #3d2f2a 72%); animation: albFade .2s both; touch-action: none; }
 .alb-open.out { animation: albFadeOut .25s both; }
 @keyframes albFadeOut { to { opacity: 0; } }
 .alb-open-rays { position: absolute; left: 50%; top: 46%; width: 1600px; height: 1600px; margin: -800px 0 0 -800px; pointer-events: none;
   background: repeating-conic-gradient(rgba(255,255,255,.07) 0 9deg, transparent 9deg 18deg); animation: albSpin 30s linear infinite; }
 @keyframes albSpin { to { transform: rotate(360deg); } }
 .alb-open-title { position: relative; color: #fff; font-size: 30px; text-align: center;
-  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 0 6px 0 var(--lilac-d); }
+  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 0 6px 0 var(--second-d); }
 .alb-open-stage { position: relative; display: grid; place-items: center; width: 100%; min-height: 320px; }
 .alb-open-stage > * { grid-area: 1 / 1; }
 .alb-open-pack { width: 190px; cursor: pointer; animation: albPackIn .55s cubic-bezier(.3,1.6,.6,1) both; }
@@ -184,7 +184,7 @@ const CSS = `
 .alb-open-card.rare::before { content: ''; position: absolute; z-index: -1; left: 50%; top: 50%; width: 220%; aspect-ratio: 1; transform: translate(-50%, -50%);
   background: repeating-conic-gradient(rgba(255,209,102,.5) 0 12deg, transparent 12deg 24deg); border-radius: 50%; animation: albSpinC 7s linear infinite;
   -webkit-mask: radial-gradient(closest-side, #000 30%, transparent); mask: radial-gradient(closest-side, #000 30%, transparent); }
-.alb-open-card.r5::before { background: repeating-conic-gradient(rgba(255,158,207,.55) 0 8deg, rgba(143,211,255,.5) 8deg 16deg, transparent 16deg 24deg); }
+.alb-open-card.r5::before { background: repeating-conic-gradient(rgba(241,162,131,.55) 0 8deg, rgba(143,211,255,.5) 8deg 16deg, transparent 16deg 24deg); }
 @keyframes albSpinC { to { transform: translate(-50%, -50%) rotate(360deg); } }
 @keyframes albCardOut { 0% { transform: translateY(170px) scale(.25) rotateY(100deg); opacity: 0; } 60% { transform: translateY(-16px) scale(1.08) rotateY(0); opacity: 1; } 100% { transform: none; } }
 .alb-open-hint { position: relative; color: #fff; font-size: 19px; text-align: center; animation: albBlink 1.1s steps(2) infinite; }
@@ -319,7 +319,7 @@ export function openAlbum(ctx, params = {}) {
       cover.append(h('div.alb-final.done', { html: `<small>¡ÁLBUM COMPLETO!</small><span>${icon('crown', 20)} Sos <b>${esc(p.title || A.ALBUM_TITLE)}</b></span>` }));
     } else {
       cover.append(h('div.alb-final', {
-        html: `<small>PREMIO POR COMPLETARLO</small><span>${icon('🎁', 20)} <b>2 Cofres Reales</b> + ${icon('gem', 18)}${A.ALBUM_REWARD.gems}</span>`
+        html: `<small>PREMIO POR COMPLETARLO</small><span>${icon('🎁', 20)} <b>2 Cofres de Diamante</b> + ${icon('gem', 18)}${A.ALBUM_REWARD.gems}</span>`
           + `<span>${icon('crown', 18)} Título <b>${A.ALBUM_TITLE}</b></span>`,
       }));
     }
@@ -393,13 +393,13 @@ export function openAlbum(ctx, params = {}) {
     const rew = h('div.card.alb-rew' + (p.claimable ? '.claimable' : p.claimed ? '.claimed' : ''));
     rew.append(h('div.alb-rew-lbl', {}, p.claimed ? 'PREMIO COBRADO' : 'PREMIO DEL SET'));
     rew.append(h('div.alb-rew-items', { html: rewardItemsHtml(p.reward) }));
-    rew.append(h('div', { html: progressHtml(p.have / 9, p.complete ? 'gold' : 'pink') }));
+    rew.append(h('div', { html: progressHtml(p.have / 9, p.complete ? 'gold' : 'primary') }));
     if (p.claimable) rew.append(h('button.btn.gold.block', { html: `${icon('gift', 20)} ¡Reclamar premio!`, onclick: () => doClaim(setId) }));
     else if (p.claimed) rew.append(h('div.row', { html: `${icon('check', 20)} <b>¡Set completo!</b>` }));
     else rew.append(h('div.muted.small', {}, `Te ${9 - p.have === 1 ? 'falta 1 figurita' : `faltan ${9 - p.have} figuritas`}. Tocá una para pedírsela a tus amigos.`));
     side.append(rew);
     const legend = h('div.alb-legend');
-    for (let s = 1; s <= 5; s++) legend.append(h('span.chip' + (s >= 5 ? '.pink' : s >= 3 ? '.gold' : s === 2 ? '.sky' : ''), {}, `${starsTxt(s)} ${A.RARITY_NAMES[s]}`));
+    for (let s = 1; s <= 5; s++) legend.append(h('span.chip' + (s >= 5 ? '.primary' : s >= 3 ? '.gold' : s === 2 ? '.sky' : ''), {}, `${starsTxt(s)} ${A.RARITY_NAMES[s]}`));
     const missing = set.stickers.filter(s => !A.hasSticker(s.id));
     if (missing.length) {
       const list = h('div.alb-miss');
@@ -440,7 +440,7 @@ export function openAlbum(ctx, params = {}) {
         onclick: () => { const r = A.convertDuplicates({ ids: [def.id] }); celebrateBrillitos(r); closePop(); },
       }));
     } else if (!owned) {
-      btns.append(h('button.btn.pink', { html: `${icon('people', 20)} Pedir a amigos`, onclick: () => trade(def.id, 'ask') }));
+      btns.append(h('button.btn.primary', { html: `${icon('people', 20)} Pedir a amigos`, onclick: () => trade(def.id, 'ask') }));
     }
     btns.append(h('button.btn.ghost', { onclick: () => { audio.sfx('close'); closePop(); } }, 'Listo'));
     box.append(btns);
@@ -477,7 +477,7 @@ export function openAlbum(ctx, params = {}) {
         await rewardModal({
           title: '¡Álbum completo!', subtitle: `¡Sos ${res.album.title}!`,
           reward: { gems: res.album.gems },
-          lines: [icon('crown', 60), `${icon('🎁', 24)} <b>2 Cofres Reales</b>`, `Nuevo título: <b>${esc(res.album.title)}</b>`],
+          lines: [icon('crown', 60), `${icon('🎁', 24)} <b>2 Cofres de Diamante</b>`, `Nuevo título: <b>${esc(res.album.title)}</b>`],
           buttons: [{ label: '¡Soy una estrella!', value: 'ok', cls: 'gold' }],
         });
       }
@@ -661,7 +661,7 @@ export function playPackOpening(ctx, stickers = [], opts = {}) {
         if (nNew) sum.append(h('span.chip.mint', {}, `¡${nNew} nueva${nNew === 1 ? '' : 's'}!`));
         if (nRep) sum.append(h('span.chip', {}, `${nRep} repetida${nRep === 1 ? '' : 's'}`));
         if (nNew) audio.sfx('done');
-        foot.append(h('button.btn.pink', { html: `${icon('📒', 20)} ${nNew ? '¡A pegarlas!' : '¡Genial!'}`, onclick: finish }));
+        foot.append(h('button.btn.primary', { html: `${icon('📒', 20)} ${nNew ? '¡A pegarlas!' : '¡Genial!'}`, onclick: finish }));
       });
     }
     function finish() {

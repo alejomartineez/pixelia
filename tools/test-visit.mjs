@@ -117,7 +117,7 @@ try {
   await use(A); await ev(A, `ctx.openSocial('amigas'); return true;`);
   await waitFor(A, `!!document.querySelector('.soc input[aria-label="Código de amistad"]')`);
   await A.type('.soc input[aria-label="Código de amistad"]', pb.code.toLowerCase());
-  await tap(A, '.soc .btn.pink', '^Agregar$');
+  await tap(A, '.soc .btn.primary', '^Agregar$');
   await sleep(1200);
   await use(B); await ev(B, `ctx.openSocial('amigas'); return true;`);
   await sleep(1200);
@@ -146,7 +146,7 @@ try {
     b.buildEnd = Date.now() + 3 * 3600e3; store.markDirty(); E.tick();
     await sync.publishProfileNow(true);
     return b.uid;`);
-  ok(uid != null, 'bea colocó una Casita Rosa en obra (3 h)', uid);
+  ok(uid != null, 'bea colocó una Casita en obra (3 h)', uid);
   const prof = await ev(A, `return (await net.getProfiles([${JSON.stringify(pb.id)}]))[0]?.city?.buildings?.find(b => b.uid === ${uid})`);
   ok(prof?.busyUntil > Date.now() && prof?.busyKind === 'build', 'el perfil público de bea trae la obra con busyUntil y busyKind=build', prof);
 
@@ -161,14 +161,14 @@ try {
   const helpN = await A.evaluate(() => document.querySelectorAll('.cv-help').length);
   ok(helpN >= 1, `burbuja "Ayudar" sobre la obra (${helpN})`);
   await shot(A, 'visit-03-ana-visita');
-  await tap(A, '.cv-btns .btn.pink');
+  await tap(A, '.cv-btns .btn.primary');
   await sleep(1500);
   await shot(A, 'visit-04-ana-like');
-  await tap(A, '.cv-btns .btn.lilac');
+  await tap(A, '.cv-btns .btn.second');
   await waitFor(A, `!!document.querySelector('.cv-note textarea')`);
   await A.type('.cv-note textarea', '¡Qué linda tu casita!');
   await shot(A, 'visit-05-ana-notita');
-  await tap(A, '.modal .modal-foot .btn.pink');
+  await tap(A, '.modal .modal-foot .btn.primary');
   await sleep(1200);
   await tap(A, '.cv-help');
   await sleep(1500);
@@ -196,14 +196,14 @@ try {
   section('Pedido de ayuda: "Acelerá mi obra" cumplido por ana');
   await use(B); await ev(B, `ctx.ui.closeAllModals(); ctx.openSocial('pedidos'); return true;`);
   await sleep(1200);
-  await tap(B, '.soc .btn.pink', 'Pedir');
+  await tap(B, '.soc .btn.primary', 'Pedir');
   await waitFor(B, `!!document.querySelector('.soc-kind')`);
   await tap(B, '.soc-kind', 'Acelerá');
   await sleep(300);
   await tap(B, '.soc-items .soc-item');
   await sleep(200);
   await shot(B, 'visit-08-bea-pedido');
-  await tap(B, '.btn.pink', 'Publicar pedido');
+  await tap(B, '.btn.primary', 'Publicar pedido');
   await sleep(1500);
   const mine = await ev(B, `return (await net.myRequests()).map(r => r.kind)`);
   ok(mine.includes('speedup'), 'bea publicó el pedido', mine);

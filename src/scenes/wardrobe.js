@@ -1,4 +1,4 @@
-// Vestidor + Taller: elegí tu personaje (princesa, príncipe, chica, chico, hada, mago o animalito), probá peinados,
+// Vestidor + Taller: elegí tu personaje (chica, chico o animalito), probá peinados,
 // ropa, cosas para la cabeza, accesorios y tuneá tu auto.
 // Arriba (o a la izquierda en PC) un escenario 3D giratorio; abajo (o a la derecha) el panel con categorías.
 // Tocar una pieza la prueba al instante; si no es tuya aparece "Comprar". Los colores y el tipo de personaje son gratis.
@@ -51,7 +51,7 @@ const FOCUS = {
 };
 
 const WD_CSS = `
-.scene-wardrobe .wd { position:absolute; inset:0; display:flex; flex-direction:column; background:linear-gradient(#ffd9ec,#efe0ff); }
+.scene-wardrobe .wd { position:absolute; inset:0; display:flex; flex-direction:column; background:linear-gradient(#fdebdb,#f9f1e6); }
 .scene-wardrobe .wd-stage { position:relative; flex:0 0 46%; min-height:0; min-width:0; overflow:hidden; touch-action:none; cursor:grab; }
 .scene-wardrobe .wd-stage.drag { cursor:grabbing; }
 .scene-wardrobe .wd-stage canvas { position:absolute; inset:0; }
@@ -60,7 +60,7 @@ const WD_CSS = `
 .scene-wardrobe .wd-namebox { flex:1 1 auto; max-width:250px; min-width:0; display:flex; align-items:center; gap:6px; height:42px; padding:0 10px 0 8px; background:#fff;
   border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); cursor:text; }
 .scene-wardrobe .wd-namebox input[type=text] { flex:1; min-width:0; width:100%; border:0; padding:0; margin:0; background:transparent; font-size:18px; font-weight:700; color:var(--ink); box-shadow:none; }
-.scene-wardrobe .wd-namebox:focus-within { border-color:var(--pink-d); }
+.scene-wardrobe .wd-namebox:focus-within { border-color:var(--primary-d); }
 .scene-wardrobe .wd-res { margin-left:auto; display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
 .scene-wardrobe .wd-res .pill { min-width:86px; font-size:16px; padding:2px 10px 2px 5px; }
 .scene-wardrobe .wd-stagebar { position:absolute; z-index:2; left:calc(var(--safe-l) + 10px); right:10px; bottom:26px; display:flex; align-items:flex-end; justify-content:space-between; gap:8px; pointer-events:none; }
@@ -68,13 +68,13 @@ const WD_CSS = `
 .scene-wardrobe .wd-hint { font-size:13px; font-weight:700; padding:3px 10px; border-radius:99px; background:rgba(255,255,255,.88); border:2px solid var(--ink); transition:opacity .6s; white-space:nowrap; }
 .scene-wardrobe .wd-hint.gone { opacity:0; }
 .scene-wardrobe .wd-panel { position:relative; z-index:4; flex:1 1 auto; min-height:0; min-width:0; display:flex; flex-direction:column; margin-top:-16px; padding:12px 12px 0;
-  background:var(--panel); border-top:var(--line) solid var(--ink); border-radius:20px 20px 0 0; box-shadow:0 -4px 0 rgba(59,35,64,.12); }
+  background:var(--panel); border-top:var(--line) solid var(--ink); border-radius:20px 20px 0 0; box-shadow:0 -4px 0 rgba(61,47,42,.12); }
 .scene-wardrobe .wd-seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:4px; }
 .scene-wardrobe .wd-segbtn { display:flex; align-items:center; justify-content:center; gap:6px; min-height:44px; border:var(--line) solid var(--ink); border-radius:12px; background:#fff;
-  font-size:17px; font-weight:700; box-shadow:inset 0 -4px 0 #eadcf0, 0 3px 0 var(--ink); }
-.scene-wardrobe .wd-segbtn:active { transform:translateY(2px); box-shadow:inset 0 -2px 0 #eadcf0, 0 1px 0 var(--ink); }
-.scene-wardrobe .wd-segbtn.active { background:var(--lilac); color:#fff; text-shadow:0 2px 0 rgba(59,35,64,.35); box-shadow:inset 0 -4px 0 var(--lilac-d), 0 3px 0 var(--ink); }
-.scene-wardrobe .wd-segbtn.locked { background:#f1e9f3; color:var(--ink-l); }
+  font-size:17px; font-weight:700; box-shadow:inset 0 -4px 0 #f0e8dc, 0 3px 0 var(--ink); }
+.scene-wardrobe .wd-segbtn:active { transform:translateY(2px); box-shadow:inset 0 -2px 0 #f0e8dc, 0 1px 0 var(--ink); }
+.scene-wardrobe .wd-segbtn.active { background:var(--second); color:#fff; text-shadow:0 2px 0 rgba(61,47,42,.35); box-shadow:inset 0 -4px 0 var(--second-d), 0 3px 0 var(--ink); }
+.scene-wardrobe .wd-segbtn.locked { background:#f3efe9; color:var(--ink-l); }
 .scene-wardrobe .wd-cats { min-width:0; flex:none; margin:0 -12px; padding:6px 12px 10px; }
 .scene-wardrobe .wd-cats .tab { min-height:38px; }
 .scene-wardrobe .wd-list { flex:1 1 auto; min-height:0; margin:0 -12px; padding:4px 12px 16px; }
@@ -83,8 +83,8 @@ const WD_CSS = `
   border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); font-family:inherit; }
 .scene-wardrobe .wd-card:active { transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
 .scene-wardrobe .wd-card.on { background:var(--gold-l); }
-.scene-wardrobe .wd-card.trying { background:#ffe9f4; outline:3px dashed var(--pink-d); outline-offset:-8px; }
-.scene-wardrobe .wd-thumb { position:relative; width:72px; height:72px; border-radius:10px; display:grid; place-items:center; background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe3f1 72%); }
+.scene-wardrobe .wd-card.trying { background:#fbefdc; outline:3px dashed var(--primary-d); outline-offset:-8px; }
+.scene-wardrobe .wd-thumb { position:relative; width:72px; height:72px; border-radius:10px; display:grid; place-items:center; background:radial-gradient(circle at 50% 42%, #fff 0 38%, #f9f3e9 72%); }
 .scene-wardrobe .wd-card.on .wd-thumb { background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe4a3 72%); }
 .scene-wardrobe .wd-thumb img.th { width:64px; height:64px; opacity:0; transition:opacity .2s; }
 .scene-wardrobe .wd-thumb img.th.ok { opacity:1; }
@@ -99,7 +99,7 @@ const WD_CSS = `
 .scene-wardrobe .wd-swatches { display:grid; grid-template-columns:repeat(auto-fill, minmax(68px, 1fr)); gap:10px 6px; }
 .scene-wardrobe .wd-sw { display:flex; flex-direction:column; align-items:center; gap:5px; padding:4px 0; border:0; background:none; font-size:12px; font-weight:700; color:var(--ink); }
 .scene-wardrobe .wd-sw i { position:relative; display:block; width:50px; height:50px; border:var(--line) solid var(--ink); border-radius:12px;
-  box-shadow:inset -6px -6px 0 rgba(59,35,64,.16), inset 5px 5px 0 rgba(255,255,255,.5), 0 3px 0 var(--ink); transition:transform .12s; }
+  box-shadow:inset -6px -6px 0 rgba(61,47,42,.16), inset 5px 5px 0 rgba(255,255,255,.5), 0 3px 0 var(--ink); transition:transform .12s; }
 .scene-wardrobe .wd-sw:active i { transform:translateY(2px) scale(.96); }
 .scene-wardrobe .wd-sw.on i { transform:translateY(-3px); outline:3px solid var(--gold-d); outline-offset:3px; }
 .scene-wardrobe .wd-sw i img { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
@@ -112,8 +112,8 @@ const WD_CSS = `
 .scene-wardrobe .wd-stat { flex:1; display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:700; }
 .scene-wardrobe .wd-stat span { display:flex; align-items:center; gap:4px; }
 .scene-wardrobe .wd-pips { display:flex; gap:3px; }
-.scene-wardrobe .wd-pips i { flex:1; height:12px; border:2px solid var(--ink); border-radius:3px; background:#f2e3ee; transition:background .2s; }
-.scene-wardrobe .wd-pips.sp i.on { background:var(--pink); }
+.scene-wardrobe .wd-pips i { flex:1; height:12px; border:2px solid var(--ink); border-radius:3px; background:#f2ece3; transition:background .2s; }
+.scene-wardrobe .wd-pips.sp i.on { background:var(--primary); }
 .scene-wardrobe .wd-pips.hd i.on { background:var(--mint); }
 .scene-wardrobe .wd-buy { display:flex; align-items:center; gap:8px; margin:0 -12px; padding:10px 12px calc(var(--safe-b) + 10px); background:var(--gold-l); border-top:var(--line) solid var(--ink);
   animation:wdUp .25s cubic-bezier(.3,1.5,.6,1); }
@@ -133,7 +133,7 @@ const WD_CSS = `
   .scene-wardrobe .wd-top { right:12px; }
   .scene-wardrobe .wd-stagebar { bottom:calc(var(--safe-b) + 14px); }
   .scene-wardrobe .wd-panel { flex:0 0 min(500px, 44%); margin:0; padding:calc(var(--safe-t) + 12px) calc(var(--safe-r) + 14px) 0 14px; border-top:0; border-left:var(--line) solid var(--ink);
-    border-radius:20px 0 0 20px; box-shadow:-4px 0 0 rgba(59,35,64,.12); }
+    border-radius:20px 0 0 20px; box-shadow:-4px 0 0 rgba(61,47,42,.12); }
   .scene-wardrobe .wd-cats, .scene-wardrobe .wd-list { margin:0 -14px; padding-left:14px; padding-right:14px; }
   .scene-wardrobe .wd-buy { margin:0 calc(-14px - var(--safe-r)) 0 -14px; padding-left:14px; padding-right:calc(var(--safe-r) + 14px); }
   .scene-wardrobe .wd-grid { grid-template-columns:repeat(auto-fill, minmax(108px, 1fr)); }
@@ -188,7 +188,7 @@ export default function create(ctx) {
           </div>
         </div>
         <div class="wd-stagebar">
-          <button class="btn small lilac wd-random">${icon('sparkle', 18)}Sorpresa</button>
+          <button class="btn small second wd-random">${icon('sparkle', 18)}Sorpresa</button>
           <span class="wd-hint">Arrastrá para girar</span>
         </div>
       </div>
@@ -292,7 +292,7 @@ export default function create(ctx) {
   function itemFoot(c, item, owned, equipped) {
     if (equipped) return `<span class="chip mint">Puesto</span>`;
     if (owned) return `<span class="chip">Tuyo</span>`;
-    if ((item.unlock || 1) > S().player.level) return `<span class="chip lilac">${icon('lock', 12)}Nivel ${item.unlock}</span>`;
+    if ((item.unlock || 1) > S().player.level) return `<span class="chip second">${icon('lock', 12)}Nivel ${item.unlock}</span>`;
     return ui.costHtml(item.price || {}, 16);
   }
 
@@ -534,13 +534,13 @@ export default function create(ctx) {
   function buildStage(stageEl) {
     // mismo render nítido y contorno tinta que la ciudad
     const lowQ = !!S().settings?.lowQuality;
-    r = createPixelRenderer(stageEl, { ortho: false, fov: 30, background: 0xffe3f1, lowQuality: lowQ, outline: true });
+    r = createPixelRenderer(stageEl, { ortho: false, fov: 30, background: 0xf9f3e9, lowQuality: lowQ, outline: true });
     const { sun } = addLights(r.scene, { shadowSize: 9, shadowRes: 1024 });
     sun.position.set(5, 12, 9);
-    const fill = new THREE.DirectionalLight(0xffd6ec, 0.7);
+    const fill = new THREE.DirectionalLight(0xfde9d8, 0.7);
     fill.position.set(-4, 3, 6);
     r.scene.add(fill);
-    r.scene.fog = new THREE.Fog(0xffe3f1, 9, 16);
+    r.scene.fog = new THREE.Fog(0xf9f3e9, 9, 16);
 
     boutique = buildBoutique();
     garage = buildGarage();
@@ -554,7 +554,7 @@ export default function create(ctx) {
 
     // brillitos (pool)
     const geo = new THREE.BoxGeometry(1, 1, 1);
-    const cols = [0xffffff, 0xffe066, 0xff9cc8, 0xc9b8ff, 0x9ff0ff];
+    const cols = [0xffffff, 0xffe066, 0xf1a181, 0xc5d3f2, 0x9ff0ff];
     for (let i = 0; i < 34; i++) {
       const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: cols[i % cols.length], transparent: true, opacity: 0, depthWrite: false }));
       m.visible = false;
@@ -732,7 +732,7 @@ export default function create(ctx) {
     if (!ray.intersectObject(model, true).length) return;
     hop();
     if (mode === 'car') { audio.sfx('horn'); carSpin = 6; burst(0.4, 10, 0xffe066); }
-    else { audio.sfx('pop'); burst(0.8, 12, 0xff9cc8); ui.floatText(e.clientX, e.clientY - 20, icon('heart', 28)); }
+    else { audio.sfx('pop'); burst(0.8, 12, 0xf1a181); ui.floatText(e.clientX, e.clientY - 20, icon('heart', 28)); }
   }
 
   function onKey(e) {

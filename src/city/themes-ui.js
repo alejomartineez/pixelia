@@ -8,7 +8,7 @@ import { THEMES, themeOf, currentThemeId } from './themes.js';
 import { buildingModel, natureModel } from './models.js';
 
 const STYLE = `
-.modal-back:has(.tp-modal) { background: rgba(59,35,64,.22); }
+.modal-back:has(.tp-modal) { background: rgba(61,47,42,.22); }
 @media (max-width: 640px) { .modal-back:has(.tp-modal) { align-items: end; } .tp-modal { max-height: 72%; } }
 .tp-modal { width: min(560px, 100%); }
 .tp-greet { margin: 0 0 6px; font-size: 16px; font-weight: 700; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -163,7 +163,7 @@ export function openThemePicker(ctx, opts = {}) {
       ctx.audio.sfx('pop'); // la tarjeta marcada "Elegido" y la ciudad de fondo ya muestran el cambio (sin toast que tape el título)
     }
     ui.modal({ title: 'Estilo de tu ciudad', icon: 'palette', content: body, className: 'tp-modal',
-      actions: [{ label: '¡Listo!', cls: 'pink' }],
+      actions: [{ label: '¡Listo!', cls: 'primary' }],
       onClose: () => resolve(chosen) });
     // la tarjeta elegida a la vista
     requestAnimationFrame(() => cards.get(chosen)?.scrollIntoView?.({ block: 'nearest' }));

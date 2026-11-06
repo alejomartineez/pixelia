@@ -9,12 +9,13 @@ export { renderStickerCard, renderPack } from './album-art.js';
 // ---------- Datos ----------
 // Cada set: [id, nombre, emoji, color, oscuro, claro, figuritas ordenadas por estrellas (3×1★, 2×2★, 2×3★, 1×4★, 1×5★)]
 const RAW = [
-  ['princesas', 'Realeza', '👑', '#ff7eb6', '#e0528f', '#ffd6e8', [
-    ['🥱', 'Siestita Real'], ['🪞', 'Espejito Chusma'], ['🛡️', 'Escudo Abollado'],
+  // (el id 'princesas' queda por compatibilidad con álbumes e intercambios viejos)
+  ['princesas', 'Vecinos', '🏘️', '#ee8a5c', '#c8673d', '#fde9d8', [
+    ['🥱', 'Siestita en la Hamaca'], ['🪞', 'Espejito Chusma'], ['🧹', 'Vecina que Barre'],
     ['💌', 'Cartita de Amor'], ['🫖', 'Té con Masitas'],
-    ['🦢', 'Cisne Divina'], ['🪄', 'Varita Medio Rota'],
-    ['💃', 'Corona Bailonga'], ['🏰', 'La Realeza de Pixelia']]],
-  ['vestidos', 'Ropa y Estilo', '👕', '#b58cff', '#8a5ee0', '#e9ddff', [
+    ['📮', 'Cartero Puntual'], ['🥖', 'Panadero Madrugador'],
+    ['💃', 'Bailarina de la Plaza'], ['🏘️', 'Los Vecinos de Pixelia']]],
+  ['vestidos', 'Ropa y Estilo', '👕', '#7f9ee8', '#5a78c4', '#f8f0e4', [
     ['🧦', 'Medias Desparejas'], ['🧤', 'Guantes de Gala'], ['👒', 'Capelina Playera'],
     ['🎀', 'Moño Gigante'], ['👛', 'Carterita Mini'],
     ['👗', 'Vestido con Volados'], ['🧥', 'Tapado de Abuela Chic'],
@@ -23,7 +24,7 @@ const RAW = [
     ['🚲', 'Bici con Canasto'], ['🛴', 'Monopatín Veloz'], ['🚕', 'Taxi Apurado'],
     ['🚙', 'Camioneta Familiera'], ['🛵', 'Motito Delivery'],
     ['🚐', 'Combi Hippie'], ['🏎️', 'Auto de Carrera'],
-    ['🚂', 'Trencito de la Costa'], ['🚗', 'Descapotable Real']]],
+    ['🚂', 'Trencito de la Costa'], ['🚗', 'Descapotable Clásico']]],
   ['postres', 'Postres', '🍰', '#ffab7a', '#e07d4a', '#ffe3d1', [
     ['🍪', 'Galletita Robada'], ['🍬', 'Caramelo Pegote'], ['🍩', 'Dona Glaseada'],
     ['🧁', 'Cupcake Coqueto'], ['🍮', 'Flan con Dulce de Leche'],
@@ -39,17 +40,17 @@ const RAW = [
     ['🌷', 'Tulipán Tímido'], ['🌻', 'Girasol Chusma'],
     ['🌹', 'Rosa con Carácter'], ['🌺', 'Hibisco Fiestero'],
     ['🌸', 'Cerezo en Flor'], ['💐', 'Ramo para Vos']]],
-  ['castillos', 'Castillos', '🏰', '#9aa6f0', '#6a76c8', '#e0e4ff', [
+  ['castillos', 'Edificios', '🏛️', '#9aa6f0', '#6a76c8', '#f9f1e6', [
     ['🧱', 'Ladrillo con Onda'], ['🗝️', 'Llave Perdida'], ['🕯️', 'Velita Tembleque'],
-    ['🚪', 'Puerta que Rechina'], ['🛡️', 'Escudo Familiar'],
-    ['🐉', 'Dragón Vegetariano'], ['🗼', 'Torre Altísima'],
-    ['🏯', 'Palacio de Verano'], ['🏰', 'El Castillo de Pixelia']]],
-  ['joyas', 'Joyas', '💎', '#5fd4e0', '#2fa6b5', '#d2f4f7', [
+    ['🚪', 'Puerta que Rechina'], ['🪟', 'Ventana con Macetas'],
+    ['🏠', 'Casita del Árbol'], ['🗼', 'Torre Altísima'],
+    ['🏟️', 'Estadio Lleno'], ['🏛️', 'La Municipalidad de Pixelia']]],
+  ['joyas', 'Tesoros', '💎', '#5fd4e0', '#2fa6b5', '#d2f4f7', [
     ['📿', 'Collar de Fideos'], ['🧿', 'Ojito Protector'], ['⌚', 'Reloj de la Abuela'],
     ['💍', 'Anillito de Cumple'], ['🔔', 'Campanita de Oro'],
     ['🔮', 'Bola de Cristal Chusma'], ['💠', 'Cristal Celeste'],
-    ['👑', 'Tiara de Diamantes'], ['💎', 'Diamante Rosa Legendario']]],
-  ['musica', 'Música', '🎵', '#e98cff', '#b85ad0', '#f8ddff', [
+    ['🏆', 'Copa de Oro'], ['💎', 'Diamante Legendario']]],
+  ['musica', 'Música', '🎵', '#f09774', '#c96943', '#f8f0e4', [
     ['🥁', 'Tambor Ruidoso'], ['📻', 'Radio de la Tía'], ['🎧', 'Auris Enredados'],
     ['🎸', 'Guitarra Fogonera'], ['🎹', 'Piano Paciente'],
     ['🎻', 'Violín Dramático'], ['🎺', 'Trompeta Mañanera'],
@@ -59,7 +60,7 @@ const RAW = [
     ['🏐', 'Pelota de Vóley'], ['🍉', 'Sandía Fresquita'],
     ['🐬', 'Delfín Sonriente'], ['🏄', 'Surfista Valiente'],
     ['🐙', 'Pulpo Abrazador'], ['🏝️', 'Isla Secreta']]],
-  ['noche', 'Noche Estrellada', '🌙', '#7d6be0', '#4f3fb0', '#ddd8ff', [
+  ['noche', 'Noche Estrellada', '🌙', '#5e83d9', '#3b5ba5', '#dfe7f8', [
     ['🦉', 'Búho Desvelado'], ['🧸', 'Osito de Dormir'], ['🌙', 'Luna Mimosa'],
     ['🔭', 'Telescopio Curioso'], ['🪐', 'Saturno con Pollera'],
     ['☄️', 'Cometa Apurado'], ['🌌', 'Vía Láctea'],
@@ -79,7 +80,7 @@ export const STAR_WEIGHTS = { 1: 48, 2: 27, 3: 15, 4: 7, 5: 3 };
 export const BRILLO_VALUE = { 1: 1, 2: 2, 3: 4, 4: 8, 5: 15 };
 export const PITY_5 = 45;                 // a lo sumo 45 figuritas sin una 5★
 export const NEW_BIAS = 2.2;              // las que te faltan pesan más dentro de su rareza (cozy)
-export const ALBUM_TITLE = 'Coleccionista Real';
+export const ALBUM_TITLE = 'Gran Coleccionista';
 export const ALBUM_REWARD = { chest: 'real', chests: 2, gems: 50, title: ALBUM_TITLE };
 
 export const STICKER_SETS = RAW.map(([id, name, emoji, color, dark, light, list], si) => {
@@ -113,9 +114,9 @@ export function stickerDropsForChest(type) { return { ...(CHEST_STICKERS[type] |
 
 /** Tienda de brillitos. */
 export const SHOP = [
-  { id: 'sobre_comun', kind: 'pack', name: 'Sobre Común', cost: 10, n: 3, minStars: 1, desc: '3 figuritas', color: '#ff7eb6', dark: '#e0528f', emoji: '🌸' },
+  { id: 'sobre_comun', kind: 'pack', name: 'Sobre Común', cost: 10, n: 3, minStars: 1, desc: '3 figuritas', color: '#ee8a5c', dark: '#c8673d', emoji: '🌸' },
   { id: 'sobre_brillante', kind: 'pack', name: 'Sobre Brillante', cost: 30, n: 3, minStars: 3, desc: '3 figuritas · una de 3★ o más', color: '#8fd3ff', dark: '#4fa8e0', emoji: '💎' },
-  { id: 'sobre_dorado', kind: 'pack', name: 'Sobre Dorado', cost: 70, n: 5, minStars: 4, desc: '5 figuritas · una de 4★ o más', color: '#ffd166', dark: '#e8a93a', emoji: '👑' },
+  { id: 'sobre_dorado', kind: 'pack', name: 'Sobre Dorado', cost: 70, n: 5, minStars: 4, desc: '5 figuritas · una de 4★ o más', color: '#ffd166', dark: '#e8a93a', emoji: '🌟' },
   { id: 'cofre_plata', kind: 'chest', name: 'Cofre de Plata', cost: 45, chest: 'plata', desc: 'Un cofre con premios y 3 figuritas', color: '#c9d6ea', dark: '#8fa3c2', emoji: '🎁' },
 ];
 export const SHOP_BY_ID = Object.fromEntries(SHOP.map(i => [i.id, i]));

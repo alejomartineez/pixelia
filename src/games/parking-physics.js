@@ -1,4 +1,4 @@
-// Estacionamiento Real — física arcade pura (sin THREE, testeable en node).
+// Estacionamiento Express — física arcade pura (sin THREE, testeable en node).
 // Convención de ángulos: a (radianes) = rumbo; el frente del auto apunta a (sin a, cos a) en XZ.
 // a = 0 mira a +Z (abajo en pantalla), a = PI mira a -Z (arriba en pantalla).
 

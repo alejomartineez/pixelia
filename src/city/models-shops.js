@@ -11,7 +11,7 @@ const S = 1 / 8;
 /** Edificio base de negocio 2x2. Devuelve medidas útiles. */
 function shopBody(m, L, o) {
   const v = m.v;
-  const pave = o.pave || ['#fff4e6', '#ffe8d6'];
+  const pave = o.pave || ['#fdf6e3', '#ffe8d6'];
   lot(v, m.W, m.D, (x, z) => ((x + z) % 2 ? pave[0] : pave[1]));
   const x0 = 2, x1 = m.W - 3, z0 = 2, z1 = o.z1 ?? 9;
   const GF = o.gf ?? 9, UF = 6;
@@ -32,7 +32,7 @@ function shopBody(m, L, o) {
   // ventanas del piso de arriba
   if (floors > 1 && o.upperWins !== false) {
     const wy = 2 + GF;
-    for (const u of [3, 7, 11]) win(v, 'pz', z1, u, wy, 2, 3, { shutters: o.shutters, box: L >= 2 ? (o.box || P.pinkD) : undefined, flowers: o.flowers });
+    for (const u of [3, 7, 11]) win(v, 'pz', z1, u, wy, 2, 3, { shutters: o.shutters, box: L >= 2 ? (o.box || P.clayD) : undefined, flowers: o.flowers });
     win(v, 'px', x1, 4, wy, 3, 3, { shutters: o.shutters });
     win(v, 'nx', x0, 4, wy, 3, 3, { shutters: o.shutters });
   }
@@ -53,7 +53,7 @@ function sidewalk(m, L, b, o = {}) {
 }
 
 /** Mesita con sombrilla */
-function cafeTable(v, x, z, c1 = P.pink, c2 = '#ffffff') {
+function cafeTable(v, x, z, c1 = P.clay, c2 = '#ffffff') {
   v.box(x, 1, z, 1, 2, 1, '#ffffff');
   v.box(x - 1, 3, z - 1, 3, 1, 3, '#ffffff');
   v.set(x - 2, 1, z, P.woodD); v.set(x - 2, 2, z, P.wood); v.set(x + 2, 1, z, P.woodD); v.set(x + 2, 2, z, P.wood);
@@ -86,12 +86,12 @@ function croissant(v, cx, cy, cz, R = 5) {
 }
 function panaderia(m, L) {
   const v = m.v;
-  const b = shopBody(m, L, { wall: '#ffe2c4', shutters: '#c98d45', box: P.wood, flowers: [P.pink, '#ffffff'], roof: '#f0d0b0' });
+  const b = shopBody(m, L, { wall: '#ffe2c4', shutters: '#c98d45', box: P.wood, flowers: [P.clay, '#ffffff'], roof: '#f0d0b0' });
   const { x0, x1, z1, top, GF } = b;
   // vidriera con tortas y medialunas pintadas
   fbox(v, 'pz', z1, 3, 3, 6, 4, 0, (i, j) => (j === 3 ? C.glass : C.glassD));
   fbox(v, 'pz', z1, 2, 2, 8, 1, 1, P.wood);
-  pattern(v, 'pz', z1, 3, 3, ['.ooo..', 'oo.oo.', '..pp..', '.pwwp.'], { o: C.waffle, p: P.pink, w: '#ffffff' });
+  pattern(v, 'pz', z1, 3, 3, ['.ooo..', 'oo.oo.', '..pp..', '.pwwp.'], { o: C.waffle, p: P.clay, w: '#ffffff' });
   door(v, 'pz', z1, 10, 2, 2, 5, P.woodD, { glass: true, frame: '#ffffff' });
   awning(v, 'pz', z1, x0, GF, 12, P.peach, '#ffffff', { depth: 3 });
   // cartel blanco con borde rosa y medialuna gigante adelante
@@ -106,9 +106,9 @@ function panaderia(m, L) {
   v.box(12, top + 1, 2, 2, 10, 2, (x, y) => (y % 2 ? C.stoneL : shade(C.stoneL, -0.08))); v.box(12, top + 11, 2, 2, 1, 2, C.stoneD);
   addSmoke(m, 12, top + 12, 2, "#fff8f0");
   // pizarrón y mesita
-  v.box(1, 1, 13, 1, 3, 2, P.ink); v.set(1, 2, 14, '#ffffff'); v.set(1, 3, 13, P.pink);
+  v.box(1, 1, 13, 1, 3, 2, P.ink); v.set(1, 2, 14, '#ffffff'); v.set(1, 3, 13, P.clay);
   if (L >= 2) { cafeTable(v, 12, 13, P.peach, '#ffffff'); }
-  if (L >= 3) { v.box(4, 1, 12, 3, 1, 2, P.wood); v.set(5, 2, 12, P.pink); v.set(5, 3, 12, '#ffffff'); v.set(5, 4, 12, C.red); }
+  if (L >= 3) { v.box(4, 1, 12, 3, 1, 2, P.wood); v.set(5, 2, 12, P.clay); v.set(5, 3, 12, '#ffffff'); v.set(5, 4, 12, C.red); }
   sidewalk(m, L, b, { pots: [1, 8] });
   if (L >= 5) spinStar(m, 7, top + 11, 4);
 }
@@ -116,16 +116,16 @@ function panaderia(m, L) {
 // ======================= HELADERÍA =======================
 function heladeria(m, L) {
   const v = m.v;
-  const b = shopBody(m, L, { wall: P.mintL, pave: ['#ffffff', '#ffe4f1'], shutters: P.pink, roof: '#a8eed8', box: P.pink, flowers: [P.lilac, '#ffffff'] });
+  const b = shopBody(m, L, { wall: P.mintL, pave: ['#ffffff', '#faf3e9'], shutters: P.clay, roof: '#a8eed8', box: P.clay, flowers: [P.slate, '#ffffff'] });
   const { x0, x1, z1, top, GF } = b;
   // mostrador con baldes de helado de colores
   fbox(v, 'pz', z1, 3, 3, 6, 4, 0, (i, j) => (j === 3 ? C.glass : C.glassD));
-  pattern(v, 'pz', z1, 3, 3, ['pmlyp.', 'wwwwww'], { p: P.pink, m: P.mint, l: P.lilac, y: C.yellow, w: '#ffffff' });
-  door(v, 'pz', z1, 10, 2, 2, 5, P.pink, { glass: true, frame: '#ffffff', heart: '#ffffff' });
-  awning(v, 'pz', z1, x0, GF, 12, P.pink, '#ffffff', { depth: 3 });
+  pattern(v, 'pz', z1, 3, 3, ['pmlyp.', 'wwwwww'], { p: P.clay, m: P.mint, l: P.slate, y: C.yellow, w: '#ffffff' });
+  door(v, 'pz', z1, 10, 2, 2, 5, P.clay, { glass: true, frame: '#ffffff', heart: '#ffffff' });
+  awning(v, 'pz', z1, x0, GF, 12, P.clay, '#ffffff', { depth: 3 });
   // cucurucho gigante girando en el techo
   const cx = 8, cz = 6, y0 = top + 1;
-  v.cylinder(cx - 0.5, y0, cz - 0.5, 2.2, 1, P.pinkD);
+  v.cylinder(cx - 0.5, y0, cz - 0.5, 2.2, 1, P.clayD);
   const ic = m.part('cone', [cx, y0, cz]);
   const H = 7;
   for (let j = 0; j < H; j++) {
@@ -133,9 +133,9 @@ function heladeria(m, L) {
     ic.cylinder(cx - 0.5, y0 + 1 + j, cz - 0.5, r, 1, (x, y, z) => ((x + y + z) % 3 === 0 ? C.waffleD : C.waffle));
   }
   const sy = y0 + 1 + H;
-  ic.sphere(cx - 0.5, sy + 1, cz - 0.5, 3.3, 2.4, 3.3, (x, y, z) => (y <= sy && (x + z) % 3 === 0 ? shade(P.pink, -0.12) : P.pink));
+  ic.sphere(cx - 0.5, sy + 1, cz - 0.5, 3.3, 2.4, 3.3, (x, y, z) => (y <= sy && (x + z) % 3 === 0 ? shade(P.clay, -0.12) : P.clay));
   ic.sphere(cx - 0.5, sy + 4, cz - 0.5, 2.7, 2.1, 2.7, P.mint);
-  ic.sphere(cx - 0.5, sy + 6.5, cz - 0.5, 2.0, 1.7, 2.0, P.lilacL);
+  ic.sphere(cx - 0.5, sy + 6.5, cz - 0.5, 2.0, 1.7, 2.0, P.slateL);
   // chispitas de colores
   const r = rng(7);
   for (let i = 0; i < 14; i++) { const a = r() * Math.PI * 2, yy = sy + 1 + Math.floor(r() * 7); const rr = yy > sy + 5 ? 2 : 3; ic.set(Math.round(cx - 0.5 + Math.cos(a) * rr), yy, Math.round(cz - 0.5 + Math.sin(a) * rr), pick(r, [C.yellow, P.sky, '#ffffff', C.red])); }
@@ -143,16 +143,16 @@ function heladeria(m, L) {
   m.animate((parts, ph) => { const o = parts.cone[0]; return (dt, t) => { o.rotation.y = (t + ph) * 0.6; }; });
   // mesitas
   cafeTable(v, 3, 13, P.mint, '#ffffff');
-  if (L >= 2) cafeTable(v, 12, 13, P.pink, '#ffffff');
+  if (L >= 2) cafeTable(v, 12, 13, P.clay, '#ffffff');
   // carrito de helados (nivel 3+)
-  if (L >= 3) { v.box(7, 1, 13, 3, 2, 2, '#ffffff'); v.box(7, 3, 13, 3, 1, 2, P.sky); v.set(7, 1, 15, P.ink); v.set(9, 1, 15, P.ink); v.set(8, 4, 13, P.pink); }
+  if (L >= 3) { v.box(7, 1, 13, 3, 2, 2, '#ffffff'); v.box(7, 3, 13, 3, 1, 2, P.sky); v.set(7, 1, 15, P.ink); v.set(9, 1, 15, P.ink); v.set(8, 4, 13, P.clay); }
   sidewalk(m, L, b, { pots: [15] });
 }
 
 // ======================= FLORERÍA =======================
 function floreria(m, L) {
   const v = m.v;
-  const b = shopBody(m, L, { wall: '#fdfdf6', pave: ['#e9f7e3', '#dff2d8'], shutters: P.mintD, roof: '#d8f2e6', parapet: false, box: P.mintD, flowers: [P.pink, C.yellow] });
+  const b = shopBody(m, L, { wall: '#fdfdf6', pave: ['#e9f7e3', '#dff2d8'], shutters: P.mintD, roof: '#d8f2e6', parapet: false, box: P.mintD, flowers: [P.clay, C.yellow] });
   const { x0, x1, z0, z1, top, GF } = b;
   // invernadero de vidrio en el techo
   const gtop = gable(v, 'x', x0 + 1, x1 - 1, z0 + 1, z1 - 1, top + 1, '#ffffff', { wall: C.glass, oh: 0, stripes: false });
@@ -160,26 +160,26 @@ function floreria(m, L) {
     const c = v.get(x, y, z);
     if (c != null && (x - x0) % 3 !== 0) v.set(x, y, z, (y + z) % 4 === 0 ? 0xffffff : 0xbfe8ff);
   }
-  for (let x = x0 + 2; x <= x1 - 2; x += 3) v.set(x, top + 2, z0 + 3, P.pink);
+  for (let x = x0 + 2; x <= x1 - 2; x += 3) v.set(x, top + 2, z0 + 3, P.clay);
   // vidriera con ramos
   fbox(v, 'pz', z1, 3, 3, 6, 4, 0, (i, j) => (j === 3 ? C.glass : C.glassD));
-  pattern(v, 'pz', z1, 3, 3, ['p.y.l.', 'g.g.g.', 'gggggg'], { p: P.pink, y: C.yellow, l: P.lilac, g: C.leaf });
+  pattern(v, 'pz', z1, 3, 3, ['p.y.l.', 'g.g.g.', 'gggggg'], { p: P.clay, y: C.yellow, l: P.slate, g: C.leaf });
   door(v, 'pz', z1, 10, 2, 2, 5, P.mintD, { glass: true, frame: '#ffffff' });
   awning(v, 'pz', z1, x0, GF, 12, P.mint, '#ffffff', { depth: 2 });
   // flor gigante sobre la marquesina
   const fx = 7, fy = GF + 2, fz = z1 + 1;
-  pattern(v, 'pz', fz, fx - 2, fy, ['.p.p.', 'ppypp', '.ppp.', '..g..', '.gg..'], { p: P.pink, y: C.yellow, g: C.leaf });
+  pattern(v, 'pz', fz, fx - 2, fy, ['.p.p.', 'ppypp', '.ppp.', '..g..', '.gg..'], { p: P.clay, y: C.yellow, g: C.leaf });
   // gradas con macetas
-  const cols = [P.pink, C.red, C.yellow, P.lilac, '#ffffff', P.peach];
+  const cols = [P.clay, C.red, C.yellow, P.slate, '#ffffff', P.peach];
   for (let i = 0; i < 3; i++) {
     v.box(1, 1 + i, 11 + i, 6, 1, 1, P.wood);
     for (let x = 1; x <= 6; x += 2) { v.set(x, 2 + i, 11 + i, P.coral); flower(v, x, 3 + i, 11 + i, cols[(x + i) % cols.length], 0); v.set(x + 1, 3 + i, 11 + i, C.leaf); }
   }
   for (let x = 10; x <= 14; x += 2) { v.box(x, 1, 13, 1, 2, 1, P.coral); bush(v, x, 3, 13, 1, C.leaf, [cols[x % cols.length]], x); }
   // macetas colgantes
-  for (const x of [x0, x1]) { v.set(x, GF - 1, z1 + 2, P.goldD); v.set(x, GF - 2, z1 + 2, P.coral); v.set(x, GF - 3, z1 + 2, C.leaf); v.set(x, GF - 2, z1 + 3, P.pink); }
-  if (L >= 2) { tulip(v, 15, 1, 10, C.red); tulip(v, 15, 1, 7, P.pink); tulip(v, 0, 1, 7, C.yellow); }
-  if (L >= 3) for (let x = x0; x <= x1; x += 2) v.set(x, GF + 1 + 6, z1 + 1, x % 4 === 0 ? P.pink : C.yellow);
+  for (const x of [x0, x1]) { v.set(x, GF - 1, z1 + 2, P.goldD); v.set(x, GF - 2, z1 + 2, P.coral); v.set(x, GF - 3, z1 + 2, C.leaf); v.set(x, GF - 2, z1 + 3, P.clay); }
+  if (L >= 2) { tulip(v, 15, 1, 10, C.red); tulip(v, 15, 1, 7, P.clay); tulip(v, 0, 1, 7, C.yellow); }
+  if (L >= 3) for (let x = x0; x <= x1; x += 2) v.set(x, GF + 1 + 6, z1 + 1, x % 4 === 0 ? P.clay : C.yellow);
   sidewalk(m, L, b, { pots: [] });
 }
 
@@ -187,13 +187,13 @@ function floreria(m, L) {
 function cafeteria(m, L) {
   const v = m.v;
   const fur = '#ffd9b8', furD = '#f3c39a';
-  const b = shopBody(m, L, { wall: fur, wallFn: (x, y, z) => ((y + Math.floor(x / 3)) % 7 === 0 ? furD : fur), pave: ['#fff4e6', '#f6e3ff'], shutters: P.lilacD, roof: furD, parapet: false, gf: 10, upperWins: false });
+  const b = shopBody(m, L, { wall: fur, wallFn: (x, y, z) => ((y + Math.floor(x / 3)) % 7 === 0 ? furD : fur), pave: ['#fdf6e3', '#f9f3e9'], shutters: P.slateD, roof: furD, parapet: false, gf: 10, upperWins: false });
   const { x0, x1, z0, z1, top, GF } = b;
   // orejas de gato (triángulos con interior rosa)
   const ear = ['..XX..', '.XppX.', 'XppppX', 'XXXXXX'];
   for (const ex of [x0, x1 - 5]) {
     pattern(v, 'pz', z1 - 1, ex, top + 1, ear.map(r => r.replace(/p/g, 'X')), furD);
-    pattern(v, 'pz', z1, ex, top + 1, ear, { X: fur, p: P.pinkL });
+    pattern(v, 'pz', z1, ex, top + 1, ear, { X: fur, p: P.clayL });
   }
   // cara en la fachada (arriba de la puerta)
   const fy = top - 5;
@@ -204,17 +204,17 @@ function cafeteria(m, L) {
     '.kk....kk.',
     '....pp....',
     '...k..k...',
-  ], { k: P.ink, w: '#ffffff', p: P.pink }, 0);
+  ], { k: P.ink, w: '#ffffff', p: P.clay }, 0);
   // cachetes rosados y bigotes
-  fbox(v, 'pz', z1, 2, fy + 1, 1, 1, 0, P.pink); fbox(v, 'pz', z1, 13, fy + 1, 1, 1, 0, P.pink);
+  fbox(v, 'pz', z1, 2, fy + 1, 1, 1, 0, P.clay); fbox(v, 'pz', z1, 13, fy + 1, 1, 1, 0, P.clay);
   for (const u of [x0, x1]) { fset(v, 'pz', z1, u, fy + 2, 0, P.inkL); fset(v, 'pz', z1, u, fy, 0, P.inkL); }
   // planta baja: puerta y ventana con taza
-  door(v, 'pz', z1, 7, 2, 2, 4, P.lilacD, { glass: true, frame: '#ffffff' });
+  door(v, 'pz', z1, 7, 2, 2, 4, P.slateD, { glass: true, frame: '#ffffff' });
   win(v, 'pz', z1, 3, 3, 3, 3, { frame: '#ffffff', sill: P.wood });
   win(v, 'pz', z1, 11, 3, 3, 3, { frame: '#ffffff', sill: P.wood });
   pattern(v, 'pz', z1, 11, 3, ['www', 'wwh', 'ww.'], { w: '#ffffff', h: '#ffffff' });
   // patitas sobre la cornisa
-  for (const x of [5, 9]) { v.box(x, top + 1, z1, 2, 1, 2, '#ffffff'); v.set(x, top + 1, z1 + 2, P.pinkL); }
+  for (const x of [5, 9]) { v.box(x, top + 1, z1, 2, 1, 2, '#ffffff'); v.set(x, top + 1, z1 + 2, P.clayL); }
   // cola que se mueve (lado derecho)
   const tail = m.part('tail', [x1 + 1, 3, 5.5]);
   for (let j = 0; j < 8; j++) tail.set(x1 + 1 + (j > 5 ? j - 5 : 0), 3 + j, 5, j > 5 ? furD : fur);
@@ -223,26 +223,26 @@ function cafeteria(m, L) {
   // cartel taza de café humeante
   const sx = 13, sy = GF - 1;
   v.box(sx, sy, z1 + 1, 1, 1, 2, P.goldD);
-  pattern(v, 'pz', z1 + 3, sx - 1, sy - 4, ['wwwh', 'wwwh', '.ww.', 'pppp'], { w: '#ffffff', h: '#ffffff', p: P.pink });
+  pattern(v, 'pz', z1 + 3, sx - 1, sy - 4, ['wwwh', 'wwwh', '.ww.', 'pppp'], { w: '#ffffff', h: '#ffffff', p: P.clay });
   addSmoke(m, sx - 1, sy, z1 + 3, '#ffffff');
-  if (L >= 2) cafeTable(v, 2, 13, P.lilac, '#ffffff');
+  if (L >= 2) cafeTable(v, 2, 13, P.slate, '#ffffff');
   // tazón gigante en la vereda
   v.box(11, 1, 12, 3, 2, 3, '#ffffff'); v.box(12, 3, 13, 1, 1, 1, P.woodD); v.set(14, 2, 13, '#ffffff');
   // gatito durmiendo en la vereda (nivel 3+)
-  if (L >= 3) { v.box(7, 1, 13, 3, 1, 2, '#ffffff'); v.box(8, 2, 13, 2, 1, 2, '#ffffff'); v.set(7, 2, 14, '#ffffff'); v.set(9, 3, 13, '#ffffff'); v.set(8, 3, 13, P.pinkL); }
+  if (L >= 3) { v.box(7, 1, 13, 3, 1, 2, '#ffffff'); v.box(8, 2, 13, 2, 1, 2, '#ffffff'); v.set(7, 2, 14, '#ffffff'); v.set(9, 3, 13, '#ffffff'); v.set(8, 3, 13, P.clayL); }
   sidewalk(m, L, b, { pots: [15], lampU: 1, lampU2: 14 });
 }
 
 // ======================= SALÓN DE BELLEZA =======================
 function salon(m, L) {
   const v = m.v;
-  const b = shopBody(m, L, { wall: '#ffd6ea', pave: ['#ffffff', '#f3e9ff'], shutters: P.lilac, roof: '#f5bfd8', box: P.lilacD, flowers: [P.pink, '#ffffff'] });
+  const b = shopBody(m, L, { wall: '#fde9d8', pave: ['#ffffff', '#fbf5ed'], shutters: P.slate, roof: '#f5d8bf', box: P.slateD, flowers: [P.clay, '#ffffff'] });
   const { x0, x1, z0, z1, top, GF } = b;
   // vidriera: sillón + secador de pie
   fbox(v, 'pz', z1, 3, 3, 6, 5, 0, (i, j) => (j === 4 ? C.glass : C.glassD));
-  pattern(v, 'pz', z1, 3, 3, ['.ddd..', '.d.d..', '..|...', '.pp..s', '.pp..s'], { d: P.lilacD, '|': P.inkL, p: P.pink, s: '#ffffff' });
-  door(v, 'pz', z1, 10, 2, 2, 5, P.lilac, { glass: true, frame: '#ffffff', heart: P.pink });
-  awning(v, 'pz', z1, x0, GF, 12, P.lilac, '#ffffff', { depth: 2, stripe: 2 });
+  pattern(v, 'pz', z1, 3, 3, ['.ddd..', '.d.d..', '..|...', '.pp..s', '.pp..s'], { d: P.slateD, '|': P.inkL, p: P.clay, s: '#ffffff' });
+  door(v, 'pz', z1, 10, 2, 2, 5, P.slate, { glass: true, frame: '#ffffff', heart: P.clay });
+  awning(v, 'pz', z1, x0, GF, 12, P.slate, '#ffffff', { depth: 2, stripe: 2 });
   // espejo de mano gigante en el techo
   const mx = 7, my = top + 2, mz = 6;
   v.box(mx, top + 1, mz, 2, 4, 1, P.goldD); // mango
@@ -253,47 +253,47 @@ function salon(m, L) {
     const y = my + 4 + (rows.length - 1 - r), x = mx - 3 + i;
     if (ch === 'g') { v.set(x, y, mz, c); v.set(x, y, mz + 1, c); } else { v.set(x, y, mz, P.goldD); m.glow.set(x, y, mz + 1, c); }
   }
-  pattern(v, 'pz', mz + 2, mx, my + 8, ['X'], P.pink);
+  pattern(v, 'pz', mz + 2, mx, my + 8, ['X'], P.clay);
   // secador de pelo colgando como cartel (lado derecho)
   const sx = x1 + 1, sy = GF - 1;
   v.box(sx, sy + 2, 3, 1, 1, 1, P.goldD);
-  v.box(sx, sy - 1, 2, 2, 3, 4, P.pink); // cuerpo
-  v.box(sx, sy, 6, 2, 1, 2, P.pinkD); // boquilla
-  v.box(sx, sy - 4, 3, 2, 3, 1, P.lilac); // mango
-  v.set(sx + 1, sy + 1, 3, '#ffffff'); v.set(sx + 2, sy, 3, P.pinkD);
+  v.box(sx, sy - 1, 2, 2, 3, 4, P.clay); // cuerpo
+  v.box(sx, sy, 6, 2, 1, 2, P.clayD); // boquilla
+  v.box(sx, sy - 4, 3, 2, 3, 1, P.slate); // mango
+  v.set(sx + 1, sy + 1, 3, '#ffffff'); v.set(sx + 2, sy, 3, P.clayD);
   // aire del secador (brillitos)
   sparkle(m, sx + 1, sy + 1, 9, '#ffffff', 3.2);
   // esmaltes en la vereda
-  for (const [x, c] of [[2, C.red], [4, P.pink], [6, P.lilac]]) { v.set(x, 1, 13, c); v.set(x, 2, 13, c); v.set(x, 3, 13, '#ffffff'); }
-  if (L >= 2) { v.box(10, 1, 12, 4, 1, 2, P.pinkL); v.box(10, 2, 12, 1, 2, 2, P.pinkL); v.box(13, 2, 12, 1, 2, 2, P.pinkL); }
-  if (L >= 3) sparkle(m, 3, top + 3, 12, P.pinkL, 2.7);
+  for (const [x, c] of [[2, C.red], [4, P.clay], [6, P.slate]]) { v.set(x, 1, 13, c); v.set(x, 2, 13, c); v.set(x, 3, 13, '#ffffff'); }
+  if (L >= 2) { v.box(10, 1, 12, 4, 1, 2, P.clayL); v.box(10, 2, 12, 1, 2, 2, P.clayL); v.box(13, 2, 12, 1, 2, 2, P.clayL); }
+  if (L >= 3) sparkle(m, 3, top + 3, 12, P.clayL, 2.7);
   sidewalk(m, L, b, { pots: [15] });
 }
 
 // ======================= PASTELERÍA NUBE =======================
 function pasteleria(m, L) {
   const v = m.v;
-  const b = shopBody(m, L, { wall: '#e3f3ff', wallFn: (x, y) => ((x + y) % 6 === 0 ? '#d3ecff' : '#e3f3ff'), pave: ['#ffffff', '#ffeaf4'], shutters: P.sky, roof: '#ffffff', parapet: false, box: P.skyD, flowers: [P.pink, '#ffffff'] });
+  const b = shopBody(m, L, { wall: '#e3f3ff', wallFn: (x, y) => ((x + y) % 6 === 0 ? '#d3ecff' : '#e3f3ff'), pave: ['#ffffff', '#fbf6ee'], shutters: P.sky, roof: '#ffffff', parapet: false, box: P.skyD, flowers: [P.clay, '#ffffff'] });
   const { x0, x1, z0, z1, top, GF } = b;
   // nubes en el techo
   for (const [x, z, r] of [[x0 + 1, z0 + 1, 2.4], [x1 - 1, z0 + 1, 2.4], [x0 + 1, z1, 2.2], [x1 - 1, z1, 2.2], [7.5, z0, 2.6]]) v.sphere(x, top + 1, z, r, 1.8, r, (xx, y) => (y > top + 1 ? '#ffffff' : '#f2f8ff'));
-  // cupcake gigante con corona
+  // cupcake gigante con cereza
   const cx = 7.5, cz = 5.5, y0 = top + 1;
-  for (let j = 0; j < 4; j++) v.cylinder(cx, y0 + j, cz, 2.6 + j * 0.25, 1, (x, y, z) => ((x + z) % 2 ? P.pink : '#ffffff'));
-  for (let j = 0; j < 5; j++) v.cylinder(cx, y0 + 4 + j, cz, Math.max(0.8, 3.6 - j * 0.7), 1, j % 2 ? P.pinkL : '#ffe6f2');
+  for (let j = 0; j < 4; j++) v.cylinder(cx, y0 + j, cz, 2.6 + j * 0.25, 1, (x, y, z) => ((x + z) % 2 ? P.clay : '#ffffff'));
+  for (let j = 0; j < 5; j++) v.cylinder(cx, y0 + 4 + j, cz, Math.max(0.8, 3.6 - j * 0.7), 1, j % 2 ? P.clayL : '#faf4eb');
   const r = rng(3);
-  for (let i = 0; i < 10; i++) { const a = r() * 6.28, yy = y0 + 4 + Math.floor(r() * 3); v.set(Math.round(cx + Math.cos(a) * 3), yy, Math.round(cz + Math.sin(a) * 3), pick(r, [P.sky, C.yellow, P.mint, P.lilac])); }
-  crown(v, 6, y0 + 9, 4, 5, P.gold, P.pink);
+  for (let i = 0; i < 10; i++) { const a = r() * 6.28, yy = y0 + 4 + Math.floor(r() * 3); v.set(Math.round(cx + Math.cos(a) * 3), yy, Math.round(cz + Math.sin(a) * 3), pick(r, [P.sky, C.yellow, P.mint, P.slate])); }
+  v.box(7, y0 + 9, 5, 2, 2, 2, C.red); v.set(8, y0 + 11, 5, C.leafD); // cereza
   // vidriera con tortas
   fbox(v, 'pz', z1, 3, 3, 6, 4, 0, (i, j) => (j === 3 ? C.glass : C.glassD));
-  pattern(v, 'pz', z1, 3, 3, ['.y..p.', 'ppp.ww', 'www.pp'], { p: P.pink, w: '#ffffff', y: C.yellow });
+  pattern(v, 'pz', z1, 3, 3, ['.y..p.', 'ppp.ww', 'www.pp'], { p: P.clay, w: '#ffffff', y: C.yellow });
   door(v, 'pz', z1, 10, 2, 2, 5, P.skyD, { glass: true, frame: '#ffffff', heart: '#ffffff' });
   // toldo en forma de nube (bolitas)
   for (let x = x0; x <= x1; x++) { v.set(x, GF, z1 + 1, '#ffffff'); if (x % 2 === 0) { v.set(x, GF - 1, z1 + 1, '#ffffff'); v.set(x, GF, z1 + 2, '#ffffff'); } }
   // torta en la vereda
-  v.box(2, 1, 12, 3, 2, 3, P.pink); v.box(2, 3, 12, 3, 1, 3, '#ffffff'); v.box(3, 4, 13, 1, 1, 1, C.red);
+  v.box(2, 1, 12, 3, 2, 3, P.clay); v.box(2, 3, 12, 3, 1, 3, '#ffffff'); v.box(3, 4, 13, 1, 1, 1, C.red);
   if (L >= 2) cafeTable(v, 12, 13, P.sky, '#ffffff');
-  if (L >= 3) for (let x = x0; x <= x1; x += 3) v.set(x, GF + 7, z1 + 1, P.pinkL);
+  if (L >= 3) for (let x = x0; x <= x1; x += 3) v.set(x, GF + 7, z1 + 1, P.clayL);
   sidewalk(m, L, b, { pots: [7] });
   if (L >= 5) spinStar(m, 7, y0 + 13, 6);
 }
@@ -301,45 +301,45 @@ function pasteleria(m, L) {
 // ======================= TIENDA BRILLO =======================
 function boutique(m, L) {
   const v = m.v;
-  const b = shopBody(m, L, { wall: '#e7d8ff', wallFn: (x, y, z) => ((x * 7 + y * 3 + z * 5) % 13 === 0 ? '#ffffff' : '#e7d8ff'), pave: ['#ffffff', '#f4ecff'], shutters: P.pink, roof: '#d6c2ff', box: P.pink, flowers: [P.lilac, '#ffffff'] });
+  const b = shopBody(m, L, { wall: '#dfe7f8', wallFn: (x, y, z) => ((x * 7 + y * 3 + z * 5) % 13 === 0 ? '#ffffff' : '#dfe7f8'), pave: ['#ffffff', '#fbf7f0'], shutters: P.clay, roof: '#ced9f3', box: P.clay, flowers: [P.slate, '#ffffff'] });
   const { x0, x1, z0, z1, top, GF } = b;
   // vidriera: vestido + cartera + zapatos
   fbox(v, 'pz', z1, 3, 2, 7, 6, 0, (i, j) => (j >= 5 ? C.glass : C.glassD));
-  pattern(v, 'pz', z1, 3, 2, ['.k.....', '.p..ggg', 'ppp.gbg', 'ppp.bbb', 'ppp....', 'ppppsss'], { k: P.ink, p: P.pink, g: P.gold, b: P.lilacD, s: C.red });
-  door(v, 'pz', z1, 11, 2, 2, 5, P.pink, { glass: true, frame: P.gold });
-  awning(v, 'pz', z1, x0, GF, 12, P.pink, P.lilacL, { depth: 2 });
+  pattern(v, 'pz', z1, 3, 2, ['.k.....', '.p..ggg', 'ppp.gbg', 'ppp.bbb', 'ppp....', 'ppppsss'], { k: P.ink, p: P.clay, g: P.gold, b: P.slateD, s: C.red });
+  door(v, 'pz', z1, 11, 2, 2, 5, P.clay, { glass: true, frame: P.gold });
+  awning(v, 'pz', z1, x0, GF, 12, P.clay, P.slateL, { depth: 2 });
   // cartera gigante en el techo
   const bx = 4, by = top + 1, bz = 5;
-  v.box(bx, by, bz, 8, 6, 3, (x, y) => (y === by ? P.pinkD : (x + y) % 5 === 0 ? P.pinkL : P.pink));
-  v.box(bx, by + 4, bz + 3, 8, 2, 1, P.pinkD); // solapa
+  v.box(bx, by, bz, 8, 6, 3, (x, y) => (y === by ? P.clayD : (x + y) % 5 === 0 ? P.clayL : P.clay));
+  v.box(bx, by + 4, bz + 3, 8, 2, 1, P.clayD); // solapa
   v.box(bx + 3, by + 3, bz + 3, 2, 2, 1, P.gold); // broche
   for (let i = 0; i <= 6; i++) { const x = bx + 1 + i, y = by + 6 + Math.round(Math.sin(i / 6 * Math.PI) * 3); v.set(x, y, bz + 1, P.gold); }
   // estrella del cartel + brillos
   pattern(v, 'pz', z1 + 1, 6, GF + 1, STAR5, P.gold);
-  sparkle(m, 3, top + 3, 12, '#ffffff', 2.4); sparkle(m, 12, GF + 2, 13, P.pinkL, 3);
+  sparkle(m, 3, top + 3, 12, '#ffffff', 2.4); sparkle(m, 12, GF + 2, 13, P.clayL, 3);
   // percha con ropa en la vereda
   v.box(10, 1, 13, 1, 5, 1, P.gold); v.box(14, 1, 13, 1, 5, 1, P.gold); v.box(10, 6, 13, 5, 1, 1, P.gold);
-  v.box(11, 3, 13, 1, 3, 1, P.mint); v.box(12, 3, 13, 1, 3, 1, P.pink); v.box(13, 3, 13, 1, 3, 1, C.yellow);
-  if (L >= 2) { v.box(2, 1, 12, 3, 1, 3, P.lilac); v.set(3, 2, 13, P.pink); v.set(3, 3, 13, '#ffffff'); }
+  v.box(11, 3, 13, 1, 3, 1, P.mint); v.box(12, 3, 13, 1, 3, 1, P.clay); v.box(13, 3, 13, 1, 3, 1, C.yellow);
+  if (L >= 2) { v.box(2, 1, 12, 3, 1, 3, P.slate); v.set(3, 2, 13, P.clay); v.set(3, 3, 13, '#ffffff'); }
   sidewalk(m, L, b, { pots: [7] });
 }
 
 // ======================= CINE ESTELAR =======================
 function cine(m, L) {
   const v = m.v;
-  lot(v, 24, 24, (x, z) => ((x + z) % 2 ? '#f4ecff' : '#ebe0fb'));
-  const wall = '#b9a3f5', wallD = '#a48ae8';
+  lot(v, 24, 24, (x, z) => ((x + z) % 2 ? '#fbf7f0' : '#f8f0e3'));
+  const wall = '#99b0e7', wallD = '#7c9ae0';
   const x0 = 2, x1 = 21, z0 = 2, z1 = 14;
   const H = L >= 3 ? 17 : 14;
   v.box(x0, 1, z0, 20, H, 13, (x, y, z) => (y === 1 ? C.stoneL : (x % 4 === 0 ? wallD : wall)));
   // franja superior con estrellitas
   for (let x = x0; x <= x1; x++) { v.set(x, H, z1 + 1, P.gold); v.set(x, H + 1, z1, x % 2 ? P.gold : wall); }
-  for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = z0 - 1; z <= z1 + 1; z++) if (x === x0 - 1 || x === x1 + 1 || z === z0 - 1 || z === z1 + 1) v.set(x, H + 1, z, L >= 4 ? P.gold : P.lilacD);
+  for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = z0 - 1; z <= z1 + 1; z++) if (x === x0 - 1 || x === x1 + 1 || z === z0 - 1 || z === z1 + 1) v.set(x, H + 1, z, L >= 4 ? P.gold : P.slateD);
   // entrada vidriada
   fbox(v, 'pz', z1, 8, 2, 8, 6, 0, (i, j) => (i === 0 || i === 7 ? P.gold : j === 5 ? C.glass : (i % 2 ? C.glassD : C.glass)));
-  fbox(v, 'pz', z1, 10, 2, 4, 5, 0, (i, j) => (j === 4 ? C.glass : P.lilacD));
+  fbox(v, 'pz', z1, 10, 2, 4, 5, 0, (i, j) => (j === 4 ? C.glass : P.slateD));
   // afiches enmarcados
-  for (const [u, c1, c2] of [[3, P.pink, C.yellow], [17, P.sky, P.pink]]) {
+  for (const [u, c1, c2] of [[3, P.clay, C.yellow], [17, P.sky, P.clay]]) {
     fbox(v, 'pz', z1, u, 3, 4, 6, 0, P.gold);
     fbox(v, 'pz', z1, u + 1, 4, 2, 4, 0, c1);
     pattern(v, 'pz', z1, u + 1, 5, ['ww', '.w'], { w: '#ffffff' });
@@ -350,7 +350,7 @@ function cine(m, L) {
   // marquesina con lamparitas que titilan
   const mx0 = 5, mx1 = 18, my = 9;
   v.box(mx0, my, z1 + 1, mx1 - mx0 + 1, 3, 3, '#ffffff');
-  v.box(mx0, my + 1, z1 + 4, mx1 - mx0 + 1, 1, 1, P.pink);
+  v.box(mx0, my + 1, z1 + 4, mx1 - mx0 + 1, 1, 1, P.clay);
   for (let x = mx0 + 2; x <= mx1 - 2; x++) fset(v, 'pz', z1 + 3, x, my + 1, 1, x % 3 === 0 ? P.ink : P.inkL);
   const A = m.part('bulbA', [12, my, 18], { mat: 'light', cast: false }), Bb = m.part('bulbB', [12, my, 18], { mat: 'light', cast: false });
   for (let x = mx0; x <= mx1; x++) {
@@ -364,7 +364,7 @@ function cine(m, L) {
   });
   // cartel vertical con estrella
   const sx = 11, sTop = H + 9;
-  v.box(sx, H - 2, z1 + 1, 2, sTop - H + 2, 1, P.pink);
+  v.box(sx, H - 2, z1 + 1, 2, sTop - H + 2, 1, P.clay);
   for (let y = H - 1; y < sTop; y += 2) { m.light.set(sx, y, z1 + 2, C.yellow); m.light.set(sx + 1, y + 1, z1 + 2, '#ffffff'); }
   pattern(v, 'pz', z1 + 1, sx - 1, sTop, STAR5, P.gold);
   pattern(v, 'pz', z1 + 2, sx + 1, sTop + 2, ['X'], '#ffffff');
@@ -373,16 +373,16 @@ function cine(m, L) {
   for (let j = 0; j < 6; j++) v.cylinder(px, py + j, pz, 2.4 + j * 0.15, 1, (x, y, z) => ((x + z) % 2 ? C.red : '#ffffff'));
   v.sphere(px, py + 7, pz, 3, 2, 3, (x, y, z) => ((x + y + z) % 3 === 0 ? C.yellow : '#fffbe6'));
   // alfombra rosa con postes dorados
-  for (let z = z1 + 1; z <= 23; z++) for (let x = 9; x <= 14; x++) v.set(x, 0, z, x === 9 || x === 14 ? P.gold : P.pink);
+  for (let z = z1 + 1; z <= 23; z++) for (let x = 9; x <= 14; x++) v.set(x, 0, z, x === 9 || x === 14 ? P.gold : P.clay);
   for (const x of [8, 15]) for (const z of [18, 21]) { v.box(x, 1, z, 1, 2, 1, P.gold); v.set(x, 3, z, P.goldL); }
   for (const x of [8, 15]) for (let z = 18; z <= 21; z++) v.set(x, 2, z, P.coral);
   // boletería
-  v.box(2, 1, 17, 4, 4, 3, P.pink); fset(v, 'pz', 19, 3, 3, 0, C.glass); fset(v, 'pz', 19, 4, 3, 0, C.glass); v.box(1, 5, 16, 6, 1, 5, '#ffffff'); v.box(2, 6, 17, 4, 1, 3, P.pinkD);
-  if (L >= 2) { for (const x of [18, 21]) { v.box(x, 1, 19, 1, 2, 1, P.coral); bush(v, x, 3, 19, 1.1, C.leaf, [P.pink], x); } }
+  v.box(2, 1, 17, 4, 4, 3, P.clay); fset(v, 'pz', 19, 3, 3, 0, C.glass); fset(v, 'pz', 19, 4, 3, 0, C.glass); v.box(1, 5, 16, 6, 1, 5, '#ffffff'); v.box(2, 6, 17, 4, 1, 3, P.clayD);
+  if (L >= 2) { for (const x of [18, 21]) { v.box(x, 1, 19, 1, 2, 1, P.coral); bush(v, x, 3, 19, 1.1, C.leaf, [P.clay], x); } }
   win(v, 'px', x1, 6, 6, 4, 4, { sill: false, frame: P.gold });
   win(v, 'nx', x0, 6, 6, 4, 4, { sill: false, frame: P.gold });
   if (L >= 4) { doorLamps(m, 'pz', z1, 7, 16, 3); }
-  if (L >= 5) { wavingFlag(m, 3, H + 6, 4, 3, 2, P.pink); v.box(3, H + 2, 4, 1, 6, 1, '#ffffff'); wavingFlag(m, 20, H + 6, 4, 3, 2, P.sky); v.box(20, H + 2, 4, 1, 6, 1, '#ffffff'); sparkle(m, 7, H + 4, 16, '#ffffff'); }
+  if (L >= 5) { wavingFlag(m, 3, H + 6, 4, 3, 2, P.clay); v.box(3, H + 2, 4, 1, 6, 1, '#ffffff'); wavingFlag(m, 20, H + 6, 4, 3, 2, P.sky); v.box(20, H + 2, 4, 1, 6, 1, '#ffffff'); sparkle(m, 7, H + 4, 16, '#ffffff'); }
 }
 
 // ======================= SPA BURBUJAS =======================
@@ -395,14 +395,14 @@ function spa(m, L) {
   for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = z0 - 1; z <= z1 + 1; z++) v.set(x, H + 1, z, (x === x0 - 1 || x === x1 + 1 || z === z0 - 1 || z === z1 + 1) ? (L >= 4 ? P.gold : P.mintD) : P.mintL);
   // cúpula
   v.sphere(11.5, H + 1, 6, 5.5, 5, 4.5, (x, y, z) => (y > H + 4 ? '#ffffff' : (x + y) % 3 === 0 ? P.mintL : '#e9fffa'));
-  v.box(11, H + 6, 6, 1, 2, 1, L >= 4 ? P.gold : P.mintD); v.set(11, H + 8, 6, P.pink);
+  v.box(11, H + 6, 6, 1, 2, 1, L >= 4 ? P.gold : P.mintD); v.set(11, H + 8, 6, P.clay);
   // columnas y entrada
   for (const x of [5, 9, 14, 18]) { v.box(x, 2, z1 + 1, 1, H - 1, 1, '#ffffff'); v.set(x, H, z1 + 1, P.mintD); }
   v.box(x0, H, z1 + 1, 20, 1, 1, P.mintD);
   door(v, 'pz', z1, 10, 2, 4, 6, P.mint, { glass: true, frame: '#ffffff' });
   win(v, 'pz', z1, 3, 4, 2, 4, { sill: false, frame: P.mintL }); win(v, 'pz', z1, 6, 4, 2, 4, { sill: false });
   win(v, 'pz', z1, 15, 4, 2, 4, { sill: false }); win(v, 'pz', z1, 19, 4, 2, 4, { sill: false, frame: P.mintL });
-  pattern(v, 'pz', z1, 10, H - 3, ['.p..', 'pppp', '.pp.'], { p: P.pink });
+  pattern(v, 'pz', z1, 10, H - 3, ['.p..', 'pppp', '.pp.'], { p: P.clay });
   // pileta burbujeante
   const pcx = 11.5, pcz = 17;
   for (let x = 2; x <= 21; x++) for (let z = 12; z <= 22; z++) {
@@ -429,13 +429,13 @@ function spa(m, L) {
     };
   });
   // reposeras con toallas
-  for (const [x, c] of [[1, P.pink], [20, P.lilac]]) { v.box(x, 1, 13, 2, 1, 5, '#ffffff'); v.box(x, 2, 13, 2, 1, 4, c); v.box(x, 2, 13, 2, 2, 1, c); }
+  for (const [x, c] of [[1, P.clay], [20, P.slate]]) { v.box(x, 1, 13, 2, 1, 5, '#ffffff'); v.box(x, 2, 13, 2, 1, 4, c); v.box(x, 2, 13, 2, 2, 1, c); }
   // toallas enrolladas y velas
-  v.box(3, 1, 22, 2, 1, 1, P.pink); v.box(3, 2, 22, 2, 1, 1, P.mint); v.box(19, 1, 22, 2, 1, 1, P.lilac);
+  v.box(3, 1, 22, 2, 1, 1, P.clay); v.box(3, 2, 22, 2, 1, 1, P.mint); v.box(19, 1, 22, 2, 1, 1, P.slate);
   m.light.set(7, 2, 21, C.yellow); v.set(7, 1, 21, '#ffffff'); m.light.set(16, 2, 21, C.yellow); v.set(16, 1, 21, '#ffffff');
   // flor de loto flotando
-  pattern(v, 'pz', 18, 14, 1, ['p.p', 'ppp'], P.pinkL);
-  if (L >= 2) { smallTree(v, 22, 1, 12, 5, 1.8, C.leaf, 5, [P.pink]); smallTree(v, 1, 1, 22, 4, 1.5, C.leaf, 8, ['#ffffff']); }
+  pattern(v, 'pz', 18, 14, 1, ['p.p', 'ppp'], P.clayL);
+  if (L >= 2) { smallTree(v, 22, 1, 12, 5, 1.8, C.leaf, 5, [P.clay]); smallTree(v, 1, 1, 22, 4, 1.5, C.leaf, 8, ['#ffffff']); }
   if (L >= 3) { pattern(v, 'pz', 18, 6, 1, ['w.w', 'www'], '#ffffff'); }
   if (L >= 4) { doorLamps(m, 'pz', z1 + 1, 7, 16, 3); }
   if (L >= 5) { spinStar(m, 11, H + 10, 6); sparkle(m, 4, H + 3, 12, '#ffffff'); }
@@ -444,12 +444,12 @@ function spa(m, L) {
 // ======================= RUEDA DE LA FORTUNA =======================
 function rueda(m, L) {
   const v = m.v;
-  lot(v, 24, 24, (x, z) => ((x + z) % 2 ? '#fff0f7' : '#ffe2ef'));
+  lot(v, 24, 24, (x, z) => ((x + z) % 2 ? '#fcf8f3' : '#f9f2e8'));
   const cx = 12, cy = 17, R = 9, zw = 11; // rueda en el plano z = 11..12
   // plataforma
-  v.box(3, 1, 7, 18, 1, 10, (x, y, z) => ((x + z) % 2 ? P.lilacL : '#ffffff'));
+  v.box(3, 1, 7, 18, 1, 10, (x, y, z) => ((x + z) % 2 ? P.slateL : '#ffffff'));
   // soportes en A (dos caras)
-  const legC = L >= 4 ? P.gold : P.lilac;
+  const legC = L >= 4 ? P.gold : P.slate;
   for (const z of [8, 15]) {
     for (let s = 0; s <= 1; s++) {
       const fx = s ? cx + 7 : cx - 8, steps = cy - 2;
@@ -463,7 +463,7 @@ function rueda(m, L) {
   v.box(cx - 1, cy - 1, 8, 2, 2, 8, P.goldD); // eje
   // rueda (parte giratoria)
   const wheel = m.part('wheel', [cx, cy, zw + 1]);
-  const rim = [P.pink, P.lilac, P.sky, P.mint, C.yellow, P.peach];
+  const rim = [P.clay, P.slate, P.sky, P.mint, C.yellow, P.peach];
   for (let i = cx - R - 1; i <= cx + R; i++) for (let j = cy - R - 1; j <= cy + R; j++) {
     const dx = i + 0.5 - cx, dy = j + 0.5 - cy, d = Math.hypot(dx, dy);
     if (Math.abs(d - R) < 0.62) {
@@ -476,13 +476,13 @@ function rueda(m, L) {
     const a = k / 8 * Math.PI * 2;
     for (let r = 1.5; r < R - 0.5; r += 0.5) { const x = Math.floor(cx + Math.cos(a) * r), y = Math.floor(cy + Math.sin(a) * r); wheel.set(x, y, zw + (k % 2), '#ffffff'); }
   }
-  wheel.box(cx - 1, cy - 1, zw - 1, 2, 2, 4, P.pink);
+  wheel.box(cx - 1, cy - 1, zw - 1, 2, 2, 4, P.clay);
   pattern(wheel, 'pz', zw + 2, cx - 1, cy - 1, ['XX', 'XX'], P.gold);
   // lamparitas en el aro
   const bulbs = m.part('wheel', [cx, cy, zw + 1], { mat: 'light', cast: false });
   for (let k = 0; k < 8; k++) { const a = (k + 0.5) / 8 * Math.PI * 2; bulbs.set(Math.floor(cx + Math.cos(a) * (R + 0.9)), Math.floor(cy + Math.sin(a) * (R + 0.9)), zw + 1, k % 2 ? '#ffffff' : C.yellow); }
   // góndolas (siempre derechas)
-  const gcol = [P.pink, P.mint, P.lilac, P.sky, C.yellow, P.peach, P.pinkD, P.mintD];
+  const gcol = [P.clay, P.mint, P.slate, P.sky, C.yellow, P.peach, P.clayD, P.mintD];
   for (let k = 0; k < 8; k++) {
     const g = m.part('gondola', [cx, 6, zw + 1]);
     const c = gcol[k];
@@ -507,16 +507,16 @@ function rueda(m, L) {
   });
   m.height = cy + R + 2;
   // boletería y vallas
-  v.box(15, 1, 19, 5, 4, 3, P.pink); fset(v, 'pz', 21, 16, 3, 0, C.glass); fset(v, 'pz', 21, 17, 3, 0, C.glass);
-  awning(v, 'pz', 21, 15, 5, 5, P.pink, '#ffffff', { depth: 1 });
-  v.box(14, 5, 18, 7, 1, 4, '#ffffff'); v.box(16, 6, 19, 3, 1, 2, P.pinkD);
+  v.box(15, 1, 19, 5, 4, 3, P.clay); fset(v, 'pz', 21, 16, 3, 0, C.glass); fset(v, 'pz', 21, 17, 3, 0, C.glass);
+  awning(v, 'pz', 21, 15, 5, 5, P.clay, '#ffffff', { depth: 1 });
+  v.box(14, 5, 18, 7, 1, 4, '#ffffff'); v.box(16, 6, 19, 3, 1, 2, P.clayD);
   for (let x = 4; x <= 12; x += 2) { v.set(x, 1, 19, P.gold); v.set(x, 2, 19, P.gold); }
   for (let x = 4; x <= 12; x++) v.set(x, 2, 19, P.gold);
-  for (let z = 17; z <= 23; z++) for (let x = 6; x <= 10; x++) v.set(x, 0, z, (x + z) % 2 ? P.pinkL : '#ffffff');
+  for (let z = 17; z <= 23; z++) for (let x = 6; x <= 10; x++) v.set(x, 0, z, (x + z) % 2 ? P.clayL : '#ffffff');
   // banderines
-  for (let x = 3; x <= 20; x++) v.set(x, 6, 22, ['#ff7eb6', '#ffd166', '#8fd3ff', '#6fe3c1'][x % 4]);
+  for (let x = 3; x <= 20; x++) v.set(x, 6, 22, ['#ee8a5c', '#ffd166', '#8fd3ff', '#6fe3c1'][x % 4]);
   v.box(3, 1, 22, 1, 6, 1, '#ffffff'); v.box(20, 1, 22, 1, 6, 1, '#ffffff');
-  if (L >= 2) { bush(v, 2, 1, 4, 1.5, C.leaf, [P.pink], 4); bush(v, 21, 1, 4, 1.5, C.leaf, [C.yellow], 5); }
+  if (L >= 2) { bush(v, 2, 1, 4, 1.5, C.leaf, [P.clay], 4); bush(v, 21, 1, 4, 1.5, C.leaf, [C.yellow], 5); }
   if (L >= 3) { cafeTable(v, 3, 15, P.mint, '#ffffff'); }
   if (L >= 5) { sparkle(m, 4, 10, 20, '#ffffff'); sparkle(m, 21, 14, 18, P.goldL); }
 }
@@ -524,10 +524,10 @@ function rueda(m, L) {
 // ======================= TEATRO DE LA ÓPERA =======================
 function teatro(m, L) {
   const v = m.v;
-  lot(v, 24, 24, (x, z) => ((x + z) % 2 ? '#ffffff' : '#eee8f6'));
-  const wall = '#ffe1ec', x0 = 2, x1 = 21, z0 = 2, z1 = 13;
+  lot(v, 24, 24, (x, z) => ((x + z) % 2 ? '#ffffff' : '#f6f0e8'));
+  const wall = '#f9f2e7', x0 = 2, x1 = 21, z0 = 2, z1 = 13;
   const H = L >= 3 ? 18 : 15;
-  v.box(x0, 1, z0, 20, H, 12, (x, y) => (y === 1 ? C.stoneL : x % 5 === 1 ? '#ffd0e1' : wall));
+  v.box(x0, 1, z0, 20, H, 12, (x, y) => (y === 1 ? C.stoneL : x % 5 === 1 ? '#fde6d2' : wall));
   // ventanas arqueadas laterales
   for (const zz of [5, 9]) { win(v, 'px', x1, zz, 6, 2, 4, { arch: wall, archTop: P.gold, sill: '#ffffff' }); win(v, 'nx', x0, zz, 6, 2, 4, { arch: wall, archTop: P.gold, sill: '#ffffff' }); }
   // arco central con telón
@@ -544,30 +544,30 @@ function teatro(m, L) {
   v.box(ax0 - 1, ay0, z1, 1, ay1 - ay0 + 1, 1, P.gold); v.box(ax1 + 1, ay0, z1, 1, ay1 - ay0 + 1, 1, P.gold);
   // pórtico: escalinata y columnas
   v.box(x0, 1, z1 + 1, 20, 1, 5, '#ffffff');
-  v.box(x0 + 1, 1, z1 + 6, 18, 1, 2, '#f4f0fa');
+  v.box(x0 + 1, 1, z1 + 6, 18, 1, 2, '#faf6f0');
   const ch = 11;
   for (const x of [3, 6, 17, 20]) { v.box(x, 2, z1 + 3, 1, ch, 1, '#ffffff'); v.set(x, 2, z1 + 3, C.stoneL); v.set(x, ch + 1, z1 + 3, P.gold); v.set(x, ch + 2, z1 + 3, P.goldL); }
   for (const x of [8, 15]) { v.box(x, 2, z1 + 3, 1, ch, 1, '#ffffff'); v.set(x, ch + 1, z1 + 3, P.gold); v.set(x, ch + 2, z1 + 3, P.goldL); }
   v.box(x0, ch + 3, z1 + 1, 20, 1, 4, '#ffffff');
   for (let x = x0; x <= x1; x++) v.set(x, ch + 3, z1 + 4, x % 2 ? P.gold : '#ffffff');
   // frontón triangular con máscaras
-  const pt = gable(v, 'z', x0, x1, z1 + 1, z1 + 4, ch + 4, '#ffffff', { wall: '#fff6fa', oh: 0, trim: P.gold, stripes: false, ridge: P.gold });
-  pattern(v, 'pz', z1 + 4, 7, ch + 5, ['.www..ppp.', 'wkwkw.pkpkp', 'wwwww.ppppp', '.w.w...p.p.', '..ww...pp..'].map(r => r.slice(0, 11)), { w: '#ffffff', k: P.ink, p: P.pink });
+  const pt = gable(v, 'z', x0, x1, z1 + 1, z1 + 4, ch + 4, '#ffffff', { wall: '#fdfbf8', oh: 0, trim: P.gold, stripes: false, ridge: P.gold });
+  pattern(v, 'pz', z1 + 4, 7, ch + 5, ['.www..ppp.', 'wkwkw.pkpkp', 'wwwww.ppppp', '.w.w...p.p.', '..ww...pp..'].map(r => r.slice(0, 11)), { w: '#ffffff', k: P.ink, p: P.clay });
   for (let x = 7; x <= 17; x++) for (let y = ch + 5; y <= ch + 9; y++) if (v.get(x, y, z1 + 4) === 0xffffff) v.set(x, y, z1 + 4, 0xfff4c8);
   // estandartes entre columnas
-  for (const x of [4, 18]) { v.box(x, 6, z1 + 1, 2, 6, 1, P.pink); v.set(x, 5, z1 + 1, P.pink); v.set(x + 1, 5, z1 + 1, P.gold); v.set(x, 9, z1 + 1, P.gold); v.set(x + 1, 9, z1 + 1, P.gold); }
+  for (const x of [4, 18]) { v.box(x, 6, z1 + 1, 2, 6, 1, P.clay); v.set(x, 5, z1 + 1, P.clay); v.set(x + 1, 5, z1 + 1, P.gold); v.set(x, 9, z1 + 1, P.gold); v.set(x + 1, 9, z1 + 1, P.gold); }
   // techo y cúpula
-  for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = z0 - 1; z <= z1 + 1; z++) v.set(x, H + 1, z, (x === x0 - 1 || x === x1 + 1 || z === z0 - 1 || z === z1 + 1) ? P.gold : '#f0c4d8');
+  for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = z0 - 1; z <= z1 + 1; z++) v.set(x, H + 1, z, (x === x0 - 1 || x === x1 + 1 || z === z0 - 1 || z === z1 + 1) ? P.gold : '#f0d9c4');
   const dr = L >= 3 ? 5.5 : 4.5;
   v.cylinder(11.5, H + 2, 7, dr + 0.5, 2, '#ffffff');
-  v.sphere(11.5, H + 4, 7, dr, dr, dr, (x, y, z) => (y < H + 4 ? (v.get(x, y, z) ?? null) : (Math.abs(x - 11.5) < 1 || (x + z) % 4 === 0 ? P.goldL : (y % 2 ? P.lilac : P.lilacL))));
+  v.sphere(11.5, H + 4, 7, dr, dr, dr, (x, y, z) => (y < H + 4 ? (v.get(x, y, z) ?? null) : (Math.abs(x - 11.5) < 1 || (x + z) % 4 === 0 ? P.goldL : (y % 2 ? P.slate : P.slateL))));
   v.box(11, H + 4 + Math.ceil(dr), 6, 2, 3, 2, P.gold);
-  v.set(11, H + 7 + Math.ceil(dr), 6, P.pink);
+  v.set(11, H + 7 + Math.ceil(dr), 6, P.clay);
   // faroles de la escalinata
   for (const x of [1, 22]) { v.box(x, 1, 20, 1, 6, 1, '#ffffff'); v.set(x, 1, 20, P.gold); m.light.set(x, 7, 20, C.yellow); v.set(x, 8, 20, P.gold); }
   if (L >= 2) { for (const x of [2, 21]) bush(v, x, 1, 23, 1.2, C.leafD, [C.red], x); }
   if (L >= 4) { for (let x = x0; x <= x1; x += 2) v.set(x, H + 2, z1 + 1, P.gold); }
-  if (L >= 5) { wavingFlag(m, 11, H + 13 + Math.ceil(dr) - 4, 6, 4, 3, P.pink); v.box(11, H + 7 + Math.ceil(dr), 6, 1, 6, 1, '#ffffff'); sparkle(m, 5, H + 6, 14, '#ffffff'); sparkle(m, 19, H + 4, 15, P.goldL); }
+  if (L >= 5) { wavingFlag(m, 11, H + 13 + Math.ceil(dr) - 4, 6, 4, 3, P.clay); v.box(11, H + 7 + Math.ceil(dr), 6, 1, 6, 1, '#ffffff'); sparkle(m, 5, H + 6, 14, '#ffffff'); sparkle(m, 19, H + 4, 15, P.goldL); }
 }
 
 export const SHOP_BUILDERS = { panaderia, heladeria, floreria, cafeteria, salon, pasteleria, boutique, cine, spa, rueda, teatro };

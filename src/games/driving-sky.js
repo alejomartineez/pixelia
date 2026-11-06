@@ -1,4 +1,4 @@
-// Paseo Real — cielo pixelado 2D detrás del 3D: degradé en franjas, sol, nubes y siluetas lejanas por bioma.
+// Ruta Pixel — cielo pixelado 2D detrás del 3D: degradé en franjas, sol, nubes y siluetas lejanas por bioma.
 import { BIOMES } from './driving-world.js';
 
 const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
@@ -79,7 +79,7 @@ export class Sky {
     g.fillRect(x, y, w, h);
     g.fillRect(x + Math.round(4 * s), y - Math.round(3 * s), Math.round(9 * s), Math.round(3 * s));
     g.fillRect(x + Math.round(11 * s), y - Math.round(5 * s), Math.round(7 * s), Math.round(5 * s));
-    g.fillStyle = 'rgba(232,222,255,.9)';
+    g.fillStyle = 'rgba(248,240,229,.9)';
     g.fillRect(x + 1, y + h - 1, w - 2, 1);
   }
   hills(hy, off, amp, base, f1, f2, color, alpha) {
@@ -95,11 +95,11 @@ export class Sky {
     const g = this.g;
     const u = Math.max(1, Math.round(s));
     const body = [[x, hy - 8 * u, 14 * u, 8 * u], [x - 2 * u, hy - 12 * u, 4 * u, 12 * u], [x + 12 * u, hy - 12 * u, 4 * u, 12 * u], [x + 5 * u, hy - 15 * u, 4 * u, 15 * u]];
-    g.fillStyle = css([170, 150, 215], alpha);
+    g.fillStyle = css([150, 128, 110], alpha);
     for (const [bx, by, bw, bh] of body) g.fillRect(bx - 1, by - 1, bw + 2, bh + 1);
     g.fillStyle = css(wall, alpha);
     for (const [bx, by, bw, bh] of body) g.fillRect(bx, by, bw, bh);
-    g.fillStyle = css([215, 200, 245], alpha);
+    g.fillStyle = css([228, 214, 192], alpha);
     for (const [bx, by, bw, bh] of body) g.fillRect(bx + bw - u, by, u, bh);
     g.fillStyle = css(roof, alpha);
     for (const [tx, ty, tw] of [[x - 2 * u, hy - 12 * u, 4 * u], [x + 12 * u, hy - 12 * u, 4 * u], [x + 5 * u, hy - 15 * u, 4 * u]]) {
@@ -114,11 +114,11 @@ export class Sky {
     const id = BIOMES[bi].id, W = this.W;
     const off = -shift * 0.5;
     if (id === 'ciudad') {
-      this.hills(hy, off * 0.6, 5, 9, 0.035, 0.09, [214, 198, 242], alpha);
+      this.hills(hy, off * 0.6, 5, 9, 0.035, 0.09, [196, 214, 232], alpha);
       const span = W + 120;
       for (let i = 0; i < 3; i++) {
         const x = Math.round((((i * 0.37 + 0.1) * span + off * 0.8) % span + span) % span) - 60;
-        this.castle(x, hy - 2, i === 1 ? 1.4 : 1, [240, 230, 255], i % 2 ? [181, 140, 255] : [255, 126, 182], alpha);
+        this.castle(x, hy - 2, i === 1 ? 1.4 : 1, [250, 240, 222], i % 2 ? [127, 158, 232] : [238, 138, 92], alpha);
       }
       this.hills(hy, off, 2, 4, 0.06, 0.15, [190, 228, 170], alpha);
     } else if (id === 'flores') {

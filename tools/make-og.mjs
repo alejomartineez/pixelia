@@ -2,7 +2,7 @@
 // con el logo pixel y el lema encima. Usa Chrome headless como tools/smoke.mjs.
 //
 //   node tools/make-og.mjs                      (escribe og.jpg en la raíz)
-//   node tools/make-og.mjs --theme bosque       (otro estilo de ciudad: pastel, moderna, bosque, playa, invierno, noche)
+//   node tools/make-og.mjs --theme bosque       (otro estilo de ciudad: pueblo, pastel, moderna, bosque, playa, invierno, noche)
 //   node tools/make-og.mjs --cam -3,2,15,0      (cámara x,z,zoom,rotación) --raw shots/og-raw.png (guarda la captura sin logo)
 //   node tools/make-og.mjs --out shots/og.png   (si la salida termina en .png sale en PNG)
 //
@@ -18,7 +18,7 @@ import { crownSvg, wordSvg } from './make-logo.mjs';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf('--' + name); return i >= 0 && args[i + 1] ? args[i + 1] : def; };
-const THEME = opt('theme', 'pastel');
+const THEME = opt('theme', 'pueblo');
 const OUT = resolve(process.cwd(), opt('out', join(ROOT, 'og.jpg')));
 const PNG = /\.png$/i.test(OUT);
 const RAW = opt('raw', null);
@@ -118,17 +118,17 @@ if (RAW) { const f = resolve(process.cwd(), RAW); mkdirSync(dirname(f), { recurs
 const font = readFileSync(join(ROOT, 'fonts', 'jersey10.woff2')).toString('base64');
 const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   @font-face { font-family: 'Jersey'; src: url(data:font/woff2;base64,${font}) format('woff2'); size-adjust: 122%; }
-  html, body { margin: 0; width: ${W}px; height: ${H}px; overflow: hidden; background: #ffb8dc; }
+  html, body { margin: 0; width: ${W}px; height: ${H}px; overflow: hidden; background: #f6e2c0; }
   .bg { position: absolute; inset: 0; width: ${W}px; height: ${H}px; image-rendering: pixelated; }
   .veil { position: absolute; inset: 0; background:
-    linear-gradient(90deg, rgba(255,214,234,.97) 0, rgba(255,206,230,.93) 30%, rgba(255,200,228,.55) 44%, rgba(255,200,228,0) 58%); }
+    linear-gradient(90deg, rgba(253,233,216,.97) 0, rgba(253,229,208,.93) 30%, rgba(252,226,203,.55) 44%, rgba(252,226,203,0) 58%); }
   .brand { position: absolute; left: 70px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start;
-    font-family: 'Jersey', sans-serif; color: #3b2340; letter-spacing: .02em; }
-  .crown { width: 112px; height: 80px; margin-left: 6px; filter: drop-shadow(0 6px 0 rgba(59,35,64,.25)); }
+    font-family: 'Jersey', sans-serif; color: #3d2f2a; letter-spacing: .02em; }
+  .crown { width: 112px; height: 80px; margin-left: 6px; filter: drop-shadow(0 6px 0 rgba(61,47,42,.25)); }
   .word { width: 430px; height: 130px; margin-top: 18px; }
   .sub { margin: 18px 0 0 4px; font-size: 52px; line-height: 1; }
-  .pill { margin: 26px 0 0 2px; padding: 8px 18px 11px; font-size: 27px; line-height: 1; background: #fff7fb; border: 3px solid #3b2340; border-radius: 12px; box-shadow: 0 4px 0 #3b2340; }
-  .pill b { color: #c43c7c; font-weight: inherit; }
+  .pill { margin: 26px 0 0 2px; padding: 8px 18px 11px; font-size: 27px; line-height: 1; background: #fffaf1; border: 3px solid #3d2f2a; border-radius: 12px; box-shadow: 0 4px 0 #3d2f2a; }
+  .pill b { color: #b15836; font-weight: inherit; }
 </style></head><body>
   <img class="bg" src="data:image/png;base64,${shot.toString('base64')}">
   <div class="veil"></div>

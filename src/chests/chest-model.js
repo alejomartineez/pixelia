@@ -9,7 +9,7 @@ import { CHESTS } from './chests.js';
 
 const S = 1 / 16;          // 16 vóxeles de ancho = 1 unidad
 const W = 16, D = 12, BH = 8; // ancho, profundidad, alto de la base (en vóxeles)
-const INK = '#3b2340';
+const INK = '#3d2f2a';
 
 // pseudo-aleatorio determinístico (mismo cofre siempre igual)
 function rng(seed) {
@@ -53,7 +53,7 @@ function buildBase(p) {
   v.clear(1, 3, 1, W - 2, BH - 3, D - 2);
   v.box(1, 2, 1, W - 2, 1, D - 2, p.inside);
   const r = rng(7 + p.type.length);
-  const gemCols = ['#ff7eb6', '#8fd3ff', '#b58cff', '#6fe3c1', '#ffffff'];
+  const gemCols = ['#ee8a5c', '#8fd3ff', '#7f9ee8', '#6fe3c1', '#ffffff'];
   for (let x = 1; x < W - 1; x++) for (let z = 1; z < D - 1; z++) {
     const dx = (x - (W - 1) / 2) / (W / 2), dz = (z - (D - 1) / 2) / (D / 2);
     const hgt = Math.round(3 + 2.6 * (1 - dx * dx - dz * dz * 0.8) + r() * 0.8);
@@ -85,8 +85,8 @@ function buildBase(p) {
   v.box(6, 3, D, 4, 3, 1, p.trimD);
   v.set(7, 4, D + 1, INK); v.set(8, 4, D + 1, INK); v.set(7, 3, D + 1, p.trimD); v.set(8, 3, D + 1, p.trimD);
   if (p.type === 'oro' || p.type === 'real') {
-    v.set(7, 5, D + 1, p.type === 'real' ? '#8fd3ff' : '#ff7eb6');
-    v.set(8, 5, D + 1, p.type === 'real' ? '#8fd3ff' : '#ff7eb6');
+    v.set(7, 5, D + 1, p.type === 'real' ? '#8fd3ff' : '#ee8a5c');
+    v.set(8, 5, D + 1, p.type === 'real' ? '#8fd3ff' : '#ee8a5c');
   }
   // brillito en el frente (pixel de luz)
   if (!wood) { v.set(1, BH - 2, D, p.trimL); v.set(W - 2, 3, D, p.trimL); }
@@ -136,35 +136,30 @@ function buildLid(p) {
     // corazón rosa sobre la tapa + gemas de colores en las bandas
     const heart = ['.xx..xx.', 'xxxxxxxx', 'xxxxxxxx', '.xxxxxx.', '..xxxx..', '...xx...'];
     heart.forEach((row, i) => [...row].forEach((ch, j) => {
-      if (ch === 'x') { const z = 2 + i, x = 4 + j; v.set(x, midTop(z), z, i === 1 && j === 1 ? '#ffffff' : '#ff7eb6'); }
+      if (ch === 'x') { const z = 2 + i, x = 4 + j; v.set(x, midTop(z), z, i === 1 && j === 1 ? '#ffffff' : '#ee8a5c'); }
     }));
-    const gems = ['#8fd3ff', '#6fe3c1', '#b58cff', '#ff7eb6'];
+    const gems = ['#8fd3ff', '#6fe3c1', '#7f9ee8', '#ee8a5c'];
     [3, W - 4].forEach((bx, i) => { v.set(bx, midTop(3) + 1, 3, gems[i]); v.set(bx, midTop(8) + 1, 8, gems[i + 2]); });
     // gema frontal
     v.set(7, yb + 2, D + 1, '#8fd3ff'); v.set(8, yb + 2, D + 1, '#8fd3ff');
   }
   if (p.type === 'real') {
-    // corona dorada arriba
+    // Cofre de Diamante (id 'real'): un diamante grande sobre la tapa, con base dorada
     const gold = '#ffd166', goldD = '#e8a93a';
     const cy = yb + 5;
-    for (let x = 4; x < 12; x++) for (let z = 3; z < 9; z++) {
-      const edge = x === 4 || x === 11 || z === 3 || z === 8;
-      if (edge) { v.set(x, cy, z, goldD); v.set(x, cy + 1, z, gold); }
-    }
-    // picos
-    for (const [x, z] of [[4, 3], [11, 3], [4, 8], [11, 8], [7, 8], [8, 8], [7, 3], [8, 3], [4, 5], [4, 6], [11, 5], [11, 6]]) v.set(x, cy + 2, z, gold);
-    for (const [x, z] of [[4, 3], [11, 3], [4, 8], [11, 8]]) v.set(x, cy + 3, z, '#ff7eb6');
-    v.set(7, cy + 3, 8, '#8fd3ff'); v.set(8, cy + 3, 8, '#8fd3ff');
-    // gemas de la corona
-    v.set(7, cy + 1, 8, '#8fd3ff'); v.set(8, cy + 1, 8, '#8fd3ff');
-    v.set(5, cy + 1, 8, '#ff7eb6'); v.set(10, cy + 1, 8, '#ff7eb6');
-    v.set(4, cy + 1, 5, '#b58cff'); v.set(11, cy + 1, 6, '#6fe3c1');
-    v.set(7, yb + 2, D + 1, '#ff7eb6'); v.set(8, yb + 2, D + 1, '#ff7eb6');
+    for (let x = 5; x < 11; x++) for (let z = 3; z < 9; z++) if (x === 5 || x === 10 || z === 3 || z === 8) v.set(x, cy, z, (x + z) % 2 ? gold : goldD);
+    const layer = (y, x0, x1, z0, z1, c) => { for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) v.set(x, y, z, typeof c === 'function' ? c(x, z) : c); };
+    layer(cy + 1, 7, 8, 5, 6, '#4fa8e0');
+    layer(cy + 2, 6, 9, 4, 7, (x, z) => ((x + z) % 2 ? '#8fd3ff' : '#6cc0f2'));
+    layer(cy + 3, 5, 10, 3, 8, (x, z) => ((x + z) % 2 ? '#bfe8ff' : '#a5dcfb'));
+    layer(cy + 4, 6, 9, 4, 7, '#e6f7ff');
+    v.set(6, cy + 4, 7, '#ffffff'); v.set(7, cy + 4, 7, '#ffffff'); v.set(6, cy + 3, 8, '#ffffff');
+    v.set(7, yb + 2, D + 1, '#ee8a5c'); v.set(8, yb + 2, D + 1, '#ee8a5c');
   }
   return v;
 }
 
-/** Brillitos (estrellas de 3 vóxeles) que titilan alrededor del cofre real. */
+/** Brillitos (estrellas de 3 vóxeles) que titilan alrededor del cofre de diamante. */
 function addSparkles(group) {
   const geo = new THREE.BoxGeometry(S, S, S);
   const matW = new THREE.MeshBasicMaterial({ color: 0xffffff });

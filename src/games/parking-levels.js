@@ -1,4 +1,4 @@
-// Estacionamiento Real — niveles definidos por datos.
+// Estacionamiento Express — niveles definidos por datos.
 // Unidades: 1 = largo de un auto. Área centrada en el origen: x ∈ [-w/2, w/2], z ∈ [-d/2, d/2].
 // Ángulos en grados: 180 = mirando hacia arriba de la pantalla (-Z), 0 = hacia abajo (+Z), 90 = derecha (+X), 270 = izquierda (-X).
 //

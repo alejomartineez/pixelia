@@ -36,7 +36,7 @@ export function openAccountUI(ctx, opts = {}) {
 
   function drawOff() {
     body.innerHTML = `
-      <div class="soc-off-art">${icon('🏰', 40)}${icon('💌', 40)}${icon('👭', 40)}</div>
+      <div class="soc-off-art">${icon('🏡', 40)}${icon('💌', 40)}${icon('👭', 40)}</div>
       <h3 class="center" style="font-size:21px">Jugar online, ¡muy pronto!</h3>
       <p class="center soc-muted" style="font-size:16px">${opts.reason === 'trade' ? 'Los intercambios de figuritas son con amigos online. ' : ''}El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder crear tu cuenta, sumar amigos con un código, visitar sus ciudades, mandarse regalitos e intercambiar figuritas.</p>
       <div class="soc-card mint soc-row">${icon('save', 28)}<span class="soc-muted">Mientras tanto, <b>tu ciudad se guarda en este dispositivo</b> y podés jugar todo igual.</span></div>`;
@@ -55,14 +55,14 @@ export function openAccountUI(ctx, opts = {}) {
     row.append(who, go);
     test.append(row);
     body.append(test);
-    body.append(h('button.btn.pink.block', { html: '¡Entendido!', onclick: () => { audio.sfx('tap'); m.close(); } }));
+    body.append(h('button.btn.primary.block', { html: '¡Entendido!', onclick: () => { audio.sfx('tap'); m.close(); } }));
   }
 
   function drawOut() {
     body.innerHTML = '';
     if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('🧪', 14)} Modo simulado: las cuentas viven en este navegador` }));
     body.append(h('div.soc-row', {
-      html: `${avatarHtml(store.state.princess, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar figuritas con amigos necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus amigos.</p>`,
+      html: `${avatarHtml(store.state.avatar, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar figuritas con amigos necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus amigos.</p>`,
     }));
     const seg = h('div.soc-seg');
     for (const [id, label] of [['signup', 'Crear cuenta'], ['signin', 'Ya tengo cuenta']]) {
@@ -75,7 +75,7 @@ export function openAccountUI(ctx, opts = {}) {
     const pass = h('input', { type: 'password', autocomplete: tab === 'signup' ? 'new-password' : 'current-password', minlength: '6' });
     if (tab === 'signup') body.append(h('label', {}, 'Tu nombre (lo ven tus amigos)', name));
     body.append(h('label', {}, 'Email', email), h('label', {}, tab === 'signup' ? 'Contraseña (6 o más)' : 'Contraseña', pass));
-    const go = h('button.btn.pink.block', { html: tab === 'signup' ? `${icon('sparkle', 20)} Crear mi cuenta` : `${icon('key', 20)} Entrar` });
+    const go = h('button.btn.primary.block', { html: tab === 'signup' ? `${icon('sparkle', 20)} Crear mi cuenta` : `${icon('key', 20)} Entrar` });
     const submit = () => busy(go, async () => {
       err.textContent = '';
       // el nombre elegido se aplica ANTES de crear la cuenta: signUp avisa la sesión nueva (y redibuja la
@@ -113,7 +113,7 @@ export function openAccountUI(ctx, opts = {}) {
     body.innerHTML = '';
     if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('🧪', 14)} Modo simulado` }));
     body.append(h('div.soc-card.soc-row', {
-      html: `${avatarHtml(s.princess, s.player.name, 60, 'me')}<div class="soc-grow"><b style="font-size:20px">${esc(s.player.name)}</b>
+      html: `${avatarHtml(s.avatar, s.player.name, 60, 'me')}<div class="soc-grow"><b style="font-size:20px">${esc(s.player.name)}</b>
         <div class="soc-muted soc-ellip">${esc(net.user.email || '')}</div><div class="soc-muted">Nivel ${s.player.level} · ${esc(s.player.cityName || 'Pixelia')}</div></div>`,
     }));
     const online = st.online;
@@ -148,7 +148,7 @@ export function openAccountUI(ctx, opts = {}) {
     };
     row.append(save, out);
     body.append(row);
-    body.append(h('button.btn.pink.block', {
+    body.append(h('button.btn.primary.block', {
       html: `${icon('people', 20)} Ir a mis amigos`,
       onclick: () => { audio.sfx('tap'); m.close(); import('./social.js').then(mod => mod.openSocial(ctx, 'amigas')); },
     }));
@@ -178,7 +178,7 @@ export function conflictModal(ctx, info) {
           <dt>${icon('home', 16)}</dt><dd>${fmtNum(d.buildings || 0)} edif.</dd></dl>
           <small class="soc-muted">${d.at ? `Guardada ${timeAgo(d.at)}` : 'Sin fecha'}</small>`,
       });
-      const b = h('button.btn.' + (rec === which ? 'pink' : 'ghost'), { html: 'Usar esta' });
+      const b = h('button.btn.' + (rec === which ? 'primary' : 'ghost'), { html: 'Usar esta' });
       b.onclick = () => busy(b, async () => {
         err.textContent = '';
         const r = await resolveConflict(which);

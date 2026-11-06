@@ -56,7 +56,7 @@ export function openSocialUI(ctx, tab = 'amigas', opts = {}) {
   function drawAcc() {
     const u = net.user;
     const st = net.mode === 'off' ? 'off' : !u ? 'warn' : net.online ? '' : 'warn';
-    acc.innerHTML = `${avatarHtml(store.state.princess, myName(), 26)}<span>${u ? esc(myName()) : net.mode === 'off' ? 'Sin conexión' : 'Entrar'}</span><b class="st ${st}"></b>`;
+    acc.innerHTML = `${avatarHtml(store.state.avatar, myName(), 26)}<span>${u ? esc(myName()) : net.mode === 'off' ? 'Sin conexión' : 'Entrar'}</span><b class="st ${st}"></b>`;
   }
   function drawTabs() {
     const c = tabCounts();
@@ -104,13 +104,13 @@ export function connectCard(api, what = 'amigas') {
     buzon: 'recibir regalitos, ayudas e intercambios',
   }[what] || 'jugar con tus amigos';
   const box = h('div.soc-card.soc-connect', {
-    html: `<div class="soc-pals">${avatarHtml(null, 'ana', 44)}${avatarHtml(store.state.princess, myName(), 52, 'me')}${avatarHtml(null, 'bea', 44)}</div>
+    html: `<div class="soc-pals">${avatarHtml(null, 'ana', 44)}${avatarHtml(store.state.avatar, myName(), 52, 'me')}${avatarHtml(null, 'bea', 44)}</div>
       <h3>${off ? 'Pixelia con amigos' : '¡Entrá a tu cuenta!'}</h3>
       <p>${off
         ? `El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder ${txt}. Mientras tanto tu ciudad se guarda en este dispositivo y podés jugar todo igual 💖`
         : `Creá tu cuenta (o entrá con la que ya tenés) para ${txt}. Tu ciudad se guarda en la nube y la podés seguir desde cualquier dispositivo.`}</p>`,
   });
-  box.append(h('button.btn.' + (off ? 'sky' : 'pink'), {
+  box.append(h('button.btn.' + (off ? 'sky' : 'primary'), {
     html: off ? `${icon('info', 20)} ¿Cómo funciona?` : `${icon('key', 20)} Crear cuenta o entrar`,
     onclick: () => { audio.sfx('tap'); openAccount(api.ctx); },
   }));
@@ -156,12 +156,12 @@ async function renderFriends(api, tok) {
 function meCard(api) {
   const code = myProfile?.code || '······';
   const card = h('div.soc-card.soc-me', {
-    html: `${avatarHtml(store.state.princess, myName(), 64, 'me')}
+    html: `${avatarHtml(store.state.avatar, myName(), 64, 'me')}
       <div><small class="soc-muted">Tu código de amistad</small>
       <div class="soc-code" aria-label="Código ${esc(code)}">${[...code].map(c => `<b>${esc(c)}</b>`).join('')}</div></div>`,
   });
   const btns = h('div.soc-me-btns');
-  btns.append(h('button.btn.lilac.small', {
+  btns.append(h('button.btn.second.small', {
     html: `${icon('📋', 18)} Copiar`,
     onclick: async () => {
       audio.sfx('tap');
@@ -170,12 +170,12 @@ function meCard(api) {
     },
   }));
   if (navigator.share) {
-    btns.append(h('button.btn.pink.small', {
+    btns.append(h('button.btn.primary.small', {
       html: `${icon('💌', 18)} Compartir`,
       onclick: async () => {
         audio.sfx('tap');
         const url = location.origin + location.pathname;
-        try { await navigator.share({ title: 'Pixelia', text: `¡Sumate a Pixelia y juguemos! Mi código es ${code} 👑`, url }); } catch {}
+        try { await navigator.share({ title: 'Pixelia', text: `¡Sumate a Pixelia y juguemos! Mi código es ${code} 🏡`, url }); } catch {}
       },
     }));
   }
@@ -189,7 +189,7 @@ function addCard(api) {
   const row = h('div.soc-add');
   const input = h('input', { type: 'text', maxlength: '6', placeholder: 'Código de 6 letras', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', 'aria-label': 'Código de amistad' });
   input.addEventListener('input', () => { input.value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); });
-  const btn = h('button.btn.pink', { html: 'Agregar' });
+  const btn = h('button.btn.primary', { html: 'Agregar' });
   const send = () => busy(btn, async () => {
     const code = input.value.trim();
     if (code.length !== 6) { audio.sfx('error'); return { error: 'El código tiene 6 letras y números' }; }
@@ -210,7 +210,7 @@ function addCard(api) {
 }
 
 function incomingCard(api, f) {
-  const c = h('div.soc-card.pink.soc-req', {
+  const c = h('div.soc-card.primary.soc-req', {
     html: `${avatarHtml(f.look, f.name, 48)}<div class="soc-grow"><b class="soc-ellip">${esc(f.name)}</b><span class="soc-muted">Nivel ${f.level} · te quiere agregar</span></div>`,
   });
   const no = h('button.btn.ghost.small', { 'aria-label': 'Rechazar', html: icon('close', 16) });
@@ -275,7 +275,7 @@ function friendCard(api, f) {
     onclick: () => { audio.sfx('tap'); api.close(); api.ctx.router.go('city', { visit: f.id, name: f.name }); },
   }));
   const sent = giftSentToday(f.id);
-  const gift = h('button.btn.pink.small' + (sent ? '.done' : ''), {
+  const gift = h('button.btn.primary.small' + (sent ? '.done' : ''), {
     html: sent ? `${icon('check', 16)} Enviado` : `${icon('gift', 18)} Regalito`,
     disabled: sent, title: sent ? 'Mañana le podés mandar otro' : `Le mandás ${fmtNum(giftPreview(f).coins)} monedas y a veces una sorpresa`,
   });
@@ -290,7 +290,7 @@ function friendCard(api, f) {
     return r;
   });
   acts.append(gift);
-  acts.append(h('button.btn.lilac.small', {
+  acts.append(h('button.btn.second.small', {
     html: `${icon('🔄', 18)} Cambiar`,
     'aria-label': `Intercambiar con ${f.name}`,
     onclick: () => { audio.sfx('tap'); import('./social-trade.js').then(mod => mod.openTradeEditor(api.ctx, { friend: f, onDone: () => api.rerender() })); },

@@ -6,10 +6,10 @@
 // pedido, un ResizeObserver lo regenera a ese tamaño. El resto sale de un emoji "pixelado" igual.
 // Uso: icon('coin', 20) -> '<img class="pi" ...>'  |  iconUrl('gem', 32) -> dataURL
 
-const INK = '#3b2340';
+const INK = '#3d2f2a';
 const C = {
-  y: '#ffd166', Y: '#e8a93a', w: '#ffffff', p: '#ff7eb6', P: '#e0528f', s: '#8fd3ff', S: '#4fa8e0',
-  l: '#b58cff', L: '#8a5ee0', m: '#6fe3c1', M: '#3cbf9a', c: '#fff4e6', g: '#d8d2e6', G: '#a99fbf',
+  y: '#ffd166', Y: '#e8a93a', w: '#ffffff', p: '#ee8a5c', P: '#c8673d', s: '#8fd3ff', S: '#4fa8e0',
+  l: '#7f9ee8', L: '#5a78c4', m: '#6fe3c1', M: '#3cbf9a', c: '#fdf6e3', g: '#ddd5c8', G: '#ada190',
   wood: '#c98a52', skin: '#ffd9b8', red: '#ff6b8a', paper: '#f6d9a8',
 };
 
@@ -63,15 +63,16 @@ const DEFS = {
   ],
   star: [ly(starPath(12, 13, 11.6, 5.3), C.y), flat('M10.9 6.2h1.5v3.4h-1.5z', C.w)],
   starOff: [ly(starPath(12, 13, 11.6, 5.3), C.g), flat('M10.9 6.2h1.5v3.4h-1.5z', C.w)],
-  heart: [ly('M12 21.8C6 17.4 1.4 13.4 1.4 8.2 1.4 4.6 3.9 2.4 7 2.4c2.2 0 4 1.3 5 3 1-1.7 2.8-3 5-3 3.1 0 5.6 2.2 5.6 5.8 0 5.2-4.6 9.2-10.6 13.6z', C.p), flat('M4.5 6h1.9v3.2H4.5z', C.w)],
+  heart: [ly('M12 21.8C6 17.4 1.4 13.4 1.4 8.2 1.4 4.6 3.9 2.4 7 2.4c2.2 0 4 1.3 5 3 1-1.7 2.8-3 5-3 3.1 0 5.6 2.2 5.6 5.8 0 5.2-4.6 9.2-10.6 13.6z', C.red), flat('M4.5 6h1.9v3.2H4.5z', C.w)],
+  // 'crown' quedó como id histórico: ahora es una medalla con cinta (premios, récords, títulos)
   crown: [
-    ly(circ(2.2, 7.6, 1.8) + circ(12, 3.6, 2) + circ(21.8, 7.6, 1.8), C.y),
-    ly('M2 8.6l5 4 5-8 5 8 5-4-1.8 11.6H3.8z', C.y), ly('M3.6 17.2h16.8l-.5 3.6H4.1z', C.Y),
-    flat(circ(12, 13.8, 1.9), C.p), flat(circ(7, 15, 1.3) + circ(17, 15, 1.3), C.s),
+    ly('M5.6 1.2h5l3.2 8.4H8.8z', C.s), ly('M18.4 1.2h-5l-3.2 8.4h5z', C.l),
+    ly(circ(12, 14.8, 8.2), C.y), flat(circ(12, 14.8, 5.8), C.Y, { stroke: 1.2 }),
+    flat(starPath(12, 15.1, 3.7, 1.7), C.w),
   ],
   xp: [ly('M12 1.5L22.5 12H16v10.5H8V12H1.5z', C.l), flat('M11 5h1.6v3.4H11z', C.w)],
   gear: [ly(gearPath(), C.g), flat(circ(12, 12, 5.2), C.G, { stroke: 1.2 }), ly(circ(12, 12, 3), null, { cut: true })],
-  hammer: [ly('M8.8 10.2l2.4-2.4 10.9 10.9a1.7 1.7 0 0 1-2.4 2.4z', C.wood), ly('M1.6 8.4L8.4 1.6l4.6 4.6-6.8 6.8z', '#c9c2da'), flat('M3.4 8.2l4.8-4.8', C.w, { stroke: 1 })],
+  hammer: [ly('M8.8 10.2l2.4-2.4 10.9 10.9a1.7 1.7 0 0 1-2.4 2.4z', C.wood), ly('M1.6 8.4L8.4 1.6l4.6 4.6-6.8 6.8z', '#dad0c2'), flat('M3.4 8.2l4.8-4.8', C.w, { stroke: 1 })],
   quest: [
     ly('M5 4h13v15H5z', C.c),
     ly('M3.5 1.8h15a2.3 2.3 0 0 1 0 4.6h-15a2.3 2.3 0 0 1 0-4.6z', C.paper),
@@ -97,13 +98,13 @@ const DEFS = {
     ly(starPath(8.6, 12.2, 4.6, 2.1), C.y),
   ],
   wardrobe: [
-    flat('M12 5.4V3.8a1.6 1.6 0 1 1 1.6-1.6', '#a99fbf', { stroke: 1.3 }),
+    flat('M12 5.4V3.8a1.6 1.6 0 1 1 1.6-1.6', '#ada190', { stroke: 1.3 }),
     ly('M8.2 5.4L1.8 8.6l2 5 3.1-1.3v9.9h10.2v-9.9l3.1 1.3 2-5-6.4-3.2c-.6 1.8-2 2.8-3.8 2.8s-3.2-1-3.8-2.8z', C.s),
     flat('M9 15h6', C.S, { stroke: 1.2 }),
   ],
   dress: [ly('M9 1.5h6l-.8 4 2 3.2-1.2 2.3L21 22.4H3l6-11.4-1.2-2.3 2-3.2z', C.l), flat('M8 10.2h8v1.6H8z', C.p)],
   lock: [
-    flat('M7.2 10.5V7.4a4.8 4.8 0 0 1 9.6 0v3.1', '#b9b0cc', { stroke: 2.6 }),
+    flat('M7.2 10.5V7.4a4.8 4.8 0 0 1 9.6 0v3.1', '#ccc1b0', { stroke: 2.6 }),
     ly('M3.4 10h17.2v12.2H3.4z', C.y),
     flat(circ(12, 14.6, 1.8) + 'M11.1 15h1.8v3.8h-1.8z', INK),
   ],
@@ -126,7 +127,7 @@ const DEFS = {
   check: [ly('M3.5 12.5l5.5 5.5L20.5 6.5', C.m, { stroke: 4.6 })],
   close: [ly('M5 5l14 14M19 5L5 19', C.red, { stroke: 4.6 })],
   calendar: [
-    ly('M2 5h20v17H2z', C.w), ly('M2 5h20v5.6H2z', C.p), ly('M6 1.8h2.4v5.6H6zM15.6 1.8H18v5.6h-2.4z', '#c9c2da'),
+    ly('M2 5h20v17H2z', C.w), ly('M2 5h20v5.6H2z', C.p), ly('M6 1.8h2.4v5.6H6zM15.6 1.8H18v5.6h-2.4z', '#dad0c2'),
     flat('M5.4 13h2.6v2.6H5.4zM10.7 13h2.6v2.6h-2.6zM16 13h2.6v2.6H16zM5.4 17.6h2.6v2.6H5.4zM10.7 17.6h2.6v2.6h-2.6z', C.s),
   ],
   info: [ly(circ(12, 12, 10.6), C.s), flat('M10.7 4.8h2.6v2.6h-2.6zM10.7 9.4h2.6v9.6h-2.6z', C.w)],
@@ -139,13 +140,13 @@ const DEFS = {
   plus: [ly('M9 2.5h6V9h6.5v6H15v6.5H9V15H2.5V9H9z', C.m)],
   play: [ly('M5.5 2.5L21.5 12 5.5 21.5z', C.m)],
   gift: [
-    ly('M3 11h18v11.2H3z', C.p), ly('M1.4 6.8h21.2v5.2H1.4z', '#ff9cc8'), ly('M10.4 6.8h3.2v15.4h-3.2z', C.y),
+    ly('M3 11h18v11.2H3z', C.p), ly('M1.4 6.8h21.2v5.2H1.4z', '#f1a181'), ly('M10.4 6.8h3.2v15.4h-3.2z', C.y),
     ly('M12 7C10.2 3 6.5 1.6 5.6 4c-.8 2.2 2.6 3 6.4 3zM12 7c1.8-4 5.5-5.4 6.4-3 .8 2.2-2.6 3-6.4 3z', C.y),
   ],
   chest: chestLayers(),
   // portadas de minijuegos
   'game-match3': [
-    ly('M4.4 2.6h8.4l3.8 4.6H.6z', '#ffc2dc'), ly('M.6 7.2h16L8.6 18z', C.p),
+    ly('M4.4 2.6h8.4l3.8 4.6H.6z', '#ffd8c4'), ly('M.6 7.2h16L8.6 18z', C.p),
     flat('M6 7.4L8.6 17.6M11.2 7.4L8.6 17.6', C.P, { stroke: 1 }), flat('M3.2 6.6l2.4-3h1.6l-2 3z', C.w),
     ly('M17.6 11.4l4.8 5-4.8 5.4-4.8-5.4z', C.m), flat('M16.4 14.6l1.2-1.4v2.2z', C.w),
     ly(sparklePath(19.6, 4.6, 3.6), C.y),
@@ -155,7 +156,7 @@ const DEFS = {
     ly('M15.6 8.1h6.2v6.2h-6.2z', C.m), ly('M2.2 14.8h6.2V21H2.2z', C.s), ly('M15.6 14.8h6.2V21h-6.2z', C.p),
   ],
   'game-parking': [
-    ly('M10.6 15h2.8v8.2h-2.8z', '#c9c2da'),
+    ly('M10.6 15h2.8v8.2h-2.8z', '#dad0c2'),
     ly('M3.4 1.2h17.2a1.8 1.8 0 0 1 1.8 1.8v11a1.8 1.8 0 0 1-1.8 1.8H3.4A1.8 1.8 0 0 1 1.6 14V3a1.8 1.8 0 0 1 1.8-1.8z', C.s),
     flat('M8.2 3.8h5a3.6 3.6 0 0 1 0 7.2h-2.1v2.6H8.2zM11.1 6.3v2.2h1.9a1.1 1.1 0 0 0 0-2.2z', C.w, { rule: 'evenodd' }),
   ],
@@ -164,13 +165,13 @@ const DEFS = {
     ly('M1.4 12.2h20.4a1.4 1.4 0 0 1 1.4 1.4v4.2H1.4z', C.p),
     flat('M8 12l1.9-4.1h2.2V12zM13.6 12V7.9h1.6l2.4 4.1z', C.s),
     flat('M20.6 13.4h2v1.8h-2z', C.y),
-    ly(circ(6.4, 18, 3) + circ(17.4, 18, 3), '#5a4560'), flat(circ(6.4, 18, 1.1) + circ(17.4, 18, 1.1), C.g),
+    ly(circ(6.4, 18, 3) + circ(17.4, 18, 3), '#605545'), flat(circ(6.4, 18, 1.1) + circ(17.4, 18, 1.1), C.g),
   ],
   // mochila/bolso (antes salía del emoji 👜, con degradés que no van con el resto)
   bag: [
     flat('M7.6 8.4V6.4a4.4 4.4 0 0 1 8.8 0v2', C.Y, { stroke: 2.2 }),
     ly('M3.6 8h16.8l1.2 14.4H2.4z', C.p),
-    ly('M3.6 8h16.8v5.2c-2.6 1.7-5.4 2.4-8.4 2.4s-5.8-.7-8.4-2.4z', '#ff9cc8'),
+    ly('M3.6 8h16.8v5.2c-2.6 1.7-5.4 2.4-8.4 2.4s-5.8-.7-8.4-2.4z', '#f1a181'),
     flat(circ(12, 14.6, 1.7), C.y), flat('M5.6 9.6h1.6v2.4H5.6z', C.w),
   ],
   // personajes con ícono dibujado (los emoji 🧚/🧙 se veían como manchas)
@@ -185,7 +186,7 @@ const DEFS = {
     ly('M13.4 1.2L18.4 10.6H5.6z', C.l), flat(starPath(12.2, 7.2, 1.9, .85), C.y),
     ly('M2.6 10.2h18.8v2.6H2.6z', C.L),
     ly('M8.2 12.8h7.6v3.4a3.8 3.8 0 0 1-7.6 0z', C.skin),
-    ly('M8.2 15.6c0 4.2 1.7 7 3.8 7s3.8-2.8 3.8-7c-1.2.9-2.5 1.3-3.8 1.3s-2.6-.4-3.8-1.3z', '#f4f0ff'),
+    ly('M8.2 15.6c0 4.2 1.7 7 3.8 7s3.8-2.8 3.8-7c-1.2.9-2.5 1.3-3.8 1.3s-2.6-.4-3.8-1.3z', '#fcf8f3'),
     flat('M9.8 13.6h1.2v1.2H9.8zM13 13.6h1.2v1.2H13z', INK),
   ],
   pack: [
@@ -196,7 +197,7 @@ const DEFS = {
 
 const EMOJI = {
   map: '🗺️', music: '🎵', sound: '🔊', mute: '🔇', car: '🚗', rotate: '🔄', move: '✋', trash: '🗑️', up: '⬆️', shop: '🛍️',
-  castle: '🏰', build: '🏗️', cake: '🍰', flower: '🌸', rocket: '🚀', fire: '🔥',
+  castle: '🏛️', build: '🏗️', cake: '🍰', flower: '🌸', rocket: '🚀', fire: '🔥',
   pause: '⏸️', camera: '📷', save: '💾', palette: '🎨', key: '🔑', ice: '🍦',
   diamond: '💎', ring: '💍', ribbon: '🎀', wand: '🪄', bear: '🧸', paw: '🐾', sun: '☀️', moon: '🌙',
 };

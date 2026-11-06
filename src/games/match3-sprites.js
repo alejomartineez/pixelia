@@ -1,4 +1,4 @@
-// Joyas Reales — sprites pixel-art dibujados por código (con volumen: bisel claro arriba-izquierda,
+// Joyas Brillantes — sprites pixel-art dibujados por código (con volumen: bisel claro arriba-izquierda,
 // sombra abajo-derecha, brillo especular y contorno). Todo se genera una vez y se cachea.
 import { ROWS, COLS, RAINBOW } from './match3-engine.js';
 
@@ -9,14 +9,14 @@ export const ART = COLS * CELL + MARGIN * 2; // 160
 // rampas de color: [más oscuro, oscuro, medio, claro, brillo] + contorno
 export const GEMS = [
   { name: 'corazón', ramp: ['#b8286e', '#e8509a', '#ff7eb6', '#ffc2dc', '#fff4f9'], line: '#6e1440', fx: '#ff7eb6' },
-  { name: 'corona', ramp: ['#c27a1c', '#eba33a', '#ffd166', '#ffeaa6', '#fffbea'], line: '#7a4a10', fx: '#ffd166' },
+  { name: 'sol', ramp: ['#c27a1c', '#eba33a', '#ffd166', '#ffeaa6', '#fffbea'], line: '#7a4a10', fx: '#ffd166' },
   { name: 'diamante', ramp: ['#2f7fc4', '#56aeea', '#8fd3ff', '#cdeeff', '#ffffff'], line: '#1d4b80', fx: '#8fd3ff' },
   { name: 'estrella', ramp: ['#6a3fc0', '#9268ee', '#b58cff', '#ddcbff', '#fbf7ff'], line: '#3c2178', fx: '#b58cff' },
   { name: 'flor', ramp: ['#25987a', '#40c49c', '#6fe3c1', '#bdf5e4', '#f3fffb'], line: '#155e4b', fx: '#6fe3c1' },
-  { name: 'moño', ramp: ['#c8462a', '#ee6d45', '#ff9a6b', '#ffcfb3', '#fff6ef'], line: '#7c2614', fx: '#ff9a6b' },
+  { name: 'hoja', ramp: ['#c8462a', '#ee6d45', '#ff9a6b', '#ffcfb3', '#fff6ef'], line: '#7c2614', fx: '#ff9a6b' },
 ];
 const GOLD_RAMP = ['#c27a1c', '#eba33a', '#ffd166', '#ffeaa6', '#fffbea'];
-const INK = '#3b2340';
+const INK = '#3d2f2a';
 
 // ---------- utilidades de geometría ----------
 function inPoly(x, y, pts) {
@@ -39,19 +39,17 @@ const SHAPES = [
       return inPoly(u, v, [[-0.95, -0.16], [0.95, -0.16], [0.1, 0.86], [0, 0.94], [-0.1, 0.86]]) ? 0 : -1;
     },
   },
-  // 1 corona
+  // 1 sol (carita redonda con rayos)
   {
     fn(u, v) {
-      if (circ(u, v, -0.8, -0.62, 0.2) || circ(u, v, 0, -0.84, 0.2) || circ(u, v, 0.8, -0.62, 0.2)) return 1;
-      if (v >= 0.2 && v <= 0.82 && Math.abs(u) <= 0.88) {
-        if (circ(u, v, 0, 0.5, 0.2)) return 2;
-        if (circ(u, v, -0.52, 0.5, 0.15) || circ(u, v, 0.52, 0.5, 0.15)) return 3;
-        return 0;
+      if (circ(u, v, 0, 0.04, 0.6)) return 0;
+      for (let i = 0; i < 8; i++) {
+        const a = (i * Math.PI) / 4;
+        if (circ(u, v, Math.cos(a) * 0.86, Math.sin(a) * 0.86 + 0.04, i % 2 ? 0.13 : 0.18)) return 1;
       }
-      if (inPoly(u, v, [[-0.88, 0.25], [-0.88, -0.52], [-0.42, -0.06], [0, -0.72], [0.42, -0.06], [0.88, -0.52], [0.88, 0.25]])) return 0;
       return -1;
     },
-    regions: { 1: { off: 0.5, group: 1 }, 2: { ramp: GEMS[0].ramp, off: 0.2, group: 2 }, 3: { ramp: GEMS[2].ramp, off: 0.2, group: 3 } },
+    regions: { 1: { off: 0.35, group: 1 } },
   },
   // 2 diamante (con facetas)
   {
@@ -91,17 +89,16 @@ const SHAPES = [
     },
     regions: { 1: { ramp: GOLD_RAMP, off: 0.15, group: 1, edge: true }, 11: { group: 11 }, 12: { group: 12 }, 13: { group: 13 }, 14: { group: 14 } },
   },
-  // 5 moño
+  // 5 hoja (de otoño, con nervadura y cabito)
   {
     fn(u, v) {
-      if (Math.abs(u) <= 0.24 && Math.abs(v + 0.08) <= 0.3) return 1;
-      const loopR = [[0.1, -0.08], [0.55, -0.72], [0.92, -0.6], [1.0, -0.1], [0.92, 0.42], [0.55, 0.52]];
-      if (inPoly(u, v, loopR) || inPoly(u, v, mirror(loopR))) return 0;
-      const tailR = [[0.05, 0.1], [0.42, 0.95], [0.68, 0.78], [0.22, 0.05]];
-      if (inPoly(u, v, tailR) || inPoly(u, v, mirror(tailR))) return 2;
-      return -1;
+      const a = (u - v) / Math.SQRT2, b = (u + v) / Math.SQRT2; // a: a lo largo de la hoja (abajo-izq → arriba-der)
+      if (a < -0.78 && a > -1.08 && Math.abs(b) < 0.1) return 2;          // cabito
+      if (Math.abs(a) > 0.98 || Math.abs(b) > 0.74 * (1 - (a / 0.98) ** 2) + 0.04) return -1;   // hoja en punta
+      if (Math.abs(b) < 0.07 && a > -0.8 && a < 0.7) return 1;             // nervadura
+      return 0;
     },
-    regions: { 1: { off: 0.3, group: 1 }, 2: { off: -0.1, group: 2 } },
+    regions: { 1: { off: 0.35, group: 0 }, 2: { off: -0.15, group: 2 } },
   },
 ];
 

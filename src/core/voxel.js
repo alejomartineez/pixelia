@@ -32,7 +32,7 @@ const key = (x, y, z) => `${x},${y},${z}`;
  * Grilla de vóxeles. Coordenadas enteras; y es "arriba".
  *   const v = new Voxels();
  *   v.box(0,0,0, 16,1,16, '#8fdc7a');  // x,y,z, ancho(x), alto(y), prof(z)
- *   v.set(3,1,3,'#ff7eb6');
+ *   v.set(3,1,3,'#ee8a5c');
  *   const mesh = v.toMesh({ scale: 1/8, center: 'xz' });
  */
 export class Voxels {
@@ -177,7 +177,7 @@ export function voxelMaterial() {
 }
 /** Variante que brilla un poco (ventanas, luces, gemas). */
 export function glowMaterial() {
-  return _matEmissive || (_matEmissive = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x332233 }));
+  return _matEmissive || (_matEmissive = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x332722 }));
 }
 
 // ---------- Render nítido ----------
@@ -362,7 +362,7 @@ function createOutlinePass(renderer, o, samples = 0) {
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       tColor: { value: rt.texture }, tDepth: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) },
-      near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3b2340) }, lineW: { value: 2 },
+      near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3d2f2a) }, lineW: { value: 2 },
       strength: { value: cfg.strength ?? 0.85 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
@@ -437,7 +437,7 @@ function createOutlinePass(renderer, o, samples = 0) {
 
 /** Luces estándar del juego: cielo pastel + sol cálido con sombras. Devuelve { hemi, sun }. */
 export function addLights(scene, { shadowSize = 30, shadowRes = 2048 } = {}) {
-  const hemi = new THREE.HemisphereLight(0xffffff, 0xcdb8f0, 1.5);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0xa5b9ea, 1.5);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff3e6, 2.0);
   sun.position.set(12, 22, 8);
@@ -499,7 +499,7 @@ export function imageSprite(url, worldHeight = 1) {
  * Estampa la silueta en tinta corrida en 16 direcciones y dibuja el render encima: el borde sale
  * antialiaseado (combina con el contorno del 3D en vivo). width en pixeles del canvas.
  */
-export function outlineCanvas(src, width = 3, ink = '#3b2340') {
+export function outlineCanvas(src, width = 3, ink = '#3d2f2a') {
   const w = src.width, h = src.height;
   const sil = document.createElement('canvas');
   sil.width = w; sil.height = h;

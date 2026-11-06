@@ -5,9 +5,13 @@
 //   THEMES, THEME_BY_ID, themeOf(id)        datos
 //   mapColor(themeId, int) -> int           color de un vóxel en ese tema (cacheado)
 //   themeHex(themeId, '#hex') -> '#hex'     igual, para colores CSS / canvas
-//   currentThemeId(state)                   state.city.theme válido o 'pastel'
+//   currentThemeId(state)                   state.city.theme válido o 'pueblo'
+//
+// Los modelos están pintados con la paleta "pueblo" (src/core/palette.js): ese tema no re-mapea nada.
+// Las reglas de los demás temas usan "ranuras": 'pink' = el color principal (terracota) y 'lilac' = el
+// secundario (azul pizarra), así cada tema decide en qué se convierten.
 
-export const DEFAULT_THEME = 'pastel';
+export const DEFAULT_THEME = 'pueblo';
 
 // ---------- HSL ----------
 function toHsl(n) {
@@ -28,8 +32,11 @@ function fromHsl(h, s, l) {
   return (Math.round((r + m) * 255) << 16) | (Math.round((g + m) * 255) << 8) | Math.round((b + m) * 255);
 }
 /** Familia del color: neutral (grises, blancos, tinta) o por tono. d = croma (0..1). */
-function family(h, d) {
+function family(h, d, s = 0, l = 0) {
   if (d < 0.14) return 'neutral';
+  // ranuras de la paleta: terracota (principal) y azul pizarra (secundario)
+  if (s > 0.6 && ((h >= 12 && h < 24) || (h >= 24 && h < 32 && l > 0.85))) return 'pink';
+  if (h >= 214 && h < 240 && s < 0.8) return 'lilac';
   if (h < 12 || h >= 350) return 'red';
   if (h < 38) return 'orange';
   if (h < 65) return 'gold';
@@ -56,6 +63,22 @@ const GLASS = ['#bfe8ff', '#93d0f2', '#ffffff'];
 // litWindows: los vidrios pasan a la capa sin luz (brillan de noche)
 export const THEMES = [
   {
+    id: 'pueblo', name: 'Pueblo Acogedor', emoji: '🏡', desc: 'Techos de teja, jardines verdes y cielo claro.',
+    identity: true,
+    swatch: ['#ee8a5c', '#7f9ee8', '#5fc46a', '#ffd166'],
+    sky: 'linear-gradient(180deg, #a9daff 0%, #cdeaff 36%, #eef6f0 70%, #fdf0d4 100%)', stars: 0.4,
+    lights: { sky: 0xffffff, ground: 0xd6c8a6, hemi: 1.15, sun: 0xfff1de, sunI: 2.48 },
+    ground: { inA: '#a3e68b', inB: '#97dc80', outA: '#7cbb84', outB: '#74b37d', tuftIn: '#82cc70', tuftOut: '#5f9e6c',
+      lightIn: '#b9f0a0', lightOut: '#8cc894', rim: '#d2f7b8', shadowOut: '#5d9a6a', lip: '#a6dca4',
+      flowers: ['#ffffff', '#f28ca0', '#ffd166', '#9fb6f0', '#ee8a5c'] },
+    cliff: { top: '#79c47e', grass: '#69b572', dirt: '#e7bd92',
+      bands: [['#e2b58c', '#d8a77f'], ['#cf9a74', '#c48e6c'], ['#b98a6a', '#ad8062'], ['#9c7f6a', '#927563'], ['#86705f', '#7c6758']],
+      gems: ['#ffd166', '#a5e1ff'], isletTop: '#9bdc8a' },
+    cloud: ['#ffffff', '#f7f9ff', '#e6ecf4'],
+    nature: [['tree', 0.3], ['pine', 0.2], ['bush', 0.18], ['flowers', 0.16], ['rock', 0.1], ['mushroom', 0.06]],
+    fam: {},
+  },
+  {
     id: 'pastel', name: 'Dulce Pastel', emoji: '🌸', desc: 'Rosas, lilas y menta. Dulce y brillante.',
     swatch: ['#ff7eb6', '#b58cff', '#6fe3c1', '#ffd166'],
     sky: 'linear-gradient(180deg, #ffcfe6 0%, #f3dbff 34%, #d6e6ff 66%, #c5f0ee 100%)', stars: 0.55,
@@ -68,7 +91,11 @@ export const THEMES = [
       gems: ['#ff9ccb', '#a5e1ff'], isletTop: '#9bdc8a' },
     cloud: ['#ffffff', '#f7f9ff', '#e6ecff'],
     nature: [['tree', 0.3], ['pine', 0.2], ['bush', 0.18], ['flowers', 0.16], ['rock', 0.1], ['mushroom', 0.06]],
-    fam: {},
+    fam: {
+      pink: (h, s, l) => [334, Math.min(1, s * 1.15), l > 0.85 ? l : Math.min(0.92, l / 0.9)],
+      lilac: (h, s, l) => [262, Math.min(1, s * 1.4), l / 0.94],
+      neutral: (h, s, l) => (h >= 20 && h < 50 && s > 0.05 ? [285, s * 0.7, l] : [h, s, l]),
+    },
   },
   {
     id: 'moderna', name: 'Ciudad Moderna', emoji: '🏙️', desc: 'Vidrio, grises cálidos y toques turquesa.',
@@ -96,7 +123,7 @@ export const THEMES = [
     },
   },
   {
-    id: 'bosque', name: 'Bosque Mágico', emoji: '🍄', desc: 'Maderas, verdes profundos, hongos y faroles cálidos.',
+    id: 'bosque', name: 'Bosque', emoji: '🍄', desc: 'Maderas, verdes profundos, hongos y faroles cálidos.',
     swatch: ['#8a5a3a', '#2f6b45', '#c8423a', '#ffc861'],
     sky: 'linear-gradient(180deg, #8fb7a5 0%, #b9d4b5 38%, #e6dfb8 72%, #f2d7a6 100%)', stars: 0.35,
     lights: { sky: 0xfff3d6, ground: 0x6f8f5a, hemi: 1.04, sun: 0xffe2b0, sunI: 2.32 },
@@ -210,7 +237,7 @@ for (const t of THEMES) {
 }
 export function mapColor(themeId, c) {
   const t = themeOf(themeId);
-  if (t.id === DEFAULT_THEME) return int(c);
+  if (t.identity) return int(c);
   const n = int(c);
   let cache = caches.get(t.id);
   if (!cache) caches.set(t.id, cache = new Map());
@@ -219,7 +246,7 @@ export function mapColor(themeId, c) {
   if (t._exact?.has(n)) out = t._exact.get(n);
   else {
     const [h, s, l, d] = toHsl(n);
-    const f = t.fam[family(h, d)] || t.fam._;
+    const f = t.fam[family(h, d, s, l)] || t.fam._;
     out = f ? fromHsl(...f(h, s, l)) : n;
   }
   cache.set(n, out);

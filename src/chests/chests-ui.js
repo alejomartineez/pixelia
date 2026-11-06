@@ -55,7 +55,7 @@ function guaranteeChip(def) {
 const slotsChip = (def) => {
   const st = stickerDropsForChest(def.id);
   return `<span class="chx-rchip" style="--rcl:#fff">${icon('gift', 14)}${def.slots} premios</span>`
-    + (st.n ? `<span class="chx-rchip" style="--rcl:#f3ebff">${packIcon(16)}+${st.n} figuritas</span>` : '');
+    + (st.n ? `<span class="chx-rchip" style="--rcl:#fbf6ef">${packIcon(16)}+${st.n} figuritas</span>` : '');
 };
 
 // ---------- "¿Qué puede salir?" ----------
@@ -74,7 +74,7 @@ function showWhat(ctx, type) {
       <div class="chx-whatlist">${rows}</div>
       <p class="center small muted" style="margin-top:10px">${packIcon(16)} Además trae <b>${stickerDropsForChest(type).n} figuritas</b> para tu Álbum${stickerDropsForChest(type).minStars > 1 ? ` (una de ${stickerDropsForChest(type).minStars}★ o más)` : ''}.</p>
       <p class="center small muted">${icon('sparkle', 16)} Racha de suerte: nunca pasan más de ${C.PITY_LEGENDARY} cofres sin una Legendaria.</p>`,
-    actions: [{ label: '¡Entendido!', cls: 'pink' }],
+    actions: [{ label: '¡Entendido!', cls: 'primary' }],
   });
 }
 
@@ -155,7 +155,7 @@ export async function openChestsPanel(ctx, params = {}) {
     const bagN = C.backpack().reduce((a, i) => a + i.count, 0);
     const defs = [
       ['cofres', 'gift', 'Cofres', badge ? `<i class="badge">${badge}</i>` : ''],
-      ['mochila', 'bag', 'Mochila', bagN ? `<i class="badge" style="background:var(--lilac);animation:none">${bagN}</i>` : ''],
+      ['mochila', 'bag', 'Mochila', bagN ? `<i class="badge" style="background:var(--second);animation:none">${bagN}</i>` : ''],
       ['tienda', 'shop', 'Tienda', ''],
     ];
     tabs.innerHTML = defs.map(([id, ic, label, extra]) =>
@@ -228,7 +228,7 @@ export async function openChestsPanel(ctx, params = {}) {
         </div>`;
       const actions = h('div.chx-actions');
       const what = h('button.chx-what', { html: `${icon('info', 14)}¿Qué puede salir?`, onclick: () => { audio.sfx('tap'); showWhat(ctx, t); } });
-      if (n) actions.append(h('button.btn.pink', { html: `${icon('sparkle', 20)}Abrir${n > 1 ? ` <small>(${n})</small>` : ''}`, onclick: () => openFromPanel(t) }));
+      if (n) actions.append(h('button.btn.primary', { html: `${icon('sparkle', 20)}Abrir${n > 1 ? ` <small>(${n})</small>` : ''}`, onclick: () => openFromPanel(t) }));
       else if (def.price) actions.append(h('button.btn.ghost.small', { html: `${icon('shop', 16)}Comprar ${icon('gem', 16)}${def.price.gems}`, onclick: () => { audio.sfx('select'); setTab('tienda'); } }));
       else actions.append(h('div.chx-ingame', { html: `${icon('games', 16)} Ganalo en los minijuegos y subiendo de nivel` }));
       card.querySelector('.chx-info').append(what);
@@ -245,7 +245,7 @@ export async function openChestsPanel(ctx, params = {}) {
     const items = C.backpack();
     if (!items.length && !fb.length && !boosts.prod && !boosts.happy) {
       pane.append(h('div.chx-empty', { html: `${icon('bag', 72)}<b>Tu mochila está vacía</b><span>Abrí cofres para conseguir martillos, pociones, perfumes y más.</span>` },
-        h('button.btn.pink', { html: `${icon('gift', 20)}Ver mis cofres`, onclick: () => { audio.sfx('select'); setTab('cofres'); } })));
+        h('button.btn.primary', { html: `${icon('gift', 20)}Ver mis cofres`, onclick: () => { audio.sfx('select'); setTab('cofres'); } })));
       return;
     }
     if (boosts.prod || boosts.happy) {
@@ -266,7 +266,7 @@ export async function openChestsPanel(ctx, params = {}) {
         const row = h('div.card.chx-row.chx-build', { html:
           `<div class="chx-bthumb" data-bthumb="${esc(id)}">${icon('build', 36)}</div>
            <div class="chx-info"><b>${esc(bd?.name || id)}${n > 1 ? ` x${n}` : ''}</b><small>Colocala desde Construir</small></div>` });
-        if (inCity) row.append(h('button.btn.lilac.small', { html: `${icon('hammer', 16)}Construir`, onclick: () => {
+        if (inCity) row.append(h('button.btn.second.small', { html: `${icon('hammer', 16)}Construir`, onclick: () => {
           audio.sfx('tap'); m.close(); setTimeout(() => ctx.bus.emit('hud:build', { focus: id }), 60);
         } }));
         list.append(row);

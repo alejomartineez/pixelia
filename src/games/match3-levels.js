@@ -1,9 +1,9 @@
-// Joyas Reales — niveles infinitos, generados de forma determinista a partir del número.
+// Joyas Brillantes — niveles infinitos, generados de forma determinista a partir del número.
 // Los movimientos se calculan con "costos" medidos por simulación (jugadas que necesita
 // una jugadora promedio para cumplir cada objetivo) multiplicados por un margen que se achica despacio.
 import { ROWS, COLS, mulberry32, Engine } from './match3-engine.js';
 
-export const GEM_NAMES = ['corazones', 'coronas', 'diamantes', 'estrellas', 'flores', 'moños'];
+export const GEM_NAMES = ['corazones', 'soles', 'diamantes', 'estrellas', 'flores', 'hojas'];
 
 const SHAPES = {
   esquinas: ['.xxxxxx.', 'xxxxxxxx', 'xxxxxxxx', 'xxxxxxxx', 'xxxxxxxx', 'xxxxxxxx', 'xxxxxxxx', '.xxxxxx.'],

@@ -1,11 +1,11 @@
-// Paseo Real — minijuego de manejar sin fin por las rutas de Pixelia.
+// Ruta Pixel — minijuego de manejar sin fin por las rutas de Pixelia.
 // 3 carriles, tránsito lento, conos, charcos, monedas, gemas y poderes. Mundo vóxel por tramos reciclados.
 import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { icon } from '../core/icons.js';
 import { CAR_BODIES, CAR_WHEELS, CAR_TOPPERS, OUTFIT_COLORS } from '../core/data.js';
 import * as carMod from '../avatar/car.js';
-import * as princessMod from '../avatar/princess.js';
+import * as avatarMod from '../avatar/avatar.js';
 import {
   LANES, LANE_W, CHUNK_LEN, BIOME_LEN, BIOMES, BIOME_DECO, DECO_INFO, biomeIndexAt, rng, pickWeighted,
   applyBend, makeMaterials, groundGeo, outerGeo, decoGeo, decoExtraGeo, itemGeo, obstacleGeo, shieldGeo, particleGeo, warmup,
@@ -26,7 +26,7 @@ const PETALS = 36;
 const COIN_CHARGE = 0.04;      // carga de turbo por moneda (25 monedas = 1 turbo)
 
 const CSS = `
-.scene-driving { overflow: hidden; touch-action: none; background: #ffe2f1; }
+.scene-driving { overflow: hidden; touch-action: none; background: #f9f2e8; }
 .scene-driving .drv-stage { position: absolute; inset: 0; transition: opacity .25s; }
 .scene-driving .drv-stage.fade { opacity: 0; transition: none; }
 .scene-driving .drv-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
@@ -63,22 +63,22 @@ const CSS = `
 .scene-driving .drv-turbo { position: absolute; z-index: 9; left: 50%; bottom: calc(var(--safe-b) + 14px); transform: translateX(-50%); transition: opacity .3s, transform .3s; }
 .scene-driving .drv-turbo.hide { opacity: 0; pointer-events: none; transform: translate(-50%, 30px); }
 .scene-driving .drv-turbo button { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 14px 6px 8px; background: #fff; color: var(--ink); border: var(--line) solid var(--ink); border-radius: 16px;
-  box-shadow: inset 0 -5px 0 #eadcf0, 0 4px 0 var(--ink); font-size: 17px; font-weight: 700; touch-action: none; }
+  box-shadow: inset 0 -5px 0 #f0e8dc, 0 4px 0 var(--ink); font-size: 17px; font-weight: 700; touch-action: none; }
 .scene-driving .drv-turbo button.ready { background: var(--gold); box-shadow: inset 0 -5px 0 var(--gold-d), 0 4px 0 var(--ink); animation: drv-ready .9s steps(2) infinite; }
-.scene-driving .drv-turbo button.on { background: var(--pink); color: #fff; box-shadow: inset 0 -5px 0 var(--pink-d), 0 4px 0 var(--ink); text-shadow: 0 2px 0 rgba(59,35,64,.35); }
-.scene-driving .drv-turbo button:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 #eadcf0, 0 1px 0 var(--ink); }
+.scene-driving .drv-turbo button.on { background: var(--primary); color: #fff; box-shadow: inset 0 -5px 0 var(--primary-d), 0 4px 0 var(--ink); text-shadow: 0 2px 0 rgba(61,47,42,.35); }
+.scene-driving .drv-turbo button:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 #f0e8dc, 0 1px 0 var(--ink); }
 .scene-driving .drv-turbo kbd { font: inherit; font-size: 12px; padding: 0 5px; border: 2px solid var(--ink); border-radius: 6px; background: #fff; color: var(--ink); text-shadow: none; }
 @keyframes drv-ready { 50% { transform: scale(1.05); } }
 .scene-driving .drv-turbo button.nope { animation: drv-nope .3s steps(4); }
 @keyframes drv-nope { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 .scene-driving .drv-segs { display: flex; gap: 3px; }
-.scene-driving .drv-segs i { width: 22px; height: 13px; border: 2px solid var(--ink); background: #f2e3ee; border-radius: 4px; position: relative; overflow: hidden; }
+.scene-driving .drv-segs i { width: 22px; height: 13px; border: 2px solid var(--ink); background: #f2ece3; border-radius: 4px; position: relative; overflow: hidden; }
 .scene-driving .drv-segs i u { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: repeating-linear-gradient(90deg, #ffd166 0 4px, #e8a93a 4px 6px); }
 .scene-driving .drv-turbo .ready .drv-segs i { background: #fff7dc; }
 
 .scene-driving .drv-banner { position: absolute; z-index: 8; left: 50%; top: calc(var(--safe-t) + 120px); transform: translateX(-50%); pointer-events: none; white-space: nowrap;
   display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 8px; font-size: 30px; font-weight: 700; color: #fff; opacity: 0;
-  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 6px 0 var(--pink-d); }
+  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 6px 0 var(--primary-d); }
 .scene-driving .drv-banner.show { animation: drv-banner 2.4s cubic-bezier(.2,.9,.3,1) forwards; }
 .scene-driving .drv-banner.gold { color: var(--gold); }
 .scene-driving .drv-banner small { display: block; flex-basis: 100%; text-align: center; font-size: 16px; }
@@ -86,7 +86,7 @@ const CSS = `
   80% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -30px) scale(.95); } }
 
 .scene-driving .drv-count { position: absolute; z-index: 11; left: 50%; top: 40%; transform: translate(-50%, -50%); pointer-events: none; font-size: 150px; font-weight: 700; color: #fff; opacity: 0;
-  text-shadow: 5px 0 var(--ink), -5px 0 var(--ink), 0 5px var(--ink), 0 -5px var(--ink), 5px 5px var(--ink), -5px 5px var(--ink), 5px -5px var(--ink), -5px -5px var(--ink), 0 12px 0 var(--pink-d); }
+  text-shadow: 5px 0 var(--ink), -5px 0 var(--ink), 0 5px var(--ink), 0 -5px var(--ink), 5px 5px var(--ink), -5px 5px var(--ink), 5px -5px var(--ink), -5px -5px var(--ink), 0 12px 0 var(--primary-d); }
 .scene-driving .drv-count.go { color: var(--gold); font-size: 110px; }
 .scene-driving .drv-count.show { animation: drv-count .8s cubic-bezier(.2,1.4,.4,1) forwards; }
 @keyframes drv-count { 0% { opacity: 0; transform: translate(-50%, -50%) scale(2.2); } 25% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.8); } }
@@ -99,14 +99,14 @@ const CSS = `
 
 .scene-driving .drv-intro { position: absolute; inset: 0; z-index: 12; display: flex; align-items: flex-end; justify-content: center;
   padding: calc(var(--safe-t) + 64px) calc(var(--safe-r) + 12px) calc(var(--safe-b) + 12px) calc(var(--safe-l) + 12px);
-  background: linear-gradient(rgba(59,35,64,0) 35%, rgba(59,35,64,.28)); transition: opacity .35s; }
+  background: linear-gradient(rgba(61,47,42,0) 35%, rgba(61,47,42,.28)); transition: opacity .35s; }
 .scene-driving .drv-intro.hide { opacity: 0; pointer-events: none; }
 .scene-driving .drv-card { width: min(430px, 100%); max-height: 100%; overflow-y: auto; touch-action: pan-y; background: var(--panel); border: var(--line) solid var(--ink); border-radius: 18px;
-  box-shadow: 0 6px 0 var(--ink), 0 18px 40px rgba(59,35,64,.3); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; animation: drv-card .45s cubic-bezier(.3,1.5,.6,1); }
+  box-shadow: 0 6px 0 var(--ink), 0 18px 40px rgba(61,47,42,.3); padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; animation: drv-card .45s cubic-bezier(.3,1.5,.6,1); }
 @keyframes drv-card { from { transform: translateY(40px) scale(.94); opacity: 0; } }
 .scene-driving .drv-logo { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 40px; font-weight: 700; color: #fff; line-height: 1; margin-top: 2px;
-  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 7px 0 var(--pink-d); }
-.scene-driving .drv-logo img { filter: drop-shadow(0 3px 0 rgba(59,35,64,.3)); }
+  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 7px 0 var(--primary-d); }
+.scene-driving .drv-logo img { filter: drop-shadow(0 3px 0 rgba(61,47,42,.3)); }
 .scene-driving .drv-sub { text-align: center; margin: 0; font-size: 15px; color: var(--ink-l); }
 .scene-driving .drv-rec { align-self: center; display: flex; gap: 8px; }
 .scene-driving .drv-rec .chip { font-size: 15px; padding: 3px 10px; }
@@ -115,13 +115,13 @@ const CSS = `
 .scene-driving .drv-ill { height: 46px; display: flex; align-items: center; justify-content: center; gap: 4px; }
 .scene-driving .drv-phone { width: 66px; height: 44px; border: 3px solid var(--ink); border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; background: #fff; position: relative; }
 .scene-driving .drv-phone i { display: grid; place-items: center; font-style: normal; font-size: 14px; }
-.scene-driving .drv-phone i:first-child { background: var(--pink-l); border-right: 2px dashed var(--ink-ll); }
-.scene-driving .drv-phone i:last-child { background: var(--lilac-l); }
+.scene-driving .drv-phone i:first-child { background: var(--primary-l); border-right: 2px dashed var(--ink-ll); }
+.scene-driving .drv-phone i:last-child { background: var(--second-l); }
 .scene-driving .drv-phone.up { grid-template-columns: 1fr; background: var(--gold-l); }
 .scene-driving .drv-phone.up i { background: none !important; border: 0 !important; }
 .scene-driving .drv-swipe { animation: drv-swipe 1.2s steps(4) infinite; }
 @keyframes drv-swipe { 0% { transform: translateY(8px); opacity: .4; } 60% { transform: translateY(-8px); opacity: 1; } 100% { transform: translateY(-8px); opacity: 0; } }
-.scene-driving .drv-key { display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 6px; border: 2px solid var(--ink); border-radius: 7px; background: #fff; box-shadow: inset 0 -3px 0 #eadcf0, 0 2px 0 var(--ink); font-size: 14px; font-weight: 700; }
+.scene-driving .drv-key { display: inline-grid; place-items: center; min-width: 28px; height: 28px; padding: 0 6px; border: 2px solid var(--ink); border-radius: 7px; background: #fff; box-shadow: inset 0 -3px 0 #f0e8dc, 0 2px 0 var(--ink); font-size: 14px; font-weight: 700; }
 .scene-driving .drv-key.wide { min-width: 64px; }
 .scene-driving .drv-ctrl small { font-weight: 400; color: var(--ink-l); font-size: 12px; }
 .scene-driving .drv-legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
@@ -133,7 +133,7 @@ const CSS = `
 .scene-driving .drv-go img { margin-right: 2px; }
 .scene-driving:not(.touch) .drv-only-touch, .scene-driving.touch .drv-only-kb { display: none !important; }
 @media (min-width: 900px) and (min-aspect-ratio: 1/1) {
-  .scene-driving .drv-intro { align-items: center; justify-content: flex-end; padding-right: calc(var(--safe-r) + 7vw); background: linear-gradient(90deg, rgba(59,35,64,0) 40%, rgba(59,35,64,.22)); }
+  .scene-driving .drv-intro { align-items: center; justify-content: flex-end; padding-right: calc(var(--safe-r) + 7vw); background: linear-gradient(90deg, rgba(61,47,42,0) 40%, rgba(61,47,42,.22)); }
   .scene-driving .drv-logo { font-size: 48px; }
 }
 @media (max-height: 700px) and (max-width: 600px) {
@@ -257,7 +257,7 @@ export default function create(ctx) {
 
   function buildScene() {
     const { scene } = r;
-    scene.fog = new THREE.Fog(0xffe2f1, 34, 98);
+    scene.fog = new THREE.Fog(0xf9f2e8, 34, 98);
     lights = addLights(scene, { shadowSize: 28, shadowRes: 1024 });
     const sc = lights.sun.shadow.camera;
     Object.assign(sc, { left: -13, right: 13, top: 15, bottom: -15, near: 1, far: 60 });
@@ -282,12 +282,12 @@ export default function create(ctx) {
       chunks.push({ group, ground, base, glow, extras: [], z0: 0, bi: -1, shadow: true });
     }
 
-    // auto propio con la princesa
+    // auto propio con tu personaje
     const st = ctx.state;
     rig = new THREE.Group();
     carHolder = new THREE.Group();
     carHolder.rotation.y = Math.PI;
-    carObj = carMod.carModel(st.car, { driver: st.princess });
+    carObj = carMod.carModel(st.car, { driver: st.avatar });
     carObj.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     carSize = Object.assign({ w: 0.55, l: 1, h: 0.5 }, carObj.userData.size || {});
     carHolder.add(carObj);
@@ -297,7 +297,7 @@ export default function create(ctx) {
     rig.add(shieldMesh);
     scene.add(rig);
 
-    // tránsito: autitos de otras princesas
+    // tránsito: autitos de otros vecinos
     const bendCache = new Map();
     const bodies = CAR_BODIES.map(b => b.id), colors = OUTFIT_COLORS.map(c => c.id).filter(c => c !== 'negro');
     const R = rng(4242);
@@ -306,7 +306,7 @@ export default function create(ctx) {
         body: bodies[i % bodies.length], color: colors[(i * 5 + 3) % colors.length],
         wheels: R.pick(CAR_WHEELS).id, topper: R() < 0.4 ? R.pick(CAR_TOPPERS).id : 'ninguno',
       };
-      const look = typeof princessMod.randomLook === 'function' ? princessMod.randomLook(1000 + i * 37) : null;
+      const look = typeof avatarMod.randomLook === 'function' ? avatarMod.randomLook(1000 + i * 37) : null;
       const car = carMod.carModel(spec, look ? { driver: look } : {});
       flattenCar(car);
       car.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
@@ -358,7 +358,7 @@ export default function create(ctx) {
     petalIM = new THREE.InstancedMesh(particleGeo(), mats.bright, PETALS);
     petalIM.frustumCulled = false;
     for (let i = 0; i < PETALS; i++) {
-      petalIM.setMatrixAt(i, ZERO); petalIM.setColorAt(i, tmpColor.set(0xffb3d4));
+      petalIM.setMatrixAt(i, ZERO); petalIM.setColorAt(i, tmpColor.set(0xfbd7b7));
       petals.push({ x: (Math.random() - 0.5) * 16, y: Math.random() * 6, z: -Math.random() * 34 + 3, ph: Math.random() * 6, sp: 0.4 + Math.random() * 0.6 });
     }
     r.scene.add(petalIM);
@@ -645,7 +645,7 @@ export default function create(ctx) {
   }
   function updatePetals(dt, biomeId, tBlend) {
     const on = biomeId === 'cerezos' || biomeId === 'flores';
-    const cols = biomeId === 'flores' ? [0xffffff, 0xffe9a8, 0xffc2dc] : [0xffb3d4, 0xff9ccb, 0xffe0ef];
+    const cols = biomeId === 'flores' ? [0xffffff, 0xffe9a8, 0xffd8c4] : [0xfbd7b7, 0xf1a181, 0xf9f1e6];
     for (let i = 0; i < PETALS; i++) {
       const q = petals[i];
       if (!on || (i / PETALS) > tBlend) { petalIM.setMatrixAt(i, ZERO); continue; }
@@ -711,7 +711,7 @@ export default function create(ctx) {
     }
     if (turboT > 0) {
       knock(e, true); audio.sfx('pop'); shake = 0.25;
-      burst(e.x, 0.5, p - e.z, [0xffd166, 0xff7eb6, 0xffffff], 10, 4, 0.6);
+      burst(e.x, 0.5, p - e.z, [0xffd166, 0xee8a5c, 0xffffff], 10, 4, 0.6);
       return;
     }
     if (invulnT > 0) { knock(e, false); return; }
@@ -731,7 +731,7 @@ export default function create(ctx) {
     audio.sfx('crash');
     shake = 0.7; invulnT = INVULN_TIME; v *= 0.55;
     el.flash.classList.add('on'); setTimeout(() => el.flash?.classList.remove('on'), 120);
-    burst(carX, 0.5, -0.4, [0xffffff, 0xffd166, 0xff7eb6, 0xb58cff], 16, 4.5, 0.7);
+    burst(carX, 0.5, -0.4, [0xffffff, 0xffd166, 0xee8a5c, 0x7f9ee8], 16, 4.5, 0.7);
     renderLives(true);
     if (lives <= 0) startCrash();
     else { const s = screenOf(carX, 1.3, 0); ui.floatText(s.x, s.y, `-1 ${icon('heart', 22)}`); }
@@ -743,7 +743,7 @@ export default function create(ctx) {
     switch (it.kind) {
       case 'gem':
         gems++; audio.sfx('gem');
-        burst(it.x, 0.6, 0, [0x8fd3ff, 0xd4efff, 0xb58cff, 0xffffff], 14, 3.5, 0.8);
+        burst(it.x, 0.6, 0, [0x8fd3ff, 0xd4efff, 0x7f9ee8, 0xffffff], 14, 3.5, 0.8);
         ui.floatText(s.x, s.y, `+1 ${icon('gem', 22)}`);
         renderCounters();
         break;
@@ -751,7 +751,7 @@ export default function create(ctx) {
         if (lives < MAX_LIVES) { lives++; renderLives(true); ui.floatText(s.x, s.y, `+1 ${icon('heart', 22)}`); }
         else { coins += 5; renderCounters(); ui.floatText(s.x, s.y, `+5 ${icon('coin', 22)}`); }
         audio.sfx('star');
-        burst(it.x, 0.6, 0, [0xff7eb6, 0xffc2dc, 0xffffff], 12, 3, 0.7);
+        burst(it.x, 0.6, 0, [0xee8a5c, 0xffd8c4, 0xffffff], 12, 3, 0.7);
         break;
       case 'magnet':
         magnetT = MAGNET_TIME; audio.sfx('star');
@@ -849,7 +849,7 @@ export default function create(ctx) {
     if (exhaustT <= 0 && v > 0.5) {
       exhaustT = turboT > 0 ? 0.02 : 0.14;
       if (turboT > 0) {
-        emit(carX + (Math.random() - 0.5) * 0.3, 0.25, 0.6, (Math.random() - 0.5), 0.5, 2, Math.random() < 0.5 ? 0xffd166 : 0xff7eb6, 0.35, 1.3, -1, false);
+        emit(carX + (Math.random() - 0.5) * 0.3, 0.25, 0.6, (Math.random() - 0.5), 0.5, 2, Math.random() < 0.5 ? 0xffd166 : 0xee8a5c, 0.35, 1.3, -1, false);
       } else emit(carX + 0.18, 0.18, 0.55, 0, 0.6, 1.2, 0xffffff, 0.5, 0.9, -0.6, false);
     }
 
@@ -1028,7 +1028,7 @@ export default function create(ctx) {
   }
   function renderPowers() {
     let html = '';
-    if (magnetT > 0) html += `<div class="drv-power">${icon('🧲', 20)}<div class="progress pink"><i data-mag style="width:${(magnetT / MAGNET_TIME * 100).toFixed(1)}%"></i></div></div>`;
+    if (magnetT > 0) html += `<div class="drv-power">${icon('🧲', 20)}<div class="progress primary"><i data-mag style="width:${(magnetT / MAGNET_TIME * 100).toFixed(1)}%"></i></div></div>`;
     if (shield) html += `<div class="drv-power mint">${icon('🛡️', 20)} Escudo</div>`;
     el.powers.innerHTML = html;
     el.magBar = el.powers.querySelector('[data-mag]');
@@ -1075,7 +1075,7 @@ export default function create(ctx) {
       <div class="drv-fx drv-flash"></div>
       <div class="game-bar dim">
         <button class="icon-btn" data-act="back" aria-label="Volver">${icon('back', 22)}</button>
-        <div class="game-title drv-title">Paseo Real</div>
+        <div class="game-title drv-title">Ruta Pixel</div>
         <div class="game-stat drv-lives drv-runstat"><small>Vidas</small><b></b></div>
         <div class="spacer"></div>
         <div class="game-stat drv-runstat"><small>Distancia</small><b data-v="dist">0 m</b></div>
@@ -1092,10 +1092,10 @@ export default function create(ctx) {
       <div class="drv-turbo hide"><button aria-label="Turbo">${icon('bolt', 26)}<span>Turbo</span><span class="drv-segs"><i><u></u></i><i><u></u></i><i><u></u></i></span><kbd class="drv-only-kb">Espacio</kbd></button></div>
       <div class="drv-intro">
         <div class="drv-card">
-          <div class="drv-logo">${icon('car', 44)}<span>Paseo Real</span></div>
+          <div class="drv-logo">${icon('car', 44)}<span>Ruta Pixel</span></div>
           <p class="drv-sub">Salí a pasear por Pixelia: esquivá el tránsito, juntá monedas y llegá lo más lejos que puedas.</p>
           <div class="drv-event">${eventChipHtml('driving', ui.esc)}</div>
-          <div class="drv-rec"><span class="chip gold">${icon('trophy', 18)} ${best ? `Récord: <b>${best.toLocaleString('es-AR')} m</b>` : '¡Primer paseo!'}</span><span class="chip lilac">${icon('star', 18)} 400 · 1000 · 2000 m</span></div>
+          <div class="drv-rec"><span class="chip gold">${icon('trophy', 18)} ${best ? `Récord: <b>${best.toLocaleString('es-AR')} m</b>` : '¡Primer paseo!'}</span><span class="chip second">${icon('star', 18)} 400 · 1000 · 2000 m</span></div>
           <div class="drv-ctrls">
             <div class="drv-ctrl drv-only-touch"><div class="drv-ill"><div class="drv-phone"><i>${icon('👈', 18)}</i><i>${icon('👉', 18)}</i></div></div>Tocá un costado o deslizá<small>para cambiar de carril</small></div>
             <div class="drv-ctrl drv-only-touch"><div class="drv-ill"><div class="drv-phone up"><i class="drv-swipe">${icon('👆', 20)}</i></div>${icon('bolt', 26)}</div>Deslizá hacia arriba<small>o tocá el botón Turbo</small></div>
@@ -1108,7 +1108,7 @@ export default function create(ctx) {
             <span class="bad">${icon('🚗', 20)} Tránsito</span><span class="bad">${icon('🚧', 20)} Conos</span><span class="bad">${icon('💧', 20)} Charcos</span>
           </div>
           <div class="drv-boost"></div>
-          <button class="btn pink block drv-go" data-act="go">${icon('🏁', 26)}¡Arrancar!</button>
+          <button class="btn primary block drv-go" data-act="go">${icon('🏁', 26)}¡Arrancar!</button>
         </div>
       </div>`;
     const q = (s) => container.querySelector(s);
@@ -1228,7 +1228,7 @@ export default function create(ctx) {
       content: `<p class="center">Vas <b>${meters.toLocaleString('es-AR')} m</b> y juntaste <b>${coins}</b> ${icon('coin', 18)}</p><p class="center muted small">Si terminás ahora, te llevás lo que juntaste.</p>`,
       actions: [
         { label: 'Terminar', cls: 'ghost', onClick: () => { action = 'finish'; } },
-        { label: 'Seguir', cls: 'pink', onClick: () => { action = 'resume'; } },
+        { label: 'Seguir', cls: 'primary', onClick: () => { action = 'resume'; } },
       ],
       onClose: () => {
         pauseModal = null;

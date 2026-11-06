@@ -89,7 +89,7 @@ export function playChestOpening(ctx, type, drops = []) {
     const rc = new THREE.Color(bestR.color);
 
     // sombra en el piso
-    const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 20), new THREE.MeshBasicMaterial({ color: 0x150b1e, transparent: true, opacity: 0.45, depthWrite: false }));
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 20), new THREE.MeshBasicMaterial({ color: 0x191310, transparent: true, opacity: 0.45, depthWrite: false }));
     shadow.rotation.x = -Math.PI / 2; shadow.scale.set(1.15, 0.85, 1); shadow.position.y = 0.002;
     scene.add(shadow);
 
@@ -191,7 +191,7 @@ export function playChestOpening(ctx, type, drops = []) {
       if (phase === 'enter') {
         const p = Math.min(1, phaseT / 0.75);
         holder.position.y = (1 - easeOutBounce(p)) * 2.6;
-        if (!landed && p > 0.36) { landed = true; sfx('bump'); squashV = -3.5; spawn(16, [white, new THREE.Color(0xd8d2e6)], { y: 0.05, spread: 0.6, up: [0.6, 1.4], out: 1.4, life: [0.4, 0.7], size: [0.5, 0.9], grav: 3 }); }
+        if (!landed && p > 0.36) { landed = true; sfx('bump'); squashV = -3.5; spawn(16, [white, new THREE.Color(0xddd5c8)], { y: 0.05, spread: 0.6, up: [0.6, 1.4], out: 1.4, life: [0.4, 0.7], size: [0.5, 0.9], grav: 3 }); }
         if (p >= 1) { holder.position.y = 0; setPhase('idle'); armAuto(); }
       }
       // resortes: aplastado, salto, tapa
@@ -377,7 +377,7 @@ export function playChestOpening(ctx, type, drops = []) {
         grid.append(h('div.chx-mini', { style: rarityVars(d.rarity) + `animation-delay:${0.08 + i * 0.07}s`, html:
           `<small>${esc(d.kind === 'stickers' ? 'Álbum' : r.name)}</small>${dropIcon(d, 48)}<b>${esc(d.name)}</b><em>${d.kind === 'stickers' ? (d.fresh ? `¡${d.fresh} nueva${d.fresh > 1 ? 's' : ''}!` : 'Repetidas') : dropAmountHtml(d, 18)}</em>` }));
       });
-      const okBtn = h('button.btn.pink.block', { html: `${icon('heart', 22)} ¡Genial!` });
+      const okBtn = h('button.btn.primary.block', { html: `${icon('heart', 22)} ¡Genial!` });
       okBtn.addEventListener('pointerdown', e => e.stopPropagation());
       okBtn.addEventListener('click', e => { e.stopPropagation(); finish(); });
       const hasBuild = drops.some(d => d.kind === 'build'), hasItem = drops.some(d => d.kind === 'item');
@@ -415,7 +415,7 @@ export function playChestOpening(ctx, type, drops = []) {
       }
       const r = fromEl?.getBoundingClientRect?.();
       const ox = (r ? r.left + r.width / 2 : innerWidth / 2) / scale, oy = (r ? r.top + r.height * 0.35 : innerHeight * 0.3) / scale;
-      const cols = [bestR.color, '#ff7eb6', '#b58cff', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'];
+      const cols = [bestR.color, '#ee8a5c', '#7f9ee8', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'];
       for (let i = 0; i < n; i++) {
         const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 3.4;
         confettiParts.push({ x: ox, y: oy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2.4, c: cols[(Math.random() * cols.length) | 0], s: Math.random() < 0.3 ? 2 : 1, star: Math.random() < 0.2, t: 0 });

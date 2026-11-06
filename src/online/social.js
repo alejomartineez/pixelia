@@ -43,10 +43,10 @@ export const RANK_BEST_GEMS = 5;
 export const RANK_CATS = [
   { id: 'level', name: 'Nivel', icon: 'crown', short: 'Nivel' },
   { id: 'stars', name: 'Estrellas', icon: 'star', short: 'Estrellas' },
-  { id: 'match3', name: 'Joyas Reales', icon: '💎', short: 'Joyas' },
-  { id: 'blocks', name: 'Bloques Mágicos', icon: '🧩', short: 'Bloques' },
+  { id: 'match3', name: 'Joyas Brillantes', icon: '💎', short: 'Joyas' },
+  { id: 'blocks', name: 'Bloques Pixel', icon: '🧩', short: 'Bloques' },
   { id: 'parking', name: 'Estacionamiento', icon: '🅿️', short: 'Parking' },
-  { id: 'driving', name: 'Paseo Real', icon: '🚗', short: 'Paseo' },
+  { id: 'driving', name: 'Ruta Pixel', icon: '🚗', short: 'Paseo' },
 ];
 const WEEK_KEYS = ['match3', 'blocks', 'parking', 'driving', 'stars'];
 /** Objetos de mochila que se pueden pedir / intercambiar. */

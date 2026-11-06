@@ -32,7 +32,7 @@ export function rarityVars(rid) {
 /** Variables CSS de un tipo de cofre: --cc, --ccd, --ccl */
 export function chestVars(type) {
   const c = CHESTS[type] || CHESTS.madera;
-  return `--cc:${c.color};--ccd:${mix(c.color, '#3b2340', 0.35)};--ccl:${mix(c.color, '#ffffff', 0.7)};--ct:${c.trim};`;
+  return `--cc:${c.color};--ccd:${mix(c.color, '#3d2f2a', 0.35)};--ccl:${mix(c.color, '#ffffff', 0.7)};--ct:${c.trim};`;
 }
 export function bestRarity(drops) {
   let best = 'comun';

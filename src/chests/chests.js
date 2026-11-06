@@ -11,7 +11,7 @@ const S = () => store.state;
 export const RARITIES = {
   comun: { id: 'comun', name: 'Común', color: '#6fe3c1', dark: '#3cbf9a', order: 0 },
   rara: { id: 'rara', name: 'Rara', color: '#8fd3ff', dark: '#4fa8e0', order: 1 },
-  epica: { id: 'epica', name: 'Épica', color: '#b58cff', dark: '#8a5ee0', order: 2 },
+  epica: { id: 'epica', name: 'Épica', color: '#7f9ee8', dark: '#5a78c4', order: 2 },
   legendaria: { id: 'legendaria', name: 'Legendaria', color: '#ffd166', dark: '#e8a93a', order: 3 },
 };
 export const RARITY_LIST = Object.values(RARITIES);
@@ -19,10 +19,10 @@ export const RARITY_LIST = Object.values(RARITIES);
 // ---------- Cofres ----------
 // odds: pesos por rareza para cada slot; guarantee: rareza mínima de al menos un slot
 export const CHESTS = {
-  madera: { id: 'madera', name: 'Cofre de Madera', slots: 3, odds: { comun: 74, rara: 22, epica: 4, legendaria: 0 }, guarantee: null, price: null, color: '#b07a52', trim: '#d8d2e6' },
+  madera: { id: 'madera', name: 'Cofre de Madera', slots: 3, odds: { comun: 74, rara: 22, epica: 4, legendaria: 0 }, guarantee: null, price: null, color: '#b07a52', trim: '#ddd5c8' },
   plata: { id: 'plata', name: 'Cofre de Plata', slots: 4, odds: { comun: 52, rara: 34, epica: 12, legendaria: 2 }, guarantee: 'rara', price: { gems: 20 }, color: '#c9d6ea', trim: '#8fd3ff' },
-  oro: { id: 'oro', name: 'Cofre de Oro', slots: 5, odds: { comun: 30, rara: 42, epica: 22, legendaria: 6 }, guarantee: 'epica', price: { gems: 50 }, color: '#ffd166', trim: '#ff7eb6' },
-  real: { id: 'real', name: 'Cofre Real', slots: 6, odds: { comun: 0, rara: 45, epica: 38, legendaria: 17 }, guarantee: 'legendaria', price: { gems: 120 }, color: '#ff7eb6', trim: '#ffd166' },
+  oro: { id: 'oro', name: 'Cofre de Oro', slots: 5, odds: { comun: 30, rara: 42, epica: 22, legendaria: 6 }, guarantee: 'epica', price: { gems: 50 }, color: '#ffd166', trim: '#ee8a5c' },
+  real: { id: 'real', name: 'Cofre de Diamante', slots: 6, odds: { comun: 0, rara: 45, epica: 38, legendaria: 17 }, guarantee: 'legendaria', price: { gems: 120 }, color: '#5aa6e0', trim: '#ffd166' },
 };
 export const CHEST_LIST = Object.values(CHESTS);
 export const FREE_CHEST_EVERY_MS = 4 * 3600 * 1000;
@@ -39,16 +39,16 @@ export const ITEMS = {
   coins_s: { name: 'Bolsita de monedas', rarity: 'comun', kind: 'coins', amount: [120, 220], icon: 'coin' },
   xp_s: { name: 'Pergamino de saber', rarity: 'comun', kind: 'xp', amount: [25, 45], icon: 'xp' },
   hammer: { name: 'Martillo Mágico', rarity: 'comun', kind: 'item', use: 'city', icon: '🔨', desc: 'Termina una obra o mejora al instante.' },
-  m3_moves: { name: '+5 Movidas', rarity: 'comun', kind: 'item', use: 'game', game: 'match3', icon: '👟', desc: 'Empezá un nivel de Joyas Reales con 5 movidas extra.' },
-  blk_bomb: { name: 'Bomba de Bloques', rarity: 'comun', kind: 'item', use: 'game', game: 'blocks', icon: '💣', desc: 'En Bloques Mágicos: limpia un área de 3x3 cuando quieras.' },
-  park_time: { name: 'Reloj Extra', rarity: 'comun', kind: 'item', use: 'game', game: 'parking', icon: '⏱️', desc: 'Estacionamiento Real: +30 segundos y 2 toques gratis.' },
+  m3_moves: { name: '+5 Movidas', rarity: 'comun', kind: 'item', use: 'game', game: 'match3', icon: '👟', desc: 'Empezá un nivel de Joyas Brillantes con 5 movidas extra.' },
+  blk_bomb: { name: 'Bomba de Bloques', rarity: 'comun', kind: 'item', use: 'game', game: 'blocks', icon: '💣', desc: 'En Bloques Pixel: limpia un área de 3x3 cuando quieras.' },
+  park_time: { name: 'Reloj Extra', rarity: 'comun', kind: 'item', use: 'game', game: 'parking', icon: '⏱️', desc: 'Estacionamiento Express: +30 segundos y 2 toques gratis.' },
 
   coins_m: { name: 'Cofrecito de monedas', rarity: 'rara', kind: 'coins', amount: [400, 650], icon: 'coin' },
   gems_s: { name: 'Puñado de gemas', rarity: 'rara', kind: 'gems', amount: [3, 6], icon: 'gem' },
   hourglass: { name: 'Reloj de Arena', rarity: 'rara', kind: 'item', use: 'city', icon: '⏳', desc: 'Adelanta 1 hora todas las obras y mejoras en curso.' },
   potion_prod: { name: 'Poción Dorada', rarity: 'rara', kind: 'item', use: 'city', icon: '🧪', desc: 'Producción x2 en toda la ciudad durante 30 minutos.', boost: { type: 'prod', mult: 2, minutes: 30 } },
-  m3_bomb: { name: 'Bomba de Joyas', rarity: 'rara', kind: 'item', use: 'game', game: 'match3', icon: '💥', desc: 'Empezá un nivel de Joyas Reales con 2 bombas en el tablero.' },
-  drv_shield: { name: 'Escudo de Viaje', rarity: 'rara', kind: 'item', use: 'game', game: 'driving', icon: '🛡️', desc: 'Empezá Paseo Real con escudo y turbo cargado.' },
+  m3_bomb: { name: 'Bomba de Joyas', rarity: 'rara', kind: 'item', use: 'game', game: 'match3', icon: '💥', desc: 'Empezá un nivel de Joyas Brillantes con 2 bombas en el tablero.' },
+  drv_shield: { name: 'Escudo de Viaje', rarity: 'rara', kind: 'item', use: 'game', game: 'driving', icon: '🛡️', desc: 'Empezá Ruta Pixel con escudo y turbo cargado.' },
 
   gems_m: { name: 'Bolsa de gemas', rarity: 'epica', kind: 'gems', amount: [10, 16], icon: 'gem' },
   potion_happy: { name: 'Perfume de Alegría', rarity: 'epica', kind: 'item', use: 'city', icon: '🌸', desc: 'Felicidad al máximo (+50% producción) durante 1 hora.', boost: { type: 'happy', minutes: 60 } },
@@ -56,8 +56,8 @@ export const ITEMS = {
   build_deco: { name: 'Deco sorpresa', rarity: 'epica', kind: 'build', pool: ['fuente', 'estatua', 'glorieta', 'arco_rosas', 'cerezo', 'macetas'], icon: '⛲', desc: 'Una decoración gratis para tu ciudad.' },
 
   gems_l: { name: 'Tesoro de gemas', rarity: 'legendaria', kind: 'gems', amount: [30, 45], icon: 'gem' },
-  potion_mega: { name: 'Elixir Real', rarity: 'legendaria', kind: 'item', use: 'city', icon: '✨', desc: 'Producción x3 en toda la ciudad durante 2 horas.', boost: { type: 'prod', mult: 3, minutes: 120 } },
-  cosmetic_gems: { name: 'Prenda legendaria', rarity: 'legendaria', kind: 'cosmetic', pool: 'gems', icon: '👑', desc: 'Una prenda o parte de auto premium (de las que cuestan gemas), gratis.' },
+  potion_mega: { name: 'Elixir Dorado', rarity: 'legendaria', kind: 'item', use: 'city', icon: '✨', desc: 'Producción x3 en toda la ciudad durante 2 horas.', boost: { type: 'prod', mult: 3, minutes: 120 } },
+  cosmetic_gems: { name: 'Prenda legendaria', rarity: 'legendaria', kind: 'cosmetic', pool: 'gems', icon: '🌟', desc: 'Una prenda o parte de auto premium (de las que cuestan gemas), gratis.' },
   build_legend: { name: 'Monumento legendario', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: '🦄', desc: 'Una construcción legendaria gratis, ¡aunque no tengas el nivel!' },
 };
 for (const [id, it] of Object.entries(ITEMS)) it.id = id;

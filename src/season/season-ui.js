@@ -71,7 +71,7 @@ export function openSeasonPass(ctx, now) {
       <h4>Cofre de fin de temporada</h4>
       <p>Terminó <b>${esc(th.name)}</b> ${icon(th.emoji, 18)} y llegaste al <b>nivel ${e.level}</b>. ${e.parts.length ? 'Todo lo que no habías cobrado ya está en tu cuenta:' : '¡Habías cobrado todo! Sos una estrella.'}</p>
       ${e.parts.length ? partsLine(e.parts) : ''}
-      <button class="btn pink small" data-ack>¡Gracias!</button></div>`;
+      <button class="btn primary small" data-ack>¡Gracias!</button></div>`;
   }
   function railFill(n) {
     const L = info.level, pct = info.level >= MAX_TIER ? 1 : info.pct;

@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { Voxels, voxelMaterial, shade, hexToInt } from '../core/voxel.js';
 import { OUTFIT_COLORS, CAR_BODIES, CAR_WHEELS, CAR_TOPPERS } from '../core/data.js';
-import { avatarModel as princessModel, PRINCESS_VOXEL } from './avatar.js';
+import { avatarModel, AVATAR_VOXEL } from './avatar.js';
 
 /** Tamaño de un vóxel de auto en unidades de mundo (16 vóxeles = 1 unidad). */
 export const CAR_VOXEL = 1 / 16;
@@ -451,8 +451,8 @@ export function carModel(carIn = {}, opts = {}) {
   // conductora
   let driver = null;
   if (opts.driver) {
-    driver = princessModel(opts.driver, { seated: true, scale: def.ds });
-    driver.position.set(0, def.seat.y * S - 4 * PRINCESS_VOXEL * def.ds, def.seat.z * S);
+    driver = avatarModel(opts.driver, { seated: true, scale: def.ds });
+    driver.position.set(0, def.seat.y * S - 4 * AVATAR_VOXEL * def.ds, def.seat.z * S);
     body.add(driver);
   }
   if (opts.scale) root.scale.setScalar(opts.scale);

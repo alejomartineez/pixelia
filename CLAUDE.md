@@ -1,6 +1,6 @@
 # Pixelia
 
-PWA de ciudad en 3D pixel art con minijuegos (Joyas Reales, Bloques Mágicos, Estacionamiento Real, Paseo Real),
+PWA de ciudad en 3D pixel art con minijuegos (Joyas Brillantes, Bloques Pixel, Estacionamiento Express, Ruta Pixel),
 cofres, pase de temporada, personajes y temas de ciudad, y online (cuentas, amigos, visitas) con Supabase.
 Para iPhone (instalable, offline) y PC. Textos del juego en español rioplatense, tono amable.
 

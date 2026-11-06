@@ -3,10 +3,12 @@
 import { bus } from './bus.js';
 import {
   CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
+  LEGACY_TYPES, LEGACY_ITEMS,
 } from './data.js';
 
 const BASE_KEY = 'pixelia.save.v1';
-const VERSION = 1;
+// 1: original · 2: sin realeza (tipos/piezas de princesa → gente) y tema por defecto "pueblo"
+const VERSION = 2;
 
 /**
  * Clave de guardado. En modo online simulado (?mock=1&mockuser=ana) cada jugadora simulada tiene su
@@ -46,10 +48,10 @@ export function defaultState() {
     onboarded: false, // la primera vez se elige personaje, nombre y ciudad (scenes/onboarding.js)
     coins: 600,
     gems: 15,
-    // personaje del jugador. state.princess es un alias de state.avatar (código y saves viejos)
-    avatar: { type: 'princesa', ...avatarType('princesa').look },
+    // personaje del jugador. state.princess es un alias de state.avatar (saves viejos)
+    avatar: { type: 'chica', ...avatarType('chica').look },
     avatarLooks: {}, // último look usado con cada tipo: { [type]: look } (al volver a un tipo se recupera)
-    car: { body: 'convertible', color: 'rosa', wheels: 'clasica', topper: 'ninguno' },
+    car: { body: 'convertible', color: 'celeste', wheels: 'clasica', topper: 'ninguno' },
     owned: freeOwned(),
     city: {
       // b: { uid, id, x, z, rot(0..3), level, buildEnd(ms|0), upgradeEnd(ms|0), lastCollect(ms) }
@@ -59,7 +61,7 @@ export function defaultState() {
       ],
       nextUid: 2,
       expansions: 0,
-      flagColor: 'rosa',
+      flagColor: 'celeste',
       camera: null, // la escena de ciudad puede guardar acá su posición/zoom
     },
     builders: START_BUILDERS,
@@ -94,8 +96,9 @@ function migrate(s) {
   if (!s || typeof s !== 'object') return s;
   const old = Object.getOwnPropertyDescriptor(s, 'princess')?.value;
   if (!s.avatar || typeof s.avatar !== 'object') s.avatar = { type: 'princesa', ...(old && typeof old === 'object' ? old : {}) };
-  if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'princesa';
   delete s.princess;
+  if ((s.v || 1) < 2) migrateNoRoyalty(s);
+  if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'chica';
   if (s.onboarded === undefined) s.onboarded = true;
   // el nombre por defecto viejo era 'Princesa': ahora el juego es neutro
   if (s.player && s.player.name === 'Princesa') s.player.name = 'Pixelín';
@@ -103,12 +106,45 @@ function migrate(s) {
   if (s.onboarded === false && !isFreshGame(s)) s.onboarded = true;
   return s;
 }
+/**
+ * v1 → v2: la realeza se fue. Princesa/hada → chica, príncipe/mago → chico; las coronas, varitas y cetros que tenías
+ * pasan a su equivalente (y quedan tuyos); el tema "pastel" (que era el de siempre) pasa al nuevo "pueblo".
+ */
+function migrateNoRoyalty(s) {
+  const mapLook = (l) => {
+    if (!l || typeof l !== 'object') return l;
+    if (LEGACY_TYPES[l.type] || l.type === undefined) l.type = LEGACY_TYPES[l.type] || 'chica';
+    for (const kind of ['crown', 'acc']) if (LEGACY_ITEMS[kind][l[kind]]) l[kind] = LEGACY_ITEMS[kind][l[kind]];
+    return l;
+  };
+  mapLook(s.avatar);
+  if (s.avatarLooks && typeof s.avatarLooks === 'object') {
+    for (const [t, l] of Object.entries(s.avatarLooks)) {
+      if (!LEGACY_TYPES[t]) { mapLook(l); continue; }
+      const to = LEGACY_TYPES[t];
+      if (!s.avatarLooks[to]) s.avatarLooks[to] = mapLook({ ...l, type: to });
+      delete s.avatarLooks[t];
+    }
+  }
+  if (s.car && LEGACY_ITEMS.topper[s.car.topper]) s.car.topper = LEGACY_ITEMS.topper[s.car.topper];
+  if (s.owned && typeof s.owned === 'object') {
+    for (const [kind, map] of Object.entries(LEGACY_ITEMS)) {
+      const list = Array.isArray(s.owned[kind]) ? s.owned[kind] : null;
+      if (!list) continue;
+      for (const [from, to] of Object.entries(map)) if (list.includes(from) && !list.includes(to)) list.push(to);
+      s.owned[kind] = list.filter(id => !map[id]);
+    }
+  }
+  if (s.city && s.city.theme === 'pastel') s.city.theme = 'pueblo';
+  if (s.city && s.city.flagColor === 'rosa') s.city.flagColor = 'celeste';
+  s.v = 2;
+}
 /** state.princess → state.avatar (no enumerable: no se guarda dos veces ni cambia el hash de sincronización). */
 function withAlias(s) {
   Object.defineProperty(s, 'princess', {
     configurable: true, enumerable: false,
     get() { return s.avatar; },
-    set(v) { if (v && typeof v === 'object') s.avatar = { type: s.avatar?.type || 'princesa', ...v }; },
+    set(v) { if (v && typeof v === 'object') s.avatar = { type: s.avatar?.type || 'chica', ...v }; },
   });
   return s;
 }
@@ -255,15 +291,15 @@ export const store = {
     return true;
   },
   /**
-   * Cambia una pieza del look (target 'avatar' | 'princess' | 'car'). 'princess' es alias de 'avatar';
-   * para el personaje el evento customize:changed sale con target 'princess' (compatibilidad).
+   * Cambia una pieza del look (target 'avatar' | 'car'; 'princess' es un alias viejo de 'avatar').
    */
   setLook(target, key, value) {
+    if (target === 'princess') target = 'avatar';
     const obj = target === 'avatar' ? state.avatar : state[target];
     if (!obj || obj[key] === value) return;
     obj[key] = value;
     dirty = true;
-    bus.emit('customize:changed', { target: target === 'avatar' ? 'princess' : target, key, value });
+    bus.emit('customize:changed', { target, key, value });
   },
   /**
    * Cambia el tipo de personaje (gratis). Guarda el look actual del tipo viejo y recupera el último look
@@ -284,7 +320,7 @@ export const store = {
     }
     state.avatar = next;
     dirty = true;
-    bus.emit('customize:changed', { target: 'princess', key: 'type', value: type });
+    bus.emit('customize:changed', { target: 'avatar', key: 'type', value: type });
     return true;
   },
 };

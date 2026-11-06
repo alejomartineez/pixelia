@@ -114,7 +114,7 @@ function buildCliffs(shape, cl) {
 // ---------- Cartel "¡Expandir!" ----------
 function signModel(th) {
   const v = new Voxels();
-  const [wood, woodD, pink, pinkD, gold, white] = ['#b07a52', '#8a5a3a', '#ff7eb6', '#e0528f', '#ffd166', '#ffffff'].map(c => themeHex(th, c));
+  const [wood, woodD, pink, pinkD, gold, white] = ['#b07a52', '#8a5a3a', '#ee8a5c', '#c8673d', '#ffd166', '#ffffff'].map(c => themeHex(th, c));
   v.box(7, 0, 7, 2, 9, 2, wood);
   v.box(6, 0, 6, 4, 1, 4, woodD);
   // tablero (doble cara)

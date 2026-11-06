@@ -1,7 +1,7 @@
 # Pixelia · Tu ciudad, tu estilo — documento de diseño y contratos
 
 PWA (HTML + ES modules, **sin build**) para iPhone **y PC**. Juego de construir ciudad (estilo city-builder casual) con minijuegos.
-Estética: **3D vóxel nítido** (modelos de vóxeles dibujados a alta resolución con antialias, oclusión ambiental y contorno tinta) + UI pixel art pastel con bordes gruesos color tinta.
+Estética: **3D vóxel nítido** (modelos de vóxeles dibujados a alta resolución con antialias, oclusión ambiental y contorno tinta) + UI pixel art "pueblo acogedor" (terracota, verdes, cielo y crema; el rosa solo como acento) con bordes gruesos color tinta café.
 Público: una pareja adulta que juega casual en el celu; neutro de género (cada jugador elige su personaje). Tiene que ser **amigable, linda, con recompensas frecuentes y enganchante** (sesiones cortas, cosas para cobrar, metas claras), nunca frustrante (sin energía, sin muros de pago; las gemas se ganan jugando).
 Idioma: **español rioplatense** (vos, tocá, construí). Nada de marcas o personajes de juegos existentes: todo original.
 
@@ -25,16 +25,16 @@ src/core/                  NO MODIFICAR salvo el dueño del núcleo
   hud.js       HUD de la ciudad
 src/city/models.js         modelos vóxel de edificios/naturaleza  (agente Modelos)
 src/scenes/city.js         escena ciudad                          (agente Ciudad)
-src/avatar/avatar*.js      modelo del personaje (todos los tipos; princess.js = alias)  (agente Avatar)
+src/avatar/avatar*.js      modelo del personaje (todos los tipos)  (agente Avatar)
 src/city/themes*.js        temas de ciudad + selector             (agente Ciudad)
 src/scenes/onboarding.js   primera partida: personaje, nombre, ciudad, tema
 src/avatar/car.js          modelo auto                            (agente Avatar)
 src/scenes/wardrobe.js     vestidor + taller                      (agente Avatar)
 src/scenes/panels.js       misiones, juegos, ajustes, login, nivel (agente Paneles)
-src/games/match3.js        Joyas Reales                           (agente Match3)
-src/games/blocks.js        Bloques Mágicos                        (agente Bloques)
-src/games/parking.js       Estacionamiento Real                   (agente Parking)
-src/games/driving.js       Paseo Real                             (agente Driving)
+src/games/match3.js        Joyas Brillantes                           (agente Match3)
+src/games/blocks.js        Bloques Pixel                        (agente Bloques)
+src/games/parking.js       Estacionamiento Express                   (agente Parking)
+src/games/driving.js       Ruta Pixel                             (agente Driving)
 tools/smoke.mjs            prueba headless con capturas
 ```
 
@@ -72,7 +72,7 @@ export default function create(ctx) {
 - Rendimiento: iPhone 12+ a 60fps. Reusar geometrías/materiales, nada de crear objetos por frame en loops calientes.
 
 ## Estilo visual
-- Paleta en `data.js` → `PALETTE` y variables CSS en `styles.css` (`--pink`, `--lilac`, `--mint`, `--sky`, `--gold`, `--ink`...). Pasteles + contorno tinta `#3b2340`.
+- Paleta única en `src/core/palette.js` (`PALETTE`, re-exportada por `data.js`) y variables CSS en `styles.css` (`--primary` terracota, `--second` azul pizarra, `--mint`, `--sky`, `--gold`, `--ink`...; clases `.btn.primary` / `.btn.second`). Contorno tinta café `#3d2f2a`. Nada de realeza: sin coronas, castillos ni princesas (la Municipalidad es el centro de la ciudad).
 - 3D: usar SIEMPRE `createPixelRenderer` + `addLights` + `Voxels` de `voxel.js` (material compartido). 1 tile de ciudad = 1 unidad de mundo; edificios con **8 vóxeles por tile** (`scale: 1/8`).
 - 2D (match3/bloques): canvas a baja resolución con `image-rendering: pixelated`, sprites pixel-art dibujados por código, con "volumen" (bisel claro arriba-izquierda, sombra abajo-derecha) para que combine con lo 3D.
 - Fuente: `var(--font)` (Pixelify). Íconos: `icon('coin')`, `icon('gem')`, `icon('star')`, `icon('heart')`, `icon('crown')`, `icon('xp')` + cualquier emoji pixelado (`icon('🌸')`) o nombres en `icons.js`.
@@ -80,12 +80,12 @@ export default function create(ctx) {
 - Feedback "jugoso": sonido (`audio.sfx`), partículas, `ui.floatText`, `ui.flyCurrency`, rebotes, confeti en logros.
 
 ## Personajes, temas y contorno
-- **Personajes** (`data.js` → `AVATAR_TYPES`): Princesa, Príncipe, Chica, Chico, Hada, Mago y animalitos (Gatito, Zorrito, Conejito, Osito). La primera partida (`onboarding.js`, si `state.onboarded` es false) elige tipo (al azar al empezar), colores, nombre y ciudad; después se cambia en el Vestidor (pestaña Personaje) o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel. Textos neutros: nada de "princesa" salvo el nombre del tipo.
-- **Temas de ciudad** (`city/themes.js`): Dulce Pastel, Ciudad Moderna, Bosque Mágico, Playa Tropical, Invierno Nevado, Luces de Noche (`dark: true`, aro claro bajo el personaje). No hay modelos por tema: los colores de vóxel se re-mapean (`mapColor`) y cambian terreno, cielo, luces y naturaleza. Se guarda en `state.city.theme`, se elige gratis con `openThemePicker(ctx)` (botón paleta en la ciudad, Ajustes y onboarding), emite `city:theme` y se ve en las visitas.
+- **Personajes** (`data.js` → `AVATAR_TYPES`): Chica, Chico y animalitos (Gatito, Zorrito, Conejito, Osito). La primera partida (`onboarding.js`, si `state.onboarded` es false) elige tipo (al azar al empezar), colores, nombre y ciudad; después se cambia en el Vestidor (pestaña Personaje) o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel. Textos neutros: nada de "princesa" salvo el nombre del tipo.
+- **Temas de ciudad** (`city/themes.js`): Pueblo Acogedor (por defecto, sin re-mapeo), Dulce Pastel, Ciudad Moderna, Bosque, Playa Tropical, Invierno Nevado, Luces de Noche (`dark: true`, aro claro bajo el personaje). No hay modelos por tema: los colores de vóxel se re-mapean (`mapColor`; las reglas usan "ranuras": `pink` = terracota principal, `lilac` = azul pizarra) y cambian terreno, cielo, luces y naturaleza. Se guarda en `state.city.theme`, se elige gratis con `openThemePicker(ctx)` (botón paleta en la ciudad, Ajustes y onboarding), emite `city:theme` y se ve en las visitas.
 - **Vóxel nítido** (desde nov 2026; antes el 3D se dibujaba a ~480 px y se agrandaba pixelado, y los bordes diagonales hacían serrucho): el "pixel" del arte es el **vóxel**, no el pixel de pantalla. `createPixelRenderer` dibuja a **2 pixeles de render por px CSS** (en PC es supersampleo 2×2; en celu, casi nativo) con **MSAA 4×** y el canvas al 100% suavizado (`.voxel-canvas`, nunca `pixelated`). Tope de 4,6 M pixeles de render; si los cuadros vienen lentos (<42 fps) baja solo a 1,5× y 1,2×. `settings.lowQuality` (o `?quality=low`) arranca en ≤1,5× sin MSAA; `?quality=high` apaga el ajuste automático (capturas).
 - **Oclusión ambiental por vértice**: `Voxels.toGeometry` oscurece cada esquina según sus 3 vecinos (rincones, aleros, pie de las paredes) — es lo que da volumen y lectura. `{ ao: false }` la apaga. Pisos con variación en manchas de 2×2 y contraste bajo.
 - **Contorno tinta**: `createPixelRenderer({ outline: true })` pinta ≈1 px CSS de tinta `#3b2340` por fuera de las siluetas (saltos de profundidad), con borde suavizado (`?outline=0|1` lo fuerza para comparar). Las miniaturas offscreen (edificios, personajes, temas, cofres) se dibujan a **3×** con antialias y `outlineCanvas(canvas, ancho)` de `voxel.js`; se muestran achicadas sin `pixelated`.
-- **2D sigue siendo pixel art**: íconos de `icons.js` (grilla de 24, bloques enteros), tableros de Joyas/Bloques, cielo de Paseo Real y burbujas `makeBillboard` conservan `pixelated`: la UI y los sprites son pixel art, el mundo 3D es vóxel nítido.
+- **2D sigue siendo pixel art**: íconos de `icons.js` (grilla de 24, bloques enteros), tableros de Joyas/Bloques, cielo de Ruta Pixel y burbujas `makeBillboard` conservan `pixelated`: la UI y los sprites son pixel art, el mundo 3D es vóxel nítido.
 
 ## Sonidos disponibles
 `audio.sfx(name)`: tap, open, close, coin, gem, build, place, done, levelup, error, match, combo(n), pop, clear, swoosh, star, win, lose, horn, crash, bump, select, buy.
@@ -93,7 +93,7 @@ export default function create(ctx) {
 
 ## Estado (store.state) — ver `defaultState()` en state.js
 - `coins, gems, player{name,cityName,level,xp}`
-- `onboarded`, `avatar{type, skin(index), hair, hairColor(id), dress, dressColor(id), crown, acc}` (`state.princess` = alias no enumerable), `avatarLooks{[type]: look}`, `city.theme`; `car{body, color(id de OUTFIT_COLORS), wheels, topper}`; `owned{hair:[],dress:[],...}`
+- `onboarded`, `avatar{type, skin(index), hair, hairColor(id), dress, dressColor(id), crown, acc}` (`state.princess` = alias viejo, no enumerable), `avatarLooks{[type]: look}`, `city.theme`; `car{body, color(id de OUTFIT_COLORS), wheels, topper}`; `owned{hair:[],dress:[],...}`
 - `city{buildings:[{uid,id,x,z,rot,level,buildEnd,upgradeEnd,lastCollect}], nextUid, expansions, flagColor, camera}`
 - `games.match3{level, stars{}}`, `games.blocks{best}`, `games.parking{level, stars{}}`, `games.driving{best}`
 - `stats{}` (usar `store.inc(key,n)` / `store.setMax`): `match3Wins`, `blocksLines`, `parkingWins`, `drivingMeters` alimentan logros.
@@ -113,7 +113,7 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
 - Origen: **centro del footprint, base en y=0**. Ocupa `size[0]` tiles en X y `size[1]` en Z (rot 0). El frente (puerta) mira a **+Z**. La ciudad rota el grupo `rot * 90°` alrededor de Y.
 - `group.userData.height` = altura en unidades de mundo (para ubicar burbujas arriba).
 - `group.userData.update?.(dt, t)` animaciones opcionales (agua de la fuente, rueda girando, banderas, humo de chimenea, patitos). La ciudad llama esto cada frame.
-- Mayor `level` = más detalle visible (piso extra, adornos dorados, banderas, flores). Castillo: 5 niveles muy distintos.
+- Mayor `level` = más detalle visible (piso extra, adornos dorados, banderas, flores). Municipalidad (id `castillo`): 5 niveles muy distintos.
 - Caminos (`cat:'camino'`): baldosa plana de 1 vóxel de alto que cubre el tile entero.
 - Cachear geometrías por `id+level` (clonar el grupo / reusar geometry).
 ```js
@@ -123,9 +123,9 @@ export function cloudModel(seed)            // nube vóxel (sin sombra)
 export function thumbnail(id, level = 1)    // -> Promise<dataURL> ícono 96x96 del edificio (render offscreen, cacheado). Usado por el menú de construcción.
 ```
 
-### src/avatar/princess.js (agente Avatar)
+### src/avatar/avatar.js (agente Avatar)
 ```js
-export function princessModel(look, opts = {}) // -> THREE.Group, altura total ≈ 1 unidad, mira a +Z, base en y=0
+export function avatarModel(look, opts = {}) // -> THREE.Group, altura total ≈ 1 unidad, mira a +Z, base en y=0
 // group.userData.update(dt, moving:boolean)   — caminar (piernas/brazos/rebote) o idle (respira, parpadea)
 export function randomLook(seed)              // look aleatorio válido (para vecinas NPC)
 ```
@@ -139,7 +139,7 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
 
 ## Economía (resumen)
 - Casas dan **población**; negocios requieren población mínima (`popReq`) y producen monedas por ciclo con tope (`cap` ciclos) → hay que volver a cobrar.
-- Deco da **felicidad** → bonus de producción hasta +50%. Castillo mejora → +8% global por nivel.
+- Deco da **felicidad** → bonus de producción hasta +50%. Mejorar la Municipalidad → +8% global por nivel.
 - Constructoras limitadas (2, se compran más con gemas). Obras con tiempo; se aceleran con gemas (≤5s gratis).
 - Minijuegos dan monedas (escaladas por nivel), xp y a veces gemas. Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
 
@@ -152,7 +152,7 @@ URL params: `?scene=id`, `?cheat=nivel` (+100k monedas, +1000 gemas), `?reset`, 
 
 Suites de punta a punta (todas con `--out carpeta` para las capturas; salen con 1 si algo falla):
 ```
-node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onboarding con toques reales (Osito, color de ropa, nombre y ciudad tipeados, estilo Bosque Mágico; verifica el guardado) → premio diario → m1–m8 → nivel + cofre → minijuego con potenciador → Pase/Álbum/Cofres/Eventos; revisa los globitos del HUD; al final recarga y confirma que no repite el onboarding
+node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onboarding con toques reales (Osito, color de ropa, nombre y ciudad tipeados, estilo Bosque; verifica el guardado) → premio diario → m1–m8 → nivel + cofre → minijuego con potenciador → Pase/Álbum/Cofres/Eventos; revisa los globitos del HUD; al final recarga y confirma que no repite el onboarding
 node tools/test-visit.mjs    ana y bea (mock): amistad por código, regalito, visita (like, notita, ayudar obra) → buzón → la obra se acelera; pedido "Acelerá mi obra"
 node tools/test-social.mjs   UI social completa (intercambios con escrow, ranking, Obra en Equipo, cuenta, conflicto)
 node tools/test-mock.mjs     API de net.js con dos pestañas     ·     node tools/test-sql.mjs   schema.sql en PGlite

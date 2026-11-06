@@ -1,4 +1,4 @@
-// Estacionamiento Real — minijuego 3D: estacioná tu auto en el lugar que brilla sin chocar.
+// Estacionamiento Express — minijuego 3D: estacioná tu auto en el lugar que brilla sin chocar.
 // Escena 'parking'. Controles: botones táctiles (multi-touch) o teclado (flechas/WASD, espacio, Esc).
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { icon } from '../core/icons.js';
@@ -187,7 +187,7 @@ export default function create(ctx) {
     $.goal.classList.remove('show');
     $.intro.innerHTML = `
       <div class="panel pk-card">
-        <div class="pk-card-top"><span class="chip mint">${icon('car', 16)} Estacionamiento Real</span><span class="chip">${lvNum} / ${LEVEL_COUNT}</span></div>
+        <div class="pk-card-top"><span class="chip mint">${icon('car', 16)} Estacionamiento Express</span><span class="chip">${lvNum} / ${LEVEL_COUNT}</span></div>
         <h2>Nivel ${lvNum}</h2>
         <h3>${ui.esc(level.name)}</h3>
         <div class="pk-card-stars">${starRow(best, 30)}</div>
@@ -201,7 +201,7 @@ export default function create(ctx) {
         <div class="pk-card-boost"></div>
         <div class="pk-card-btns">
           <button class="btn ghost pk-levels">${icon('map', 20)} Niveles</button>
-          <button class="btn pink pk-play">${icon('play', 20)} ¡Jugar!</button>
+          <button class="btn primary pk-play">${icon('play', 20)} ¡Jugar!</button>
         </div>
         <small class="pk-card-keys">Enter o ↑ para jugar</small>
       </div>`;
@@ -264,8 +264,8 @@ export default function create(ctx) {
       content: `<p class="center"><b>Nivel ${lvNum}</b> · ${ui.esc(level.name)}</p><p class="center muted">${ui.esc(level.goal)}</p>`,
       actions: [
         { label: 'Salir', cls: 'ghost', onClick: () => { action = 'exit'; } },
-        { label: 'Reiniciar', cls: 'lilac', onClick: () => { action = 'restart'; } },
-        { label: 'Seguir', cls: 'pink', onClick: () => { action = 'resume'; } },
+        { label: 'Reiniciar', cls: 'second', onClick: () => { action = 'restart'; } },
+        { label: 'Seguir', cls: 'primary', onClick: () => { action = 'resume'; } },
       ],
       onClose: () => {
         pauseModal = null;
@@ -282,7 +282,7 @@ export default function create(ctx) {
     lvNum = clamp(n | 0, 1, LEVEL_COUNT);
     level = LEVELS[lvNum - 1];
     world?.dispose();
-    world = buildWorld(r.scene, level, lvNum, { car: carData(), princess: ctx.state.princess });
+    world = buildWorld(r.scene, level, lvNum, { car: carData(), avatar: ctx.state.avatar });
     placeCar(car, level.start[0], level.start[1], level.start[2] * DEG);
     setBox(carBox, car.x, car.z, car.a);
     elapsed = 0; touches = 0; hold = 0; shake = 0; hitFlash = 0; globalCool = 0; lastShownSec = -1;
@@ -545,7 +545,7 @@ export default function create(ctx) {
       ];
       if (stars < 3) lines.push(touches > 0 ? `Para ${icon('star', 16)}${icon('star', 16)}${icon('star', 16)}: sin toques y en menos de ${level.par} s` : `Para ${icon('star', 16)}${icon('star', 16)}${icon('star', 16)}: estacioná en menos de ${level.par} s`);
       if (firstPerfect) lines.push(`${icon('gem', 18)} <b>¡Primera vez perfecta en este nivel!</b>`);
-      if (n === LEVEL_COUNT) lines.push('👑 <b>¡Completaste todos los niveles!</b>');
+      if (n === LEVEL_COUNT) lines.push('🏆 <b>¡Completaste todos los niveles!</b>');
       choice = await ctx.endGame({
         game: 'parking', score, stars, won: true,
         coins: 50 + 15 * stars, gems: firstPerfect ? 1 : 0, xp: 20,

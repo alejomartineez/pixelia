@@ -1,4 +1,4 @@
-// Bloques Mágicos — puzzle de encastrar piezas en un tablero 8x8.
+// Bloques Pixel — puzzle de encastrar piezas en un tablero 8x8.
 // Canvas pixelado (arte a baja resolución escalado sin suavizado) + barra DOM.
 import { store } from '../core/state.js';
 import { icon } from '../core/icons.js';
@@ -26,24 +26,24 @@ const CSS = `
 .scene-blocks .game-stat { min-width: 78px; }
 .scene-blocks .game-stat b { font-variant-numeric: tabular-nums; }
 .scene-blocks .bk-score.bump { animation: bk-bump .22s; }
-.scene-blocks .bk-best b { color: var(--lilac-d); display: inline-flex; align-items: center; gap: 3px; }
+.scene-blocks .bk-best b { color: var(--second-d); display: inline-flex; align-items: center; gap: 3px; }
 .scene-blocks .bk-best.new { background: var(--gold-l); animation: bk-pulse 1s steps(2) infinite; }
 .scene-blocks .bk-best.new b { color: var(--ink); }
 .scene-blocks .bk-help-btn { font-size: 22px; font-weight: 700; }
 .scene-blocks .bk-title { display: none; }
-.scene-blocks .bk-streak { display: flex; flex-direction: column; align-items: center; padding: 2px 8px 3px; background: var(--pink-l); border: var(--line) solid var(--ink);
+.scene-blocks .bk-streak { display: flex; flex-direction: column; align-items: center; padding: 2px 8px 3px; background: var(--primary-l); border: var(--line) solid var(--ink);
   border-radius: 12px; box-shadow: 0 3px 0 var(--ink); transition: transform .15s; }
 .scene-blocks .bk-streak.off { visibility: hidden; }
 .scene-blocks .bk-streak b { font-size: 17px; line-height: 1.1; display: flex; align-items: center; gap: 2px; }
 .scene-blocks .bk-pips { display: flex; gap: 3px; margin-top: 1px; }
 .scene-blocks .bk-pips i { display: block; width: 10px; height: 10px; background: #fff; border: 2px solid var(--ink); border-radius: 2px; }
-.scene-blocks .bk-pips i.on { background: var(--pink-d); box-shadow: inset 2px 2px 0 var(--pink-l); }
+.scene-blocks .bk-pips i.on { background: var(--primary-d); box-shadow: inset 2px 2px 0 var(--primary-l); }
 .scene-blocks .bk-banner { position: absolute; left: 50%; transform: translate(-50%, -50%); z-index: 6; pointer-events: none; white-space: nowrap;
   font-size: 38px; font-weight: 700; color: #fff; letter-spacing: 1px;
-  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 7px 0 var(--pink-d);
+  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 7px 0 var(--primary-d);
   animation: bk-banner 1.25s cubic-bezier(.2,.9,.3,1) forwards; }
 .scene-blocks .bk-banner.gold { color: var(--gold); text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 7px 0 var(--gold-d); }
-.scene-blocks .bk-banner.sad { color: var(--lilac-l); text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 7px 0 var(--lilac-d);
+.scene-blocks .bk-banner.sad { color: var(--second-l); text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 7px 0 var(--second-d);
   animation-duration: 1.6s; }
 .scene-blocks .bk-banner small { display: block; font-size: 18px; text-align: center; margin-top: 6px; color: #fff; letter-spacing: .5px;
   text-shadow: 2px 0 var(--ink), -2px 0 var(--ink), 0 2px var(--ink), 0 -2px var(--ink), 2px 2px var(--ink), -2px 2px var(--ink), 2px -2px var(--ink), -2px -2px var(--ink), 0 4px 0 var(--ink); }
@@ -93,11 +93,11 @@ const CSS = `
 .scene-blocks .bk-bomb-txt { display: flex; flex-direction: column; line-height: 1.1; text-align: left; }
 .scene-blocks .bk-bomb-txt b { font-size: 15px; }
 .scene-blocks .bk-bomb-txt small { font-size: 12px; color: var(--ink-l); }
-.scene-blocks .bk-bomb.empty { cursor: default; background: #f6f0f8; border-color: var(--ink-ll); box-shadow: 0 3px 0 var(--ink-ll); }
-.scene-blocks .bk-bomb.empty .bk-bomb-ic { filter: grayscale(1); opacity: .55; border-color: var(--ink-ll); background: #eee6f1; }
+.scene-blocks .bk-bomb.empty { cursor: default; background: #f8f5f0; border-color: var(--ink-ll); box-shadow: 0 3px 0 var(--ink-ll); }
+.scene-blocks .bk-bomb.empty .bk-bomb-ic { filter: grayscale(1); opacity: .55; border-color: var(--ink-ll); background: #f1ede6; }
 .scene-blocks .bk-bomb.empty .bk-bomb-ic i { background: var(--ink-ll); }
 .scene-blocks .bk-bomb.empty b { color: var(--ink-l); }
-.scene-blocks .bk-bomb.aim { background: var(--pink); color: #fff; box-shadow: inset 0 -5px 0 var(--pink-d), 0 4px 0 var(--ink); animation: bk-pulse .9s steps(2) infinite; }
+.scene-blocks .bk-bomb.aim { background: var(--primary); color: #fff; box-shadow: inset 0 -5px 0 var(--primary-d), 0 4px 0 var(--ink); animation: bk-pulse .9s steps(2) infinite; }
 .scene-blocks .bk-bomb.aim small { color: #fff; }
 .scene-blocks .bk-bomb.aim .bk-bomb-ic { background: #fff; }
 .scene-blocks .bk-bomb.compact { padding: 4px; min-height: 44px; }
@@ -108,7 +108,7 @@ const CSS = `
   background: #fff; border: var(--line) solid var(--ink); border-radius: 12px; padding: 4px 12px; box-shadow: 0 3px 0 var(--ink); display: none; align-items: center; gap: 6px; }
 .scene-blocks .bk-aimhint.show { display: flex; animation: bk-pulse 1s steps(2) infinite; }
 .scene-blocks .bk-aimhint.tray { justify-content: center; white-space: normal; text-align: center; padding: 8px 16px; border-radius: 14px;
-  border-style: dashed; border-color: var(--pink-d); background: rgba(255, 244, 250, .9); box-shadow: none; font-size: 17px; }
+  border-style: dashed; border-color: var(--primary-d); background: rgba(253,250,246, .9); box-shadow: none; font-size: 17px; }
 .scene-blocks .bk-aimhint.tray.show { animation: none; }
 `;
 
@@ -303,7 +303,7 @@ export default function create(ctx) {
     placeBomb(cw, ch, safe);
     // adornos de fondo
     deco.length = 0;
-    const cols = ['#ffb3d6', '#d6c2ff', '#b9f0de', '#bfe4ff', '#ffe3a3'];
+    const cols = ['#fbd7b7', '#ced9f3', '#b9f0de', '#bfe4ff', '#ffe3a3'];
     for (let i = 0; i < 14; i++) {
       deco.push({ x: Math.random() * W, y: Math.random() * H, v: 2 + Math.random() * 4, ph: Math.random() * 6.28, heart: i % 3 === 0, col: cols[i % cols.length] });
     }
@@ -633,7 +633,7 @@ export default function create(ctx) {
           ${can ? '' : '<p class="small muted">Te faltan gemas. ¡Las ganás jugando y con misiones!</p>'}` : '';
       const content = ui.h('div.bk-cont', { html: `<p>¡Te puedo hacer lugar!</p>${bombHtml}${gemsHtml}` });
       const actions = [{ label: 'Terminar', cls: 'ghost' }];
-      if (bombs > 0) actions.push({ html: `${boosterIcon(BOMB_ID, 20)} Usar bomba`, cls: 'lilac', onClick: () => { val = 'bomb'; } });
+      if (bombs > 0) actions.push({ html: `${boosterIcon(BOMB_ID, 20)} Usar bomba`, cls: 'second', onClick: () => { val = 'bomb'; } });
       if (withGems) actions.push({ html: `Seguir ${icon('gem', 20)} ${CONTINUE_COST}`, cls: 'mint', disabled: !can, onClick: () => { val = 'gems'; } });
       ui.modal({ title: '¿Seguir jugando?', icon: 'sparkle', content, closable: false, onClose: () => res(val), actions, className: actions.length > 2 ? 'bk-cont-modal' : '' });
     });
@@ -730,7 +730,7 @@ export default function create(ctx) {
     }
     const bx = L.gx + (cell.x + 0.5) * CELL, by = L.gy + (cell.y + 0.5) * CELL;
     booms.push({ x: bx, y: by, t0: now });
-    const cols = ['#ffd166', '#ff7eb6', '#ffffff', '#b58cff', '#6fe3c1'];
+    const cols = ['#ffd166', '#ee8a5c', '#ffffff', '#7f9ee8', '#6fe3c1'];
     for (let k = 0; k < 22; k++) {
       const a = (k / 22) * Math.PI * 2 + Math.random() * 0.3, sp = 45 + Math.random() * 75;
       parts.push({ x: bx, y: by, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 30, life: 0, max: 0.5 + Math.random() * 0.45, col: cols[k % cols.length], s: k % 2 ? 2 : 1, spark: k % 4 === 0 });
@@ -779,7 +779,7 @@ export default function create(ctx) {
   function buildBar() {
     const bar = ui.h('div.game-bar');
     els.back = ui.h('button.icon-btn', { 'aria-label': 'Volver', html: icon('back', 24), onclick: onBack });
-    els.title = ui.h('div.game-title.bk-title', {}, 'Bloques Mágicos');
+    els.title = ui.h('div.game-title.bk-title', {}, 'Bloques Pixel');
     els.scoreBox = ui.h('div.game-stat.bk-score', { html: '<small>Puntos</small><b>0</b>' });
     els.score = els.scoreBox.querySelector('b');
     els.bestBox = ui.h('div.game-stat.bk-best', { html: `<small>Récord</small><b>${icon('crown', 16)}<span>0</span></b>` });
@@ -903,8 +903,8 @@ export default function create(ctx) {
         `<p class="bk-help-tip">Tu partida se guarda sola si salís.</p>`,
     });
     ui.modal({
-      title: 'Bloques Mágicos', icon: 'sparkle', content, closable: !first,
-      actions: [{ label: first ? '¡A jugar!' : 'Entendido', cls: 'pink' }],
+      title: 'Bloques Pixel', icon: 'sparkle', content, closable: !first,
+      actions: [{ label: first ? '¡A jugar!' : 'Entendido', cls: 'primary' }],
       onClose: () => {
         if (first) { ctx.state.tutorial.blocks = true; store.markDirty(); later(eventToast, 400); }
       },
@@ -930,7 +930,7 @@ export default function create(ctx) {
   function drawShadow(piece, cx, cy, cs, off) {
     const sh = SHAPES[piece.shape];
     const x0 = Math.round(cx - (sh.w * cs) / 2), y0 = Math.round(cy - (sh.h * cs) / 2);
-    g.fillStyle = 'rgba(59,35,64,0.22)';
+    g.fillStyle = 'rgba(61,47,42,0.22)';
     for (const [x, y] of sh.cells) g.fillRect(x0 + x * cs + off, y0 + y * cs + off + 1, cs, cs);
   }
 
@@ -1046,7 +1046,7 @@ export default function create(ctx) {
       g.fillRect(b.x - r, b.y - r, r * 2, 2); g.fillRect(b.x - r, b.y + r - 2, r * 2, 2);
       g.fillRect(b.x - r, b.y - r, 2, r * 2); g.fillRect(b.x + r - 2, b.y - r, 2, r * 2);
       const r2 = Math.round(r * 0.6);
-      g.fillStyle = '#ff7eb6';
+      g.fillStyle = '#ee8a5c';
       g.fillRect(b.x - r2, b.y - r2, r2 * 2, 1); g.fillRect(b.x - r2, b.y + r2 - 1, r2 * 2, 1);
       g.fillRect(b.x - r2, b.y - r2, 1, r2 * 2); g.fillRect(b.x + r2 - 1, b.y - r2, 1, r2 * 2);
       g.globalAlpha = 1;
@@ -1054,7 +1054,7 @@ export default function create(ctx) {
     // apuntando la bomba: el 3x3 elegido titila
     if (aiming) {
       const blink = Math.floor(now / 160) % 2;
-      g.fillStyle = blink ? '#ff7eb6' : '#ffffff';
+      g.fillStyle = blink ? '#ee8a5c' : '#ffffff';
       const bw = N * CELL;
       g.fillRect(gx - 2, gy - 2, bw + 4, 1); g.fillRect(gx - 2, gy + bw + 1, bw + 4, 1);
       g.fillRect(gx - 2, gy - 2, 1, bw + 4); g.fillRect(gx + bw + 1, gy - 2, 1, bw + 4);
@@ -1065,12 +1065,12 @@ export default function create(ctx) {
         g.fillStyle = '#ffffff';
         g.fillRect(x0, y0, w, w);
         g.globalAlpha = 1;
-        g.fillStyle = '#e0528f';
+        g.fillStyle = '#c8673d';
         const L4 = 4, o = blink;
         const ax0 = x0 - 1 - o, ay0 = y0 - 1 - o, ax1 = x0 + w + o, ay1 = y0 + w + o;
         g.fillRect(ax0, ay0, w + 2 + o * 2, 1); g.fillRect(ax0, ay1, w + 2 + o * 2, 1);
         g.fillRect(ax0, ay0, 1, w + 2 + o * 2); g.fillRect(ax1, ay0, 1, w + 2 + o * 2);
-        g.fillStyle = '#3b2340';
+        g.fillStyle = '#3d2f2a';
         g.fillRect(ax0 - 1, ay0 - 1, L4, 2); g.fillRect(ax0 - 1, ay0 - 1, 2, L4);
         g.fillRect(ax1 - L4 + 2, ay0 - 1, L4, 2); g.fillRect(ax1, ay0 - 1, 2, L4);
         g.fillRect(ax0 - 1, ay1, L4, 2); g.fillRect(ax0 - 1, ay1 - L4 + 2, 2, L4);

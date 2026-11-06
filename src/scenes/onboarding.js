@@ -27,7 +27,7 @@ const isDefaultName = (n) => !n || n === 'Pixelín' || n === 'Princesa'; // nomb
 const clean = (s) => [...String(s || '').replace(/\s+/g, ' ').trim()].slice(0, 16).join('').trim();
 
 const OB_CSS = `
-.scene-onboarding .ob { position:absolute; inset:0; display:flex; flex-direction:column; background:linear-gradient(#ffd9ec,#efe0ff); }
+.scene-onboarding .ob { position:absolute; inset:0; display:flex; flex-direction:column; background:linear-gradient(#fdebdb,#f9f1e6); }
 .scene-onboarding .ob-stage { position:relative; flex:0 0 40%; min-height:0; overflow:hidden; touch-action:none; }
 .scene-onboarding .ob-stage canvas { position:absolute; inset:0; }
 .scene-onboarding .ob-title { position:absolute; z-index:2; top:calc(var(--safe-t) + 12px); left:0; right:0; text-align:center; pointer-events:none; }
@@ -35,10 +35,10 @@ const OB_CSS = `
   box-shadow:0 3px 0 var(--ink); animation:obPop .5s cubic-bezier(.3,1.6,.6,1); }
 .scene-onboarding .ob-title small { display:block; margin-top:6px; font-size:14px; font-weight:700; color:var(--ink-l); text-shadow:0 1px 0 #fff; }
 .scene-onboarding .ob-panel { position:relative; z-index:3; flex:1 1 auto; min-height:0; display:flex; flex-direction:column; margin-top:-16px;
-  background:var(--panel); border-top:var(--line) solid var(--ink); border-radius:20px 20px 0 0; box-shadow:0 -4px 0 rgba(59,35,64,.12); }
+  background:var(--panel); border-top:var(--line) solid var(--ink); border-radius:20px 20px 0 0; box-shadow:0 -4px 0 rgba(61,47,42,.12); }
 .scene-onboarding .ob-dots { display:flex; justify-content:center; gap:8px; padding:12px 0 2px; }
 .scene-onboarding .ob-dots i { width:10px; height:10px; border-radius:50%; border:2px solid var(--ink); background:#fff; transition:background .2s, transform .2s; }
-.scene-onboarding .ob-dots i.on { background:var(--pink); transform:scale(1.25); }
+.scene-onboarding .ob-dots i.on { background:var(--primary); transform:scale(1.25); }
 .scene-onboarding .ob-body { flex:1 1 auto; min-height:0; padding:8px 14px 14px; }
 .scene-onboarding .ob-h { margin:6px 2px 10px; font-size:19px; }
 .scene-onboarding .ob-fam { margin:12px 2px 6px; font-size:14px; font-weight:700; color:var(--ink-l); display:flex; align-items:center; gap:6px; }
@@ -48,23 +48,23 @@ const OB_CSS = `
 .scene-onboarding .ob-type:active { transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
 .scene-onboarding .ob-type.on { background:var(--gold-l); outline:3px solid var(--gold-d); outline-offset:2px; }
 .scene-onboarding .ob-type .th { width:64px; height:64px; border-radius:10px; opacity:0; transition:opacity .2s;
-  background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe3f1 72%); }
+  background:radial-gradient(circle at 50% 42%, #fff 0 38%, #f9f3e9 72%); }
 .scene-onboarding .ob-type .th.ok { opacity:1; }
 .scene-onboarding .ob-type.on .th { background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe4a3 72%); }
 .scene-onboarding .ob-row { margin:14px 2px 4px; font-size:14px; font-weight:700; color:var(--ink-l); }
 .scene-onboarding .ob-sw { display:flex; gap:8px; overflow-x:auto; padding:4px 2px 8px; scrollbar-width:none; }
 .scene-onboarding .ob-sw::-webkit-scrollbar { display:none; }
 .scene-onboarding .ob-sw button { flex:none; width:38px; height:38px; border:var(--line) solid var(--ink); border-radius:10px; padding:0;
-  box-shadow:inset -4px -4px 0 rgba(59,35,64,.16), inset 3px 3px 0 rgba(255,255,255,.5), 0 2px 0 var(--ink); }
+  box-shadow:inset -4px -4px 0 rgba(61,47,42,.16), inset 3px 3px 0 rgba(255,255,255,.5), 0 2px 0 var(--ink); }
 .scene-onboarding .ob-sw button.on { outline:3px solid var(--gold-d); outline-offset:2px; transform:translateY(-2px); }
 .scene-onboarding .ob-field { display:flex; align-items:center; gap:8px; margin:0 0 16px; }
 .scene-onboarding .ob-field label { display:block; margin:0 2px 6px; font-size:15px; font-weight:700; }
 .scene-onboarding .ob-input { flex:1; min-width:0; height:50px; padding:0 12px; font-family:inherit; font-size:20px; font-weight:700; color:var(--ink); background:#fff;
-  border:var(--line) solid var(--ink); border-radius:12px; box-shadow:inset 0 3px 0 #f1e6f3; }
-.scene-onboarding .ob-input:focus { outline:none; border-color:var(--pink-d); }
+  border:var(--line) solid var(--ink); border-radius:12px; box-shadow:inset 0 3px 0 #f3eee6; }
+.scene-onboarding .ob-input:focus { outline:none; border-color:var(--primary-d); }
 .scene-onboarding .ob-dice { flex:none; width:50px; height:50px; }
 .scene-onboarding .ob-hint { margin:-8px 2px 14px; font-size:13px; color:var(--ink-l); }
-.scene-onboarding .ob-foot { display:flex; gap:8px; padding:10px 14px calc(var(--safe-b) + 12px); border-top:2px dashed #ead8ef; }
+.scene-onboarding .ob-foot { display:flex; gap:8px; padding:10px 14px calc(var(--safe-b) + 12px); border-top:2px dashed #efe6d8; }
 .scene-onboarding .ob-foot .btn { min-height:50px; font-size:18px; }
 .scene-onboarding .ob-foot .ob-next { flex:1; }
 .scene-onboarding .ob-step { animation:obIn .3s ease-out; }
@@ -74,7 +74,7 @@ const OB_CSS = `
   .scene-onboarding .ob { flex-direction:row; }
   .scene-onboarding .ob-stage { flex:1 1 auto; }
   .scene-onboarding .ob-panel { flex:0 0 min(500px, 46%); margin:0; padding-top:var(--safe-t); border-top:0; border-left:var(--line) solid var(--ink);
-    border-radius:20px 0 0 20px; box-shadow:-4px 0 0 rgba(59,35,64,.12); }
+    border-radius:20px 0 0 20px; box-shadow:-4px 0 0 rgba(61,47,42,.12); }
   .scene-onboarding .ob-foot { padding-right:calc(var(--safe-r) + 14px); }
   .scene-onboarding .ob-title b { font-size:28px; }
 }
@@ -115,10 +115,10 @@ export default function create(ctx) {
   function buildStage(el) {
     // mismo pixel y contorno tinta que el vestidor y la ciudad (2.5 en baja calidad)
     const lowQ = !!S().settings?.lowQuality;
-    r = createPixelRenderer(el, { ortho: false, fov: 30, background: 0xffe3f1, lowQuality: lowQ, outline: true });
+    r = createPixelRenderer(el, { ortho: false, fov: 30, background: 0xf9f3e9, lowQuality: lowQ, outline: true });
     const { sun } = addLights(r.scene, { shadowSize: 6, shadowRes: 1024 });
     sun.position.set(5, 12, 9);
-    const fill = new THREE.DirectionalLight(0xffd6ec, 0.7);
+    const fill = new THREE.DirectionalLight(0xfde9d8, 0.7);
     fill.position.set(-4, 3, 6);
     r.scene.add(fill);
     turntable = new THREE.Group();
@@ -128,7 +128,7 @@ export default function create(ctx) {
     turntable.add(plat, holder);
     r.scene.add(turntable);
     const geo = new THREE.BoxGeometry(1, 1, 1);
-    const cols = [0xffffff, 0xffe066, 0xff9cc8, 0xc9b8ff, 0x9ff0ff];
+    const cols = [0xffffff, 0xffe066, 0xf1a181, 0xc5d3f2, 0x9ff0ff];
     for (let i = 0; i < 24; i++) {
       const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: cols[i % cols.length], transparent: true, opacity: 0, depthWrite: false }));
       m.visible = false; r.scene.add(m);
@@ -247,7 +247,7 @@ export default function create(ctx) {
       html += `<div class="ob-row">Color de ropa</div>${swatches(OUTFIT_COLORS.map(c => ({ ...c, name: COLOR_NAMES[c.id] || c.id })), look.dressColor, 'dressColor')}`;
       html += '</div>';
       body.innerHTML = html;
-      foot.innerHTML = `<button class="btn pink ob-next">Siguiente ${icon('play', 18)}</button>`;
+      foot.innerHTML = `<button class="btn primary ob-next">Siguiente ${icon('play', 18)}</button>`;
       queueThumbs();
     } else {
       setTitle(`¡Hola, ${ui.esc(name || suggestedName())}!`, 'Ponele nombre a tu personaje y a tu ciudad.');
@@ -255,14 +255,14 @@ export default function create(ctx) {
         <h2 class="ob-h">${icon(t.emoji, 22)} Tu nombre</h2>
         <div class="ob-field"><input class="ob-input" data-f="name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="${ui.esc(suggestedName())}" aria-label="Nombre de tu personaje">
           <button class="icon-btn ob-dice" data-dice="name" aria-label="Nombre al azar">${icon('🎲', 24)}</button></div>
-        <h2 class="ob-h">${icon('🏰', 22)} Tu ciudad</h2>
+        <h2 class="ob-h">${icon('🏡', 22)} Tu ciudad</h2>
         <div class="ob-field"><input class="ob-input" data-f="city" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="${ui.esc(sugg.city)}" aria-label="Nombre de tu ciudad">
           <button class="icon-btn ob-dice" data-dice="city" aria-label="Ciudad al azar">${icon('🎲', 24)}</button></div>
         <p class="ob-hint">Los podés cambiar cuando quieras en Ajustes.</p>
       </div>`;
       const ni = body.querySelector('[data-f=name]'), ci = body.querySelector('[data-f=city]');
       ni.value = name; ci.value = city;
-      foot.innerHTML = `<button class="btn ghost ob-back" aria-label="Volver">${icon('back', 20)}</button><button class="btn pink ob-next">${icon('sparkle', 20)}¡A jugar!</button>`;
+      foot.innerHTML = `<button class="btn ghost ob-back" aria-label="Volver">${icon('back', 20)}</button><button class="btn primary ob-next">${icon('sparkle', 20)}¡A jugar!</button>`;
     }
     body.scrollTop = 0;
   }

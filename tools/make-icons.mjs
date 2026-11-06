@@ -1,4 +1,4 @@
-// Genera los íconos PNG de la app (corona pixel-art sobre fondo rosa) sin dependencias.
+// Genera los íconos PNG de la app (casita pixel-art sobre cielo y pasto) sin dependencias.
 // node tools/make-icons.mjs
 import { writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
@@ -6,25 +6,25 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'icons');
-const COL = { k: [59, 35, 64], y: [255, 209, 102], Y: [232, 169, 58], w: [255, 255, 255], p: [255, 126, 182], s: [143, 211, 255], m: [111, 227, 193] };
-// 16x16 corona + castillito
+const COL = { k: [61, 47, 42], R: [238, 138, 92], r: [200, 103, 61], c: [253, 246, 227], s: [143, 211, 255], d: [138, 90, 58], y: [255, 209, 102], g: [127, 204, 112], G: [95, 170, 92] };
+// 16x16 casita sobre el pasto
 const ART = [
   '................',
   '................',
-  '..k....kk....k..',
-  '.kyk..kyyk..kyk.',
-  '.kyyk.kyyk.kyyk.',
-  '.kyyykyyyykyyyk.',
-  '.kywyyyyyyyyyYk.',
-  '.kyyyyyyyyyyyYk.',
-  '.kyypyyysyyymYk.',
-  '.kyyyyyyyyyyyYk.',
-  '.kYYYYYYYYYYYYk.',
+  '.......kk.......',
+  '......kRrk......',
+  '.....kRRrrk.....',
+  '....kRRRrrrk....',
+  '...kRRRRrrrrk...',
   '..kkkkkkkkkkkk..',
-  '................',
-  '................',
-  '................',
-  '................',
+  '...kcsscddcck...',
+  '...kcsscddcck...',
+  '...kccccdycck...',
+  '...kkkkkkkkkk...',
+  'gggggggggggggggg',
+  'GGGGGGGGGGGGGGGG',
+  'GGGGGGGGGGGGGGGG',
+  'GGGGGGGGGGGGGGGG',
 ];
 
 function crc32(buf) {
@@ -61,11 +61,12 @@ function make(size, name, padFrac = 0.12) {
   const pad = Math.round(size * padFrac);
   const cell = (size - pad * 2) / 16;
   const buf = png(size, (x, y) => {
-    // fondo: degradé rosa -> lila con estrellitas
+    // fondo: cielo celeste que se aclara hacia abajo, con nubecitas
     const t = y / size;
-    let bg = [Math.round(255 - 40 * t), Math.round(184 - 10 * t), Math.round(220 + 35 * t), 255];
+    let bg = [Math.round(169 + 70 * t), Math.round(218 + 20 * t), Math.round(255 - 30 * t), 255];
     const sx = Math.floor(x / (size / 16)), sy = Math.floor(y / (size / 16));
     if ((sx === 2 && sy === 13) || (sx === 13 && sy === 2) || (sx === 12 && sy === 14) || (sx === 3 && sy === 1)) bg = [255, 255, 255, 255];
+    if (y >= pad + 13 * cell) bg = [...COL.G, 255];   // el pasto llega hasta el borde
     const ax = Math.floor((x - pad) / cell), ay = Math.floor((y - pad) / cell) - 1;
     if (ax >= 0 && ax < 16 && ay >= 0 && ay < 16) {
       const ch = ART[ay][ax];

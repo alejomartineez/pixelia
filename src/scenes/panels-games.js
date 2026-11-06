@@ -48,7 +48,7 @@ export function openGames(ctx) {
     }
     // potenciadores en la mochila para este juego
     const bs = boostersOf(g.id);
-    if (bs.length) chips.push(`<span class="chip lilac" title="Potenciadores en tu mochila">${bs.map(b => `${icon(b.icon, 14)}${b.count}`).join(' ')}</span>`);
+    if (bs.length) chips.push(`<span class="chip second" title="Potenciadores en tu mochila">${bs.map(b => `${icon(b.icon, 14)}${b.count}`).join(' ')}</span>`);
     return chips.join('');
   }
 
@@ -92,7 +92,7 @@ export function openGames(ctx) {
           }).join('')}</span>`;
         body.append(row);
       }
-      const go = h('button.btn.lilac.block', { html: total ? `${icon('bag', 20)} Ver mi mochila` : `${chestArt('madera', 22)} Ir a Cofres` });
+      const go = h('button.btn.second.block', { html: total ? `${icon('bag', 20)} Ver mi mochila` : `${chestArt('madera', 22)} Ir a Cofres` });
       go.onclick = async () => {
         audio.sfx('tap');
         sh.close();
@@ -135,7 +135,7 @@ export function openGames(ctx) {
         </div>`;
       const foot = h('div.pnl-game-foot');
       if (st.ok) {
-        foot.append(h('button.btn.pink.block', { html: `${icon('play', 20)} Jugar`, onclick: () => { audio.sfx('tap'); sh.close(); ctx.router.openGame(g.id); } }));
+        foot.append(h('button.btn.primary.block', { html: `${icon('play', 20)} Jugar`, onclick: () => { audio.sfx('tap'); sh.close(); ctx.router.openGame(g.id); } }));
       } else if (st.locked) {
         foot.append(h('div.pnl-lockmsg', { html: `${icon('lock', 18)}<span>Llegá al <b>nivel ${g.unlock}</b></span>` }));
       } else if (st.needsBuilding && placed && economy.isConstructing(placed)) {

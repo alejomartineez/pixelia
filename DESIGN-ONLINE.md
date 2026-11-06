@@ -23,7 +23,7 @@ tools/test-social.mjs       la UI social de punta a punta con dos jugadoras + ca
 
 ## Modelo de datos (Postgres)
 
-- `profiles` (público entre amigas): `id uuid pk = auth.uid()`, `code text unique` (6 caracteres sin ambiguos: sin 0/O/1/I), `name`, `city_name`, `level`, `look jsonb` (princesa), `car jsonb`, `city jsonb` (snapshot para visitas: `{buildings:[{id,x,z,rot,level}], expansions, flagColor}`), `stats jsonb` (población, felicidad, récords, semana actual), `updated_at`, `last_seen`.
+- `profiles` (público entre amigas): `id uuid pk = auth.uid()`, `code text unique` (6 caracteres sin ambiguos: sin 0/O/1/I), `name`, `city_name`, `level`, `look jsonb` (personaje), `car jsonb`, `city jsonb` (snapshot para visitas: `{buildings:[{id,x,z,rot,level}], expansions, flagColor}`), `stats jsonb` (población, felicidad, récords, semana actual), `updated_at`, `last_seen`.
   RLS: cualquiera autenticado puede leer `id, code, name, level` (para buscar por código); el resto de columnas lo lee el dueño o sus amigas aceptadas (vía función `is_friend(a,b)`); solo el dueño escribe su fila.
 - `saves`: `user_id pk`, `data jsonb`, `rev int`, `updated_at`. RLS: solo el dueño.
 - `friendships`: `a uuid, b uuid (a<b), status 'pending'|'accepted', requested_by, points int default 0, created_at`. RLS: participantes. Altas/aceptar/borrar por RPC.
@@ -60,7 +60,7 @@ Errores: devuelven `{ error: 'texto amable' }`, nunca tiran excepciones a la UI.
 ## Experiencia
 - **Cuenta** (Ajustes → Cuenta, y primer arranque con servidor): "Crear cuenta" (nombre, email, contraseña) / "Ya tengo cuenta" / "Jugar sin cuenta". Al iniciar sesión en un dispositivo con partida local y nube distinta: elegir cuál conservar (mostrando nivel y fecha de cada una).
 - **Amigas** (botón en el HUD con badge): tu código grande para compartir (copiar / compartir con `navigator.share`), agregar por código, solicitudes, lista con nivel, nivel de amistad y última conexión; acciones: Visitar, Regalo diario, Intercambiar.
-- **Visitar**: la escena de ciudad en modo visita (solo lectura) con la ciudad y la princesa de la amiga; botón ❤️ (like diario), "Ayudar" en hasta 3 obras en curso (le resta 15 min a cada una y vos ganás monedas + puntos de amistad), cartel con su nombre, y botón "Volver a mi ciudad".
+- **Visitar**: la escena de ciudad en modo visita (solo lectura) con la ciudad y el personaje de la amistad; botón ❤️ (like diario), "Ayudar" en hasta 3 obras en curso (le resta 15 min a cada una y vos ganás monedas + puntos de amistad), cartel con su nombre, y botón "Volver a mi ciudad".
 - **Buzón**: regalos, ayudas, entregas de intercambio y likes recibidos; "Cobrar todo".
 - **Intercambio**: elegir qué ofrecés (monedas, gemas, objetos de mochila, figuritas) y qué pedís; la otra persona acepta o rechaza.
 - **Ranking de amigas** semanal (nivel, récords de minijuegos, estrellas de la semana).
@@ -105,7 +105,7 @@ Emite `social:helped {kind:'request'}` (pedido cumplido → +20 chispas del pase
 
 Estado local `state.social`: `giftDay` (regalito enviado hoy por amiga, día UTC), `coop {week, local, pending, claimed[], reached, carry[]}`, `rank {hist{semana: {match3, blocks, parking, driving, stars, played}}, claimed[]}`.
 
-- **Amigas**: código grande (copiar / `navigator.share`), agregar por código, solicitudes entrantes/salientes, lista con avatar pixel (look de la princesa), nivel, "se conectó hace 2 h", nivel de amistad con barra hasta el próximo. Acciones: Visitar (`ctx.router.go('city', {visit: id})`), Regalito (monedas `GIFT_COINS[nivel de amistad] × rewardScale`; 25% un objeto común; 25% una repetida 1–2★ propia si tiene 3 o más), Cambiar.
+- **Amigas**: código grande (copiar / `navigator.share`), agregar por código, solicitudes entrantes/salientes, lista con avatar pixel (look del personaje), nivel, "se conectó hace 2 h", nivel de amistad con barra hasta el próximo. Acciones: Visitar (`ctx.router.go('city', {visit: id})`), Regalito (monedas `GIFT_COINS[nivel de amistad] × rewardScale`; 25% un objeto común; 25% una repetida 1–2★ propia si tiene 3 o más), Cambiar.
 - **Intercambio**: figuritas 1×1 (tus repetidas ↔ repetidas de la amiga, ±1★, 5★ con 14 días o Semana Dorada) o monedas/gemas/objetos de mochila. Escrow: se descuenta recién cuando el servidor aceptó la propuesta; al aceptar se descuenta lo pedido; entregas y devoluciones llegan al buzón.
 - **Pedidos**: hasta 3 por día (figurita que falta — marcando qué amigas la tienen repetida —, objeto, monedas, o acelerar una obra 30 min). Quien ayuda entrega lo pedido (la obra no cuesta nada) y gana monedas (`helperReward`), chispas y amistad.
 - **Buzón**: intercambios para responder (ambos lados), regalos/ayudas/entregas/likes/pedidos cumplidos con "Cobrar" y "Cobrar todo" (vuelo de monedas + confeti), tus intercambios enviados (cancelar) y visitas de la semana con notitas.

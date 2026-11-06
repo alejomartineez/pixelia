@@ -1,10 +1,10 @@
 # Pixelia · Tu ciudad, tu estilo 👑
 
 Juego de construir tu ciudad a tu estilo en **3D pixel art**, con minijuegos:
-**Joyas Reales** (combiná 3), **Bloques Mágicos** (encastrar bloques), **Estacionamiento Real** y **Paseo Real** (manejar).
+**Joyas Brillantes** (combiná 3), **Bloques Pixel** (encastrar bloques), **Estacionamiento Express** y **Ruta Pixel** (manejar).
 Funciona en iPhone (instalable como app, offline) y en PC (mouse + teclado).
 
-Al empezar elegís tu personaje (princesa, príncipe, chica, chico, hada, mago o un animalito), tu nombre, el de tu
+Al empezar elegís tu personaje (chica, chico o un animalito), tu nombre, el de tu
 ciudad y su estilo (pastel, moderna, bosque, playa, invierno o noche). Todo se puede cambiar después desde el Vestidor
 y Ajustes.
 

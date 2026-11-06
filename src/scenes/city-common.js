@@ -67,7 +67,7 @@ export function makeGhost(obj, opacity = 0.62) {
       if (!clones.has(m)) {
         const c = m.clone();
         c.transparent = true; c.opacity = opacity; c.depthWrite = false;
-        if (c.emissive) c.emissive = new THREE.Color(0x4a2a4a);
+        if (c.emissive) c.emissive = new THREE.Color(0x46352e);
         clones.set(m, c);
       }
       return clones.get(m);

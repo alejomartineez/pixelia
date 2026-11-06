@@ -162,12 +162,12 @@ try {
   // ---------------------------------------------------------------
   section('Regalito diario');
   await tab(B, 'amigas');
-  await B.waitForSelector('.soc-friend .soc-acts .btn.pink', { timeout: 8000, polling: 150 });
+  await B.waitForSelector('.soc-friend .soc-acts .btn.primary', { timeout: 8000, polling: 150 });
   const beaPtsBefore = await ev(B, `return S.coopInfo().total`);
   // sin sorpresa al azar (objeto/figurita) para que las cuentas de figuritas de la prueba sean exactas
   await B.evaluate(() => { window.__rnd = Math.random; Math.random = () => 0.9; });
-  await click(B, '.soc-friend .soc-acts .btn.pink');
-  await B.waitForFunction(() => document.querySelector('.soc-friend .soc-acts .btn.pink')?.classList.contains('done'), { timeout: 8000, polling: 150 });
+  await click(B, '.soc-friend .soc-acts .btn.primary');
+  await B.waitForFunction(() => document.querySelector('.soc-friend .soc-acts .btn.primary')?.classList.contains('done'), { timeout: 8000, polling: 150 });
   await B.evaluate(() => { Math.random = window.__rnd; });
   ok(true, 'bea manda el regalito y el botón queda "Enviado"');
   ok((await ev(B, `return S.coopInfo().total`)) >= beaPtsBefore + 10, 'regalito suma 10 puntos a la Obra en Equipo de bea');
@@ -192,7 +192,7 @@ try {
   // ---------------------------------------------------------------
   section('Pedido de figurita');
   await tab(A, 'pedidos');
-  await click(A, '.soc-mine .btn.pink');
+  await click(A, '.soc-mine .btn.primary');
   await A.waitForSelector('.modal.soc-ed .soc-kind', { timeout: 8000, polling: 150 });
   await click(A, '.modal.soc-ed .soc-kind');
   await A.waitForSelector(`.soc-pick .stk[data-id="${X}"]`, { timeout: 8000, polling: 150 });
@@ -200,7 +200,7 @@ try {
   await sleep(200);
   ok(await A.$eval(`.soc-pick .stk[data-id="${X}"]`, el => el.closest('button').querySelector('.soc-has')?.textContent.includes('Bea')), 'el creador marca que Bea tiene esa figurita repetida');
   await shot(A, 'iphone-pedido-crear');
-  await click(A, '.modal.soc-ed .modal-foot .btn.pink');
+  await click(A, '.modal.soc-ed .modal-foot .btn.primary');
   await A.waitForFunction(() => !document.querySelector('.modal.soc-ed'), { timeout: 8000, polling: 150 });
   await settle(A);
   ok(await A.$eval('.soc-wrap', el => el.textContent.includes('Vence en')), 'el pedido aparece en "Pedí una mano" con vencimiento');
@@ -226,7 +226,7 @@ try {
   section('Intercambio de figuritas con escrow');
   await ev(B, `await sync.publishProfileNow(true)`);
   await tab(A, 'amigas');
-  await click(A, '.soc-friend .soc-acts .btn.lilac');
+  await click(A, '.soc-friend .soc-acts .btn.second');
   await A.waitForSelector('.modal.soc-ed .soc-pane-box.give .soc-pick', { timeout: 8000, polling: 150 });
   await settle(A);
   await A.evaluate((id) => document.querySelector(`.soc-pane-box.give .stk[data-id="${id}"]`).closest('button').click(), Y);
@@ -234,10 +234,10 @@ try {
   await A.waitForSelector(`.soc-pane-box.get .stk[data-id="${Z}"]`, { timeout: 8000, polling: 150 });
   await A.evaluate((id) => document.querySelector(`.soc-pane-box.get .stk[data-id="${id}"]`).closest('button').click(), Z);
   await sleep(150);
-  ok(await A.$eval('.modal.soc-ed .modal-foot .btn.lilac', b => !b.disabled), 'el editor habilita "Proponer" con una figurita de cada lado (±1★)');
+  ok(await A.$eval('.modal.soc-ed .modal-foot .btn.second', b => !b.disabled), 'el editor habilita "Proponer" con una figurita de cada lado (±1★)');
   await shot(A, 'iphone-intercambio-editor');
   const yBefore = await ev(A, `return al.stickerCount('${Y}')`);
-  await click(A, '.modal.soc-ed .modal-foot .btn.lilac');
+  await click(A, '.modal.soc-ed .modal-foot .btn.second');
   await A.waitForFunction(() => !document.querySelector('.modal.soc-ed'), { timeout: 8000, polling: 150 });
   ok((await ev(A, `return al.stickerCount('${Y}')`)) === yBefore - 1, `escrow: la figurita ofrecida se descuenta al proponer (${yBefore} → ${yBefore - 1})`);
   await ev(B, `await S.refreshSocial()`);
@@ -353,12 +353,12 @@ try {
   await M.type('.modal.soc-account input[type=text]', 'Cami');
   await M.type('.modal.soc-account input[type=email]', 'cami@test.com');
   await M.type('.modal.soc-account input[type=password]', '123');
-  await click(M, '.modal.soc-account .btn.pink.block');
+  await click(M, '.modal.soc-account .btn.primary.block');
   await sleep(400);
   ok(await M.$eval('.soc-err', el => el.textContent.includes('6 caracteres')), 'crear cuenta: error amable de contraseña corta');
   await shot(M, 'iphone-cuenta-crear');
   await M.type('.modal.soc-account input[type=password]', '456');
-  await click(M, '.modal.soc-account .btn.pink.block');
+  await click(M, '.modal.soc-account .btn.primary.block');
   await M.waitForSelector('.soc-sync', { timeout: 8000, polling: 150 });
   ok((await ev(M, `return { u: net.user?.email, name: P.store.state.player.name }`)).name === 'Cami', 'crear cuenta entra y usa el nombre elegido');
   await M.close();

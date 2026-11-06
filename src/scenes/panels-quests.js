@@ -125,7 +125,7 @@ export function openQuests(ctx, params = {}) {
     // camino: próximas misiones bloqueadas
     const next = MAIN_QUESTS.slice(q.index + 1, q.index + 4);
     const path = h('div.pnl-path');
-    path.append(h('div.pnl-path-head', { html: `<span>${icon('map', 20)} Lo que viene</span><span class="chip lilac">${q.index}/${q.total} cumplidas</span>` }));
+    path.append(h('div.pnl-path-head', { html: `<span>${icon('map', 20)} Lo que viene</span><span class="chip second">${q.index}/${q.total} cumplidas</span>` }));
     path.append(h('div.pnl-path-bar', { html: progressHtml(q.index / q.total, 'xp') }));
     next.forEach((nq, i) => {
       path.append(h('div.pnl-step', { style: { opacity: String(1 - i * 0.18) }, html: `
@@ -142,7 +142,7 @@ export function openQuests(ctx, params = {}) {
       case 'collect': return 'Tocá los edificios con monedas arriba para cobrar.';
       case 'earn': return 'Cobrá edificios y jugá minijuegos.';
       case 'upgrade': return 'Tocá una casa o negocio y elegí Mejorar.';
-      case 'castle': return 'Tocá el castillo y elegí Mejorar.';
+      case 'castle': return 'Tocá la Municipalidad y elegí Mejorar.';
       case 'expand': return 'Tocá el cartel de terreno en el borde de tu ciudad.';
       case 'level': return 'Ganás experiencia construyendo, cobrando y jugando.';
       case 'play': case 'stars': case 'score': return 'Primero construí el edificio del minijuego.';
@@ -191,7 +191,7 @@ export function openQuests(ctx, params = {}) {
         <div class="pnl-q-rew">${rewardHtml(bonus.reward, 18) || costHtml(bonus.reward, 18)}</div>
       </div>`;
     if (bonus.ready) {
-      const b = h('button.btn.pink.small.pnl-glow', {}, 'Abrir');
+      const b = h('button.btn.primary.small.pnl-glow', {}, 'Abrir');
       b.onclick = () => {
         if (b.disabled) return;
         b.disabled = true;
@@ -216,7 +216,7 @@ export function openQuests(ctx, params = {}) {
     const sorted = list.map((a, i) => ({ a, i })).sort((x, y) => order(x.a) - order(y.a) || x.i - y.i).map(o => o.a);
     const tiersOf = (a) => (Array.isArray(a.tiers) ? a.tiers.length : 1);
     const totalStars = list.reduce((s, a) => s + (a.tier || 0), 0), maxStars = list.reduce((s, a) => s + tiersOf(a), 0);
-    wrap.append(h('div.pnl-timer.lilac', { html: `${icon('trophy', 20)}<span>Estrellas de logro: <b>${totalStars}/${maxStars}</b></span>` }));
+    wrap.append(h('div.pnl-timer.second', { html: `${icon('trophy', 20)}<span>Estrellas de logro: <b>${totalStars}/${maxStars}</b></span>` }));
     for (const a of sorted) {
       const pct = a.maxed ? 1 : Math.min(1, (a.value || 0) / Math.max(1, a.target || 1));
       const nT = tiersOf(a);
@@ -227,9 +227,9 @@ export function openQuests(ctx, params = {}) {
       row.innerHTML = `
         <div class="pnl-q-ic">${achIcon(a, 32)}</div>
         <div class="pnl-q-main">
-          <div class="pnl-q-top"><b class="pnl-q-title">${esc(a.name || '')}</b>${isNew ? '<span class="chip pink pnl-newchip">¡Nuevo!</span>' : ''}<span class="pnl-stars" aria-label="Nivel ${a.tier || 0} de ${nT}">${stars}</span></div>
+          <div class="pnl-q-top"><b class="pnl-q-title">${esc(a.name || '')}</b>${isNew ? '<span class="chip primary pnl-newchip">¡Nuevo!</span>' : ''}<span class="pnl-stars" aria-label="Nivel ${a.tier || 0} de ${nT}">${stars}</span></div>
           <small class="pnl-q-desc">${a.maxed ? '¡Lo completaste todo!' : esc(a.label || a.desc || '')}</small>
-          <div class="pnl-prog sm">${progressHtml(pct, a.ready || a.maxed ? 'gold' : 'pink')}<b>${a.maxed ? 'MAX' : progressLabel(a.value || 0, a.target || 0, fmt)}</b></div>
+          <div class="pnl-prog sm">${progressHtml(pct, a.ready || a.maxed ? 'gold' : 'primary')}<b>${a.maxed ? 'MAX' : progressLabel(a.value || 0, a.target || 0, fmt)}</b></div>
         </div>`;
       const side = h('div.pnl-q-side');
       if (a.maxed) side.innerHTML = `<span class="pnl-done">${icon('crown', 30)}</span>`;

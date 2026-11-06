@@ -1,5 +1,5 @@
 // Partida de punta a punta como jugadora nueva (sin cheat) en iPhone, con la interfaz real:
-// splash → onboarding (personaje Osito, nombre, ciudad, estilo Bosque Mágico; se verifica el guardado) → premio diario → misiones m1–m8 (construir, cobrar, minijuego, vestidor) → subida de nivel con cofre
+// splash → onboarding (personaje Osito, nombre, ciudad, estilo Bosque; se verifica el guardado) → premio diario → misiones m1–m8 (construir, cobrar, minijuego, vestidor) → subida de nivel con cofre
 // → abrir cofre con figuritas → minijuego con potenciador → premio → Pase → Álbum → Cofres (gratis, mochila,
 // poción, martillo) → Eventos. Revisa que los globitos del HUD coincidan con los módulos en cada paso.
 // El tiempo se acelera editando timestamps (obras, producción, cofre gratis), nunca con ?cheat.
@@ -221,7 +221,7 @@ async function claimMainUI() {
   await closeTop();
   return q.id;
 }
-/** Gana la partida de Joyas Reales en curso. finishNow se ignora mientras el tablero está ocupado (cascadas,
+/** Gana la partida de Joyas Brillantes en curso. finishNow se ignora mientras el tablero está ocupado (cascadas,
  *  potenciadores entrando), así que se reintenta hasta que la partida termina. */
 async function winMatch3(ms = 12000) {
   const t0 = Date.now();
@@ -281,7 +281,7 @@ try {
   ok(!(await ev(() => !!document.querySelector('.modal.pnl-login'))), 'el premio diario espera a que se cierre el selector de estilo');
   await sleep(900);
   await shot('estilo-ciudad');
-  ok(await run(`return (store.state.city.theme || 'pastel') !== '${OB_THEME}'`), `el tema inicial no es ${OB_THEME}`);
+  ok(await run(`return (store.state.city.theme || 'pueblo') !== '${OB_THEME}'`), `el tema inicial no es ${OB_THEME}`);
   await tap(`.modal.tp-modal .tp-card[data-theme="${OB_THEME}"]`);
   await sleep(600);
   ok(await ev((t) => !!document.querySelector(`.modal.tp-modal .tp-card.on[data-theme="${t}"]`), OB_THEME), 'la tarjeta del tema queda elegida');
@@ -313,7 +313,7 @@ try {
 
   // ===================================================================
   section('Misiones m1–m4: construir y cobrar');
-  ok(await buildUI('casita') === 1, 'm1: Casita Rosa colocada con Construir → tarjeta → Colocar');
+  ok(await buildUI('casita') === 1, 'm1: Casita colocada con Construir → tarjeta → Colocar');
   await shot('obra-casita');
   await finishWorks();
   await sleep(500);
@@ -336,7 +336,7 @@ try {
   }
   ok(await claimMainUI() === 'm3', 'm3 (cobrar 60) cobrada');
   await drainOverlays({ shots: { levelup: 'subida-nivel-2', chest: 'cofre-apertura', cards: 'cofre-figuritas', summary: 'cofre-botin' } });
-  ok(await buildUI('joyeria') === 1, 'm4: Joyería Mágica colocada');
+  ok(await buildUI('joyeria') === 1, 'm4: Joyería colocada');
   await finishWorks();
   ok(await claimMainUI() === 'm4', 'm4 cobrada');
   await drainOverlays({ shots: { levelup: 'subida-nivel-3', chest: 'cofre-apertura', cards: 'cofre-figuritas', summary: 'cofre-botin' } });
@@ -345,13 +345,13 @@ try {
   console.log('    estado:', JSON.stringify(st1));
 
   // ===================================================================
-  section('m5: minijuego (Joyas Reales) desde Juegos');
+  section('m5: minijuego (Joyas Brillantes) desde Juegos');
   await tap('[data-act="games"]');
   ok(await waitFor(`!!document.querySelector('.modal.pnl-games')`), 'panel Juegos abierto');
   await sleep(600);
   await shot('juegos');
-  await tap('.modal .btn.pink', 'Jugar');
-  ok(await waitFor(`!!document.querySelector('.scene-match3 .m3-play')`, 9000), 'tarjeta previa de Joyas Reales');
+  await tap('.modal .btn.primary', 'Jugar');
+  ok(await waitFor(`!!document.querySelector('.scene-match3 .m3-play')`, 9000), 'tarjeta previa de Joyas Brillantes');
   await sleep(500);
   await shot('match3-tarjeta');
   await tap('.m3-play');
@@ -419,7 +419,7 @@ try {
   await sleep(600);
   await drainOverlays({ shots: { chest: 'cofre-apertura-2', cards: 'cofre-figuritas-2', summary: 'cofre-botin-2' } });
   ok((await run(`return store.state.stats.chestsOpened || 0`)) === nBefore + 1, 'cofre gratis reclamado y abierto');
-  await tap('.modal .chx-actions .btn.pink, .modal .btn.pink', 'Abrir');
+  await tap('.modal .chx-actions .btn.primary, .modal .btn.primary', 'Abrir');
   await drainOverlays({ shots: { chest: 'cofre-apertura-2', cards: 'cofre-figuritas-2', summary: 'cofre-botin-2' } });
   // objetos de la mochila (si los cofres no trajeron poción/martillo, se agregan para probar el flujo)
   await run(`const it = store.state.chests.items; if (!it.potion_prod) it.potion_prod = 1; if (!it.hammer) it.hammer = 1; if (!it.m3_moves) it.m3_moves = 1; store.markDirty(); ctx.bus.emit('chests:changed'); return true;`);

@@ -245,7 +245,7 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
     // con el nombre por defecto no se pisa el nombre de la cuenta (el que eligió al registrarse)
     name: s.player?.name && !isDefaultName(s.player.name) ? s.player.name : undefined,
     cityName: s.player?.cityName, level: s.player?.level,
-    look: s.princess, car: s.car,
+    look: s.avatar, car: s.car,
     city: {
       buildings: (s.city?.buildings || []).map(b => {
         const o = { id: b.id, x: b.x, z: b.z, rot: b.rot, level: b.level, uid: b.uid };
@@ -256,7 +256,7 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
       }),
       expansions: s.city?.expansions || 0,
       flagColor: s.city?.flagColor,
-      theme: s.city?.theme || 'pastel',
+      theme: s.city?.theme || 'pueblo',
     },
     stats: {
       pop, happy,

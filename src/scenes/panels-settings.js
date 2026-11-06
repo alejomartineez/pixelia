@@ -62,8 +62,8 @@ export function openSettings(ctx) {
     nameField('Nombre de la ciudad', 'castle', () => s().player.cityName, v => { s().player.cityName = v; }, 'Pixelia', 18),
     // personaje y estilo de ciudad: gratis y cambiables (también desde el Vestidor y el botón paleta de la ciudad)
     h('div.pnl-acc-btns', {},
-      h('button.btn.pink.block', { html: `${icon('dress', 20)} Cambiar personaje`, onclick: () => { sh.close(); ctx.router.go('wardrobe', { tab: 'type' }); } }),
-      h('button.btn.lilac.block', { html: `${icon('palette', 20)} Estilo de la ciudad`, onclick: () => { sh.close(); import('../city/themes-ui.js').then(m => m.openThemePicker(ctx)).catch(e => console.warn('[ajustes] temas', e)); } })),
+      h('button.btn.primary.block', { html: `${icon('dress', 20)} Cambiar personaje`, onclick: () => { sh.close(); ctx.router.go('wardrobe', { tab: 'type' }); } }),
+      h('button.btn.second.block', { html: `${icon('palette', 20)} Estilo de la ciudad`, onclick: () => { sh.close(); import('../city/themes-ui.js').then(m => m.openThemePicker(ctx)).catch(e => console.warn('[ajustes] temas', e)); } })),
   ));
 
   // ---------- Cuenta y amigos ----------
@@ -92,7 +92,7 @@ export function openSettings(ctx) {
     }));
   }
   paintFlag();
-  root.append(section(icon('castle', 24), 'Bandera del castillo', h('div.pnl-flag-row', {}, flagPrev, sw)));
+  root.append(section(icon('castle', 24), 'Bandera de la municipalidad', h('div.pnl-flag-row', {}, flagPrev, sw)));
 
   // ---------- Instalar ----------
   const install = h('div.col');
@@ -109,7 +109,7 @@ export function openSettings(ctx) {
     ].map(([n, ic, t]) => `<div class="pnl-stepc"><i>${n}</i>${ic}<span>${t}</span></div>`).join('') }));
     const deferred = window.__pixeliaInstallPrompt;
     if (!isIOS() && deferred && typeof deferred.prompt === 'function') {
-      const btn = h('button.btn.lilac.block', { html: `${icon('plus', 20)} Instalar en esta compu` });
+      const btn = h('button.btn.second.block', { html: `${icon('plus', 20)} Instalar en esta compu` });
       btn.onclick = async () => {
         // el aviso de instalación del navegador se puede usar una sola vez
         btn.disabled = true;
@@ -150,7 +150,7 @@ export function openSettings(ctx) {
   };
   const importArea = h('textarea.pnl-code', { rows: '3', placeholder: 'Pegá acá un código de partida…', 'aria-label': 'Código para cargar', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off' });
   importArea.addEventListener('keydown', e => { if (e.key !== 'Escape') e.stopPropagation(); });
-  const importBtn = h('button.btn.lilac.block', { html: `${icon('key', 20)} Cargar partida` });
+  const importBtn = h('button.btn.second.block', { html: `${icon('key', 20)} Cargar partida` });
   importBtn.onclick = async () => {
     // al pegar desde un chat pueden colarse espacios, saltos de línea o comillas: dejamos solo base64
     const code = importArea.value.replace(/[^A-Za-z0-9+/=]/g, '');
@@ -181,7 +181,7 @@ export function openSettings(ctx) {
     <b class="pnl-credits-title">Pixelia · Tu ciudad, tu estilo</b>
     <p>Hecho con mucho ${icon('heart', 18)} y muchos píxeles,<br>especialmente para vos.</p>
     <p class="small muted">Música y sonidos chiptune hechos a mano · Tipografía Jersey 10 (OFL) · Gráficos 3D con three.js</p>
-    <span class="chip pink">${icon('sparkle', 14)} Versión 1.0</span>` }));
+    <span class="chip primary">${icon('sparkle', 14)} Versión 1.0</span>` }));
 
   // ---------- Borrar ----------
   const resetBtn = h('button.btn.block.pnl-danger', { html: `${icon('trash', 20)} Borrar partida` });
@@ -299,10 +299,10 @@ function accountSection(ctx, sh, section) {
       const when = st.lastSync ? ` Guardado en la nube ${agoText(st.lastSync)}.` : '';
       text = who + when + (net.online ? '' : ' Cuando vuelva internet se sincroniza sola.');
     } else {
-      chip = `<span class="chip lilac">${icon('people', 14)} Sin cuenta</span>`;
+      chip = `<span class="chip second">${icon('people', 14)} Sin cuenta</span>`;
       text = 'Creá tu cuenta para visitar las ciudades de tus amigos, mandarles regalitos, intercambiar figuritas y guardar tu partida en la nube.';
     }
-    if (mode === 'mock') chip += ` <span class="chip pink">${icon('sparkle', 14)} Modo prueba</span>`;
+    if (mode === 'mock') chip += ` <span class="chip primary">${icon('sparkle', 14)} Modo prueba</span>`;
     box.append(h('div.pnl-acc-status', { html: `<div class="pnl-chips">${chip}</div><p class="small muted">${text}</p>` }));
 
     if (net.user) {
@@ -320,10 +320,10 @@ function accountSection(ctx, sh, section) {
     }
     const row = h('div.pnl-acc-btns');
     if (mode !== 'off') {
-      row.append(h('button.btn.lilac.block', { html: `${icon('key', 20)} ${net.user ? 'Mi cuenta' : 'Crear cuenta o entrar'}`, onclick: () => open('account') }));
-      if (net.user) row.append(h('button.btn.pink.block', { html: `${icon('people', 20)} Amigos`, onclick: () => open('social') }));
+      row.append(h('button.btn.second.block', { html: `${icon('key', 20)} ${net.user ? 'Mi cuenta' : 'Crear cuenta o entrar'}`, onclick: () => open('account') }));
+      if (net.user) row.append(h('button.btn.primary.block', { html: `${icon('people', 20)} Amigos`, onclick: () => open('social') }));
     } else {
-      row.append(h('button.btn.lilac.block', { html: `${icon('people', 20)} Cuenta y amigos`, onclick: () => open('account') }));
+      row.append(h('button.btn.second.block', { html: `${icon('people', 20)} Cuenta y amigos`, onclick: () => open('account') }));
     }
     box.append(row);
   }
@@ -336,14 +336,14 @@ function accountSection(ctx, sh, section) {
 
 // ---------- Cómo jugar ----------
 export function openHelp(ctx) {
-  const sh = openShell(ctx, 'help', { title: 'Cómo jugar', ic: 'info', className: 'pnl-md pnl-help', actions: [{ label: '¡Entendido!', cls: 'pink' }] });
+  const sh = openShell(ctx, 'help', { title: 'Cómo jugar', ic: 'info', className: 'pnl-md pnl-help', actions: [{ label: '¡Entendido!', cls: 'primary' }] });
   if (!sh) return;
   const { h } = ctx.ui;
   const groups = [
     ['castle', 'Tu ciudad', [
       ['coin', 'Cobrá', 'Cuando aparece una burbujita arriba de un edificio, tocala para juntar monedas. Si se llena, deja de producir: ¡volvé seguido!'],
       ['hammer', 'Construí', 'Tocá <b>Construir</b>, elegí algo y ubicalo en el pasto. Podés rotarlo y moverlo cuando quieras.'],
-      ['dress', 'Tu personaje', 'Elegí quién sos (realeza, casual, magia o animalito) y vestilo en el <b>Vestidor</b>. Cambiar de personaje es gratis y lo que compraste queda guardado.'],
+      ['dress', 'Tu personaje', 'Elegí quién sos (persona o animalito) y vestilo en el <b>Vestidor</b>. Cambiar de personaje es gratis y lo que compraste queda guardado.'],
       ['palette', 'Estilo de la ciudad', 'Con el botón de la <b>paleta</b> en la ciudad (o en Ajustes) elegís cómo se ve: pastel, moderna, bosque, playa, invierno o noche. Es gratis.'],
       ['people', 'Población', 'Las casas traen vecinos. Muchos negocios piden un mínimo de vecinos para abrir.'],
       ['smile', 'Felicidad', 'Árboles, flores y deco hacen feliz a tu ciudad: ¡todo produce hasta un 50% más!'],

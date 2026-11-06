@@ -23,7 +23,7 @@ const NOTE_MAX = 80;
 
 const VSTYLE = `
 .cv-top { position: absolute; top: calc(var(--safe-t) + 10px); left: 50%; transform: translateX(-50%); z-index: 25; max-width: calc(100% - 24px);
-  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 10px 24px rgba(59,35,64,.2);
+  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 10px 24px rgba(61,47,42,.2);
   padding: 6px 16px 8px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; animation: cv-drop .35s cubic-bezier(.3,1.5,.6,1); }
 @keyframes cv-drop { from { transform: translate(-50%, -30px); opacity: 0; } }
 .cv-top h2 { margin: 0; font-size: 20px; line-height: 1.1; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
@@ -31,7 +31,7 @@ const VSTYLE = `
 .cv-top .cv-sub { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; font-size: 13px; }
 .cv-top .cv-sub .chip { font-size: 12px; padding: 1px 7px 1px 3px; gap: 2px; border-width: 2px; }
 .cv-bar { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 10px); z-index: 30; width: min(560px, calc(100% - 16px));
-  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 12px 30px rgba(59,35,64,.25);
+  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 12px 30px rgba(61,47,42,.25);
   padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 7px; animation: cx-slideup .3s cubic-bezier(.3,1.5,.6,1); }
 .cv-hint { font-size: 13px; color: var(--ink-l); line-height: 1.2; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 18px; }
 .cv-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
@@ -41,17 +41,17 @@ const VSTYLE = `
 @media (max-width: 380px) { .cv-btns .btn { font-size: 13px; } }
 .cv-help { position: relative; padding-bottom: 9px; animation: cx-bob 1.1s steps(4) infinite; }
 .cv-help .cv-hb { display: flex; align-items: center; gap: 3px; padding: 3px 9px 3px 5px; background: var(--mint); border: 3px solid var(--ink); border-radius: 12px;
-  box-shadow: inset 0 -4px 0 var(--mint-d), 0 3px 0 rgba(59,35,64,.3); font-weight: 700; font-size: 14px; white-space: nowrap; color: var(--ink); }
+  box-shadow: inset 0 -4px 0 var(--mint-d), 0 3px 0 rgba(61,47,42,.3); font-weight: 700; font-size: 14px; white-space: nowrap; color: var(--ink); }
 .cv-help .cv-hb small { font-size: 11px; font-weight: 700; opacity: .75; margin-left: 2px; }
 .cv-help::after { content: ''; position: absolute; left: 50%; bottom: 1px; width: 10px; height: 10px; background: var(--mint); border: 3px solid var(--ink);
   border-top: 0; border-left: 0; transform: translateX(-50%) rotate(45deg); }
 .cv-help.busy { opacity: .6; }
-.cv-help.done .cv-hb { background: #fff; box-shadow: inset 0 -4px 0 #eadcf0, 0 3px 0 rgba(59,35,64,.3); }
+.cv-help.done .cv-hb { background: #fff; box-shadow: inset 0 -4px 0 #f0e8dc, 0 3px 0 rgba(61,47,42,.3); }
 .cv-help.done::after { background: #fff; }
 .cv-help.pop { animation: cx-bpop .25s ease-in forwards; }
 .cv-name { padding-bottom: 6px; }
-.cv-name > span { display: flex; align-items: center; gap: 4px; padding: 2px 9px 2px 5px; background: var(--pink); color: #fff; border: 3px solid var(--ink); border-radius: 10px;
-  box-shadow: inset 0 -4px 0 var(--pink-d), 0 3px 0 var(--ink); font-weight: 700; font-size: 13px; white-space: nowrap; text-shadow: 0 2px 0 rgba(59,35,64,.35); }
+.cv-name > span { display: flex; align-items: center; gap: 4px; padding: 2px 9px 2px 5px; background: var(--primary); color: #fff; border: 3px solid var(--ink); border-radius: 10px;
+  box-shadow: inset 0 -4px 0 var(--primary-d), 0 3px 0 var(--ink); font-weight: 700; font-size: 13px; white-space: nowrap; text-shadow: 0 2px 0 rgba(61,47,42,.35); }
 .cv-load { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; pointer-events: none; }
 .cv-load > div { pointer-events: auto; background: var(--panel); border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink); padding: 18px 22px;
   display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: min(320px, calc(100% - 32px)); text-align: center; }
@@ -69,7 +69,7 @@ const VSTYLE = `
 .cv-note .cv-ideas button { font-family: var(--font); font-size: 13px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 3px 8px; color: var(--ink); cursor: pointer; }
 `;
 
-const NOTE_IDEAS = ['¡Qué linda ciudad! 🌸', '¡Me encantó tu castillo! 👑', 'Pasé a saludarte 💕', '¡Qué talento para construir! ✨'];
+const NOTE_IDEAS = ['¡Qué linda ciudad! 🌸', '¡Me encantó tu plaza! 🏡', 'Pasé a saludarte 💕', '¡Qué talento para construir! ✨'];
 
 /** Día UTC (igual que el servidor) para los límites diarios. */
 const dayKey = () => new Date().toISOString().slice(0, 10);
@@ -99,7 +99,7 @@ function sanitizeCity(city, now = Date.now()) {
 function safeModel(fn, size) {
   try { const g = fn(); if (g && g.isObject3D) return g; } catch (err) { console.warn('[visit] modelo con error', err); }
   const g = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.BoxGeometry(size[0] * 0.8, 0.6, size[1] * 0.8), new THREE.MeshLambertMaterial({ color: 0xffc2dc }));
+  const m = new THREE.Mesh(new THREE.BoxGeometry(size[0] * 0.8, 0.6, size[1] * 0.8), new THREE.MeshLambertMaterial({ color: 0xffd8c4 }));
   m.position.y = 0.3; g.add(m); g.userData.height = 0.6;
   return g;
 }
@@ -177,7 +177,7 @@ export function createVisit(ctx) {
   function build(p) {
     const now = Date.now();
     vstate = {
-      princess: p.look && typeof p.look === 'object' ? p.look : {},
+      avatar: p.look && typeof p.look === 'object' ? p.look : {},
       car: p.car && typeof p.car === 'object' ? p.car : {},
       city: sanitizeCity(p.city, now),
       player: { level: Math.max(1, p.level | 0), name: hostName, cityName: p.city_name || '' },
@@ -393,7 +393,7 @@ export function createVisit(ctx) {
     hearts(18);
     const c = vstate.city.buildings.find(b => b.id === 'castillo');
     const ce = c && entries.get(c.uid);
-    if (ce) fx.burst(ce.root.position.x, ce.height * 0.8, ce.root.position.z, { n: 30, colors: ['#ff7eb6', '#ff9ccb', '#ffffff', '#ffd6ec'], speed: 1.6, up: 3.5, gravity: 3, size: 0.09, life: 1.4, spread: 0.8 });
+    if (ce) fx.burst(ce.root.position.x, ce.height * 0.8, ce.root.position.z, { n: 30, colors: ['#ee8a5c', '#f1a181', '#ffffff', '#fde9d8'], speed: 1.6, up: 3.5, gravity: 3, size: 0.09, life: 1.4, spread: 0.8 });
     ui.toast(`¡Le diste ❤️ a la ciudad de ${hostName}!`, { icon: 'heart', type: 'good' });
     renderBar();
   }
@@ -437,7 +437,7 @@ export function createVisit(ctx) {
     body.append(ta, cnt, ideas);
     let sending = false;
     const m = ui.modal({ title: `Notita para ${hostName}`, icon: '💌', content: body, className: 'cx-modal',
-      actions: [{ label: 'Cancelar', cls: 'ghost' }, { html: `${icon('💌', 20)}Dejar notita`, label: 'Dejar notita', cls: 'pink', onClick: async () => {
+      actions: [{ label: 'Cancelar', cls: 'ghost' }, { html: `${icon('💌', 20)}Dejar notita`, label: 'Dejar notita', cls: 'primary', onClick: async () => {
         if (sending) return false;
         const t = ta.value.trim();
         if (!t) { audio.sfx('error'); ui.toast('Escribí algo cortito', { icon: 'info' }); return false; }
@@ -479,7 +479,7 @@ export function createVisit(ctx) {
     const cityName = vstate.player.cityName && vstate.player.cityName !== 'Pixelia' ? `<span class="chip">${icon('flower', 14)}${ui.esc(vstate.player.cityName)}</span>` : '';
     topEl = ui.h('div.cv-top', { html: `<h2>${icon('castle', 24)}<span>Ciudad de ${ui.esc(hostName)}</span></h2>
       <div class="cv-sub"><span class="chip gold">${icon('star', 14)}Nivel ${vstate.player.level}</span>${cityName}
-      <span class="chip pink">${icon('people', 14)}${fmtNum(pop)}</span><span class="chip mint">${icon('smile', 14)}${hp}%</span></div>` });
+      <span class="chip primary">${icon('people', 14)}${fmtNum(pop)}</span><span class="chip mint">${icon('smile', 14)}${hp}%</span></div>` });
     container.append(topEl);
   }
   function makeBar() {
@@ -487,8 +487,8 @@ export function createVisit(ctx) {
     barEl = ui.h('div.cv-bar');
     hintEl = ui.h('div.cv-hint');
     const btns = ui.h('div.cv-btns');
-    likeBtn = ui.h('button.btn.pink', { onclick: () => like() });
-    noteBtn = ui.h('button.btn.lilac', { onclick: () => { audio.sfx('tap'); openNote(); } });
+    likeBtn = ui.h('button.btn.primary', { onclick: () => like() });
+    noteBtn = ui.h('button.btn.second', { onclick: () => { audio.sfx('tap'); openNote(); } });
     const home = ui.h('button.btn.mint', { html: `${icon('home', 20)}Volver a mi ciudad`, onclick: () => { audio.sfx('tap'); goHome(); } });
     btns.append(likeBtn, noteBtn, home);
     barEl.append(hintEl, btns);

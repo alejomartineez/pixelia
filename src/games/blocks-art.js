@@ -1,4 +1,4 @@
-// Bloques Mágicos — sprites pixel-art dibujados por código (bloques con volumen, marco del tablero, bandeja).
+// Bloques Pixel — sprites pixel-art dibujados por código (bloques con volumen, marco del tablero, bandeja).
 
 // Colores de piezas (pasteles de la paleta) con tonos para el bisel.
 export const COLORS = [

@@ -39,7 +39,7 @@ const snowAt = (x, y, z) => (((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) 
  */
 function applyTheme(model, themeId) {
   const t = themeOf(themeId);
-  if (t.id === DEFAULT_THEME) return;
+  if (t.identity) return;
   const recolor = (v) => { for (const [k, c] of v.map) v.map.set(k, mapColor(t.id, c)); };
   const v = model.v;
   if (t.snow || t.litWindows) {
@@ -183,10 +183,10 @@ let instanceCounter = 0;
 
 const tplCache = new Map();
 function flagHex(c) {
-  if (!c) return P.pink;
+  if (!c) return P.clay;
   if (typeof c === 'number') return c;
   if (c[0] === '#') return c;
-  return OUTFIT_COLORS.find(o => o.id === c)?.hex || P.pink;
+  return OUTFIT_COLORS.find(o => o.id === c)?.hex || P.clay;
 }
 
 function buildTemplate(id, level, opts, themeId) {
@@ -196,8 +196,8 @@ function buildTemplate(id, level, opts, themeId) {
   const fn = BUILDERS[id];
   if (fn) fn(m, level, opts);
   else { // id desconocido: cajita neutra (no debería pasar)
-    m.v.box(1, 0, 1, W - 2, 6, D - 2, P.pinkL);
-    m.v.box(1, 6, 1, W - 2, 1, D - 2, P.pink);
+    m.v.box(1, 0, 1, W - 2, 6, D - 2, P.clayL);
+    m.v.box(1, 6, 1, W - 2, 1, D - 2, P.clay);
   }
   const tpl = compile(m, themeId);
   // caminos: baldosa de 1 vóxel, su sombra no se ve y cuesta una pasada extra por baldosa
@@ -235,7 +235,7 @@ export function constructionModel(w = 2, d = 2, theme = DEFAULT_THEME) {
     const H = Math.min(16, 6 + Math.max(w, d) * 3);
     const x0 = 1, x1 = W - 2, z0 = 1, z1 = D - 2;
     // paredes a medio construir (altura irregular, ladrillo rosado)
-    const bw = (x, y, z) => ((y + Math.floor((x + z) / 2)) % 2 ? P.pinkL : '#f7b3d0');
+    const bw = (x, y, z) => ((y + Math.floor((x + z) / 2)) % 2 ? P.clayL : '#f2aa8d');
     for (let x = x0 + 2; x <= x1 - 2; x++) for (let z = z0 + 2; z <= z1 - 2; z++) {
       const edge = x === x0 + 2 || x === x1 - 2 || z === z0 + 2 || z === z1 - 2;
       if (!edge) continue;
@@ -258,8 +258,8 @@ export function constructionModel(w = 2, d = 2, theme = DEFAULT_THEME) {
     // escalerita
     for (let y = 1; y < Math.min(H, 10); y++) if (y % 2) v.set(x0 + 1, y, z1 + 1 > D - 1 ? z1 : z1, P.woodD);
     // cinta rayada rosa/blanca alrededor, con postes dorados
-    for (let x = 0; x < W; x++) { v.set(x, 2, D - 1, Math.floor(x / 2) % 2 ? '#ffffff' : P.pink); v.set(x, 2, 0, Math.floor(x / 2) % 2 ? '#ffffff' : P.pink); }
-    for (let z = 0; z < D; z++) { v.set(0, 2, z, Math.floor(z / 2) % 2 ? '#ffffff' : P.pink); v.set(W - 1, 2, z, Math.floor(z / 2) % 2 ? '#ffffff' : P.pink); }
+    for (let x = 0; x < W; x++) { v.set(x, 2, D - 1, Math.floor(x / 2) % 2 ? '#ffffff' : P.clay); v.set(x, 2, 0, Math.floor(x / 2) % 2 ? '#ffffff' : P.clay); }
+    for (let z = 0; z < D; z++) { v.set(0, 2, z, Math.floor(z / 2) % 2 ? '#ffffff' : P.clay); v.set(W - 1, 2, z, Math.floor(z / 2) % 2 ? '#ffffff' : P.clay); }
     for (const [x, z] of [[0, D - 1], [W - 1, D - 1], [0, 0], [W - 1, 0]]) { v.box(x, 1, z, 1, 2, 1, P.gold); v.set(x, 3, z, P.goldL); }
     // pila de ladrillos, caja de herramientas y conito
     if (W >= 16) { v.box(W - 6, 1, D - 5, 3, 2, 2, P.wood); v.box(W - 6, 3, D - 5, 3, 1, 2, P.woodD); v.set(W - 5, 3, D - 4, P.gold); }
@@ -273,11 +273,11 @@ export function constructionModel(w = 2, d = 2, theme = DEFAULT_THEME) {
     const arm = m.part('crane', [cx + 0.5, CH, cz + 0.5]);
     const L = Math.max(4, Math.min(W - 4, 11));
     for (let i = -2; i <= L; i++) arm.set(cx + i, CH, cz, i % 2 ? C.yellow : P.goldD);
-    arm.set(cx, CH + 1, cz, C.yellow); arm.set(cx, CH + 2, cz, P.pink);
+    arm.set(cx, CH + 1, cz, C.yellow); arm.set(cx, CH + 2, cz, P.clay);
     arm.box(cx - 3, CH - 1, cz, 2, 2, 1, P.stoneD); // contrapeso
     arm.box(cx + L - 1, CH - 4, cz, 1, 4, 1, P.inkL); // cable
     arm.set(cx + L - 1, CH - 5, cz, P.gold); // gancho
-    arm.box(cx + L - 2, CH - 7, cz - 1, 3, 2, 3, (x, y, z) => ((x + y + z) % 2 ? P.pink : P.pinkL)); // ladrillos colgando
+    arm.box(cx + L - 2, CH - 7, cz - 1, 3, 2, 3, (x, y, z) => ((x + y + z) % 2 ? P.clay : P.clayL)); // ladrillos colgando
     m.animate((parts, ph) => {
       const a = parts.crane[0];
       return (dt, t) => { a.rotation.y = Math.sin((t + ph) * 0.6) * 0.9 - 0.6; };
@@ -318,14 +318,14 @@ export function natureModel(kind = 'tree', seed = 0, theme = DEFAULT_THEME) {
         break;
       }
       case 'bush': {
-        bush(v, 3.5, 0, 3.5, 2.6 + r() * 0.6, pick(r, [C.leaf, '#6dcf74', C.leafD]), r() < 0.6 ? pick(r, [[P.pink, '#ffffff'], [C.yellow], [P.lilac, P.pinkL]]) : null, s + 11);
+        bush(v, 3.5, 0, 3.5, 2.6 + r() * 0.6, pick(r, [C.leaf, '#6dcf74', C.leafD]), r() < 0.6 ? pick(r, [[P.clay, '#ffffff'], [C.yellow], [P.slate, P.clayL]]) : null, s + 11);
         break;
       }
       case 'rock': {
-        const col = pick(r, [P.stone, '#cfc8de', '#e2dcef']);
+        const col = pick(r, [P.stone, '#ded5c8', '#efe7dc']);
         v.sphere(3.5, 1, 3.5, 2.6 + r(), 1.8 + r() * 0.6, 2.2 + r() * 0.5, (x, y, z) => (y >= 2 ? shade(col, 0.1) : (x + z + y) % 4 === 0 ? shade(col, -0.12) : col));
         v.clear(0, -3, 0, 8, 3, 8);
-        if (r() < 0.6) { v.set(1, 0, 6, C.leaf); v.set(6, 0, 1, C.leaf); v.set(6, 1, 1, P.pink); }
+        if (r() < 0.6) { v.set(1, 0, 6, C.leaf); v.set(6, 0, 1, C.leaf); v.set(6, 1, 1, P.clay); }
         break;
       }
       case 'flowers': { // matita de hojas con flores de dos colores (no confeti de siete)
@@ -340,7 +340,7 @@ export function natureModel(kind = 'tree', seed = 0, theme = DEFAULT_THEME) {
         break;
       }
       case 'mushroom': {
-        const cap = pick(r, [P.coral, P.pink, P.lilac]);
+        const cap = pick(r, [P.coral, P.clay, P.slate]);
         const mk = (x, z, h, rad) => {
           v.box(x, 0, z, 1, h, 1, P.cream);
           v.sphere(x, h + 0.2, z, rad, 1.2, rad, (xx, y, zz) => (y >= h + 1 && (xx + zz) % 2 === 0 ? '#ffffff' : cap));
@@ -391,11 +391,11 @@ export function natureModel(kind = 'tree', seed = 0, theme = DEFAULT_THEME) {
       }
       case 'glowshroom': { // hongos con pintitas que brillan + luciérnagas (bosque mágico)
         const L = m.light;
-        const cap = pick(r, ['#8a5ee0', '#3cbf9a', '#e0528f']);
+        const cap = pick(r, ['#5a78c4', '#3cbf9a', '#c8673d']);
         const mk = (x, z, hh, rad) => {
-          v.box(x, 0, z, 1, hh, 1, '#fff4e6');
+          v.box(x, 0, z, 1, hh, 1, '#fdf6e3');
           v.sphere(x, hh + 0.2, z, rad, 1.3, rad, cap);
-          v.clear(x - 3, hh - 2, z - 3, 7, 2, 7); v.box(x, 0, z, 1, hh, 1, '#fff4e6');
+          v.clear(x - 3, hh - 2, z - 3, 7, 2, 7); v.box(x, 0, z, 1, hh, 1, '#fdf6e3');
           for (let i = Math.floor(x - rad); i <= Math.ceil(x + rad); i++) for (let k = Math.floor(z - rad); k <= Math.ceil(z + rad); k++) {
             for (let y = hh + 2; y >= hh - 1; y--) if (v.has(i, y, k)) { if ((i * 7 + k * 3) % 4 === 0) { v.remove(i, y, k); L.set(i, y, k, '#c8fff4'); } break; }
           }
@@ -432,7 +432,7 @@ export function natureModel(kind = 'tree', seed = 0, theme = DEFAULT_THEME) {
         v.box(3, 0, 3, 2, h + 1, 2, C.trunk);
         v.set(5, 1, 3, C.trunk);
         const leaf = pick(r, [C.leaf, '#6dcf74', '#58bf73']);
-        const fruit = r() < 0.4 ? [P.pink, C.red] : r() < 0.5 ? ['#ffffff', P.pinkL] : null;
+        const fruit = r() < 0.4 ? [P.clay, C.red] : r() < 0.5 ? ['#ffffff', P.clayL] : null;
         bush(v, 3.5, h, 3.5, 3.1 + r() * 0.5, leaf, fruit, s + 3);
         if (r() < 0.5) bush(v, 2, h + 3, 4.5, 1.8, shade(leaf, 0.08), null, s + 9);
       }
@@ -539,8 +539,8 @@ function fallbackThumb(id) {
   const cv = document.createElement('canvas'); cv.width = cv.height = THUMB;
   const g = cv.getContext('2d');
   g.scale(THUMB / 96, THUMB / 96);
-  g.fillStyle = BUILDING_BY_ID[id]?.cat === 'camino' ? '#d8d2e6' : '#ff7eb6';
-  g.fillRect(20, 30, 56, 46); g.fillStyle = '#3b2340'; g.fillRect(20, 26, 56, 4);
+  g.fillStyle = BUILDING_BY_ID[id]?.cat === 'camino' ? '#ddd5c8' : '#ee8a5c';
+  g.fillRect(20, 30, 56, 46); g.fillStyle = '#3d2f2a'; g.fillRect(20, 26, 56, 4);
   return cv.toDataURL();
 }
 /** Ícono 288x288 del edificio (dataURL), cacheado. theme: id de tema de ciudad (default pastel). */

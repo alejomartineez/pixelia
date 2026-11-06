@@ -1,6 +1,6 @@
 // Potenciadores de los minijuegos (objetos de la mochila de cofres) + chip de evento activo.
-// Compartido por las pantallas previas de Joyas Reales, Estacionamiento Real y Paseo Real, y por el botón
-// de bomba de Bloques Mágicos. Contrato: los juegos leen chests.itemCount(id) y llaman chests.consumeItem(id)
+// Compartido por las pantallas previas de Joyas Brillantes, Estacionamiento Express y Ruta Pixel, y por el botón
+// de bomba de Bloques Pixel. Contrato: los juegos leen chests.itemCount(id) y llaman chests.consumeItem(id)
 // al usarlo; el núcleo no interviene. Los premios extra de eventos los aplica ctx.endGame (núcleo).
 import { ITEMS, RARITIES, itemCount, consumeItem } from '../chests/chests.js';
 import { activeEvents, eventMult } from '../season/events.js';
@@ -15,7 +15,7 @@ const CSS = `
   background: #fff; color: var(--ink); font: inherit; text-align: left; cursor: pointer; border: var(--line) solid var(--ink); border-radius: 14px;
   box-shadow: 0 3px 0 var(--ink); transition: transform .12s, background-color .15s; -webkit-tap-highlight-color: transparent; }
 .pxb-slot:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
-.pxb-slot:focus-visible { outline: 3px solid var(--pink-d); outline-offset: 2px; }
+.pxb-slot:focus-visible { outline: 3px solid var(--primary-d); outline-offset: 2px; }
 .pxb-ic { position: relative; flex: none; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 11px;
   background: #fff; background: color-mix(in srgb, var(--rar) 32%, #fff); border: 2px solid var(--rar-d); }
 .pxb-ic .pi { image-rendering: pixelated; }
@@ -31,8 +31,8 @@ const CSS = `
 .pxb-slot.on { background: color-mix(in srgb, var(--rar) 22%, #fff); box-shadow: 0 3px 0 var(--ink), inset 0 0 0 3px var(--rar); }
 .pxb-slot.on .pxb-check { display: grid; animation: pxb-pop .3s cubic-bezier(.3,1.8,.6,1); }
 .pxb-slot.on .pxb-txt small { color: var(--mint-d); font-weight: 700; }
-.pxb-slot.empty { cursor: default; background: #f6f0f8; border-color: var(--ink-ll); box-shadow: 0 2px 0 var(--ink-ll); }
-.pxb-slot.empty .pxb-ic { filter: grayscale(1); opacity: .55; border-color: var(--ink-ll); background: #eee6f1; }
+.pxb-slot.empty { cursor: default; background: #f8f5f0; border-color: var(--ink-ll); box-shadow: 0 2px 0 var(--ink-ll); }
+.pxb-slot.empty .pxb-ic { filter: grayscale(1); opacity: .55; border-color: var(--ink-ll); background: #f1ede6; }
 .pxb-slot.empty .pxb-txt b { color: var(--ink-l); }
 .pxb-slot.empty .pxb-n { background: var(--ink-ll); }
 .pxb-slot.empty .pxb-rar { filter: grayscale(1); opacity: .6; }

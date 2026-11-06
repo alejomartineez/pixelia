@@ -161,7 +161,7 @@ async function finishGame(result) {
     const def = album.stickerDef(sticker.id);
     const card = h('span.rw-art.rw-stk');
     if (def) card.append(album.renderStickerCard(def, { isNew: sticker.isNew, showCount: false }));
-    extras.append(h('div.rw-extra.rw-sticker', { style: `--c:${def?.color || '#ff7eb6'}` }, card,
+    extras.append(h('div.rw-extra.rw-sticker', { style: `--c:${def?.color || '#ee8a5c'}` }, card,
       h('span.rw-txt', { html: `<small>${sticker.isNew ? '¡Figurita nueva!' : 'Figurita repetida'}</small><b>${esc(def?.name || 'Figurita')}</b><em>${'★'.repeat(sticker.stars)}${sticker.isNew ? ' · ya está en tu Álbum' : ' · cambiala por brillitos'}</em>` })));
   }
   if (chispas) extras.append(h('div.rw-chispas', { html: `${icon('sparkle', 20)}<b>+${chispas}</b> chispas del Pase` }));
@@ -173,7 +173,7 @@ async function finishGame(result) {
     stars: result.stars,
     lines,
     reward,
-    buttons: [{ label: 'Ciudad', value: 'city', cls: 'ghost' }, { label: result.againLabel || 'Otra vez', value: 'again', cls: 'pink' }],
+    buttons: [{ label: 'Ciudad', value: 'city', cls: 'ghost' }, { label: result.againLabel || 'Otra vez', value: 'again', cls: 'primary' }],
     dismissValue: 'city',
     className: 'game-reward',
   });

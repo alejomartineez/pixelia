@@ -10,7 +10,7 @@ export function freeCount(id) { try { return chests.freeBuildCount(id) | 0; } ca
 function hammerCount() { try { return chests.itemCount('hammer') | 0; } catch { return 0; } }
 
 export const STYLE = `
-.scene-city { background: var(--cx-sky, linear-gradient(180deg, #ffcfe6 0%, #f3dbff 34%, #d6e6ff 66%, #c5f0ee 100%)); overflow: hidden; transition: background .4s; }
+.scene-city { background: var(--cx-sky, linear-gradient(180deg, #fde6d1 0%, #e2e9f8 34%, #d6e6ff 66%, #c5f0ee 100%)); overflow: hidden; transition: background .4s; }
 .scene-city::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: var(--cx-stars, .55);
   background-image: radial-gradient(circle at 12% 18%, #fff 0 2px, transparent 3px), radial-gradient(circle at 82% 12%, #fff 0 2px, transparent 3px),
   radial-gradient(circle at 70% 78%, #fff 0 2px, transparent 3px), radial-gradient(circle at 22% 86%, #fff 0 2px, transparent 3px),
@@ -26,18 +26,18 @@ export const STYLE = `
   box-shadow: 0 3px 0 var(--ink); white-space: nowrap; margin-bottom: 6px; }
 .cx-timer > span { display: flex; flex-direction: column; gap: 2px; }
 .cx-timer b { font-size: 13px; line-height: 1; }
-.cx-timer i { display: block; width: 50px; height: 8px; border: 2px solid var(--ink); border-radius: 6px; background: #f2e3ee; overflow: hidden; }
+.cx-timer i { display: block; width: 50px; height: 8px; border: 2px solid var(--ink); border-radius: 6px; background: #f2ece3; overflow: hidden; }
 .cx-timer i u { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--mint) 0 4px, var(--mint-d) 4px 6px); }
-.cx-timer.up i u { background: repeating-linear-gradient(90deg, var(--lilac) 0 4px, var(--lilac-d) 4px 6px); }
+.cx-timer.up i u { background: repeating-linear-gradient(90deg, var(--second) 0 4px, var(--second-d) 4px 6px); }
 .cx-timer img { animation: cx-hammer .5s steps(2) infinite; }
 @keyframes cx-hammer { 50% { transform: rotate(-25deg); } }
 
 .cx-bubble { position: relative; padding-bottom: 9px; animation: cx-bob 1.1s steps(4) infinite; }
 .cx-bubble .cx-bb { width: 42px; height: 42px; border-radius: 50%; background: #fff; border: 3px solid var(--ink); display: grid; place-items: center;
-  box-shadow: inset 0 -4px 0 #eadcf0, 0 3px 0 rgba(59,35,64,.3); }
+  box-shadow: inset 0 -4px 0 #f0e8dc, 0 3px 0 rgba(61,47,42,.3); }
 .cx-bubble::after { content: ''; position: absolute; left: 50%; bottom: 1px; width: 10px; height: 10px; background: #fff; border: 3px solid var(--ink);
   border-top: 0; border-left: 0; transform: translateX(-50%) rotate(45deg); }
-.cx-bubble.full .cx-bb { background: var(--gold-l); box-shadow: inset 0 -4px 0 var(--gold), 0 0 0 3px #fff, 0 3px 0 6px rgba(59,35,64,.25); }
+.cx-bubble.full .cx-bb { background: var(--gold-l); box-shadow: inset 0 -4px 0 var(--gold), 0 0 0 3px #fff, 0 3px 0 6px rgba(61,47,42,.25); }
 .cx-bubble.full::after { background: var(--gold-l); }
 .cx-bubble.gem .cx-bb { background: var(--sky-l); }
 .cx-bubble.gem::after { background: var(--sky-l); }
@@ -45,10 +45,10 @@ export const STYLE = `
 .cx-bubble.pop { animation: cx-bpop .25s ease-in forwards; }
 @keyframes cx-bpop { to { transform: translate(-50%, -100%) scale(1.6); opacity: 0; } }
 
-.cx-sign { display: flex; align-items: center; gap: 4px; padding: 3px 9px 3px 5px; background: var(--pink); color: #fff; border: 3px solid var(--ink);
-  border-radius: 10px; box-shadow: inset 0 -4px 0 var(--pink-d), 0 3px 0 var(--ink); font-weight: 700; font-size: 13px; white-space: nowrap;
-  text-shadow: 0 2px 0 rgba(59,35,64,.35); margin-bottom: 4px; }
-.cx-sign.locked { background: #fff; color: var(--ink-l); text-shadow: none; box-shadow: inset 0 -4px 0 #eadcf0, 0 3px 0 var(--ink); }
+.cx-sign { display: flex; align-items: center; gap: 4px; padding: 3px 9px 3px 5px; background: var(--primary); color: #fff; border: 3px solid var(--ink);
+  border-radius: 10px; box-shadow: inset 0 -4px 0 var(--primary-d), 0 3px 0 var(--ink); font-weight: 700; font-size: 13px; white-space: nowrap;
+  text-shadow: 0 2px 0 rgba(61,47,42,.35); margin-bottom: 4px; }
+.cx-sign.locked { background: #fff; color: var(--ink-l); text-shadow: none; box-shadow: inset 0 -4px 0 #f0e8dc, 0 3px 0 var(--ink); }
 
 .cx-tagwrap { padding-bottom: 12px; }
 .cx-tag { position: relative; display: flex; align-items: center; gap: 4px; padding: 3px 9px; background: #fff; border: 3px solid var(--ink); border-radius: 10px;
@@ -63,8 +63,8 @@ export const STYLE = `
   align-items: flex-end; gap: 10px; pointer-events: none; }
 .cx-side > * { pointer-events: auto; }
 .cx-fab { width: 50px; height: 50px; display: grid; place-items: center; background: #fff; border: 3px solid var(--ink); border-radius: 14px;
-  box-shadow: inset 0 -5px 0 #eadcf0, 0 4px 0 var(--ink); padding: 0; }
-.cx-fab:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 #eadcf0, 0 1px 0 var(--ink); }
+  box-shadow: inset 0 -5px 0 #f0e8dc, 0 4px 0 var(--ink); padding: 0; }
+.cx-fab:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 #f0e8dc, 0 1px 0 var(--ink); }
 .cx-collect { display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 8px; background: var(--gold); border: 3px solid var(--ink); border-radius: 14px;
   box-shadow: inset 0 -5px 0 var(--gold-d), 0 4px 0 var(--ink); font-weight: 700; font-size: 15px; color: var(--ink); position: relative; animation: cx-wiggle 1.6s steps(2) infinite; }
 .cx-collect:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 var(--gold-d), 0 1px 0 var(--ink); }
@@ -94,7 +94,7 @@ export const STYLE = `
 .cx-tip.fade { opacity: 0; transition: opacity .3s; }
 
 .cx-placebar { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 10px); z-index: 30; width: min(520px, calc(100% - 16px));
-  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 12px 30px rgba(59,35,64,.25); padding: 8px 10px 10px;
+  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 12px 30px rgba(61,47,42,.25); padding: 8px 10px 10px;
   display: flex; flex-direction: column; gap: 6px; animation: cx-slideup .25s cubic-bezier(.3,1.5,.6,1); }
 @keyframes cx-slideup { from { transform: translate(-50%, 40px); opacity: 0; } }
 .cx-pb-top { display: flex; align-items: center; gap: 8px; min-height: 28px; }
@@ -110,7 +110,7 @@ export const STYLE = `
 /* ---------- Modales (fuera de .scene-city) ---------- */
 .cx-modal .modal-body { padding: 12px 14px 16px; }
 .cx-build .modal-body { padding-top: 0; }
-.cx-tabs { position: sticky; top: 0; z-index: 3; background: var(--panel); margin: 0 -14px 6px; padding: 10px 12px 8px; border-bottom: 2px dashed #ecd5e6; }
+.cx-tabs { position: sticky; top: 0; z-index: 3; background: var(--panel); margin: 0 -14px 6px; padding: 10px 12px 8px; border-bottom: 2px dashed #ece3d5; }
 .cx-tabs .tab { position: relative; }
 .cx-tabs .tab .dot { position: absolute; top: -6px; right: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); }
 @media (max-width: 520px) {
@@ -124,10 +124,10 @@ export const STYLE = `
 .cx-card:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 .cx-card.cx-focus { outline: 4px solid var(--gold); outline-offset: -1px; animation: cx-glow 1s steps(2) infinite; }
 @keyframes cx-glow { 50% { outline-color: #fff; } }
-.cx-thumb { height: 84px; border-radius: 9px; background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ffe3f1 31% 55%, #f5e8ff 56%); display: grid; place-items: center; overflow: hidden; border: 2px solid #f0dcea; position: relative; }
-.cx-cat-casa .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ffe3f1 31% 55%, #ffd3e8 56%); }
+.cx-thumb { height: 84px; border-radius: 9px; background: radial-gradient(circle at 50% 70%, #fff 0 30%, #f9f3e9 31% 55%, #faf5ed 56%); display: grid; place-items: center; overflow: hidden; border: 2px solid #f0e8dc; position: relative; }
+.cx-cat-casa .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #f9f3e9 31% 55%, #fde8d5 56%); }
 .cx-cat-negocio .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #fff1d1 31% 55%, #ffe6b0 56%); }
-.cx-cat-especial .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ece2ff 31% 55%, #dccbff 56%); }
+.cx-cat-especial .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #f9f2e8 31% 55%, #d5dff5 56%); }
 .cx-cat-deco .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #dbf8ec 31% 55%, #c4f2df 56%); }
 .cx-cat-camino .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #e1f2ff 31% 55%, #cbe7ff 56%); }
 .cx-thumb img.th { width: 84px; height: 84px; }
@@ -149,7 +149,7 @@ export const STYLE = `
 
 .cx-info { display: flex; flex-direction: column; gap: 10px; }
 .cx-ihead { display: flex; gap: 12px; align-items: center; }
-.cx-ithumb { width: 92px; height: 92px; flex: none; border-radius: 12px; border: 3px solid var(--ink); background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ffe3f1 31% 55%, #f5e8ff 56%); display: grid; place-items: center; overflow: hidden; }
+.cx-ithumb { width: 92px; height: 92px; flex: none; border-radius: 12px; border: 3px solid var(--ink); background: radial-gradient(circle at 50% 70%, #fff 0 30%, #f9f3e9 31% 55%, #faf5ed 56%); display: grid; place-items: center; overflow: hidden; }
 .cx-ithumb img.th { width: 92px; height: 92px; }
 .cx-imeta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .cx-stars { display: flex; gap: 1px; }
@@ -160,7 +160,7 @@ export const STYLE = `
 .cx-box .line { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 14px; flex-wrap: wrap; }
 .cx-box .line .muted { font-size: 13px; }
 .cx-box.busy { background: var(--mint-l); }
-.cx-box.up { background: var(--lilac-l); }
+.cx-box.up { background: var(--second-l); }
 .cx-box.ready { background: var(--gold-l); }
 .cx-box .btn { width: 100%; }
 .cx-box .req { color: var(--coral); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 4px; }
@@ -171,13 +171,13 @@ export const STYLE = `
 .cx-stat small { display: block; font-size: 12px; color: var(--ink-l); font-weight: 700; }
 .cx-stat b { font-size: 18px; }
 .cx-free { position: absolute; left: -4px; right: -4px; bottom: 8px; display: flex; justify-content: center; z-index: 2; pointer-events: none; }
-.cx-free span { background: var(--pink); color: #fff; border: 2px solid var(--ink); border-radius: 6px; padding: 1px 10px; font-size: 13px; font-weight: 700;
-  box-shadow: 0 2px 0 var(--ink); text-shadow: 0 1px 0 rgba(59,35,64,.4); transform: rotate(-4deg); white-space: nowrap; animation: cx-freebob 1.2s steps(2) infinite; }
+.cx-free span { background: var(--primary); color: #fff; border: 2px solid var(--ink); border-radius: 6px; padding: 1px 10px; font-size: 13px; font-weight: 700;
+  box-shadow: 0 2px 0 var(--ink); text-shadow: 0 1px 0 rgba(61,47,42,.4); transform: rotate(-4deg); white-space: nowrap; animation: cx-freebob 1.2s steps(2) infinite; }
 @keyframes cx-freebob { 50% { transform: rotate(-4deg) translateY(-2px); } }
-.cx-card.cx-isfree { border-color: var(--pink-d); box-shadow: 0 4px 0 var(--pink-d); }
-.cx-card.cx-isfree .cx-thumb { border-color: var(--pink); }
-.cx-freecost { color: var(--pink-d); font-weight: 700; }
-.cx-tabs .tab .dot.free { background: var(--pink); }
+.cx-card.cx-isfree { border-color: var(--primary-d); box-shadow: 0 4px 0 var(--primary-d); }
+.cx-card.cx-isfree .cx-thumb { border-color: var(--primary); }
+.cx-freecost { color: var(--primary-d); font-weight: 700; }
+.cx-tabs .tab .dot.free { background: var(--primary); }
 .cx-mastery .cx-stars img { width: 18px; height: 18px; }
 .cx-mastery { background: #fffaf0; }
 .cx-exp-map { display: grid; place-items: center; padding: 6px; }
@@ -186,9 +186,9 @@ export const STYLE = `
 
 const CAT_ICON = { casa: 'home', negocio: 'shop', especial: 'sparkle', deco: 'flower', camino: 'map' };
 const thumbs = new Map();
-let thumbTheme = 'pastel';
+let thumbTheme = 'pueblo';
 /** Tema con el que se dibujan las miniaturas del menú (el de la ciudad). */
-export function setThumbTheme(t) { thumbTheme = t || 'pastel'; }
+export function setThumbTheme(t) { thumbTheme = t || 'pueblo'; }
 function thumbImg(id, level, cls = 'th') {
   const wrap = document.createElement('span');
   wrap.style.display = 'contents';
@@ -209,11 +209,11 @@ function fmtCycle(E, sec) { return E.fmtTime(sec).replace(/ 00s$/, '').replace(/
 function givesHtml(ctx, d) {
   const E = ctx.economy;
   const out = [];
-  if (d.pop) out.push(`<span class="chip pink">${icon('people', 14)}+${d.pop}</span>`);
+  if (d.pop) out.push(`<span class="chip primary">${icon('people', 14)}+${d.pop}</span>`);
   if (d.prod?.coins) out.push(`<span class="chip gold">${icon('coin', 14)}${d.prod.coins}/${fmtCycle(E, d.prod.cycle)}</span>`);
   if (d.prod?.gems) out.push(`<span class="chip sky">${icon('gem', 14)}${d.prod.gems}/${fmtCycle(E, d.prod.cycle)}</span>`);
   if (d.happy) out.push(`<span class="chip mint">${icon('smile', 14)}+${d.happy}</span>`);
-  if (d.game) out.push(`<span class="chip lilac">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Juego'}</span>`);
+  if (d.game) out.push(`<span class="chip second">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Juego'}</span>`);
   if (d.cat === 'camino') out.push(`<span class="chip">${icon('paw', 14)}Paseo</span>`);
   return out.join('');
 }
@@ -232,7 +232,7 @@ export function questBuildIds(ctx) {
     const st = ctx.gameStatus(g.game);
     return st.needsBuilding && E.countOf(st.needsBuilding) === 0 ? [st.needsBuilding] : [];
   }
-  // personalizar se hace en el vestidor (la princesa o el castillo): no hace falta construir la boutique
+  // personalizar se hace en el vestidor (el personaje o la municipalidad): no hace falta construir la boutique
   if (g.type === 'customize') return [];
   if (g.type === 'pop') return ['casita', 'cabana', 'chalet', 'torre_cristal', 'mansion'].filter(id => E.canBuild(id).ok).slice(-1);
   if (g.type === 'happy') return ['arbol', 'arbusto', 'banco', 'cerezo', 'fuente'].filter(id => E.canBuild(id).ok).slice(-1);
@@ -350,7 +350,7 @@ function askYesNo(S, title, html, okLabel, cancelLabel) {
   return new Promise(res => {
     let v = false;
     const m = ui.modal({ title, content: `<p class="center">${html}</p>`, className: 'cx-modal', onClose: () => { S.untrackModal(m); res(v); },
-      actions: [{ label: cancelLabel, cls: 'ghost' }, { label: okLabel, cls: 'pink', onClick: () => { v = true; } }] });
+      actions: [{ label: cancelLabel, cls: 'ghost' }, { label: okLabel, cls: 'primary', onClick: () => { v = true; } }] });
     S.trackModal(m);
   });
 }
@@ -403,9 +403,9 @@ export function openInfo(S, uid) {
       meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, `Nivel ${b.level}`));
     } else meta.append(ui.h('span.chip', { html: icon(CAT_ICON[d.cat], 14) + (CATEGORIES.find(c => c.id === d.cat)?.name || '') }));
     const chips = [];
-    if (d.pop) chips.push(`<span class="chip pink">${icon('people', 14)}${E.buildingPop(b)} vecinos</span>`);
+    if (d.pop) chips.push(`<span class="chip primary">${icon('people', 14)}${E.buildingPop(b)} vecinos</span>`);
     if (d.happy) chips.push(`<span class="chip mint">${icon('smile', 14)}+${E.buildingHappy(b)} felicidad</span>`);
-    if (d.game) chips.push(`<span class="chip lilac">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Minijuego'}</span>`);
+    if (d.game) chips.push(`<span class="chip second">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Minijuego'}</span>`);
     if (chips.length) meta.append(ui.h('div.cx-chips', { html: chips.join('') }));
     head.append(th, meta);
     body.append(head, ui.h('p.cx-desc', {}, d.desc));
@@ -483,7 +483,7 @@ export function openInfo(S, uid) {
       stats.append(stat('people', 'Población', E.fmtNum(E.population())), stat('smile', 'Felicidad', hp.pct + '%'),
         stat('coin', 'Bonus producción', '+' + Math.round((E.globalMultiplier() - 1) * 100) + '%'), stat('hammer', 'Constructoras', `${E.buildersFree()}/${ctx.state.builders}`));
       body.append(stats);
-      body.append(ui.h('p.cx-desc', { html: `La felicidad (deco) da hasta <b>+50%</b> de producción y cada nivel del castillo suma <b>+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}%</b> más.` }));
+      body.append(ui.h('p.cx-desc', { html: `La felicidad (deco) da hasta <b>+50%</b> de producción y cada nivel de la Municipalidad suma <b>+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}%</b> más.` }));
     }
 
     // ----- mejora -----
@@ -504,7 +504,7 @@ export function openInfo(S, uid) {
         for (const f of fx) box.append(ui.h('div.line', { html: `<span>${icon('sparkle', 14)} ${f}</span>` }));
         box.append(ui.h('div.line', { html: `<span class="cost">${ui.costHtml(info.cost, 18)}</span><span class="muted">${icon('clock', 14)} ${E.fmtTime(info.time)}</span>` }));
         if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
-        box.append(btn('Mejorar', 'lilac', 'up', () => {
+        box.append(btn('Mejorar', 'second', 'up', () => {
           const c = E.canUpgrade(b);
           if (!c.ok) { ctx.audio.sfx('error'); ui.toast(c.poor ? 'No te alcanza todavía' : c.reason, { icon: c.locked ? 'lock' : 'info' }); return; }
           const res = E.startUpgrade(b.uid);
@@ -548,13 +548,13 @@ export function openInfo(S, uid) {
     const acts = ui.h('div.cx-actions');
     if (d.game && !building) {
       const isW = d.game === 'wardrobe';
-      acts.append(btn(isW ? 'Vestidor' : 'Jugar', 'pink', isW ? 'dress' : 'play', () => {
+      acts.append(btn(isW ? 'Vestidor' : 'Jugar', 'primary', isW ? 'dress' : 'play', () => {
         m.close();
         if (isW) ctx.router.go('wardrobe'); else ctx.router.openGame(d.game);
       }));
     }
     if (b.id === 'garaje' && !building) acts.append(btn('Taller', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
-    if (isCastle) acts.append(btn('Vestidor', 'pink', 'dress', () => { m.close(); ctx.router.go('wardrobe'); }));
+    if (isCastle) acts.append(btn('Vestidor', 'primary', 'dress', () => { m.close(); ctx.router.go('wardrobe'); }));
     acts.append(btn('Mover', 'ghost', 'move', () => { m.close(); S.startMove(b.uid); }));
     acts.append(btn('Rotar', 'ghost', 'rotate', () => { S.rotateBuilding(b.uid); }));
     if (E.canRemove(b)) acts.append(btn('Guardar', 'ghost', 'trash', async () => {
@@ -613,7 +613,7 @@ export function openExpand(S) {
   g.fillStyle = '#a3e68b'; g.fillRect(bnd.min, bnd.min, bnd.side, bnd.side);
   for (const b of ctx.state.city.buildings) {
     const [w, d] = E.footprint(b.id, b.rot);
-    g.fillStyle = b.id === 'castillo' ? '#b58cff' : E.def(b).cat === 'camino' ? '#d8d2e6' : '#ff7eb6';
+    g.fillStyle = b.id === 'castillo' ? '#7f9ee8' : E.def(b).cat === 'camino' ? '#ddd5c8' : '#ee8a5c';
     g.fillRect(b.x, b.z, w, d);
   }
   body.append(ui.h('div.cx-exp-map', {}, cv));
@@ -640,7 +640,7 @@ export function makePlaceBar(S, { onCancel, onRotate, onConfirm }) {
   const hint = ui.h('div.cx-pb-hint');
   const btns = ui.h('div.cx-pb-btns');
   const bCancel = ui.h('button.btn.ghost', { html: icon('close', 20) + 'Cancelar', onclick: () => { ctx.audio.sfx('tap'); onCancel(); } });
-  const bRot = ui.h('button.btn.lilac.cx-rot', { html: icon('rotate', 20) + 'Rotar', onclick: () => { onRotate(); } });
+  const bRot = ui.h('button.btn.second.cx-rot', { html: icon('rotate', 20) + 'Rotar', onclick: () => { onRotate(); } });
   const bOk = ui.h('button.btn.mint', { html: icon('check', 20) + 'Colocar', onclick: () => { onConfirm(); } });
   btns.append(bCancel, bRot, bOk);
   el.append(top, hint, btns);
@@ -657,7 +657,7 @@ export function makePlaceBar(S, { onCancel, onRotate, onConfirm }) {
       lastKey = key;
       top.innerHTML = '';
       top.append(ui.h('b', {}, (p.mode === 'move' ? 'Mover: ' : '') + d.name), ui.h('span.grow'));
-      if (cost && (nFree > 0 || cost.free)) top.append(ui.h('span.chip.pink', { html: `${icon('🎁', 14)}¡Gratis!${nFree > 1 ? ' x' + nFree : ''}` }));
+      if (cost && (nFree > 0 || cost.free)) top.append(ui.h('span.chip.primary', { html: `${icon('🎁', 14)}¡Gratis!${nFree > 1 ? ' x' + nFree : ''}` }));
       else if (cost) top.append(ui.h('span', { html: ui.costHtml(cost, 18) }));
       if (p.count) top.append(ui.h('span.chip.mint', { html: `${icon('check', 12)}${p.count}` }));
       const touch = S.lastPointer === 'touch' || (S.lastPointer !== 'mouse' && matchMedia('(pointer: coarse)').matches);

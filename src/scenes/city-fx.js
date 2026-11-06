@@ -29,7 +29,7 @@ export function createParticles(scene) {
     mesh.instanceColor.needsUpdate = true;
   }
   /** Ráfaga de partículas en (x,y,z). */
-  function burst(x, y, z, { n = 20, colors = ['#ff7eb6', '#b58cff', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'], speed = 2, up = 3, gravity = 7, size = 0.09, life = 1.1, spread = 0.3, drag = 0.6 } = {}) {
+  function burst(x, y, z, { n = 20, colors = ['#ee8a5c', '#7f9ee8', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'], speed = 2, up = 3, gravity = 7, size = 0.09, life = 1.1, spread = 0.3, drag = 0.6 } = {}) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, s = speed * (0.4 + Math.random() * 0.8);
       emit({
@@ -71,7 +71,7 @@ export function createParticles(scene) {
   return {
     burst, update, mesh,
     confetti(x, y, z) { burst(x, y, z, { n: 46, speed: 2.4, up: 5, gravity: 7, size: 0.1, life: 1.6, spread: 0.6 }); },
-    dust(x, y, z, r = 0.5) { burst(x, y, z, { n: 16, colors: ['#ffffff', '#fff4e6', '#f3e6d6', '#e9dcf5'], speed: 1.6 + r, up: 0.9, gravity: 1.5, size: 0.11, life: 0.7, spread: r, drag: 3 }); },
+    dust(x, y, z, r = 0.5) { burst(x, y, z, { n: 16, colors: ['#ffffff', '#fdf6e3', '#f3e6d6', '#f5ebdc'], speed: 1.6 + r, up: 0.9, gravity: 1.5, size: 0.11, life: 0.7, spread: r, drag: 3 }); },
     sparkle(x, y, z, colors = ['#ffd166', '#ffffff', '#fff0c2']) { burst(x, y, z, { n: 18, colors, speed: 1.1, up: 1.6, gravity: -0.6, size: 0.07, life: 1.1, spread: 0.7, drag: 1.5 }); },
     poof(x, y, z) { burst(x, y, z, { n: 10, colors: ['#ffffff', '#e8f7e0', '#c4f7e8'], speed: 1.2, up: 1.2, gravity: 0.8, size: 0.12, life: 0.6, spread: 0.4, drag: 3 }); },
     dispose() { scene.remove(mesh); geo.dispose(); mat.dispose(); mesh.dispose?.(); },

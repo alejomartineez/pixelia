@@ -23,7 +23,7 @@ const TAP_PX = 8;
 function safe(fn, fallbackSize = [2, 2]) {
   try { const g = fn(); if (g && g.isObject3D) return g; } catch (err) { console.warn('[city] modelo con error', err); }
   const g = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.BoxGeometry(fallbackSize[0] * 0.8, 0.6, fallbackSize[1] * 0.8), new THREE.MeshLambertMaterial({ color: 0xffc2dc }));
+  const m = new THREE.Mesh(new THREE.BoxGeometry(fallbackSize[0] * 0.8, 0.6, fallbackSize[1] * 0.8), new THREE.MeshLambertMaterial({ color: 0xffd8c4 }));
   m.position.y = 0.3; m.castShadow = true; m.receiveShadow = true;
   g.add(m); g.userData.height = 0.6;
   return g;
@@ -824,7 +824,7 @@ export default function create(ctx) {
       audio.sfx('done');
       const c = e.root.position;
       fx.confetti(c.x, e.height * 0.8, c.z);
-      fx.sparkle(c.x, e.height * 0.6, c.z, ['#b58cff', '#ffffff', '#ffd166']);
+      fx.sparkle(c.x, e.height * 0.6, c.z, ['#7f9ee8', '#ffffff', '#ffd166']);
       setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Nivel ${level}!`), 120);
       if (b.id === 'castillo') ui.confetti();
       life.refreshGrid();
@@ -870,7 +870,7 @@ export default function create(ctx) {
     }));
     offs.push(bus.on('level:up', () => { rebuildSignLabels(); }));
     offs.push(bus.on('customize:changed', ({ target }) => {
-      if (target === 'princess') life.rebuildPlayer();
+      if (target === 'avatar') life.rebuildPlayer();
       else if (target === 'car') life.rebuildCar();
     }));
     offs.push(bus.on('builders:changed', () => syncStatus()));
@@ -878,7 +878,7 @@ export default function create(ctx) {
       const e = b && entries.get(b.uid);
       if (!e) return;
       const c = e.root.position;
-      fx.sparkle(c.x, e.height * 0.7, c.z, ['#ffd166', '#ffffff', '#ff9ccb']);
+      fx.sparkle(c.x, e.height * 0.7, c.z, ['#ffd166', '#ffffff', '#f1a181']);
       setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Maestría ${stars}!`), 450);
     }));
     offs.push(bus.on('city:theme', ({ theme } = {}) => setTheme(theme || currentThemeId(ctx.state))));
@@ -1088,7 +1088,7 @@ export default function create(ctx) {
       collectBtn = ui.h('button.cx-collect', { html: `${icon('coin', 24)}Cobrar todo<i class="badge">0</i>`, 'aria-label': 'Cobrar todo' });
       collectBtn.style.display = 'none';
       collectBtn.addEventListener('click', () => collectAll());
-      const homeBtn = ui.h('button.cx-fab', { html: icon('castle', 30), 'aria-label': 'Ir al castillo', title: 'Ir al castillo (H)' });
+      const homeBtn = ui.h('button.cx-fab', { html: icon('castle', 30), 'aria-label': 'Ir a la municipalidad', title: 'Ir a la municipalidad (H)' });
       homeBtn.addEventListener('click', focusCastle);
       const rotBtn = ui.h('button.cx-fab', { html: icon('rotate', 30), 'aria-label': 'Girar la vista', title: 'Girar la vista (Q / E)' });
       rotBtn.addEventListener('click', () => { cam.rotate(1); audio.sfx('swoosh'); });

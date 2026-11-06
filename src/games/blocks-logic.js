@@ -1,4 +1,4 @@
-// Bloques Mágicos — lógica pura del tablero (sin DOM): formas, encastre, líneas y generación de piezas.
+// Bloques Pixel — lógica pura del tablero (sin DOM): formas, encastre, líneas y generación de piezas.
 
 export const N = 8;              // tablero N x N
 export const EMPTY = -1;

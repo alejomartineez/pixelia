@@ -7,7 +7,7 @@ export const CHX_CSS = `
 .modal.chx-sheet { isolation: isolate; } /* el z-index de las pestañas no debe tapar modales hijos */
 .modal.chx-sheet .modal-body { padding-top: 0; }
 .chx-top { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; margin: 0 -16px 4px; padding: 10px 14px 0 16px;
-  background: var(--panel); border-bottom: 2px dashed #f0cfe2; }
+  background: var(--panel); border-bottom: 2px dashed #f0e3cf; }
 .chx-top .tabs { flex: 1; min-width: 0; padding: 6px 4px 10px 2px; }
 .chx-top .tab { position: relative; font-size: 16px; padding: 6px 12px; }
 .chx-top .tab .badge { top: -10px; right: -10px; min-width: 22px; height: 22px; font-size: 12px; }
@@ -21,19 +21,19 @@ export const CHX_CSS = `
 .chx-tip { margin: 14px 4px 2px; font-size: 13px; color: var(--ink-l); text-align: center; }
 
 .chx-thumbbox { position: relative; flex: none; width: 86px; height: 86px; display: grid; place-items: center; border: var(--line) solid var(--ink); border-radius: 14px;
-  background: radial-gradient(circle at 50% 62%, #fff 0 22%, var(--ccl, #ffe9f4) 64%, var(--cc, #ffc2dc) 140%); box-shadow: inset 0 -5px 0 rgba(59,35,64,.12); }
+  background: radial-gradient(circle at 50% 62%, #fff 0 22%, var(--ccl, #fbefdc) 64%, var(--cc, #ffd8c4) 140%); box-shadow: inset 0 -5px 0 rgba(61,47,42,.12); }
 .chx-thumb { width: 80px; height: 80px; pointer-events: none; }
 .chx-thumbbox .chx-count { position: absolute; right: -10px; bottom: -10px; min-width: 32px; height: 28px; padding: 0 6px; display: grid; place-items: center;
   background: var(--mint); border: var(--line) solid var(--ink); border-radius: 10px; font-size: 17px; font-weight: 700; box-shadow: 0 2px 0 var(--ink); }
 
 /* Cofre gratis */
-.chx-free { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px 14px; padding: 12px; background: linear-gradient(135deg, #fff6d8, #ffe3f1); }
+.chx-free { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 12px 14px; padding: 12px; background: linear-gradient(135deg, #fff6d8, #f9f3e9); }
 .chx-free > .btn { grid-column: 1 / -1; }
-.chx-free.ready { background: linear-gradient(135deg, #fff0b8, #ffd3ea); animation: chx-readyglow 1.1s steps(2) infinite; }
+.chx-free.ready { background: linear-gradient(135deg, #fff0b8, #fde8d5); animation: chx-readyglow 1.1s steps(2) infinite; }
 .chx-free .chx-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
 .chx-free h3 { font-size: 21px; }
 .chx-free .chx-ribbon { position: absolute; top: -8px; left: -6px; padding: 1px 8px; background: var(--coral); color: #fff; border: 2px solid var(--ink); border-radius: 7px;
-  font-size: 13px; font-weight: 700; transform: rotate(-8deg); text-shadow: 0 1px 0 rgba(59,35,64,.4); }
+  font-size: 13px; font-weight: 700; transform: rotate(-8deg); text-shadow: 0 1px 0 rgba(61,47,42,.4); }
 .chx-timer { font-size: 15px; color: var(--ink-l); }
 .chx-timer b { color: var(--ink); font-size: 17px; }
 @keyframes chx-readyglow { 50% { box-shadow: 0 3px 0 var(--ink), 0 0 0 4px var(--gold); } }
@@ -44,7 +44,7 @@ export const CHX_CSS = `
 .chx-chest h3 { font-size: 21px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .chx-chest .chx-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
 .chx-chest .chx-actions .btn { flex: 1; }
-.chx-chest.empty { background: #fbf6fb; }
+.chx-chest.empty { background: #fbf9f6; }
 .chx-chest.empty .chx-thumb { filter: grayscale(.5) opacity(.6); }
 .chx-chest.empty h3 { color: var(--ink-l); }
 .chx-chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -68,7 +68,7 @@ export const CHX_CSS = `
 .chx-item { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 10px 8px 10px;
   border: var(--line) solid var(--ink); border-radius: 14px; background: linear-gradient(var(--rcl), #fff 72%); box-shadow: inset 0 0 0 3px var(--rc), 0 3px 0 var(--ink); }
 .chx-item .chx-rar { position: absolute; top: 7px; left: 7px; padding: 0 6px; border: 2px solid var(--ink); border-radius: 6px; background: var(--rc); color: #fff;
-  font-size: 12px; font-weight: 700; text-shadow: 0 1px 0 rgba(59,35,64,.45); }
+  font-size: 12px; font-weight: 700; text-shadow: 0 1px 0 rgba(61,47,42,.45); }
 .chx-item .chx-qty { position: absolute; top: 3px; right: 9px; font-size: 22px; font-weight: 700; color: #fff; text-shadow: ${OUT2}; }
 .chx-item .chx-ic { position: relative; width: 72px; height: 72px; margin-top: 14px; display: grid; place-items: center; }
 .chx-item .chx-ic::before { content: ''; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, #fff 0 42%, transparent 70%); }
@@ -83,7 +83,7 @@ export const CHX_CSS = `
 .chx-row small { font-size: 13px; color: var(--ink-l); line-height: 1.15; }
 .chx-boost { background: linear-gradient(90deg, var(--gold-l), #fff 80%); }
 .chx-boost .chx-left { font-size: 18px; font-weight: 700; color: var(--ink); white-space: nowrap; }
-.chx-build { background: linear-gradient(90deg, var(--lilac-l), #fff 80%); }
+.chx-build { background: linear-gradient(90deg, var(--second-l), #fff 80%); }
 .chx-build .chx-bthumb { width: 56px; height: 56px; flex: none; display: grid; place-items: center; background: #fff; border: var(--line) solid var(--ink); border-radius: 12px; }
 .chx-build .chx-bthumb img { width: 48px; height: 48px; image-rendering: auto; }
 .chx-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 12px; text-align: center; color: var(--ink-l); }
@@ -98,8 +98,8 @@ export const CHX_CSS = `
 .chx-shop .chx-thumb { width: 90px; height: 90px; }
 .chx-shop .btn.gold { min-width: 120px; }
 .btn.chx-cant { filter: grayscale(.45) opacity(.8); }
-.chx-best { position: absolute; top: -10px; right: 10px; padding: 1px 9px; border: 2px solid var(--ink); border-radius: 8px; background: var(--pink); color: #fff;
-  font-size: 13px; font-weight: 700; transform: rotate(4deg); text-shadow: 0 1px 0 rgba(59,35,64,.4); }
+.chx-best { position: absolute; top: -10px; right: 10px; padding: 1px 9px; border: 2px solid var(--ink); border-radius: 8px; background: var(--primary); color: #fff;
+  font-size: 13px; font-weight: 700; transform: rotate(4deg); text-shadow: 0 1px 0 rgba(61,47,42,.4); }
 
 /* "¿Qué puede salir?" */
 .chx-whatlist { display: flex; flex-direction: column; gap: 8px; }
@@ -117,14 +117,14 @@ export const CHX_CSS = `
 .chx-pick small { color: var(--ink-l); font-size: 13px; }
 
 /* =================== Apertura =================== */
-.chx-open { position: absolute; inset: 0; z-index: 75; overflow: hidden; background: #150b1e; touch-action: none; cursor: pointer; color: #fff; font-family: var(--font);
+.chx-open { position: absolute; inset: 0; z-index: 75; overflow: hidden; background: #191310; touch-action: none; cursor: pointer; color: #fff; font-family: var(--font);
   --cx: 50%; --cy: 55%; --glow: 0; animation: chx-fadein .25s ease-out both; -webkit-user-select: none; user-select: none; }
 .chx-open.closing { animation: chx-fadeout .32s ease-in forwards; pointer-events: none; }
 .chx-shake { position: absolute; inset: 0; }
 .chx-open.quake .chx-shake { animation: chx-quake .55s linear; }
-.chx-bg { position: absolute; inset: 0; background: radial-gradient(circle at var(--cx) var(--cy), #8a55a8 0, #4a2a63 30%, #261536 64%, #150b1e 100%); }
+.chx-bg { position: absolute; inset: 0; background: radial-gradient(circle at var(--cx) var(--cy), #50679e 0, #27385d 30%, #2d231e 64%, #191310 100%); }
 .chx-stars { position: absolute; inset: 0; opacity: .55; animation: twinkle 2.4s steps(2) infinite;
-  background-image: radial-gradient(#fff 0 1.5px, transparent 2px), radial-gradient(#ffd3ea 0 1.5px, transparent 2px), radial-gradient(#d4efff 0 1px, transparent 1.5px);
+  background-image: radial-gradient(#fff 0 1.5px, transparent 2px), radial-gradient(#fde8d5 0 1.5px, transparent 2px), radial-gradient(#d4efff 0 1px, transparent 1.5px);
   background-size: 97px 113px, 151px 89px, 61px 71px; background-position: 13px 21px, 70px 44px, 30px 5px; }
 .chx-rays { position: absolute; left: var(--cx); top: var(--cy); width: 240vmax; height: 240vmax; margin: -120vmax 0 0 -120vmax; pointer-events: none;
   background: repeating-conic-gradient(from 0deg, var(--ray, rgba(255,255,255,.7)) 0deg 8deg, transparent 8deg 20deg);
@@ -164,7 +164,7 @@ export const CHX_CSS = `
 .chx-deck { position: absolute; left: calc(var(--safe-l) + 16px); bottom: calc(var(--safe-b) + 18px); display: flex; align-items: center; gap: 10px; pointer-events: none; opacity: 0; transition: opacity .3s; }
 .chx-open.cards .chx-deck { opacity: 1; }
 .chx-deck .chx-stack { position: relative; width: 38px; height: 50px; }
-.chx-deck .chx-stack i { position: absolute; inset: 0; border: 3px solid var(--ink); border-radius: 7px; background: repeating-linear-gradient(45deg, var(--pink) 0 6px, var(--pink-d) 6px 12px); }
+.chx-deck .chx-stack i { position: absolute; inset: 0; border: 3px solid var(--ink); border-radius: 7px; background: repeating-linear-gradient(45deg, var(--primary) 0 6px, var(--primary-d) 6px 12px); }
 .chx-deck .chx-stack i:nth-child(1) { transform: translate(6px, -6px) rotate(6deg); }
 .chx-deck .chx-stack i:nth-child(2) { transform: translate(3px, -3px) rotate(3deg); }
 .chx-deck b { font-size: 26px; text-shadow: ${OUT2}; }
@@ -187,7 +187,7 @@ export const CHX_CSS = `
 .chx-back { transform: rotateY(180deg); display: grid; place-items: center; box-shadow: 0 7px 0 var(--ink);
   background: conic-gradient(from 45deg at 50% 50%, var(--rc) 0 25%, var(--rcd) 0 50%, var(--rc) 0 75%, var(--rcd) 0) 0 0 / 28px 28px; }
 .chx-back::before { content: ''; position: absolute; inset: 9px; border: 3px solid rgba(255,255,255,.85); border-radius: 10px; box-shadow: 0 0 0 3px var(--ink), inset 0 0 0 3px var(--ink); }
-.chx-back img { position: relative; filter: drop-shadow(0 5px 0 rgba(59,35,64,.35)); }
+.chx-back img { position: relative; filter: drop-shadow(0 5px 0 rgba(61,47,42,.35)); }
 .chx-back b { position: absolute; bottom: 22px; left: 0; right: 0; text-align: center; font-size: 46px; color: #fff; text-shadow: ${OUT3}; }
 .chx-front { display: flex; flex-direction: column; align-items: center; color: var(--ink); background: linear-gradient(var(--rcl), #fff 58%);
   box-shadow: inset 0 0 0 4px var(--rc), 0 7px 0 var(--ink); }
@@ -197,11 +197,11 @@ export const CHX_CSS = `
 .chx-icwrap::before { content: ''; position: absolute; left: 50%; top: 50%; width: 170px; height: 170px; margin: -85px 0 0 -85px;
   background: repeating-conic-gradient(var(--rc) 0 9deg, transparent 9deg 24deg); -webkit-mask: radial-gradient(circle closest-side, #000 30%, transparent 100%);
   mask: radial-gradient(circle closest-side, #000 30%, transparent 100%); opacity: .6; animation: chx-spin 9s linear infinite; }
-.chx-icwrap img { position: relative; width: min(96px, 26vw); height: auto; filter: drop-shadow(0 5px 0 rgba(59,35,64,.25)); animation: chx-bob 1s ease-in-out infinite alternate; }
+.chx-icwrap img { position: relative; width: min(96px, 26vw); height: auto; filter: drop-shadow(0 5px 0 rgba(61,47,42,.25)); animation: chx-bob 1s ease-in-out infinite alternate; }
 .chx-klabel { font-size: 14px; color: var(--rcd); text-transform: uppercase; letter-spacing: .06em; min-height: 16px; }
 .chx-cname { padding: 0 10px; font-size: 24px; font-weight: 700; line-height: 1.05; text-align: center; }
 .chx-amt { display: flex; align-items: center; gap: 6px; margin: 4px 0 2px; font-size: 36px; line-height: 1; font-weight: 700; color: #fff; text-shadow: ${OUT3}; }
-.chx-amt img { filter: drop-shadow(0 3px 0 rgba(59,35,64,.3)); }
+.chx-amt img { filter: drop-shadow(0 3px 0 rgba(61,47,42,.3)); }
 .chx-note { margin: 2px 10px 12px; font-size: 14px; line-height: 1.1; text-align: center; color: var(--ink-l); }
 .chx-card.r3 .chx-front { box-shadow: inset 0 0 0 4px var(--rc), 0 7px 0 var(--ink), 0 0 36px 8px rgba(255,209,102,.75); }
 /* Carta de figuritas: abanico de cartas del álbum */
@@ -218,7 +218,7 @@ export const CHX_CSS = `
 
 /* Resumen */
 .chx-sum { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: calc(var(--safe-t) + 16px) 14px calc(var(--safe-b) + 16px); cursor: default;
-  background: rgba(21,11,30,.35); }
+  background: rgba(25,19,16,.35); }
 .chx-sumbox { width: min(540px, 100%); max-height: 100%; display: flex; flex-direction: column; color: var(--ink); background: var(--panel); border: var(--line) solid var(--ink);
   border-radius: 18px; box-shadow: 0 6px 0 var(--ink), 0 20px 60px rgba(0,0,0,.45); overflow: hidden; animation: chx-pop .4s cubic-bezier(.3,1.6,.6,1) both; }
 .chx-sumhead { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 12px 16px 10px; background: linear-gradient(var(--gold), var(--gold-d)); border-bottom: var(--line) solid var(--ink); }

@@ -112,7 +112,7 @@ function unlocksAt(level, state) {
   const list = [];
   for (const g of GAMES.filter(g => g.unlock === level)) list.push({ kind: 'Minijuego', name: g.name, ic: art(GAME_ART[g.id], 44), hot: true });
   for (const b of BUILDINGS.filter(b => b.unlock === level)) list.push({ kind: CAT_NAME[b.cat] || 'Edificio', name: b.name, ic: icon(CAT_ICON[b.cat] || 'home', 40), building: b.id });
-  for (const c of CASTLE_LEVELS.filter(c => c.reqLevel === level)) list.push({ kind: 'Castillo', name: `Mejora a nivel ${c.level}`, ic: icon('castle', 40) });
+  for (const c of CASTLE_LEVELS.filter(c => c.reqLevel === level)) list.push({ kind: 'Municipalidad', name: `Mejora a nivel ${c.level}`, ic: icon('castle', 40) });
   // expansión de terreno n se habilita en nivel 2 + 2n (ver economy.expansionInfo)
   const n = (level - 2) / 2;
   if (Number.isInteger(n) && n >= 0 && n < MAX_EXPANSIONS && (state?.city?.expansions ?? 0) <= n) list.push({ kind: 'Terreno', name: 'Más lugar para construir', ic: icon('map', 40) });
@@ -148,7 +148,7 @@ export function openLevelUp(ctx, params = {}) {
   let openNow = false;
   const actions = canOpen
     ? [{ label: 'Después', cls: 'ghost' }, { html: `${icon('gift', 20)} Abrir ahora`, cls: 'gold', onClick: () => { openNow = true; } }]
-    : [{ html: more ? `${icon('sparkle', 20)} ¡Genial! Ver nivel ${level + 1}` : `${icon('sparkle', 20)} ¡Genial!`, cls: 'pink' }];
+    : [{ html: more ? `${icon('sparkle', 20)} ¡Genial! Ver nivel ${level + 1}` : `${icon('sparkle', 20)} ¡Genial!`, cls: 'primary' }];
   const sh = openShell(ctx, 'levelup:' + level, {
     title: '¡Subiste de nivel!', ic: 'star', className: 'pnl-md pnl-levelup reward-modal', closable: false, actions,
   });

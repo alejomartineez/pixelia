@@ -91,7 +91,7 @@ function refreshFx() {
   const chips = [];
   const b = safe(() => activeBoosts(now), {});
   if (b.prod) chips.push(`<button class="fx-chip gold" data-act="backpack" aria-label="Poción de producción">${icon('🧪', 16)}<b>x${b.prod.mult}</b><small>${shortTime(b.prod.leftMs)}</small></button>`);
-  if (b.happy) chips.push(`<button class="fx-chip pink" data-act="backpack" aria-label="Felicidad al máximo">${icon('🌸', 16)}<b>Feliz</b><small>${shortTime(b.happy.leftMs)}</small></button>`);
+  if (b.happy) chips.push(`<button class="fx-chip primary" data-act="backpack" aria-label="Felicidad al máximo">${icon('🌸', 16)}<b>Feliz</b><small>${shortTime(b.happy.leftMs)}</small></button>`);
   for (const e of safe(() => activeEvents(now), [])) {
     const m = e.mult?.production;
     if (m && m > 1) chips.push(`<button class="fx-chip mint" data-act="events" aria-label="${esc(e.title)}">${icon(e.emoji || '⚡', 16)}<b>x${String(m).replace('.', ',')}</b><small>${fmtLeft(e.endsInMs)}</small></button>`);

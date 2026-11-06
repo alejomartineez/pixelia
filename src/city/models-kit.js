@@ -8,9 +8,9 @@ export { Voxels, shade };
 
 export const C = {
   glass: '#bfe8ff', glassD: '#93d0f2', glassHi: '#ffffff',
-  frame: '#ffffff', trim: '#fff7fb',
-  stoneL: '#ece8f4', stone: P.stone, stoneD: P.stoneD,
-  roofPink: '#f2679f', roofLilac: '#9b72e8', roofMint: '#45c9a2', roofSky: '#5fb4ea',
+  frame: '#ffffff', trim: '#fffaf1',
+  stoneL: '#f4efe8', stone: P.stone, stoneD: P.stoneD,
+  roofClay: '#eb794b', roofSlate: '#698cdc', roofMint: '#45c9a2', roofSky: '#5fb4ea',
   leaf: P.leaf, leafD: P.leafD, leafL: '#8ee08a',
   trunk: P.wood, trunkD: P.woodD,
   red: '#ff5a6e', yellow: '#ffe066', orange: '#ffa64d', white: '#ffffff', cream: P.cream,
@@ -19,7 +19,7 @@ export const C = {
   water: '#8fe0ff', waterD: '#5cc6f0', waterL: '#d6f5ff',
 };
 
-export const FLOWER_COLORS = [P.pink, '#ffffff', P.lilac, C.yellow, C.red, P.sky, P.peach];
+export const FLOWER_COLORS = [P.clay, '#ffffff', P.slate, C.yellow, C.red, P.sky, P.peach];
 
 // ---------- RNG determinista ----------
 export function rng(seed = 1) {
@@ -103,7 +103,7 @@ export function win(v, face, plane, u, y, w = 2, h = 2, o = {}) {
   }
   if (o.box) {
     fbox(v, face, plane, u - (o.wide ? 1 : 0), y - 1, w + (o.wide ? 2 : 0), 1, 1, o.box);
-    const fl = o.flowers || [P.pink, '#ffffff', C.red];
+    const fl = o.flowers || [P.clay, '#ffffff', C.red];
     for (let i = 0; i < w; i++) fset(v, face, plane, u + i, y, 1, i % 2 ? C.leaf : fl[i % fl.length]);
   } else if (o.sill !== false) {
     fbox(v, face, plane, u, y - 1, w, 1, 1, o.sill || C.frame);
@@ -112,7 +112,7 @@ export function win(v, face, plane, u, y, w = 2, h = 2, o = {}) {
 }
 
 /** Puerta w×h con panel, picaporte dorado, arco y escalón opcionales. y = base de la puerta. */
-export function door(v, face, plane, u, y, w = 3, h = 4, c = P.pinkD, o = {}) {
+export function door(v, face, plane, u, y, w = 3, h = 4, c = P.clayD, o = {}) {
   fbox(v, face, plane, u, y, w, h, 0, c);
   if (w >= 3 && h >= 4) fbox(v, face, plane, u + 1, y + 1, w - 2, h - 2, 0, shade(c, -0.14));
   if (o.glass) fbox(v, face, plane, u + 1, y + h - 2, Math.max(1, w - 2), 1, 0, C.glass);
@@ -286,7 +286,7 @@ export function star(v, cx, y, z, c = P.gold, face = 'pz') {
   pattern(v, face, z, cx - 2, y, STAR5, c);
 }
 /** Corona dorada chica (5 de ancho) sobre (x0,y,z0) — anillo con puntas. */
-export function crown(v, x0, y, z0, s = 5, c = P.gold, gem = P.pink) {
+export function crown(v, x0, y, z0, s = 5, c = P.gold, gem = P.clay) {
   for (let i = 0; i < s; i++) for (let k = 0; k < s; k++) {
     const edge = i === 0 || k === 0 || i === s - 1 || k === s - 1;
     if (!edge) continue;
@@ -337,7 +337,7 @@ export class Model {
 export function uid(m, prefix) { m._uid = (m._uid || 0) + 1; return prefix + m._uid; }
 
 /** Humo de chimenea: 3 bocanadas que suben y se desvanecen. (x,y,z) = esquina de la bocanada 2x2x2 */
-export function addSmoke(m, x, y, z, col = '#f6f2fb') {
+export function addSmoke(m, x, y, z, col = '#fbf7f2') {
   const name = uid(m, 'smoke');
   for (let i = 0; i < 3; i++) m.part(name, [x + 1, y + 1, z + 1], { cast: false }).box(x, y, z, 2, 2, 2, i === 1 ? '#ffffff' : col);
   m.animate((parts, ph) => {

@@ -1,4 +1,4 @@
-// Joyas Reales — motor de reglas (sin DOM). Muta su propio tablero y devuelve "fases"
+// Joyas Brillantes — motor de reglas (sin DOM). Muta su propio tablero y devuelve "fases"
 // que la escena anima en orden: swap, clear, fall, convert, shuffle.
 //
 // Gema: { id, type (0..5, 6 = arcoíris), special: null | 'h' | 'v' | 'bomb' | 'rainbow' }

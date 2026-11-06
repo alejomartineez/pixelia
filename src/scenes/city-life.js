@@ -1,7 +1,7 @@
-// Vida de la ciudad: vecinas que pasean, la princesa del jugador, el autito y mariposas.
+// Vida de la ciudad: vecinas que pasean, el personaje del jugador, el autito y mariposas.
 import * as THREE from 'three';
 import { Voxels, disposeObject } from '../core/voxel.js';
-import { princessModel, randomLook } from '../avatar/princess.js';
+import { avatarModel, randomLook } from '../avatar/avatar.js';
 import { carModel } from '../avatar/car.js';
 import { themeOf } from '../city/themes.js';
 import { footprint, def, isConstructing, landBounds } from '../core/economy.js';
@@ -114,7 +114,7 @@ export function createLife(r, ctx) {
   let lookSeed = 1;
   function targetNpcCount() { return Math.min(16, Math.floor(ctx.economy.population() / 5)); }
   function spawnNpc() {
-    const obj = princessModel(randomLook(lookSeed * 7919 + 17), { npc: true });
+    const obj = avatarModel(randomLook(lookSeed * 7919 + 17), { npc: true });
     lightShadows(obj);
     lookSeed++;
     const w = makeWalker(obj, { speed: 0.65 + rnd() * 0.35 });
@@ -146,7 +146,7 @@ export function createLife(r, ctx) {
     while (npcs.length > n) { const w = npcs.pop(); group.remove(w.obj); disposeObject(w.obj); }
   }
 
-  // ---------- Princesa del jugador ----------
+  // ---------- Personaje del jugador ----------
   let player = null;
   function castleRegion() {
     const c = ctx.state.city.buildings.find(b => b.id === 'castillo');
@@ -162,7 +162,7 @@ export function createLife(r, ctx) {
   function buildPlayer() {
     let prevPos = null;
     if (player) { prevPos = [player.fx, player.fz]; group.remove(player.obj); disposeObject(player.obj); }
-    const obj = princessModel(ctx.state.princess, { player: true });
+    const obj = avatarModel(ctx.state.avatar, { player: true });
     // aro de luz bajo los pies: en los temas oscuros el personaje no se pierde contra el piso
     const glow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.62, depthWrite: false }));
     glow.rotation.x = -Math.PI / 2; glow.position.y = 0.012; glow.renderOrder = -1;
@@ -217,8 +217,8 @@ export function createLife(r, ctx) {
   const butterflies = [];
   const wingGeos = [];
   {
-    const COLS = [['#ff9ccb', '#ffffff'], ['#cdb5ff', '#fff0c2'], ['#ffd166', '#ffffff'], ['#8fd3ff', '#ffffff'], ['#ffb38a', '#ffffff']];
-    const bodyV = new Voxels(); bodyV.box(0, 0, 0, 1, 1, 3, '#3b2340');
+    const COLS = [['#f1a181', '#ffffff'], ['#c3d1f1', '#fff0c2'], ['#ffd166', '#ffffff'], ['#8fd3ff', '#ffffff'], ['#ffb38a', '#ffffff']];
+    const bodyV = new Voxels(); bodyV.box(0, 0, 0, 1, 1, 3, '#3d2f2a');
     const bodyGeo = bodyV.toGeometry({ scale: 1 / 14, center: 'xyz', jitter: 0 });
     wingGeos.push(bodyGeo);
     const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
@@ -318,7 +318,7 @@ export function createLife(r, ctx) {
     get npcs() { return npcs; },
     get car() { return car; },
     get grid() { return grid; },
-    /** Saludo: la princesa mira a cámara y salta un poquito. */
+    /** Saludo: el personaje mira a cámara y salta un poquito. */
     dispose() {
       for (const w of npcs) disposeObject(w.obj);
       if (player) disposeObject(player.obj);

@@ -1,4 +1,4 @@
-// Joyas Reales — juego de combinar 3 (escena 'match3').
+// Joyas Brillantes — juego de combinar 3 (escena 'match3').
 // Tablero 8x8 en canvas de baja resolución escalado pixelado (escala entera en pixeles del dispositivo).
 // Motor de reglas en match3-engine.js, niveles en match3-levels.js, sprites en match3-sprites.js.
 import { icon } from '../core/icons.js';
@@ -207,7 +207,7 @@ export default function create(ctx) {
       const x = cellX(selected[1]), y = cellY(selected[0]);
       g.fillStyle = '#ffffff';
       g.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
-      g.fillStyle = 'rgba(255,126,182,0.35)';
+      g.fillStyle = 'rgba(238,138,92,0.35)';
       g.fillRect(x + 1, y + 1, CELL - 2, CELL - 2);
     }
     // gemas (recortadas a las celdas activas, así las que caen aparecen desde arriba)
@@ -244,7 +244,7 @@ export default function create(ctx) {
     if (selected) {
       const x = cellX(selected[1]), y = cellY(selected[0]);
       const o = Math.floor(T * 4) % 2;
-      g.fillStyle = '#e0528f';
+      g.fillStyle = '#c8673d';
       const L = 4, x0 = x - o, y0 = y - o, x1 = x + CELL - 1 + o, y1 = y + CELL - 1 + o;
       g.fillRect(x0, y0, L, 1); g.fillRect(x0, y0, 1, L);
       g.fillRect(x1 - L + 1, y0, L, 1); g.fillRect(x1, y0, 1, L);
@@ -311,13 +311,13 @@ export default function create(ctx) {
       if (e.kind === 'h') {
         const y = Math.round(cellY(e.r) + CELL / 2), cx = cellX(e.c) + CELL / 2;
         const x0 = Math.round(cx - (cx - MARGIN) * reach), x1 = Math.round(cx + (MARGIN + COLS * CELL - cx) * reach);
-        g.fillStyle = 'rgba(59,35,64,0.55)'; g.fillRect(x0, y - (w >> 1) - 3, x1 - x0, w + 6);
+        g.fillStyle = 'rgba(61,47,42,0.55)'; g.fillRect(x0, y - (w >> 1) - 3, x1 - x0, w + 6);
         g.fillStyle = e.color; g.fillRect(x0, y - (w >> 1) - 2, x1 - x0, w + 4);
         g.fillStyle = '#ffffff'; g.fillRect(x0, y - (w >> 1), x1 - x0, w);
       } else {
         const x = Math.round(cellX(e.c) + CELL / 2), cy = cellY(e.r) + CELL / 2;
         const y0 = Math.round(cy - (cy - MARGIN) * reach), y1 = Math.round(cy + (MARGIN + ROWS * CELL - cy) * reach);
-        g.fillStyle = 'rgba(59,35,64,0.55)'; g.fillRect(x - (w >> 1) - 3, y0, w + 6, y1 - y0);
+        g.fillStyle = 'rgba(61,47,42,0.55)'; g.fillRect(x - (w >> 1) - 3, y0, w + 6, y1 - y0);
         g.fillStyle = e.color; g.fillRect(x - (w >> 1) - 2, y0, w + 4, y1 - y0);
         g.fillStyle = '#ffffff'; g.fillRect(x - (w >> 1), y0, w, y1 - y0);
       }
@@ -421,7 +421,7 @@ export default function create(ctx) {
         else if (b.kind === 'bomb') { effects.push({ kind: 'ring', r: b.r, c: b.c, color, size: b.radius === 2 ? 2.8 : 1.7, t0, dur: 420 }); audio.sfx('bump'); audio.sfx('clear'); shake(b.radius === 2 ? 0.4 : 0.22); burst(b.r, b.c, color, 16, 120); }
         else if (b.kind === 'big') { for (let d = -1; d <= 1; d++) { effects.push({ kind: 'h', r: b.r + d, c: b.c, color, t0, dur: 420 }, { kind: 'v', r: b.r, c: b.c + d, color, t0, dur: 420 }); } audio.sfx('clear'); shake(0.4); }
         else if (b.kind === 'rainbow') { effects.push({ kind: 'lines', r: b.r, c: b.c, color, targets: b.targets, t0, dur: 600 }); audio.sfx('gem'); shake(0.2); }
-        else if (b.kind === 'all') { effects.push({ kind: 'flash', t0, dur: 600 }, { kind: 'ring', r: b.r, c: b.c, color: '#b58cff', size: 6, t0, dur: 700 }); audio.sfx('levelup'); shake(0.6); }
+        else if (b.kind === 'all') { effects.push({ kind: 'flash', t0, dur: 600 }, { kind: 'ring', r: b.r, c: b.c, color: '#7f9ee8', size: 6, t0, dur: 700 }); audio.sfx('levelup'); shake(0.6); }
       }));
     }
     // joyas que se van
@@ -521,7 +521,7 @@ export default function create(ctx) {
   }
 
   async function playShuffle(ph) {
-    banner('¡Mezclando!', 'lilac');
+    banner('¡Mezclando!', 'second');
     audio.sfx('swoosh');
     await wait(450);
     const ps = [];
@@ -544,7 +544,7 @@ export default function create(ctx) {
     const id = setTimeout(() => { timers.delete(id); el.remove(); }, 1000);
     timers.add(id);
   }
-  function banner(text, cls = 'pink', ms = 1300) {
+  function banner(text, cls = 'primary', ms = 1300) {
     const el = ui.h('div.m3-banner.' + cls, {}, text);
     fxLayer.append(el);
     const id = setTimeout(() => { timers.delete(id); el.remove(); }, ms);
@@ -734,7 +734,7 @@ export default function create(ctx) {
       finish(true);
     } else {
       await wait(300);
-      banner('¡Sin movidas!', 'lilac', 1400);
+      banner('¡Sin movidas!', 'second', 1400);
       await wait(1300);
       if (!alive) return;
       finish(false);
@@ -751,7 +751,7 @@ export default function create(ctx) {
     footEl.innerHTML = '';
     footEl.append(ui.h('button.btn.ghost.small.m3-skip', { html: `${icon('sparkle', 16)} Tocá para saltear`, onclick: (e) => { e.stopPropagation(); skipNow(); } }));
     if (engine.moves > 0) {
-      banner('¡Bonus!', 'pink', 1100);
+      banner('¡Bonus!', 'primary', 1100);
       audio.sfx('levelup');
       await wait(800);
       while (engine.moves > 0 && alive && !skipBonus) {
@@ -864,7 +864,7 @@ export default function create(ctx) {
     bar.innerHTML = '';
     bar.append(
       ui.h('button.icon-btn.m3-back', { 'aria-label': 'Volver a la ciudad', html: icon('back', 22), onclick: onBack }),
-      ui.h('div.game-title', {}, 'Joyas Reales'),
+      ui.h('div.game-title', {}, 'Joyas Brillantes'),
       ui.h('div.spacer'),
       ui.h('div.game-stat.m3-total', { html: `<small>Estrellas</small><b>${icon('star', 18)} ${Object.values(st.stars).reduce((a, b) => a + b, 0)}</b>` }),
     );
@@ -886,15 +886,15 @@ export default function create(ctx) {
     const starsRow = ui.h('div.m3-prestars', { html: [0, 1, 2].map(i => icon(i < got ? 'star' : 'starOff', i === 1 ? 40 : 32)).join('') });
     const goals = ui.h('div.m3-pregoals');
     for (const gl of c.goals) goals.append(ui.h('div.m3-pregoal', { html: `<span class="m3-pgi">${goalIcon(gl, 44)}</span><span>${goalText(gl, c)}</span>` }));
-    const meta = ui.h('div.m3-meta', { html: `<span class="chip pink">${icon('wand', 16)} ${c.moves} movidas</span>${c.shape !== 'lleno' ? `<span class="chip lilac">${icon('sparkle', 16)} Tablero ${shapeName(c.shape)}</span>` : ''}` });
+    const meta = ui.h('div.m3-meta', { html: `<span class="chip primary">${icon('wand', 16)} ${c.moves} movidas</span>${c.shape !== 'lleno' ? `<span class="chip second">${icon('sparkle', 16)} Tablero ${shapeName(c.shape)}</span>` : ''}` });
     const tip = ui.h('p.m3-tip', { html: `${icon('info', 16)} ${c.tip}` });
     const evHtml = eventChipHtml('match3', ui.esc);
     const ev = evHtml ? ui.h('div.m3-event', { html: evHtml }) : null;
     const boosts = boosterRow(BOOSTERS, boostSel, { audio });
-    const play = ui.h('button.btn.pink.block.m3-play', { html: `${icon('play', 22)} ¡Jugar!`, onclick: () => { audio.sfx('tap'); startLevel(n, consumeSelected(boostSel)); } });
+    const play = ui.h('button.btn.primary.block.m3-play', { html: `${icon('play', 22)} ¡Jugar!`, onclick: () => { audio.sfx('tap'); startLevel(n, consumeSelected(boostSel)); } });
     card.append(ribbon, starsRow, goals, meta, ...(ev ? [ev] : []), boosts, tip, play);
   }
-  function shapeName(s) { return { esquinas: 'esquinitas', centro: 'con laguna', corazon: 'corazón', diamante: 'diamante', cruz: 'cruz', reloj: 'reloj de arena', columnas: 'columnas', castillo: 'castillo', puente: 'puente' }[s] || s; }
+  function shapeName(s) { return { esquinas: 'esquinitas', centro: 'con laguna', corazon: 'corazón', diamante: 'diamante', cruz: 'cruz', reloj: 'reloj de arena', columnas: 'columnas', castillo: 'casita', puente: 'puente' }[s] || s; }
   function renderMap(map) {
     const st = m3state();
     const maxL = st.level;
@@ -991,7 +991,7 @@ export default function create(ctx) {
       if (boostsUsed.size) await showBoosts(bombCells);
       if (!alive || mode !== 'play') return;
       busy = false; lastAction = now();
-      banner(`Nivel ${level}`, 'pink', 1000);
+      banner(`Nivel ${level}`, 'primary', 1000);
     });
   }
   /** pone n bombas en celdas comunes, lejos de los bordes y separadas entre sí. Devuelve [[r,c],...] */

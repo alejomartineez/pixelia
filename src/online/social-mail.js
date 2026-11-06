@@ -61,7 +61,7 @@ export async function renderRequests(api, tok) {
         <div class="soc-muted">Hasta 3 pedidos por día. Tu gente te ayuda y gana premios.</div>
         <div class="soc-row" style="margin-top:4px"><span class="soc-slots">${[0, 1, 2].map(i => `<i class="${i < used ? 'used' : ''}"></i>`).join('')}</span><small class="soc-muted">${3 - used} disponible${3 - used === 1 ? '' : 's'} hoy</small></div></div>`,
     });
-    const ask = h('button.btn.pink', { html: `${icon('plus', 18)} Pedir`, disabled: used >= 3 });
+    const ask = h('button.btn.primary', { html: `${icon('plus', 18)} Pedir`, disabled: used >= 3 });
     ask.onclick = () => { audio.sfx('tap'); import('./social-trade.js').then(m => m.openRequestCreator(api.ctx, { onDone: () => api.rerender() })); };
     head.append(ask);
     mine.append(head);

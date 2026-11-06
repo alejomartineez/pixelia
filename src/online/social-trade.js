@@ -73,7 +73,7 @@ export async function openTradeEditor(ctx, opts = {}) {
 
   const body = h('div');
   const err = h('div.soc-err');
-  const send = h('button.btn.lilac', { html: `${icon('🔄', 20)} Proponer` });
+  const send = h('button.btn.second', { html: `${icon('🔄', 20)} Proponer` });
   const m = edModal(`Cambiar con ${friend.name}`, '🔄', body);
   const foot = h('div.modal-foot');
   foot.append(h('button.btn.ghost', { html: 'Cancelar', onclick: () => { audio.sfx('close'); m.close(); } }), send);
@@ -226,7 +226,7 @@ export async function openRequestCreator(ctx, opts = {}) {
   let item = null, coins = null, uid = null;
   const body = h('div');
   const err = h('div.soc-err');
-  const send = h('button.btn.pink', { html: `${icon('🤝', 20)} Publicar pedido` });
+  const send = h('button.btn.primary', { html: `${icon('🤝', 20)} Publicar pedido` });
   const m = edModal('Pedí una mano', '🤝', body);
   const foot = h('div.modal-foot');
   foot.append(h('button.btn.ghost', { html: 'Cancelar', onclick: () => { audio.sfx('close'); m.close(); } }), send);
@@ -265,7 +265,7 @@ export async function openRequestCreator(ctx, opts = {}) {
       area.append(h('h5', { html: `${icon('🃏', 18)} ¿Qué figurita te falta? <small>las que tienen tus amigos, primero</small>` }));
       const miss = STICKERS.filter(s => stickerCount(s.id) === 0).map(s => ({ id: s.id, who: friendsWith(s.id), s }))
         .sort((a, b) => (b.who.length > 0) - (a.who.length > 0) || a.s.n - b.s.n);
-      if (!miss.length) { area.append(h('div', { html: emptyHtml('👑', '¡No te falta ninguna!', 'Completaste el álbum. Sos una estrella.') })); return; }
+      if (!miss.length) { area.append(h('div', { html: emptyHtml('🏆', '¡No te falta ninguna!', 'Completaste el álbum. Sos una estrella.') })); return; }
       const g = h('div.soc-pickgrid');
       for (const it of miss) {
         const b = h('button.soc-pick' + (sticker === it.id ? '.on' : ''), { 'aria-label': `Figurita ${it.s.n}` });

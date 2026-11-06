@@ -55,7 +55,7 @@ export function flyTo(x, y, kind = 'coins', count = 6) {
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.innerHTML = icon(name, 26);
-    Object.assign(el.style, { position: 'absolute', left: x + 'px', top: y + 'px', filter: 'drop-shadow(0 2px 0 rgba(59,35,64,.35))' });
+    Object.assign(el.style, { position: 'absolute', left: x + 'px', top: y + 'px', filter: 'drop-shadow(0 2px 0 rgba(61,47,42,.35))' });
     layer.append(el);
     const dx = (Math.random() - 0.5) * 110, dy = (Math.random() - 0.5) * 90 - 20;
     const anim = el.animate([
@@ -81,7 +81,7 @@ export function burst(ox = innerWidth / 2, oy = innerHeight * 0.4, n = 90) {
   const scale = 4;
   cv.width = Math.ceil(innerWidth / scale); cv.height = Math.ceil(innerHeight / scale);
   const g = cv.getContext('2d');
-  const cols = ['#ff7eb6', '#b58cff', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff', '#ffc2dc'];
+  const cols = ['#ee8a5c', '#7f9ee8', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff', '#ffd8c4'];
   const parts = Array.from({ length: n }, () => {
     const a = Math.random() * Math.PI * 2, sp = 1.2 + Math.random() * 3.2;
     return { x: ox / scale, y: oy / scale, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2.2, c: cols[(Math.random() * cols.length) | 0], s: Math.random() < 0.25 ? 2 : 1, star: Math.random() < 0.18 };
@@ -248,7 +248,7 @@ export function openShell(ctx, name, { title = '', ic, sheet = false, className 
  * Confirmación (Sí/No) con la misma cáscara: Esc o tocar afuera = cancelar (el confirm del núcleo no escucha Esc).
  * Si ya hay una igual abierta (doble toque) resuelve false en vez de apilar otra.
  */
-export function askConfirm(ctx, { title, html, ok = 'Sí', cancel = 'No', okCls = 'pink', ic } = {}) {
+export function askConfirm(ctx, { title, html, ok = 'Sí', cancel = 'No', okCls = 'primary', ic } = {}) {
   return new Promise(res => {
     let v = false;
     const sh = openShell(ctx, 'confirm:' + title, {
@@ -263,8 +263,8 @@ export function askConfirm(ctx, { title, html, ok = 'Sí', cancel = 'No', okCls 
 
 // ---------- Íconos pixel propios (minijuegos, bandera, compartir) ----------
 const PAL = {
-  k: '#3b2340', w: '#ffffff', p: '#ff7eb6', P: '#e0528f', q: '#ffc2dc', l: '#b58cff', L: '#8a5ee0', m: '#6fe3c1', M: '#3cbf9a',
-  s: '#8fd3ff', S: '#4fa8e0', y: '#ffd166', Y: '#e8a93a', g: '#d8d2e6', G: '#a99fbf', r: '#ff6f6f', c: '#fff4e6', o: '#6b4a73',
+  k: '#3d2f2a', w: '#ffffff', p: '#ee8a5c', P: '#c8673d', q: '#ffd8c4', l: '#7f9ee8', L: '#5a78c4', m: '#6fe3c1', M: '#3cbf9a',
+  s: '#8fd3ff', S: '#4fa8e0', y: '#ffd166', Y: '#e8a93a', g: '#ddd5c8', G: '#ada190', r: '#ff6f6f', c: '#fdf6e3', o: '#6e5a4f',
 };
 /** Mapa de caracteres -> canvas de 1 px por celda (icons.js lo agranda nítido al tamaño de pantalla). */
 function gridToCanvas(rows, pal = PAL) {

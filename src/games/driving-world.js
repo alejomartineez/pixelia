@@ -1,4 +1,4 @@
-// Paseo Real — mundo vóxel: biomas, piso de la ruta, decorados, ítems y obstáculos.
+// Ruta Pixel — mundo vóxel: biomas, piso de la ruta, decorados, ítems y obstáculos.
 // Todas las geometrías se generan una sola vez y quedan cacheadas a nivel de módulo
 // (si el renderer las libera, three.js las vuelve a subir a la GPU solo).
 import * as THREE from 'three';
@@ -17,35 +17,35 @@ const HALF_CELLS = 56;              // el piso cubre x ∈ [-14, 14]
 // ---------- Biomas ----------
 export const BIOMES = [
   {
-    id: 'ciudad', name: 'Ciudad Rosa', icon: 'castle',
-    skyTop: '#86cdfb', skyBot: '#ffe2f1', fog: '#ffe2f1', sun: '#fff6d8',
-    hemiSky: '#ffffff', hemiGround: '#e6c9f2',
-    road: '#a79dc2', line: '#fff6ea', curbA: '#ff7eb6', curbB: '#ffffff',
-    walkA: '#fff4e6', walkB: '#ffd6ea', grass: '#9be38a', outerL: '#9be38a', outerR: '#9be38a',
+    id: 'ciudad', name: 'Ciudad Centro', icon: 'castle',
+    skyTop: '#86cdfb', skyBot: '#f9f2e8', fog: '#f9f2e8', sun: '#fff6d8',
+    hemiSky: '#ffffff', hemiGround: '#c9d5f2',
+    road: '#909dba', line: '#fff6ea', curbA: '#ee8a5c', curbB: '#ffffff',
+    walkA: '#fdf6e3', walkB: '#fde9d8', grass: '#9be38a', outerL: '#9be38a', outerR: '#9be38a',
   },
   {
     id: 'flores', name: 'Campo de Flores', icon: '🌷',
     skyTop: '#7fd0ff', skyBot: '#fff3c9', fog: '#fff3c9', sun: '#fffbe0',
     hemiSky: '#ffffff', hemiGround: '#d8e8b0',
-    road: '#ab9fbf', line: '#fffbe8', curbA: '#fff4e6', curbB: '#ffe9a8',
+    road: '#bfb29f', line: '#fffbe8', curbA: '#fdf6e3', curbB: '#ffe9a8',
     walkA: '#e8c99a', walkB: '#dfbd8b', grass: '#8edb78', outerL: '#8edb78', outerR: '#8edb78',
-    flowers: ['#ff7eb6', '#ffd166', '#ffffff', '#b58cff', '#ff8f8f'],
+    flowers: ['#ee8a5c', '#ffd166', '#ffffff', '#7f9ee8', '#ff8f8f'],
   },
   {
     id: 'playa', name: 'Playa Dorada', icon: '🏖️',
-    skyTop: '#ff9fc4', skyBot: '#ffe0b8', fog: '#ffe0bf', sun: '#ffe3b0',
+    skyTop: '#f1a283', skyBot: '#ffe0b8', fog: '#ffe0bf', sun: '#ffe3b0',
     hemiSky: '#fff1e0', hemiGround: '#f7c9b0',
-    road: '#ad9cba', line: '#fff6ea', curbA: '#ffffff', curbB: '#ffe3a8',
+    road: '#baae9c', line: '#fff6ea', curbA: '#ffffff', curbB: '#ffe3a8',
     walkA: '#c99566', walkB: '#b9855a', grass: '#ffe6ad', outerL: '#ffe6ad', outerR: '#78cdf5',
     sand: '#ffe6ad', sea: '#78cdf5', foam: '#f4fbff',
   },
   {
     id: 'cerezos', name: 'Bosque de Cerezos', icon: '🌸',
-    skyTop: '#bfaeff', skyBot: '#ffe0f0', fog: '#ffe0f0', sun: '#fff0f6',
-    hemiSky: '#fff4fb', hemiGround: '#e3c3ef',
-    road: '#9c95b5', line: '#fff0f6', curbA: '#d8d2e6', curbB: '#bfb6d6',
-    walkA: '#d8d2e6', walkB: '#c9c1dc', grass: '#b4dd94', outerL: '#b4dd94', outerR: '#b4dd94',
-    petals: ['#ffb3d4', '#ff9ccb', '#ffd6ea'],
+    skyTop: '#a9bceb', skyBot: '#f9f1e6', fog: '#f9f1e6', sun: '#fcf8f3',
+    hemiSky: '#fdfaf6', hemiGround: '#c3d0ef',
+    road: '#b5a895', line: '#fcf8f3', curbA: '#ddd5c8', curbB: '#d6c9b6',
+    walkA: '#ddd5c8', walkB: '#dcd1c1', grass: '#b4dd94', outerL: '#b4dd94', outerR: '#b4dd94',
+    petals: ['#fbd7b7', '#f1a181', '#fde9d8'],
   },
 ];
 export const biomeIndexAt = (m) => ((Math.floor(Math.max(0, m) / BIOME_LEN) % BIOMES.length) + BIOMES.length) % BIOMES.length;
@@ -79,7 +79,7 @@ export function applyBend(mat, uniform) {
 
 export function makeMaterials(bendUniform) {
   const base = applyBend(new THREE.MeshLambertMaterial({ vertexColors: true }), bendUniform);
-  const glow = applyBend(new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x4a3340 }), bendUniform);
+  const glow = applyBend(new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x4a3a33 }), bendUniform);
   const bright = applyBend(new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x6a5048 }), bendUniform);
   const coin = applyBend(new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x7a5a18 }), bendUniform);
   const plain = applyBend(new THREE.MeshLambertMaterial({ color: 0xffffff }), bendUniform);
@@ -269,8 +269,8 @@ export function outerGeo() {
 // =====================================================================
 // DECORADOS (8 vóxeles por unidad; el frente mira a +Z)
 // =====================================================================
-const WALLS = ['#ffd9ec', '#e6dcff', '#d4f5ea', '#d9efff', '#fff0c2', '#ffe0cc'];
-const ROOFS = ['#ff7eb6', '#b58cff', '#4fa8e0', '#ff8f9a', '#3cbf9a', '#e8a93a'];
+const WALLS = ['#fdebdb', '#f8f0e3', '#d4f5ea', '#d9efff', '#fff0c2', '#ffe0cc'];
+const ROOFS = ['#ee8a5c', '#7f9ee8', '#4fa8e0', '#ff8f9a', '#3cbf9a', '#e8a93a'];
 const GLASS = '#bfe6ff';
 
 function windowAt(v, x, y, z, w, h, axis, out) {
@@ -288,7 +288,7 @@ function houseVox(seed) {
   const v = new Voxels();
   const wc = WALLS[seed % WALLS.length], rc = ROOFS[(seed * 5 + 2) % ROOFS.length];
   const W = 18 + 2 * R.int(3), D = 14, H = R() < 0.5 ? 12 : 17;
-  v.box(-1, 0, -1, W + 2, 1, D + 2, '#d8d2e6');
+  v.box(-1, 0, -1, W + 2, 1, D + 2, '#ddd5c8');
   v.box(0, 1, 0, W, H, D, (x, y) => (y <= 2 ? shade(wc, -0.1) : wc));
   for (const [cx, cz] of [[0, 0], [W - 1, 0], [0, D - 1], [W - 1, D - 1]]) v.box(cx, 1, cz, 1, H, 1, '#ffffff');
   // puerta
@@ -302,7 +302,7 @@ function houseVox(seed) {
   windowAt(v, 2, 4, D - 1, 3, 3, 'z', 1);
   windowAt(v, W - 5, 4, D - 1, 3, 3, 'z', 1);
   v.box(1, 3, D, 5, 1, 2, '#c58a5c'); v.box(W - 6, 3, D, 5, 1, 2, '#c58a5c');
-  for (let i = 0; i < 5; i++) { v.set(1 + i, 4, D + 1, i % 2 ? P.pink : '#ff5a8a'); v.set(W - 6 + i, 4, D + 1, i % 2 ? '#ffd166' : P.pink); }
+  for (let i = 0; i < 5; i++) { v.set(1 + i, 4, D + 1, i % 2 ? P.clay : '#ff5a8a'); v.set(W - 6 + i, 4, D + 1, i % 2 ? '#ffd166' : P.clay); }
   if (H > 14) { windowAt(v, 3, 12, D - 1, 3, 3, 'z', 1); windowAt(v, W - 6, 12, D - 1, 3, 3, 'z', 1); }
   // ventanas laterales (se ven desde la ruta)
   for (const sx of [0, W - 1]) {
@@ -312,9 +312,9 @@ function houseVox(seed) {
   }
   // techo a dos aguas + chimenea
   v.roofX(-1, H + 1, -1, W + 2, D + 2, rc, 0);
-  v.box(W - 6, H + 3, 3, 2, 6, 2, '#efe7f7'); v.box(W - 6, H + 9, 3, 2, 1, 2, '#a99fbf');
+  v.box(W - 6, H + 3, 3, 2, 6, 2, '#f7f1e7'); v.box(W - 6, H + 9, 3, 2, 1, 2, '#ada190');
   // arbustitos
-  v.sphere(-1, 2, D + 1, 1.6, 1.6, 1.6, P.leaf); v.set(-1, 3, D + 2, P.pink);
+  v.sphere(-1, 2, D + 1, 1.6, 1.6, 1.6, P.leaf); v.set(-1, 3, D + 2, P.clay);
   v.sphere(W, 2, D + 1, 1.6, 1.6, 1.6, P.leaf); v.set(W, 3, D + 2, '#ffd166');
   return v;
 }
@@ -323,10 +323,10 @@ function shopVox(seed) {
   const R = rng(seed + 77);
   const v = new Voxels();
   const kind = seed % 3;
-  const wc = ['#fff4e6', '#e6dcff', '#d4f5ea'][kind];
-  const stripe = ['#ff7eb6', '#b58cff', '#3cbf9a'][kind];
+  const wc = ['#fdf6e3', '#f8f0e3', '#d4f5ea'][kind];
+  const stripe = ['#ee8a5c', '#7f9ee8', '#3cbf9a'][kind];
   const W = 20, D = 14, H = 14;
-  v.box(-1, 0, -1, W + 2, 1, D + 2, '#d8d2e6');
+  v.box(-1, 0, -1, W + 2, 1, D + 2, '#ddd5c8');
   v.box(0, 1, 0, W, H, D, wc);
   v.box(0, H + 1, 0, W, 1, D, shade(wc, -0.12));
   for (let x = 0; x < W; x += 2) v.set(x, H + 2, 0, wc), v.set(x, H + 2, D - 1, wc);
@@ -340,15 +340,15 @@ function shopVox(seed) {
   // cartel + decoración del techo según tipo
   v.box(4, H + 2, D - 2, 12, 4, 1, '#ffffff'); v.box(5, H + 3, D - 1, 10, 2, 1, stripe);
   if (kind === 0) { // pastelería: torta gigante
-    v.cylinder(10, H + 2, 6, 5, 3, '#fff0f6'); v.cylinder(10, H + 5, 6, 4, 3, '#ffc2dc'); v.cylinder(10, H + 8, 6, 3, 2, '#fff0f6');
-    for (let a = 0; a < 8; a++) v.set(10 + Math.round(Math.cos(a) * 5), H + 4, 6 + Math.round(Math.sin(a) * 5), '#ff7eb6');
+    v.cylinder(10, H + 2, 6, 5, 3, '#fcf8f3'); v.cylinder(10, H + 5, 6, 4, 3, '#ffd8c4'); v.cylinder(10, H + 8, 6, 3, 2, '#fcf8f3');
+    for (let a = 0; a < 8; a++) v.set(10 + Math.round(Math.cos(a) * 5), H + 4, 6 + Math.round(Math.sin(a) * 5), '#ee8a5c');
     v.box(10, H + 10, 6, 1, 2, 1, '#ff5a6e');
   } else if (kind === 1) { // heladería: cucurucho
     for (let y = 0; y < 7; y++) { const r = 0.6 + y * 0.45; v.cylinder(10, H + 2 + y, 6, r, 1, y % 2 ? '#e8b878' : '#d9a066'); }
-    v.sphere(10, H + 11, 6, 3.4, 3, 3.4, '#ffc2dc'); v.sphere(10, H + 14, 6, 2.6, 2.4, 2.6, '#c4f7e8');
+    v.sphere(10, H + 11, 6, 3.4, 3, 3.4, '#ffd8c4'); v.sphere(10, H + 14, 6, 2.6, 2.4, 2.6, '#c4f7e8');
     v.set(10, H + 17, 6, '#ff5a6e');
   } else { // florería: macetas y flores
-    for (let i = 0; i < 4; i++) { v.box(2 + i * 5, H + 2, 5, 3, 2, 3, '#c58a5c'); v.sphere(3 + i * 5, H + 5, 6, 1.8, 1.6, 1.8, P.leaf); v.set(3 + i * 5, H + 7, 6, R.pick(['#ff7eb6', '#ffd166', '#b58cff', '#ffffff'])); }
+    for (let i = 0; i < 4; i++) { v.box(2 + i * 5, H + 2, 5, 3, 2, 3, '#c58a5c'); v.sphere(3 + i * 5, H + 5, 6, 1.8, 1.6, 1.8, P.leaf); v.set(3 + i * 5, H + 7, 6, R.pick(['#ee8a5c', '#ffd166', '#7f9ee8', '#ffffff'])); }
   }
   for (const sx of [0, W - 1]) windowAt(v, sx, 5, 5, 3, 3, 'x', sx === 0 ? -1 : 1);
   return v;
@@ -356,12 +356,12 @@ function shopVox(seed) {
 
 function lampVox() {
   const v = new Voxels();
-  v.box(-1, 0, -1, 3, 1, 3, '#6b4a73');
-  v.box(0, 1, 0, 1, 12, 1, '#8a6a93');
-  v.box(-1, 12, -1, 3, 1, 3, '#6b4a73');
+  v.box(-1, 0, -1, 3, 1, 3, '#6e5a4f');
+  v.box(0, 1, 0, 1, 12, 1, '#846a5f');
+  v.box(-1, 12, -1, 3, 1, 3, '#6e5a4f');
   v.box(-1, 13, -1, 3, 3, 3, '#fff0c2'); v.set(0, 14, 0, '#ffe08a');
-  v.pyramid(-2, 16, -2, 5, 5, P.pink); v.set(0, 19, 0, P.gold);
-  v.box(-1, 8, 1, 1, 2, 1, P.pink); v.box(1, 8, 1, 1, 2, 1, P.pink); // moñito
+  v.pyramid(-2, 16, -2, 5, 5, P.clay); v.set(0, 19, 0, P.gold);
+  v.box(-1, 8, 1, 1, 2, 1, P.clay); v.box(1, 8, 1, 1, 2, 1, P.clay); // moñito
   return v;
 }
 
@@ -379,7 +379,7 @@ function treeVox(seed, kind = 'round') {
     const th = big ? 8 : 5;
     v.box(4, 0, 4, 2, th, 2, '#7a4a3a'); v.box(6, th - 2, 4, 2, 1, 1, '#7a4a3a'); v.box(3, th - 1, 5, 1, 1, 1, '#7a4a3a');
     const rr = big ? 5 : 3.6;
-    const cols = ['#ffb3d4', '#ff9ccb', '#ffd6ea', '#ffc2dc'];
+    const cols = ['#fbd7b7', '#f1a181', '#fde9d8', '#ffd8c4'];
     const pc = (x, y, z) => { const n = (x * 7 + y * 13 + z * 5 + seed) % 11; return n < 2 ? '#ffffff' : n < 5 ? cols[1] : y > th + rr ? cols[2] : cols[0]; };
     v.sphere(5, th + rr * 0.8, 5, rr, rr * 0.8, rr, pc);
     v.sphere(5 + rr * 0.7, th + rr * 0.6, 5, rr * 0.7, rr * 0.6, rr * 0.7, pc);
@@ -415,31 +415,31 @@ function bushVox(seed) {
   const v = new Voxels();
   const R = rng(seed + 9);
   v.sphere(3, 2, 3, 3.4, 2.4, 3, (x, y) => (y > 2 ? '#7fd67a' : '#5fc46a'));
-  const fc = ['#ff7eb6', '#ffffff', '#ffd166', '#b58cff'][seed % 4];
+  const fc = ['#ee8a5c', '#ffffff', '#ffd166', '#7f9ee8'][seed % 4];
   for (let i = 0; i < 7; i++) v.set(R.int(7), 2 + R.int(3), R.int(7), fc);
   return v;
 }
 
 function planterVox(seed) {
   const v = new Voxels();
-  v.box(0, 0, 0, 10, 3, 4, '#efe7f7'); v.box(0, 3, 0, 10, 1, 4, '#d8d2e6');
-  const cols = ['#ff7eb6', '#ffd166', '#b58cff', '#ffffff', '#ff8f8f'];
+  v.box(0, 0, 0, 10, 3, 4, '#f7f1e7'); v.box(0, 3, 0, 10, 1, 4, '#ddd5c8');
+  const cols = ['#ee8a5c', '#ffd166', '#7f9ee8', '#ffffff', '#ff8f8f'];
   for (let i = 0; i < 9; i++) { v.set(1 + i, 4, 1 + (i % 2), P.leaf); v.set(1 + i, 5, 1 + (i % 2), cols[(i + seed) % cols.length]); }
   return v;
 }
 
 function benchVox() {
   const v = new Voxels();
-  v.box(0, 0, 0, 1, 3, 4, '#6b4a73'); v.box(11, 0, 0, 1, 3, 4, '#6b4a73');
-  v.box(0, 3, 0, 12, 1, 4, '#ff9ccb'); v.box(0, 4, 3, 12, 3, 1, '#ff9ccb');
-  v.box(0, 5, 3, 12, 1, 1, '#ffc2dc');
+  v.box(0, 0, 0, 1, 3, 4, '#6e5a4f'); v.box(11, 0, 0, 1, 3, 4, '#6e5a4f');
+  v.box(0, 3, 0, 12, 1, 4, '#f1a181'); v.box(0, 4, 3, 12, 3, 1, '#f1a181');
+  v.box(0, 5, 3, 12, 1, 1, '#ffd8c4');
   return v;
 }
 
 function flowerPatchVox(seed) {
   const R = rng(seed + 500);
   const v = new Voxels();
-  const cols = ['#ff7eb6', '#ffd166', '#ffffff', '#b58cff', '#ff8f8f', '#8fd3ff'];
+  const cols = ['#ee8a5c', '#ffd166', '#ffffff', '#7f9ee8', '#ff8f8f', '#8fd3ff'];
   for (let i = 0; i < 18; i++) {
     const x = R.int(12), z = R.int(12), h = 1 + R.int(3), c = R.pick(cols);
     for (let y = 0; y < h; y++) v.set(x, y, z, P.leaf);
@@ -451,7 +451,7 @@ function flowerPatchVox(seed) {
 
 function tulipFieldVox(seed) {
   const v = new Voxels();
-  const rows = [['#ff7eb6', '#ffc2dc'], ['#ffd166', '#fff0c2'], ['#b58cff', '#dcc9ff'], ['#ff5a6e', '#ff9ca8'], ['#ffffff', '#f4ecff']];
+  const rows = [['#ee8a5c', '#ffd8c4'], ['#ffd166', '#fff0c2'], ['#7f9ee8', '#dbe4fa'], ['#ff5a6e', '#ff9ca8'], ['#ffffff', '#fbf7f0']];
   for (let r = 0; r < 6; r++) {
     const [c1, c2] = rows[(r + seed) % rows.length];
     for (let x = 0; x < 20; x++) {
@@ -477,7 +477,7 @@ function sunflowerVox(seed) {
 function fenceVox() {
   const v = new Voxels();
   for (let z = 0; z < 22; z++) { v.set(0, 3, z, '#ffffff'); v.set(0, 5, z, '#ffffff'); }
-  for (let z = 0; z < 22; z += 4) { v.box(0, 0, z, 1, 7, 1, '#fff4e6'); v.set(0, 7, z, '#ffc2dc'); }
+  for (let z = 0; z < 22; z += 4) { v.box(0, 0, z, 1, 7, 1, '#fdf6e3'); v.set(0, 7, z, '#ffd8c4'); }
   return v;
 }
 
@@ -485,24 +485,24 @@ function windmillVox() {
   const v = new Voxels();
   for (let y = 0; y < 24; y++) {
     const r = 6 - y * 0.12;
-    v.cylinder(0, y, 0, r, 1, (y >> 2) % 2 ? '#fff4e6' : '#ffe9f4');
+    v.cylinder(0, y, 0, r, 1, (y >> 2) % 2 ? '#fdf6e3' : '#fbefdc');
   }
   v.box(-2, 0, 4, 4, 7, 2, P.wood); v.box(-2, 7, 5, 4, 1, 1, '#ffffff');
   windowAt(v, -1, 13, 4, 2, 2, 'z', 1);
-  for (let s = 0; s < 6; s++) v.cylinder(0, 24 + s, 0, 5.4 - s, 1, s % 2 ? '#ff9ccb' : P.pink);
-  v.box(-1, 18, 3, 3, 3, 3, '#a99fbf');
+  for (let s = 0; s < 6; s++) v.cylinder(0, 24 + s, 0, 5.4 - s, 1, s % 2 ? '#f1a181' : P.clay);
+  v.box(-1, 18, 3, 3, 3, 3, '#ada190');
   return v;
 }
 function windmillBladesVox() {
   const v = new Voxels();
   for (let s = 0; s < 4; s++) {
     for (let l = 2; l < 15; l++) for (let w = 0; w < 3; w++) {
-      const c = l > 11 ? P.pink : ((l + w) % 2 ? '#ffffff' : '#f4e6ff');
+      const c = l > 11 ? P.clay : ((l + w) % 2 ? '#ffffff' : '#faf4eb');
       const [x, y] = s === 0 ? [w - 1, l] : s === 1 ? [l, -w + 1] : s === 2 ? [-w + 1, -l] : [-l, w - 1];
       v.set(x, y, 0, c);
     }
   }
-  v.box(-1, -1, 0, 3, 3, 2, '#8a6a93');
+  v.box(-1, -1, 0, 3, 3, 2, '#846a5f');
   return v;
 }
 
@@ -514,14 +514,14 @@ function barnVox() {
   v.box(6, 0, D, 8, 9, 1, '#ffffff');
   for (let i = 0; i < 7; i++) { v.set(7 + i, 1 + i, D, '#ffffff'); v.set(13 - i, 1 + i, D, '#ffffff'); }
   v.box(7, 1, D - 1, 6, 7, 1, '#e86a7a');
-  v.roofX(-1, H, -1, W + 2, D + 2, '#8a5ee0', 0);
+  v.roofX(-1, H, -1, W + 2, D + 2, '#5a78c4', 0);
   v.box(8, H + 2, D - 1, 4, 3, 2, '#ffffff'); v.box(9, H + 3, D, 2, 1, 1, '#fff0c2');
   return v;
 }
 
 function umbrellaVox(seed) {
   const v = new Voxels();
-  const c = ['#ff7eb6', '#8fd3ff', '#ffd166', '#b58cff'][seed % 4];
+  const c = ['#ee8a5c', '#8fd3ff', '#ffd166', '#7f9ee8'][seed % 4];
   v.box(0, 0, 0, 1, 13, 1, '#ffffff');
   for (let s = 0; s < 4; s++) {
     const r = 7 - s * 1.7;
@@ -539,13 +539,13 @@ function umbrellaVox(seed) {
 
 function hutVox(seed) {
   const v = new Voxels();
-  const c = ['#8fd3ff', '#ff9ccb', '#6fe3c1', '#ffd166'][seed % 4];
+  const c = ['#8fd3ff', '#f1a181', '#6fe3c1', '#ffd166'][seed % 4];
   const W = 12, D = 12, H = 12;
   v.box(-1, 0, -1, W + 2, 1, D + 2, '#c99566');
   v.box(0, 1, 0, W, H, D, (x, y, z) => ((x + z) % 4 < 2 ? c : '#ffffff'));
   v.box(4, 1, D - 1, 4, 7, 1, P.wood); v.box(4, 1, D, 4, 7, 1, null);
   v.roofX(-1, H + 1, -1, W + 2, D + 2, shade(c, -0.25), 0);
-  v.box(W + 1, 1, 3, 1, 8, 2, '#ff7eb6'); // tabla de surf apoyada
+  v.box(W + 1, 1, 3, 1, 8, 2, '#ee8a5c'); // tabla de surf apoyada
   return v;
 }
 
@@ -567,80 +567,87 @@ function sandcastleVox() {
   v.box(0, 0, 0, 12, 3, 12, s);
   for (const [x, z] of [[0, 0], [9, 0], [0, 9], [9, 9]]) { v.box(x, 3, z, 3, 3, 3, sd); v.set(x + 1, 6, z + 1, s); }
   v.box(4, 3, 4, 4, 6, 4, s); v.set(5, 9, 5, sd); v.set(6, 9, 6, sd);
-  v.box(6, 10, 5, 1, 4, 1, '#ffffff'); v.box(7, 12, 5, 3, 2, 1, P.pink);
+  v.box(6, 10, 5, 1, 4, 1, '#ffffff'); v.box(7, 12, 5, 3, 2, 1, P.clay);
   v.set(2, 0, 13, '#ff6f6f'); v.set(3, 0, 13, '#ff6f6f'); // estrellita de mar
   return v;
 }
 
 function rockVox(seed) {
   const v = new Voxels();
-  v.sphere(3, 1.5, 3, 3 + (seed % 2), 2.2, 2.6, (x, y) => (y > 2 ? '#e2dcef' : '#c4bad8'));
+  v.sphere(3, 1.5, 3, 3 + (seed % 2), 2.2, 2.6, (x, y) => (y > 2 ? '#efe7dc' : '#d8ccba'));
   return v;
 }
 
 function buoyVox(seed) {
   const v = new Voxels();
-  const c = seed % 2 ? '#ff6f6f' : '#ff7eb6';
+  const c = seed % 2 ? '#ff6f6f' : '#ee8a5c';
   v.cylinder(2, 0, 2, 2.4, 2, '#ffffff'); v.cylinder(2, 2, 2, 2, 2, c); v.cylinder(2, 4, 2, 1.4, 2, '#ffffff');
-  v.box(2, 6, 2, 1, 3, 1, '#6b4a73'); v.box(2, 9, 2, 1, 1, 1, '#ffd166');
+  v.box(2, 6, 2, 1, 3, 1, '#6e5a4f'); v.box(2, 9, 2, 1, 1, 1, '#ffd166');
   return v;
 }
 
 function sailboatVox(seed) {
   const v = new Voxels();
-  const sail = ['#ffffff', '#ffc2dc', '#dcc9ff'][seed % 3];
-  for (let z = 0; z < 18; z++) { const w = z < 3 ? 1 + z : z > 14 ? 1 + (17 - z) : 4; v.box(-w, 0, z, w * 2, 3, 1, z % 2 ? '#ffffff' : '#f4f0ff'); }
+  const sail = ['#ffffff', '#ffd8c4', '#dbe4fa'][seed % 3];
+  for (let z = 0; z < 18; z++) { const w = z < 3 ? 1 + z : z > 14 ? 1 + (17 - z) : 4; v.box(-w, 0, z, w * 2, 3, 1, z % 2 ? '#ffffff' : '#fcf8f3'); }
   v.box(-4, 3, 2, 8, 1, 14, '#c99566');
-  v.box(0, 3, 8, 1, 22, 1, '#8a6a93');
+  v.box(0, 3, 8, 1, 22, 1, '#846a5f');
   for (let y = 0; y < 18; y++) for (let z = 0; z < Math.floor((18 - y) * 0.45); z++) v.set(0, 6 + y, 9 + z, (y >> 2) % 2 ? sail : '#ffffff');
   for (let y = 0; y < 14; y++) for (let z = 0; z < Math.floor((14 - y) * 0.35); z++) v.set(0, 6 + y, 7 - z, sail);
-  v.box(0, 25, 8, 1, 2, 3, P.pink);
+  v.box(0, 25, 8, 1, 2, 3, P.clay);
   return v;
 }
 
 function stoneLanternVox() {
   const v = new Voxels();
-  v.box(-2, 0, -2, 5, 1, 5, '#a99fbf'); v.box(-1, 1, -1, 3, 5, 3, '#c4bad8');
-  v.box(-2, 6, -2, 5, 1, 5, '#a99fbf');
+  v.box(-2, 0, -2, 5, 1, 5, '#ada190'); v.box(-1, 1, -1, 3, 5, 3, '#d8ccba');
+  v.box(-2, 6, -2, 5, 1, 5, '#ada190');
   v.box(-1, 7, -1, 3, 3, 3, '#ffe9a8'); v.box(0, 8, -1, 1, 1, 3, '#fff7d6');
-  v.pyramid(-3, 10, -3, 7, 7, '#8f86a8'); v.set(0, 13, 0, '#ff9ccb');
+  v.pyramid(-3, 10, -3, 7, 7, '#a89a86'); v.set(0, 13, 0, '#f1a181');
   return v;
 }
 
 function mushroomVox(seed) {
   const v = new Voxels();
-  const cap = ['#ff6f8f', '#b58cff', '#ffb347'][seed % 3];
-  v.cylinder(3, 0, 3, 1.4, 4, '#fff4e6');
+  const cap = ['#ff6f8f', '#7f9ee8', '#ffb347'][seed % 3];
+  v.cylinder(3, 0, 3, 1.4, 4, '#fdf6e3');
   for (let y = 0; y < 3; y++) v.cylinder(3, 4 + y, 3, 4 - y * 1.2, 1, (x, yy, z) => ((x * 3 + z * 5 + yy) % 5 === 0 ? '#ffffff' : cap));
-  v.cylinder(7, 0, 6, 0.8, 2, '#fff4e6'); v.cylinder(7, 2, 6, 1.8, 1, cap); v.set(7, 3, 6, cap);
+  v.cylinder(7, 0, 6, 0.8, 2, '#fdf6e3'); v.cylinder(7, 2, 6, 1.8, 1, cap); v.set(7, 3, 6, cap);
   return v;
 }
 
+// Edificios lejanos (antes castillos): 0 = municipalidad con torre de reloj, 1 = faro a rayas.
 function castleVox(seed) {
   const v = new Voxels();
-  const wall = seed % 2 ? '#fff0f6' : '#efe7ff';
-  const roof = seed % 2 ? '#ff7eb6' : '#b58cff';
-  const roof2 = seed % 2 ? '#b58cff' : '#ff7eb6';
-  v.box(6, 0, 6, 24, 18, 16, (x, y) => ((y % 6) === 0 ? shade(wall, -0.06) : wall));
-  for (let x = 6; x < 30; x += 2) { v.set(x, 18, 6, wall); v.set(x, 18, 21, wall); }
-  v.box(15, 0, 21, 6, 9, 1, '#8a5ee0'); v.box(16, 9, 21, 4, 1, 1, '#8a5ee0'); v.box(15, 0, 22, 6, 1, 1, '#d8d2e6');
-  for (const [x, z] of [[6, 6], [30, 6], [6, 22], [30, 22]]) {
-    v.cylinder(x, 0, z, 4, 26, (xx, y) => ((y % 7) === 6 ? shade(wall, -0.08) : wall));
-    for (let s = 0; s < 8; s++) v.cylinder(x, 26 + s, z, 4.6 - s * 0.6, 1, s % 2 ? roof : shade(roof, 0.1));
-    v.box(x, 34, z, 1, 4, 1, '#ffffff'); v.box(x + 1, 36, z, 3, 2, 1, '#ffd166');
-    windowAt(v, x, 16, z + 4, 1, 3, 'z', 1);
+  if (seed % 2) {
+    // faro
+    v.cylinder(18, 0, 14, 9, 3, '#ddd5c8');
+    for (let y = 3; y < 38; y++) v.cylinder(18, y, 14, 6 - y * 0.06, 1, Math.floor(y / 6) % 2 ? '#ee6b5a' : '#fdf6e3');
+    v.cylinder(18, 38, 14, 5.4, 1, '#3d2f2a');
+    v.cylinder(18, 39, 14, 3.6, 4, '#ffe066');
+    for (let s = 0; s < 5; s++) v.cylinder(18, 43 + s, 14, 4.6 - s, 1, '#ee8a5c');
+    v.box(18, 48, 14, 1, 3, 1, '#ffd166');
+    windowAt(v, 17, 14, 19, 2, 3, 'z', 1); windowAt(v, 17, 26, 19, 2, 3, 'z', 1);
+    return v;
   }
-  v.cylinder(18, 0, 14, 5, 34, wall);
-  for (let s = 0; s < 10; s++) v.cylinder(18, 34 + s, 14, 5.6 - s * 0.6, 1, s % 2 ? roof2 : shade(roof2, 0.1));
-  v.box(18, 44, 14, 1, 5, 1, '#ffffff'); v.box(19, 47, 14, 4, 2, 1, P.pink);
-  windowAt(v, 17, 24, 19, 2, 3, 'z', 1);
+  const wall = '#f8eedc', roof = '#ee8a5c';
+  v.box(4, 0, 6, 28, 16, 16, (x, y) => (y < 3 ? '#d98f6a' : (y % 5) === 0 ? shade(wall, -0.06) : wall));
+  for (let s = 0; s < 9; s++) v.box(4 - 1 + s, 16 + s, 5 + s, 30 - 2 * s, 1, 18 - 2 * s, s % 2 ? shade(roof, -0.08) : roof);
+  for (const x of [8, 13, 23, 28]) windowAt(v, x, 7, 22, 2, 4, 'z', 1);
+  v.box(16, 0, 22, 4, 8, 1, '#8a5a3a');
+  // torre del reloj
+  v.box(14, 16, 10, 8, 22, 8, (x, y) => ((y % 6) === 0 ? shade(wall, -0.06) : wall));
+  v.cylinder(18, 30, 18, 3.2, 1, '#ffd166');
+  v.box(16, 28, 18, 4, 4, 1, '#fffaf0'); v.box(17, 30, 19, 1, 2, 1, '#3d2f2a'); v.box(17, 30, 19, 2, 1, 1, '#3d2f2a');
+  for (let s = 0; s < 6; s++) v.box(14 + s * 0.7 | 0, 38 + s, 10 + s * 0.7 | 0, 8 - 2 * (s * 0.7 | 0), 1, 8 - 2 * (s * 0.7 | 0), '#7f9ee8');
+  v.box(18, 44, 14, 1, 5, 1, '#ffffff'); v.box(19, 47, 14, 4, 2, 1, P.sky);
   return v;
 }
 
 function bridgeVox(seed) {
   const v = new Voxels();
-  const stone = seed % 2 ? '#efe7ff' : '#ffe9f4';
-  const rail = seed % 2 ? '#b58cff' : '#ff7eb6';
+  const stone = seed % 2 ? '#faf4ec' : '#fbefdc';
+  const rail = seed % 2 ? '#7f9ee8' : '#ee8a5c';
   const HW = 40, top = 34;
   for (let x = -HW; x < HW; x++) {
     const ax = Math.abs(x + 0.5);
@@ -657,16 +664,16 @@ function bridgeVox(seed) {
   // corazones en el frente del arco
   for (const hx of [-18, 0, 18]) {
     const pat = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
-    pat.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === 'X') v.set(hx - 3 + i, top - 1 - j, 14, '#ff7eb6'); }));
+    pat.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === 'X') v.set(hx - 3 + i, top - 1 - j, 14, '#ee8a5c'); }));
   }
   // faroles arriba
-  for (const lx of [-36, 36]) { v.box(lx, top + 4, 6, 1, 6, 1, '#6b4a73'); v.box(lx - 1, top + 10, 5, 3, 3, 3, '#fff0c2'); v.pyramid(lx - 2, top + 13, 4, 5, 5, rail); }
+  for (const lx of [-36, 36]) { v.box(lx, top + 4, 6, 1, 6, 1, '#6e5a4f'); v.box(lx - 1, top + 10, 5, 3, 3, 3, '#fff0c2'); v.pyramid(lx - 2, top + 13, 4, 5, 5, rail); }
   return v;
 }
 
 function rainbowVox() {
   const v = new Voxels();
-  const bands = ['#ff6f8f', '#ffb347', '#ffd166', '#6fe3c1', '#8fd3ff', '#b58cff'];
+  const bands = ['#ff6f8f', '#ffb347', '#ffd166', '#6fe3c1', '#8fd3ff', '#7f9ee8'];
   const R0 = 31, BW = 2;
   for (let x = -44; x <= 44; x++) for (let y = 0; y <= 44; y++) {
     const r = Math.sqrt(x * x + y * y);
@@ -676,7 +683,7 @@ function rainbowVox() {
   }
   // nubes en las patas
   for (const cx of [-37, 37]) {
-    v.sphere(cx, 3, 0.5, 7, 4, 4, '#ffffff'); v.sphere(cx - 4, 2, 2, 4, 3, 3, '#f4f0ff'); v.sphere(cx + 4, 2, 1, 4, 3, 3, '#ffffff');
+    v.sphere(cx, 3, 0.5, 7, 4, 4, '#ffffff'); v.sphere(cx - 4, 2, 2, 4, 3, 3, '#fcf8f3'); v.sphere(cx + 4, 2, 1, 4, 3, 3, '#ffffff');
   }
   return v;
 }
@@ -689,7 +696,7 @@ function recordArchVox() {
   // coronita al centro
   const pat = ['X..XX..X', 'XX.XX.XX', 'XXXXXXXX', 'XXXXXXXX', 'XXXXXXXX'];
   pat.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === 'X') { v.set(-4 + i, top + 5 - j, 1, j > 2 ? '#e8a93a' : '#ffd166'); v.set(-4 + i, top + 5 - j, 2, '#ffd166'); } }));
-  v.set(-1, top + 2, 3, '#ff7eb6'); v.set(2, top + 2, 3, '#8fd3ff');
+  v.set(-1, top + 2, 3, '#ee8a5c'); v.set(2, top + 2, 3, '#8fd3ff');
   return v;
 }
 
@@ -830,9 +837,9 @@ const ITEM_FN = {
     return v;
   },
   heart: () => patternVox(['.XX.XX.', 'XWXXXXX', 'XWXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'],
-    (ch, i, j) => (ch === 'W' ? '#ffffff' : (i > 4 && j > 2 ? '#e0528f' : '#ff7eb6')), 2),
+    (ch, i, j) => (ch === 'W' ? '#ffffff' : (i > 4 && j > 2 ? '#c8673d' : '#ee8a5c')), 2),
   magnet: () => patternVox(['SS...SS', 'SS...SS', 'RR...RR', 'RR...RR', 'RRR.RRR', '.RRRRR.', '..RRR..'],
-    (ch, i) => (ch === 'S' ? (i % 2 ? '#ffffff' : '#d8d2e6') : (i > 3 ? '#e04a6a' : '#ff5a7e')), 2),
+    (ch, i) => (ch === 'S' ? (i % 2 ? '#ffffff' : '#ddd5c8') : (i > 3 ? '#e04a6a' : '#ff5a7e')), 2),
   shield: () => patternVox(['XXXXXXX', 'XXHXHXX', 'XHHHHHX', 'XHHHHHX', '.XHHHX.', '.XXHXX.', '..XXX..', '...X...'],
     (ch, i) => (ch === 'H' ? '#ffffff' : (i > 3 ? '#3cbf9a' : '#6fe3c1')), 2),
   turbo: () => patternVox(['...YYY', '..YYY.', '.YYY..', 'YYYYYY', '..YYY.', '.YYY..', 'YYY...', 'Y.....'],
@@ -844,7 +851,7 @@ export function itemGeo(kind) {
 }
 
 function coneVox(v, ox, oz) {
-  v.box(ox - 2, 0, oz - 2, 5, 1, 5, '#6b4a73');
+  v.box(ox - 2, 0, oz - 2, 5, 1, 5, '#6e5a4f');
   for (let y = 1; y < 7; y++) {
     const r = y < 3 ? 1 : y < 5 ? 1 : 0;
     const c = y === 3 || y === 4 ? '#ffffff' : '#ff8f6f';
@@ -854,8 +861,8 @@ function coneVox(v, ox, oz) {
 const OBST_FN = {
   barrier: () => {
     const v = new Voxels();
-    for (const x of [0, 9]) { v.box(x, 0, -1, 1, 1, 3, '#6b4a73'); v.box(x, 1, 0, 1, 6, 1, '#8a6a93'); }
-    for (let x = 0; x < 10; x++) for (let y = 4; y < 7; y++) v.set(x, y, 1, ((x + y) >> 1) % 2 ? '#ff7eb6' : '#ffffff');
+    for (const x of [0, 9]) { v.box(x, 0, -1, 1, 1, 3, '#6e5a4f'); v.box(x, 1, 0, 1, 6, 1, '#846a5f'); }
+    for (let x = 0; x < 10; x++) for (let y = 4; y < 7; y++) v.set(x, y, 1, ((x + y) >> 1) % 2 ? '#ee8a5c' : '#ffffff');
     v.box(4, 7, 1, 2, 1, 1, '#ffd166');
     return v;
   },

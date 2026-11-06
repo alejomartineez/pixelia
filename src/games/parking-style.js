@@ -1,4 +1,4 @@
-// Estacionamiento Real — estilos propios (se inyectan en mount y se quitan en unmount).
+// Estacionamiento Express — estilos propios (se inyectan en mount y se quitan en unmount).
 export const PARKING_CSS = `
 .scene-parking .pk-ui { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .scene-parking .pk-ui .game-bar { z-index: 6; }
@@ -42,21 +42,21 @@ export const PARKING_CSS = `
   touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 0;
   border: var(--line) solid var(--ink); border-radius: 20px; background: #fff; color: var(--ink);
-  box-shadow: inset 0 -7px 0 #eadcf0, 0 5px 0 var(--ink); font-size: 14px; font-weight: 700;
+  box-shadow: inset 0 -7px 0 #f0e8dc, 0 5px 0 var(--ink); font-size: 14px; font-weight: 700;
   transition: transform .05s, box-shadow .05s, filter .1s;
 }
 .scene-parking .pk-btn svg { image-rendering: pixelated; pointer-events: none; }
 .scene-parking .pk-btn span { pointer-events: none; }
-.scene-parking .pk-btn.on { transform: translateY(4px); box-shadow: inset 0 -3px 0 #eadcf0, 0 1px 0 var(--ink); filter: brightness(.94); }
-.scene-parking .pk-left, .scene-parking .pk-right { width: 78px; height: 78px; color: var(--lilac-d); }
+.scene-parking .pk-btn.on { transform: translateY(4px); box-shadow: inset 0 -3px 0 #f0e8dc, 0 1px 0 var(--ink); filter: brightness(.94); }
+.scene-parking .pk-left, .scene-parking .pk-right { width: 78px; height: 78px; color: var(--second-d); }
 .scene-parking .pk-gas {
-  width: 88px; height: 118px; background: var(--pink); color: #fff; text-shadow: 0 2px 0 rgba(59,35,64,.35);
-  box-shadow: inset 0 -8px 0 var(--pink-d), 0 5px 0 var(--ink);
+  width: 88px; height: 118px; background: var(--primary); color: #fff; text-shadow: 0 2px 0 rgba(61,47,42,.35);
+  box-shadow: inset 0 -8px 0 var(--primary-d), 0 5px 0 var(--ink);
 }
-.scene-parking .pk-gas.on { box-shadow: inset 0 -3px 0 var(--pink-d), 0 1px 0 var(--ink); }
+.scene-parking .pk-gas.on { box-shadow: inset 0 -3px 0 var(--primary-d), 0 1px 0 var(--ink); }
 .scene-parking .pk-rev { width: 78px; height: 86px; background: var(--sky); box-shadow: inset 0 -7px 0 var(--sky-d), 0 5px 0 var(--ink); }
 .scene-parking .pk-rev.on { box-shadow: inset 0 -3px 0 var(--sky-d), 0 1px 0 var(--ink); }
-.scene-parking .pk-gas svg { filter: drop-shadow(0 2px 0 rgba(59,35,64,.35)); }
+.scene-parking .pk-gas svg { filter: drop-shadow(0 2px 0 rgba(61,47,42,.35)); }
 /* blanco con contorno tinta: se lee bien sobre el rosa */
 .scene-parking .pk-gas span { text-shadow: 1.5px 0 var(--ink), -1.5px 0 var(--ink), 0 1.5px var(--ink), 0 -1.5px var(--ink), 1.5px 1.5px var(--ink), -1.5px 1.5px var(--ink), 1.5px -1.5px var(--ink), -1.5px -1.5px var(--ink); }
 @media (max-width: 360px) {
@@ -69,7 +69,7 @@ export const PARKING_CSS = `
 }
 
 .scene-parking .pk-keys { display: none; pointer-events: none; font-size: 15px; z-index: 6; }
-.scene-parking .pk-keys b { background: var(--lilac-l); border: 2px solid var(--ink); border-radius: 6px; padding: 0 5px; font-size: 13px; }
+.scene-parking .pk-keys b { background: var(--second-l); border: 2px solid var(--ink); border-radius: 6px; padding: 0 5px; font-size: 13px; }
 @media (hover: hover) and (pointer: fine) {
   .scene-parking .pk-keys { display: block; }
 }
@@ -98,12 +98,12 @@ export const PARKING_CSS = `
 .scene-parking .pk-intro.show .pk-card { pointer-events: auto; transform: none; }
 .scene-parking .pk-card {
   width: min(360px, 100%); max-height: 100%; overflow-y: auto; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;
-  background: rgba(255,247,251,.97); transform: scale(.9); transition: transform .25s cubic-bezier(.3,1.6,.6,1); padding: 14px 16px 12px;
+  background: rgba(255,250,241,.97); transform: scale(.9); transition: transform .25s cubic-bezier(.3,1.6,.6,1); padding: 14px 16px 12px;
 }
 .scene-parking .pk-card-top { display: flex; justify-content: space-between; width: 100%; gap: 6px; }
 .scene-parking .pk-card h2 { font-size: 34px; color: #fff; letter-spacing: 1px; margin-top: 2px;
-  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 6px 0 var(--pink-d); }
-.scene-parking .pk-card h3 { font-size: 20px; color: var(--pink-d); }
+  text-shadow: 3px 0 var(--ink), -3px 0 var(--ink), 0 3px var(--ink), 0 -3px var(--ink), 3px 3px var(--ink), -3px 3px var(--ink), 3px -3px var(--ink), -3px -3px var(--ink), 0 6px 0 var(--primary-d); }
+.scene-parking .pk-card h3 { font-size: 20px; color: var(--primary-d); }
 .scene-parking .pk-card-stars { display: flex; gap: 4px; }
 .scene-parking .pk-card-goal { font-size: 17px; font-weight: 700; margin: 2px 0; }
 .scene-parking .pk-card-tip { display: flex; align-items: flex-start; gap: 6px; text-align: left; font-size: 14px; color: var(--ink-l);
@@ -130,12 +130,12 @@ export const PARKING_CSS = `
 .pk-levels-modal .pk-lvgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; }
 .pk-levels-modal .pk-lv {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 66px; padding: 4px 2px;
-  border: var(--line) solid var(--ink); border-radius: 12px; background: #fff; box-shadow: inset 0 -4px 0 #eadcf0, 0 3px 0 var(--ink);
+  border: var(--line) solid var(--ink); border-radius: 12px; background: #fff; box-shadow: inset 0 -4px 0 #f0e8dc, 0 3px 0 var(--ink);
 }
 .pk-levels-modal .pk-lv b { font-size: 22px; line-height: 1; }
 .pk-levels-modal .pk-lv:active { transform: translateY(2px); }
 .pk-levels-modal .pk-lv.current { background: var(--gold-l); outline: 3px solid var(--gold); outline-offset: -1px; }
-.pk-levels-modal .pk-lv.locked { background: #f1e9f3; color: var(--ink-ll); }
+.pk-levels-modal .pk-lv.locked { background: #f3efe9; color: var(--ink-ll); }
 .pk-levels-modal .pk-lv-stars { display: flex; }
 
 /* ---------- Textos flotantes ---------- */

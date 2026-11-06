@@ -84,7 +84,7 @@ export function modal({ title = '', content = '', actions = [], closable = true,
   if (actions.length) {
     const foot = h('div.modal-foot');
     for (const a of actions) {
-      foot.append(h('button.btn.' + (a.cls || 'pink').split(' ').join('.'), {
+      foot.append(h('button.btn.' + (a.cls || 'primary').split(' ').join('.'), {
         html: a.html || esc(a.label),
         disabled: a.disabled,
         onclick: async () => { audio.sfx('tap'); const r = await a.onClick?.(); if (a.close !== false && r !== false) close(); },
@@ -129,7 +129,7 @@ export function confirm(title, text, okLabel = 'Sí', cancelLabel = 'No') {
   return new Promise(res => {
     let v = false;
     modal({ title, content: `<p class="center">${text}</p>`, onClose: () => res(v),
-      actions: [{ label: cancelLabel, cls: 'ghost' }, { label: okLabel, cls: 'pink', onClick: () => { v = true; } }] });
+      actions: [{ label: cancelLabel, cls: 'ghost' }, { label: okLabel, cls: 'primary', onClick: () => { v = true; } }] });
   });
 }
 
@@ -160,7 +160,7 @@ export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, sta
     }
     if (reward.coins || reward.gems || reward.xp) wrap.append(h('div.reward-items', { html: costHtml({ coins: reward.coins, gems: reward.gems, xp: reward.xp }, 28) }));
     modal({ title, content: wrap, closable: false, className: ('reward-modal ' + className).trim(), onClose: () => res(val),
-      actions: buttons.map(b => ({ label: b.label, html: b.html, cls: b.cls || 'pink', onClick: () => { val = b.value; } })) });
+      actions: buttons.map(b => ({ label: b.label, html: b.html, cls: b.cls || 'primary', onClick: () => { val = b.value; } })) });
     if (stars === undefined || stars > 0) confetti();
   });
 }
@@ -202,7 +202,7 @@ export function confetti(n = 70) {
   const scale = 4;
   cv.width = Math.ceil(innerWidth / scale); cv.height = Math.ceil(innerHeight / scale);
   const g = cv.getContext('2d');
-  const cols = ['#ff7eb6', '#b58cff', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'];
+  const cols = ['#ee8a5c', '#7f9ee8', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'];
   const parts = Array.from({ length: n }, () => ({
     x: cv.width / 2 + (Math.random() - 0.5) * cv.width * 0.3, y: cv.height * 0.35,
     vx: (Math.random() - 0.5) * 3.2, vy: -Math.random() * 3.5 - 1, c: cols[Math.floor(Math.random() * cols.length)], s: Math.random() < 0.3 ? 2 : 1,

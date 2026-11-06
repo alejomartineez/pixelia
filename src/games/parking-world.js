@@ -1,4 +1,4 @@
-// Estacionamiento Real — construcción del mundo 3D vóxel de cada nivel (playa, autos, conos, lugar objetivo, efectos).
+// Estacionamiento Express — construcción del mundo 3D vóxel de cada nivel (playa, autos, conos, lugar objetivo, efectos).
 import * as THREE from 'three';
 import { Voxels, shade, glowMaterial, disposeObject } from '../core/voxel.js';
 import * as carLib from '../avatar/car.js';
@@ -63,7 +63,7 @@ function randomCar(rng) {
 // ---------- Piezas vóxel propias ----------
 function coneGeometry() {
   const v = new Voxels();
-  const C = '#ff8a7a', W = '#fff4fa', D = '#e0645a';
+  const C = '#ff8a7a', W = '#fdfaf6', D = '#e0645a';
   v.box(0, 0, 0, 6, 1, 6, D);
   v.box(1, 1, 1, 4, 2, 4, C);
   v.box(1, 3, 1, 4, 1, 4, W);
@@ -75,7 +75,7 @@ function coneGeometry() {
 
 function lampModel() {
   const v = new Voxels();
-  const post = '#b58cff', dark = '#8a5ee0';
+  const post = '#7f9ee8', dark = '#5a78c4';
   v.box(1, 0, 1, 3, 1, 3, dark);
   v.box(2, 1, 2, 1, 11, 1, post);
   v.box(1, 12, 1, 3, 1, 3, dark);
@@ -95,10 +95,10 @@ function signModel() {
   const P = [
     '.......', '.####..', '.#...#.', '.#...#.', '.####..', '.#.....', '.#.....', '.......',
   ];
-  v.box(4, 0, 0, 1, 10, 1, '#8a5ee0');
+  v.box(4, 0, 0, 1, 10, 1, '#5a78c4');
   for (let y = 0; y < 8; y++) for (let x = 0; x < 9; x++) {
     const ch = x >= 1 && x <= 7 ? P[7 - y][x - 1] : '.';
-    v.set(x, 9 + y, 0, ch === '#' ? '#ffffff' : (x === 0 || x === 8 || y === 0 || y === 7) ? '#e0528f' : '#ff7eb6');
+    v.set(x, 9 + y, 0, ch === '#' ? '#ffffff' : (x === 0 || x === 8 || y === 0 || y === 7) ? '#c8673d' : '#ee8a5c');
   }
   return shadowAll(v.toMesh({ scale: 1 / 12, center: 'xz' }));
 }
@@ -109,17 +109,17 @@ function wallMesh(w, kind) {
   const nx = Math.max(1, Math.round(w.w * S)), nz = Math.max(1, Math.round(w.d * S));
   if (kind === 'garage') {
     const h = 5;
-    v.box(0, 0, 0, nx, h, nz, (x, y, z) => y === h - 1 ? '#fff4fa' : ((x + z + y) % 4 === 0 ? '#c9adff' : '#dcc9ff'));
+    v.box(0, 0, 0, nx, h, nz, (x, y, z) => y === h - 1 ? '#fdfaf6' : ((x + z + y) % 4 === 0 ? '#a8bceb' : '#dbe4fa'));
     // remate con almenas
     for (let i = 0; i < Math.max(nx, nz); i += 2) {
-      if (nx >= nz) v.set(i, h, 0, '#ff7eb6'); else v.set(0, h, i, '#ff7eb6');
+      if (nx >= nz) v.set(i, h, 0, '#ee8a5c'); else v.set(0, h, i, '#ee8a5c');
     }
   } else {
     // cordón: rayas rosa/blanco; si es ancho, vereda de baldosas un vóxel más alta
-    v.box(0, 0, 0, nx, 1, nz, (x, y, z) => (Math.floor((nx >= nz ? x : z) / 2) % 2 ? '#ff7eb6' : '#fff4fa'));
+    v.box(0, 0, 0, nx, 1, nz, (x, y, z) => (Math.floor((nx >= nz ? x : z) / 2) % 2 ? '#ee8a5c' : '#fdfaf6'));
     if (Math.min(nx, nz) >= 3) {
       for (let x = 1; x < nx - 1; x++) for (let z = 1; z < nz - 1; z++)
-        v.set(x, 1, z, ((Math.floor(x / 2) + Math.floor(z / 2)) % 2) ? '#fff4e6' : '#f6e6f2');
+        v.set(x, 1, z, ((Math.floor(x / 2) + Math.floor(z / 2)) % 2) ? '#fdf6e3' : '#f6f0e6');
     }
   }
   const m = v.toMesh({ scale: 1 / S, center: 'xz' });
@@ -164,7 +164,7 @@ function markerModel() {
   rows.forEach((r, i) => [...r].forEach((c, x) => {
     if (c === '.') return;
     const y = rows.length - 1 - i;
-    const col = c === '#' ? '#e0528f' : (i < 5 ? '#ffe08a' : '#ffd166');
+    const col = c === '#' ? '#c8673d' : (i < 5 ? '#ffe08a' : '#ffd166');
     for (let z = 0; z < 3; z++) v.set(x, y, z, col);
   }));
   return v.toMesh({ scale: 1 / 12, center: 'xyz', material: glowMaterial(), castShadow: true });
@@ -173,7 +173,7 @@ function markerModel() {
 // ---------- Mundo ----------
 /**
  * Construye el nivel. Devuelve objetos para el loop del juego.
- * player: { car, princess }  (del estado)
+ * player: { car, avatar }  (del estado)
  */
 export function buildWorld(scene, level, levelIndex, player) {
   const rng = seeded(1337 + levelIndex * 7919);
@@ -201,11 +201,11 @@ export function buildWorld(scene, level, levelIndex, player) {
     // se ve como ruido / dientes de sierra en vez de textura
     const hc = ((Math.floor(x / 2) * 73856093) ^ (Math.floor(z / 2) * 19349663)) >>> 0;
     if (ox < 0 && oz < 0) {
-      ground.set(x, 0, z, hc % 11 === 0 ? '#b3a8c7' : hc % 7 === 0 ? '#bfb5d1' : '#b9aecc');
+      ground.set(x, 0, z, hc % 11 === 0 ? '#c7bba8' : hc % 7 === 0 ? '#d1c6b5' : '#ccc0ae');
     } else if (ox < walk && oz < walk) {
-      ground.set(x, 0, z, ((Math.floor(x / 2) + Math.floor(z / 2)) % 2) ? '#fff4e6' : '#f3e2ee');
+      ground.set(x, 0, z, ((Math.floor(x / 2) + Math.floor(z / 2)) % 2) ? '#fdf6e3' : '#f3ece2');
     } else {
-      const c = h % 61 === 0 ? '#ffc2dc' : h % 67 === 0 ? '#fff4fa' : hc % 5 === 0 ? '#8ad876' : hc % 3 === 0 ? '#95e081' : '#8fdc7a';
+      const c = h % 61 === 0 ? '#ffd8c4' : h % 67 === 0 ? '#fdfaf6' : hc % 5 === 0 ? '#8ad876' : hc % 3 === 0 ? '#95e081' : '#8fdc7a';
       ground.set(x, 0, z, c);
     }
   }
@@ -231,7 +231,7 @@ export function buildWorld(scene, level, levelIndex, player) {
   );
 
   // --- Líneas pintadas ---
-  const lineMat = new THREE.MeshBasicMaterial({ color: 0xfffaff });
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xfefdfb });
   const lineGeo = new THREE.BoxGeometry(1, 0.012, 1);
   const LW = 0.07;
   const addLine = (cx, cz, lenAlong, a, widthAcross = LW) => {
@@ -359,9 +359,9 @@ export function buildWorld(scene, level, levelIndex, player) {
   group.add(marker);
 
   // --- Jugadora ---
-  const playerPivot = makeCarPivot(player.car, { driver: player.princess });
+  const playerPivot = makeCarPivot(player.car, { driver: player.avatar });
   group.add(playerPivot);
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0xff7eb6, transparent: true, opacity: 0.55, depthWrite: false });
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0xee8a5c, transparent: true, opacity: 0.55, depthWrite: false });
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.7, 24), ringMat);
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
   playerPivot.add(ring);
@@ -371,7 +371,7 @@ export function buildWorld(scene, level, levelIndex, player) {
 
   const statics = [...border.map(b => ({ box: b, mesh: null, wob: 0, kind: 'border' })), ...walls, ...parked];
 
-  const cA = new THREE.Color(0xffd166), cB = new THREE.Color(0xff7eb6), cOk = new THREE.Color(0x6fe3c1), tmpC = new THREE.Color();
+  const cA = new THREE.Color(0xffd166), cB = new THREE.Color(0xee8a5c), cOk = new THREE.Color(0x6fe3c1), tmpC = new THREE.Color();
   return {
     group, playerPivot, statics, parked, cones, spot, fx, marker,
     /** Animación del lugar: status = { inside, aligned, hold (0..1) } */
@@ -397,8 +397,8 @@ export function buildWorld(scene, level, levelIndex, player) {
 
 function makeParticles(parent) {
   const geo = new THREE.BoxGeometry(1, 1, 1);
-  const mats = [0xffd166, 0xff7eb6, 0xffffff, 0x6fe3c1, 0xb58cff].map(c => new THREE.MeshBasicMaterial({ color: c, transparent: true }));
-  const puffMat = new THREE.MeshBasicMaterial({ color: 0xf4eefa, transparent: true, opacity: 0.8 });
+  const mats = [0xffd166, 0xee8a5c, 0xffffff, 0x6fe3c1, 0x7f9ee8].map(c => new THREE.MeshBasicMaterial({ color: c, transparent: true }));
+  const puffMat = new THREE.MeshBasicMaterial({ color: 0xfaf5ee, transparent: true, opacity: 0.8 });
   const pool = [];
   for (let i = 0; i < 90; i++) {
     const m = new THREE.Mesh(geo, mats[i % mats.length]);

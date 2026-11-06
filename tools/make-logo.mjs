@@ -1,4 +1,4 @@
-// Logo en pixel art como SVG (sin fuente ni imágenes): la corona de los íconos y la palabra "Pixelia".
+// Logo en pixel art como SVG (sin fuente ni imágenes): la casita de los íconos y la palabra "Pixelia".
 // Lo usan el preloader de index.html (pegado inline, así se ve en el primer pintado) y tools/make-og.mjs.
 //
 //   node tools/make-logo.mjs            (imprime los dos <svg>)
@@ -9,22 +9,23 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
-const INK = '#3b2340', SHADOW = '#e0528f', WHITE = '#fff', SHADE = '#ffe3f1';
+const INK = '#3d2f2a', SHADOW = '#c8673d', WHITE = '#fff', SHADE = '#f9f3e9';
 
-// corona: misma grilla que tools/make-icons.mjs (filas 2..11, columnas 1..14)
+// casita: misma grilla que tools/make-icons.mjs (filas 2..11, columnas 1..14). (Se sigue llamando CROWN/crownSvg
+// porque index.html la marca como <!--logo-crown-->.)
 const CROWN = [
-  '.k....kk....k.',
-  'kyk..kyyk..kyk',
-  'kyyk.kyyk.kyyk',
-  'kyyykyyyykyyyk',
-  'kywyyyyyyyyyYk',
-  'kyyyyyyyyyyyYk',
-  'kyypyyysyyymYk',
-  'kyyyyyyyyyyyYk',
-  'kYYYYYYYYYYYYk',
+  '......kk......',
+  '.....kRrk.....',
+  '....kRRrrk....',
+  '...kRRRrrrk...',
+  '..kRRRRrrrrk..',
   '.kkkkkkkkkkkk.',
+  '..kcsscddcck..',
+  '..kcsscddcck..',
+  '..kccccdycck..',
+  '..kkkkkkkkkk..',
 ];
-const CROWN_COL = { k: INK, y: '#ffd166', Y: '#e8a93a', w: '#fff', p: '#ff7eb6', s: '#8fd3ff', m: '#6fe3c1' };
+const CROWN_COL = { k: INK, R: '#ee8a5c', r: '#c8673d', c: '#fdf6e3', s: '#8fd3ff', d: '#8a5a3a', y: '#ffd166' };
 
 // letras de 10 filas; las minúsculas ocupan las filas 3..9
 const X = (rows) => [...Array(10 - rows.length).fill(null), ...rows];
