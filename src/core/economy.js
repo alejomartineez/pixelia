@@ -4,7 +4,7 @@ import { bus } from './bus.js';
 import { store } from './state.js';
 import {
   BUILDING_BY_ID, MAP_SIZE, START_LAND, LAND_STEP, MAX_EXPANSIONS, MAX_BUILDING_LEVEL,
-  CASTLE_LEVELS, CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST,
+  CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS,
 } from './data.js';
 import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
@@ -53,6 +53,113 @@ export const hasBuilt = (id, state = S(), now = Date.now()) => state.city.buildi
 export const castleLevel = (state = S()) => state.city.buildings.find(b => b.id === 'castillo')?.level || 1;
 export const buildersBusy = (state = S(), now = Date.now()) => state.city.buildings.filter(b => isBusy(b, now)).length;
 export const buildersFree = (state = S(), now = Date.now()) => Math.max(0, state.builders - buildersBusy(state, now));
+
+// ---------- Rango de la ciudad y Encanto ----------
+// El rango es el nivel de la Municipalidad (id 'castillo'). Subirlo pide cumplir el expediente de TOWN_RANKS.
+export const townRank = (state = S()) => Math.min(TOWN_RANKS.length, castleLevel(state));
+export const rankDef = (r) => TOWN_RANKS[Math.max(1, Math.min(TOWN_RANKS.length, r | 0 || 1)) - 1];
+export const rankName = (r) => rankDef(r).name;
+/** Encanto base de un tipo de edificio (antes de nivel y repetición). */
+export function charmBase(d) {
+  if (!d) return 0;
+  if (d.charm != null) return d.charm;
+  switch (d.cat) {
+    case 'deco': return 4 + (d.happy || 0) * 2;
+    case 'negocio': return 6 + (d.happy || 0) * 2;
+    case 'casa': return 3;
+    case 'especial': return 15 + (d.happy || 0);
+    case 'camino': return d.id === 'camino' ? 0.3 : 0.6;
+    default: return 0;
+  }
+}
+export const CHARM_REPEAT = 0.85;      // cada copia extra del mismo edificio vale 85% de la anterior
+export const CHARM_VARIETY = 0.02;     // +2% por cada tipo distinto (sin caminos), tope x1,5
+/**
+ * Encanto: qué tan linda y variada está la ciudad. Suma el encanto de cada edificio terminado (más por nivel),
+ * con rendimiento decreciente si repetís el mismo, y un multiplicador por variedad.
+ * {value, base, variety, kinds}
+ */
+export function charmInfo(state = S(), now = Date.now()) {
+  const per = new Map();
+  for (const b of state.city.buildings) {
+    if (isConstructing(b, now)) continue;
+    const d = def(b);
+    if (!d) continue;
+    const v = charmBase(d) * (1 + 0.25 * ((b.level || 1) - 1));
+    if (!per.has(d.id)) per.set(d.id, []);
+    per.get(d.id).push(v);
+  }
+  let base = 0, kinds = 0;
+  for (const [id, list] of per) {
+    list.sort((a, b) => b - a);
+    list.forEach((v, i) => { base += v * Math.pow(CHARM_REPEAT, i); });
+    if (def(id).cat !== 'camino') kinds++;
+  }
+  const variety = Math.min(1.5, 1 + CHARM_VARIETY * kinds);
+  return { value: Math.round(base * variety), base: Math.round(base), variety, kinds };
+}
+export const cityCharm = (state = S(), now = Date.now()) => charmInfo(state, now).value;
+/** Cuánto Encanto base sumaría construir otra copia de `id` (para mostrar en el menú). */
+export function charmGain(id, state = S()) {
+  const d = def(id);
+  const n = state.city.buildings.filter(b => b.id === id).length;
+  return Math.round(charmBase(d) * Math.pow(CHARM_REPEAT, n) * 10) / 10;
+}
+/** Tipos de negocio distintos terminados. */
+export function shopKinds(state = S(), now = Date.now()) {
+  return new Set(state.city.buildings.filter(b => def(b)?.cat === 'negocio' && !isConstructing(b, now)).map(b => b.id)).size;
+}
+/** Valor actual de un requisito del expediente. */
+export function rankReqValue(key, state = S(), now = Date.now()) {
+  switch (key) {
+    case 'pop': return population(state, now);
+    case 'happy': return happiness(state, now).pct;
+    case 'charm': return cityCharm(state, now);
+    case 'shops': return shopKinds(state, now);
+    default: return 0;
+  }
+}
+/**
+ * Estado del rango: {rank, def, next (def del siguiente o null), reqs:[{key, have, need, ok}], allOk, levelOk, charm, stars}.
+ * stars (0..5): Encanto respecto del que pide el próximo rango (o el último si ya es el máximo).
+ */
+export function rankStatus(state = S(), now = Date.now()) {
+  const rank = townRank(state);
+  const cur = rankDef(rank);
+  const next = rank < TOWN_RANKS.length ? rankDef(rank + 1) : null;
+  const reqs = next ? Object.entries(next.req || {}).map(([key, need]) => {
+    const have = rankReqValue(key, state, now);
+    return { key, have, need, ok: have >= need };
+  }) : [];
+  const charm = cityCharm(state, now);
+  const target = (next || TOWN_RANKS[TOWN_RANKS.length - 1]).req.charm;
+  const stars = Math.max(0, Math.min(5, Math.floor((charm / target) * 5)));
+  return {
+    rank, def: cur, next, reqs, charm, stars,
+    allOk: !!next && reqs.every(r => r.ok),
+    levelOk: !!next && state.player.level >= next.reqLevel,
+  };
+}
+/** Constructoras que regalan los rangos alcanzados. */
+export const rankBuilders = (rank) => TOWN_RANKS.slice(0, rank).reduce((s, r) => s + (r.builders || 0), 0);
+/**
+ * Aplica los beneficios permanentes del rango (constructoras) y guarda récords para los logros.
+ * Es idempotente: se puede llamar en cada tick (las partidas viejas reciben lo que les toca).
+ */
+export function syncRank(state = S(), now = Date.now()) {
+  if (!state.city.rankPerks || typeof state.city.rankPerks !== 'object') state.city.rankPerks = { builders: 0 };
+  const rank = townRank(state);
+  const want = rankBuilders(rank), given = state.city.rankPerks.builders || 0;
+  if (want > given) {
+    state.builders += want - given;
+    state.city.rankPerks.builders = want;
+    store.markDirty();
+    bus.emit('builders:changed', { builders: state.builders });
+  }
+  if ((state.stats.rankBest || 0) < rank) store.setMax('rankBest', rank);
+  const ch = cityCharm(state, now);
+  if ((state.stats.charmBest || 0) < ch) store.setMax('charmBest', ch);
+}
 
 export function buildingPop(b) {
   const d = def(b);
@@ -147,6 +254,7 @@ export function canBuild(id, state = S(), now = Date.now()) {
   if (!d) return { ok: false, reason: '???' };
   const free = freeBuildCount(id) > 0;
   if (!free && d.unlock > state.player.level) return { ok: false, reason: `Nivel ${d.unlock}`, locked: true };
+  if (!free && d.rank && townRank(state) < d.rank) return { ok: false, reason: `Rango ${rankName(d.rank)}`, locked: true, rank: d.rank };
   if (d.max && countOf(id, state) >= d.max) return { ok: false, reason: 'Ya lo tenés' };
   if (!free && d.popReq && population(state, now) < d.popReq) return { ok: false, reason: `Necesita ${d.popReq} vecinos`, locked: true };
   if (d.time > 0 && buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
@@ -271,7 +379,7 @@ export function canUpgradeType(b) {
   const d = def(b);
   return d.id === 'castillo' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
 }
-export function maxLevel(b) { return def(b).id === 'castillo' ? CASTLE_LEVELS.length + 1 : MAX_BUILDING_LEVEL; }
+export function maxLevel(b) { return def(b).id === 'castillo' ? TOWN_RANKS.length : MAX_BUILDING_LEVEL; }
 // costo de mejora = costo base × factor (nivel actual → siguiente). Se duplica en cada nivel: las mejoras son el
 // gran sumidero de monedas a mediano plazo (cada nivel da +50% de producción).
 const UPGRADE_COST_MULT = [0, 1.7, 3.4, 6.8, 13.6];
@@ -280,8 +388,8 @@ export function upgradeInfo(b) {
   if (!canUpgradeType(b) || b.level >= maxLevel(b)) return null;
   const d = def(b);
   if (d.id === 'castillo') {
-    const c = CASTLE_LEVELS.find(l => l.level === b.level + 1);
-    return { cost: c.cost, time: c.time, reqLevel: c.reqLevel };
+    const c = rankDef(b.level + 1);
+    return { cost: c.cost, time: c.time, reqLevel: c.reqLevel, rank: c.rank };
   }
   const base = d.cost.coins || 200;
   return {
@@ -295,6 +403,7 @@ export function canUpgrade(b, state = S(), now = Date.now()) {
   if (!info) return { ok: false, reason: 'Nivel máximo' };
   if (isBusy(b, now)) return { ok: false, reason: 'Está en obra' };
   if (state.player.level < info.reqLevel) return { ok: false, reason: `Nivel ${info.reqLevel}`, locked: true };
+  if (info.rank && !rankStatus(state, now).allOk) return { ok: false, reason: 'Falta completar el expediente', locked: true, reqs: true };
   if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
   if (!store.canAfford(info.cost)) return { ok: false, reason: 'No te alcanza', poor: true };
   return { ok: true };
@@ -321,6 +430,12 @@ function finishUpgrade(b) {
   store.inc('upgrades');
   store.addXp(Math.round((def(b).xp || 20) * 0.8 * b.level));
   bus.emit('building:upgraded', { b, level: b.level });
+  if (b.id === 'castillo') {
+    const r = rankDef(b.level);
+    if (r.reward) store.grant(r.reward, 'rank');
+    syncRank();
+    bus.emit('town:rankup', { rank: b.level, def: r });
+  }
 }
 
 // ---------- Saltar tiempos ----------
@@ -350,18 +465,30 @@ export function tick(state = S()) {
     if (b.buildEnd && b.buildEnd <= now) { finishConstruction(b); store.markDirty(); }
     if (b.upgradeEnd && b.upgradeEnd <= now) { finishUpgrade(b); store.markDirty(); }
   }
+  syncRank(state, now);
 }
 
 // ---------- Expansiones / constructoras ----------
 export function expansionInfo(state = S()) {
   const n = state.city.expansions;
   if (n >= MAX_EXPANSIONS) return null;
-  return { cost: { coins: Math.round(500 * Math.pow(2.1, n)), gems: n >= 3 ? (n - 2) * 5 : 0 }, reqLevel: 2 + n * 2 };
+  // la expansión n pide nivel 2+2n y un rango cuyo terreno (land) permita más de n expansiones
+  const reqRank = (TOWN_RANKS.find(r => r.land > n) || TOWN_RANKS[TOWN_RANKS.length - 1]).rank;
+  return { cost: { coins: Math.round(500 * Math.pow(2.1, n)), gems: n >= 3 ? (n - 2) * 5 : 0 }, reqLevel: 2 + n * 2, reqRank };
+}
+/** ¿Se puede expandir ya? {...info, ok, reason, short} (short: texto corto para el cartel). null si está al máximo. */
+export function expansionStatus(state = S()) {
+  const info = expansionInfo(state);
+  if (!info) return null;
+  if (state.player.level < info.reqLevel) return { ...info, ok: false, reason: `Se desbloquea en nivel ${info.reqLevel}`, short: `Nivel ${info.reqLevel}` };
+  if (townRank(state) < info.reqRank) return { ...info, ok: false, reason: `Necesitás el rango ${rankName(info.reqRank)}`, short: `Rango ${rankName(info.reqRank)}` };
+  return { ...info, ok: true };
 }
 export function expand(state = S()) {
   const info = expansionInfo(state);
   if (!info) return { error: 'Terreno al máximo' };
-  if (state.player.level < info.reqLevel) return { error: `Nivel ${info.reqLevel}` };
+  const st = expansionStatus(state);
+  if (!st.ok) return { error: st.reason };
   if (!store.spend(info.cost, 'expand')) return { error: 'No te alcanza' };
   state.city.expansions++;
   store.inc('expansions');
@@ -370,9 +497,11 @@ export function expand(state = S()) {
   bus.emit('city:expanded', { expansions: state.city.expansions, bounds: landBounds(state) });
   return { ok: true };
 }
+/** Contratar constructora con gemas (las que regalan los rangos no cuentan para el tope). */
 export function builderInfo(state = S()) {
-  if (state.builders >= MAX_BUILDERS) return null;
-  return { cost: { gems: BUILDER_GEM_COST[state.builders + 1] } };
+  const bought = state.builders - (state.city.rankPerks?.builders || 0);
+  if (bought >= MAX_BUILDERS) return null;
+  return { cost: { gems: BUILDER_GEM_COST[bought + 1] } };
 }
 export function buyBuilder(state = S()) {
   const info = builderInfo(state);

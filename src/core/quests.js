@@ -2,7 +2,7 @@
 import { bus } from './bus.js';
 import { store, todayStr } from './state.js';
 import { MAIN_QUESTS, DAILY_POOL, DAILY_BONUS_ALL, ACHIEVEMENTS, LOGIN_REWARDS, rewardScale } from './data.js';
-import { population, happinessPoints, castleLevel, def } from './economy.js';
+import { population, happinessPoints, castleLevel, cityCharm, def } from './economy.js';
 import { streakWithShield, consumeStreakShield, seasonInfo } from '../season/season.js';
 
 const S = () => store.state;
@@ -16,6 +16,7 @@ function absoluteValue(goal) {
     case 'pop': return population(s);
     case 'happy': return happinessPoints(s);
     case 'castle': return castleLevel(s);
+    case 'charm': return cityCharm(s);
     case 'expand': return s.city.expansions;
     case 'build':
       if (goal.id || goal.ids) {

@@ -13,7 +13,7 @@
 import { net, isoWeek, isDefaultName } from './net.js';
 import { store } from '../core/state.js';
 import { bus } from '../core/bus.js';
-import { population, happiness } from '../core/economy.js';
+import { population, happiness, cityCharm, townRank } from '../core/economy.js';
 import { ITEMS, CHESTS, addChest, chestCount } from '../chests/chests.js';
 import { STICKERS } from '../album/album.js';
 
@@ -239,8 +239,8 @@ export async function pushNow(opts = {}) {
 export function buildPublicProfile(s = store.state, now = Date.now()) {
   const g = s.games || {};
   const week = s.online?.week?.id === isoWeek() ? s.online.week : { id: isoWeek(), match3: 0, blocks: 0, parking: 0, driving: 0, stars: 0 };
-  let pop = 0, happy = 0;
-  try { pop = population(s, now); happy = happiness(s, now).pct; } catch {}
+  let pop = 0, happy = 0, charm = 0, rank = 1;
+  try { pop = population(s, now); happy = happiness(s, now).pct; charm = cityCharm(s, now); rank = townRank(s); } catch {}
   return {
     // con el nombre por defecto no se pisa el nombre de la cuenta (el que eligió al registrarse)
     name: s.player?.name && !isDefaultName(s.player.name) ? s.player.name : undefined,
@@ -259,12 +259,13 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
       theme: s.city?.theme || 'pueblo',
     },
     stats: {
-      pop, happy,
+      pop, happy, rank, charm,
       best: {
         match3: g.match3?.level || 1, blocks: g.blocks?.best || 0,
         parking: g.parking?.level || 1, driving: g.driving?.best || 0,
       },
-      week,
+      // rango y Encanto también van en week: friends_leaderboard solo devuelve stats.week (así no hay que tocar el SQL)
+      week: { ...week, charm, rank },
       album: albumCode(s),
     },
   };

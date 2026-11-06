@@ -6,7 +6,7 @@ import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { buildingModel, constructionModel } from '../city/models.js';
 import { icon } from '../core/icons.js';
 import { rewardScale, MAX_EXPANSIONS } from '../core/data.js';
-import { def, population, happiness, landBounds, fmtTime, fmtNum } from '../core/economy.js';
+import { def, population, happiness, landBounds, fmtTime, fmtNum, townRank, rankDef, cityCharm } from '../core/economy.js';
 import { HALF, footCenter, clamp } from './city-common.js';
 import { createWorld } from './city-world.js';
 import { createCameraCtl } from './city-camera.js';
@@ -474,11 +474,11 @@ export function createVisit(ctx) {
   // ---------- UI fija ----------
   function makeTop() {
     topEl?.remove();
-    let pop = 0, hp = 0;
-    try { pop = population(vstate); hp = happiness(vstate).pct; } catch {}
+    let pop = 0, hp = 0, rk = null, charm = 0;
+    try { pop = population(vstate); hp = happiness(vstate).pct; rk = rankDef(townRank(vstate)); charm = cityCharm(vstate); } catch {}
     const cityName = vstate.player.cityName && vstate.player.cityName !== 'Pixelia' ? `<span class="chip">${icon('flower', 14)}${ui.esc(vstate.player.cityName)}</span>` : '';
     topEl = ui.h('div.cv-top', { html: `<h2>${icon('castle', 24)}<span>Ciudad de ${ui.esc(hostName)}</span></h2>
-      <div class="cv-sub"><span class="chip gold">${icon('star', 14)}Nivel ${vstate.player.level}</span>${cityName}
+      <div class="cv-sub"><span class="chip gold">${icon('star', 14)}Nivel ${vstate.player.level}</span>${rk ? `<span class="chip second" title="Rango de la ciudad">${icon(rk.emoji, 14)}${ui.esc(rk.name)}</span><span class="chip gold" title="Encanto">${icon('sparkle', 14)}${fmtNum(charm)}</span>` : ''}${cityName}
       <span class="chip primary">${icon('people', 14)}${fmtNum(pop)}</span><span class="chip mint">${icon('smile', 14)}${hp}%</span></div>` });
     container.append(topEl);
   }

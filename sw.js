@@ -4,7 +4,7 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v14';
+const VERSION = 'pixelia-v15';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
@@ -30,8 +30,8 @@ const CORE = [
   './src/online/social-week.js', './src/online/social.js', './src/online/sync.js',
   './src/scenes/city-batch.js', './src/scenes/city-camera.js', './src/scenes/city-common.js', './src/scenes/city-fx.js', './src/scenes/city-life.js',
   './src/scenes/city-ui.js', './src/scenes/city-visit.js', './src/scenes/city-world.js', './src/scenes/city.js', './src/scenes/onboarding.js',
-  './src/scenes/panels-common.js', './src/scenes/panels-games.js', './src/scenes/panels-quests.js', './src/scenes/panels-rewards.js', './src/scenes/panels-settings.js',
-  './src/scenes/panels-style.js', './src/scenes/panels.js', './src/scenes/wardrobe.js',
+  './src/scenes/panels-common.js', './src/scenes/panels-games.js', './src/scenes/panels-quests.js', './src/scenes/panels-rank.js', './src/scenes/panels-rewards.js',
+  './src/scenes/panels-settings.js', './src/scenes/panels-style.js', './src/scenes/panels.js', './src/scenes/wardrobe.js',
   './src/season/events-ui.js', './src/season/events.js', './src/season/season-data.js', './src/season/season-ui-common.js', './src/season/season-ui.js',
   './src/season/season.js',
 ];

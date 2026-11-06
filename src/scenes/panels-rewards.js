@@ -1,6 +1,6 @@
 // Paneles festivos: premio diario (login) y subida de nivel.
 import { icon } from '../core/icons.js';
-import { BUILDINGS, GAMES, CUSTOM_CATALOG, CASTLE_LEVELS, LOGIN_REWARDS, MAX_EXPANSIONS, fitsType, avatarType } from '../core/data.js';
+import { BUILDINGS, GAMES, CUSTOM_CATALOG, TOWN_RANKS, LOGIN_REWARDS, MAX_EXPANSIONS, fitsType, avatarType } from '../core/data.js';
 import { openShell, rewardFx, burst, art, GAME_ART, rewardHtml, chestArt, chestList } from './panels-common.js';
 import { CHESTS, chestCount, levelUpChests } from '../chests/chests.js';
 
@@ -111,11 +111,17 @@ const CAT_NAME = { casa: 'Casa', negocio: 'Negocio', deco: 'Deco', especial: 'Es
 function unlocksAt(level, state) {
   const list = [];
   for (const g of GAMES.filter(g => g.unlock === level)) list.push({ kind: 'Minijuego', name: g.name, ic: art(GAME_ART[g.id], 44), hot: true });
-  for (const b of BUILDINGS.filter(b => b.unlock === level)) list.push({ kind: CAT_NAME[b.cat] || 'Edificio', name: b.name, ic: icon(CAT_ICON[b.cat] || 'home', 40), building: b.id });
-  for (const c of CASTLE_LEVELS.filter(c => c.reqLevel === level)) list.push({ kind: 'Municipalidad', name: `Mejora a nivel ${c.level}`, ic: icon('castle', 40) });
-  // expansión de terreno n se habilita en nivel 2 + 2n (ver economy.expansionInfo)
+  // rango actual de la ciudad (nivel de la Municipalidad): algunos edificios además piden rango
+  const rank = state?.city?.buildings?.find(b => b.id === 'castillo')?.level || 1;
+  for (const b of BUILDINGS.filter(b => b.unlock === level)) {
+    const needRank = b.rank && b.rank > rank ? TOWN_RANKS[b.rank - 1] : null;
+    list.push({ kind: (CAT_NAME[b.cat] || 'Edificio') + (needRank ? ` · rango ${needRank.name}` : ''), name: b.name, ic: icon(CAT_ICON[b.cat] || 'home', 40), building: b.id });
+  }
+  for (const r of TOWN_RANKS.filter(r => r.reqLevel === level && r.rank > rank)) list.push({ kind: 'Tu ciudad', name: `Expediente para ${r.name}`, ic: icon(r.emoji, 40) });
+  // expansión de terreno n se habilita en nivel 2 + 2n y con el rango que da ese terreno (ver economy.expansionInfo)
   const n = (level - 2) / 2;
-  if (Number.isInteger(n) && n >= 0 && n < MAX_EXPANSIONS && (state?.city?.expansions ?? 0) <= n) list.push({ kind: 'Terreno', name: 'Más lugar para construir', ic: icon('map', 40) });
+  const landOk = (TOWN_RANKS[rank - 1]?.land ?? 1) > n;
+  if (Number.isInteger(n) && n >= 0 && n < MAX_EXPANSIONS && landOk && (state?.city?.expansions ?? 0) <= n) list.push({ kind: 'Terreno', name: 'Más lugar para construir', ic: icon('map', 40) });
   for (const [kind, items] of Object.entries(CUSTOM_CATALOG)) {
     // del personaje, solo lo que le sirve a su tipo (lo demás no aparece en su Vestidor)
     const avatarPiece = ['hair', 'dress', 'crown', 'acc'].includes(kind);

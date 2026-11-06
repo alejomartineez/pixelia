@@ -352,7 +352,7 @@ export function goalIcon(goal, size = 32) {
   if (goal.type === 'chest' || goal.type === 'chests' || goal.type === 'openChest') return chestArt(goal.chest || 'madera', size);
   const map = {
     build: 'hammer', upgrade: 'up', collect: 'coin', earn: 'coin', play: 'games', stars: 'star', score: 'trophy',
-    customize: 'dress', buy: 'shop', level: 'xp', pop: 'people', happy: 'smile', expand: 'map', castle: 'castle',
+    customize: 'dress', buy: 'shop', level: 'xp', pop: 'people', happy: 'smile', expand: 'map', castle: 'castle', charm: 'sparkle', rank: 'castle',
     sticker: '🃏', stickers: '🃏', album: '🃏', season: 'sparkle', friend: 'people', friends: 'people', help: 'heart', gift: 'gift', visit: 'home',
   };
   return icon(map[goal.type] || 'quest', size);
@@ -369,6 +369,9 @@ export function goalAction(ctx, goal, close) {
     }
     case 'pop': return buildFocus('casita');
     case 'happy': return buildFocus('arbusto');
+    // Encanto: deco variada (la que todavía no tiene suma más); rango: el panel "Tu ciudad" con el expediente
+    case 'charm': return buildFocus(['banco', 'fuente', 'cerezo', 'macetas', 'farol', 'arbusto'].find(id => econ.canBuild(id).ok && econ.countOf(id) === 0) || 'arbusto');
+    case 'castle': case 'rank': return { label: 'Ver ciudad', ic: 'castle', run: () => { close(); setTimeout(() => ctx.openPanel('rank'), 260); } };
     case 'play': case 'stars': case 'score': {
       if (!goal.game) return { label: 'Jugar', ic: 'games', run: () => { close(); setTimeout(() => ctx.openPanel('games'), 260); } };
       const st = ctx.gameStatus(goal.game);

@@ -391,3 +391,65 @@ export function doorLamps(m, face, plane, u0, u1, y) {
     fset(m.v, face, plane, u, y, 1, P.goldD); fset(m.light, face, plane, u, y + 1, 1, C.yellow); fset(m.v, face, plane, u, y + 2, 1, P.gold);
   }
 }
+
+// ---------- Mejoras visibles por nivel (casas y negocios) ----------
+// Cada nivel suma algo que se ve de lejos, además de los detalles propios de cada modelo:
+//   2 → cantero de flores en los bordes · 3 → faroles encendidos y macetas · 4 → mástil con bandera por encima del techo
+//   5 → borde dorado en el terreno y estrella dorada girando sobre el techo.
+// Los adornos van en columnas libres del borde del lote (sin tapar el edificio ni la puerta).
+const LEVEL_FLAG_COLORS = [P.sky, P.clay, P.mint, P.berry, P.slate];
+export function upgradeDressing(m, L, seed = 1) {
+  if (L < 2) return;
+  const { v, W, D } = m;
+  const free = (x, z) => x >= 0 && z >= 0 && x < W && z < D && !v.has(x, 1, z) && !v.has(x, 2, z) && !v.has(x, 3, z);
+  const near = (x, z, r = 2) => {          // primer lugar libre cerca de (x, z), buscando hacia el centro
+    for (let d = 0; d <= r; d++) for (let dz = -d; dz <= d; dz++) for (let dx = -d; dx <= d; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dz)) !== d) continue;
+      if (free(x + dx, z + dz)) return [x + dx, z + dz];
+    }
+    return null;
+  };
+  const used = new Set();
+  const take = (p) => { if (!p) return null; const k = p.join(','); if (used.has(k)) return null; used.add(k); return p; };
+  const r = rng(seed * 7 + L);
+  // 2+: cantero de flores a lo largo de los dos bordes que mira la cámara (frente y derecha)
+  for (let x = 0; x < W; x++) if (free(x, D - 1)) { v.set(x, 1, D - 1, x % 2 ? C.leaf : C.leafD); if (x % 2 === 0) v.set(x, 2, D - 1, FLOWER_COLORS[(x / 2 + seed) % FLOWER_COLORS.length]); }
+  for (let z = 0; z < D - 1; z++) if (free(W - 1, z)) { v.set(W - 1, 1, z, z % 2 ? C.leaf : C.leafD); if (z % 2 === 0) v.set(W - 1, 2, z, FLOWER_COLORS[(z / 2 + seed + 3) % FLOWER_COLORS.length]); }
+  // 3+: macetas de terracota con flores altas en el lado izquierdo
+  const pots = L >= 3 ? [near(0, D - 3, 1), near(0, D - 6, 1), near(0, 3, 1)].map(take).filter(Boolean) : [];
+  for (const [x, z] of pots) {
+    v.set(x, 1, z, P.clayD);
+    v.set(x, 2, z, C.leafD);
+    v.set(x, 3, z, pick(r, FLOWER_COLORS));
+  }
+  // 3+: faroles encendidos en las esquinas del frente
+  if (L >= 3) {
+    for (const p of [near(1, D - 2), near(W - 2, D - 2)].map(take).filter(Boolean)) {
+      const [x, z] = p;
+      v.box(x, 1, z, 1, 4, 1, P.ink);
+      v.set(x, 5, z, L >= 5 ? P.gold : P.ink);
+      m.light.set(x, 6, z, C.yellow);
+      v.set(x, 7, z, L >= 5 ? P.gold : P.ink);
+    }
+  }
+  // techo más alto del modelo (para que la bandera y la estrella se vean por encima)
+  let top = 0;
+  for (const k of v.map.keys()) { const y = +k.split(',')[1]; if (y > top) top = y; }
+  // 4+: mástil con bandera en una esquina de atrás, más alto que el techo
+  if (L >= 4) {
+    const p = take(near(W - 1, 0, 3)) || take(near(0, 0, 3));
+    if (p) {
+      const [x, z] = p, h = Math.max(8, top + 4);
+      v.box(x, 1, z, 1, h, 1, '#ffffff');
+      v.set(x, h + 1, z, P.gold);
+      wavingFlag(m, x, h - 3, z, 4, 3, LEVEL_FLAG_COLORS[seed % LEVEL_FLAG_COLORS.length]);
+    }
+  }
+  // 5: borde dorado del terreno y estrella girando arriba del techo
+  if (L >= 5) {
+    for (let x = 0; x < W; x++) for (const z of [0, D - 1]) if (v.has(x, 0, z) && free(x, z)) v.set(x, 0, z, (x + z) % 2 ? P.gold : P.goldD);
+    for (let z = 0; z < D; z++) for (const x of [0, W - 1]) if (v.has(x, 0, z) && free(x, z)) v.set(x, 0, z, (x + z) % 2 ? P.gold : P.goldD);
+    spinStar(m, Math.floor(W / 2), top + 3, Math.floor(D / 2), P.gold, 1.2);
+    m.height = Math.max(m.height ?? 0, top + 9);
+  }
+}

@@ -194,6 +194,17 @@ input[type=text]:focus { border-color: var(--primary-d); }
 .hud-left { position: absolute; top: calc(var(--safe-t) + 66px); left: calc(var(--safe-l) + 8px); right: calc(var(--safe-r) + var(--rail-w) + 20px);
   display: flex; flex-direction: column; align-items: flex-start; gap: 7px; pointer-events: none; }
 .hud-stats { display: flex; gap: 6px; flex-wrap: wrap; }
+.hud-rank { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 2px 12px 2px 3px; text-align: left; line-height: 1.05;
+  background: #fff; border: var(--line) solid var(--ink); border-radius: 14px; box-shadow: 0 3px 0 var(--ink); }
+.hud-rank:empty { display: none; }
+.hud-rank:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.hud-rank-ic { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--ink); background: radial-gradient(circle at 35% 30%, #fff, var(--sky-l) 75%); }
+.hud-rank-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hud-rank-txt b { font-size: 15px; white-space: nowrap; }
+.hud-rank-txt small { display: flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; color: var(--ink-l); white-space: nowrap; }
+.hud-rank-stars { display: inline-flex; margin-left: 4px; }
+.hud-rank.ready { background: var(--gold-l); }
+.hud-rank.ready .hud-rank-ic { background: radial-gradient(circle at 35% 30%, #fff, var(--gold) 75%); }
 .hud-fx { display: flex; gap: 6px; flex-wrap: wrap; }
 .fx-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px 2px 4px; border: 2px solid var(--ink); border-radius: 99px; background: #fff; box-shadow: 0 2px 0 var(--ink);
   font-size: 14px; line-height: 1; animation: fxin .35s cubic-bezier(.3,1.6,.6,1) both; }
@@ -263,6 +274,10 @@ input[type=text]:focus { border-color: var(--primary-d); }
   .hud-left { top: calc(var(--safe-t) + 72px); }
   .hud-quest { width: 300px; }
   .hud-quest b { font-size: 16px; }
+  .hud-rank-txt b { font-size: 17px; }
+  .hud-rank-txt small { font-size: 13px; }
+  .hud-rank-ic { width: 40px; height: 40px; }
+  .hud-rank-ic img { width: 30px; height: 30px; }
   .hud-quest small { font-size: 14px; }
   .hud-name b { font-size: 17px; max-width: 170px; }
   .hud-name { min-width: 110px; }

@@ -277,6 +277,55 @@ export const PANEL_CSS = `
 .pnl-lv-empty { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 12px; text-align: left; font-size: 15px; background: var(--mint-l); border: 2px solid var(--ink); border-radius: 12px; }
 .pnl-lv-next { display: flex; align-items: center; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 10px 0 0; font-size: 14px; color: var(--ink-l); }
 
+/* ---------- Rango de la ciudad ("Tu ciudad") ---------- */
+.modal.pnl-rank.sheet { width: min(560px, 100%); }
+.pnl-rk { display: flex; flex-direction: column; gap: 10px; }
+.pnl-rk-head { display: flex; align-items: center; gap: 12px; padding: 12px; background: linear-gradient(135deg, #fff 40%, var(--sky-l)); }
+.pnl-rk-emblem { position: relative; flex: none; display: grid; place-items: center; }
+.pnl-rk-badge { position: relative; display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; border: var(--line) solid var(--ink);
+  background: radial-gradient(circle at 35% 30%, #fff, var(--gold-l) 70%); box-shadow: 0 4px 0 var(--ink); }
+.pnl-rk-emblem em { position: absolute; right: -4px; bottom: -4px; min-width: 26px; height: 26px; padding: 0 5px; display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 15px;
+  color: #fff; background: var(--second); border: 2px solid var(--ink); border-radius: 13px; box-shadow: 0 2px 0 var(--ink); }
+.pnl-rk-emblem.big .pnl-rk-badge { width: 124px; height: 124px; animation: pnlStarIn .7s cubic-bezier(.3,1.7,.6,1) both; }
+.pnl-rk-emblem.big em { min-width: 36px; height: 36px; font-size: 20px; border-radius: 18px; right: 0; bottom: 0; }
+.pnl-rk-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pnl-rk-meta small { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-l); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pnl-rk-name { font-size: 26px; line-height: 1.05; }
+.pnl-rk-charm { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 15px; }
+.pnl-rk-stars { display: inline-flex; }
+.pnl-rk-bonus { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; font-size: 13px; color: var(--ink-l); }
+.pnl-rk-tip { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 13px; color: var(--ink-l); line-height: 1.25; }
+.pnl-rk-tip .pi { flex: none; margin-top: 1px; }
+.pnl-rk-file { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.pnl-rk-h { display: flex; align-items: center; gap: 6px; margin: 0 0 2px; font-size: 17px; }
+.pnl-rk-h b { display: inline-flex; align-items: center; gap: 3px; }
+.pnl-rk-req { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #fff; border: 2px solid var(--ink); border-radius: 12px; }
+.pnl-rk-req.ok { background: var(--mint-l); }
+.pnl-rk-req-ic { flex: none; display: grid; place-items: center; }
+.pnl-rk-req-body { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pnl-rk-req-top { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.pnl-rk-req-top span { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pnl-rk-req .progress { height: 11px; }
+.pnl-rk-req-check { flex: none; display: grid; place-items: center; width: 30px; }
+.pnl-rk-req:not(.ok) .pnl-rk-req-check { opacity: .45; }
+.pnl-rk-reward { align-self: center; font-size: 16px; }
+.pnl-rk-up { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.pnl-rk-up .btn { font-size: 18px; min-height: 50px; }
+.pnl-rk-cost { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 18px; }
+.pnl-rk-cost .muted { font-size: 14px; display: inline-flex; align-items: center; gap: 3px; }
+.pnl-rk-msg { color: var(--coral); font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.pnl-rk-busy { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.pnl-rk-busy [data-rk-left] { font-variant-numeric: tabular-nums; }
+.pnl-rk-party .pnl-lv-burst { height: 170px; }
+.pnl-rk-party .pnl-rays { width: 260px; height: 260px; margin: -130px 0 0 -130px; }
+.pnl-rk-foot { display: flex; gap: 8px; width: 100%; margin-top: 12px; }
+.pnl-rk-foot .btn { flex: 1; font-size: 18px; min-height: 52px; }
+@media (max-width: 420px) {
+  .pnl-rk-badge { width: 60px; height: 60px; }
+  .pnl-rk-badge .pi { width: 42px; height: 42px; }
+  .pnl-rk-name { font-size: 22px; }
+}
+
 /* ---------- Premios con cofres / figuritas / objetos ---------- */
 .pnl-rw { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
 .pnl-rw > span { font-size: inherit; }

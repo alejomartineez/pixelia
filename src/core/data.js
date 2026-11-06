@@ -20,10 +20,11 @@ export { PALETTE } from './palette.js';
 // prod: {coins|gems: cantidad por ciclo, cycle: segundos, cap: ciclos acumulables}
 // happy: felicidad que aporta. xp: experiencia al terminar de construir.
 // max: cantidad máxima (undefined = ilimitado). game: minijuego que abre al tocarlo.
+// rank: rango de ciudad mínimo para construirlo. charm: Encanto (si falta, sale de la categoría: ver economy.charmBase).
 export const BUILDINGS = [
   // --- Especiales ---
   { id: 'castillo', name: 'Municipalidad', cat: 'especial', size: [4, 4], unlock: 1, cost: { coins: 0 }, time: 0, max: 1,
-    happy: 10, xp: 0, prod: { coins: 15, cycle: 60, cap: 8 }, desc: 'El corazón de la ciudad. Mejorala para dar bonus a toda la ciudad.' },
+    happy: 10, charm: 20, xp: 0, prod: { coins: 15, cycle: 60, cap: 8 }, desc: 'El corazón de la ciudad. Mejorala para dar bonus a toda la ciudad.' },
   { id: 'joyeria', name: 'Joyería', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 150 }, time: 10, max: 1,
     happy: 3, xp: 15, game: 'match3', desc: 'Abre el minijuego Joyas Brillantes (combina 3).' },
   { id: 'torre_bloques', name: 'Torre de Bloques', cat: 'especial', size: [2, 2], unlock: 2, cost: { coins: 300 }, time: 20, max: 1,
@@ -42,9 +43,9 @@ export const BUILDINGS = [
     pop: 8, prod: { coins: 7, cycle: 60, cap: 6 }, xp: 18, desc: 'Cabaña con jardín florido.' },
   { id: 'chalet', name: 'Chalet', cat: 'casa', size: [2, 2], unlock: 4, cost: { coins: 600 }, time: 30,
     pop: 13, prod: { coins: 12, cycle: 75, cap: 6 }, xp: 30, desc: 'Dos pisos y balcón con vista a la plaza.' },
-  { id: 'torre_cristal', name: 'Torre de Cristal', cat: 'casa', size: [2, 2], unlock: 7, cost: { coins: 1500 }, time: 60,
+  { id: 'torre_cristal', name: 'Torre de Cristal', rank: 2, cat: 'casa', size: [2, 2], unlock: 7, cost: { coins: 1500 }, time: 60,
     pop: 22, prod: { coins: 22, cycle: 90, cap: 6 }, xp: 55, desc: 'Departamentos brillantes para muchos vecinos.' },
-  { id: 'mansion', name: 'Mansión Dorada', cat: 'casa', size: [3, 3], unlock: 10, cost: { coins: 3500, gems: 5 }, time: 120,
+  { id: 'mansion', name: 'Mansión Dorada', rank: 3, cat: 'casa', size: [3, 3], unlock: 10, cost: { coins: 3500, gems: 5 }, time: 120,
     pop: 40, prod: { coins: 45, cycle: 120, cap: 6 }, xp: 100, desc: 'Lujo puro con fuente privada.' },
 
   // --- Negocios ---
@@ -62,13 +63,13 @@ export const BUILDINGS = [
     prod: { coins: 120, cycle: 200, cap: 6 }, xp: 65, desc: 'Cupcakes con forma de estrella.' },
   { id: 'boutique', name: 'Tienda Brillo', cat: 'negocio', size: [2, 2], unlock: 7, cost: { coins: 2000 }, time: 90, popReq: 65,
     prod: { coins: 160, cycle: 240, cap: 6 }, xp: 80, desc: 'Moda, bolsos y zapatos con brillos.' },
-  { id: 'cine', name: 'Cine Estelar', cat: 'negocio', size: [3, 3], unlock: 9, cost: { coins: 3200 }, time: 120, popReq: 85,
+  { id: 'cine', name: 'Cine Estelar', rank: 3, cat: 'negocio', size: [3, 3], unlock: 9, cost: { coins: 3200 }, time: 120, popReq: 85,
     prod: { coins: 260, cycle: 300, cap: 6 }, happy: 4, xp: 110, desc: 'Estrenos románticos todas las noches.' },
-  { id: 'spa', name: 'Spa Burbujas', cat: 'negocio', size: [3, 3], unlock: 11, cost: { coins: 5000, gems: 5 }, time: 180, popReq: 110,
+  { id: 'spa', name: 'Spa Burbujas', rank: 4, cat: 'negocio', size: [3, 3], unlock: 11, cost: { coins: 5000, gems: 5 }, time: 180, popReq: 110,
     prod: { coins: 380, cycle: 360, cap: 6 }, happy: 5, xp: 150, desc: 'Masajes, burbujas y relax total.' },
-  { id: 'rueda', name: 'Rueda de la Fortuna', cat: 'negocio', size: [3, 3], unlock: 13, cost: { coins: 8000, gems: 10 }, time: 240, popReq: 140,
+  { id: 'rueda', name: 'Rueda de la Fortuna', rank: 5, cat: 'negocio', size: [3, 3], unlock: 13, cost: { coins: 8000, gems: 10 }, time: 240, popReq: 140,
     prod: { gems: 1, cycle: 1800, cap: 4 }, happy: 8, xp: 220, desc: 'Produce gemas mientras gira y gira.' },
-  { id: 'teatro', name: 'Teatro de la Ópera', cat: 'negocio', size: [3, 3], unlock: 15, cost: { coins: 12000, gems: 10 }, time: 300, popReq: 180,
+  { id: 'teatro', name: 'Teatro de la Ópera', rank: 5, cat: 'negocio', size: [3, 3], unlock: 15, cost: { coins: 12000, gems: 10 }, time: 300, popReq: 180,
     prod: { coins: 800, cycle: 600, cap: 6 }, happy: 6, xp: 300, desc: 'Funciones de gala con alfombra roja.' },
 
   // --- Decoración ---
@@ -80,15 +81,15 @@ export const BUILDINGS = [
   { id: 'fuente', name: 'Fuente de Corazones', cat: 'deco', size: [2, 2], unlock: 3, cost: { coins: 300 }, time: 10, happy: 6, xp: 15, desc: 'Agua que salta en forma de corazón.' },
   { id: 'macetas', name: 'Macetas de Tulipanes', cat: 'deco', size: [1, 1], unlock: 4, cost: { coins: 70 }, time: 0, happy: 2, xp: 4, desc: 'Tulipanes de colores.' },
   { id: 'estatua', name: 'Estatua del Fundador', cat: 'deco', size: [2, 2], unlock: 6, cost: { coins: 900 }, time: 20, happy: 10, xp: 30, desc: 'Homenaje a quien fundó el pueblo: ¡vos!' },
-  { id: 'glorieta', name: 'Glorieta', cat: 'deco', size: [2, 2], unlock: 8, cost: { coins: 1400 }, time: 30, happy: 12, xp: 40, desc: 'Ideal para picnics.' },
+  { id: 'glorieta', name: 'Glorieta', rank: 3, cat: 'deco', size: [2, 2], unlock: 8, cost: { coins: 1400 }, time: 30, happy: 12, xp: 40, desc: 'Ideal para picnics.' },
   { id: 'arco_rosas', name: 'Arco de Rosas', cat: 'deco', size: [1, 1], unlock: 9, cost: { coins: 500 }, time: 0, happy: 5, xp: 12, desc: 'Rosas trepadoras.' },
-  { id: 'unicornio', name: 'Estatua Unicornio', cat: 'deco', size: [2, 2], unlock: 12, cost: { gems: 15 }, time: 20, happy: 25, xp: 60, desc: 'Mágica y muy brillante.' },
-  { id: 'lago', name: 'Lago de Patitos', cat: 'deco', size: [3, 3], unlock: 14, cost: { coins: 4000 }, time: 60, happy: 22, xp: 80, desc: 'Patitos que nadan en círculos.' },
+  { id: 'unicornio', name: 'Estatua Unicornio', rank: 4, cat: 'deco', size: [2, 2], unlock: 12, cost: { gems: 15 }, time: 20, happy: 25, xp: 60, desc: 'Mágica y muy brillante.' },
+  { id: 'lago', name: 'Lago de Patitos', rank: 4, cat: 'deco', size: [3, 3], unlock: 14, cost: { coins: 4000 }, time: 60, happy: 22, xp: 80, desc: 'Patitos que nadan en círculos.' },
 
   // --- Caminos ---
   { id: 'camino', name: 'Camino de Piedra', cat: 'camino', size: [1, 1], unlock: 1, cost: { coins: 5 }, time: 0, xp: 0, desc: 'Conectá tu ciudad.' },
   { id: 'camino_rosa', name: 'Camino de Ladrillo', cat: 'camino', size: [1, 1], unlock: 3, cost: { coins: 12 }, time: 0, happy: 0, xp: 0, desc: 'Ladrillos rojizos, como los de antes.' },
-  { id: 'camino_dorado', name: 'Camino Dorado', cat: 'camino', size: [1, 1], unlock: 8, cost: { coins: 30 }, time: 0, happy: 0, xp: 0, desc: 'Para pasear con todo el brillo.' },
+  { id: 'camino_dorado', name: 'Camino Dorado', rank: 3, cat: 'camino', size: [1, 1], unlock: 8, cost: { coins: 30 }, time: 0, happy: 0, xp: 0, desc: 'Para pasear con todo el brillo.' },
 ];
 export const BUILDING_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
 export const CATEGORIES = [
@@ -99,14 +100,35 @@ export const CATEGORIES = [
   { id: 'camino', name: 'Caminos' },
 ];
 
-// Mejoras del castillo: requisitos y bonus global de producción
-export const CASTLE_LEVELS = [
-  // level 1 es el inicial
-  { level: 2, cost: { coins: 800, gems: 2 }, time: 60, reqLevel: 3 },
-  { level: 3, cost: { coins: 2500, gems: 5 }, time: 180, reqLevel: 6 },
-  { level: 4, cost: { coins: 6000, gems: 10 }, time: 420, reqLevel: 9 },
-  { level: 5, cost: { coins: 14000, gems: 20 }, time: 900, reqLevel: 13 },
+// ---------------- RANGO DE LA CIUDAD ----------------
+// look: qué estrena la Municipalidad a la vista en ese rango (models-special.js).
+// El nivel de la Municipalidad (id 'castillo') ES el rango de la ciudad. Para subir de rango hay que cumplir un
+// "expediente" (req) además de pagar la obra. Cada rango suma +8% de producción global y puede dar constructoras,
+// más terreno (land = expansiones permitidas), edificios nuevos (BUILDINGS[].rank) y un premio al llegar.
+// req: pop (población), happy (% de felicidad), charm (Encanto), shops (tipos de negocio distintos), monuments.
+export const TOWN_RANKS = [
+  { rank: 1, name: 'Aldea', emoji: '🏕️', land: 1 },
+  { rank: 2, name: 'Caserío', emoji: '🏡', look: 'pórtico con columnas', land: 2, cost: { coins: 800, gems: 2 }, time: 60, reqLevel: 3,
+    req: { pop: 12, happy: 30, charm: 40, shops: 1 }, reward: { gems: 5, chest: 'madera' } },
+  { rank: 3, name: 'Pueblo', emoji: '🏘️', look: 'alas a los costados', land: 3, builders: 1, cost: { coins: 2500, gems: 5 }, time: 180, reqLevel: 7,
+    req: { pop: 45, happy: 40, charm: 140, shops: 3 }, reward: { gems: 10, chest: 'plata' } },
+  { rank: 4, name: 'Villa', emoji: '⛲', look: 'fuentes en la plaza', land: 4, cost: { coins: 6000, gems: 10 }, time: 420, reqLevel: 12,
+    req: { pop: 90, happy: 45, charm: 300, shops: 5 }, reward: { gems: 15, chest: 'oro' } },
+  { rank: 5, name: 'Ciudad', emoji: '🏙️', look: 'cúpula dorada y banderines', land: 5, cost: { coins: 14000, gems: 20 }, time: 900, reqLevel: 20,
+    req: { pop: 150, happy: 50, charm: 520, shops: 7 }, reward: { gems: 25, chest: 'oro' } },
+  { rank: 6, name: 'Gran Ciudad', emoji: '🌆', look: 'techo azul y torrecitas doradas', land: 7, builders: 1, cost: { coins: 30000, gems: 30 }, time: 1800, reqLevel: 26,
+    req: { pop: 220, happy: 55, charm: 800, shops: 9 }, reward: { gems: 35, chest: 'oro' } },
+  { rank: 7, name: 'Metrópolis', emoji: '🌃', look: 'mirador, alfombra roja y banderas gigantes', land: 7, cost: { coins: 60000, gems: 45 }, time: 3600, reqLevel: 31,
+    req: { pop: 300, happy: 60, charm: 1150, shops: 10 }, reward: { gems: 50, chest: 'real' } },
+  { rank: 8, name: 'Capital', emoji: '🏛️', look: 'arco dorado y fuegos artificiales', land: 7, cost: { coins: 120000, gems: 60 }, time: 7200, reqLevel: 36,
+    req: { pop: 400, happy: 65, charm: 1600, shops: 11 }, reward: { gems: 80, chest: 'real' } },
 ];
+export const RANK_REQ_LABELS = {
+  pop: ['Población', 'people'], happy: ['Felicidad', 'smile'], charm: ['Encanto', 'sparkle'],
+  shops: ['Tipos de negocio', 'shop'], monuments: ['Monumentos', 'trophy'],
+};
+// Compatibilidad: mejoras de la Municipalidad en el formato viejo (level = rango)
+export const CASTLE_LEVELS = TOWN_RANKS.slice(1).map(r => ({ level: r.rank, cost: r.cost, time: r.time, reqLevel: r.reqLevel }));
 export const CASTLE_BONUS_PER_LEVEL = 0.08; // +8% producción global por nivel extra de castillo
 
 // ---------------- MINIJUEGOS ----------------
@@ -344,6 +366,8 @@ export const CUSTOM_CATALOG = {
 //  level                 llegar a nivel count (absoluto)
 //  pop                   población >= count (absoluto)
 //  happy                 felicidad total >= count (absoluto)
+//  charm                 Encanto de la ciudad >= count (absoluto)
+//  castle                rango de la ciudad (nivel de la Municipalidad) >= count (absoluto)
 //  expand                expansiones de terreno
 //  castle                nivel del castillo >= count (absoluto)
 export const MAIN_QUESTS = [
@@ -360,15 +384,21 @@ export const MAIN_QUESTS = [
   { id: 'm11', title: 'Sobre ruedas', text: 'Construí el Garaje.', goal: { type: 'build', id: 'garaje', count: 1 }, reward: { gems: 5, xp: 60 } },
   { id: 'm12', title: 'Estacionamiento perfecto', text: 'Ganá 3 estrellas en Estacionamiento Express.', goal: { type: 'stars', game: 'parking', count: 3 }, reward: { coins: 400, xp: 60, chest: 'plata' } },
   { id: 'm13', title: 'Más terreno', text: 'Expandí tu ciudad una vez.', goal: { type: 'expand', count: 1 }, reward: { gems: 5, xp: 60 } },
-  { id: 'm14', title: 'Una municipalidad mejor', text: 'Mejorá la Municipalidad a nivel 2.', goal: { type: 'castle', count: 2 }, reward: { gems: 8, xp: 80 } },
+  { id: 'm14', title: 'De Aldea a Caserío', text: 'Cumplí el expediente y subí la ciudad al rango Caserío.', goal: { type: 'castle', count: 2 }, reward: { gems: 8, xp: 80 } },
   { id: 'm15', title: '¡A pasear!', text: 'Construí la Pista Arcoíris y jugá Ruta Pixel.', goal: { type: 'play', game: 'driving', count: 1 }, reward: { coins: 600, xp: 80, chest: 'plata' } },
   { id: 'm16', title: 'Ciudad feliz', text: 'Llegá a 40 de felicidad.', goal: { type: 'happy', count: 40 }, reward: { gems: 8, xp: 100 } },
   { id: 'm17', title: 'Gran ciudad', text: 'Llegá a 60 de población.', goal: { type: 'pop', count: 60 }, reward: { coins: 1000, xp: 120 } },
   { id: 'm18', title: 'Mejora todo', text: 'Mejorá 5 edificios.', goal: { type: 'upgrade', count: 5 }, reward: { gems: 10, xp: 150, chest: 'oro' } },
   { id: 'm19', title: 'Al cine', text: 'Construí el Cine Estelar.', goal: { type: 'build', id: 'cine', count: 1 }, reward: { gems: 10, xp: 200 } },
   { id: 'm20', title: 'Leyenda de Pixelia', text: 'Llegá al nivel 12.', goal: { type: 'level', count: 12 }, reward: { gems: 20, xp: 0, chest: 'oro' } },
-  { id: 'm21', title: 'Municipalidad modelo', text: 'Mejorá la Municipalidad a nivel 4.', goal: { type: 'castle', count: 4 }, reward: { gems: 25, xp: 300 } },
+  { id: 'm21', title: 'Una Villa hecha y derecha', text: 'Subí la ciudad al rango Villa.', goal: { type: 'castle', count: 4 }, reward: { gems: 25, xp: 300 } },
   { id: 'm22', title: 'Gran Metrópolis', text: 'Llegá a 150 de población.', goal: { type: 'pop', count: 150 }, reward: { gems: 30, xp: 400, chest: 'real' } },
+  { id: 'm23', title: 'Un pueblo encantador', text: 'Llegá a 300 de Encanto (deco variada y edificios mejorados).', goal: { type: 'charm', count: 300 }, reward: { gems: 15, xp: 300 } },
+  { id: 'm24', title: '¡Ya somos Ciudad!', text: 'Subí la Municipalidad al rango Ciudad.', goal: { type: 'castle', count: 5 }, reward: { gems: 30, xp: 500, chest: 'oro' } },
+  { id: 'm25', title: 'Encanto puro', text: 'Llegá a 600 de Encanto.', goal: { type: 'charm', count: 600 }, reward: { gems: 20, xp: 600 } },
+  { id: 'm26', title: 'Gran Ciudad', text: 'Subí la Municipalidad al rango Gran Ciudad.', goal: { type: 'castle', count: 6 }, reward: { gems: 40, xp: 800, chest: 'oro' } },
+  { id: 'm27', title: 'Luces de Metrópolis', text: 'Subí la Municipalidad al rango Metrópolis.', goal: { type: 'castle', count: 7 }, reward: { gems: 50, xp: 1000, chest: 'real' } },
+  { id: 'm28', title: 'Capital de Pixelia', text: 'Llevá tu ciudad al rango Capital.', goal: { type: 'castle', count: 8 }, reward: { gems: 80, xp: 1500, chest: 'real' } },
 ];
 
 // Pool de misiones diarias (se eligen 3 por día con semilla de la fecha)
@@ -406,5 +436,7 @@ export const ACHIEVEMENTS = [
   { id: 'a_streak', name: 'Fiel a Pixelia', desc: 'Entrá {n} días seguidos', stat: 'bestStreak', tiers: [2, 5, 7, 14, 30], reward: [3, 5, 8, 12, 25] },
   { id: 'a_chests', name: 'Cazatesoros', desc: 'Abrí {n} cofres', stat: 'chestsOpened', tiers: [3, 15, 40, 100, 250], reward: [3, 5, 8, 12, 20] },
   { id: 'a_stickers', name: 'Coleccionista', desc: 'Conseguí {n} figuritas distintas', stat: 'stickersNew', tiers: [10, 30, 60, 90, 108], reward: [3, 5, 10, 15, 30] },
+  { id: 'a_rank', name: 'Intendencia', desc: 'Llevá tu ciudad al rango {n}', stat: 'rankBest', tiers: [2, 3, 5, 7, 8], reward: [3, 6, 10, 20, 30] },
+  { id: 'a_charm', name: 'Ciudad Encantadora', desc: 'Llegá a {n} de Encanto', stat: 'charmBest', tiers: [100, 300, 600, 1000, 1500], reward: [3, 6, 10, 15, 25] },
   { id: 'a_season', name: 'Estrella de Temporada', desc: 'Llegá al nivel {n} del Pase', stat: 'seasonLevelBest', tiers: [5, 10, 20, 30], reward: [3, 6, 10, 20] },
 ];

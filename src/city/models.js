@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { voxelMaterial, glowMaterial, addLights, setIsoCamera, Voxels, shade, outlineCanvas } from '../core/voxel.js';
 import { BUILDING_BY_ID, OUTFIT_COLORS } from '../core/data.js';
-import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS } from './models-kit.js';
+import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS, upgradeDressing } from './models-kit.js';
 import { SPECIAL_BUILDERS } from './models-special.js';
 import { HOUSE_BUILDERS } from './models-houses.js';
 import { SHOP_BUILDERS } from './models-shops.js';
@@ -195,7 +195,9 @@ function buildTemplate(id, level, opts, themeId) {
   const m = new Model(W, D);
   const fn = BUILDERS[id];
   if (fn) fn(m, level, opts);
-  else { // id desconocido: cajita neutra (no debería pasar)
+  // casas y negocios mejorables: cada nivel suma algo bien visible (macetas, faroles, bandera, estrella dorada)
+  if (fn && def && (def.cat === 'casa' || def.cat === 'negocio') && def.prod) upgradeDressing(m, level, [...id].reduce((a, c) => a + c.charCodeAt(0), 0));
+  if (!fn) { // id desconocido: cajita neutra (no debería pasar)
     m.v.box(1, 0, 1, W - 2, 6, D - 2, P.clayL);
     m.v.box(1, 6, 1, W - 2, 1, D - 2, P.clay);
   }
@@ -205,9 +207,12 @@ function buildTemplate(id, level, opts, themeId) {
   return tpl;
 }
 
+/** Nivel máximo con modelo propio: la Municipalidad tiene uno por rango (8); el resto, 5. */
+const modelMaxLevel = (id) => (id === 'castillo' ? 8 : 5);
+
 /** Modelo de un edificio del catálogo. opts: { flagColor (id de OUTFIT_COLORS o hex), ghost, theme } */
 export function buildingModel(id, level = 1, opts = {}) {
-  const lv = Math.max(1, Math.min(5, Math.round(level) || 1));
+  const lv = Math.max(1, Math.min(modelMaxLevel(id), Math.round(level) || 1));
   const def = BUILDING_BY_ID[id];
   const flag = id === 'castillo' ? flagHex(opts.flagColor) : null;
   const th = themeOf(opts.theme).id;
@@ -545,7 +550,7 @@ function fallbackThumb(id) {
 }
 /** Ícono 288x288 del edificio (dataURL), cacheado. theme: id de tema de ciudad (default pastel). */
 export function thumbnail(id, level = 1, theme = DEFAULT_THEME) {
-  const lv = Math.max(1, Math.min(5, Math.round(level) || 1));
+  const lv = Math.max(1, Math.min(modelMaxLevel(id), Math.round(level) || 1));
   const th = themeOf(theme).id;
   const k = id + '|' + lv + '|' + th;
   let p = thumbCache.get(k);

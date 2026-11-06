@@ -43,6 +43,8 @@ export const RANK_BEST_GEMS = 5;
 export const RANK_CATS = [
   { id: 'level', name: 'Nivel', icon: 'crown', short: 'Nivel' },
   { id: 'stars', name: 'Estrellas', icon: 'star', short: 'Estrellas' },
+  // Ciudad más linda: Encanto actual (viaja en stats.week.charm del perfil, así no hace falta tocar el SQL)
+  { id: 'charm', name: 'Ciudad más linda', icon: 'sparkle', short: 'Encanto' },
   { id: 'match3', name: 'Joyas Brillantes', icon: '💎', short: 'Joyas' },
   { id: 'blocks', name: 'Bloques Pixel', icon: '🧩', short: 'Bloques' },
   { id: 'parking', name: 'Estacionamiento', icon: '🅿️', short: 'Parking' },
@@ -142,7 +144,13 @@ export function refreshSocial(what = null) {
   const want = k => !what || what.includes(k);
   const p = (async () => {
     const jobs = [];
-    if (want('friends')) jobs.push(net.listFriends().then(r => { if (!r?.error) cache.friends = r; }));
+    if (want('friends')) jobs.push(Promise.all([net.listFriends(), net.leaderboard(null)]).then(([r, lb]) => {
+      if (r?.error) return;
+      // rango y Encanto de cada amistad: viajan en stats.week del perfil (los trae el ranking, sin filtrar semana)
+      const byId = new Map((Array.isArray(lb) ? lb : []).map(x => [x.id, x.week]));
+      for (const f of r) { const w = byId.get(f.id); if (w?.rank) f.rank = w.rank | 0; if (w?.charm != null) f.charm = w.charm | 0; }
+      cache.friends = r;
+    }));
     if (want('trades')) jobs.push(net.listTrades().then(r => { if (!r?.error) cache.trades = r; }));
     if (want('coop')) jobs.push(net.coopStatus().then(r => { if (r && !r.error) cache.coop = r; }));
     if (want('inbox')) jobs.push(sync.refreshInbox());

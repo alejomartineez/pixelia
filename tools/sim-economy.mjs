@@ -2,7 +2,8 @@
 //   node tools/sim-economy.mjs . new        (siesta actual)
 //   node tools/sim-economy.mjs . old        (almacén viejo de 6 tandas, para comparar)
 //   node tools/sim-economy.mjs . new 1 7,9,11,13,15,18,20,23 5 2   (k=escala de producción, horas de sesión, minutos, partidas)
-// Columnas: lvl nivel, coins saldo, prod monedas cobradas acumuladas, games/quests/lvlRw otras fuentes, n edificios.
+//   SIM_DAYS=90 node tools/sim-economy.mjs .   (más días: muestra una fila por semana y el día en que llega a cada rango)
+// Columnas: lvl nivel, rank rango de la ciudad, charm Encanto, coins saldo, prod monedas cobradas acumuladas, games/quests/lvlRw otras fuentes, n edificios.
 // Simulación de 7 días de juego casual: node sim.mjs <raizProyecto> [modo] [k]
 //  modo: old (topes viejos de 6 ciclos) | new (siesta 3-4 h)   k: escala de producción de monedas
 import { pathToFileURL } from 'node:url';
@@ -12,6 +13,7 @@ const K = Number(process.argv[4] || 1);
 const SESS = (process.argv[5] || '8,13,19,23').split(',').map(Number);   // horas de sesión
 const SESSION_MIN = Number(process.argv[6] || 10);
 const GAMES_PER_SESSION = Number(process.argv[7] || 3);
+const DAYS = Number(process.env.SIM_DAYS || 7);
 
 let T = new Date(2026, 10, 2, 8, 0, 0).getTime();
 const realNow = Date.now;
@@ -49,6 +51,9 @@ function findSpot(id) {
 function spend() {
   for (let guard = 0; guard < 40; guard++) {
     const L = s.player.level;
+    // con el expediente completo, la Municipalidad (subir de rango) va primero
+    const castle = s.city.buildings.find(b => b.id === 'castillo');
+    if (castle && E.canUpgrade(castle).ok) { E.startUpgrade(castle.uid); continue; }
     const want = [];
     for (const g of data.GAMES) if (L >= g.unlock && !E.countOf(g.building)) want.push(g.building);
     if (L >= 2 && !E.countOf('boutique_real')) want.push('boutique_real');
@@ -61,18 +66,28 @@ function spend() {
     for (const b of nextBiz) if (b.popReq <= pop) want.push(b.id);
     const hp = E.happiness();
     if (hp.pct < 70) {
-      const deco = data.BUILDINGS.filter(b => b.cat === 'deco' && b.unlock <= L && b.cost.coins && !b.cost.gems).sort((a, b) => b.happy / b.cost.coins - a.happy / a.cost.coins);
+      const deco = data.BUILDINGS.filter(b => b.cat === 'deco' && b.unlock <= L && b.cost.coins && !b.cost.gems && E.countOf(b.id) < 8).sort((a, b) => b.happy / b.cost.coins - a.happy / a.cost.coins);
       if (deco[0]) want.push(deco[0].id);
     }
     if (houses.length && E.countOf(houses[0].id) < 6) want.push(houses.sort((a, b) => b.pop - a.pop)[0].id);
+    // expediente del próximo rango: tipos de negocio que faltan, encanto (deco variada) y población
+    const rs = E.rankStatus();
+    const need = Object.fromEntries(rs.reqs.filter(r => !r.ok).map(r => [r.key, true]));
+    if (need.shops) for (const b of data.BUILDINGS.filter(b => b.cat === 'negocio' && b.unlock <= L && !E.countOf(b.id) && (b.popReq || 0) <= pop)) want.push(b.id);
+    if (need.pop) want.push(houses.sort((a, b) => b.pop / b.cost.coins - a.pop / a.cost.coins)[0].id);
+    if (need.charm || need.happy) {
+      const deco = data.BUILDINGS.filter(b => b.cat === 'deco' && b.unlock <= L && b.cost.coins && !b.max && E.countOf(b.id) < 8)
+        .sort((a, b) => E.charmGain(b.id) / b.cost.coins - E.charmGain(a.id) / a.cost.coins);
+      if (deco[0]) want.push(deco[0].id);
+    }
     let did = false;
     for (const id of want) {
       const c = E.canBuild(id);
       if (!c.ok) continue;
       const spot = findSpot(id);
       if (!spot) {
-        const ex = E.expansionInfo();
-        if (ex && s.player.level >= ex.reqLevel && store.canAfford(ex.cost)) { E.expand(); did = true; break; }
+        const ex = E.expansionStatus();
+        if (ex && ex.ok && store.canAfford(ex.cost)) { E.expand(); did = true; break; }
         continue;
       }
       const r = E.placeBuilding(id, spot[0], spot[1], 0);
@@ -99,7 +114,8 @@ Math.random = rnd;
 const out = [];
 const day0 = new Date(2026, 10, 2).getTime();
 let lastDay = -1;
-for (let day = 0; day < 7; day++) {
+const rankDay = {};
+for (let day = 0; day < DAYS; day++) {
   for (const hr of SESS) {
     T = day0 + day * 864e5 + hr * 3600e3;
     E.tick();
@@ -117,10 +133,16 @@ for (let day = 0; day < 7; day++) {
     spend();
   }
   const prodPerHour = s.city.buildings.reduce((a, b) => { const st = E.producerStatus(b, T); return a + (st.producer && !st.paused && st.currency === 'coins' ? st.perCycle * 3600 / st.cycleSec : 0); }, 0);
-  out.push({ day: day + 1, lvl: s.player.level, coins: s.coins, prod: tally.prod, games: tally.games, quests: tally.quests, lvlRw: tally.level, n: s.city.buildings.length, castle: E.castleLevel(), exp: s.city.expansions, pop: E.population(), prodH: Math.round(prodPerHour) });
+  const rk = E.townRank();
+  for (let r = 2; r <= rk; r++) if (!rankDay[r]) rankDay[r] = day + 1;
+  if (DAYS > 14 && (day + 1) % 7 && day + 1 !== DAYS) continue;
+  const rs = E.rankStatus();
+  out.push({ day: day + 1, lvl: s.player.level, rank: rk, charm: E.cityCharm(), happy: E.happiness().pct, shops: E.shopKinds(), gems: s.gems,
+    falta: rs.reqs.filter(r => !r.ok).map(r => r.key + ' ' + r.have + '/' + r.need).join(' ') + (rs.next && !rs.levelOk ? ' nivel' + rs.next.reqLevel : ''), coins: s.coins, prod: tally.prod, games: tally.games, quests: tally.quests, lvlRw: tally.level, n: s.city.buildings.length, castle: E.castleLevel(), exp: s.city.expansions, pop: E.population(), prodH: Math.round(prodPerHour) });
 }
 console.log(mode, 'k=' + K, 'sesiones', SESS.join(','));
 console.table(out);
+console.log('día en que llega a cada rango:', JSON.stringify(rankDay));
 const ids = {}; for (const b of s.city.buildings) ids[b.id] = (ids[b.id] || 0) + 1;
 console.log(JSON.stringify(ids));
 Date.now = realNow;

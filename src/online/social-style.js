@@ -90,6 +90,7 @@ export const SOCIAL_CSS = `
 .soc-friend .soc-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .soc-friend .soc-name b { font-size: 19px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .soc-lv { flex: none; display: inline-flex; align-items: center; gap: 2px; padding: 0 7px 0 3px; border: 2px solid var(--ink); border-radius: 99px; background: var(--gold-l); font-size: 13px; font-weight: 700; }
+.soc-lv.soc-rk { background: var(--second-l); white-space: nowrap; }
 .soc-seen { font-size: 13px; color: var(--ink-l); }
 .soc-seen.on { color: var(--mint-d); font-weight: 700; }
 .soc-acts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }

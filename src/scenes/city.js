@@ -316,6 +316,7 @@ export default function create(ctx) {
     sideEl.classList.remove('hide');
     if (!silent) audio.sfx('close');
     syncStatus();
+    bus.emit('city:placing', { active: false });
   }
   function rotatePlacing() {
     if (!placing) return;
@@ -481,9 +482,9 @@ export default function create(ctx) {
   }
 
   function doExpand() {
-    const ex = E.expansionInfo();
+    const ex = E.expansionStatus();
     if (!ex) { ui.toast('¡Tu terreno ya está al máximo!', { icon: 'map' }); return false; }
-    if (ctx.state.player.level < ex.reqLevel) { audio.sfx('error'); ui.toast(`Se desbloquea en nivel ${ex.reqLevel}`, { icon: 'lock' }); return false; }
+    if (!ex.ok) { audio.sfx('error'); ui.toast(ex.reason, { icon: 'lock' }); return false; }
     if (!store.canAfford(ex.cost)) { audio.sfx('error'); ui.toast('No te alcanza todavía', { icon: 'coin' }); return false; }
     const res = E.expand();
     if (res.error) { audio.sfx('error'); ui.toast(res.error); return false; }
@@ -825,7 +826,10 @@ export default function create(ctx) {
       const c = e.root.position;
       fx.confetti(c.x, e.height * 0.8, c.z);
       fx.sparkle(c.x, e.height * 0.6, c.z, ['#7f9ee8', '#ffffff', '#ffd166']);
-      setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Nivel ${level}!`), 120);
+      // casas y negocios: el cartel cuenta qué adorno nuevo se sumó (ver upgradeDressing en models-kit.js)
+      const d = E.def(b), NEW = { 2: 'Flores', 3: 'Faroles', 4: 'Bandera', 5: '¡Todo dorado!' };
+      const extra = (d.cat === 'casa' || d.cat === 'negocio') && d.prod && NEW[level] ? ` · ${NEW[level]}` : b.id === 'castillo' ? ` · ${E.rankName(level)}` : '';
+      setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Nivel ${level}!${extra}`), 120);
       if (b.id === 'castillo') ui.confetti();
       life.refreshGrid();
       syncStatus();
@@ -869,6 +873,13 @@ export default function create(ctx) {
       if (placing) updateGhost();
     }));
     offs.push(bus.on('level:up', () => { rebuildSignLabels(); }));
+    // nuevo rango: carteles de terreno al día y festejo con el panel "Tu ciudad"
+    offs.push(bus.on('town:rankup', ({ rank } = {}) => {
+      rebuildSignLabels();
+      setTimeout(() => { if (!disposed && !ctx.router.visiting) ctx.openPanel('rank', { celebrate: rank }); }, 900);
+    }));
+    // otro panel pide abrir la ficha de un edificio (p. ej. "Ver Municipalidad" en el panel de rango)
+    offs.push(bus.on('city:focus', ({ uid } = {}) => { if (!disposed && entries.has(uid)) setTimeout(() => { if (!disposed) openInfo(S, uid); }, 260); }));
     offs.push(bus.on('customize:changed', ({ target }) => {
       if (target === 'avatar') life.rebuildPlayer();
       else if (target === 'car') life.rebuildCar();
@@ -925,13 +936,13 @@ export default function create(ctx) {
   function rebuildSignLabels() {
     for (const it of signItems) ov.remove(it);
     signItems = [];
-    const ex = E.expansionInfo();
+    const ex = E.expansionStatus();
     if (!ex) { world.refreshSigns(false); return; }
     if (world.signs.length === 0) world.refreshSigns(true);
-    const lvOk = ctx.state.player.level >= ex.reqLevel;
+    const lvOk = ex.ok;
     for (const s of world.signs) {
-      // si todavía no llega al nivel, el cartel lo dice (así sabe cuándo podrá crecer)
-      const el = ui.h('div.cx-sign' + (lvOk ? '' : '.locked'), { html: lvOk ? `${icon('plus', 16)}¡Expandir!` : `${icon('lock', 14)}Nivel ${ex.reqLevel}` });
+      // si todavía no llega al nivel o al rango, el cartel lo dice (así sabe cuándo podrá crecer)
+      const el = ui.h('div.cx-sign' + (lvOk ? '' : '.locked'), { html: lvOk ? `${icon('plus', 16)}¡Expandir!` : `${icon('lock', 14)}${ui.esc(ex.short)}` });
       const it = ov.add(el, s.pos);
       it.label = true;
       it.hidden = !!placing;

@@ -241,7 +241,9 @@ export const ctx = {
 };
 
 // ---------- Llegada a la ciudad: bienvenida → premio diario → subidas de nivel ----------
-const OVERLAYS = '.chx-open, .alb-open';
+// .cx-placebar: colocando un edificio (pintando árboles, caminos…): un modal ahí taparía la barra y el próximo
+// toque en "Colocar" caería sobre él. Las subidas de nivel esperan a que termine (city:placing {active:false}).
+const OVERLAYS = '.chx-open, .alb-open, .cx-placebar';
 const cityReady = () => router.current === 'city' && !navigating && !router.visiting;
 const cityIdle = () => cityReady() && !hasModal() && !document.querySelector(OVERLAYS);
 /** Espera a que la ciudad esté libre (sin modales ni animaciones). false si se fue de la ciudad o pasó maxMs. */
@@ -303,6 +305,10 @@ async function flushLevelUps() {
   } catch (e) { console.error(e); }
   finally { flushing = false; }
 }
+// si una subida de nivel se quedó esperando (waitIdle se rinde a los 60 s) mientras se colocaba algo, sale al terminar
+bus.on('city:placing', ({ active } = {}) => {
+  if (!active && pendingLevelUps.length && cityReady() && !arrival) setTimeout(flushLevelUps, 400);
+});
 // bienvenida que aparece al volver a la app después de días en segundo plano (iPhone deja la PWA abierta)
 bus.on('season:welcome', () => { if (cityReady()) runArrival(); });
 

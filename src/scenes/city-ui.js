@@ -1,7 +1,7 @@
 // Interfaz de la ciudad: menú Construir, ficha de edificio, castillo, expansión,
 // barra de colocación, botones flotantes y estilos (prefijo cx-).
 import { thumbnail } from '../city/models.js';
-import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL } from '../core/data.js';
+import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL, RANK_REQ_LABELS } from '../core/data.js';
 import { icon } from '../core/icons.js';
 import * as chests from '../chests/chests.js';
 
@@ -164,6 +164,11 @@ export const STYLE = `
 .cx-box.ready { background: var(--gold-l); }
 .cx-box .btn { width: 100%; }
 .cx-box .req { color: var(--coral); font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 4px; }
+.cx-reqs { display: flex; flex-direction: column; gap: 3px; }
+.cx-reqline { display: flex; align-items: center; gap: 6px; font-size: 14px; padding: 2px 8px; border-radius: 8px; background: #fff3ec; }
+.cx-reqline span { flex: 1; }
+.cx-reqline b { font-variant-numeric: tabular-nums; }
+.cx-reqline.ok { background: var(--mint-l); }
 .cx-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; }
 .cx-actions .btn { padding: 6px 8px; font-size: 15px; min-height: 42px; }
 .cx-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -215,6 +220,12 @@ function givesHtml(ctx, d) {
   if (d.happy) out.push(`<span class="chip mint">${icon('smile', 14)}+${d.happy}</span>`);
   if (d.game) out.push(`<span class="chip second">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Juego'}</span>`);
   if (d.cat === 'camino') out.push(`<span class="chip">${icon('paw', 14)}Paseo</span>`);
+  // Encanto que sumaría otra copia (rinde menos si ya tenés del mismo)
+  const ch = E.charmGain(d.id);
+  if (ch >= 1) {
+    const rep = E.countOf(d.id) > 0;
+    out.push(`<span class="chip${rep ? '' : ' gold'}" title="+${Math.round(ch)} Encanto${rep ? ' (menos porque ya tenés)' : ''}">${icon('sparkle', 14)}+${Math.round(ch)}</span>`);
+  }
   return out.join('');
 }
 
@@ -379,7 +390,7 @@ export function openInfo(S, uid) {
   function signature() {
     const now = Date.now();
     const ps = E.producerStatus(b, now);
-    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level, hammerCount(), masteryStars()].join('|');
+    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level, hammerCount(), masteryStars(), isCastle ? E.rankStatus().reqs.map(r => r.ok ? 1 : 0).join('') : ''].join('|');
   }
   function mastery() {
     if (typeof E.masteryInfo !== 'function' || !d.prod) return null;
@@ -399,13 +410,20 @@ export function openInfo(S, uid) {
     const meta = ui.h('div.cx-imeta');
     if (E.canUpgradeType(b)) {
       let st = '';
-      for (let i = 0; i < E.maxLevel(b); i++) st += icon(i < b.level ? 'star' : 'starOff', 22);
-      meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, `Nivel ${b.level}`));
+      const sz = E.maxLevel(b) > 5 ? 17 : 22;
+      for (let i = 0; i < E.maxLevel(b); i++) st += icon(i < b.level ? 'star' : 'starOff', sz);
+      meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, isCastle ? `Rango ${b.level}: ${E.rankName(b.level)}` : `Nivel ${b.level}`));
     } else meta.append(ui.h('span.chip', { html: icon(CAT_ICON[d.cat], 14) + (CATEGORIES.find(c => c.id === d.cat)?.name || '') }));
     const chips = [];
     if (d.pop) chips.push(`<span class="chip primary">${icon('people', 14)}${E.buildingPop(b)} vecinos</span>`);
     if (d.happy) chips.push(`<span class="chip mint">${icon('smile', 14)}+${E.buildingHappy(b)} felicidad</span>`);
     if (d.game) chips.push(`<span class="chip second">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Minijuego'}</span>`);
+    if (isCastle) chips.push(`<span class="chip gold">${icon('sparkle', 14)}${E.fmtNum(E.cityCharm())} Encanto</span>`);
+    else if (!building) {
+      // Encanto que aporta este edificio (sin contar la repetición: eso lo explica el panel "Tu ciudad")
+      const ch = Math.round(E.charmBase(d) * (1 + 0.25 * ((b.level || 1) - 1)));
+      if (ch >= 1) chips.push(`<span class="chip gold" title="Suma Encanto a tu ciudad (menos si repetís el mismo)">${icon('sparkle', 14)}+${ch} Encanto</span>`);
+    }
     if (chips.length) meta.append(ui.h('div.cx-chips', { html: chips.join('') }));
     head.append(th, meta);
     body.append(head, ui.h('p.cx-desc', {}, d.desc));
@@ -483,7 +501,7 @@ export function openInfo(S, uid) {
       stats.append(stat('people', 'Población', E.fmtNum(E.population())), stat('smile', 'Felicidad', hp.pct + '%'),
         stat('coin', 'Bonus producción', '+' + Math.round((E.globalMultiplier() - 1) * 100) + '%'), stat('hammer', 'Constructoras', `${E.buildersFree()}/${ctx.state.builders}`));
       body.append(stats);
-      body.append(ui.h('p.cx-desc', { html: `La felicidad (deco) da hasta <b>+50%</b> de producción y cada nivel de la Municipalidad suma <b>+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}%</b> más.` }));
+      body.append(ui.h('p.cx-desc', { html: `La felicidad (deco) da hasta <b>+50%</b> de producción y cada rango de la ciudad suma <b>+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}%</b> más.` }));
     }
 
     // ----- mejora -----
@@ -494,16 +512,33 @@ export function openInfo(S, uid) {
         box.append(ui.h('h4', { html: icon('crown', 20) + '¡Nivel máximo!' }), ui.h('span.muted', {}, 'Este edificio ya está espléndido.'));
       } else {
         const can = E.canUpgrade(b);
-        box.append(ui.h('h4', { html: icon('up', 20) + `Mejorar a nivel ${b.level + 1}` }));
+        box.append(ui.h('h4', { html: icon('up', 20) + (isCastle ? `Subir a rango ${E.rankName(b.level + 1)}` : `Mejorar a nivel ${b.level + 1}`) }));
         const fx = [];
-        if (isCastle) fx.push(`+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}% producción en toda la ciudad`);
+        if (isCastle) {
+          fx.push(`+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}% producción en toda la ciudad`);
+          const look = E.rankDef(b.level + 1).look;
+          if (look) fx.push(`La Municipalidad estrena: ${look}`);
+        }
         else {
           if (d.prod?.coins) fx.push(`Producción ${E.fmtNum(ps.perCycle || 0)} → ${E.fmtNum(Math.round((ps.perCycle || 0) * (1 + 0.5 * b.level) / (1 + 0.5 * (b.level - 1))))}`);
           if (d.pop) fx.push(`Vecinos ${E.buildingPop(b)} → ${Math.round(d.pop * (1 + 0.4 * b.level))}`);
+          // adorno nuevo que se ve en la ciudad (models-kit.js: upgradeDressing)
+          const look = { 2: 'cantero de flores', 3: 'faroles encendidos y macetas', 4: 'mástil con bandera', 5: 'borde dorado y estrella girando' }[b.level + 1];
+          if (look && d.prod) fx.push(`Se le suma: ${look}`);
         }
         for (const f of fx) box.append(ui.h('div.line', { html: `<span>${icon('sparkle', 14)} ${f}</span>` }));
         box.append(ui.h('div.line', { html: `<span class="cost">${ui.costHtml(info.cost, 18)}</span><span class="muted">${icon('clock', 14)} ${E.fmtTime(info.time)}</span>` }));
-        if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
+        if (can.reqs) {
+          // expediente del próximo rango: lo que falta, con sus números
+          const rs = E.rankStatus();
+          const list = ui.h('div.cx-reqs');
+          for (const r of rs.reqs) {
+            const [label, ic] = RANK_REQ_LABELS[r.key] || [r.key, 'info'];
+            const unit = r.key === 'happy' ? '%' : '';
+            list.append(ui.h('div.cx-reqline' + (r.ok ? '.ok' : ''), { html: `${icon(r.ok ? 'check' : ic, 16)}<span>${ui.esc(label)}</span><b>${E.fmtNum(Math.min(r.have, r.need))}${unit}/${E.fmtNum(r.need)}${unit}</b>` }));
+          }
+          box.append(ui.h('div.req', { html: icon('lock', 14) + 'Falta completar el expediente:' }), list);
+        } else if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
         box.append(btn('Mejorar', 'second', 'up', () => {
           const c = E.canUpgrade(b);
           if (!c.ok) { ctx.audio.sfx('error'); ui.toast(c.poor ? 'No te alcanza todavía' : c.reason, { icon: c.locked ? 'lock' : 'info' }); return; }
@@ -517,15 +552,15 @@ export function openInfo(S, uid) {
 
     // ----- castillo: expandir + constructoras -----
     if (isCastle) {
-      const ex = E.expansionInfo();
+      const ex = E.expansionStatus();
       const box = ui.h('div.cx-box');
       const bnd = E.landBounds();
       box.append(ui.h('h4', { html: icon('map', 20) + 'Terreno' }));
       if (!ex) box.append(ui.h('span.muted', {}, `¡Tu terreno ya es enorme! (${bnd.side}×${bnd.side})`));
       else {
         box.append(ui.h('div.line', { html: `<span>${bnd.side}×${bnd.side} → <b>${bnd.side + 2}×${bnd.side + 2}</b></span><span class="cost">${ui.costHtml(ex.cost, 18)}</span>` }));
-        const lvOk = ctx.state.player.level >= ex.reqLevel;
-        if (!lvOk) box.append(ui.h('div.req', { html: icon('lock', 14) + `Necesitás nivel ${ex.reqLevel}` }));
+        const lvOk = ex.ok;
+        if (!lvOk) box.append(ui.h('div.req', { html: icon('lock', 14) + ui.esc(ex.reason) }));
         box.append(btn('Expandir', 'mint', 'plus', () => { if (S.doExpand()) m.close(); }, !lvOk));
       }
       body.append(box);
@@ -554,6 +589,7 @@ export function openInfo(S, uid) {
       }));
     }
     if (b.id === 'garaje' && !building) acts.append(btn('Taller', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
+    if (isCastle) acts.append(btn('Tu ciudad', 'gold', 'castle', () => { m.close(); ctx.openPanel('rank'); }));
     if (isCastle) acts.append(btn('Vestidor', 'primary', 'dress', () => { m.close(); ctx.router.go('wardrobe'); }));
     acts.append(btn('Mover', 'ghost', 'move', () => { m.close(); S.startMove(b.uid); }));
     acts.append(btn('Rotar', 'ghost', 'rotate', () => { S.rotateBuilding(b.uid); }));
@@ -601,7 +637,7 @@ export function openInfo(S, uid) {
 export function openExpand(S) {
   const { ctx } = S;
   const { ui, economy: E } = ctx;
-  const ex = E.expansionInfo();
+  const ex = E.expansionStatus();
   if (!ex) { ui.toast('¡Tu terreno ya está al máximo!', { icon: 'map' }); return null; }
   const bnd = E.landBounds();
   const body = ui.h('div.cx-info');
@@ -618,10 +654,10 @@ export function openExpand(S) {
   }
   body.append(ui.h('div.cx-exp-map', {}, cv));
   body.append(ui.h('p.cx-desc.center', { html: `Tu terreno pasa de <b>${bnd.side}×${bnd.side}</b> a <b>${bnd.side + 2}×${bnd.side + 2}</b>: ¡más lugar para casas, negocios y jardines!` }));
-  const lvOk = ctx.state.player.level >= ex.reqLevel;
+  const lvOk = ex.ok;
   const box = ui.h('div.cx-box');
   box.append(ui.h('div.line', { html: `<span>Costo</span><span class="cost">${ui.costHtml(ex.cost, 20)}</span>` }));
-  if (!lvOk) box.append(ui.h('div.req', { html: icon('lock', 14) + `Se desbloquea en nivel ${ex.reqLevel}` }));
+  if (!lvOk) box.append(ui.h('div.req', { html: icon('lock', 14) + ui.esc(ex.reason) }));
   body.append(box);
   const m = ui.modal({ title: '¡Expandir!', icon: 'map', content: body, className: 'cx-modal', onClose: () => S.untrackModal(m),
     actions: [{ label: 'Ahora no', cls: 'ghost' }, { html: `${icon('plus', 20)}Expandir`, label: 'Expandir', cls: 'mint', disabled: !lvOk, onClick: () => S.doExpand() ? undefined : false }] });

@@ -3,7 +3,7 @@ import { h, esc, toast, confetti } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
 import { store } from '../core/state.js';
-import { fmtNum } from '../core/economy.js';
+import { fmtNum, cityCharm } from '../core/economy.js';
 import { CHESTS } from '../chests/chests.js';
 import { chestIcon } from '../season/season-ui-common.js';
 import { net } from './net.js';
@@ -44,7 +44,9 @@ export async function renderRanking(api, tok) {
 
   function draw() {
     const info = rankInfo();
-    const me = { id: 'me', name: myName(), level: store.state.player.level, week: info.mine, me: true, look: store.state.avatar };
+    let charm = 0;
+    try { charm = cityCharm(); } catch {}
+    const me = { id: 'me', name: myName(), level: store.state.player.level, week: { ...info.mine, charm }, me: true, look: store.state.avatar };
     let rows = net.user && board ? board.map(r => (r.me ? { ...me, id: r.id } : { ...r, look: lookOf(r.id) })) : [me];
     const val = r => (cat === 'level' ? r.level || 1 : r.week?.[cat] || 0);
     rows = rows.map(r => ({ ...r, v: val(r) })).sort((a, b) => b.v - a.v || (b.me ? 1 : 0) - (a.me ? 1 : 0) || String(a.name).localeCompare(String(b.name)));

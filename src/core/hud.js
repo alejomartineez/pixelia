@@ -1,6 +1,6 @@
 // HUD de la ciudad.
 //  arriba:     perfil (nivel, nombre, xp; tocarlo abre Ajustes) + botón de Ajustes + monedas y gemas
-//  izquierda:  población / felicidad / constructoras, efectos activos con tiempo, misión actual
+//  izquierda:  rango de la ciudad + Encanto (abre "Tu ciudad"), población / felicidad / constructoras, efectos activos con tiempo, misión actual
 //  derecha:    botones redondos con globito: Cofres, Pase, Álbum, Evento
 //  abajo:      Juegos · Misiones · Construir · Vestidor · Amigos
 // Los globitos se refrescan con eventos del bus y cada 30 s; los números y los efectos, cada segundo.
@@ -9,7 +9,7 @@ import { store } from './state.js';
 import { icon } from './icons.js';
 import { esc, progressHtml } from './ui.js';
 import { audio } from './audio.js';
-import { population, happiness, buildersBusy, fmtNum, fmtTime } from './economy.js';
+import { population, happiness, buildersBusy, fmtNum, fmtTime, rankStatus } from './economy.js';
 import { mainQuest, claimableCount } from './quests.js';
 import { chestBadge, activeBoosts } from '../chests/chests.js';
 import { albumBadge } from '../album/album.js';
@@ -46,6 +46,7 @@ function render() {
       </div>
     </div>
     <div class="hud-left">
+      <button class="hud-rank" data-act="rank" data-hud="rank" aria-label="Rango de tu ciudad"></button>
       <div class="hud-stats">
         <div class="pill sm" data-hud="pop" title="Población">${icon('people', 16)}<b></b></div>
         <div class="pill sm" data-hud="happy" title="Felicidad">${icon('smile', 16)}<b></b></div>
@@ -67,7 +68,7 @@ function render() {
       <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>Vestidor</span></button>
       <button class="hud-btn" data-act="social">${icon('people', 30)}<span>Amigos</span><i class="badge" data-badge="social"></i></button>
     </nav>`;
-  lastFx = lastEv = lastPass = lastQuest = null;
+  lastFx = lastEv = lastPass = lastQuest = lastRank = null;
   refreshDynamic();
   refreshBadges();
 }
@@ -101,7 +102,26 @@ function refreshFx() {
 }
 
 // ---------- Evento y pase (botones de la derecha) ----------
-let lastEv = null, lastPass = null, lastQuest = null;
+let lastEv = null, lastPass = null, lastQuest = null, lastRank = null;
+
+// ---------- Rango de la ciudad (emblema + nombre + Encanto con estrellas; brilla si se puede subir) ----------
+function refreshRank() {
+  const el = root.querySelector('[data-hud="rank"]');
+  if (!el) return;
+  const st = safe(() => rankStatus(), null);
+  if (!st) { el.style.display = 'none'; return; }
+  const ready = st.allOk && st.levelOk;
+  const key = `${st.rank}|${st.charm}|${st.stars}|${ready}`;
+  if (key === lastRank) return;
+  lastRank = key;
+  let stars = '';
+  for (let i = 0; i < 5; i++) stars += icon(i < st.stars ? 'star' : 'starOff', 12);
+  el.innerHTML = `<span class="hud-rank-ic">${icon(st.def.emoji, 26)}</span><span class="hud-rank-txt"><b>${esc(st.def.name)}</b>`
+    + `<small>${icon('sparkle', 12)}${fmtNum(st.charm)}<span class="hud-rank-stars">${stars}</span></small></span>`
+    + (ready ? `<i class="badge">!</i>` : '');
+  el.classList.toggle('ready', ready);
+  el.title = ready ? `¡Ya podés subir a ${st.next.name}!` : `Rango ${st.def.name} · ${st.charm} de Encanto`;
+}
 function refreshRail() {
   const ev = safe(() => eventBannerInfo(), null);
   const key = ev ? `${ev.key}|${ev.endsIn}|${ev.count}` : '';
@@ -159,6 +179,7 @@ function refreshDynamic() {
   }
   refreshFx();
   refreshRail();
+  refreshRank();
 }
 
 /** Globitos de los botones (cofres, pase, álbum, amigos, misiones). */
@@ -187,7 +208,7 @@ function onAct(act) {
 }
 
 const RAF_EVENTS = ['currency:changed', 'xp:changed', 'level:up', 'quests:changed', 'building:built', 'building:placed', 'building:upgraded',
-  'building:upgradeStarted', 'building:removed', 'builders:changed', 'boosts:changed', 'city:expanded'];
+  'building:upgradeStarted', 'building:removed', 'builders:changed', 'boosts:changed', 'city:expanded', 'town:rankup', 'building:moved'];
 const BADGE_EVENTS = ['chests:changed', 'album:changed', 'album:seen', 'season:changed', 'events:changed', 'social:badge', 'online:inbox',
   'quests:changed', 'level:up', 'reward:chest'];
 

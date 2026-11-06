@@ -206,8 +206,31 @@ async function buildUI(id, n = 1) {
   if (!(await tap('.cx-build .cx-card .nm', '^' + info.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))) { await shot('fallo-construir-' + id); await closeTop(); return false; }
   if (!(await waitFor(`!!document.querySelector('.cx-pb-btns')`, 3000))) { await shot('fallo-colocar-' + id); await closeTop(); return false; }
   const before = await run(`return E.countOf('${id}')`);
-  for (let i = 0; i < n; i++) { await tap('.cx-pb-btns .btn.mint'); await sleep(350); }
+  // cada toque en Colocar espera a que el edificio aparezca (con la máquina cargada la ciudad tarda en reubicar la pieza)
+  const diag = [];
+  const snap = () => ev((id) => {
+    const b = document.querySelector('.cx-pb-btns .btn.mint');
+    const r = b?.getBoundingClientRect();
+    const hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
+    const E = window.__pixelia.economy;
+    return {
+      n: E.countOf(id), coins: window.__pixelia.store.state.coins, can: E.canBuild(id),
+      bar: !!b, disabled: b?.disabled, hint: document.querySelector('.cx-pb-hint')?.textContent,
+      hit: hit ? hit.tagName + '.' + hit.className : null, modals: [...document.querySelectorAll('.modal')].map(m => m.className),
+      toasts: [...document.querySelectorAll('.toast, [class*="toast"]')].map(t => t.textContent.trim()).filter(Boolean),
+    };
+  }, id);
+  for (let i = 0; i < n; i++) {
+    diag.push(await snap());
+    await tap('.cx-pb-btns .btn.mint');
+    await waitFor(`window.__pixelia.economy.countOf('${id}') >= ${before + i + 1}`, 2500);
+    await sleep(200);
+  }
+  diag.push(await snap());
+  if (diag.at(-1).n < before + n) { console.log('    diag buildUI ' + id + ':\n      ' + diag.map(d => JSON.stringify(d)).join('\n      ')); await shot('fallo-pintar-' + id); }
   if (await ev(() => !!document.querySelector('.cx-pb-btns'))) { await tap('.cx-pb-btns .btn:first-child'); await sleep(300); }
+  // una subida de nivel ganada mientras se colocaba sale recién al terminar de colocar
+  await drainOverlays();
   return (await run(`return E.countOf('${id}')`)) - before;
 }
 async function claimMainUI() {

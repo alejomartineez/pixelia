@@ -1,4 +1,4 @@
-// Edificios especiales: municipalidad (id castillo, 5 niveles muy distintos), joyería, torre de bloques, garaje, pista y boutique.
+// Edificios especiales: municipalidad (id castillo, 8 niveles: uno por rango de ciudad), joyería, torre de bloques, garaje, pista y boutique.
 import {
   P, C, shade, lot, path, win, door, awning, gable, hip, cone, battlements, roundBattlements, flowerBed, bush, smallTree,
   tulip, flower, fbox, fset, pattern, HEART3, HEART5, STAR5, addSmoke, spinStar, sparkle, wavingFlag, crown, rng, pick,
@@ -15,7 +15,8 @@ function castillo(m, L, opts) {
   const v = m.v;
   const flag = opts.flag || P.sky;
   const cream = '#f8eedc', creamB = '#f1e3cb', brick = '#d98f6a', brickD = '#c27a56', white = '#ffffff';
-  const roofC = C.roofClay, gold = P.gold;
+  // desde Gran Ciudad el techo pasa a pizarra azul (cambio que se nota de lejos)
+  const roofC = L >= 6 ? C.roofSlate : C.roofClay, gold = P.gold;
   const trim = L >= 5 ? gold : white;
   const wall = (x, y, z) => (y <= 2 ? ((x + z + y) % 3 === 0 ? brickD : brick) : (y % 4 === 0 ? creamB : cream));
   // plaza de baldosas con borde de pasto
@@ -23,7 +24,7 @@ function castillo(m, L, opts) {
     if (x < 1 || z < 1 || x > 30 || z > 30) return '#9ee385';
     return (Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? '#f4ede2' : '#ece2d2';
   });
-  const WH = [9, 10, 11, 12, 13][L - 1];
+  const WH = [9, 10, 11, 12, 13, 13, 14, 14][L - 1];
   const TH = WH + 14 + 2 * L;             // alto de la torre del reloj (bien por encima del techo)
   // --- cuerpo principal ---
   const x0 = 7, x1 = 24, z0 = 8, z1 = 19;
@@ -71,19 +72,28 @@ function castillo(m, L, opts) {
   // techo de la torre
   let top;
   if (L <= 2) top = hip(v, tx0, tx1, tz0, tz1, TH + 1, roofC, { oh: 1, trim: white });
-  else {
+  else if (L >= 7) {
+    // Metrópolis: mirador con columnas sobre el reloj y una gran cúpula dorada con bandas
+    v.box(tx0, TH + 1, tz0, 8, 1, 8, gold);
+    for (const [cx, cz] of [[tx0, tz0], [tx1, tz0], [tx0, tz1], [tx1, tz1], [tx0, 12], [tx1, 12], [15, tz1], [15, tz0]]) v.box(cx, TH + 2, cz, 1, 4, 1, white);
+    v.box(tx0, TH + 6, tz0, 8, 1, 8, white);
+    m.light.set(15, TH + 3, 12, C.yellow); m.light.set(16, TH + 3, 13, C.yellow);   // farol encendido adentro
+    top = cone(v, 15.5, TH + 7, 12.5, 5.4, 10, gold, { trim: white, bands: 3 });
+  } else {
     v.box(tx0, TH + 1, tz0, 8, 2, 8, white);
     top = cone(v, 15.5, TH + 3, 12.5, 4.9, L >= 4 ? 7 : 6, L >= 5 ? gold : L >= 4 ? P.slate : roofC, { trim: gold, bands: L >= 4 ? 2 : 0 });
   }
-  if (L >= 5) { v.set(15, top, 12, gold); spinStar(m, 15, top + 3, 12, gold, 1.1); top += 6; }
+  if (L >= 8) { v.box(15, top, 12, 1, 3, 1, gold); spinStar(m, 15, top + 5, 12, gold, 0.9); spinStar(m, 15, top + 5, 12, '#ffffff', -1.4); top += 9; }
+  else if (L >= 5) { v.set(15, top, 12, gold); spinStar(m, 15, top + 3, 12, gold, 1.1); top += 6; }
   else { v.box(15, top + 1, 12, 1, 4, 1, white); v.set(15, top + 5, 12, gold); wavingFlag(m, 15, top + 2, 12, 4, 3, flag); top += 6; }
   peak = Math.max(peak, top);
   // --- alas laterales (nivel 3+) ---
   if (L >= 3) for (const [ax0, ax1] of [[1, 6], [25, 30]]) {
-    const AH = WH - 3;
+    const AH = L >= 6 ? WH - 1 : WH - 3;
     for (let x = ax0; x <= ax1; x++) for (let z = 11; z <= 19; z++) for (let y = 1; y <= AH; y++) v.set(x, y, z, wall(x, y, z));
     gable(v, 'z', ax0, ax1, 11, 19, AH + 1, roofC, { oh: 0, wall: cream, trim: white });
     win(v, 'pz', 19, ax0 + 2, 4, 2, 3, { box: P.woodD, flowers: [P.berry, C.yellow, '#ffffff'] });
+    if (L >= 6) win(v, 'pz', 19, ax0 + 2, 8, 2, 2, { sill: gold });   // segundo piso en las alas
   }
   // --- plaza: sendero, canteros, faroles y fuente ---
   for (let z = 23; z <= 31; z++) for (let x = 14; x <= 17; x++) v.set(x, 0, z, (x === 14 || x === 17) ? (L >= 4 ? gold : '#ddd5c8') : (x + z) % 2 ? '#fdf6e3' : '#efe4d0');
@@ -104,6 +114,35 @@ function castillo(m, L, opts) {
   if (L >= 5) {
     for (let i = 0; i < 6; i++) sparkle(m, 4 + i * 5, WH + 4 + (i % 3) * 3, 22 - (i % 2) * 12, i % 2 ? P.goldL : '#ffffff', 2 + i * 0.3);
     for (let x = 1; x <= 30; x++) if (x < 10 || x > 21) v.set(x, WH - 1, 20, RAINBOW[x % RAINBOW.length]);   // banderines
+  }
+  // Gran Ciudad (6+): torrecitas con cúpula dorada en las cuatro esquinas del techo y setos recortados en la plaza
+  if (L >= 6) {
+    for (const [cx, cz] of [[x0 + 0.5, z1 - 0.5], [x1 - 0.5, z1 - 0.5], [x0 + 0.5, z0 + 0.5], [x1 - 0.5, z0 + 0.5]]) {
+      v.cylinder(cx, WH + 1, cz, 1.9, 6, (x, y) => (y === WH + 4 ? gold : white));
+      const tt = cone(v, cx, WH + 7, cz, 2.7, 5, gold, { trim: white, bands: 1 });
+      v.set(Math.floor(cx), tt, Math.floor(cz), '#ffffff');
+      peak = Math.max(peak, tt);
+    }
+    for (const hx of [3, 9, 22, 28]) { v.box(hx - 1, 1, 22, 3, 2, 2, C.leafD); v.box(hx - 1, 3, 22, 3, 1, 2, C.leaf); v.set(hx, 4, 22, P.berry); }
+  }
+  // Metrópolis (7+): alfombra roja, faroles a lo largo del paseo y mástiles altos con banderas grandes
+  if (L >= 7) {
+    for (let z = 20; z <= 31; z++) for (const x of [15, 16]) v.set(x, z >= 23 ? 0 : 1, z, (z % 3) ? C.red : '#e04a5e');
+    for (const z of [24, 28]) for (const x of [12, 19]) { v.box(x, 1, z, 1, 5, 1, P.ink); v.set(x, 6, z, gold); m.light.set(x, 7, z, C.yellow); }
+    for (const fx of [2, 29]) {
+      v.box(fx, 1, 29, 1, 18, 1, white); v.set(fx, 19, 29, gold);
+      wavingFlag(m, fx, 14, 29, 6, 4, flag);
+    }
+  }
+  // Capital (8): arco dorado de entrada, ribete de luces en el techo y fuegos artificiales de brillitos
+  if (L >= 8) {
+    for (const ax of [11, 20]) { v.box(ax, 1, 30, 2, 10, 1, gold); v.box(ax, 0, 30, 2, 1, 1, P.goldD); }
+    v.box(11, 11, 30, 11, 2, 1, gold);
+    pattern(v, 'pz', 30, 14, 13, ['..X..', '.XXX.', 'XXXXX', '.X.X.'], '#ffffff');
+    m.light.set(16, 14, 31, C.yellow);
+    for (let x = x0; x <= x1; x += 3) { m.light.set(x, WH + 1, z1 + 1, C.yellow); m.light.set(x, WH + 1, z0 - 1, C.yellow); }
+    const FW = [P.goldL, P.berryL, '#ffffff', C.waterL, P.goldL, P.berryL, '#ffffff', C.yellow, P.slateL, P.goldL];
+    for (let i = 0; i < FW.length; i++) sparkle(m, 3 + (i * 7) % 27, TH + 4 + (i % 4) * 4, 4 + (i * 5) % 22, FW[i], 1.4 + i * 0.22);
   }
   m.height = peak + 1;
 }

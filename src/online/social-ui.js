@@ -5,7 +5,7 @@ import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
-import { fmtNum } from '../core/economy.js';
+import { fmtNum, rankDef } from '../core/economy.js';
 import { net } from './net.js';
 import {
   socialCache as cache, refreshSocial, tabCounts, openAccount, giftSentToday, giftPreview, sendDailyGift, myName,
@@ -255,7 +255,7 @@ function friendCard(api, f) {
     'data-friend': f.id,
     html: `<span style="position:relative">${avatarHtml(f.look, f.name, 56)}${on ? '<i class="soc-on" title="En línea"></i>' : ''}</span>
       <div class="soc-grow">
-        <div class="soc-name"><b>${esc(f.name)}</b><span class="soc-lv">${icon('star', 14)}${f.level}</span></div>
+        <div class="soc-name"><b>${esc(f.name)}</b><span class="soc-lv">${icon('star', 14)}${f.level}</span>${f.rank ? `<span class="soc-lv soc-rk" title="Rango de su ciudad${f.charm ? ` · ${fmtNum(f.charm)} de Encanto` : ''}">${icon(rankDef(f.rank).emoji, 14)}${esc(rankDef(f.rank).name)}</span>` : ''}</div>
         <div class="soc-seen${on ? ' on' : ''}">${on ? '¡En línea ahora!' : `Se conectó ${timeAgo(f.last_seen)}`}${f.city_name ? ` · ${esc(f.city_name)}` : ''}</div>
         ${friendshipHtml(f)}
       </div>`,
