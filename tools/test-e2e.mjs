@@ -233,16 +233,32 @@ async function buildUI(id, n = 1) {
   await drainOverlays();
   return (await run(`return E.countOf('${id}')`)) - before;
 }
+/**
+ * Cobra la misión principal con la interfaz. Devuelve su id solo si de verdad se cobró (la principal avanzó):
+ * antes devolvía el id aunque el toque en "Cobrar" cayera sobre una subida de nivel que apareció encima, y desde ahí
+ * todas las misiones quedaban corridas una (e2e intermitente en "m4 cobrada").
+ */
 async function claimMainUI() {
-  const q = await run(`const m = Q.mainQuest(); return m ? { id: m.id, done: m.done } : null;`);
-  if (!q?.done) return null;
-  await tap('.hud-quest');
-  await waitFor(`!!document.querySelector('.modal.pnl-quests')`);
-  await sleep(400);
-  await tap('.modal.pnl-quests .btn.gold', 'Cobrar');
-  await sleep(900);
-  await closeTop();
-  return q.id;
+  const q = await run(`const m = Q.mainQuest(); return m ? { id: m.id, done: m.done, index: m.index } : null;`);
+  if (!q?.done) {
+    if (q) console.log('    (la misión ' + q.id + ' todavía no está cumplida: ' + JSON.stringify(await run(`return Q.mainQuest()`)) + ')');
+    return null;
+  }
+  const advanced = `window.__pixelia.store.state.quests.main > ${q.index}`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await drainOverlays();
+    await closeTop();
+    await tap('.hud-quest');
+    if (!(await waitFor(`!!document.querySelector('.modal.pnl-quests')`, 4000))) continue;
+    await sleep(400);
+    await tap('.modal.pnl-quests .btn.gold', 'Cobrar', { timeout: 3000 });
+    const ok = await waitFor(advanced, 2500);
+    await sleep(500);
+    await closeTop();
+    if (ok) return q.id;
+    console.log(`    (reintento cobrar ${q.id}: ${attempt + 1})`);
+  }
+  return null;
 }
 /** Gana la partida de Joyas Brillantes en curso. finishNow se ignora mientras el tablero está ocupado (cascadas,
  *  potenciadores entrando), así que se reintenta hasta que la partida termina. */

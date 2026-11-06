@@ -2,6 +2,7 @@
 import { icon } from './icons.js';
 import { audio } from './audio.js';
 import { fmtNum } from './economy.js';
+import { MATERIAL_BY_ID } from './data.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -37,6 +38,11 @@ export function costHtml(cost = {}, size = 16, opts = {}) {
   if (cost.coins) parts.push(`<span class="cost">${icon('coin', size)}${fmtNum(cost.coins)}</span>`);
   if (cost.gems) parts.push(`<span class="cost">${icon('gem', size)}${fmtNum(cost.gems)}</span>`);
   if (cost.xp) parts.push(`<span class="cost">${icon('xp', size)}${fmtNum(cost.xp)}</span>`);
+  // materiales de los minijuegos: { cristal: n, ladrillo: n, tuerca: n, mapa: n }
+  if (cost.mats) for (const [id, n] of Object.entries(cost.mats)) {
+    const m = MATERIAL_BY_ID[id];
+    if (m && n) parts.push(`<span class="cost cost-mat" title="${esc(m.name)}" aria-label="${n} ${esc(m.name.toLowerCase())}">${icon(m.icon, size)}${fmtNum(n)}</span>`);
+  }
   if (opts.extras && cost.chest) {
     const type = typeof cost.chest === 'object' ? cost.chest.type : cost.chest;
     const n = (typeof cost.chest === 'object' ? cost.chest.n : cost.chests) || 1;
@@ -158,7 +164,7 @@ export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, sta
       if (l == null || l === '') continue;
       if (l.nodeType) wrap.append(l); else wrap.append(h('p.reward-line', { html: l }));
     }
-    if (reward.coins || reward.gems || reward.xp) wrap.append(h('div.reward-items', { html: costHtml({ coins: reward.coins, gems: reward.gems, xp: reward.xp }, 28) }));
+    if (reward.coins || reward.gems || reward.xp || reward.mats) wrap.append(h('div.reward-items', { html: costHtml({ coins: reward.coins, gems: reward.gems, xp: reward.xp, mats: reward.mats }, 28) }));
     modal({ title, content: wrap, closable: false, className: ('reward-modal ' + className).trim(), onClose: () => res(val),
       actions: buttons.map(b => ({ label: b.label, html: b.html, cls: b.cls || 'primary', onClick: () => { val = b.value; } })) });
     if (stars === undefined || stars > 0) confetti();

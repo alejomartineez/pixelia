@@ -47,6 +47,7 @@ export function dropAmountHtml(d, size = 28) {
   if (d.kind === 'gems') return `${icon('gem', size)}<span>+${fmtNum(d.amount)}</span>`;
   if (d.kind === 'xp') return `${icon('xp', size)}<span>+${fmtNum(d.amount)}</span>`;
   if (d.kind === 'cosmetic') return `<span>¡Nueva!</span>`;
+  if (d.kind === 'material') return `${icon(d.icon, size)}<span>+${fmtNum(d.amount)}</span>`;
   return `<span>x${d.amount || 1}</span>`;
 }
 export function dropNote(d) {
@@ -59,6 +60,7 @@ export function dropNote(d) {
     case 'item': return it?.use === 'game' ? `A tu mochila · para ${GAME_BY_ID[it.game]?.name || 'un juego'}` : 'Guardado en tu mochila';
     case 'cosmetic': return CAR_KINDS.has(d.cosmeticKind) ? 'Pieza nueva · estrenala en el Taller' : 'Prenda nueva · estrenala en el Vestidor';
     case 'build': return 'Construcción gratis · colocala desde Construir';
+    case 'material': return 'Para tus monumentos · mirá las Obras';
     case 'stickers': return d.fresh ? `¡${d.fresh === 1 ? 'Una nueva' : d.fresh + ' nuevas'} para tu Álbum!` : 'Repetidas · cambialas por brillitos';
     default: return '';
   }

@@ -4,8 +4,10 @@ import { bus } from './bus.js';
 import { store } from './state.js';
 import {
   BUILDING_BY_ID, MAP_SIZE, START_LAND, LAND_STEP, MAX_EXPANSIONS, MAX_BUILDING_LEVEL,
-  CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS,
+  CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS, MONUMENTS, MONUMENT_IDS, MATERIAL_BY_ID,
 } from './data.js';
+import { monumentComplete, monumentsDone, monumentBonus } from './monuments.js';
+export { monumentComplete, monumentsDone, monumentBonus };
 import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
 
@@ -72,6 +74,11 @@ export function charmBase(d) {
     default: return 0;
   }
 }
+/** Cuánto pesa el nivel en el Encanto: +25% por nivel; los monumentos suman según las etapas hechas (terminado = 100%). */
+export function charmLevelMult(d, level = 1) {
+  if (d?.cat === 'monumento') return Math.min(1, level / (MONUMENTS[d.id]?.stages.length || 1));
+  return 1 + 0.25 * (level - 1);
+}
 export const CHARM_REPEAT = 0.85;      // cada copia extra del mismo edificio vale 85% de la anterior
 export const CHARM_VARIETY = 0.02;     // +2% por cada tipo distinto (sin caminos), tope x1,5
 /**
@@ -85,7 +92,7 @@ export function charmInfo(state = S(), now = Date.now()) {
     if (isConstructing(b, now)) continue;
     const d = def(b);
     if (!d) continue;
-    const v = charmBase(d) * (1 + 0.25 * ((b.level || 1) - 1));
+    const v = charmBase(d) * charmLevelMult(d, b.level || 1);
     if (!per.has(d.id)) per.set(d.id, []);
     per.get(d.id).push(v);
   }
@@ -116,6 +123,7 @@ export function rankReqValue(key, state = S(), now = Date.now()) {
     case 'happy': return happiness(state, now).pct;
     case 'charm': return cityCharm(state, now);
     case 'shops': return shopKinds(state, now);
+    case 'monuments': return monumentsDone(state, now);
     default: return 0;
   }
 }
@@ -174,7 +182,8 @@ export function population(state = S(), now = Date.now()) {
   return state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingPop(b)), 0);
 }
 export function happinessPoints(state = S(), now = Date.now()) {
-  return state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingHappy(b)), 0);
+  const pts = state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingHappy(b)), 0);
+  return Math.round(pts * (1 + monumentBonus('happy', state, now)));   // Jardín Botánico
 }
 /** Felicidad 0..100 (%) y bonus de producción 0..0.5. Con el Perfume de Alegría activo: al máximo (boosted: true). */
 export function happiness(state = S(), now = Date.now()) {
@@ -243,7 +252,9 @@ export function placeCost(id, state = S()) {
   const d = def(id);
   const n = countOf(id, state);
   const mult = (d.cat === 'casa' || d.cat === 'negocio') ? 1 + 0.15 * n : 1;
-  return { coins: Math.round((d.cost.coins || 0) * mult), gems: d.cost.gems || 0 };
+  const out = { coins: Math.round((d.cost.coins || 0) * mult), gems: d.cost.gems || 0 };
+  if (d.cost.mats) out.mats = { ...d.cost.mats };
+  return out;
 }
 /**
  * ¿Puede construir? (sin mirar ubicación). reason es texto para mostrar.
@@ -258,6 +269,7 @@ export function canBuild(id, state = S(), now = Date.now()) {
   if (d.max && countOf(id, state) >= d.max) return { ok: false, reason: 'Ya lo tenés' };
   if (!free && d.popReq && population(state, now) < d.popReq) return { ok: false, reason: `Necesita ${d.popReq} vecinos`, locked: true };
   if (d.time > 0 && buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
+  if (!free && !store.hasMats(placeCost(id, state).mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
   if (!free && !store.canAfford(placeCost(id, state))) return { ok: false, reason: 'No te alcanza', poor: true };
   return free ? { ok: true, free: true } : { ok: true };
 }
@@ -271,7 +283,7 @@ export function placeBuilding(id, x, z, rot = 0, state = S()) {
   if (can.free) { if (!consumeFreeBuild(id)) return { error: 'No te queda esa construcción gratis' }; }
   else if (!store.spend(placeCost(id, state), 'build:' + id)) return { error: 'No te alcanza' };
   const d = def(id);
-  const b = { uid: state.city.nextUid++, id, x, z, rot, level: 1, buildEnd: d.time > 0 ? now + d.time * 1000 : 0, upgradeEnd: 0, lastCollect: now };
+  const b = { uid: state.city.nextUid++, id, x, z, rot, level: 1, buildEnd: d.time > 0 ? now + stageTime(d.time, state) * 1000 : 0, upgradeEnd: 0, lastCollect: now };
   state.city.buildings.push(b);
   store.markDirty();
   bus.emit('building:placed', { b, free: !!can.free });
@@ -334,6 +346,7 @@ export function producerStatus(b, now = Date.now(), state = S()) {
     // el castillo no se da bonus a sí mismo (felicidad/castillo) pero sí recibe pociones y eventos
     const city = d.id === 'castillo' ? boostMultiplier(now) : globalMultiplier(state, now);
     per = d.prod.coins * (1 + 0.5 * (b.level - 1)) * city * masteryMult(d.id, state);
+    if (d.cat === 'negocio') per *= 1 + monumentBonus('shopCoins', state, now);   // Faro
   }
   return {
     producer: true, currency, ready: cycles > 0, amount: Math.round(per * effective), cycles, cap, progress, full,
@@ -377,9 +390,18 @@ export function collectAll(state = S()) {
 // ---------- Mejoras ----------
 export function canUpgradeType(b) {
   const d = def(b);
-  return d.id === 'castillo' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
+  return d.id === 'castillo' || d.cat === 'monumento' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
 }
-export function maxLevel(b) { return def(b).id === 'castillo' ? TOWN_RANKS.length : MAX_BUILDING_LEVEL; }
+export function maxLevel(b) {
+  const d = def(b);
+  if (d.id === 'castillo') return TOWN_RANKS.length;
+  if (d.cat === 'monumento') return MONUMENTS[d.id].stages.length;
+  return MAX_BUILDING_LEVEL;
+}
+/** Duración real de una obra (segundos): la Torre del Reloj terminada la acorta. */
+export function stageTime(sec, state = S(), now = Date.now()) {
+  return Math.max(1, Math.round(sec * (1 - monumentBonus('time', state, now))));
+}
 // costo de mejora = costo base × factor (nivel actual → siguiente). Se duplica en cada nivel: las mejoras son el
 // gran sumidero de monedas a mediano plazo (cada nivel da +50% de producción).
 const UPGRADE_COST_MULT = [0, 1.7, 3.4, 6.8, 13.6];
@@ -389,12 +411,16 @@ export function upgradeInfo(b) {
   const d = def(b);
   if (d.id === 'castillo') {
     const c = rankDef(b.level + 1);
-    return { cost: c.cost, time: c.time, reqLevel: c.reqLevel, rank: c.rank };
+    return { cost: c.cost, time: stageTime(c.time), reqLevel: c.reqLevel, rank: c.rank };
+  }
+  if (d.cat === 'monumento') {
+    const st = MONUMENTS[d.id].stages[b.level];
+    return { cost: { ...st.cost, mats: { ...st.cost.mats } }, time: stageTime(st.time), reqLevel: 1, stage: b.level + 1 };
   }
   const base = d.cost.coins || 200;
   return {
     cost: { coins: Math.round(base * UPGRADE_COST_MULT[b.level]), gems: b.level >= 3 ? b.level - 2 : 0 },
-    time: Math.max(15, Math.round((d.time || 10) * (b.level + 1))),
+    time: stageTime(Math.max(15, Math.round((d.time || 10) * (b.level + 1)))),
     reqLevel: d.unlock + b.level * 2,
   };
 }
@@ -405,8 +431,46 @@ export function canUpgrade(b, state = S(), now = Date.now()) {
   if (state.player.level < info.reqLevel) return { ok: false, reason: `Nivel ${info.reqLevel}`, locked: true };
   if (info.rank && !rankStatus(state, now).allOk) return { ok: false, reason: 'Falta completar el expediente', locked: true, reqs: true };
   if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
+  if (!store.hasMats(info.cost.mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
   if (!store.canAfford(info.cost)) return { ok: false, reason: 'No te alcanza', poor: true };
   return { ok: true };
+}
+
+// ---------- Materiales y monumentos ----------
+export const materials = (state = S()) => state.materials || {};
+/** 'del Faro' / 'de la Torre del Reloj' (para armar frases). */
+export function monumentOf(id) { const mo = MONUMENTS[id]; return mo?.art === 'la' ? `de la ${mo.name}` : `del ${mo?.name || id}`; }
+/**
+ * Estado de un monumento para el panel de Obras:
+ * {id, def, mon, N, b (edificio o null), stagesDone (0..N), done, busy, unlocked, nextIdx, next ({cost,time} o null), can}
+ */
+export function monumentStatus(id, state = S(), now = Date.now()) {
+  const d = def(id), mon = MONUMENTS[id], N = mon.stages.length;
+  const b = state.city.buildings.find(o => o.id === id) || null;
+  const building = !!b && isConstructing(b, now);
+  const stagesDone = !b || building ? 0 : Math.min(N, b.level || 1);
+  const busy = !!b && isBusy(b, now);
+  const done = !!b && !building && stagesDone >= N;
+  const unlocked = townRank(state) >= (d.rank || 1);
+  const nextIdx = b ? (building ? 0 : stagesDone) : 0;
+  const next = done ? null : mon.stages[nextIdx];
+  const can = done ? { ok: false, reason: 'Terminado' } : busy ? { ok: false, reason: 'Está en obra' } : b ? canUpgrade(b, state, now) : canBuild(id, state, now);
+  return { id, def: d, mon, N, b, stagesDone, done, busy, unlocked, nextIdx, next, can };
+}
+/**
+ * Para la pantalla de fin de partida: el monumento (desbloqueado, sin terminar y sin obra en curso) cuya próxima
+ * etapa pide este material. {id, name, stage, need, have, missing, mat} o null.
+ */
+export function materialHint(matId, state = S(), now = Date.now()) {
+  for (const id of MONUMENT_IDS) {
+    const st = monumentStatus(id, state, now);
+    if (!st.unlocked || st.done || st.busy || !st.next) continue;
+    const need = st.next.cost.mats?.[matId];
+    if (!need) continue;
+    const have = materials(state)[matId] || 0;
+    return { id, name: st.def.name, of: monumentOf(id), the: `${MONUMENTS[id].art || 'el'} ${st.def.name}`, stage: st.nextIdx + 1, need, have, missing: Math.max(0, need - have), mat: MATERIAL_BY_ID[matId] };
+  }
+  return null;
 }
 export function startUpgrade(uid, state = S()) {
   const b = state.city.buildings.find(o => o.uid === uid);

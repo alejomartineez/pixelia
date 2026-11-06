@@ -36,6 +36,7 @@ export function partIcon(p, size = 40) {
     case 'chest': return chestIcon(p.type, size);
     case 'stickers': return packIcon(size);
     case 'item': return icon(p.icon || 'gift', size);
+    case 'mats': return icon(p.icon || 'gift', size);
     case 'cosmetic': return icon(COSMETIC_IC[p.target] || 'ribbon', size);
     default: return icon('gift', size);
   }
@@ -48,6 +49,7 @@ export function partLabel(p) {
     case 'chest': return (p.n > 1 ? `${p.n}× ` : '') + (p.name || CHESTS[p.type]?.name || 'Cofre');
     case 'stickers': return `${p.n} figurita${p.n > 1 ? 's' : ''}${p.minStars > 1 ? ` (${p.minStars}★+)` : ''}`;
     case 'item': return (p.n > 1 ? `${p.n}× ` : '') + p.name;
+    case 'mats': return `${p.n} ${(p.name || '').toLowerCase()}`;
     case 'cosmetic': return COSMETIC_NAME[p.target] ? COSMETIC_NAME[p.target](p.name, p.id) : p.name;
     default: return 'Regalo';
   }

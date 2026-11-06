@@ -94,7 +94,9 @@ if (q.get('thumbs')) {
     requestAnimationFrame(frame);
     const t = now / 1000 + t0, dt = Math.min(0.05, (now - last) / 1000); last = now;
     for (const o of placed) { o.userData.update?.(dt, t); o.children.forEach(ch => ch.userData.update?.(dt, t)); }
-    const W = innerWidth, H = innerHeight, cw = W / cols, ch = H / rows;
+    // el renderer dibuja a 2× (vóxel nítido) con pixelRatio 1: el viewport va en pixeles del canvas, no de CSS
+    const k = R.domElement.width / innerWidth / R.getPixelRatio();
+    const W = innerWidth * k, H = innerHeight * k, cw = W / cols, ch = H / rows;
     R.setScissor(0, 0, W, H); R.setViewport(0, 0, W, H); R.clear();
     items.forEach((it, i) => {
       const cx = (i % cols) * cw, cy = H - (Math.floor(i / cols) + 1) * ch;

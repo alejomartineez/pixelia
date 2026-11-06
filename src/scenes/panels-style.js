@@ -326,6 +326,44 @@ export const PANEL_CSS = `
   .pnl-rk-name { font-size: 22px; }
 }
 
+/* ---------- Obras (monumentos) ---------- */
+.modal.pnl-works.sheet { width: min(560px, 100%); }
+.pnl-wk { display: flex; flex-direction: column; gap: 10px; }
+.pnl-wk-wallet { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: linear-gradient(135deg, #fff 40%, var(--gold-l)); }
+.pnl-wk-mats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pnl-wk-mat { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 6px; row-gap: 4px; padding: 6px 8px;
+  background: #fff; border: 2px solid var(--ink); border-radius: 12px; box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--c) 35%, #fff); }
+.pnl-wk-mat-ic { grid-row: 1; display: grid; place-items: center; }
+.pnl-wk-mat-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; }
+.pnl-wk-mat-txt b { font-size: 22px; font-variant-numeric: tabular-nums; }
+.pnl-wk-mat-txt small { font-size: 12px; color: var(--ink-l); font-weight: 700; }
+.pnl-wk-mat-txt em { font-style: normal; font-size: 11px; color: var(--ink-l); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pnl-wk-play { grid-column: 1 / -1; min-height: 32px; padding: 3px 6px; font-size: 13px; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pnl-wk-play.off { opacity: .55; }
+.pnl-wk-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.pnl-wk-card.done { background: linear-gradient(135deg, #fff 45%, var(--mint-l)); }
+.pnl-wk-card.locked { opacity: .78; }
+.pnl-wk-card.pnl-wk-focus { outline: 4px solid var(--gold); outline-offset: 2px; }
+.pnl-wk-top { display: flex; align-items: center; gap: 10px; }
+.pnl-wk-thumb { flex: none; width: 72px; height: 72px; display: grid; place-items: center; background: var(--sky-l); border: 2px solid var(--ink); border-radius: 14px; overflow: hidden; }
+.pnl-wk-card.locked .pnl-wk-thumb img { filter: grayscale(.8) brightness(1.1); }
+.pnl-wk-thumb img { width: 68px; height: 68px; image-rendering: pixelated; }
+.pnl-wk-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pnl-wk-name { font-size: 20px; line-height: 1.05; }
+.pnl-wk-meta small { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--ink-l); font-weight: 700; }
+.pnl-wk-dots { display: inline-flex; gap: 3px; }
+.pnl-wk-dots i { width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--ink); background: #fff; }
+.pnl-wk-dots i.on { background: var(--gold); }
+.pnl-wk-bonus { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ink-l); }
+.pnl-wk-bonus.on { color: var(--ink); font-weight: 700; }
+.pnl-wk-next small { font-size: 13px; color: var(--ink-l); display: inline-flex; align-items: center; gap: 3px; flex-wrap: wrap; }
+.pnl-wk-cost { display: flex; flex-direction: column; gap: 6px; }
+.pnl-wk-get { flex: none; min-height: 34px; padding: 3px 10px; font-size: 14px; gap: 4px; }
+.pnl-wk-coins { display: flex; justify-content: flex-end; font-size: 17px; }
+.pnl-wk-lock { font-weight: 700; }
+.pnl-wk-okmsg { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; }
+.pnl-wk-card .btn.block { min-height: 46px; font-size: 17px; }
+
 /* ---------- Premios con cofres / figuritas / objetos ---------- */
 .pnl-rw { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
 .pnl-rw > span { font-size: inherit; }

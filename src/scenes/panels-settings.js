@@ -347,6 +347,8 @@ export function openHelp(ctx) {
       ['palette', 'Estilo de la ciudad', 'Con el botón de la <b>paleta</b> en la ciudad (o en Ajustes) elegís cómo se ve: pastel, moderna, bosque, playa, invierno o noche. Es gratis.'],
       ['people', 'Población', 'Las casas traen vecinos. Muchos negocios piden un mínimo de vecinos para abrir.'],
       ['smile', 'Felicidad', 'Árboles, flores y deco hacen feliz a tu ciudad: ¡todo produce hasta un 50% más!'],
+      ['castle', 'Rango y Encanto', 'Mejorá la <b>Municipalidad</b> para subir de rango, de Aldea a Capital. Cada rango pide un expediente: vecinos, felicidad, tipos de negocio y <b>Encanto</b> (deco variada y edificios mejorados). Tocá el cartel de tu rango, arriba a la izquierda.'],
+      ['monument', 'Monumentos', 'Desde el rango Pueblo construís monumentos por etapas con los <b>materiales</b> que ganás en los minijuegos: cristales, ladrillos, tuercas y mapas. Cada uno terminado da un bonus para siempre. Mirá <b>Obras</b>.'],
       ['👷', 'Constructoras', 'Cada obra ocupa una constructora un ratito. Si faltan menos de 5 segundos, terminala gratis.'],
       ['games', 'Minijuegos', 'Construí la Joyería, la Torre, el Garaje y la Pista para jugar y ganar premios.'],
       ['quest', 'Misiones', 'Seguí la misión principal, hacé las 3 diarias para abrir el cofre y juntá estrellas de logro.'],

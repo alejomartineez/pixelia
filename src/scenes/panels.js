@@ -1,10 +1,11 @@
-// Paneles de la ciudad: misiones, minijuegos, ajustes, ayuda, premio diario, subida de nivel y rango de la ciudad.
+// Paneles de la ciudad: misiones, minijuegos, ajustes, ayuda, premio diario, subida de nivel, rango de la ciudad y obras.
 // API: openPanel(ctx, name, params) -> Promise que resuelve cuando el panel se cierra.
 import { openQuests } from './panels-quests.js';
 import { openGames } from './panels-games.js';
 import { openSettings, openHelp } from './panels-settings.js';
 import { openLogin, openLevelUp } from './panels-rewards.js';
 import { openRank } from './panels-rank.js';
+import { openWorks } from './panels-works.js';
 import { getOpen } from './panels-common.js';
 
 const PANELS = {
@@ -15,6 +16,7 @@ const PANELS = {
   login: openLogin,
   levelup: openLevelUp,
   rank: openRank,
+  works: openWorks,
 };
 
 export async function openPanel(ctx, name, params = {}) {

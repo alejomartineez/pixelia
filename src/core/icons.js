@@ -193,6 +193,37 @@ const DEFS = {
     ly('M4 2.4h16l-1 2 1 2v11.2l-1 2 1 2H4l1-2-1-2V6.4l1-2z', C.l), ly('M4 9h16v6.2H4z', C.p),
     ly(starPath(12, 12.2, 3.8, 1.7), C.y),
   ],
+  // ----- materiales de los minijuegos (monumentos) -----
+  cristal: [
+    ly('M3.2 12.4l2.6-3 2.6 3v7.4l-2.6 2.6-2.6-2.6z', '#e0c4ff'), ly('M15.6 10.4l2.6-3 2.6 3v8.4l-2.6 2.6-2.6-2.6z', '#e0c4ff'),
+    ly('M12 1.2l4.8 5.4v12.6L12 23l-4.8-3.8V6.6z', '#c08cff'),
+    flat('M10.2 7h1.7v9.6h-1.7z', C.w), flat('M12 1.6v21', '#9a68e0', { stroke: 1 }),
+  ],
+  ladrillo: [
+    ly('M1.4 16.8h10.2v5.4H1.4zM12.4 16.8h10.2v5.4H12.4z', '#d9693f'),
+    ly('M6.6 10.6h10.8v5.4H6.6z', '#e0764a'), ly('M1.4 10.6h4.4v5.4H1.4zM18.2 10.6h4.4v5.4h-4.4z', '#d9693f'),
+    ly('M4 4.4h16v5.4H4z', '#ee8a5c'),
+    flat('M5.4 5.6h4v1.4h-4zM8 11.8h3.4v1.4H8zM2.8 18h3.4v1.4H2.8zM13.8 18h3.4v1.4h-3.4z', '#ffc4a6'),
+  ],
+  tuerca: [
+    ly('M12 1.2l9.4 5.4v10.8L12 22.8l-9.4-5.4V6.6z', '#b9c3d0'),
+    ly(circ(12, 12, 4.4), null, { cut: true }),
+    flat('M6.2 7.4l4-2.3', C.w, { stroke: 1.5 }), flat(circ(12, 12, 5.6), '#8a96a8', { stroke: 1.1 }),
+  ],
+  mapa: [
+    ly('M1.4 4.6l6.6-2.6 8 2.6 6.6-2.6v17.6l-6.6 2.6-8-2.6-6.6 2.6z', '#f6d9a8'),
+    flat('M8 2v17.6M16 4.6v17.6', '#d9b178', { stroke: 1.1 }),
+    flat('M4.4 16.6l3.6-3.4 4 2 4.4-5.6', '#e8564f', { stroke: 1.5 }),
+    ly('M16.8 6.4l3.6 3.6M20.4 6.4l-3.6 3.6', '#e8564f', { stroke: 1.8 }),
+  ],
+  // faro: ícono de las Obras (monumentos)
+  monument: [
+    ly('M8.2 8.6h7.6l2.4 13.6H5.8z', C.w),
+    flat('M7.6 12.2h8.8l.5 3H7.1zM6.5 18.4h11l.5 3.2H6z', '#e8564f'),
+    ly('M8.4 4.4h7.2v4.4H8.4z', C.y), flat('M10.6 5.2h1.4v2.8h-1.4z', C.w),
+    ly('M7.4 4.8L12 .8l4.6 4z', '#e8564f'),
+    flat('M1.2 4.8l5.4 1.6M22.8 4.8l-5.4 1.6', C.y, { stroke: 1.4 }),
+  ],
 };
 
 const EMOJI = {

@@ -9,7 +9,8 @@ import { store } from './state.js';
 import { icon } from './icons.js';
 import { esc, progressHtml } from './ui.js';
 import { audio } from './audio.js';
-import { population, happiness, buildersBusy, fmtNum, fmtTime, rankStatus } from './economy.js';
+import { population, happiness, buildersBusy, fmtNum, fmtTime, rankStatus, townRank, monumentStatus } from './economy.js';
+import { MONUMENT_IDS } from './data.js';
 import { mainQuest, claimableCount } from './quests.js';
 import { chestBadge, activeBoosts } from '../chests/chests.js';
 import { albumBadge } from '../album/album.js';
@@ -59,6 +60,7 @@ function render() {
       <button class="rail-btn" data-act="chests" aria-label="Cofres">${chestIcon('madera', 34)}<span>Cofres</span><i class="badge" data-badge="chests"></i></button>
       <button class="rail-btn pass" data-act="pass" aria-label="Pase de Temporada"><span class="rail-ic" data-hud="passic">${icon('sparkle', 30)}</span><span>Pase</span><em class="rail-tag" data-hud="passlv"></em><i class="badge" data-badge="pass"></i></button>
       <button class="rail-btn" data-act="album" aria-label="Álbum de figuritas">${icon('album', 30)}<span>Álbum</span><i class="badge" data-badge="album"></i></button>
+      <button class="rail-btn works" data-act="works" data-hud="works" aria-label="Obras: monumentos">${icon('monument', 30)}<span>Obras</span><i class="badge" data-badge="works"></i></button>
       <button class="rail-btn event" data-act="events" aria-label="Eventos"><span class="rail-ic" data-hud="evic">${icon('calendar', 30)}</span><span data-hud="evname">Eventos</span><em class="rail-tag" data-hud="evtime"></em></button>
     </div>
     <nav class="hud-bottom">
@@ -161,6 +163,7 @@ function refreshDynamic() {
   setText('happy', hp.pct + '%');
   root.querySelector('[data-hud="happy"]')?.classList.toggle('boosted', !!hp.boosted);
   setText('builders', `${s.builders - buildersBusy()}/${s.builders}`);
+  refreshWorks();
   const xp = store.xpProgress();
   const lv = root.querySelector('[data-hud="level"]'); if (lv && lv.textContent !== String(xp.level)) lv.textContent = xp.level;
   const nm = root.querySelector('[data-hud="name"]'); if (nm && nm.textContent !== s.player.name) nm.textContent = s.player.name;
@@ -190,6 +193,18 @@ function refreshBadges() {
   setBadge('pass', safe(() => seasonBadge(), 0));
   setBadge('social', safe(() => ctxRef?.social?.socialBadge?.() || 0, 0));
   setBadge('quests', safe(() => claimableCount(), 0));
+  setBadge('works', safe(() => worksBadge(), 0));
+}
+/** Obras: el botón aparece desde el rango Pueblo (o si ya hay un monumento); el globito cuenta las etapas que se pueden empezar. */
+function worksBadge() {
+  const now = Date.now();
+  return MONUMENT_IDS.filter(id => { const st = monumentStatus(id, store.state, now); return st.unlocked && st.can.ok; }).length;
+}
+function refreshWorks() {
+  const el = root.querySelector('[data-hud="works"]');
+  if (!el) return;
+  const show = safe(() => townRank() >= 3 || store.state.city.buildings.some(b => MONUMENT_IDS.includes(b.id)), false);
+  el.style.display = show ? '' : 'none';
 }
 
 function onAct(act) {
@@ -210,7 +225,7 @@ function onAct(act) {
 const RAF_EVENTS = ['currency:changed', 'xp:changed', 'level:up', 'quests:changed', 'building:built', 'building:placed', 'building:upgraded',
   'building:upgradeStarted', 'building:removed', 'builders:changed', 'boosts:changed', 'city:expanded', 'town:rankup', 'building:moved'];
 const BADGE_EVENTS = ['chests:changed', 'album:changed', 'album:seen', 'season:changed', 'events:changed', 'social:badge', 'online:inbox',
-  'quests:changed', 'level:up', 'reward:chest'];
+  'quests:changed', 'level:up', 'reward:chest', 'materials:changed', 'building:upgraded', 'building:built', 'building:upgradeStarted', 'town:rankup'];
 
 export const hud = {
   init(el, ctx) {

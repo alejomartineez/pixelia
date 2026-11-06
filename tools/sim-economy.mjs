@@ -3,7 +3,9 @@
 //   node tools/sim-economy.mjs . old        (almacén viejo de 6 tandas, para comparar)
 //   node tools/sim-economy.mjs . new 1 7,9,11,13,15,18,20,23 5 2   (k=escala de producción, horas de sesión, minutos, partidas)
 //   SIM_DAYS=90 node tools/sim-economy.mjs .   (más días: muestra una fila por semana y el día en que llega a cada rango)
-// Columnas: lvl nivel, rank rango de la ciudad, charm Encanto, coins saldo, prod monedas cobradas acumuladas, games/quests/lvlRw otras fuentes, n edificios.
+// Columnas: lvl nivel, rank rango de la ciudad, charm Encanto, coins saldo, prod monedas cobradas acumuladas, games/quests/lvlRw otras fuentes, n edificios,
+//   mon monumentos terminados, mats materiales guardados (cristal/ladrillo/tuerca/mapa).
+// Las partidas dan el material de su juego (como main.js finishGame); la jugadora juega lo que más le falta para sus obras.
 // Simulación de 7 días de juego casual: node sim.mjs <raizProyecto> [modo] [k]
 //  modo: old (topes viejos de 6 ciclos) | new (siesta 3-4 h)   k: escala de producción de monedas
 import { pathToFileURL } from 'node:url';
@@ -47,6 +49,28 @@ function findSpot(id) {
   for (let z = min; z < max; z++) for (let x = min; x < max; x++) if (E.canPlace(id, x, z, 0).ok) return [x, z];
   return null;
 }
+/** Reacomoda todos los edificios (menos la Municipalidad) dejando lugar para `id`. Devuelve el lugar o null. */
+function repackFor(id) {
+  const keep = s.city.buildings.slice();
+  const castle = keep.find(b => b.id === 'castillo');
+  const area = (b) => data.BUILDING_BY_ID[b.id].size[0] * data.BUILDING_BY_ID[b.id].size[1];
+  const others = keep.filter(b => b !== castle).sort((a, b) => area(b) - area(a));
+  s.city.buildings = [castle];
+  const spot = findSpot(id);
+  if (!spot) { s.city.buildings = keep; return null; }
+  const dummy = { uid: -1, id, x: spot[0], z: spot[1], rot: 0, level: 1 };
+  s.city.buildings.push(dummy);
+  const pos = new Map();
+  for (const b of others) {
+    const p = findSpot(b.id);
+    if (!p) { s.city.buildings = keep; return null; }
+    pos.set(b, p);
+    s.city.buildings.push({ ...b, x: p[0], z: p[1], rot: 0 });
+  }
+  for (const [b, p] of pos) { b.x = p[0]; b.z = p[1]; b.rot = 0; }
+  s.city.buildings = keep;
+  return spot;
+}
 // prioridad de compra: juegos > casas si falta población > negocios > mejoras > deco > castillo > expandir
 function spend() {
   for (let guard = 0; guard < 40; guard++) {
@@ -54,6 +78,17 @@ function spend() {
     // con el expediente completo, la Municipalidad (subir de rango) va primero
     const castle = s.city.buildings.find(b => b.id === 'castillo');
     if (castle && E.canUpgrade(castle).ok) { E.startUpgrade(castle.uid); continue; }
+    // monumentos: la próxima etapa apenas alcanza (materiales + monedas)
+    let mon = false;
+    for (const id of data.MONUMENT_IDS) {
+      const st = E.monumentStatus(id);
+      if (!st.unlocked || !st.can.ok) continue;
+      if (st.b) { if (!E.startUpgrade(st.b.uid).error) { mon = true; break; } continue; }
+      // sin lugar: como haría una jugadora, reacomoda la ciudad (mueve todo, de lo más grande a lo más chico)
+      const spot = findSpot(id) || repackFor(id);
+      if (spot && !E.placeBuilding(id, spot[0], spot[1], 0).error) { mon = true; break; }
+    }
+    if (mon) continue;
     const want = [];
     for (const g of data.GAMES) if (L >= g.unlock && !E.countOf(g.building)) want.push(g.building);
     if (L >= 2 && !E.countOf('boutique_real')) want.push('boutique_real');
@@ -100,13 +135,25 @@ function spend() {
     break;
   }
 }
+const hasGame = (g) => s.player.level >= g.unlock && E.hasBuilt(g.building);
+function pickGame() {
+  const games = data.GAMES.filter(hasGame);
+  // la mitad de las veces juega lo que más le falta para su próxima etapa; si no, cualquiera
+  if (Math.random() < 0.5) {
+    for (const g of games) { const h = E.materialHint(data.MATERIAL_BY_GAME[g.id].id); if (h && h.missing > 0) return g; }
+  }
+  return games[Math.floor(Math.random() * games.length)] || data.GAMES[0];
+}
 function playGame() {
   const scale = data.rewardScale(s.player.level);
   const won = Math.random() < 0.75;
   const base = won ? 60 : 5;
   const coins = Math.round(base * scale);
   tally.games += coins;
-  store.grant({ coins, xp: Math.round((won ? 16 : 5) * Math.sqrt(scale)) }, 'game');
+  const g = pickGame();
+  const stars = won ? 1 + Math.floor(Math.random() * 3) : 0;
+  const mat = data.MATERIAL_BY_GAME[g.id];
+  store.grant({ coins, xp: Math.round((won ? 16 : 5) * Math.sqrt(scale) * (1 + E.monumentBonus('gameXp'))), mats: { [mat.id]: Math.max(1, stars) + (won ? 1 : 0) } }, 'game');
   if (won && Math.random() < 0.3) { const c = Math.round(170 * scale); tally.games += c; store.grant({ coins: c }, 'chest'); }
 }
 const rnd = (() => { let h = 12345; return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; })();
@@ -124,7 +171,9 @@ for (let day = 0; day < DAYS; day++) {
       const sc = data.rewardScale(s.player.level);
       const q = Math.round(150 * sc + 120 + 200 + 280);
       tally.quests += q;
-      store.grant({ coins: q, xp: 70 + 50 }, 'quest');
+      // una de las diarias suele ser "jugá X": 3 de su material
+      const dm = data.MATERIALS[day % data.MATERIALS.length];
+      store.grant({ coins: q, xp: 70 + 50, mats: hasGame(data.GAME_BY_ID[dm.game]) ? { [dm.id]: 3 } : null }, 'quest');
     }
     E.collectAll();
     spend();
@@ -138,12 +187,14 @@ for (let day = 0; day < DAYS; day++) {
   if (DAYS > 14 && (day + 1) % 7 && day + 1 !== DAYS) continue;
   const rs = E.rankStatus();
   out.push({ day: day + 1, lvl: s.player.level, rank: rk, charm: E.cityCharm(), happy: E.happiness().pct, shops: E.shopKinds(), gems: s.gems,
-    falta: rs.reqs.filter(r => !r.ok).map(r => r.key + ' ' + r.have + '/' + r.need).join(' ') + (rs.next && !rs.levelOk ? ' nivel' + rs.next.reqLevel : ''), coins: s.coins, prod: tally.prod, games: tally.games, quests: tally.quests, lvlRw: tally.level, n: s.city.buildings.length, castle: E.castleLevel(), exp: s.city.expansions, pop: E.population(), prodH: Math.round(prodPerHour) });
+    falta: rs.reqs.filter(r => !r.ok).map(r => r.key + ' ' + r.have + '/' + r.need).join(' ') + (rs.next && !rs.levelOk ? ' nivel' + rs.next.reqLevel : ''),    mon: E.monumentsDone(), mats: data.MATERIALS.map(m => s.materials[m.id] || 0).join('/'),
+ coins: s.coins, prod: tally.prod, games: tally.games, quests: tally.quests, lvlRw: tally.level, n: s.city.buildings.length, castle: E.castleLevel(), exp: s.city.expansions, pop: E.population(), prodH: Math.round(prodPerHour) });
 }
 console.log(mode, 'k=' + K, 'sesiones', SESS.join(','));
 console.table(out);
 console.log('día en que llega a cada rango:', JSON.stringify(rankDay));
 const ids = {}; for (const b of s.city.buildings) ids[b.id] = (ids[b.id] || 0) + 1;
 console.log(JSON.stringify(ids));
+console.log('monumentos:', data.MONUMENT_IDS.map(id => { const st = E.monumentStatus(id); return `${id} ${st.stagesDone}/${st.N}`; }).join(' · '));
 Date.now = realNow;
 process.exit(0);

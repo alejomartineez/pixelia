@@ -3,7 +3,7 @@
 import { bus } from './bus.js';
 import {
   CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
-  LEGACY_TYPES, LEGACY_ITEMS,
+  LEGACY_TYPES, LEGACY_ITEMS, MATERIALS,
 } from './data.js';
 
 const BASE_KEY = 'pixelia.save.v1';
@@ -65,6 +65,8 @@ export function defaultState() {
       camera: null, // la escena de ciudad puede guardar acá su posición/zoom
     },
     builders: START_BUILDERS,
+    // materiales de los minijuegos para los monumentos: { cristal, ladrillo, tuerca, mapa }
+    materials: Object.fromEntries(MATERIALS.map(m => [m.id, 0])),
     quests: { main: 0, mainProgress: 0, daily: null, achTier: {} },
     login: { last: null, streak: 0 },
     stats: {},
@@ -202,19 +204,30 @@ export const store = {
 
   // ---------- Monedas / gemas ----------
   canAfford(cost = {}) {
-    return (cost.coins || 0) <= state.coins && (cost.gems || 0) <= state.gems;
+    return (cost.coins || 0) <= state.coins && (cost.gems || 0) <= state.gems && store.hasMats(cost.mats);
+  },
+  /** ¿Alcanzan los materiales? mats: { cristal: n, ... } (sin mats: sí). */
+  hasMats(mats) {
+    if (!mats) return true;
+    const have = state.materials || {};
+    return Object.entries(mats).every(([id, n]) => (have[id] || 0) >= (n || 0));
   },
   /** Descuenta si alcanza. Devuelve true/false. */
   spend(cost = {}, reason = '') {
     if (!store.canAfford(cost)) return false;
     state.coins -= cost.coins || 0;
     state.gems -= cost.gems || 0;
+    if (cost.mats) {
+      state.materials ||= {};
+      for (const [id, n] of Object.entries(cost.mats)) state.materials[id] = (state.materials[id] || 0) - (n || 0);
+      bus.emit('materials:changed', { materials: state.materials, delta: Object.fromEntries(Object.entries(cost.mats).map(([id, n]) => [id, -n])), reason });
+    }
     dirty = true;
     bus.emit('currency:changed', { coins: state.coins, gems: state.gems, delta: { coins: -(cost.coins || 0), gems: -(cost.gems || 0) }, reason });
     return true;
   },
   /**
-   * Suma premios. reward: {coins, gems, xp, chest, stickers}. source: 'collect'|'game'|'quest'|'levelup'|'login'|...
+   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats}. mats: { cristal: n, ... } → emite 'materials:changed'. source: 'collect'|'game'|'quest'|'levelup'|'login'|...
    *  - chest: 'madera'|'plata'|'oro'|'real' (o {type, n}); chests: cantidad (default 1) → emite 'reward:chest' {type, n, source}
    *  - stickers: n (o {n, minStars}) → emite 'reward:stickers' {n, minStars, source}; el álbum deja el resultado en payload.result
    * Devuelve { stickers: [{id, stars, isNew, count}] } (vacío si no hubo figuritas).
@@ -227,6 +240,18 @@ export const store = {
     if (coins) { state.coins += coins; store.inc('coinsEarned', coins); bus.emit('coins:earned', { amount: coins, source }); }
     if (gems) { state.gems += gems; store.inc('gemsEarned', gems); bus.emit('gems:earned', { amount: gems, source }); }
     if (coins || gems) bus.emit('currency:changed', { coins: state.coins, gems: state.gems, delta: { coins, gems }, reason: source });
+    if (reward.mats && typeof reward.mats === 'object') {
+      state.materials ||= {};
+      const delta = {};
+      for (const [id, n0] of Object.entries(reward.mats)) {
+        const n = Math.max(0, Math.round(n0 || 0));
+        if (!n) continue;
+        state.materials[id] = (state.materials[id] || 0) + n;
+        delta[id] = n;
+        store.inc('matsEarned', n);
+      }
+      if (Object.keys(delta).length) bus.emit('materials:changed', { materials: state.materials, delta, reason: source });
+    }
     if (reward.xp) store.addXp(reward.xp);
     if (reward.chest) {
       const type = typeof reward.chest === 'object' ? reward.chest.type : reward.chest;

@@ -14,7 +14,7 @@ export const BUILDER_GEM_COST = [0, 0, 0, 60, 150]; // costo del constructor n (
 export { PALETTE } from './palette.js';
 
 // ---------------- EDIFICIOS ----------------
-// cat: 'especial' | 'casa' | 'negocio' | 'deco' | 'camino'
+// cat: 'especial' | 'casa' | 'negocio' | 'deco' | 'camino' | 'monumento' (estos se agregan desde MONUMENTS, más abajo)
 // size: [w, d] en tiles. cost: {coins, gems}. time: segundos de construcción (nivel 1).
 // pop: residentes que aporta (casas). popReq: población mínima para poder construirlo.
 // prod: {coins|gems: cantidad por ciclo, cycle: segundos, cap: ciclos acumulables}
@@ -91,11 +91,85 @@ export const BUILDINGS = [
   { id: 'camino_rosa', name: 'Camino de Ladrillo', cat: 'camino', size: [1, 1], unlock: 3, cost: { coins: 12 }, time: 0, happy: 0, xp: 0, desc: 'Ladrillos rojizos, como los de antes.' },
   { id: 'camino_dorado', name: 'Camino Dorado', rank: 3, cat: 'camino', size: [1, 1], unlock: 8, cost: { coins: 30 }, time: 0, happy: 0, xp: 0, desc: 'Para pasear con todo el brillo.' },
 ];
+
+// ---------------- MATERIALES Y MONUMENTOS ----------------
+// Cada minijuego da su material (main.js finishGame: 1 por estrella, mínimo 1, +1 si ganaste). Con los materiales se
+// construyen los monumentos, por etapas: el nivel del edificio es la etapa (1 = cimientos … N = terminado).
+// cost.mats = { cristal: n, ... } (store.canAfford/spend/grant los entienden igual que monedas y gemas).
+export const MATERIALS = [
+  { id: 'cristal', name: 'Cristales', one: 'cristal', game: 'match3', icon: 'cristal', color: '#c08cff' },
+  { id: 'ladrillo', name: 'Ladrillos', one: 'ladrillo', game: 'blocks', icon: 'ladrillo', color: '#e0764a' },
+  { id: 'tuerca', name: 'Tuercas', one: 'tuerca', game: 'parking', icon: 'tuerca', color: '#a9b4c2' },
+  { id: 'mapa', name: 'Mapas', one: 'mapa', game: 'driving', icon: 'mapa', color: '#e9c48a' },
+];
+export const MATERIAL_BY_ID = Object.fromEntries(MATERIALS.map(m => [m.id, m]));
+export const MATERIAL_BY_GAME = Object.fromEntries(MATERIALS.map(m => [m.game, m]));
+
+const ST4 = ['Cimientos', 'Paredes', 'Detalles', '¡Inauguración!'];
+const ST5 = ['Cimientos', 'Estructura', 'Paredes', 'Detalles', '¡Inauguración!'];
+const stg = (coins, mats, time, gems = 0) => ({ cost: gems ? { coins, gems, mats } : { coins, mats }, time });
+// art: artículo del nombre ('el Faro', 'la Torre del Reloj') para armar frases.
+// bonus.type: shopCoins (monedas de negocios) · happy (puntos de felicidad) · gameXp (XP de minijuegos)
+//             pass (chispas del Pase por partida) · stickers (chance de figurita al ganar) · time (obras más rápidas)
+export const MONUMENTS = {
+  faro: {
+    name: 'Faro', art: 'el', size: [3, 3], rank: 3, charm: 120, happy: 8, bonus: { type: 'shopCoins', value: 0.10 }, bonusIcon: 'coin',
+    bonusText: '+10% de monedas en todos los negocios', desc: 'Ilumina el pueblo de noche. Terminado: +10% de monedas en todos los negocios.',
+    stageNames: ST4, stages: [
+      stg(1500, { ladrillo: 6, cristal: 4 }, 120), stg(2500, { ladrillo: 10, cristal: 6 }, 300),
+      stg(4000, { ladrillo: 12, cristal: 10 }, 600), stg(6000, { ladrillo: 16, cristal: 12 }, 1200),
+    ] },
+  jardin: {
+    name: 'Jardín Botánico', art: 'el', size: [4, 4], rank: 4, charm: 150, happy: 15, bonus: { type: 'happy', value: 0.25 }, bonusIcon: 'smile',
+    bonusText: '+25% de felicidad en toda la ciudad', desc: 'Un invernadero gigante lleno de plantas. Terminado: +25% de felicidad.',
+    stageNames: ST4, stages: [
+      stg(3000, { cristal: 8, tuerca: 5 }, 300), stg(5000, { cristal: 12, tuerca: 8 }, 600),
+      stg(8000, { cristal: 16, tuerca: 12 }, 1200), stg(12000, { cristal: 20, tuerca: 16 }, 1800, 5),
+    ] },
+  observatorio: {
+    name: 'Observatorio', art: 'el', size: [3, 3], rank: 5, charm: 170, happy: 10, bonus: { type: 'gameXp', value: 0.25 }, bonusIcon: 'xp',
+    bonusText: '+25% de XP en los minijuegos', desc: 'Para mirar las estrellas. Terminado: +25% de experiencia en cada partida.',
+    stageNames: ST5, stages: [
+      stg(6000, { cristal: 10, mapa: 6 }, 600), stg(9000, { cristal: 14, mapa: 10 }, 900), stg(13000, { cristal: 18, mapa: 14 }, 1500),
+      stg(18000, { cristal: 22, mapa: 18 }, 2400), stg(24000, { cristal: 26, mapa: 22 }, 3600, 10),
+    ] },
+  estadio: {
+    name: 'Estadio', art: 'el', size: [4, 4], rank: 5, charm: 190, happy: 14, bonus: { type: 'pass', value: 0.25 }, bonusIcon: 'sparkle',
+    bonusText: '+25% de chispas del Pase por partida', desc: '¡Que empiece el partido! Terminado: +25% de chispas del Pase en cada partida.',
+    stageNames: ST5, stages: [
+      stg(7000, { ladrillo: 12, tuerca: 8 }, 600), stg(10000, { ladrillo: 16, tuerca: 12 }, 900), stg(14000, { ladrillo: 20, tuerca: 16 }, 1500),
+      stg(19000, { ladrillo: 24, tuerca: 20 }, 2400), stg(26000, { ladrillo: 28, tuerca: 24 }, 3600, 10),
+    ] },
+  museo: {
+    name: 'Museo', art: 'el', size: [4, 4], rank: 6, charm: 220, happy: 12, bonus: { type: 'stickers', value: 0.5 }, bonusIcon: '🃏',
+    bonusText: '+50% de chance de figurita al ganar', desc: 'Historia, arte ¡y un dinosaurio! Terminado: más figuritas al ganar partidas.',
+    stageNames: ST5, stages: [
+      stg(15000, { mapa: 12, ladrillo: 10, cristal: 8 }, 1200), stg(22000, { mapa: 16, ladrillo: 14, cristal: 12 }, 1800),
+      stg(30000, { mapa: 20, ladrillo: 18, cristal: 16 }, 2700), stg(40000, { mapa: 26, ladrillo: 22, cristal: 20 }, 3600),
+      stg(52000, { mapa: 30, ladrillo: 28, cristal: 24 }, 5400, 15),
+    ] },
+  torre_reloj: {
+    name: 'Torre del Reloj', art: 'la', size: [3, 3], rank: 7, charm: 260, happy: 12, bonus: { type: 'time', value: 0.10 }, bonusIcon: 'clock',
+    bonusText: 'Obras y mejoras 10% más rápidas', desc: 'La más alta del pueblo, con campana. Terminada: todas las obras tardan 10% menos.',
+    stageNames: ST5, stages: [
+      stg(30000, { tuerca: 14, mapa: 12, ladrillo: 10, cristal: 10 }, 1800), stg(42000, { tuerca: 18, mapa: 16, ladrillo: 14, cristal: 14 }, 2700),
+      stg(56000, { tuerca: 24, mapa: 20, ladrillo: 18, cristal: 18 }, 3600), stg(75000, { tuerca: 30, mapa: 26, ladrillo: 24, cristal: 24 }, 5400),
+      stg(100000, { tuerca: 36, mapa: 32, ladrillo: 30, cristal: 30 }, 7200, 20),
+    ] },
+};
+export const MONUMENT_IDS = Object.keys(MONUMENTS);
+// los monumentos también son edificios (cat 'monumento', uno de cada uno); construirlos = pagar la etapa 1
+for (const [id, mo] of Object.entries(MONUMENTS)) {
+  BUILDINGS.push({ id, name: mo.name, cat: 'monumento', size: mo.size, unlock: 1, rank: mo.rank, cost: mo.stages[0].cost, time: mo.stages[0].time,
+    max: 1, happy: mo.happy, charm: mo.charm, xp: 60, desc: mo.desc });
+}
+
 export const BUILDING_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
 export const CATEGORIES = [
   { id: 'casa', name: 'Casas' },
   { id: 'negocio', name: 'Negocios' },
   { id: 'especial', name: 'Especiales' },
+  { id: 'monumento', name: 'Monumentos' },
   { id: 'deco', name: 'Deco' },
   { id: 'camino', name: 'Caminos' },
 ];
@@ -105,7 +179,7 @@ export const CATEGORIES = [
 // El nivel de la Municipalidad (id 'castillo') ES el rango de la ciudad. Para subir de rango hay que cumplir un
 // "expediente" (req) además de pagar la obra. Cada rango suma +8% de producción global y puede dar constructoras,
 // más terreno (land = expansiones permitidas), edificios nuevos (BUILDINGS[].rank) y un premio al llegar.
-// req: pop (población), happy (% de felicidad), charm (Encanto), shops (tipos de negocio distintos), monuments.
+// req: pop (población), happy (% de felicidad), charm (Encanto), shops (tipos de negocio distintos), monuments (terminados).
 export const TOWN_RANKS = [
   { rank: 1, name: 'Aldea', emoji: '🏕️', land: 1 },
   { rank: 2, name: 'Caserío', emoji: '🏡', look: 'pórtico con columnas', land: 2, cost: { coins: 800, gems: 2 }, time: 60, reqLevel: 3,
@@ -113,19 +187,19 @@ export const TOWN_RANKS = [
   { rank: 3, name: 'Pueblo', emoji: '🏘️', look: 'alas a los costados', land: 3, builders: 1, cost: { coins: 2500, gems: 5 }, time: 180, reqLevel: 7,
     req: { pop: 45, happy: 40, charm: 140, shops: 3 }, reward: { gems: 10, chest: 'plata' } },
   { rank: 4, name: 'Villa', emoji: '⛲', look: 'fuentes en la plaza', land: 4, cost: { coins: 6000, gems: 10 }, time: 420, reqLevel: 12,
-    req: { pop: 90, happy: 45, charm: 300, shops: 5 }, reward: { gems: 15, chest: 'oro' } },
+    req: { pop: 90, happy: 45, charm: 300, shops: 5, monuments: 1 }, reward: { gems: 15, chest: 'oro' } },
   { rank: 5, name: 'Ciudad', emoji: '🏙️', look: 'cúpula dorada y banderines', land: 5, cost: { coins: 14000, gems: 20 }, time: 900, reqLevel: 20,
-    req: { pop: 150, happy: 50, charm: 520, shops: 7 }, reward: { gems: 25, chest: 'oro' } },
+    req: { pop: 150, happy: 50, charm: 520, shops: 7, monuments: 2 }, reward: { gems: 25, chest: 'oro' } },
   { rank: 6, name: 'Gran Ciudad', emoji: '🌆', look: 'techo azul y torrecitas doradas', land: 7, builders: 1, cost: { coins: 30000, gems: 30 }, time: 1800, reqLevel: 26,
-    req: { pop: 220, happy: 55, charm: 800, shops: 9 }, reward: { gems: 35, chest: 'oro' } },
+    req: { pop: 220, happy: 55, charm: 800, shops: 9, monuments: 3 }, reward: { gems: 35, chest: 'oro' } },
   { rank: 7, name: 'Metrópolis', emoji: '🌃', look: 'mirador, alfombra roja y banderas gigantes', land: 7, cost: { coins: 60000, gems: 45 }, time: 3600, reqLevel: 31,
-    req: { pop: 300, happy: 60, charm: 1150, shops: 10 }, reward: { gems: 50, chest: 'real' } },
+    req: { pop: 300, happy: 60, charm: 1150, shops: 10, monuments: 5 }, reward: { gems: 50, chest: 'real' } },
   { rank: 8, name: 'Capital', emoji: '🏛️', look: 'arco dorado y fuegos artificiales', land: 7, cost: { coins: 120000, gems: 60 }, time: 7200, reqLevel: 36,
-    req: { pop: 400, happy: 65, charm: 1600, shops: 11 }, reward: { gems: 80, chest: 'real' } },
+    req: { pop: 400, happy: 65, charm: 1600, shops: 11, monuments: 6 }, reward: { gems: 80, chest: 'real' } },
 ];
 export const RANK_REQ_LABELS = {
   pop: ['Población', 'people'], happy: ['Felicidad', 'smile'], charm: ['Encanto', 'sparkle'],
-  shops: ['Tipos de negocio', 'shop'], monuments: ['Monumentos', 'trophy'],
+  shops: ['Tipos de negocio', 'shop'], monuments: ['Monumentos terminados', 'monument'],
 };
 // Compatibilidad: mejoras de la Municipalidad en el formato viejo (level = rango)
 export const CASTLE_LEVELS = TOWN_RANKS.slice(1).map(r => ({ level: r.rank, cost: r.cost, time: r.time, reqLevel: r.reqLevel }));
@@ -405,10 +479,10 @@ export const MAIN_QUESTS = [
 export const DAILY_POOL = [
   { id: 'd_collect', title: 'Recolectá monedas', goal: { type: 'collect', count: 300 }, reward: { coins: 150, xp: 20 }, scale: true },
   { id: 'd_earn', title: 'Ganá monedas', goal: { type: 'earn', count: 800 }, reward: { gems: 2, xp: 25 }, scale: true },
-  { id: 'd_match3', title: 'Jugá Joyas Brillantes 2 veces', goal: { type: 'play', game: 'match3', count: 2 }, reward: { coins: 120, xp: 20 } },
-  { id: 'd_blocks', title: 'Jugá Bloques Pixel 2 veces', goal: { type: 'play', game: 'blocks', count: 2 }, reward: { coins: 120, xp: 20 }, minLevel: 2 },
-  { id: 'd_parking', title: 'Estacioná 3 veces', goal: { type: 'play', game: 'parking', count: 3 }, reward: { gems: 2, xp: 25 }, minLevel: 3 },
-  { id: 'd_driving', title: 'Salí a pasear 2 veces', goal: { type: 'play', game: 'driving', count: 2 }, reward: { gems: 2, xp: 25 }, minLevel: 5 },
+  { id: 'd_match3', title: 'Jugá Joyas Brillantes 2 veces', goal: { type: 'play', game: 'match3', count: 2 }, reward: { coins: 120, xp: 20, mats: { cristal: 3 } } },
+  { id: 'd_blocks', title: 'Jugá Bloques Pixel 2 veces', goal: { type: 'play', game: 'blocks', count: 2 }, reward: { coins: 120, xp: 20, mats: { ladrillo: 3 } }, minLevel: 2 },
+  { id: 'd_parking', title: 'Estacioná 3 veces', goal: { type: 'play', game: 'parking', count: 3 }, reward: { gems: 2, xp: 25, mats: { tuerca: 4 } }, minLevel: 3 },
+  { id: 'd_driving', title: 'Salí a pasear 2 veces', goal: { type: 'play', game: 'driving', count: 2 }, reward: { gems: 2, xp: 25, mats: { mapa: 3 } }, minLevel: 5 },
   { id: 'd_stars', title: 'Conseguí 6 estrellas', goal: { type: 'stars', count: 6 }, reward: { gems: 3, xp: 30 } },
   { id: 'd_build', title: 'Construí 3 cosas', goal: { type: 'build', count: 3 }, reward: { coins: 200, xp: 25 } },
   { id: 'd_upgrade', title: 'Mejorá un edificio', goal: { type: 'upgrade', count: 1 }, reward: { gems: 2, xp: 30 }, minLevel: 3 },

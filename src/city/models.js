@@ -5,17 +5,18 @@
 // Las geometrías se construyen una sola vez por id+nivel y se reusan en cada Group nuevo.
 import * as THREE from 'three';
 import { voxelMaterial, glowMaterial, addLights, setIsoCamera, Voxels, shade, outlineCanvas } from '../core/voxel.js';
-import { BUILDING_BY_ID, OUTFIT_COLORS } from '../core/data.js';
+import { BUILDING_BY_ID, OUTFIT_COLORS, MONUMENTS } from '../core/data.js';
 import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS, upgradeDressing } from './models-kit.js';
 import { SPECIAL_BUILDERS } from './models-special.js';
 import { HOUSE_BUILDERS } from './models-houses.js';
 import { SHOP_BUILDERS } from './models-shops.js';
 import { DECO_BUILDERS } from './models-deco.js';
+import { MONUMENT_BUILDERS } from './models-monuments.js';
 import { DEFAULT_THEME, themeOf, mapColor, isGlass } from './themes.js';
 
 export const VOXELS_PER_TILE = 8;
 const S = 1 / VOXELS_PER_TILE;
-const BUILDERS = { ...SPECIAL_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS };
+const BUILDERS = { ...SPECIAL_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS };
 
 // ---------- Materiales ----------
 let _light = null, _ghost = null;
@@ -207,8 +208,8 @@ function buildTemplate(id, level, opts, themeId) {
   return tpl;
 }
 
-/** Nivel máximo con modelo propio: la Municipalidad tiene uno por rango (8); el resto, 5. */
-const modelMaxLevel = (id) => (id === 'castillo' ? 8 : 5);
+/** Nivel máximo con modelo propio: la Municipalidad tiene uno por rango (8), los monumentos uno por etapa; el resto, 5. */
+const modelMaxLevel = (id) => (id === 'castillo' ? 8 : MONUMENTS[id] ? MONUMENTS[id].stages.length : 5);
 
 /** Modelo de un edificio del catálogo. opts: { flagColor (id de OUTFIT_COLORS o hex), ghost, theme } */
 export function buildingModel(id, level = 1, opts = {}) {

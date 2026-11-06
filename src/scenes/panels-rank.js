@@ -5,8 +5,8 @@ import { icon } from '../core/icons.js';
 import { BUILDINGS, TOWN_RANKS, RANK_REQ_LABELS, CASTLE_BONUS_PER_LEVEL } from '../core/data.js';
 import { openShell, burst, rewardHtml } from './panels-common.js';
 
-const CAT_ICON = { casa: 'home', negocio: 'shop', deco: 'flower', especial: 'castle', camino: 'map' };
-const CAT_NAME = { casa: 'Casa', negocio: 'Negocio', deco: 'Deco', especial: 'Especial', camino: 'Camino' };
+const CAT_ICON = { casa: 'home', negocio: 'shop', deco: 'flower', especial: 'castle', camino: 'map', monumento: 'monument' };
+const CAT_NAME = { casa: 'Casa', negocio: 'Negocio', deco: 'Deco', especial: 'Especial', camino: 'Camino', monumento: 'Monumento' };
 
 /** Lo que trae un rango: [{kind, name, ic, building?}] (edificios, terreno, constructora y bonus de producción). */
 export function rankUnlocks(rank) {
@@ -139,6 +139,9 @@ export function openRank(ctx, params = {}) {
       card.append(reqRow(r.key, r.have, r.need, r.ok, label, ic));
     }
     card.append(reqRow('level', ctx.state.player.level, nx.reqLevel, st.levelOk, 'Tu nivel', 'xp'));
+    if (st.reqs.some(r => r.key === 'monuments' && !r.ok)) {
+      card.append(h('button.btn.second.block', { html: `${icon('monument', 20)} Ver las Obras`, onclick: () => { audio.sfx('tap'); sh.close(); ctx.openPanel('works'); } }));
+    }
     wrap.append(card);
 
     // qué trae

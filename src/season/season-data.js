@@ -26,7 +26,8 @@ export const TIER_COST = Array.from({ length: MAX_TIER }, (_, i) => (i === 0 ? 6
 
 // ---------- Premios por nivel ----------
 // coins: BASE (se multiplica por rewardScale(nivel de jugadora)); gems; chest: tipo; stickers: {n, minStars};
-// items: {id: cantidad} (potenciadores de la mochila, ver ITEMS de chests.js); cosmetic: true (prenda premium gratis).
+// items: {id: cantidad} (potenciadores de la mochila, ver ITEMS de chests.js); cosmetic: true (prenda premium gratis);
+// mats: {material: cantidad} (cristal, ladrillo, tuerca, mapa: para los monumentos).
 // special: true = nivel destacado (10/20/30).
 export const TIERS = [
   /* 1 */ { coins: 150 },
@@ -34,25 +35,25 @@ export const TIERS = [
   /* 3 */ { items: { hammer: 1 } },
   /* 4 */ { gems: 5 },
   /* 5 */ { chest: 'madera' },
-  /* 6 */ { coins: 300 },
+  /* 6 */ { coins: 300, mats: { ladrillo: 4 } },
   /* 7 */ { items: { m3_moves: 2 } },
   /* 8 */ { stickers: { n: 3 } },
   /* 9 */ { items: { potion_prod: 1 } },
   /* 10 */ { cosmetic: true, gems: 10, special: true },
-  /* 11 */ { coins: 450 },
+  /* 11 */ { coins: 450, mats: { cristal: 5 } },
   /* 12 */ { chest: 'madera' },
   /* 13 */ { items: { hourglass: 1 } },
   /* 14 */ { gems: 8 },
   /* 15 */ { chest: 'plata' },
   /* 16 */ { stickers: { n: 3, minStars: 2 } },
   /* 17 */ { items: { blk_bomb: 1, park_time: 1 } },
-  /* 18 */ { coins: 650 },
+  /* 18 */ { coins: 650, mats: { tuerca: 6 } },
   /* 19 */ { items: { potion_happy: 1 } },
   /* 20 */ { cosmetic: true, chest: 'oro', special: true },
   /* 21 */ { gems: 10 },
   /* 22 */ { stickers: { n: 4 } },
   /* 23 */ { items: { drv_shield: 1, m3_bomb: 1 } },
-  /* 24 */ { coins: 850 },
+  /* 24 */ { coins: 850, mats: { mapa: 6, ladrillo: 6 } },
   /* 25 */ { chest: 'plata' },
   /* 26 */ { items: { potion_mega: 1 } },
   /* 27 */ { gems: 15 },

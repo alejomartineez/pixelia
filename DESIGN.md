@@ -95,13 +95,14 @@ export default function create(ctx) {
 - `coins, gems, player{name,cityName,level,xp}`
 - `onboarded`, `avatar{type, skin(index), hair, hairColor(id), dress, dressColor(id), crown, acc}` (`state.princess` = alias viejo, no enumerable), `avatarLooks{[type]: look}`, `city.theme`; `car{body, color(id de OUTFIT_COLORS), wheels, topper}`; `owned{hair:[],dress:[],...}`
 - `city{buildings:[{uid,id,x,z,rot,level,buildEnd,upgradeEnd,lastCollect}], nextUid, expansions, flagColor, camera, rankPerks{builders}}` (`rankPerks`: constructoras ya regaladas por rango, para no darlas dos veces)
+- `materials{cristal, ladrillo, tuerca, mapa}`: materiales de los minijuegos para los monumentos (ver Economía).
 - `games.match3{level, stars{}}`, `games.blocks{best}`, `games.parking{level, stars{}}`, `games.driving{best}`
-- `stats{}` (usar `store.inc(key,n)` / `store.setMax`): `match3Wins`, `blocksLines`, `parkingWins`, `drivingMeters`, `rankBest`, `charmBest` alimentan logros.
+- `stats{}` (usar `store.inc(key,n)` / `store.setMax`): `match3Wins`, `blocksLines`, `parkingWins`, `drivingMeters`, `rankBest`, `charmBest` alimentan logros; `matsEarned` cuenta materiales ganados.
 - `tutorial{}` flags libres. `settings{music,sfx,lowQuality}`.
 - Mutar estado solo vía store/economy cuando exista función; si se toca a mano, llamar `store.markDirty()`.
 
 ## Eventos (bus)
-`currency:changed, coins:earned, gems:earned, xp:changed, level:up{level,reward}, building:placed{b}, building:built{b}, building:upgradeStarted{b}, building:upgraded{b,level}, building:moved{b}, building:removed{b}, production:collected{b,amount,currency}, city:expanded, builders:changed, minigame:finished{game,score,stars,won}, customize:changed, item:bought, quests:changed, scene:changed{id}, stats:changed, hud:build{focus?}, city:flag{color,hex}, town:rankup{rank,def}, city:focus{uid}` (`hud:build` lo emite el botón Construir del HUD; la ciudad abre el menú; `focus` = id de edificio a resaltar. `town:rankup` sale al terminar la mejora de la Municipalidad: la ciudad abre el panel `rank` en modo festejo. `city:focus` abre la ficha de un edificio desde otro panel).
+`currency:changed, coins:earned, gems:earned, xp:changed, level:up{level,reward}, building:placed{b}, building:built{b}, building:upgradeStarted{b}, building:upgraded{b,level}, building:moved{b}, building:removed{b}, production:collected{b,amount,currency}, city:expanded, builders:changed, minigame:finished{game,score,stars,won}, customize:changed, item:bought, quests:changed, scene:changed{id}, stats:changed, hud:build{focus?}, city:flag{color,hex}, town:rankup{rank,def}, city:focus{uid}, city:place{id}, city:placing{active}, materials:changed{materials,delta,reason}` (`hud:build` lo emite el botón Construir del HUD; la ciudad abre el menú; `focus` = id de edificio a resaltar. `town:rankup` sale al terminar la mejora de la Municipalidad: la ciudad abre el panel `rank` en modo festejo. `city:focus` abre la ficha de un edificio desde otro panel; `city:place` arranca la colocación de un edificio (lo usa el panel de Obras); `city:placing {active:false}` sale al terminar de colocar: las subidas de nivel ganadas mientras tanto se muestran recién ahí, para no tapar la barra de Colocar).
 
 ## API de modelos (contratos entre agentes)
 
@@ -119,6 +120,11 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
   que el techo · 5 borde dorado y estrella girando arriba. Los adornos solo van en columnas libres del lote.
 - Municipalidad (id `castillo`): 8 niveles, uno por rango (`TOWN_RANKS[].look` dice qué estrena: pórtico, alas, fuentes, cúpula
   dorada, techo azul con torrecitas, mirador con alfombra roja, arco dorado con fuegos artificiales). `buildingModel` admite nivel 8 solo para ella.
+- Monumentos (`cat:'monumento'`, `models-monuments.js`): un modelo por etapa. Cada builder dibuja el monumento **terminado**;
+  `staged` lo recorta a la altura de la etapa (≈10% / 35% / 60%…) y le suma andamio al frente y a la derecha, lona, grúa con el
+  material colgando, pilas de los materiales que usa, cinta y un cartel con una pelotita por etapa (doradas las hechas).
+  Terminado: borde dorado, brillitos y lo animado (haz del Faro, telescopio, agujas y campana de la Torre, banderas).
+  Ojo: la capa y=0 del lote queda tapada por la base del lote en la ciudad; los detalles del piso van en y≥1.
 - Caminos (`cat:'camino'`): baldosa plana de 1 vóxel de alto que cubre el tile entero.
 - Cachear geometrías por `id+level` (clonar el grupo / reusar geometry).
 ```js
@@ -154,8 +160,23 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
 - **Encanto** (`charmInfo`/`cityCharm`): qué tan linda y variada está la ciudad. Cada edificio terminado suma `charm` (o un valor por categoría,
   ver `charmBase`) × (1 + 0,25 por nivel extra); cada copia repetida del mismo edificio vale ×0,85 de la anterior; la variedad multiplica
   +2% por tipo distinto (tope ×1,5). Se muestra en estrellas (0–5) respecto del Encanto que pide el próximo rango. `charmGain(id)` = cuánto sumaría otra copia.
-- Balance (`SIM_DAYS=120 node tools/sim-economy.mjs .`): jugando 4 ratos por día, rango 2 el día 1, rango 5 ≈ día 11 y rango 8 ≈ día 54;
-  con 2 ratos por día, 2 / 20 / 114. Las monedas sobran: el ritmo lo marcan `reqLevel`, la población (terreno) y el Encanto (variedad).
+- Balance (`SIM_DAYS=120 node tools/sim-economy.mjs .`, con monumentos y materiales): jugando 4 ratos por día, rango 2 el día 1, rango 5 ≈ día 12
+  y rango 8 ≈ día 51; con 2 ratos por día (`SIM_DAYS=150 node tools/sim-economy.mjs . new 1 9,20`), 2 / 20 / 95. Las monedas sobran: el ritmo
+  lo marcan `reqLevel`, la población (terreno), el Encanto (variedad) y los monumentos (materiales). La sim reacomoda la ciudad si un monumento no entra.
+- **Materiales y monumentos** (Fase 3). Cada minijuego da su material (`MATERIALS` en data.js): Joyas Brillantes → cristales,
+  Bloques Pixel → ladrillos, Estacionamiento Express → tuercas, Ruta Pixel → mapas. Por partida: 1 por estrella (mínimo 1) +1 si ganaste,
+  × el evento del juego (`finishGame` en main.js). También salen en las diarias de cada juego, en la "Bolsa de materiales" de los cofres
+  (elige lo que más te falta; antes del rango Pueblo da monedas) y en algunos niveles del Pase (`mats` en `TIERS`).
+  `store.canAfford/spend/grant` entienden `cost.mats`/`reward.mats` (`{cristal: n, ...}`); `costHtml` los dibuja.
+  `MONUMENTS` (Faro, Jardín Botánico, Observatorio, Estadio, Museo, Torre del Reloj) también son edificios `cat:'monumento'`, `max:1`:
+  el **nivel es la etapa** (4 o 5). Construir paga la etapa 1; cada etapa siguiente es una mejora (`upgradeInfo` → `stages[nivel]`,
+  con materiales + monedas + obra con constructora). Encanto = `charm` × etapas hechas / N. Terminado da un bonus permanente
+  (`monuments.js` → `monumentBonus(type)`): Faro +10% monedas de negocios, Jardín +25% felicidad, Observatorio +25% XP de partidas,
+  Estadio +25% chispas por partida, Museo +50% de chance de figurita, Torre del Reloj obras −10% (`stageTime`).
+  Se desbloquean por rango (3, 4, 5, 5, 6, 7) y los rangos 4–8 piden 1, 2, 3, 5 y 6 terminados (`req.monuments`).
+  UI: botón **Obras** en el riel del HUD (desde el rango Pueblo; el globito cuenta las etapas que ya se pueden empezar) → panel `works`
+  (`panels-works.js`): materiales con "Jugar", cada monumento con su etapa, lo que pide la próxima y el bonus. Al terminar una partida
+  dice cuánto falta de ese material para la próxima etapa (`materialHint`). La ficha del monumento muestra "Etapa N de M" y "Avanzar obra".
 - Constructoras limitadas (2, se compran más con gemas). Obras con tiempo; se aceleran con gemas (≤5s gratis).
 - Minijuegos dan monedas (escaladas por nivel), xp y a veces gemas. Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
 
@@ -172,6 +193,7 @@ node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onbo
 node tools/test-visit.mjs    ana y bea (mock): amistad por código, regalito, visita (like, notita, ayudar obra) → buzón → la obra se acelera; pedido "Acelerá mi obra"
 node tools/test-social.mjs   UI social completa (intercambios con escrow, ranking, Obra en Equipo, cuenta, conflicto)
 node tools/test-rank.mjs     rango y Encanto (mock + cheat): chip del HUD → panel con expediente → Mejorar → festejo, constructora de regalo, ficha, menú, perfil público visto por una amistad
+node tools/test-works.mjs    monumentos (mock + cheat): rango Pueblo → botón Obras → partida de Joyas da cristales y avisa cuánto falta → panel Obras → Construir y colocar el Faro → etapas → bonus de negocios y expediente; capturas de cada etapa
 node tools/test-mock.mjs     API de net.js con dos pestañas     ·     node tools/test-sql.mjs   schema.sql en PGlite
 node tools/test-stress.mjs   recorre escenas + paneles N veces (--rounds 3) y mide fugas (WebGL, listeners, bus, intervalos)
 node tools/gen-sw-core.mjs   regenera CORE de sw.js con todos los .js reales (--bump sube VERSION, --check solo verifica)

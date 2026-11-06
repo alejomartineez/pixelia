@@ -35,9 +35,19 @@ function persist(db) {
   for (const [k, v] of Object.entries(db.visits)) if (t - Date.parse(v.updated_at) > 21 * DAY) delete db.visits[k];
   localStorage.setItem(KEY, JSON.stringify(db));
 }
-/** Transacción: lee, aplica fn, guarda solo si no hubo error. Bloqueo entre pestañas con Web Locks. */
+/**
+ * Transacción: lee, aplica fn y guarda solo si no hubo error y si fn cambió algo. Bloqueo entre pestañas con Web Locks.
+ * Las lecturas no guardan: entre pestañas el localStorage tarda un poco en propagarse, y una lectura que reescribía su
+ * copia vieja pisaba lo que otra pestaña acababa de guardar (se perdía, p. ej., un intercambio recién propuesto).
+ */
 async function tx(fn) {
-  const run = () => { const db = load(); const r = fn(db); persist(db); return r; };
+  const run = () => {
+    const db = load();
+    const before = JSON.stringify(db);
+    const r = fn(db);
+    if (JSON.stringify(db) !== before) persist(db);
+    return r;
+  };
   if (globalThis.navigator?.locks?.request) return navigator.locks.request(KEY, run);
   return run();
 }

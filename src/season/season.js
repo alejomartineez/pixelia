@@ -3,7 +3,8 @@
 // Estado en store.state.season. Todas las funciones con fecha aceptan `now` opcional (ms o Date) para pruebas.
 import { bus } from '../core/bus.js';
 import { store, todayStr } from '../core/state.js';
-import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType } from '../core/data.js';
+import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType, MATERIAL_BY_ID } from '../core/data.js';
+import { monumentBonus } from '../core/monuments.js';
 import { toast } from '../core/ui.js';
 import { audio } from '../core/audio.js';
 import { ITEMS, CHESTS } from '../chests/chests.js';
@@ -109,6 +110,7 @@ function cosmeticPlan(index, claimed) {
  * Convierte la definición de un nivel en partes concretas (montos escalados, prenda elegida).
  * Partes: {kind:'coins'|'gems', amount} | {kind:'chest', type, n} | {kind:'stickers', n, minStars}
  *       | {kind:'item', id, n, name, icon} | {kind:'cosmetic', target, id, name} (o gemas si ya tiene todo)
+ *       | {kind:'mats', id, n, name, icon} (materiales de los monumentos)
  */
 function resolveTier(n, index, plan) {
   const t = TIERS[n - 1];
@@ -124,6 +126,7 @@ function resolveTier(n, index, plan) {
   if (t.chest) parts.push({ kind: 'chest', type: t.chest, n: 1, name: CHESTS[t.chest]?.name || 'Cofre' });
   if (t.stickers) parts.push({ kind: 'stickers', n: t.stickers.n, minStars: t.stickers.minStars || 1 });
   for (const [id, k] of Object.entries(t.items || {})) parts.push({ kind: 'item', id, n: k, name: ITEMS[id]?.name || id, icon: ITEMS[id]?.icon || 'gift' });
+  for (const [id, k] of Object.entries(t.mats || {})) parts.push({ kind: 'mats', id, n: k, name: MATERIAL_BY_ID[id]?.name || id, icon: MATERIAL_BY_ID[id]?.icon || 'gift' });
   return parts;
 }
 
@@ -144,6 +147,7 @@ function grantParts(parts, source = 'season') {
     else if (p.kind === 'chest') bus.emit('reward:chest', { type: p.type, n: p.n || 1, source });
     else if (p.kind === 'stickers') bus.emit('reward:stickers', { n: p.n, minStars: p.minStars || 1, source });
     else if (p.kind === 'item') addBackpackItem(p.id, p.n);
+    else if (p.kind === 'mats') store.grant({ mats: { [p.id]: p.n } }, source);
     else if (p.kind === 'cosmetic') {
       const owned = S().owned;
       (owned[p.target] ||= []);
@@ -161,7 +165,7 @@ function mergeParts(list) {
   const out = [];
   for (const p of list) {
     const same = out.find(o => o.kind === p.kind && (p.kind === 'coins' || p.kind === 'gems' ||
-      (p.kind === 'chest' && o.type === p.type) || (p.kind === 'item' && o.id === p.id) ||
+      (p.kind === 'chest' && o.type === p.type) || ((p.kind === 'item' || p.kind === 'mats') && o.id === p.id) ||
       (p.kind === 'stickers' && o.minStars === p.minStars)));
     if (!same || p.kind === 'cosmetic') { out.push({ ...p }); continue; }
     if ('amount' in p) same.amount += p.amount; else same.n += p.n;
@@ -419,7 +423,8 @@ export function initSeason(now) {
   snap = questSnap();
 
   bus.on('minigame:finished', ({ won, stars = 0 } = {}) => {
-    const pts = won ? POINTS.gameWin + POINTS.perStar * (stars || 0) : POINTS.gameTry;
+    // Estadio terminado: +chispas por partida
+    const pts = Math.round((won ? POINTS.gameWin + POINTS.perStar * (stars || 0) : POINTS.gameTry) * (1 + monumentBonus('pass')));
     lastGame = { pts, at: Date.now() };
     if (pts) addSeasonPoints(pts, 'game');
   });

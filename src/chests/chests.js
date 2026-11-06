@@ -2,7 +2,7 @@
 // UI en chests-ui.js. Los premios {chest:'plata'} en store.grant llegan acá vía el evento 'reward:chest'.
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
-import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType } from '../core/data.js';
+import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType, MATERIALS, MONUMENTS, MONUMENT_IDS } from '../core/data.js';
 import { stickerDropsForChest, grantStickers } from '../album/album.js';
 
 const S = () => store.state;
@@ -35,6 +35,7 @@ export const PITY_LEGENDARY = 20;         // a lo sumo 20 cofres sin legendaria
 //  'item'                — va a la mochila (consumible). use: 'city' (se usa desde la mochila) | 'game' (se usa al empezar ese juego)
 //  'cosmetic'            — desbloquea una prenda/parte de auto que no tengas (pool: 'coins' o 'gems' según su precio)
 //  'build'               — una construcción gratis de esos edificios (pool), sin requisito de nivel
+//  'material'            — materiales de los monumentos (amount = [min,max]; elige el que más falta para tus obras)
 export const ITEMS = {
   coins_s: { name: 'Bolsita de monedas', rarity: 'comun', kind: 'coins', amount: [120, 220], icon: 'coin' },
   xp_s: { name: 'Pergamino de saber', rarity: 'comun', kind: 'xp', amount: [25, 45], icon: 'xp' },
@@ -48,6 +49,7 @@ export const ITEMS = {
   hourglass: { name: 'Reloj de Arena', rarity: 'rara', kind: 'item', use: 'city', icon: '⏳', desc: 'Adelanta 1 hora todas las obras y mejoras en curso.' },
   potion_prod: { name: 'Poción Dorada', rarity: 'rara', kind: 'item', use: 'city', icon: '🧪', desc: 'Producción x2 en toda la ciudad durante 30 minutos.', boost: { type: 'prod', mult: 2, minutes: 30 } },
   m3_bomb: { name: 'Bomba de Joyas', rarity: 'rara', kind: 'item', use: 'game', game: 'match3', icon: '💥', desc: 'Empezá un nivel de Joyas Brillantes con 2 bombas en el tablero.' },
+  mats_bag: { name: 'Bolsa de materiales', rarity: 'rara', kind: 'material', amount: [4, 8], icon: 'monument', desc: 'Cristales, ladrillos, tuercas o mapas para tus monumentos.' },
   drv_shield: { name: 'Escudo de Viaje', rarity: 'rara', kind: 'item', use: 'game', game: 'driving', icon: '🛡️', desc: 'Empezá Ruta Pixel con escudo y turbo cargado.' },
 
   gems_m: { name: 'Bolsa de gemas', rarity: 'epica', kind: 'gems', amount: [10, 16], icon: 'gem' },
@@ -58,7 +60,7 @@ export const ITEMS = {
   gems_l: { name: 'Tesoro de gemas', rarity: 'legendaria', kind: 'gems', amount: [30, 45], icon: 'gem' },
   potion_mega: { name: 'Elixir Dorado', rarity: 'legendaria', kind: 'item', use: 'city', icon: '✨', desc: 'Producción x3 en toda la ciudad durante 2 horas.', boost: { type: 'prod', mult: 3, minutes: 120 } },
   cosmetic_gems: { name: 'Prenda legendaria', rarity: 'legendaria', kind: 'cosmetic', pool: 'gems', icon: '🌟', desc: 'Una prenda o parte de auto premium (de las que cuestan gemas), gratis.' },
-  build_legend: { name: 'Monumento legendario', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: '🦄', desc: 'Una construcción legendaria gratis, ¡aunque no tengas el nivel!' },
+  build_legend: { name: 'Construcción legendaria', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: '🦄', desc: 'Una construcción legendaria gratis, ¡aunque no tengas el nivel!' },
 };
 for (const [id, it] of Object.entries(ITEMS)) it.id = id;
 const BY_RARITY = Object.fromEntries(RARITY_LIST.map(r => [r.id, Object.values(ITEMS).filter(i => i.rarity === r.id)]));
@@ -103,6 +105,24 @@ function cosmeticPool(pool) {
   return out;
 }
 
+const rankOf = (s) => s.city?.buildings?.find(b => b.id === 'castillo')?.level || 1;
+/** El material que más falta para la próxima etapa de tus monumentos (o null). */
+function neededMaterial() {
+  const s = S(), have = s.materials || {}, rank = rankOf(s);
+  let best = null, gap = 0;
+  for (const id of MONUMENT_IDS) {
+    const mo = MONUMENTS[id];
+    if (rank < mo.rank) continue;
+    const b = s.city.buildings.find(o => o.id === id);
+    const idx = b ? b.level || 1 : 0;
+    if (idx >= mo.stages.length) continue;
+    for (const [mat, need] of Object.entries(mo.stages[idx].cost.mats || {})) {
+      const g = need - (have[mat] || 0);
+      if (g > gap) { gap = g; best = MATERIALS.find(m => m.id === mat); }
+    }
+  }
+  return best;
+}
 /** Arma un premio concreto a partir de un tipo de objeto (resuelve montos, prenda, edificio). */
 function resolveDrop(item) {
   const lvl = S().player.level;
@@ -116,6 +136,11 @@ function resolveDrop(item) {
     if (!pool.length) return { ...d, kind: 'gems', amount: item.pool === 'gems' ? 35 : 12, name: 'Gemas (ya tenés todo)', icon: 'gem', converted: true };
     const c = pool[Math.floor(rand() * pool.length)];
     Object.assign(d, { amount: 1, target: c.kind, targetId: c.id, name: c.name, cosmeticKind: c.kind });
+  } else if (item.kind === 'material') {
+    // en la Aldea y el Caserío todavía no hay monumentos: mejor monedas
+    if (rankOf(S()) < 3) return { ...d, kind: 'coins', amount: Math.round(randInt(250, 450) * rewardScale(lvl)), name: 'Cofrecito de monedas', icon: 'coin', converted: true };
+    const m = neededMaterial() || MATERIALS[Math.floor(rand() * MATERIALS.length)];
+    Object.assign(d, { amount: randInt(...item.amount), material: m.id, name: m.name, icon: m.icon });
   } else if (item.kind === 'build') {
     const id = item.pool[Math.floor(rand() * item.pool.length)];
     Object.assign(d, { amount: 1, building: id, name: BUILDING_BY_ID[id].name });
@@ -158,6 +183,7 @@ function applyDrops(drops) {
       store.inc('bought');
       bus.emit('item:unlocked', { kind: d.cosmeticKind, id: d.targetId, source: 'chest' });
     } else if (d.kind === 'build') c.freeBuilds[d.building] = (c.freeBuilds[d.building] || 0) + 1;
+    else if (d.kind === 'material') store.grant({ mats: { [d.material]: d.amount } }, 'chest');
   }
   if (totals.coins || totals.gems || totals.xp) store.grant(totals, 'chest');
 }

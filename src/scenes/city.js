@@ -879,6 +879,8 @@ export default function create(ctx) {
       setTimeout(() => { if (!disposed && !ctx.router.visiting) ctx.openPanel('rank', { celebrate: rank }); }, 900);
     }));
     // otro panel pide abrir la ficha de un edificio (p. ej. "Ver Municipalidad" en el panel de rango)
+    // panel de Obras → "Construir" un monumento: arranca la colocación como desde el menú
+    offs.push(bus.on('city:place', ({ id } = {}) => { if (!disposed && id) setTimeout(() => { if (!disposed) startPlacement(id); }, 260); }));
     offs.push(bus.on('city:focus', ({ uid } = {}) => { if (!disposed && entries.has(uid)) setTimeout(() => { if (!disposed) openInfo(S, uid); }, 260); }));
     offs.push(bus.on('customize:changed', ({ target }) => {
       if (target === 'avatar') life.rebuildPlayer();

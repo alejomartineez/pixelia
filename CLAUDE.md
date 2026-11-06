@@ -1,7 +1,8 @@
 # Pixelia
 
 PWA de ciudad en 3D pixel art con minijuegos (Joyas Brillantes, Bloques Pixel, Estacionamiento Express, Ruta Pixel),
-cofres, pase de temporada, personajes y temas de ciudad, y online (cuentas, amigos, visitas) con Supabase.
+rango de ciudad con Encanto, monumentos que se construyen con materiales de los minijuegos, cofres, pase de temporada,
+personajes y temas de ciudad, y online (cuentas, amigos, visitas) con Supabase.
 Para iPhone (instalable, offline) y PC. Textos del juego en español rioplatense, tono amable.
 
 - Arquitectura y reglas de arte: [DESIGN.md](DESIGN.md) · online: [DESIGN-ONLINE.md](DESIGN-ONLINE.md) ·

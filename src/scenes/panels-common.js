@@ -159,7 +159,7 @@ export function stickerCount(st) {
 export function rewardHtml(reward = {}, size = 16, { names = true } = {}) {
   if (!reward || typeof reward !== 'object') return '';
   const parts = [];
-  if (reward.coins || reward.gems || reward.xp) parts.push(costHtml(reward, size));
+  if (reward.coins || reward.gems || reward.xp || reward.mats) parts.push(costHtml({ coins: reward.coins, gems: reward.gems, xp: reward.xp, mats: reward.mats }, size));
   for (const { type, n } of chestList(reward)) {
     const nm = CHESTS[type].name;
     parts.push(`<span class="cost pnl-rw" title="${esc(nm)}">${chestArt(type, Math.round(size * 1.25))}${names ? `<span>${esc(nm)}</span>` : ''}${n > 1 || !names ? `<span>×${n}</span>` : ''}</span>`);

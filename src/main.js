@@ -122,8 +122,12 @@ async function finishGame(result) {
   const reward = {
     coins: Math.round((result.coins || 0) * scale * mult),
     gems: Math.round((result.gems || 0) * mult),
-    xp: Math.round((result.xp ?? 10) * Math.sqrt(scale)),
+    // Observatorio terminado: +XP en las partidas
+    xp: Math.round((result.xp ?? 10) * Math.sqrt(scale) * (1 + safe(() => economy.monumentBonus('gameXp'), 0))),
   };
+  // material del juego para los monumentos: 1 por estrella (mínimo 1) y +1 si ganaste, con el evento del juego
+  const mat = data.MATERIAL_BY_GAME[result.game];
+  if (mat) reward.mats = { [mat.id]: Math.max(1, Math.round((Math.max(1, stars) + (result.won ? 1 : 0)) * mult)) };
   store.grant(reward, 'game:' + result.game);
   store.inc('played_' + result.game);
   store.inc('gamesPlayed');
@@ -136,7 +140,9 @@ async function finishGame(result) {
   }
   // figurita
   let sticker = null;
-  if (result.won && Math.random() < GAME_STICKER_CHANCE * safe(() => events.eventMult('stickers'), 1)) {
+  // Museo terminado: más chance de figurita
+  const stickerChance = GAME_STICKER_CHANCE * safe(() => events.eventMult('stickers'), 1) * (1 + safe(() => economy.monumentBonus('stickers'), 0));
+  if (result.won && Math.random() < stickerChance) {
     const p = { n: 1, minStars: 1, source: 'game' };
     bus.emit('reward:stickers', p);
     sticker = p.result?.[0] || null;
@@ -165,6 +171,14 @@ async function finishGame(result) {
       h('span.rw-txt', { html: `<small>${sticker.isNew ? '¡Figurita nueva!' : 'Figurita repetida'}</small><b>${esc(def?.name || 'Figurita')}</b><em>${'★'.repeat(sticker.stars)}${sticker.isNew ? ' · ya está en tu Álbum' : ' · cambiala por brillitos'}</em>` })));
   }
   if (chispas) extras.append(h('div.rw-chispas', { html: `${icon('sparkle', 20)}<b>+${chispas}</b> chispas del Pase` }));
+  // cuánto falta de este material para la próxima etapa de un monumento
+  const hint = mat ? safe(() => economy.materialHint(mat.id), null) : null;
+  if (hint) {
+    const txt = hint.missing > 0
+      ? `Te ${hint.missing === 1 ? 'falta' : 'faltan'} <b>${hint.missing} ${esc(hint.missing === 1 ? hint.mat.one : hint.mat.name.toLowerCase())}</b> para ${hint.stage === 1 ? 'empezar ' + esc(hint.the) : 'la etapa ' + hint.stage + ' ' + esc(hint.of)}`
+      : `¡Ya tenés los ${esc(hint.mat.name.toLowerCase())} para ${hint.stage === 1 ? 'empezar ' + esc(hint.the) : 'la etapa ' + hint.stage + ' ' + esc(hint.of)}!`;
+    extras.append(h('div.rw-mathint' + (hint.missing > 0 ? '' : '.ok'), { html: `${icon('monument', 20)}<span>${txt}</span>` }));
+  }
   if (extras.childElementCount) lines.push(extras);
 
   const choice = await rewardModal({
