@@ -145,7 +145,7 @@ const PANELS = [
   ['Temas', `import('/src/city/themes-ui.js').then(m => { m.openThemePicker(ctx); })`],
   ['Construir', `ctx.bus.emit('hud:build')`],
 ];
-const SCENES = [['onboarding'], ['wardrobe'], ['match3'], ['blocks'], ['parking'], ['driving'], ['city', { visit: null }], ['wardrobe', { tab: 'car' }]];
+const SCENES = [['onboarding'], ['wardrobe'], ['match3'], ['blocks'], ['parking'], ['driving'], ['city', { visit: null }], ['wardrobe', { tab: 'car' }], ['home'], ['home', { visit: null }]];
 
 await page.evaluate(() => window.__pixelia && null);
 await page.evaluate((s) => (0, eval)(`(${s})()`), MEASURE.toString()).catch(() => {});

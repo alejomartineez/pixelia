@@ -27,7 +27,7 @@ export const TIER_COST = Array.from({ length: MAX_TIER }, (_, i) => (i === 0 ? 6
 // ---------- Premios por nivel ----------
 // coins: BASE (se multiplica por rewardScale(nivel de jugadora)); gems; chest: tipo; stickers: {n, minStars};
 // items: {id: cantidad} (potenciadores de la mochila, ver ITEMS de chests.js); cosmetic: true (prenda premium gratis);
-// mats: {material: cantidad} (cristal, ladrillo, tuerca, mapa: para los monumentos).
+// mats: {material: cantidad} (cristal, ladrillo, tuerca, mapa: para los monumentos); furniture: id de mueble para Mi Casa.
 // special: true = nivel destacado (10/20/30).
 export const TIERS = [
   /* 1 */ { coins: 150 },
@@ -43,7 +43,7 @@ export const TIERS = [
   /* 11 */ { coins: 450, mats: { cristal: 5 } },
   /* 12 */ { chest: 'madera' },
   /* 13 */ { items: { hourglass: 1 } },
-  /* 14 */ { gems: 8 },
+  /* 14 */ { gems: 8, furniture: 'globo' },
   /* 15 */ { chest: 'plata' },
   /* 16 */ { stickers: { n: 3, minStars: 2 } },
   /* 17 */ { items: { blk_bomb: 1, park_time: 1 } },
@@ -56,7 +56,7 @@ export const TIERS = [
   /* 24 */ { coins: 850, mats: { mapa: 6, ladrillo: 6 } },
   /* 25 */ { chest: 'plata' },
   /* 26 */ { items: { potion_mega: 1 } },
-  /* 27 */ { gems: 15 },
+  /* 27 */ { gems: 15, furniture: 'telescopio' },
   /* 28 */ { stickers: { n: 5, minStars: 3 } },
   /* 29 */ { chest: 'oro' },
   /* 30 */ { cosmetic: true, chest: 'real', special: true },

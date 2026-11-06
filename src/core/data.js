@@ -33,6 +33,9 @@ export const BUILDINGS = [
     happy: 4, xp: 40, game: 'parking', desc: 'Abre Estacionamiento Express y el taller para tunear tu auto.' },
   { id: 'pista', name: 'Pista Arcoíris', cat: 'especial', size: [3, 3], unlock: 5, cost: { coins: 1200 }, time: 45, max: 1,
     happy: 5, xp: 60, game: 'driving', desc: 'Abre el minijuego Ruta Pixel (manejar).' },
+  // Mi Casa: aparece sola al llegar a nivel 2 (economy.ensureHome). Su nivel es el de la casa por dentro (home/furniture.js).
+  { id: 'mi_casa', name: 'Mi Casa', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 0 }, time: 0, max: 1, auto: true,
+    happy: 2, charm: 10, xp: 0, desc: 'Tu casa: entrá, decorala con muebles y ampliala.' },
   { id: 'boutique_real', name: 'Boutique de Moda', cat: 'especial', size: [2, 2], unlock: 2, cost: { coins: 250 }, time: 15, max: 1,
     happy: 4, xp: 20, game: 'wardrobe', desc: 'Tu vestidor: ropa, peinados y sombreros.' },
 

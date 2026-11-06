@@ -48,6 +48,12 @@ if (q.get('thumbs')) {
   if (extra === 'nature') ['tree', 'pine', 'bush', 'rock', 'flowers', 'mushroom'].forEach(k => [0, 1, 2].forEach(s => items.push({ obj: M.natureModel(k, s), size: [1, 1], label: k + s })));
   else if (extra === 'cons') [[1, 1], [2, 2], [3, 3], [4, 4]].forEach(s => items.push({ obj: M.constructionModel(...s), size: s, label: 'obra ' + s }));
   else if (extra === 'cloud') [0, 1, 2, 3, 4].forEach(s => items.push({ obj: M.cloudModel(s), size: [3, 3], label: 'nube ' + s, y: 1 }));
+  else if (q.get('furn')) {   // muebles de Mi Casa: ?furn=1 (todos) o ?furn=cama,mesa
+    const FM = await import('../src/home/furniture-models.js');
+    const { FURNITURE } = await import('../src/home/furniture.js');
+    const list = q.get('furn') === '1' ? FURNITURE : FURNITURE.filter(f => q.get('furn').split(',').includes(f.id));
+    for (const f of list) items.push({ obj: FM.furnitureModel(f.id), size: f.size, label: f.id });
+  }
   else if (levels) for (const id of ids) for (const l of levels) items.push({ obj: M.buildingModel(id, l), size: BUILDING_BY_ID[id].size, label: id + ' L' + l });
   else for (const id of ids) items.push({ obj: M.buildingModel(id, level), size: BUILDING_BY_ID[id].size, label: id });
   if (q.get('road')) { // grilla de caminos 3x3 para ver el patrón

@@ -613,6 +613,12 @@ export function createVisit(ctx) {
       if (canHelp(e) && e.help) { help(e); return; }
       const d = def(e.b);
       const s = screenOf(topPos(e, 0.3));
+      // su casa: se puede entrar a mirarla (solo mirar, con los muebles que publicó)
+      if (d.id === 'mi_casa') {
+        ui.floatText(s.x, s.y, `${icon('home', 18)}¡Pasá!`);
+        later(() => ctx.router.go('home', { visit: host, name: hostName }), 350);
+        return;
+      }
       const lv = e.b.level > 1 && (d.cat === 'casa' || d.cat === 'negocio' || d.id === 'castillo') ? ` · ${icon('star', 16)}${e.b.level}` : '';
       ui.floatText(s.x, s.y, `${ui.esc(d.name)}${lv}`);
     }

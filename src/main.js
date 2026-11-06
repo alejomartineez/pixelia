@@ -18,6 +18,7 @@ import * as season from './season/season.js';
 import * as events from './season/events.js';
 import { chestIcon, packIcon } from './season/season-ui-common.js';
 import { net } from './online/net.js';
+import * as home from './home/furniture.js';
 
 const SCENES = {
   city: () => import('./scenes/city.js'),
@@ -27,6 +28,7 @@ const SCENES = {
   blocks: () => import('./games/blocks.js'),
   parking: () => import('./games/parking.js'),
   driving: () => import('./games/driving.js'),
+  home: () => import('./scenes/home.js'),   // Mi Casa por dentro (también la de una amistad: {visit})
 };
 
 const sceneEl = document.getElementById('scene');
@@ -123,7 +125,7 @@ async function finishGame(result) {
     coins: Math.round((result.coins || 0) * scale * mult),
     gems: Math.round((result.gems || 0) * mult),
     // Observatorio terminado: +XP en las partidas
-    xp: Math.round((result.xp ?? 10) * Math.sqrt(scale) * (1 + safe(() => economy.monumentBonus('gameXp'), 0))),
+    xp: Math.round((result.xp ?? 10) * Math.sqrt(scale) * (1 + safe(() => economy.monumentBonus('gameXp'), 0) + safe(() => home.comfortInfo().xpBonus, 0))),
   };
   // material del juego para los monumentos: 1 por estrella (mínimo 1) y +1 si ganaste, con el evento del juego
   const mat = data.MATERIAL_BY_GAME[result.game];
@@ -244,7 +246,7 @@ const openSeasonPass = lazyUi(() => season.openSeasonPass(ctx), 'No se pudo abri
 const openEvents = lazyUi(() => events.openEventsPanel(ctx), 'No se pudieron abrir los eventos');
 
 export const ctx = {
-  store, bus, ui, audio, data, economy, quests, router, hud,
+  store, bus, ui, audio, data, economy, quests, router, hud, home,
   get state() { return store.state; },
   endGame, openPanel, gameStatus,
   // progresión y social
@@ -353,7 +355,8 @@ function applyDebugParams() {
 }
 
 function initProgression() {
-  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['quests', quests.initQuests]];
+  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['quests', quests.initQuests],
+    ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })]];
   for (const [name, fn] of steps) { try { fn(); } catch (e) { console.error('[init] ' + name, e); } }
   // íconos pixel de cofres y sobres en los premios (costHtml)
   rewardArt.chest = (type, size) => chestIcon(type, size);
@@ -439,7 +442,7 @@ async function boot() {
     navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW', e));
   }
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__pixeliaInstallPrompt = e; });
-  window.__pixelia = { ctx, store, bus, economy, quests, data, chests, album, season, events, net };
+  window.__pixelia = { ctx, store, bus, economy, quests, data, chests, album, season, events, net, home };
 }
 
 boot();

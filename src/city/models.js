@@ -12,11 +12,12 @@ import { HOUSE_BUILDERS } from './models-houses.js';
 import { SHOP_BUILDERS } from './models-shops.js';
 import { DECO_BUILDERS } from './models-deco.js';
 import { MONUMENT_BUILDERS } from './models-monuments.js';
+import { HOME_BUILDERS } from './models-home.js';
 import { DEFAULT_THEME, themeOf, mapColor, isGlass } from './themes.js';
 
 export const VOXELS_PER_TILE = 8;
 const S = 1 / VOXELS_PER_TILE;
-const BUILDERS = { ...SPECIAL_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS };
+const BUILDERS = { ...SPECIAL_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS, ...HOME_BUILDERS };
 
 // ---------- Materiales ----------
 let _light = null, _ghost = null;
@@ -222,6 +223,25 @@ export function buildingModel(id, level = 1, opts = {}) {
   if (!tpl) { tpl = buildTemplate(id, lv, { flag }, th); tplCache.set(key, tpl); }
   const g = instantiate(tpl, opts, { id, level: lv, size: def ? def.size.slice() : [1, 1] });
   g.name = 'building:' + id;
+  return g;
+}
+
+// ---------- Modelos propios (muebles de Mi Casa, etc.) ----------
+const customCache = new Map();
+/**
+ * Modelo vóxel armado por otro módulo con el mismo kit y el mismo mallado (oclusión, partes animadas, luces).
+ * build(m) dibuja sobre un Model(W, D) de models-kit.js. Se cachea por `key`. Origen: centro del footprint, base y=0.
+ */
+export function voxelModel(key, W, D, build, opts = {}) {
+  let tpl = customCache.get(key);
+  if (!tpl) {
+    const m = new Model(W, D);
+    build(m);
+    tpl = compile(m, DEFAULT_THEME);
+    customCache.set(key, tpl);
+  }
+  const g = instantiate(tpl, opts, { key });
+  g.name = 'voxel:' + key;
   return g;
 }
 
@@ -507,8 +527,22 @@ function thumbRig() {
 }
 const _box = new THREE.Box3(), _v = new THREE.Vector3();
 function renderThumb(id, level, theme) {
+  return renderObjectThumb(buildingModel(id, level, { theme }));
+}
+/** Miniatura de cualquier objeto armado con voxelModel (muebles de Mi Casa). Promise<dataURL>, cacheada por key. */
+export function objectThumbnail(key, make) {
+  const k = 'obj|' + key;
+  let p = thumbCache.get(k);
+  if (p) return p;
+  p = thumbQueue = thumbQueue.then(() => new Promise(res => {
+    const run = () => { try { res(renderObjectThumb(make())); } catch (e) { console.warn('miniatura', key, e); res(null); } };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 120 }); else setTimeout(run, 0);
+  }));
+  thumbCache.set(k, p);
+  return p;
+}
+function renderObjectThumb(g) {
   const t = thumbRig();
-  const g = buildingModel(id, level, { theme });
   g.userData.update?.(0, 0.8);
   t.scene.add(g);
   g.updateMatrixWorld(true);

@@ -96,13 +96,14 @@ export default function create(ctx) {
 - `onboarded`, `avatar{type, skin(index), hair, hairColor(id), dress, dressColor(id), crown, acc}` (`state.princess` = alias viejo, no enumerable), `avatarLooks{[type]: look}`, `city.theme`; `car{body, color(id de OUTFIT_COLORS), wheels, topper}`; `owned{hair:[],dress:[],...}`
 - `city{buildings:[{uid,id,x,z,rot,level,buildEnd,upgradeEnd,lastCollect}], nextUid, expansions, flagColor, camera, rankPerks{builders}}` (`rankPerks`: constructoras ya regaladas por rango, para no darlas dos veces)
 - `materials{cristal, ladrillo, tuerca, mapa}`: materiales de los minijuegos para los monumentos (ver Economía).
+- `home{items:[{uid,id,x,z,rot}], owned{id:n}, wall, floor, nextUid, started, trophies{id:ms}}`: Mi Casa por dentro (`src/home/furniture.js`). El nivel de la casa es el del edificio `mi_casa`.
 - `games.match3{level, stars{}}`, `games.blocks{best}`, `games.parking{level, stars{}}`, `games.driving{best}`
 - `stats{}` (usar `store.inc(key,n)` / `store.setMax`): `match3Wins`, `blocksLines`, `parkingWins`, `drivingMeters`, `rankBest`, `charmBest` alimentan logros; `matsEarned` cuenta materiales ganados.
 - `tutorial{}` flags libres. `settings{music,sfx,lowQuality}`.
 - Mutar estado solo vía store/economy cuando exista función; si se toca a mano, llamar `store.markDirty()`.
 
 ## Eventos (bus)
-`currency:changed, coins:earned, gems:earned, xp:changed, level:up{level,reward}, building:placed{b}, building:built{b}, building:upgradeStarted{b}, building:upgraded{b,level}, building:moved{b}, building:removed{b}, production:collected{b,amount,currency}, city:expanded, builders:changed, minigame:finished{game,score,stars,won}, customize:changed, item:bought, quests:changed, scene:changed{id}, stats:changed, hud:build{focus?}, city:flag{color,hex}, town:rankup{rank,def}, city:focus{uid}, city:place{id}, city:placing{active}, materials:changed{materials,delta,reason}` (`hud:build` lo emite el botón Construir del HUD; la ciudad abre el menú; `focus` = id de edificio a resaltar. `town:rankup` sale al terminar la mejora de la Municipalidad: la ciudad abre el panel `rank` en modo festejo. `city:focus` abre la ficha de un edificio desde otro panel; `city:place` arranca la colocación de un edificio (lo usa el panel de Obras); `city:placing {active:false}` sale al terminar de colocar: las subidas de nivel ganadas mientras tanto se muestran recién ahí, para no tapar la barra de Colocar).
+`currency:changed, coins:earned, gems:earned, xp:changed, level:up{level,reward}, building:placed{b}, building:built{b}, building:upgradeStarted{b}, building:upgraded{b,level}, building:moved{b}, building:removed{b}, production:collected{b,amount,currency}, city:expanded, builders:changed, minigame:finished{game,score,stars,won}, customize:changed, item:bought, quests:changed, scene:changed{id}, stats:changed, hud:build{focus?}, city:flag{color,hex}, town:rankup{rank,def}, city:focus{uid}, city:place{id}, city:placing{active}, materials:changed{materials,delta,reason}, reward:furniture{id,n,source}, home:changed, home:ready{b}, home:trophy{ids}` (`hud:build` lo emite el botón Construir del HUD; la ciudad abre el menú; `focus` = id de edificio a resaltar. `town:rankup` sale al terminar la mejora de la Municipalidad: la ciudad abre el panel `rank` en modo festejo. `city:focus` abre la ficha de un edificio desde otro panel; `city:place` arranca la colocación de un edificio (lo usa el panel de Obras); `city:placing {active:false}` sale al terminar de colocar: las subidas de nivel ganadas mientras tanto se muestran recién ahí, para no tapar la barra de Colocar).
 
 ## API de modelos (contratos entre agentes)
 
@@ -125,6 +126,9 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
   material colgando, pilas de los materiales que usa, cinta y un cartel con una pelotita por etapa (doradas las hechas).
   Terminado: borde dorado, brillitos y lo animado (haz del Faro, telescopio, agujas y campana de la Torre, banderas).
   Ojo: la capa y=0 del lote queda tapada por la base del lote en la ciudad; los detalles del piso van en y≥1.
+- Mi Casa (`mi_casa`, `models-home.js`): 5 niveles que se notan de afuera (ventanal, cocina con chimenea, segundo piso con balcón,
+  altillo con buhardilla, veleta y cerco dorado). Muebles: `src/home/furniture-models.js` con `voxelModel(key, W, D, build)` de models.js
+  (mismo kit y mallado); `objectThumbnail(key, make)` hace sus miniaturas.
 - Caminos (`cat:'camino'`): baldosa plana de 1 vóxel de alto que cubre el tile entero.
 - Cachear geometrías por `id+level` (clonar el grupo / reusar geometry).
 ```js
@@ -177,6 +181,19 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
   UI: botón **Obras** en el riel del HUD (desde el rango Pueblo; el globito cuenta las etapas que ya se pueden empezar) → panel `works`
   (`panels-works.js`): materiales con "Jugar", cada monumento con su etapa, lo que pide la próxima y el bonus. Al terminar una partida
   dice cuánto falta de ese material para la próxima etapa (`materialHint`). La ficha del monumento muestra "Etapa N de M" y "Avanzar obra".
+- **Mi Casa** (Fase 4). Edificio `mi_casa` (`auto: true`, no está en el menú Construir): aparece solo cerca de la Municipalidad al llegar
+  a nivel 2 (`economy.ensureHome` en cada `tick`; en el nivel 1 la partida sigue "recién empezada" para el onboarding y la sincronización).
+  Tocarlo → ficha con **Entrar** y **Ampliar**. Ampliar = mejora del edificio (`HOME_LEVELS`: 6×6 → 8×8 → 10×9 → 12×10 → 14×12, con
+  monedas, materiales, obra con constructora y rango 3/4/5 para los últimos). Cada nivel estrena arquitectura adentro (`roomLayout`:
+  ventanal, cocina con mesada, pileta y alacenas, tabique con arco, altillo con escalera y claraboya) que ocupa lugar; lo que queda tapado se reacomoda (`fitItems`).
+  Escena `home` (`src/scenes/home.js`): cuarto vóxel con las paredes del fondo y de la izquierda, tu personaje pasea y se sienta en sillas,
+  sillones y la cama; el ropero abre el Vestidor (`{back: 'home'}`). **Decorar**: tocar un mueble lo elige, arrastrarlo lo mueve (marca
+  verde/roja), Rotar (los de pared cambian de pared), Guardar (vuelve al inventario); pestañas Mis muebles / Tienda / Paredes / Pisos.
+  Muebles (`FURNITURE`): se compran en la Tienda, salen en cofres ("Mueble sorpresa", `CHEST_FURNITURE`), en el Pase (niveles 14 y 27) y
+  como **trofeos** que llegan solos (rango Villa, primer monumento, 10 niveles de Joyas, 30 figuritas). `store.grant({furniture: id})` los da.
+  **Confort** (`comfortInfo`, misma idea que el Encanto: repetir rinde 85%, variedad hasta ×1,6, +5% por nivel de la casa): +1% de XP en
+  las partidas cada 40 (tope +10%), +1% de monedas en el premio diario cada 20 (tope +25%) y suma Confort/4 al Encanto de la ciudad.
+  Online: el perfil publica `city.home` (paredes, piso y hasta 120 muebles) y al visitar una ciudad tocar su casa entra a mirarla (`{visit}`).
 - Constructoras limitadas (2, se compran más con gemas). Obras con tiempo; se aceleran con gemas (≤5s gratis).
 - Minijuegos dan monedas (escaladas por nivel), xp y a veces gemas. Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
 
@@ -194,6 +211,7 @@ node tools/test-visit.mjs    ana y bea (mock): amistad por código, regalito, vi
 node tools/test-social.mjs   UI social completa (intercambios con escrow, ranking, Obra en Equipo, cuenta, conflicto)
 node tools/test-rank.mjs     rango y Encanto (mock + cheat): chip del HUD → panel con expediente → Mejorar → festejo, constructora de regalo, ficha, menú, perfil público visto por una amistad
 node tools/test-works.mjs    monumentos (mock + cheat): rango Pueblo → botón Obras → partida de Joyas da cristales y avisa cuánto falta → panel Obras → Construir y colocar el Faro → etapas → bonus de negocios y expediente; capturas de cada etapa
+node tools/test-home.mjs     Mi Casa (mock + cheat): aparece en la ciudad → Entrar → comprar y poner un mueble, arrastrarlo, rotarlo, guardarlo, pared y piso → ropero abre el Vestidor → volver → recarga conserva todo → ampliar la casa → visita a la casa de una amistad
 node tools/test-mock.mjs     API de net.js con dos pestañas     ·     node tools/test-sql.mjs   schema.sql en PGlite
 node tools/test-stress.mjs   recorre escenas + paneles N veces (--rounds 3) y mide fugas (WebGL, listeners, bus, intervalos)
 node tools/gen-sw-core.mjs   regenera CORE de sw.js con todos los .js reales (--bump sube VERSION, --check solo verifica)

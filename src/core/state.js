@@ -227,7 +227,7 @@ export const store = {
     return true;
   },
   /**
-   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats}. mats: { cristal: n, ... } → emite 'materials:changed'. source: 'collect'|'game'|'quest'|'levelup'|'login'|...
+   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats, furniture}. mats: { cristal: n, ... } → emite 'materials:changed'. source: 'collect'|'game'|'quest'|'levelup'|'login'|...
    *  - chest: 'madera'|'plata'|'oro'|'real' (o {type, n}); chests: cantidad (default 1) → emite 'reward:chest' {type, n, source}
    *  - stickers: n (o {n, minStars}) → emite 'reward:stickers' {n, minStars, source}; el álbum deja el resultado en payload.result
    * Devuelve { stickers: [{id, stars, isNew, count}] } (vacío si no hubo figuritas).
@@ -251,6 +251,10 @@ export const store = {
         store.inc('matsEarned', n);
       }
       if (Object.keys(delta).length) bus.emit('materials:changed', { materials: state.materials, delta, reason: source });
+    }
+    if (reward.furniture) {   // mueble para Mi Casa: { furniture: 'id' } (home/furniture.js lo suma al inventario)
+      const id = typeof reward.furniture === 'object' ? reward.furniture.id : reward.furniture;
+      if (id) bus.emit('reward:furniture', { id, n: (typeof reward.furniture === 'object' && reward.furniture.n) || 1, source });
     }
     if (reward.xp) store.addXp(reward.xp);
     if (reward.chest) {

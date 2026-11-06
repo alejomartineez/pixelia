@@ -5,6 +5,7 @@ import { bus } from '../core/bus.js';
 import { store, todayStr } from '../core/state.js';
 import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType, MATERIAL_BY_ID } from '../core/data.js';
 import { monumentBonus } from '../core/monuments.js';
+import { FURNITURE_BY_ID, giveFurniture } from '../home/furniture.js';
 import { toast } from '../core/ui.js';
 import { audio } from '../core/audio.js';
 import { ITEMS, CHESTS } from '../chests/chests.js';
@@ -126,6 +127,7 @@ function resolveTier(n, index, plan) {
   if (t.chest) parts.push({ kind: 'chest', type: t.chest, n: 1, name: CHESTS[t.chest]?.name || 'Cofre' });
   if (t.stickers) parts.push({ kind: 'stickers', n: t.stickers.n, minStars: t.stickers.minStars || 1 });
   for (const [id, k] of Object.entries(t.items || {})) parts.push({ kind: 'item', id, n: k, name: ITEMS[id]?.name || id, icon: ITEMS[id]?.icon || 'gift' });
+  if (t.furniture) parts.push({ kind: 'furniture', id: t.furniture, n: 1, name: FURNITURE_BY_ID[t.furniture]?.name || 'Mueble', icon: 'home' });
   for (const [id, k] of Object.entries(t.mats || {})) parts.push({ kind: 'mats', id, n: k, name: MATERIAL_BY_ID[id]?.name || id, icon: MATERIAL_BY_ID[id]?.icon || 'gift' });
   return parts;
 }
@@ -148,6 +150,7 @@ function grantParts(parts, source = 'season') {
     else if (p.kind === 'stickers') bus.emit('reward:stickers', { n: p.n, minStars: p.minStars || 1, source });
     else if (p.kind === 'item') addBackpackItem(p.id, p.n);
     else if (p.kind === 'mats') store.grant({ mats: { [p.id]: p.n } }, source);
+    else if (p.kind === 'furniture') giveFurniture(p.id, p.n || 1, source);
     else if (p.kind === 'cosmetic') {
       const owned = S().owned;
       (owned[p.target] ||= []);

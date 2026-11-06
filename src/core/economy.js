@@ -7,6 +7,7 @@ import {
   CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS, MONUMENTS, MONUMENT_IDS, MATERIAL_BY_ID,
 } from './data.js';
 import { monumentComplete, monumentsDone, monumentBonus } from './monuments.js';
+import { HOME_LEVELS, comfortInfo } from '../home/furniture.js';
 export { monumentComplete, monumentsDone, monumentBonus };
 import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
@@ -103,7 +104,10 @@ export function charmInfo(state = S(), now = Date.now()) {
     if (def(id).cat !== 'camino') kinds++;
   }
   const variety = Math.min(1.5, 1 + CHARM_VARIETY * kinds);
-  return { value: Math.round(base * variety), base: Math.round(base), variety, kinds };
+  // Mi Casa: el Confort de adentro también hace linda la ciudad (Confort / 4)
+  let home = 0;
+  try { if (state.city.buildings.some(b => b.id === 'mi_casa')) home = comfortInfo(state).charm; } catch {}
+  return { value: Math.round(base * variety) + home, base: Math.round(base), variety, kinds, home };
 }
 export const cityCharm = (state = S(), now = Date.now()) => charmInfo(state, now).value;
 /** Cuánto Encanto base sumaría construir otra copia de `id` (para mostrar en el menú). */
@@ -390,12 +394,13 @@ export function collectAll(state = S()) {
 // ---------- Mejoras ----------
 export function canUpgradeType(b) {
   const d = def(b);
-  return d.id === 'castillo' || d.cat === 'monumento' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
+  return d.id === 'castillo' || d.id === 'mi_casa' || d.cat === 'monumento' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
 }
 export function maxLevel(b) {
   const d = def(b);
   if (d.id === 'castillo') return TOWN_RANKS.length;
   if (d.cat === 'monumento') return MONUMENTS[d.id].stages.length;
+  if (d.id === 'mi_casa') return HOME_LEVELS.length;
   return MAX_BUILDING_LEVEL;
 }
 /** Duración real de una obra (segundos): la Torre del Reloj terminada la acorta. */
@@ -412,6 +417,10 @@ export function upgradeInfo(b) {
   if (d.id === 'castillo') {
     const c = rankDef(b.level + 1);
     return { cost: c.cost, time: stageTime(c.time), reqLevel: c.reqLevel, rank: c.rank };
+  }
+  if (d.id === 'mi_casa') {
+    const h = HOME_LEVELS[b.level];
+    return { cost: { ...h.cost, mats: { ...(h.cost.mats || {}) } }, time: stageTime(h.time), reqLevel: 1, homeRank: h.rank || 0, home: h };
   }
   if (d.cat === 'monumento') {
     const st = MONUMENTS[d.id].stages[b.level];
@@ -430,6 +439,7 @@ export function canUpgrade(b, state = S(), now = Date.now()) {
   if (isBusy(b, now)) return { ok: false, reason: 'Está en obra' };
   if (state.player.level < info.reqLevel) return { ok: false, reason: `Nivel ${info.reqLevel}`, locked: true };
   if (info.rank && !rankStatus(state, now).allOk) return { ok: false, reason: 'Falta completar el expediente', locked: true, reqs: true };
+  if (info.homeRank && townRank(state) < info.homeRank) return { ok: false, reason: `Rango ${rankName(info.homeRank)}`, locked: true, rank: info.homeRank };
   if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
   if (!store.hasMats(info.cost.mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
   if (!store.canAfford(info.cost)) return { ok: false, reason: 'No te alcanza', poor: true };
@@ -530,6 +540,37 @@ export function tick(state = S()) {
     if (b.upgradeEnd && b.upgradeEnd <= now) { finishUpgrade(b); store.markDirty(); }
   }
   syncRank(state, now);
+  ensureHome(state, now);
+}
+
+// ---------- Mi Casa ----------
+let homeTry = 0;
+/**
+ * Mi Casa aparece sola en la ciudad al llegar a nivel 2 (en el nivel 1 la partida sigue "recién empezada" para el
+ * onboarding y la sincronización), cerca de la Municipalidad. Si no hay lugar, reintenta cada 30 s.
+ */
+export function ensureHome(state = S(), now = Date.now()) {
+  if ((state.player?.level || 1) < 2 || state.city.buildings.some(b => b.id === 'mi_casa')) return null;
+  if (now - homeTry < 30e3) return null;
+  homeTry = now;
+  const c = state.city.buildings.find(b => b.id === 'castillo');
+  const [cw, cd] = c ? footprint('castillo', c.rot) : [0, 0];
+  const cx = c ? c.x + cw / 2 : MAP_SIZE / 2, cz = c ? c.z + cd / 2 : MAP_SIZE / 2;
+  const { min, max } = landBounds(state);
+  let best = null, bd = Infinity;
+  for (let x = min; x <= max - 2; x++) for (let z = min; z <= max - 2; z++) {
+    if (!canPlace('mi_casa', x, z, 0, null, state).ok) continue;
+    // cerca de la Municipalidad, preferentemente adelante (se ve apenas entrás)
+    const d = Math.hypot(x + 1 - cx, z + 1 - cz) - (z + 1 > cz ? 0.6 : 0);
+    if (d < bd) { bd = d; best = [x, z]; }
+  }
+  if (!best) return null;
+  const b = { uid: state.city.nextUid++, id: 'mi_casa', x: best[0], z: best[1], rot: 0, level: 1, buildEnd: 0, upgradeEnd: 0, lastCollect: now };
+  state.city.buildings.push(b);
+  store.markDirty();
+  bus.emit('building:placed', { b, auto: true });
+  bus.emit('home:ready', { b });
+  return b;
 }
 
 // ---------- Expansiones / constructoras ----------
