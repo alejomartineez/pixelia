@@ -34,6 +34,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 input, textarea { font-family: inherit; -webkit-user-select: text; user-select: text; }
 img.pi { image-rendering: pixelated; image-rendering: crisp-edges; vertical-align: middle; flex: none; pointer-events: none; }
 .pixel-canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; touch-action: none; }
+/* 3D: se dibuja a 2× y el navegador lo achica suavizando (supersampleo), nunca pixelado */
+.voxel-canvas { image-rendering: auto !important; }
+/* miniaturas 3D (edificios en premios): se dibujan grandes y se achican suavizando */
+img.pi.pnl-thumb { image-rendering: auto; }
 
 #app { position: absolute; inset: 0; overflow: hidden; }
 #scene, .scene-root { position: absolute; inset: 0; }

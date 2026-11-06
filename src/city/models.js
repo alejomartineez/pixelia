@@ -4,7 +4,7 @@
 //   constructionModel(w, d) / natureModel(kind, seed) / cloudModel(seed) / thumbnail(id, level)
 // Las geometrías se construyen una sola vez por id+nivel y se reusan en cada Group nuevo.
 import * as THREE from 'three';
-import { voxelMaterial, glowMaterial, addLights, setIsoCamera, Voxels, shade } from '../core/voxel.js';
+import { voxelMaterial, glowMaterial, addLights, setIsoCamera, Voxels, shade, outlineCanvas } from '../core/voxel.js';
 import { BUILDING_BY_ID, OUTFIT_COLORS } from '../core/data.js';
 import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS } from './models-kit.js';
 import { SPECIAL_BUILDERS } from './models-special.js';
@@ -475,7 +475,7 @@ export function cloudModel(seed = 0, theme = DEFAULT_THEME) {
 }
 
 // ---------- Miniaturas (un solo renderer WebGL para todas) ----------
-const THUMB = 96;
+const THUMB = 288; // se muestra a ~90 px CSS: 3× para que se vea nítido en pantallas retina
 const thumbCache = new Map();
 let thumbQueue = Promise.resolve();
 let T = null;
@@ -483,7 +483,7 @@ function thumbRig() {
   if (T) return T;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = THUMB;
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
   renderer.setPixelRatio(1);
   renderer.setSize(THUMB, THUMB, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -491,7 +491,7 @@ function thumbRig() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   const scene = new THREE.Scene();
-  const { sun } = addLights(scene, { shadowSize: 8, shadowRes: 512 });
+  const { sun } = addLights(scene, { shadowSize: 8, shadowRes: 1024 });
   const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
   const out = document.createElement('canvas');
   out.width = out.height = THUMB;
@@ -528,32 +528,22 @@ function renderThumb(id, level, theme) {
   Object.assign(sc, { left: -span, right: span, top: span, bottom: -span });
   sc.updateProjectionMatrix();
   t.renderer.render(t.scene, t.camera);
-  // contorno tinta de 1px alrededor de la silueta (combina con la UI)
+  // contorno tinta suave alrededor de la silueta (combina con la UI y con el 3D en vivo)
   const ctx = t.ctx;
   ctx.clearRect(0, 0, THUMB, THUMB);
-  ctx.drawImage(t.canvas, 0, 0);
-  const img = ctx.getImageData(0, 0, THUMB, THUMB), d = img.data;
-  const a = new Uint8Array(THUMB * THUMB);
-  for (let i = 0; i < a.length; i++) a[i] = d[i * 4 + 3] > 40 ? 1 : 0;
-  for (let y = 0; y < THUMB; y++) for (let x = 0; x < THUMB; x++) {
-    const i = y * THUMB + x;
-    if (a[i]) continue;
-    if ((x > 0 && a[i - 1]) || (x < THUMB - 1 && a[i + 1]) || (y > 0 && a[i - THUMB]) || (y < THUMB - 1 && a[i + THUMB])) {
-      d[i * 4] = 0x3b; d[i * 4 + 1] = 0x23; d[i * 4 + 2] = 0x40; d[i * 4 + 3] = 255;
-    }
-  }
-  ctx.putImageData(img, 0, 0);
+  ctx.drawImage(outlineCanvas(t.canvas, 4), 0, 0);
   t.scene.remove(g);
   return t.out.toDataURL('image/png');
 }
 function fallbackThumb(id) {
   const cv = document.createElement('canvas'); cv.width = cv.height = THUMB;
   const g = cv.getContext('2d');
+  g.scale(THUMB / 96, THUMB / 96);
   g.fillStyle = BUILDING_BY_ID[id]?.cat === 'camino' ? '#d8d2e6' : '#ff7eb6';
   g.fillRect(20, 30, 56, 46); g.fillStyle = '#3b2340'; g.fillRect(20, 26, 56, 4);
   return cv.toDataURL();
 }
-/** Ícono 96x96 del edificio (dataURL), cacheado. theme: id de tema de ciudad (default pastel). */
+/** Ícono 288x288 del edificio (dataURL), cacheado. theme: id de tema de ciudad (default pastel). */
 export function thumbnail(id, level = 1, theme = DEFAULT_THEME) {
   const lv = Math.max(1, Math.min(5, Math.round(level) || 1));
   const th = themeOf(theme).id;

@@ -47,7 +47,7 @@ const OB_CSS = `
   border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); font-family:inherit; font-size:14px; font-weight:700; }
 .scene-onboarding .ob-type:active { transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
 .scene-onboarding .ob-type.on { background:var(--gold-l); outline:3px solid var(--gold-d); outline-offset:2px; }
-.scene-onboarding .ob-type .th { width:64px; height:64px; image-rendering:pixelated; border-radius:10px; opacity:0; transition:opacity .2s;
+.scene-onboarding .ob-type .th { width:64px; height:64px; border-radius:10px; opacity:0; transition:opacity .2s;
   background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe3f1 72%); }
 .scene-onboarding .ob-type .th.ok { opacity:1; }
 .scene-onboarding .ob-type.on .th { background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe4a3 72%); }
@@ -115,7 +115,7 @@ export default function create(ctx) {
   function buildStage(el) {
     // mismo pixel y contorno tinta que el vestidor y la ciudad (2.5 en baja calidad)
     const lowQ = !!S().settings?.lowQuality;
-    r = createPixelRenderer(el, { ortho: false, fov: 30, background: 0xffe3f1, pixelSize: lowQ ? 2.5 : undefined, outline: true });
+    r = createPixelRenderer(el, { ortho: false, fov: 30, background: 0xffe3f1, lowQuality: lowQ, outline: true });
     const { sun } = addLights(r.scene, { shadowSize: 6, shadowRes: 1024 });
     sun.position.set(5, 12, 9);
     const fill = new THREE.DirectionalLight(0xffd6ec, 0.7);

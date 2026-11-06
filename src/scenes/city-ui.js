@@ -130,7 +130,7 @@ export const STYLE = `
 .cx-cat-especial .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ece2ff 31% 55%, #dccbff 56%); }
 .cx-cat-deco .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #dbf8ec 31% 55%, #c4f2df 56%); }
 .cx-cat-camino .cx-thumb { background: radial-gradient(circle at 50% 70%, #fff 0 30%, #e1f2ff 31% 55%, #cbe7ff 56%); }
-.cx-thumb img.th { width: 84px; height: 84px; image-rendering: pixelated; }
+.cx-thumb img.th { width: 84px; height: 84px; }
 .cx-thumb .ph { opacity: .45; animation: pulse 1s steps(2) infinite; }
 .cx-card.locked .cx-thumb img.th { filter: grayscale(.85) opacity(.6); }
 .cx-card .nm { font-size: 15px; font-weight: 700; line-height: 1.1; min-height: 2.2em; display: flex; align-items: center; }
@@ -150,7 +150,7 @@ export const STYLE = `
 .cx-info { display: flex; flex-direction: column; gap: 10px; }
 .cx-ihead { display: flex; gap: 12px; align-items: center; }
 .cx-ithumb { width: 92px; height: 92px; flex: none; border-radius: 12px; border: 3px solid var(--ink); background: radial-gradient(circle at 50% 70%, #fff 0 30%, #ffe3f1 31% 55%, #f5e8ff 56%); display: grid; place-items: center; overflow: hidden; }
-.cx-ithumb img.th { width: 92px; height: 92px; image-rendering: pixelated; }
+.cx-ithumb img.th { width: 92px; height: 92px; }
 .cx-imeta { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .cx-stars { display: flex; gap: 1px; }
 .cx-chips { display: flex; flex-wrap: wrap; gap: 4px; }

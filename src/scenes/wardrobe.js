@@ -86,7 +86,7 @@ const WD_CSS = `
 .scene-wardrobe .wd-card.trying { background:#ffe9f4; outline:3px dashed var(--pink-d); outline-offset:-8px; }
 .scene-wardrobe .wd-thumb { position:relative; width:72px; height:72px; border-radius:10px; display:grid; place-items:center; background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe3f1 72%); }
 .scene-wardrobe .wd-card.on .wd-thumb { background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe4a3 72%); }
-.scene-wardrobe .wd-thumb img.th { width:64px; height:64px; image-rendering:pixelated; image-rendering:crisp-edges; opacity:0; transition:opacity .2s; }
+.scene-wardrobe .wd-thumb img.th { width:64px; height:64px; opacity:0; transition:opacity .2s; }
 .scene-wardrobe .wd-thumb img.th.ok { opacity:1; }
 .scene-wardrobe .wd-card.locked .wd-thumb img.th { filter:saturate(.55) brightness(.97); }
 .scene-wardrobe .wd-lock { position:absolute; right:-4px; bottom:-4px; }
@@ -532,9 +532,9 @@ export default function create(ctx) {
 
   // ---------------- 3D ----------------
   function buildStage(stageEl) {
-    // mismo pixel y contorno tinta que la ciudad (default de createPixelRenderer; 2.5 en baja calidad)
+    // mismo render nítido y contorno tinta que la ciudad
     const lowQ = !!S().settings?.lowQuality;
-    r = createPixelRenderer(stageEl, { ortho: false, fov: 30, background: 0xffe3f1, pixelSize: lowQ ? 2.5 : undefined, outline: true });
+    r = createPixelRenderer(stageEl, { ortho: false, fov: 30, background: 0xffe3f1, lowQuality: lowQ, outline: true });
     const { sun } = addLights(r.scene, { shadowSize: 9, shadowRes: 1024 });
     sun.position.set(5, 12, 9);
     const fill = new THREE.DirectionalLight(0xffd6ec, 0.7);

@@ -19,7 +19,7 @@ const STYLE = `
 .tp-card:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--ink); }
 .tp-card.on { outline: 4px solid var(--gold); outline-offset: 1px; }
 .tp-pic { position: relative; aspect-ratio: 4 / 3; border-bottom: 3px solid var(--ink); overflow: hidden; }
-.tp-pic img { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.tp-pic img { position: absolute; inset: 0; width: 100%; height: 100%; }
 .tp-pic .ph { position: absolute; inset: 0; display: grid; place-items: center; opacity: .6; }
 .tp-pic.stars::before { content: ''; position: absolute; inset: 0; pointer-events: none;
   background-image: radial-gradient(circle at 14% 16%, #fff 0 1.5px, transparent 2px), radial-gradient(circle at 78% 10%, #fff 0 1.5px, transparent 2px),
@@ -35,7 +35,7 @@ const STYLE = `
 `;
 
 // ---------- Maquetas en miniatura (un solo renderer para todas; quedan cacheadas) ----------
-const PW = 160, PH = 120;
+const PW = 160, PH = 120, PX = 3; // maqueta 160×120 px CSS, dibujada a 3× para retina
 const previews = new Map();
 let queue = Promise.resolve(), R = null, freeT = 0;
 
@@ -61,10 +61,10 @@ function slab(T) {
 
 function rig() {
   const canvas = document.createElement('canvas');
-  canvas.width = PW; canvas.height = PH;
-  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+  canvas.width = PW * PX; canvas.height = PH * PX;
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'low-power' });
   renderer.setPixelRatio(1);
-  renderer.setSize(PW, PH, false);
+  renderer.setSize(PW * PX, PH * PX, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0x000000, 0);
   renderer.shadowMap.enabled = true;

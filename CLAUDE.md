@@ -9,7 +9,8 @@ Para iPhone (instalable, offline) y PC. Textos del juego en español rioplatense
 - JavaScript con módulos ES, **sin build**: three.js y supabase-js están en `vendor/` (importmap en `index.html`).
   No agregar bundlers ni dependencias en tiempo de ejecución.
 - Escenas: `create(ctx)` → `{ mount, unmount }`. 3D siempre con `createPixelRenderer` de `src/core/voxel.js`
-  (escala entera exacta, contorno tinta); 2D en canvas de baja resolución sin suavizado.
+  (vóxel nítido: 2× con antialias, oclusión ambiental y contorno tinta; nada de render a baja resolución);
+  2D (íconos, tableros) en canvas de baja resolución sin suavizado.
 - Guardado local: `localStorage` `pixelia.save.v1`.
 
 ## Comandos (desde `tools/`, la primera vez `npm install`)
@@ -18,7 +19,7 @@ Para iPhone (instalable, offline) y PC. Textos del juego en español rioplatense
 - `npm test` → e2e, stress, visitas, mock online, social y SQL (Chrome headless; tarda unos minutos).
 - `node smoke.mjs --scene parking --device desktop --dpr 1.25 --shot ../shots/x.png` → captura rápida de una escena.
 - `npm run test:live` → prueba el Supabase real (crea dos cuentas `@example.com`).
-- Atajos de URL: `?cheat=15`, `?reset`, `?scene=match3`, `?mock=1&mockuser=ana`, `?outline=0|1`.
+- Atajos de URL: `?cheat=15`, `?reset`, `?scene=match3`, `?mock=1&mockuser=ana`, `?outline=0|1`, `?quality=low|high`.
 
 ## Publicar
 GitHub Pages desde `master` (raíz) en https://alejomartineez.github.io/pixelia/ (repo `alejomartineez/pixelia`).

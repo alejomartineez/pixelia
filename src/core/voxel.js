@@ -22,6 +22,10 @@ const DIRS = [
   { n: [0, 0, 1], c: [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]] },
   { n: [0, 0, -1], c: [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]] },
 ];
+// ejes tangentes (u, w) de cada cara, para la oclusión ambiental por vértice
+for (const d of DIRS) { const ax = d.n.findIndex(v => v !== 0); [d.u, d.w] = [0, 1, 2].filter(i => i !== ax); }
+/** Brillo por esquina según cuántos vecinos la tapan (0 = rincón cerrado .. 3 = libre). En lineal. */
+const AO_LEVELS = [0.5, 0.66, 0.83, 1];
 const key = (x, y, z) => `${x},${y},${z}`;
 
 /**
@@ -104,7 +108,7 @@ export class Voxels {
    * opts.jitter: variación de brillo por vóxel (textura pixel), default 0.015 (con pixeles de render
    *   chicos, más variación se ve como estática)
    */
-  toGeometry({ scale = 1, center = false, jitter = 0.015 } = {}) {
+  toGeometry({ scale = 1, center = false, jitter = 0.015, ao = true } = {}) {
     const pos = [], nor = [], col = [], idx = [];
     let off = [0, 0, 0];
     if (center && this.map.size) {
@@ -112,21 +116,42 @@ export class Voxels {
       off = [-(b.min[0] + b.max[0]) / 2, center === 'xyz' ? -(b.min[1] + b.max[1]) / 2 : -b.min[1], -(b.min[2] + b.max[2]) / 2];
     }
     const tmp = new THREE.Color();
-    for (const [k, c] of this.map) {
+    const map = this.map;
+    const occ = (x, y, z) => map.has(key(x, y, z)) ? 1 : 0;
+    const p = [0, 0, 0], aoV = [3, 3, 3, 3];
+    for (const [k, c] of map) {
       const [x, y, z] = k.split(',').map(Number);
       let h = (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
       h = ((h >>> 0) % 1000) / 1000;
       const cc = jitter ? shade(c, (h - 0.5) * 2 * jitter) : c;
       tmp.setHex(cc); // setHex ya convierte sRGB -> lineal
       for (const d of DIRS) {
-        if (this.map.has(key(x + d.n[0], y + d.n[1], z + d.n[2]))) continue;
+        const nx = x + d.n[0], ny = y + d.n[1], nz = z + d.n[2];
+        if (map.has(key(nx, ny, nz))) continue;
         const base = pos.length / 3;
-        for (const v of d.c) {
+        // oclusión ambiental por vértice: cada esquina mira sus 3 vecinos en la capa de afuera de la cara
+        // (dos lados y la diagonal). Oscurece rincones, aleros y el pie de las paredes = volumen y lectura.
+        for (let i = 0; i < 4; i++) {
+          const v = d.c[i];
+          let a = 3;
+          if (ao) {
+            p[0] = nx; p[1] = ny; p[2] = nz;
+            const u = d.u, w = d.w;
+            const su = v[u] ? 1 : -1, sw = v[w] ? 1 : -1;
+            p[u] += su; const s1 = occ(p[0], p[1], p[2]); p[u] -= su;
+            p[w] += sw; const s2 = occ(p[0], p[1], p[2]);
+            p[u] += su; const cr = occ(p[0], p[1], p[2]);
+            a = s1 && s2 ? 0 : 3 - (s1 + s2 + cr);
+          }
+          aoV[i] = a;
+          const f = AO_LEVELS[a];
           pos.push((x + v[0] + off[0]) * scale, (y + v[1] + off[1]) * scale, (z + v[2] + off[2]) * scale);
-          nor.push(...d.n);
-          col.push(tmp.r, tmp.g, tmp.b);
+          nor.push(d.n[0], d.n[1], d.n[2]);
+          col.push(tmp.r * f, tmp.g * f, tmp.b * f);
         }
-        idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+        // partir el cuadrado por la diagonal más clara para que la sombra no se estire en diagonal
+        if (aoV[0] + aoV[2] < aoV[1] + aoV[3]) idx.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
+        else idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
       }
     }
     const g = new THREE.BufferGeometry();
@@ -155,42 +180,46 @@ export function glowMaterial() {
   return _matEmissive || (_matEmissive = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x332233 }));
 }
 
-// ---------- Render pixelado ----------
+// ---------- Render nítido ----------
+// Estilo "vóxel nítido": los pixeles del arte son los VÓXELES, no los pixeles de pantalla. Se dibuja a
+// resolución alta (2 pixeles de render por px CSS) con antialias, oclusión ambiental por vértice y un
+// contorno tinta suave, así los bordes diagonales no hacen serrucho y los detalles chicos se leen.
 const screenDpr = () => Math.min(4, Math.max(1, (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1));
-/** Tamaño de pixel por defecto (px CSS): más fino en celular, un poco más grueso en PC. */
-export function defaultPixelSize() {
-  return Math.min(innerWidth, innerHeight) < 500 ? 1.5 : 2;
-}
+// ?quality=low fuerza calidad baja; ?quality=high apaga el ajuste automático (para capturas y comparar)
+const qParam = typeof location !== 'undefined' ? (/[?&]quality=(low|high)\b/.exec(location.search) || [])[1] : null;
+const forcedLow = qParam === 'low';
+/** Escalas internas (pixeles de render por px CSS) que prueba el ajuste automático si los cuadros vienen lentos. */
+const SCALES = [2, 1.5, 1.2];
+/** Máximo de pixeles de render (en monitores enormes la escala baja para no ahogar la GPU). */
+const MAX_BUFFER_PX = 4.6e6;
 /**
- * Crea renderer + escena + cámara con look pixel art.
+ * Crea renderer + escena + cámara.
  * container: elemento donde se agrega el canvas (ocupa 100%).
- * opts.pixelSize: tamaño en px CSS de cada "pixel" del render. Default ≈1.5 en celular y ≈2 en PC.
- *   Se redondea a una cantidad ENTERA de pixeles físicos (según devicePixelRatio) para que todos los
- *   pixeles del render midan lo mismo en pantalla (sin columnas más anchas que otras).
- * opts.maxRes: máximo de pixeles de render en el lado corto (default 480); si la pantalla da más,
- *   el pixel se agranda (siempre por enteros de pixeles físicos).
+ * opts.lowQuality: menos resolución interna (≤1,5 pixeles de render por px CSS) y sin MSAA. (opts.pixelSize ≥ 2.5,
+ *   del motor viejo, también cuenta como baja calidad.)
  * opts.ortho: true = cámara ortográfica isométrica (ciudad); false = perspectiva (juegos de manejo)
  * opts.viewSize: alto visible del mundo para la ortográfica
  * opts.background: color de fondo (hex) o null para transparente
  * opts.shadows: sombras (default true)
- * opts.outline: contorno tinta de 1 pixel de render alrededor de las siluetas (saltos de profundidad).
- *   true | { strength (0..1, default 0.8), threshold (unidades de mundo, default 0.3 en ortográfica) }.
+ * opts.outline: contorno tinta alrededor de las siluetas (saltos de profundidad), ≈1 px CSS de ancho.
+ *   true | { strength (0..1, default 0.85), threshold (unidades de mundo, default 0.3 en ortográfica), width (px CSS) }.
  *   Los transparentes que escriben profundidad (sprites, planos con alfa) también se contornean: usar depthWrite:false.
  */
 export function createPixelRenderer(container, opts = {}) {
-  const { ortho = true, viewSize = 14, background = 0xbfe9ff, shadows = true, fov = 50, maxRes = 480 } = opts;
-  let pixelSize = opts.pixelSize || defaultPixelSize();
-  let dev = 1, dpr = 1;
-  const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: background == null, powerPreference: 'high-performance' });
+  const { ortho = true, viewSize = 14, background = 0xbfe9ff, shadows = true, fov = 50 } = opts;
+  const low = forcedLow || !!opts.lowQuality || (opts.pixelSize || 0) >= 2.5;
+  let scale = 2, dpr = 1, level = 0;
+  const renderer = new THREE.WebGLRenderer({ antialias: !low, alpha: background == null, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = shadows;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const canvas = renderer.domElement;
-  canvas.className = 'pixel-canvas';
+  canvas.className = 'pixel-canvas voxel-canvas';
   // ?outline=1 / ?outline=0 en la URL lo fuerza en todas las escenas (para comparar)
   const forced = typeof location !== 'undefined' && /[?&]outline=([01])/.exec(location.search);
   const outlineOpt = forced ? forced[1] === '1' : opts.outline;
-  let outline = outlineOpt ? createOutlinePass(renderer, outlineOpt) : null;
+  const samples = () => (low || !renderer.capabilities.isWebGL2) ? 0 : 4;
+  let outline = outlineOpt ? createOutlinePass(renderer, outlineOpt, samples()) : null;
   container.append(canvas);
 
   const scene = new THREE.Scene();
@@ -202,27 +231,22 @@ export function createPixelRenderer(container, opts = {}) {
     camera.userData.viewSize = viewSize;
   } else camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 500);
 
-  // el canvas va absoluto arriba a la izquierda y puede sobrar menos de un pixel de render: se recorta
   if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
   container.style.overflow = 'hidden';
-  Object.assign(canvas.style, { position: 'absolute', left: '0', top: '0', right: 'auto', bottom: 'auto' });
+  Object.assign(canvas.style, { position: 'absolute', left: '0', top: '0', width: '100%', height: '100%' });
 
   function resize() {
     const w = container.clientWidth || innerWidth, h = container.clientHeight || innerHeight;
     dpr = screenDpr();
-    const pw = w * dpr, ph = h * dpr;
-    dev = Math.max(pixelSize >= 1.4 ? 2 : 1, Math.round(pixelSize * dpr - 0.01));
-    // resolución interna acotada: en monitores grandes el pixel crece en vez de afinarse
-    dev = Math.max(dev, Math.ceil(Math.min(pw, ph) / maxRes));
-    // buffer = pixeles físicos / dev (entero): cada pixel de render ocupa EXACTAMENTE dev×dev pixeles
-    // físicos. El tamaño CSS se fija a buffer×dev/dpr (no 100%) para que el navegador escale por un
-    // entero: con 100% el factor queda en 2,001 o 1,999 y salen columnas/filas dobles (dientes de sierra).
-    const bw = Math.max(1, Math.ceil(pw / dev)), bh = Math.max(1, Math.ceil(ph / dev));
+    // 2 pixeles de render por px CSS: en celular (dpr 2-3) es casi la resolución nativa y en PC (dpr 1)
+    // es supersampleo 2×2 que el navegador promedia al achicar = bordes suaves también en el contorno.
+    scale = low ? Math.min(dpr, 1.5) : SCALES[level];
+    scale = Math.min(scale, Math.sqrt(MAX_BUFFER_PX / Math.max(1, w * h)));
+    scale = Math.max(1, scale);
+    const bw = Math.max(1, Math.round(w * scale)), bh = Math.max(1, Math.round(h * scale));
     renderer.setPixelRatio(1);
     renderer.setSize(bw, bh, false);
-    outline?.setSize(bw, bh);
-    // (redondeado hacia arriba a 1/64 px, la unidad de layout del navegador, para que no caiga 1 pixel físico corto)
-    canvas.style.width = Math.ceil(bw * dev / dpr * 64) / 64 + 'px'; canvas.style.height = Math.ceil(bh * dev / dpr * 64) / 64 + 'px';
+    outline?.setSize(bw, bh, scale);
     const aspect = bw / bh;
     if (camera.isOrthographicCamera) {
       const vs = camera.userData.viewSize;
@@ -232,7 +256,6 @@ export function createPixelRenderer(container, opts = {}) {
   }
   const ro = new ResizeObserver(resize);
   ro.observe(container);
-  // si cambia el devicePixelRatio (zoom del navegador, otra pantalla) se recalcula
   let mq = null;
   const onDpr = () => { resize(); watchDpr(); };
   function watchDpr() {
@@ -244,10 +267,22 @@ export function createPixelRenderer(container, opts = {}) {
   watchDpr();
 
   let raf = 0, running = false, last = 0;
+  // ajuste automático: si en una tanda de 90 cuadros más del 60% tarda >24 ms (<42 fps), baja un escalón
+  // de resolución interna. Solo baja (nunca sube) para no oscilar; se saltean los primeros cuadros (carga).
+  let warm = 0, batch = 0, slow = 0;
+  function watchPerf(ms) {
+    if (low || qParam === 'high' || level >= SCALES.length - 1 || document.hidden) return;
+    if (++warm < 60 || ms <= 0 || ms > 250) return;
+    batch++; if (ms > 24) slow++;
+    if (batch < 90) return;
+    if (slow > batch * 0.6) { level++; resize(); warm = 30; }
+    batch = slow = 0;
+  }
   const loops = new Set();
   function frame(t) {
     if (!running) return;
     raf = requestAnimationFrame(frame);
+    if (last) watchPerf(t - last);
     const dt = Math.min(0.05, (t - (last || t)) / 1000); last = t;
     for (const fn of loops) fn(dt, t / 1000);
     draw();
@@ -259,11 +294,13 @@ export function createPixelRenderer(container, opts = {}) {
 
   return {
     THREE, renderer, scene, camera, canvas,
-    /** Tamaño real (px CSS) de cada pixel del render, ya redondeado a pixeles físicos enteros. */
-    get pixelSize() { return dev / dpr; },
-    /** Pixeles físicos por pixel de render (entero). */
-    get devicePixels() { return dev; },
-    setPixelSize(n) { pixelSize = n; resize(); },
+    /** Tamaño (px CSS) de un pixel de render. */
+    get pixelSize() { return 1 / scale; },
+    /** Pixeles de render por px CSS. */
+    get renderScale() { return scale; },
+    get devicePixels() { return Math.max(1, Math.round(dpr / scale)); },
+    /** Compatibilidad con el motor viejo: ≥2,5 = baja calidad. */
+    setPixelSize() { resize(); },
     /** Cambia el zoom de la ortográfica (alto visible en unidades de mundo) */
     setViewSize(vs) { camera.userData.viewSize = vs; resize(); },
     resize,
@@ -272,10 +309,10 @@ export function createPixelRenderer(container, opts = {}) {
     start() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); },
     stop() { running = false; cancelAnimationFrame(raf); },
     render: draw,
-    /** Prende/apaga el contorno tinta (true | {strength, threshold} | false). */
+    /** Prende/apaga el contorno tinta (true | {strength, threshold, width} | false). */
     setOutline(o) {
       outline?.dispose(); outline = null;
-      if (o) { outline = createOutlinePass(renderer, o); resize(); }
+      if (o) { outline = createOutlinePass(renderer, o, samples()); resize(); }
     },
     get outline() { return !!outline; },
     /** Convierte coordenadas de pantalla (clientX/Y) a NDC */
@@ -309,26 +346,29 @@ export function createPixelRenderer(container, opts = {}) {
 }
 
 /**
- * Post-proceso de contorno: renderiza la escena a un target con profundidad y pinta de tinta los pixeles
- * de fondo pegados a algo bastante más cerca (el contorno queda AFUERA de la silueta, como en los íconos).
+ * Post-proceso de contorno: renderiza la escena (con MSAA si se puede) a un target con profundidad y pinta
+ * de tinta el borde de afuera de cada silueta (pixeles de fondo pegados a algo bastante más cerca).
+ * Mira vecinos a 1 y a `width` pixeles en 8 direcciones y suaviza el borde exterior, así la línea
+ * mide ≈1 px CSS a cualquier resolución y no hace escalones duros.
  * En perspectiva el umbral crece con la distancia para no rayar el piso lejano en ángulo rasante.
  */
-function createOutlinePass(renderer, o) {
+function createOutlinePass(renderer, o, samples = 0) {
   const cfg = typeof o === 'object' ? o : {};
   const rt = new THREE.WebGLRenderTarget(1, 1, {
-    type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true,
+    type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true, samples,
   });
   rt.depthTexture = new THREE.DepthTexture(1, 1);
+  rt.depthTexture.type = THREE.UnsignedIntType;
   const mat = new THREE.ShaderMaterial({
     uniforms: {
       tColor: { value: rt.texture }, tDepth: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) },
-      near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3b2340) },
-      strength: { value: cfg.strength ?? 0.8 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
+      near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3b2340) }, lineW: { value: 2 },
+      strength: { value: cfg.strength ?? 0.85 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: `
       #include <packing>
-      uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel;
+      uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel; uniform float lineW;
       uniform float near; uniform float far; uniform vec3 ink; uniform float strength;
       uniform float thrAbs; uniform float thrLin; uniform float thrSq;
       varying vec2 vUv;
@@ -340,22 +380,30 @@ function createOutlinePass(renderer, o) {
         return -perspectiveDepthToViewZ(d, near, far);
         #endif
       }
+      // vecino más cercano a la cámara en 8 direcciones a r pixeles
+      float nearest(vec2 uv, float r) {
+        vec2 a = texel * r, b = texel * r * 0.7071;
+        float m = min(min(dist(uv + vec2(a.x, 0.0)), dist(uv - vec2(a.x, 0.0))), min(dist(uv + vec2(0.0, a.y)), dist(uv - vec2(0.0, a.y))));
+        float n = min(min(dist(uv + b), dist(uv - b)), min(dist(uv + vec2(b.x, -b.y)), dist(uv + vec2(-b.x, b.y))));
+        return min(m, n);
+      }
       void main() {
         vec4 c = texture2D(tColor, vUv);
         float dc = dist(vUv);
-        vec2 ex = vec2(texel.x, 0.0), ey = vec2(0.0, texel.y);
-        float dl = dist(vUv - ex), dr = dist(vUv + ex), dd = dist(vUv - ey), du = dist(vUv + ey);
         float thr = thrAbs + dc * thrLin + dc * dc * thrSq;
-        float dn = min(min(dl, dr), min(dd, du));
-        // agujero de 1 pixel (grieta entre piezas del piso): cerca a ambos lados -> se rellena, no se entinta
-        if (max(dl, dr) < dc - thr) c = vec4(mix(texture2D(tColor, vUv - ex).rgb, texture2D(tColor, vUv + ex).rgb, 0.5), 1.0);
-        else if (max(dd, du) < dc - thr) c = vec4(mix(texture2D(tColor, vUv - ey).rgb, texture2D(tColor, vUv + ey).rgb, 0.5), 1.0);
-        else if (dc - dn > thr)
-          c = c.a > 0.0 ? vec4(mix(c.rgb, ink, strength), 1.0) : vec4(ink, 1.0);
-        gl_FragColor = c;
+        float k = 0.0;
+        if (dc - nearest(vUv, 1.0) > thr) k = 1.0;
+        else if (lineW > 1.5 && dc - nearest(vUv, lineW) > thr) k = 1.0;
+        else if (dc - nearest(vUv, lineW + 1.0) > thr) k = 0.4;
+        k *= c.a > 0.99 ? strength : 1.0;
+        // c viene premultiplicado (fondo transparente): tinta encima y de vuelta a sRGB sin premultiplicar
+        vec4 o = vec4(mix(c.rgb, ink, k), mix(c.a, 1.0, k));
+        vec3 rgb = o.a > 0.0 ? o.rgb / o.a : vec3(0.0);
+        gl_FragColor = vec4(rgb, 1.0);
         #include <colorspace_fragment>
+        gl_FragColor = vec4(gl_FragColor.rgb * o.a, o.a);
       }`,
-    depthTest: false, depthWrite: false,
+    depthTest: false, depthWrite: false, transparent: true, blending: THREE.NoBlending,
   });
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat);
   quad.frustumCulled = false;
@@ -363,7 +411,10 @@ function createOutlinePass(renderer, o) {
   const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   let ortho = null;
   return {
-    setSize(w, h) { rt.setSize(w, h); mat.uniforms.texel.value.set(1 / w, 1 / h); },
+    setSize(w, h, scale = 2) {
+      rt.setSize(w, h); mat.uniforms.texel.value.set(1 / w, 1 / h);
+      mat.uniforms.lineW.value = Math.max(1, Math.round((cfg.width ?? 1.1) * scale));
+    },
     render(scene, camera) {
       if (ortho !== !!camera.isOrthographicCamera) {
         ortho = !!camera.isOrthographicCamera;
@@ -385,7 +436,7 @@ function createOutlinePass(renderer, o) {
 }
 
 /** Luces estándar del juego: cielo pastel + sol cálido con sombras. Devuelve { hemi, sun }. */
-export function addLights(scene, { shadowSize = 30, shadowRes = 1024 } = {}) {
+export function addLights(scene, { shadowSize = 30, shadowRes = 2048 } = {}) {
   const hemi = new THREE.HemisphereLight(0xffffff, 0xcdb8f0, 1.5);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff3e6, 2.0);
@@ -441,4 +492,28 @@ export function imageSprite(url, worldHeight = 1) {
   sp.scale.set(worldHeight, worldHeight, 1);
   sp.renderOrder = 10;
   return sp;
+}
+
+/**
+ * Contorno tinta suave alrededor de la silueta de un render con fondo transparente (miniaturas).
+ * Estampa la silueta en tinta corrida en 16 direcciones y dibuja el render encima: el borde sale
+ * antialiaseado (combina con el contorno del 3D en vivo). width en pixeles del canvas.
+ */
+export function outlineCanvas(src, width = 3, ink = '#3b2340') {
+  const w = src.width, h = src.height;
+  const sil = document.createElement('canvas');
+  sil.width = w; sil.height = h;
+  const sg = sil.getContext('2d');
+  sg.drawImage(src, 0, 0);
+  sg.globalCompositeOperation = 'source-in';
+  sg.fillStyle = ink; sg.fillRect(0, 0, w, h);
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const g = out.getContext('2d');
+  for (const r of [width * 0.5, width]) for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2;
+    g.drawImage(sil, Math.cos(a) * r, Math.sin(a) * r);
+  }
+  g.drawImage(src, 0, 0);
+  return out;
 }

@@ -22,7 +22,7 @@ export const CHX_CSS = `
 
 .chx-thumbbox { position: relative; flex: none; width: 86px; height: 86px; display: grid; place-items: center; border: var(--line) solid var(--ink); border-radius: 14px;
   background: radial-gradient(circle at 50% 62%, #fff 0 22%, var(--ccl, #ffe9f4) 64%, var(--cc, #ffc2dc) 140%); box-shadow: inset 0 -5px 0 rgba(59,35,64,.12); }
-.chx-thumb { width: 80px; height: 80px; image-rendering: pixelated; image-rendering: crisp-edges; pointer-events: none; }
+.chx-thumb { width: 80px; height: 80px; pointer-events: none; }
 .chx-thumbbox .chx-count { position: absolute; right: -10px; bottom: -10px; min-width: 32px; height: 28px; padding: 0 6px; display: grid; place-items: center;
   background: var(--mint); border: var(--line) solid var(--ink); border-radius: 10px; font-size: 17px; font-weight: 700; box-shadow: 0 2px 0 var(--ink); }
 
@@ -85,7 +85,7 @@ export const CHX_CSS = `
 .chx-boost .chx-left { font-size: 18px; font-weight: 700; color: var(--ink); white-space: nowrap; }
 .chx-build { background: linear-gradient(90deg, var(--lilac-l), #fff 80%); }
 .chx-build .chx-bthumb { width: 56px; height: 56px; flex: none; display: grid; place-items: center; background: #fff; border: var(--line) solid var(--ink); border-radius: 12px; }
-.chx-build .chx-bthumb img { width: 48px; height: 48px; image-rendering: pixelated; }
+.chx-build .chx-bthumb img { width: 48px; height: 48px; image-rendering: auto; }
 .chx-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px 12px; text-align: center; color: var(--ink-l); }
 .chx-empty img { animation: bob 1.6s steps(4) infinite; }
 .chx-empty b { color: var(--ink); font-size: 19px; }

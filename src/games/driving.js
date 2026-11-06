@@ -1358,7 +1358,7 @@ export default function create(ctx) {
 
       const low = !!st.settings?.lowQuality;
       sky = new Sky(stage);
-      r = createPixelRenderer(stage, { ortho: false, background: null, fov: 58, shadows: !low, pixelSize: low ? 3 : undefined, outline: true });
+      r = createPixelRenderer(stage, { ortho: false, background: null, fov: 58, shadows: !low, lowQuality: low, outline: true });
       r.renderer.setClearColor(0x000000, 0);
       mats = makeMaterials(bendU);
       warmup();

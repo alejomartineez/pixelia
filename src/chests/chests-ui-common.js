@@ -1,7 +1,7 @@
 // Utilidades compartidas de la UI de cofres: estilos inyectados (.chx-*), miniaturas de cofres
 // (un solo WebGLRenderer offscreen, registradas como íconos nítidos) y textos/HTML de premios.
 import * as THREE from 'three';
-import { addLights, disposeObject } from '../core/voxel.js';
+import { addLights, disposeObject, outlineCanvas } from '../core/voxel.js';
 import { icon, iconUrl, registerIcon, watchIcon } from '../core/icons.js';
 import { fmtNum } from '../core/economy.js';
 import { GAME_BY_ID } from '../core/data.js';
@@ -101,12 +101,12 @@ export function fillThumbs(root) {
 }
 
 function renderThumbs() {
-  const N = 72; // px de render (icons.js los agranda con bloques enteros al tamaño de pantalla)
+  const N = 216; // px de render (icons.js lo achica suavizando al tamaño real de pantalla)
   let renderer = null;
   try {
     const cv = document.createElement('canvas');
     cv.width = cv.height = N;
-    renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: false, alpha: true, preserveDrawingBuffer: true });
+    renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true });
     renderer.setPixelRatio(1);
     renderer.setSize(N, N, false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -125,7 +125,7 @@ function renderThumbs() {
       cam.lookAt(0, cy, 0);
       scene.add(g);
       renderer.render(scene, cam);
-      registerIcon(THUMB_ICON + type, outlined(cv));
+      registerIcon(THUMB_ICON + type, outlineCanvas(cv, 5));
       thumbUrls[type] = THUMB_ICON + type;
       scene.remove(g);
       disposeObject(g);
@@ -138,28 +138,3 @@ function renderThumbs() {
   return thumbUrls;
 }
 
-/** Copia el render a un canvas 2D y le pone contorno tinta de 1px (look pixel art). Devuelve el canvas. */
-function outlined(src) {
-  const w = src.width, hgt = src.height;
-  const cv = document.createElement('canvas');
-  cv.width = w; cv.height = hgt;
-  const g = cv.getContext('2d', { willReadFrequently: true });
-  g.drawImage(src, 0, 0);
-  const img = g.getImageData(0, 0, w, hgt), d = img.data;
-  const solid = new Uint8Array(w * hgt);
-  for (let i = 0; i < w * hgt; i++) {
-    if (d[i * 4 + 3] > 90) {
-      solid[i] = 1;
-      d[i * 4 + 3] = 255;
-    } else d[i * 4 + 3] = 0;
-  }
-  for (let y = 0; y < hgt; y++) for (let x = 0; x < w; x++) {
-    const i = y * w + x;
-    if (solid[i]) continue;
-    if ((x > 0 && solid[i - 1]) || (x < w - 1 && solid[i + 1]) || (y > 0 && solid[i - w]) || (y < hgt - 1 && solid[i + w])) {
-      d[i * 4] = 59; d[i * 4 + 1] = 35; d[i * 4 + 2] = 64; d[i * 4 + 3] = 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
-  return cv;
-}

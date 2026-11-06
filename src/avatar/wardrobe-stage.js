@@ -1,7 +1,7 @@
 // Escenarios 3D del vestidor (boutique rosa y taller) + miniaturas offscreen de prendas/autos.
 // Lo usa src/scenes/wardrobe.js. Todo lo que crea acá se libera con disposeObject / dispose().
 import * as THREE from 'three';
-import { Voxels, voxelMaterial, glowMaterial, shade, addLights } from '../core/voxel.js';
+import { Voxels, voxelMaterial, glowMaterial, shade, addLights, outlineCanvas } from '../core/voxel.js';
 import { avatarModel } from './avatar.js';
 import { carModel } from './car.js';
 
@@ -234,14 +234,16 @@ export function buildGarage() {
 // =====================================================================
 const thumbCache = new Map();
 const MAX_THUMBS = 260;
+const THUMB_PX = 192;
 let tr = null; // { renderer, scene, camera }
 
 function ensureThumbRenderer() {
   if (tr) return tr;
-  const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, preserveDrawingBuffer: true });
+  // se muestran a 64 px CSS: 3× con antialias para que se vean nítidas en retina
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setPixelRatio(1);
-  renderer.setSize(64, 64, false);
+  renderer.setSize(THUMB_PX, THUMB_PX, false);
   renderer.setClearColor(0x000000, 0);
   const scene = new THREE.Scene();
   const { sun } = addLights(scene, { shadowSize: 4, shadowRes: 256 });
@@ -313,7 +315,7 @@ export function thumbnail(spec) {
   else { camera.left = -fr.view / 2; camera.right = fr.view / 2; camera.top = fr.view / 2; camera.bottom = -fr.view / 2; }
   camera.updateProjectionMatrix();
   renderer.render(scene, camera);
-  const url = renderer.domElement.toDataURL('image/png');
+  const url = outlineCanvas(renderer.domElement, 3).toDataURL('image/png');
   scene.remove(obj);
   thumbCache.set(key, url);
   if (thumbCache.size > MAX_THUMBS) thumbCache.delete(thumbCache.keys().next().value);
