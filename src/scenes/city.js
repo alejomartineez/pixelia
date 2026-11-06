@@ -1045,7 +1045,7 @@ export default function create(ctx) {
       document.head.append(styleEl);
       const lowQ = !!ctx.state.settings?.lowQuality;
       // contorno tinta alrededor de las siluetas (voxel.js): separa edificios, árboles y vecinas del pasto
-      r = createPixelRenderer(container, { background: null, viewSize: 14, lowQuality: lowQ, outline: true });
+      r = createPixelRenderer(container, { background: null, viewSize: 14, lowQuality: lowQ, outline: true, idleFps: 30 });
       r.renderer.setClearColor(0x000000, 0);
       lights = addLights(r.scene, { shadowSize: 50, shadowRes: lowQ ? 1024 : 2048 });
       const { sun } = lights;

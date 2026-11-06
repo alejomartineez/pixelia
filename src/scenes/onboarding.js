@@ -115,7 +115,7 @@ export default function create(ctx) {
   function buildStage(el) {
     // mismo pixel y contorno tinta que el vestidor y la ciudad (2.5 en baja calidad)
     const lowQ = !!S().settings?.lowQuality;
-    r = createPixelRenderer(el, { ortho: false, fov: 30, background: 0xf9f3e9, lowQuality: lowQ, outline: true });
+    r = createPixelRenderer(el, { ortho: false, fov: 30, background: 0xf9f3e9, lowQuality: lowQ, outline: true, idleFps: 30 });
     const { sun } = addLights(r.scene, { shadowSize: 6, shadowRes: 1024 });
     sun.position.set(5, 12, 9);
     const fill = new THREE.DirectionalLight(0xfde9d8, 0.7);

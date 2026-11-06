@@ -2,6 +2,7 @@
 // Canvas pixelado (arte a baja resolución escalado sin suavizado) + barra DOM.
 import { store } from '../core/state.js';
 import { icon } from '../core/icons.js';
+import { frameCap } from '../core/frame-cap.js';
 import {
   N, EMPTY, SHAPES, newGrid, idx, fits, canPlaceAnywhere, wouldComplete, findFullLines, clearLines,
   generateTray, linePoints, filledCount,
@@ -147,6 +148,7 @@ export default function create(ctx) {
   let root = null, canvas = null, g = null;
   const els = {};
   let alive = false, raf = 0, lastT = 0;
+  const fpsGate = frameCap();
   const timers = new Set();
   const offs = [];
 
@@ -949,6 +951,7 @@ export default function create(ctx) {
   function frame(now) {
     if (!alive) return;
     raf = requestAnimationFrame(frame);
+    if (!fpsGate(now)) return;
     const dt = Math.min(0.05, (now - (lastT || now)) / 1000);
     lastT = now;
     tickScore(dt);

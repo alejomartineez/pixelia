@@ -183,7 +183,7 @@ export function createVisit(ctx) {
       player: { level: Math.max(1, p.level | 0), name: hostName, cityName: p.city_name || '' },
     };
     const lowQ = !!ctx.state.settings?.lowQuality;
-    r = createPixelRenderer(container, { background: null, viewSize: 14, lowQuality: lowQ, outline: true });
+    r = createPixelRenderer(container, { background: null, viewSize: 14, lowQuality: lowQ, outline: true, idleFps: 30 });
     r.renderer.setClearColor(0x000000, 0);
     const { hemi, sun } = addLights(r.scene, { shadowSize: 50, shadowRes: lowQ ? 1024 : 2048 });
     // se ve con el estilo que eligió su dueño/a: cielo, luces, terreno y colores

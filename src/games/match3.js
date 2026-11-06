@@ -2,6 +2,7 @@
 // Tablero 8x8 en canvas de baja resolución escalado pixelado (escala entera en pixeles del dispositivo).
 // Motor de reglas en match3-engine.js, niveles en match3-levels.js, sprites en match3-sprites.js.
 import { icon } from '../core/icons.js';
+import { frameCap } from '../core/frame-cap.js';
 import { Engine, ROWS, COLS, RAINBOW } from './match3-engine.js';
 import { levelConfig, calibrateStars, GEM_NAMES } from './match3-levels.js';
 import { sprites, gemSprite, buildBoard, gemIconUrl, CELL, MARGIN, ART, GEMS } from './match3-sprites.js';
@@ -38,6 +39,7 @@ export default function create(ctx) {
   let alive = true;
   let root, styleEl, bar, stage, wrap, canvas, g, fxLayer, preEl, helpEl, footEl, plaque;
   let raf = 0, lastNow = 0, T = 0;
+  const fpsGate = frameCap();
   let mode = 'menu';          // 'menu' | 'play' | 'end'
   let busy = false;
   let level = 1, cfg = null, engine = null;
@@ -162,7 +164,7 @@ export default function create(ctx) {
   // ---------- loop ----------
   function frame(t) {
     raf = requestAnimationFrame(frame);
-    if (frozen) return;
+    if (frozen || !fpsGate(t)) return;
     const dt = Math.min(0.05, (t - (lastNow || t)) / 1000);
     lastNow = t;
     T += dt;

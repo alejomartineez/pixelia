@@ -1,6 +1,7 @@
 // Motor visual "3D pixel art": modelos de vóxeles + render a baja resolución escalado sin suavizado.
 // Todos los módulos 3D deben usar esto para que el juego se vea coherente.
 import * as THREE from 'three';
+import { frameCap, FPS_PARAM } from './frame-cap.js';
 
 // ---------- Colores ----------
 export function hexToInt(c) { return typeof c === 'number' ? c : parseInt(c.replace('#', ''), 16); }
@@ -188,6 +189,13 @@ const screenDpr = () => Math.min(4, Math.max(1, (typeof devicePixelRatio === 'nu
 // ?quality=low fuerza calidad baja; ?quality=high apaga el ajuste automático (para capturas y comparar)
 const qParam = typeof location !== 'undefined' ? (/[?&]quality=(low|high)\b/.exec(location.search) || [])[1] : null;
 const forcedLow = qParam === 'low';
+/** Sin tocar nada durante este tiempo, las escenas con opts.idleFps bajan a ese tope. */
+const IDLE_MS = 12000;
+let lastInput = typeof performance !== 'undefined' ? performance.now() : 0;
+if (typeof addEventListener === 'function') {
+  const mark = () => { lastInput = performance.now(); };
+  for (const ev of ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart']) addEventListener(ev, mark, { passive: true, capture: true });
+}
 /** Escalas internas (pixeles de render por px CSS) que prueba el ajuste automático si los cuadros vienen lentos. */
 const SCALES = [2, 1.5, 1.2];
 /** Máximo de pixeles de render (en monitores enormes la escala baja para no ahogar la GPU). */
@@ -204,20 +212,24 @@ const MAX_BUFFER_PX = 4.6e6;
  * opts.outline: contorno tinta alrededor de las siluetas (saltos de profundidad), ≈1 px CSS de ancho.
  *   true | { strength (0..1, default 0.85), threshold (unidades de mundo, default 0.3 en ortográfica), width (px CSS) }.
  *   Los transparentes que escriben profundidad (sprites, planos con alfa) también se contornean: usar depthWrite:false.
+ * opts.maxFps: tope de cuadros por segundo (default 60; 0 = sin tope). Con la ventana sin foco, 30.
+ * opts.idleFps: tope más bajo cuando nadie toca nada hace un rato (escenas tranquilas como la ciudad).
  */
 export function createPixelRenderer(container, opts = {}) {
   const { ortho = true, viewSize = 14, background = 0xbfe9ff, shadows = true, fov = 50 } = opts;
   const low = forcedLow || !!opts.lowQuality || (opts.pixelSize || 0) >= 2.5;
   let scale = 2, dpr = 1, level = 0;
-  const renderer = new THREE.WebGLRenderer({ antialias: !low, alpha: background == null, powerPreference: 'high-performance' });
+  // ?outline=1 / ?outline=0 en la URL lo fuerza en todas las escenas (para comparar)
+  const forced = typeof location !== 'undefined' && /[?&]outline=([01])/.exec(location.search);
+  const outlineOpt = forced ? forced[1] === '1' : opts.outline;
+  // Con contorno la escena se dibuja (con MSAA) en el target del contorno y al canvas solo va un cuadro
+  // plano: antialias en el canvas sería resolver 4 muestras por pixel en cada cuadro para nada.
+  const renderer = new THREE.WebGLRenderer({ antialias: !low && !outlineOpt, alpha: background == null, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = shadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const canvas = renderer.domElement;
   canvas.className = 'pixel-canvas voxel-canvas';
-  // ?outline=1 / ?outline=0 en la URL lo fuerza en todas las escenas (para comparar)
-  const forced = typeof location !== 'undefined' && /[?&]outline=([01])/.exec(location.search);
-  const outlineOpt = forced ? forced[1] === '1' : opts.outline;
   const samples = () => (low || !renderer.capabilities.isWebGL2) ? 0 : 4;
   let outline = outlineOpt ? createOutlinePass(renderer, outlineOpt, samples()) : null;
   container.append(canvas);
@@ -278,11 +290,25 @@ export function createPixelRenderer(container, opts = {}) {
     if (slow > batch * 0.6) { level++; resize(); warm = 30; }
     batch = slow = 0;
   }
+  // Tope de cuadros: sin esto se dibuja a la frecuencia del monitor (144/165 Hz en PC) y la GPU queda
+  // al máximo aunque la escena apenas se mueva. 60 alcanza para todo el juego; con la ventana sin foco
+  // (otra app adelante) bastan 30, y opts.idleFps baja más cuando nadie toca nada hace IDLE_MS.
+  let maxFps = FPS_PARAM ?? opts.maxFps ?? 60;
+  let idleFps = opts.idleFps ?? 0;
+  function targetFps() {
+    let f = maxFps || Infinity;
+    if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) f = Math.min(f, 30);
+    if (idleFps && performance.now() - lastInput > IDLE_MS) f = Math.min(f, idleFps);
+    return f;
+  }
+  const gate = frameCap();
   const loops = new Set();
   function frame(t) {
     if (!running) return;
     raf = requestAnimationFrame(frame);
-    if (last) watchPerf(t - last);
+    const fps = targetFps();
+    if (!gate(t, fps)) return;
+    if (last && fps >= 50) watchPerf(t - last);
     const dt = Math.min(0.05, (t - (last || t)) / 1000); last = t;
     for (const fn of loops) fn(dt, t / 1000);
     draw();
@@ -306,7 +332,7 @@ export function createPixelRenderer(container, opts = {}) {
     resize,
     /** Agrega función (dt, timeSec) llamada cada frame antes de renderizar. Devuelve función para quitarla. */
     onFrame(fn) { loops.add(fn); return () => loops.delete(fn); },
-    start() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); },
+    start() { if (running) return; running = true; last = 0; gate.reset(); raf = requestAnimationFrame(frame); },
     stop() { running = false; cancelAnimationFrame(raf); },
     render: draw,
     /** Prende/apaga el contorno tinta (true | {strength, threshold, width} | false). */
@@ -315,6 +341,9 @@ export function createPixelRenderer(container, opts = {}) {
       if (o) { outline = createOutlinePass(renderer, o, samples()); resize(); }
     },
     get outline() { return !!outline; },
+    /** Tope de cuadros por segundo (0 = sin tope) y tope cuando nadie toca nada hace un rato. */
+    setMaxFps(fps, idle = idleFps) { maxFps = fps; idleFps = idle; },
+    get fps() { return targetFps(); },
     /** Convierte coordenadas de pantalla (clientX/Y) a NDC */
     toNDC(clientX, clientY) {
       const r = canvas.getBoundingClientRect();
@@ -354,8 +383,11 @@ export function createPixelRenderer(container, opts = {}) {
  */
 function createOutlinePass(renderer, o, samples = 0) {
   const cfg = typeof o === 'object' ? o : {};
+  // RGBA8 en sRGB (no float16): la mitad de memoria y ancho de banda con MSAA, ~25% menos de GPU por
+  // cuadro, y la imagen sale igual (la GPU guarda en sRGB y lee de vuelta en lineal, sin bandas).
   const rt = new THREE.WebGLRenderTarget(1, 1, {
-    type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true, samples,
+    type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace,
+    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true, samples,
   });
   rt.depthTexture = new THREE.DepthTexture(1, 1);
   rt.depthTexture.type = THREE.UnsignedIntType;
