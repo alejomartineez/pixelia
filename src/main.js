@@ -262,7 +262,7 @@ export const ctx = {
 // ---------- Llegada a la ciudad: bienvenida → premio diario → subidas de nivel ----------
 // .cx-placebar: colocando un edificio (pintando árboles, caminos…): un modal ahí taparía la barra y el próximo
 // toque en "Colocar" caería sobre él. Las subidas de nivel esperan a que termine (city:placing {active:false}).
-const OVERLAYS = '.chx-open, .alb-open, .cx-placebar';
+const OVERLAYS = '.chx-open, .alb-open, .cx-placebar, .th-bar';   // .th-bar: defensa de una amenaza en curso
 const cityReady = () => router.current === 'city' && !navigating && !router.visiting;
 const cityIdle = () => cityReady() && !hasModal() && !document.querySelector(OVERLAYS);
 /** Espera a que la ciudad esté libre (sin modales ni animaciones). false si se fue de la ciudad o pasó maxMs. */

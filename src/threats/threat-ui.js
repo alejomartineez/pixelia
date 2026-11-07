@@ -16,6 +16,8 @@ export const STYLE = `
 .th-chip:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
 @keyframes th-pulse { 50% { box-shadow: 0 3px 0 var(--ink), 0 0 0 5px rgba(238, 138, 92, 0.25); } }
 .th-panel { display: flex; flex-direction: column; gap: 10px; }
+.th-modal .modal-foot { flex-wrap: wrap; }
+.th-modal .modal-foot .btn { flex: 1 1 140px; min-width: 0; white-space: normal; line-height: 1.1; }
 .th-when { margin: 0; color: var(--ink-soft, #6b5d52); font-size: 14px; }
 .th-prep { display: flex; flex-direction: column; gap: 4px; }
 .th-prep .line, .th-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
@@ -130,7 +132,7 @@ export function openThreatPanel(ctx, hooks = {}) {
   }
   const actions = [];
   if (st.canFace) actions.push({ label: st.active ? 'Seguir la defensa' : 'Enfrentar', cls: 'primary', onClick: () => hooks.onFace?.(t.id) });
-  actions.push({ label: `Construir ${BUILDING_BY_ID[def.defense].name}`, cls: st.canFace ? 'sky' : 'primary', onClick: () => hooks.onBuild?.(def.defense) });
+  actions.push({ label: `Construir ${def.defense === 'bomberos' ? 'Bomberos' : BUILDING_BY_ID[def.defense].name}`, cls: st.canFace ? 'sky' : 'primary', onClick: () => hooks.onBuild?.(def.defense) });
   actions.push({ label: 'Ir al Taller', cls: 'sky', onClick: () => hooks.onWorkshop?.() });
   const m = ui.modal({ title: T.threatName(t), content: body, className: 'cx-modal th-modal', icon: null, actions });
   return m;
