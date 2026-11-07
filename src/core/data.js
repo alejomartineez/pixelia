@@ -98,17 +98,17 @@ export const BUILDINGS = [
   // --- Defensas contra las amenazas (DESIGN-CORE.md §3.3, §5.2; radio y efecto por nivel en DEFENSES, más abajo) ---
   // Cubren los edificios con algún tile a distancia ≤ radio. firstPlanos: planos que pide solo la primera.
   { id: 'dique', name: 'Dique', cat: 'defensa', size: [3, 1], unlock: 1, rank: 2, cost: { coins: 700, mats: { madera: 6 } }, time: 30, max: 4,
-    happy: 1, xp: 40, desc: 'Estacas y tierra apisonada contra el arroyo. Cubre de la crecida lo que tiene cerca.' },
+    happy: 1, xp: 40, eraArt: true, desc: 'Estacas y tierra apisonada contra el arroyo. Cubre de la crecida lo que tiene cerca.' },
   { id: 'granero', name: 'Granero', cat: 'defensa', size: [2, 2], unlock: 1, rank: 2, cost: { coins: 800, mats: { madera: 3 } }, time: 40, max: 2,
-    happy: 1, xp: 45, desc: 'Agua y grano guardados para la sequía. Además agranda el depósito de provisiones.' },
+    happy: 1, xp: 45, eraArt: true, desc: 'Agua y grano guardados para la sequía. Además agranda el depósito de provisiones.' },
   { id: 'bomberos', name: 'Cuartel de Bomberos', cat: 'defensa', size: [2, 2], unlock: 1, rank: 3, cost: { coins: 2500, mats: { madera: 4 }, planos: 1 }, time: 90, max: 2,
-    happy: 2, xp: 80, desc: 'Campana, bomba de mano y gente que no duerme. Cubre del incendio a su alrededor.' },
+    happy: 2, xp: 80, eraArt: true, desc: 'Campana, bomba de mano y gente que no duerme. Cubre del incendio a su alrededor.' },
   { id: 'pararrayos', name: 'Pararrayos', cat: 'defensa', size: [1, 1], unlock: 1, rank: 3, cost: { coins: 600, mats: { mineral: 2 } }, firstPlanos: 1, time: 20, max: 6,
-    happy: 0, xp: 25, desc: 'Una punta de hierro bien alta. Los rayos de la tormenta van ahí y no al techo de al lado.' },
+    happy: 0, xp: 25, eraArt: true, desc: 'Una punta de hierro bien alta. Los rayos de la tormenta van ahí y no al techo de al lado.' },
   { id: 'refugio', name: 'Refugio', cat: 'defensa', size: [2, 2], unlock: 1, rank: 4, cost: { coins: 3500, mats: { madera: 6 } }, time: 120, max: 2,
-    happy: 2, xp: 100, desc: 'Estufa encendida, mantas y leña seca. Cubre de la helada a su alrededor.' },
+    happy: 2, xp: 100, eraArt: true, desc: 'Estufa encendida, mantas y leña seca. Cubre de la helada a su alrededor.' },
   { id: 'hospital', name: 'Hospital', cat: 'defensa', size: [3, 3], unlock: 1, rank: 5, cost: { coins: 12000, mats: { mineral: 6, hierbas: 4 }, planos: 1 }, time: 240, max: 1,
-    happy: 4, xp: 200, desc: 'Ayuda contra cualquier amenaza en su radio y suma una cuadrilla en la defensa.' },
+    happy: 4, xp: 200, eraArt: true, desc: 'Ayuda contra cualquier amenaza en su radio y suma una cuadrilla en la defensa.' },
 
   // --- Decoración ---
   { id: 'arbol', name: 'Árbol', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 20 }, time: 0, happy: 1, xp: 2, desc: 'Sombra y pájaros.' },
