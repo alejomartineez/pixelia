@@ -556,7 +556,7 @@ export function upgradeInfo(b) {
     const cost = { coins: Math.round(base * UPGRADE_COST_MULT[b.level]) };
     if (up.mats) cost.mats = { ...up.mats };
     if (up.planos) cost.planos = up.planos;
-    return { cost, time: stageTime(Math.max(15, Math.round((d.time || 10) * (b.level + 1)))), reqLevel: d.unlock + b.level };
+    return { cost, time: stageTime(Math.max(15, Math.round((d.time || 10) * (b.level + 1)))), reqLevel: d.unlock + b.level, reqEra: up.era || 0 };
   }
   return {
     cost: { coins: Math.round(base * UPGRADE_COST_MULT[b.level]), gems: b.level >= 3 ? b.level - 2 : 0 },
@@ -572,6 +572,7 @@ export function canUpgrade(b, state = S(), now = Date.now()) {
   if (state.player.level < info.reqLevel) return { ok: false, reason: `Nivel ${info.reqLevel}`, locked: true };
   if (info.rank && !rankStatus(state, now).allOk) return { ok: false, reason: 'Falta completar el expediente', locked: true, reqs: true };
   if (info.homeRank && townRank(state) < info.homeRank) return { ok: false, reason: `Rango ${rankName(info.homeRank)}`, locked: true, rank: info.homeRank };
+  if (info.reqEra && cityEra(state) < info.reqEra) return { ok: false, reason: `Época ${eraDef(info.reqEra).name}`, locked: true, era: info.reqEra };
   if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
   if (!store.hasMats(info.cost.mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
   if ((info.cost.planos || 0) > (state.planos || 0)) return { ok: false, reason: `Faltan planos (${state.planos || 0}/${info.cost.planos})`, planos: true };

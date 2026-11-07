@@ -46,7 +46,7 @@ export function openWorkshop(ctx) {
     const el = h('div.pnl-ws-item' + (lock ? '.lock' : ''), { 'data-craft': id });
     el.append(h('span.ic', { html: icon(it.icon, 30) }),
       h('b', { html: `${esc(it.name)} <small>×${fmt(st.have)}${st.max ? `/${st.max}` : ''}</small>` }),
-      h('span.txt', {}, it.text || ''));
+      h('span.txt', {}, kind === 'equip' ? X.equipText(id) : it.text || ''));
     const btn = h('button.btn.' + (st.ok ? 'mint' : 'ghost'), { disabled: lock || st.reason?.startsWith('Tope'),
       html: `<span>${lock ? icon('lock', 14) + esc(st.reason) : 'Fabricar'}</span><span class="cost">${ui.costHtml(st.cost, 14)}</span>` });
     btn.onclick = () => {

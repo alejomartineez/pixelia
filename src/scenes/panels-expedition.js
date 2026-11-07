@@ -190,7 +190,7 @@ export function openExpedition(ctx, params = {}) {
       const row = h('div.pnl-ex-eq');
       for (const id of ids) {
         const it = EQUIPMENT[id], on = equip.includes(id);
-        const b = h('button' + (on ? '.on' : ''), { 'data-equip': id, title: it.text, html: `${icon(it.icon, 20)}${esc(it.name)} <small>×${have[id]}</small>` });
+        const b = h('button' + (on ? '.on' : ''), { 'data-equip': id, title: X.equipText(id), html: `${icon(it.icon, 20)}${esc(it.name)} <small>×${have[id]}</small>` });
         b.onclick = () => {
           if (on) equip = equip.filter(x => x !== id);
           else if (equip.length < st.equipSlots) equip = [...equip, id];

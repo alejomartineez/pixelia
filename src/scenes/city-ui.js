@@ -589,7 +589,7 @@ export function openInfo(S, uid) {
           box.append(ui.h('div.req', { html: icon('lock', 14) + 'Falta completar el expediente:' }), list);
         } else if (can.mats) {
           box.append(ui.h('div.req', { html: icon('monument', 14) + (d.cat === 'ciclo' ? 'Faltan materiales: los trae la expedición.' : 'Faltan materiales: se ganan jugando.') }));
-        } else if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.rank ? `Necesitás el rango ${ui.esc(E.rankName(can.rank))}` : can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
+        } else if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.rank ? `Necesitás el rango ${ui.esc(E.rankName(can.rank))}` : can.era ? `Necesitás la ${ui.esc(can.reason.replace(/^É/, 'é'))}` : can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
         box.append(btn(isMon ? 'Avanzar obra' : isHome ? 'Ampliar' : 'Mejorar', 'second', 'up', () => {
           const c = E.canUpgrade(b);
           if (!c.ok) { ctx.audio.sfx('error'); ui.toast(c.poor ? 'No te alcanza todavía' : c.reason, { icon: c.locked ? 'lock' : 'info' }); return; }
