@@ -52,9 +52,16 @@ export const partySlots = (state = S()) => E.cycleValue('casa_exp', 'slots', lv(
 export const provMax = (state = S()) => E.cycleValue('casa_exp', 'provMax', lv('casa_exp', state), EXP.provMax[0]);
 export const equipSlots = (state = S()) => E.cycleValue('taller', 'equipSlots', lv('taller', state), 0);
 export const tiredMinutes = (state = S()) => E.cycleValue('dispensario', 'tiredMin', lv('dispensario', state), TIRED_MIN_NONE);
+/** Carga que suma la Carreta: +4; desde la época Hierro, la Carreta grande da +6 (DESIGN-CORE.md §4.1). */
+export function carretaCargo(state = S()) {
+  const r = EQUIP_RECIPES.carreta;
+  return E.cityEra(state) >= (r.bigEra || 99) ? r.bigCargo : (r.cargo ?? EXP.carreta);
+}
+/** Texto corto del equipo (la Carreta cuenta la carga de la época). */
+export const equipText = (id, state = S()) => (id === 'carreta' ? `+${carretaCargo(state)} de carga` : EQUIPMENT[id]?.text || '');
 /** Carga del grupo: 6 + 3 por nivel del Establo, + Carreta. */
 export function cargoMax(equip = [], state = S()) {
-  return EXP.cargoBase + E.cycleValue('establo', 'cargo', lv('establo', state), 0) + (equip.includes('carreta') ? EXP.carreta : 0);
+  return EXP.cargoBase + E.cycleValue('establo', 'cargo', lv('establo', state), 0) + (equip.includes('carreta') ? carretaCargo(state) : 0);
 }
 export const regionOpen = (id, state = S()) => !!REGIONS[id] && E.townRank(state) >= REGIONS[id].rank;
 /** Roles que existen en la ciudad: [{ id, level, tiredMs }] (tiredMs > 0: descansando). */
@@ -282,7 +289,7 @@ export function cycleEffects(id, level) {
     case 'establo':
       rc('guia');
       add('cargo', 'Carga del grupo', EXP.cargoBase + E.cycleValue(id, 'cargo', level));
-      if (level >= 2) add('carreta', 'Carreta', 'se puede fabricar', 'Se puede fabricar la Carreta (+4 de carga)');
+      if (level >= 2) add('carreta', 'Carreta', 'se puede fabricar', `Se puede fabricar la Carreta (+${carretaCargo()} de carga)`);
       break;
     case 'dispensario':
       add('morale', 'Ánimo del grupo', EXP.morale + EXP.moraleSanidad, `Sanidad ${level}: ánimo ${EXP.morale + EXP.moraleSanidad} y mejor descanso`);

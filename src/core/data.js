@@ -68,13 +68,13 @@ export const BUILDINGS = [
   { id: 'boutique', name: 'Tienda de Ropa', cat: 'negocio', size: [2, 2], unlock: 7, cost: { coins: 2000 }, time: 90, popReq: 65,
     prod: { coins: 160, cycle: 240, cap: 6 }, xp: 80, eraArt: true, desc: 'Ropa, bolsos y zapatos. Probadores al fondo.' },
   { id: 'cine', name: 'Cine', rank: 3, cat: 'negocio', size: [3, 3], unlock: 9, cost: { coins: 3200 }, time: 120, popReq: 85,
-    prod: { coins: 260, cycle: 300, cap: 6 }, happy: 4, xp: 110, desc: 'Estrenos, clásicos y pochoclo.' },
+    prod: { coins: 260, cycle: 300, cap: 6 }, happy: 4, xp: 110, eraArt: true, desc: 'Estrenos, clásicos y pochoclo.' },
   { id: 'spa', name: 'Baños Termales', rank: 4, cat: 'negocio', size: [3, 3], unlock: 11, cost: { coins: 5000, gems: 5 }, time: 180, popReq: 110,
-    prod: { coins: 380, cycle: 360, cap: 6 }, happy: 5, xp: 150, desc: 'Vapor, agua caliente y silencio.' },
+    prod: { coins: 380, cycle: 360, cap: 6 }, happy: 5, xp: 150, eraArt: true, desc: 'Vapor, agua caliente y silencio.' },
   { id: 'rueda', name: 'Rueda de la Fortuna', rank: 5, cat: 'negocio', size: [3, 3], unlock: 13, cost: { coins: 8000, gems: 10 }, time: 240, popReq: 140,
-    prod: { gems: 1, cycle: 1800, cap: 4 }, happy: 8, xp: 220, desc: 'Gira despacio y de vez en cuando deja una gema.' },
+    prod: { gems: 1, cycle: 1800, cap: 4 }, happy: 8, xp: 220, eraArt: true, desc: 'Gira despacio y de vez en cuando deja una gema.' },
   { id: 'teatro', name: 'Teatro de la Ópera', rank: 5, cat: 'negocio', size: [3, 3], unlock: 15, cost: { coins: 12000, gems: 10 }, time: 300, popReq: 180,
-    prod: { coins: 800, cycle: 600, cap: 6 }, happy: 6, xp: 300, desc: 'Funciones de gala. Se ruega apagar el celular.' },
+    prod: { coins: 800, cycle: 600, cap: 6 }, happy: 6, xp: 300, eraArt: true, desc: 'Funciones de gala. Se ruega apagar el celular.' },
 
   // --- Ciclo de la expedición (DESIGN-CORE.md §5.2; qué da cada nivel en CYCLE, más abajo) ---
   // prod.prov: provisiones por tanda en el nivel 1 (CYCLE[id].prov da el valor por nivel); van al depósito al cobrar.
@@ -151,7 +151,8 @@ export const RESERVE_CAP = 10;
 // Edificios del ciclo: qué da cada nivel (índice = nivel − 1). role = rol que entrena (nivel del rol = el del edificio).
 //  slots: lugares del grupo con quien lidera · provMax: provisiones por salida normal · cargo: carga extra
 //  equipSlots: equipo por salida · tiredMin: minutos de descanso tras un fracaso · prov: provisiones por tanda
-//  up: costo extra de la mejora a ese nivel (materiales desde el nivel 3; la Casa pide planos en el 4 y el 5)
+//  up: costo extra de la mejora a ese nivel (materiales desde el nivel 3; la Casa pide planos en el 4 y el 5;
+//      era: época mínima de la ciudad para esa mejora, DESIGN-CORE.md §4.1)
 export const CYCLE = {
   casa_exp: { role: 'exploracion', slots: [2, 2, 3, 3, 4], provMax: [18, 21, 24, 27, 30],
     up: { 3: { mats: { madera: 4, piedra: 2 } }, 4: { mats: { piedra: 5, madera: 3 }, planos: 2 }, 5: { mats: { piedra: 6, mineral: 4 }, planos: 4 } } },
@@ -164,7 +165,7 @@ export const CYCLE = {
   huerta: { role: 'recoleccion', prov: [2, 3, 4, 5, 6],
     up: { 3: { mats: { madera: 2 } }, 4: { mats: { madera: 3, hierbas: 2 } }, 5: { mats: { madera: 4, hierbas: 3 } } } },
   tambo: { prov: [5, 7, 9, 11, 13], up: { 3: { mats: { madera: 3 } }, 4: { mats: { madera: 4, hierbas: 2 } }, 5: { mats: { madera: 5, piedra: 3 } } } },
-  molino: { prov: [8, 11, 14, 17, 20], up: { 3: { mats: { piedra: 4 } }, 4: { mats: { piedra: 6, madera: 3 } }, 5: { mats: { piedra: 8, mineral: 3 } } } },
+  molino: { prov: [8, 11, 14, 17, 20], up: { 3: { mats: { piedra: 4 } }, 4: { mats: { piedra: 6, madera: 3 }, era: 3 }, 5: { mats: { piedra: 8, mineral: 3 }, era: 3 } } },
   conservera: { prov: [15, 19, 23, 27, 31], up: { 3: { mats: { mineral: 4 } }, 4: { mats: { mineral: 6, piedra: 3 } }, 5: { mats: { mineral: 8, piedra: 4 } } } },
 };
 export const ROLE_BUILDING = { exploracion: 'casa_exp', ingenieria: 'taller', guia: 'establo', sanidad: 'dispensario', recoleccion: 'huerta' };
@@ -177,7 +178,8 @@ export const EQUIP_RECIPES = {
   lona: { cost: { coins: 80, mats: { hierbas: 1, madera: 2 } } },
   farol: { cost: { coins: 80, mats: { mineral: 1, madera: 1 } } },
   botiquin: { cost: { coins: 60, mats: { hierbas: 3 } } },
-  carreta: { cost: { coins: 250, mats: { madera: 6, mineral: 2 } }, establo: 2 },
+  // carreta: +4 de carga; desde la época Hierro (bigEra) la Carreta grande da +6 (bigCargo)
+  carreta: { cost: { coins: 250, mats: { madera: 6, mineral: 2 } }, establo: 2, cargo: 4, bigEra: 4, bigCargo: 6 },
 };
 export const EQUIP_IDS = Object.keys(EQUIP_RECIPES);
 export const RESERVES = {
