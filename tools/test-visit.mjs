@@ -130,7 +130,7 @@ try {
   section('Regalito diario');
   await use(A); await ev(A, `await S.refreshSocial?.(); ctx.ui.closeAllModals(); ctx.openSocial('amigas'); return true;`);
   await sleep(1500);
-  ok(await tap(A, '.soc-friend .btn', 'Regalito'), 'ana toca Regalito en la tarjeta de bea');
+  ok(await tap(A, '.soc-friend .btn', 'Regalo'), 'ana toca Regalo en la tarjeta de bea');
   await sleep(1200);
   await shot(A, 'visit-02-ana-amigas');
   const inboxB = await ev(B, `return (await net.inbox()).map(g => g.kind)`);

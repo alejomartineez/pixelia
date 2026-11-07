@@ -143,9 +143,9 @@ export function confirm(title, text, okLabel = 'Sí', cancelLabel = 'No') {
  * Pantalla de premio. reward {coins, gems, xp, chest, stickers}, stars (0..3 o undefined).
  * lines: [html | Node]. buttons: [{label, value, cls, html}] -> resuelve con el value elegido.
  * Si el modal se cierra sin tocar un botón (p.ej. al cambiar de escena) resuelve con dismissValue
- * (por defecto 'city' si algún botón la tiene, si no el value del primer botón).
+ * (por defecto 'city' si algún botón la tiene, si no el value del primer botón). party: true tira confeti (solo momentos grandes).
  */
-export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, stars, lines = [], buttons = [{ label: 'Genial', value: 'ok' }], dismissValue, className = '' } = {}) {
+export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, stars, lines = [], buttons = [{ label: 'Genial', value: 'ok' }], dismissValue, className = '', party = false } = {}) {
   return new Promise(res => {
     let val = dismissValue !== undefined ? dismissValue : buttons.some(b => b.value === 'city') ? 'city' : buttons[0].value;
     const wrap = h('div.reward');
@@ -167,7 +167,7 @@ export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, sta
     if (reward.coins || reward.gems || reward.xp || reward.mats) wrap.append(h('div.reward-items', { html: costHtml({ coins: reward.coins, gems: reward.gems, xp: reward.xp, mats: reward.mats }, 28) }));
     modal({ title, content: wrap, closable: false, className: ('reward-modal ' + className).trim(), onClose: () => res(val),
       actions: buttons.map(b => ({ label: b.label, html: b.html, cls: b.cls || 'primary', onClick: () => { val = b.value; } })) });
-    if (stars === undefined || stars > 0) confetti();
+    if (party && (stars === undefined || stars > 0)) confetti();   // confeti solo en momentos grandes (party: true)
   });
 }
 
@@ -176,7 +176,7 @@ export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, sta
 export function floatText(x, y, html, cls = '') {
   const el = h('div.float-text' + (cls ? '.' + cls : ''), { html, style: { left: x + 'px', top: y + 'px' } });
   $('#fx-root').append(el);
-  setTimeout(() => el.remove(), 1100);
+  setTimeout(() => el.remove(), cls === 'say' ? 1600 : 1100);
 }
 /** Íconos que vuelan desde (x,y) hasta el contador del HUD (data-hud="coins"|"gems"|"xp"). */
 export function flyCurrency(x, y, kind = 'coins', count = 6) {

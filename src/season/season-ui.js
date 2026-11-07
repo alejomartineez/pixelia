@@ -1,5 +1,5 @@
 // UI del Pase de Temporada (camino vertical con los 30 niveles) y del regalo de bienvenida.
-import { h, esc, modal, toast, rewardModal, flyCurrency, confetti } from '../core/ui.js';
+import { h, esc, modal, toast, rewardModal, flyCurrency } from '../core/ui.js';
 import { icon, iconUrl } from '../core/icons.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/bus.js';
@@ -69,9 +69,9 @@ export function openSeasonPass(ctx, now) {
     const th = THEMES.find(x => x.id === e.themeId) || info.theme;
     return `<div class="ssn-end">${chestIcon('real', 56)}
       <h4>Cofre de fin de temporada</h4>
-      <p>Terminó <b>${esc(th.name)}</b> ${icon(th.emoji, 18)} y llegaste al <b>nivel ${e.level}</b>. ${e.parts.length ? 'Todo lo que no habías cobrado ya está en tu cuenta:' : '¡Habías cobrado todo! Sos una estrella.'}</p>
+      <p>Terminó <b>${esc(th.name)}</b> ${icon(th.emoji, 18)} y llegaste al <b>nivel ${e.level}</b>. ${e.parts.length ? 'Todo lo que no habías cobrado ya está en tu cuenta:' : 'Ya habías cobrado todo.'}</p>
       ${e.parts.length ? partsLine(e.parts) : ''}
-      <button class="btn primary small" data-ack>¡Gracias!</button></div>`;
+      <button class="btn primary small" data-ack>Gracias</button></div>`;
   }
   function railFill(n) {
     const L = info.level, pct = info.level >= MAX_TIER ? 1 : info.pct;
@@ -113,7 +113,7 @@ export function openSeasonPass(ctx, now) {
   function howHtml() {
     return `<div class="ssn-how" data-howbox><h4>${icon('sparkle', 22)} ¿Cómo gano chispas?</h4>
       <ul>${POINT_SOURCES.map(s => `<li>${icon(s.ic, 22)}<span>${esc(s.text)}</span><b>+${s.pts}</b></li>`).join('')}</ul>
-      <p>Cada nivel cuesta unas 120 chispas: jugando un ratito por día llegás al 30 antes de que termine la temporada. Y si no llegás a cobrar algo, se guarda solo en un cofre de fin de temporada: <b>no se pierde nada</b>.</p></div>`;
+      <p>Cada nivel cuesta unas 120 chispas: jugando un rato por día llegás al 30 antes de que termine la temporada. Y si no llegás a cobrar algo, se guarda solo en un cofre de fin de temporada: <b>no se pierde nada</b>.</p></div>`;
   }
 
   function render() {
@@ -134,8 +134,7 @@ export function openSeasonPass(ctx, now) {
     fly(card, r.parts);
     card?.classList.add('ssn-pop');
     if (r.special) {
-      confetti();
-      rewardModal({ title: '¡Premio especial!', subtitle: `Nivel ${n} del Pase`, lines: [partsLine(r.parts, 28)], buttons: [{ label: '¡Me encanta!', value: 'ok', cls: 'gold' }] });
+      rewardModal({ title: '¡Premio especial!', subtitle: `Nivel ${n} del Pase`, lines: [partsLine(r.parts, 28)], buttons: [{ label: 'Genial', value: 'ok', cls: 'gold' }] });
     } else storageToast(r.parts);
     setTimeout(render, 380);
   }
@@ -144,9 +143,8 @@ export function openSeasonPass(ctx, now) {
     if (!res.tiers.length && !res.bonus) return;
     audio.sfx('win');
     fly(btn, res.parts);
-    confetti();
     const k = res.tiers.length;
-    rewardModal({ title: '¡Cobraste todo!', subtitle: k ? `${k} nivel${k > 1 ? 'es' : ''} del Pase` : 'Cofres extra', lines: [partsLine(res.parts, 24)], buttons: [{ label: '¡Genial!', value: 'ok', cls: 'gold' }] });
+    rewardModal({ title: 'Cobraste todo', subtitle: k ? `${k} nivel${k > 1 ? 'es' : ''} del Pase` : 'Cofres extra', lines: [partsLine(res.parts, 24)], buttons: [{ label: 'Genial', value: 'ok', cls: 'gold' }] });
     render();
   }
 
@@ -183,7 +181,7 @@ export function openSeasonPass(ctx, now) {
 }
 
 // ---------- Bienvenida de vuelta ----------
-/** Muestra el regalo "¡Te extrañamos!" si corresponde. Promise<status cobrado | null>. */
+/** Muestra el regalo "Bienvenida de vuelta" si corresponde. Promise<status cobrado | null>. */
 export function openWelcomeBack(ctx, now) {
   const st = welcomeBackStatus(now);
   if (!st) return Promise.resolve(null);
@@ -205,13 +203,12 @@ export function openWelcomeBack(ctx, now) {
       title: st.title, icon: 'heart', content, closable: false, className: 'ssn ssn-welcome',
       onClose: () => { release(); resolve(claimed); },
       actions: [{
-        html: `${icon('gift', 22)} ¡Abrir regalo!`, cls: 'gold',
+        html: `${icon('gift', 22)} Abrir regalo`, cls: 'gold',
         onClick: () => {
           claimed = claimWelcomeBack(now);
           if (claimed) {
             audio.sfx('win');
             fly(content.querySelector('[data-coins]'), [{ kind: 'coins' }, ...(claimed.reward.gems ? [{ kind: 'gems' }] : [])]);
-            confetti();
             toast(`¡${claimed.chests > 1 ? claimed.chests + ' Cofres' : 'Cofre'} de Madera a tus cofres!`, { icon: 'gift', type: 'good' });
           }
         },

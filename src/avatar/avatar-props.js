@@ -21,18 +21,18 @@ export const CROWN_BUILD = {
     for (let x = -4; x <= 3; x++) for (let z = -3; z <= 2; z++) {
       const edge = x === -4 || x === 3 || z === -3 || z === 2;
       if (edge) { v.set(x, 12, z, GOLD_D); v.set(x, 13, z, GOLD); }
-      else v.set(x, 12, z, 0xe0528f);
+      else v.set(x, 12, z, 0xc4678e);
     }
     for (const [x, z] of [[-4, -3], [3, -3], [-4, 2], [3, 2], [-1, 2], [0, 2], [-4, -1], [3, -1], [-1, -3], [0, -3]]) {
       v.set(x, 14, z, GOLD); if ((x === -1 || x === 0)) v.set(x, 15, z, GOLD_L);
     }
-    v.set(-1, 13, 2, 0xff5a6e); v.set(0, 13, 2, 0xff5a6e);
+    v.set(-1, 13, 2, 0xcf5f5f); v.set(0, 13, 2, 0xcf5f5f);
     v.set(-4, 13, 0, 0x4f7ce0); v.set(3, 13, 0, 0x4f7ce0);
     v.set(-1, 13, -3, 0x6fe3c1); v.set(0, 13, -3, 0x6fe3c1);
     v.set(-1, 13, 0, 0xffd166); v.set(0, 13, -1, 0xffd166);
   },
   flores(v) {
-    const flowers = [0xff7eb6, 0xffffff, 0xb58cff, 0xffd166, 0x8fd3ff, 0xff9cc8];
+    const flowers = [0xe392b0, 0xffffff, 0xb58cff, 0xffd166, 0x8fd3ff, 0xff9cc8];
     const ring = [];
     for (let x = -5; x <= 4; x++) ring.push([x, 4], [x, -5]);
     for (let z = -4; z <= 3; z++) ring.push([-6, z], [5, z]);
@@ -51,23 +51,20 @@ export const CROWN_BUILD = {
         v.set(x, 11, z, c);
       }
     }
-    v.set(-6, 13, 3, 0xff7eb6); v.set(-6, 12, 3, 0xffe066); v.set(-6, 12, 2, 0xff7eb6); v.set(-6, 11, 3, 0xff7eb6); v.set(-6, 12, 4, 0xff7eb6);
+    v.set(-6, 13, 3, 0xe392b0); v.set(-6, 12, 3, 0xffe066); v.set(-6, 12, 2, 0xe392b0); v.set(-6, 11, 3, 0xe392b0); v.set(-6, 12, 4, 0xe392b0);
   },
   'moño'(v, c) {
+    // moño chico y prolijo (antes era gigante): nudo de 2×2 y dos alas de 3×3
     const b = hexToInt(c), d = shade(c, -0.22), l = shade(c, 0.3);
-    v.box(-1, 12, 0, 2, 2, 2, d);
+    v.box(-1, 12, 0, 2, 1, 2, d);
     for (const s of [-1, 1]) {
       const X = (x) => (s < 0 ? x : -1 - x);
-      for (let y = 11; y <= 15; y++) for (let x = -5; x <= -2; x++) {
-        const w = x - -2; // 0..-3
-        if (y === 11 && x < -3) continue;
-        if (y === 15 && x > -4) continue;
-        if (y === 15 && x === -5) continue;
-        v.set(X(x), y, 0, (y === 14 && x === -4) ? l : b);
-        v.set(X(x), y, 1, y >= 14 && w < -1 ? l : b);
+      for (let y = 11; y <= 13; y++) for (let x = -4; x <= -2; x++) {
+        if ((y === 11 || y === 13) && x === -4) continue;
+        v.set(X(x), y, 0, b);
+        v.set(X(x), y, 1, y === 13 && x === -3 ? l : b);
       }
-      v.set(X(-3), 13, 1, d); v.set(X(-4), 12, 1, d);
-      v.set(X(-2), 11, 1, d); v.set(X(-3), 10, 1, b);
+      v.set(X(-3), 12, 1, d);
     }
   },
   estrella(v) {
@@ -76,7 +73,7 @@ export const CROWN_BUILD = {
     star.forEach((row, i) => [...row].forEach((ch, j) => {
       if (ch === '#') v.set(j - 3, 17 - i, 2, (i === 2 && j === 2) ? 0xffffff : (j < 2 ? GOLD_L : GOLD));
     }));
-    v.set(-1, 15, 3, 0xff7eb6);
+    v.set(-1, 15, 3, 0xe392b0);
     v.set(-4, 13, 2, 0xfff0c2); v.set(3, 13, 2, 0xfff0c2);
   },
   orejitas(v, c, hair) {
@@ -146,7 +143,7 @@ export function buildCat(v) {
   for (let x = -2; x <= 1; x++) for (let y = 8; y <= 10; y++) for (let z = 3; z <= 5; z++) v.set(x, y, z, fur);
   v.set(-2, 11, 4, fur); v.set(1, 11, 4, fur); v.set(-2, 11, 5, 0xffa3c4); v.set(1, 11, 5, 0xffa3c4);
   v.set(-2, 9, 6, INK); v.set(1, 9, 6, INK);
-  v.set(-1, 8, 6, 0xff7eb6); v.set(0, 8, 6, 0xff7eb6);
+  v.set(-1, 8, 6, 0xe392b0); v.set(0, 8, 6, 0xe392b0);
   v.set(-1, 9, 6, furL); v.set(0, 9, 6, furL); v.set(-2, 8, 6, furL); v.set(1, 8, 6, furL);
   v.set(-1, 10, 6, furD); v.set(0, 10, 6, fur);
   // colita
@@ -214,7 +211,7 @@ Object.assign(CROWN_BUILD, {
     }
     v.set(-1, 14, -1, GOLD); v.set(0, 14, 0, GOLD); v.set(-1, 15, -1, GOLD_L); v.set(0, 15, 0, GOLD_L);
     v.set(-1, 13, 2, 0x4f7ce0); v.set(0, 13, 2, 0x4f7ce0); v.set(-1, 13, 3, 0x8fd3ff);
-    v.set(-4, 13, -1, 0xff5a6e); v.set(3, 13, 0, 0xff5a6e);
+    v.set(-4, 13, -1, 0xcf5f5f); v.set(3, 13, 0, 0xcf5f5f);
   },
   laurel(v) {
     const ring = [];
@@ -253,7 +250,7 @@ Object.assign(CROWN_BUILD, {
     }
     for (let y = 15; y <= 17; y++) v.set(-1, y, -1, GOLD);
     v.set(-2, 16, -1, GOLD); v.set(0, 16, -1, GOLD);
-    v.set(-1, 13, 3, 0xff5a6e); v.set(0, 13, 3, 0x4f7ce0);
+    v.set(-1, 13, 3, 0xcf5f5f); v.set(0, 13, 3, 0x4f7ce0);
     for (const x of [-3, 2]) v.set(x, 12, 3, 0xffffff);
   },
   gorra(v, c) {
@@ -372,13 +369,13 @@ Object.assign(CROWN_BUILD, {
 export function buildNecklace(v) {
   const pearls = [[-3, 9], [-2, 8], [-1, 8], [0, 8], [1, 8], [2, 9]];
   pearls.forEach(([x, y], i) => v.set(x, y, 2, i & 1 ? 0xf3ecff : 0xffffff));
-  v.set(-1, 7, 2, 0xff7eb6); v.set(0, 7, 2, 0xff9cc8);
+  v.set(-1, 7, 2, 0xe392b0); v.set(0, 7, 2, 0xff9cc8);
 }
 export function buildBouquet(v, c) {
   const wrap = hexToInt(c);
   for (let y = 4; y <= 7; y++) for (let x = -2 + (7 - y > 2 ? 1 : 0); x <= 1 - (7 - y > 2 ? 1 : 0); x++) v.set(x, y, 4, y === 7 ? shade(wrap, 0.3) : wrap);
   v.set(-1, 6, 5, shade(wrap, -0.2)); v.set(0, 6, 5, shade(wrap, -0.2));
-  const fl = [0xff7eb6, 0xffffff, 0xffd166, 0xb58cff, 0xff9cc8];
+  const fl = [0xe392b0, 0xffffff, 0xffd166, 0xb58cff, 0xff9cc8];
   let i = 0;
   for (let x = -3; x <= 2; x++) for (let y = 8; y <= 10; y++) {
     if ((x === -3 || x === 2) && y === 10) continue;
@@ -405,7 +402,7 @@ export function buildShield(v, c) {
 }
 export function buildScepter(v) {
   [[0, -5, 1], [0, -5, 2], [0, -4, 3], [0, -4, 4], [0, -3, 5], [0, -3, 6]].forEach(([x, y, z]) => v.set(x, y, z, GOLD));
-  v.sphere(0, -2, 7.5, 1.3, 1.3, 1.3, () => 0xff5a6e);
+  v.sphere(0, -2, 7.5, 1.3, 1.3, 1.3, () => 0xcf5f5f);
   v.set(0, -1, 8, 0xffffff);
   for (const [x, z] of [[-1, 7], [1, 7], [0, 6], [0, 9]]) v.set(x, -3, z, GOLD_D);
   v.set(0, 0, 7, GOLD); v.set(0, 1, 7, GOLD_L);
@@ -422,7 +419,7 @@ export function buildBackpack(v, c, zOff = 0) {
 }
 export function buildBall(v) {
   // pelota playera de gajos de colores
-  const cols = [0xff7eb6, 0xffffff, 0xffd166, 0x8fd3ff, 0xffffff, 0x6fe3c1];
+  const cols = [0xe392b0, 0xffffff, 0xffd166, 0x8fd3ff, 0xffffff, 0x6fe3c1];
   v.sphere(0.5, -7, 2.5, 2.8, 2.8, 2.8, (x, y, z) => {
     if (y >= -5 && Math.abs(x - 0.5) < 1 && Math.abs(z - 2.5) < 1) return 0xffffff;
     return cols[Math.floor(((Math.atan2(z - 2.5, x - 0.5) + Math.PI) / (Math.PI * 2)) * 6) % 6];
@@ -446,7 +443,7 @@ export function buildFlowerWand(v) {
   [[0, -5, 1], [0, -5, 2], [1, -5, 3], [1, -4, 4], [2, -4, 5]].forEach(([x, y, z]) => v.set(x, y, z, 0x5fc46a));
   v.set(1, -4, 3, 0x8fdc7a);
   const cx = 2, cy = -3, cz = 7;
-  for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]]) v.set(cx + dx, cy + dy, cz, (dx && dy) ? 0xffc2dc : 0xff7eb6);
+  for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [-1, -1], [1, -1], [-1, 1]]) v.set(cx + dx, cy + dy, cz, (dx && dy) ? 0xf0d2dc : 0xe392b0);
   v.set(cx, cy, cz, 0xffe066); v.set(cx, cy, cz + 1, 0xfff0a8);
   v.set(cx + 2, cy + 2, cz, 0xffffff); v.set(cx - 2, cy + 1, cz - 1, 0xfff0a8);
 }

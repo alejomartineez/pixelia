@@ -10,14 +10,14 @@ export const BONUS_EVERY = 150;          // después del nivel 30: un cofre de m
 // ---------- Temas (rotan por índice de temporada) ----------
 // accent: color principal, dark: sombra/borde, light: fondo suave, sky: degradé del encabezado
 export const THEMES = [
-  { id: 'primavera', name: 'Primavera en Flor', emoji: '🌸', accent: '#ee8a5c', dark: '#c8673d', light: '#f9f3e9', sky: ['#f6e2c0', '#faf4eb'], phrase: 'Todo florece en Pixelia: ¡salí a juntar pétalos!' },
+  { id: 'primavera', name: 'Primavera en Flor', emoji: '🌸', accent: '#ee8a5c', dark: '#c8673d', light: '#f9f3e9', sky: ['#f6e2c0', '#faf4eb'], phrase: 'Florece todo, hasta lo que nadie plantó.' },
   { id: 'carnaval', name: 'Carnaval de Pixelia', emoji: '🎭', accent: '#7f9ee8', dark: '#5a78c4', light: '#faf4eb', sky: ['#aabeeb', '#fbf5ed'], phrase: 'Máscaras, papel picado y música en cada esquina.' },
-  { id: 'noche', name: 'Noche Estrellada', emoji: '🌙', accent: '#7f8cff', dark: '#5562d6', light: '#faf4eb', sky: ['#8e9bff', '#f9f3e9'], phrase: 'Pedile un deseo a cada estrella fugaz.' },
-  { id: 'helado', name: 'Verano de Helado', emoji: '🍦', accent: '#3fd1a6', dark: '#2aa883', light: '#d9f8ee', sky: ['#8debd0', '#e3fbf3'], phrase: 'Calorcito, pileta y helado de frutilla.' },
-  { id: 'bosque', name: 'Bosque Encantado', emoji: '🍄', accent: '#5cc46e', dark: '#3c9a50', light: '#e2f6e4', sky: ['#9fe0a8', '#eaf9ec'], phrase: 'Hongos que brillan y luciérnagas escondidas entre los árboles.' },
+  { id: 'noche', name: 'Noche Estrellada', emoji: '🌙', accent: '#7f8cff', dark: '#5562d6', light: '#faf4eb', sky: ['#8e9bff', '#f9f3e9'], phrase: 'Noches largas, cielo limpio y alguna estrella fugaz.' },
+  { id: 'helado', name: 'Verano de Helado', emoji: '🍦', accent: '#3fd1a6', dark: '#2aa883', light: '#d9f8ee', sky: ['#8debd0', '#e3fbf3'], phrase: 'Calor, pileta y helado de frutilla.' },
+  { id: 'bosque', name: 'Bosque Encantado', emoji: '🍄', accent: '#5cc46e', dark: '#3c9a50', light: '#e2f6e4', sky: ['#9fe0a8', '#eaf9ec'], phrase: 'Hongos, luciérnagas y caminos que nadie marcó.' },
   { id: 'cristal', name: 'Feria de Inventos', emoji: '🔭', accent: '#4fb6f0', dark: '#2f8fcc', light: '#dff3ff', sky: ['#9fdcff', '#e8f7ff'], phrase: 'Cohetes, robots y experimentos que brillan.' },
-  { id: 'otono', name: 'Dulce Otoño', emoji: '🍂', accent: '#ff9a62', dark: '#e0743a', light: '#ffeadc', sky: ['#ffc39e', '#fff0e4'], phrase: 'Hojas crujientes, chocolate caliente y mantita.' },
-  { id: 'corazones', name: 'Semana de la Amistad', emoji: '💖', accent: '#ff5a7e', dark: '#d93a60', light: '#ffe1e8', sky: ['#ff9fb6', '#faf5ed'], phrase: 'Una temporada para mimar a quienes más querés.' },
+  { id: 'otono', name: 'Otoño', emoji: '🍂', accent: '#ff9a62', dark: '#e0743a', light: '#ffeadc', sky: ['#ffc39e', '#fff0e4'], phrase: 'Hojas secas, chocolate caliente y una manta.' },
+  { id: 'corazones', name: 'Temporada de Visitas', emoji: '🤝', accent: '#c47a68', dark: '#a35a4b', light: '#f4e2db', sky: ['#e3bfb2', '#faf5ed'], phrase: 'Para pasar por la ciudad de alguien y dejar algo.' },
 ];
 
 // ---------- Costo de cada nivel (chispas) ----------
@@ -107,7 +107,7 @@ export const WELCOME = {
 // keys válidas de mult: production, chestDrop, stickers, match3Rewards, blocksRewards, parkingRewards, drivingRewards
 export const EVENT_TEMPLATES = {
   doble_prod: { short: 'Producción ×2', title: 'Finde de Doble Producción', emoji: '🧺', color: '#ffd166', dark: '#e8a93a', days: [4, 6],
-    desc: 'Todos tus negocios producen el doble. ¡Ideal para pasar a cobrar seguido!', mult: { production: 2 } },
+    desc: 'Todos tus negocios producen el doble. Conviene pasar a cobrar seguido.', mult: { production: 2 } },
   lluvia_cofres: { short: 'Cofres ×2', title: 'Lluvia de Cofres', emoji: '🎁', color: '#ff9a62', dark: '#e0743a', days: [3, 6],
     desc: 'Ganar minijuegos da el doble de chances de cofre.', mult: { chestDrop: 2 } },
   fiebre_figus: { short: 'Figuritas ×2', title: 'Fiebre de Figuritas', emoji: '🃏', color: '#7f9ee8', dark: '#5a78c4', days: [3, 6],
@@ -121,7 +121,7 @@ export const EVENT_TEMPLATES = {
   paseo: { short: 'Ruta Pixel ×1,5', title: 'Semana del Ruta Pixel', emoji: '🚗', color: '#ffb38a', dark: '#e0743a', days: [0, 6],
     desc: 'Ruta Pixel da premios ×1,5 toda la semana.', mult: { drivingRewards: 1.5 } },
   estrellas: { short: 'Meta de estrellas', title: 'Carrera de Estrellas', emoji: '⭐', color: '#ffd166', dark: '#e8a93a', days: [0, 6],
-    desc: 'Juntá estrellas en cualquier minijuego: hay 3 escalones con premio. ¡Es una meta tuya, sin apuro!', mult: {},
+    desc: 'Juntá estrellas en cualquier minijuego: hay 3 escalones con premio. Es una meta tuya, sin apuro.', mult: {},
     race: [
       { goal: 9, reward: { coins: 300, stickers: { n: 1 } } },
       { goal: 21, reward: { gems: 8, chest: 'madera' } },

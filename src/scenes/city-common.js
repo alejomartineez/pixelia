@@ -41,6 +41,18 @@ export function footCenter(id, x, z, rot) {
   return { x: x + w / 2 - HALF, z: z + d / 2 - HALF, w, d };
 }
 
+// Globo de saludo al tocar a alguien en la ciudad (en vez de corazones): corto, seco y local.
+export const GREETINGS = ['Buenas.', 'Hola.', '¿Todo bien?', 'Qué día, eh.', 'Acá ando.', 'Linda tarde.', 'Voy al almacén.',
+  'Saludos a la familia.', '¿Viste el cielo?', 'Con permiso.', 'Otra vez vos.', 'Se viene lluvia, dicen.'];
+let lastGreet = -1;
+/** Un saludo al azar, sin repetir el anterior. */
+export function greeting() {
+  let i = Math.floor(Math.random() * GREETINGS.length);
+  if (i === lastGreet) i = (i + 1) % GREETINGS.length;
+  lastGreet = i;
+  return GREETINGS[i];
+}
+
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const lerp = (a, b, t) => a + (b - a) * t;
 export function easeOutBack(t, s = 1.9) { const u = t - 1; return 1 + (s + 1) * u * u * u + s * u * u; }

@@ -16,11 +16,11 @@ export const NEED_LOGIN = 'Tenés que iniciar sesión para jugar online';
 
 /** Niveles de amistad por días de interacción. */
 export const FRIEND_LEVELS = [
-  { id: 'conocidas', name: 'Primer saludo', min: 0 },
-  { id: 'amigas', name: 'Amistad', min: 3 },
-  { id: 'compinches', name: 'Compinches', min: 14 },
-  { id: 'intimas', name: 'Uña y carne', min: 45 },
-  { id: 'inseparables', name: 'Inseparables', min: 100 },
+  { id: 'conocidas', name: 'Saludo', min: 0 },
+  { id: 'amigas', name: 'Mate', min: 3 },
+  { id: 'compinches', name: 'Asado', min: 14 },
+  { id: 'intimas', name: 'Llave de casa', min: 45 },
+  { id: 'inseparables', name: 'Familia', min: 100 },
 ];
 
 /** Nombre por defecto de la partida (antes era 'Princesa': los saves y perfiles viejos lo pueden tener). */
@@ -28,10 +28,11 @@ export const DEFAULT_PLAYER_NAME = 'Pixelín';
 /** ¿Es un nombre "sin elegir" (el de por defecto, actual o viejo)? */
 export const isDefaultName = (n) => n === DEFAULT_PLAYER_NAME || n === 'Princesa';
 
-// Mensajes de un schema.sql viejo (ya desplegado) → textos neutros. Los nuevos ya vienen así.
+// Mensajes del servidor (schema.sql, viejo o actual) → textos neutros, con "contactos" (el servidor no se toca desde acá).
 const LEGACY_SERVER_MSG = [
-  [/tus amigas/g, 'tus amigos'], [/^Ya son amigas con/, 'Ya son amigos con'], [/100 amigas/, '100 amigos'],
-  [/^No son amigas$/, 'No son amigos'], [/con amigas de 14 días/, 'con amistades de 14 días'],
+  [/tus amig[ao]s/g, 'tus contactos'], [/^Ya son amig[ao]s con (.+)$/, '$1 ya está entre tus contactos'], [/100 amig[ao]s/, '100 contactos'],
+  [/^No son amig[ao]s$/, 'No está entre tus contactos'], [/con amig[ao]s de 14 días/, 'con amistades de 14 días'],
+  [/^Escribí algo cortito$/, 'Escribí algo antes de mandarla'],
   [/^Otra amiga ya completó/, 'Alguien más ya completó'], [/código de amiga/, 'código de amistad'],
 ];
 const neutralMsg = (m) => LEGACY_SERVER_MSG.reduce((s, [re, to]) => s.replace(re, to), m);
@@ -55,11 +56,11 @@ export function isoWeek(d = new Date()) {
 
 /** Traduce cualquier error (red, auth, RPC) a un texto amable en español rioplatense. */
 export function friendlyError(e) {
-  if (!e) return 'Algo salió mal. Probá de nuevo en un ratito.';
+  if (!e) return 'Algo salió mal. Probá de nuevo en un rato.';
   const msg = String(e.message || e.error_description || e.msg || e.error || e);
   const code = e.code || '';
   if (code === 'P0001' || e.friendly) return neutralMsg(msg); // mensajes propios del servidor/mock (ya amables)
-  if (code === 'TIMEOUT') return 'El servidor tardó demasiado. Probá de nuevo en un ratito.';
+  if (code === 'TIMEOUT') return 'El servidor tardó demasiado. Probá de nuevo en un rato.';
   if (/failed to fetch|networkerror|network request failed|load failed|fetch failed|err_internet|offline/i.test(msg))
     return 'No hay conexión. Revisá tu internet y probá de nuevo.';
   if (/invalid login credentials/i.test(msg)) return 'Email o contraseña incorrectos.';
@@ -67,11 +68,11 @@ export function friendlyError(e) {
   if (/email not confirmed/i.test(msg)) return 'Falta confirmar tu email: revisá tu correo (y la carpeta de spam).';
   if (/password.*(at least|short|characters)|weak.password/i.test(msg)) return 'La contraseña tiene que tener al menos 6 caracteres.';
   if (/(invalid|unable to validate).*email|email.*(invalid|format)/i.test(msg)) return 'Ese email no parece válido.';
-  if (/rate limit|too many|429/i.test(msg)) return 'Demasiados intentos seguidos. Esperá un ratito y probá de nuevo.';
+  if (/rate limit|too many|429/i.test(msg)) return 'Demasiados intentos seguidos. Esperá un rato y probá de nuevo.';
   if (/jwt|token.*(expired|invalid)|not authenticated|refresh token/i.test(msg)) return 'Tu sesión venció. Volvé a iniciar sesión.';
   if (/permission denied|row-level security/i.test(msg)) return 'No tenés permiso para hacer eso.';
   if (/could not find the function|schema cache/i.test(msg)) return 'Falta configurar el servidor (corré schema.sql en Supabase).';
-  return 'Algo salió mal. Probá de nuevo en un ratito.';
+  return 'Algo salió mal. Probá de nuevo en un rato.';
 }
 const isNetErr = e => e?.code === 'TIMEOUT' || /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(String(e?.message || ''));
 
@@ -175,7 +176,7 @@ export const net = {
     email = cleanEmail(email); name = String(name || '').trim().slice(0, 24);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Ese email no parece válido.' };
     if (String(password || '').length < 6) return { error: 'La contraseña tiene que tener al menos 6 caracteres.' };
-    if (!name) return { error: 'Elegí un nombre para que tus amigos te reconozcan.' };
+    if (!name) return { error: 'Elegí un nombre para que tus contactos te reconozcan.' };
     try {
       const r = await withTimeout(adapter.signUp(email, password, name));
       net.online = true;

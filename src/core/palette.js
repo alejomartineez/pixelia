@@ -1,4 +1,5 @@
-// Paleta única de Pixelia ("pueblo acogedor"): cálida, verde y cielo, con el rosa solo como acento.
+// Paleta única de Pixelia ("pueblo acogedor", cozy adulto): cálida y apagada, verde y cielo; el rosa (berry) es un
+// acento puntual (alguna flor), no un color de sistema.
 // La usan los modelos vóxel (models-kit P), la UI (los mismos valores están como variables en styles.css),
 // los íconos y los temas. Si cambiás un color acá, cambialo también en :root de styles.css.
 
@@ -8,16 +9,16 @@ export const INK_LL = '#a2917f';
 
 export const PALETTE = {
   // terracota: techos, toldos, botón principal
-  clay: '#ee8a5c', clayD: '#c8673d', clayL: '#ffd8c4',
+  clay: '#dc8a60', clayD: '#b66a46', clayL: '#f3d8c6',
   // azul pizarra: segundo color (XP, botones secundarios)
-  slate: '#7f9ee8', slateD: '#5a78c4', slateL: '#dbe4fa',
-  mint: '#6fe3c1', mintD: '#3cbf9a', mintL: '#c4f7e8',
-  sky: '#8fd3ff', skyD: '#4fa8e0', skyL: '#d4efff',
-  gold: '#ffd166', goldD: '#e8a93a', goldL: '#fff0c2',
-  berry: '#f28ca0', berryD: '#d4677e', berryL: '#ffd9e0',   // acento rosado (flores, corazones)
-  peach: '#ffb38a', coral: '#ff6f6f', cream: '#fdf6e3',
+  slate: '#8499c4', slateD: '#5f74a3', slateL: '#dce3f0',
+  mint: '#80cbb0', mintD: '#4fa287', mintL: '#cfece0',
+  sky: '#9ccbe6', skyD: '#5f9dc4', skyL: '#dbecf5',
+  gold: '#f0c96e', goldD: '#cf9e45', goldL: '#f7ebc9',
+  berry: '#d98f9c', berryD: '#b56b7a', berryL: '#f2dade',   // acento rosado puntual (alguna flor), nunca de sistema
+  peach: '#efb592', coral: '#e2766c', cream: '#fbf5e6',
   white: '#ffffff', ink: INK, inkL: INK_L,
-  grass: '#8fdc7a', grassD: '#6cc35d', grassL: '#b5ec9f',
-  dirt: '#d9a87a', stone: '#ddd5c8', stoneD: '#ada190',
-  wood: '#b07a52', woodD: '#8a5a3a', water: '#7fd6ff', leaf: '#5fc46a', leafD: '#3e9e52',
+  grass: '#9ccf82', grassD: '#7bb566', grassL: '#bfe2a8',
+  dirt: '#d4a77d', stone: '#dcd4c7', stoneD: '#aa9f8e',
+  wood: '#a87a56', woodD: '#86593c', water: '#8ccbe8', leaf: '#68b36c', leafD: '#478f53',
 };

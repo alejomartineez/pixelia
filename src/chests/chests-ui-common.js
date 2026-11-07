@@ -51,18 +51,18 @@ export function dropAmountHtml(d, size = 28) {
   return `<span>x${d.amount || 1}</span>`;
 }
 export function dropNote(d) {
-  if (d.converted) return 'Ya tenías todo: ¡te damos gemas!';
+  if (d.converted) return 'Ya tenías todo: va en gemas';
   const it = ITEMS[d.item];
   switch (d.kind) {
     case 'coins': return 'Monedas para tu ciudad';
-    case 'gems': return '¡Gemas brillantes!';
+    case 'gems': return 'Gemas';
     case 'xp': return 'Experiencia para subir de nivel';
     case 'item': return it?.use === 'game' ? `A tu mochila · para ${GAME_BY_ID[it.game]?.name || 'un juego'}` : 'Guardado en tu mochila';
     case 'cosmetic': return CAR_KINDS.has(d.cosmeticKind) ? 'Pieza nueva · estrenala en el Taller' : 'Prenda nueva · estrenala en el Vestidor';
     case 'build': return 'Construcción gratis · colocala desde Construir';
     case 'material': return 'Para tus monumentos · mirá las Obras';
     case 'furniture': return 'Para tu casa · ponelo desde Decorar';
-    case 'stickers': return d.fresh ? `¡${d.fresh === 1 ? 'Una nueva' : d.fresh + ' nuevas'} para tu Álbum!` : 'Repetidas · cambialas por brillitos';
+    case 'stickers': return d.fresh ? `¡${d.fresh === 1 ? 'Una nueva' : d.fresh + ' nuevas'} para tu Álbum!` : 'Repetidas · se cambian en el Álbum';
     default: return '';
   }
 }

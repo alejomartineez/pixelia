@@ -262,10 +262,10 @@ function isAllUnderConstruction(ctx, id) {
 /** Etiqueta corta del candado de una tarjeta (entra en una línea en el celu). */
 function lockLabel(d, can, ctx) {
   if (can.reason === 'Constructoras ocupadas') return `${icon('hammer', 14)}Ocupadas`;
-  if (can.reason === 'Ya lo tenés') return isAllUnderConstruction(ctx, d.id) ? `${icon('hammer', 14)}En obra` : `${icon('check', 14)}¡Ya lo tenés!`;
+  if (can.reason === 'Ya lo tenés') return isAllUnderConstruction(ctx, d.id) ? `${icon('hammer', 14)}En obra` : `${icon('check', 14)}Ya lo tenés`;
   if (can.poor) return `${icon('coin', 14)}Te faltan monedas`;
   if (can.mats) return `${icon('monument', 14)}Faltan materiales`;
-  if (can.locked && d.popReq && !/^Nivel/.test(can.reason)) return `${icon('people', 14)}${d.popReq} vecinos`;
+  if (can.locked && d.popReq && !/^Nivel/.test(can.reason)) return `${icon('people', 14)}${d.popReq} habitantes`;
   return `${icon(can.locked ? 'lock' : 'info', 14)}${can.reason}`;
 }
 
@@ -321,15 +321,15 @@ export function openBuildMenu(S, focusId = null) {
       const card = ui.h(`button.card.cx-card.cx-cat-${d.cat}` + (lockedHard ? '.locked' : '') + (can.poor && !isFree ? '.poor' : '') + (isFree ? '.cx-isfree' : '') + (d.id === focusId ? '.cx-focus' : ''));
       const th = ui.h('div.cx-thumb');
       th.append(thumbImg(d.id, 1));
-      if (qids.includes(d.id)) th.append(ui.h('span.cx-qbadge', {}, '¡Misión!'));
+      if (qids.includes(d.id)) th.append(ui.h('span.cx-qbadge', {}, 'Misión'));
       if (d.max) th.append(ui.h('span.cx-count', {}, `${E.countOf(d.id)}/${d.max}`));
       if (showLock) th.append(ui.h('div.cx-lock', { html: `<span>${lockLabel(d, can, ctx)}</span>` }));
       if (isFree) {
-        const rb = ui.h('div.cx-free', { html: `<span>¡Gratis!${nFree > 1 ? ' x' + nFree : ''}</span>` });
+        const rb = ui.h('div.cx-free', { html: `<span>Gratis${nFree > 1 ? ' x' + nFree : ''}</span>` });
         if (showLock) rb.style.bottom = '34px';
         th.append(rb);
       }
-      const priceHtml = isFree ? `<span class="cost cx-freecost">${icon('🎁', 16)}¡Gratis!</span>` : ui.costHtml(cost, 16);
+      const priceHtml = isFree ? `<span class="cost cx-freecost">${icon('🎁', 16)}Gratis</span>` : ui.costHtml(cost, 16);
       card.append(th,
         ui.h('div.nm', {}, d.name),
         ui.h('div.cx-gives', { html: givesHtml(ctx, d) }),
@@ -418,10 +418,10 @@ export function openInfo(S, uid) {
       let st = '';
       const sz = E.maxLevel(b) > 5 ? 17 : 22;
       for (let i = 0; i < E.maxLevel(b); i++) st += icon(i < b.level ? 'star' : 'starOff', sz);
-      meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, isCastle ? `Rango ${b.level}: ${E.rankName(b.level)}` : isMon ? (b.level >= E.maxLevel(b) ? '¡Terminado!' : `Etapa ${b.level} de ${E.maxLevel(b)}`) : isHome ? `${homeLevelDef(b.level).name}` : `Nivel ${b.level}`));
+      meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, isCastle ? `Rango ${b.level}: ${E.rankName(b.level)}` : isMon ? (b.level >= E.maxLevel(b) ? 'Terminado' : `Etapa ${b.level} de ${E.maxLevel(b)}`) : isHome ? `${homeLevelDef(b.level).name}` : `Nivel ${b.level}`));
     } else meta.append(ui.h('span.chip', { html: icon(CAT_ICON[d.cat], 14) + (CATEGORIES.find(c => c.id === d.cat)?.name || '') }));
     const chips = [];
-    if (d.pop) chips.push(`<span class="chip primary">${icon('people', 14)}${E.buildingPop(b)} vecinos</span>`);
+    if (d.pop) chips.push(`<span class="chip primary">${icon('people', 14)}${E.buildingPop(b)} habitantes</span>`);
     if (d.happy) chips.push(`<span class="chip mint">${icon('smile', 14)}+${E.buildingHappy(b)} felicidad</span>`);
     if (d.game) chips.push(`<span class="chip second">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Minijuego'}</span>`);
     if (isCastle) chips.push(`<span class="chip gold">${icon('sparkle', 14)}${E.fmtNum(E.cityCharm())} Encanto</span>`);
@@ -445,7 +445,7 @@ export function openInfo(S, uid) {
       box.append(ui.h('div.line', {}, ui.h('span.muted', {}, 'Falta'), refs.busyTime), refs.busyBar);
       refs.busyTotal = total;
       const cost = E.skipCost(b);
-      refs.skipBtn = btn(cost ? `Terminar ya ${icon('gem', 18)}${cost}` : '¡Terminar gratis!', cost ? 'sky' : 'mint', 'bolt', () => {
+      refs.skipBtn = btn(cost ? `Terminar ya ${icon('gem', 18)}${cost}` : 'Terminar gratis', cost ? 'sky' : 'mint', 'bolt', () => {
         const c = E.skipCost(b);
         if (c > ctx.state.gems) { ctx.audio.sfx('error'); ui.toast('Te faltan gemas', { icon: 'gem' }); return; }
         if (E.skip(b.uid)) { ctx.audio.sfx('gem'); m.close(); }
@@ -461,7 +461,7 @@ export function openInfo(S, uid) {
           ctx.audio.sfx('build');
           m.close();
           E.tick();
-          ui.toast(res.msg || '¡Obra terminada!', { icon: '🔨', type: 'good' });
+          ui.toast(res.msg || 'Obra terminada', { icon: '🔨', type: 'good' });
         }));
       }
       body.append(box);
@@ -517,7 +517,7 @@ export function openInfo(S, uid) {
       const box = ui.h('div.cx-box.up');
       if (!info) {
         if (isMon) box.append(ui.h('h4', { html: icon('trophy', 20) + '¡Monumento terminado!' }), ui.h('div.line', { html: `<span>${icon(MONUMENTS[d.id].bonusIcon || 'sparkle', 16)} ${ui.esc(MONUMENTS[d.id].bonusText)} (para siempre)</span>` }));
-        else box.append(ui.h('h4', { html: icon('crown', 20) + '¡Nivel máximo!' }), ui.h('span.muted', {}, 'Este edificio ya está espléndido.'));
+        else box.append(ui.h('h4', { html: icon('crown', 20) + 'Nivel máximo' }), ui.h('span.muted', {}, 'No hay más mejoras para este edificio.'));
       } else {
         const can = E.canUpgrade(b);
         box.append(ui.h('h4', { html: icon('up', 20) + (isCastle ? `Subir a rango ${E.rankName(b.level + 1)}` : isMon ? `Etapa ${b.level + 1}: ${MONUMENTS[d.id].stageNames[b.level] || ''}` : isHome ? `Ampliar: ${HOME_LEVELS[b.level].name}` : `Mejorar a nivel ${b.level + 1}`) }));
@@ -557,7 +557,7 @@ export function openInfo(S, uid) {
           }
           box.append(ui.h('div.req', { html: icon('lock', 14) + 'Falta completar el expediente:' }), list);
         } else if (can.mats) {
-          box.append(ui.h('div.req', { html: icon('monument', 14) + 'Faltan materiales: ¡se ganan jugando!' }));
+          box.append(ui.h('div.req', { html: icon('monument', 14) + 'Faltan materiales: se ganan jugando.' }));
         } else if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.rank ? `Necesitás el rango ${ui.esc(E.rankName(can.rank))}` : can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
         box.append(btn(isMon ? 'Avanzar obra' : isHome ? 'Ampliar' : 'Mejorar', 'second', 'up', () => {
           const c = E.canUpgrade(b);
@@ -576,7 +576,7 @@ export function openInfo(S, uid) {
       const box = ui.h('div.cx-box');
       const bnd = E.landBounds();
       box.append(ui.h('h4', { html: icon('map', 20) + 'Terreno' }));
-      if (!ex) box.append(ui.h('span.muted', {}, `¡Tu terreno ya es enorme! (${bnd.side}×${bnd.side})`));
+      if (!ex) box.append(ui.h('span.muted', {}, `Tu terreno ya es enorme (${bnd.side}×${bnd.side})`));
       else {
         box.append(ui.h('div.line', { html: `<span>${bnd.side}×${bnd.side} → <b>${bnd.side + 2}×${bnd.side + 2}</b></span><span class="cost">${ui.costHtml(ex.cost, 18)}</span>` }));
         const lvOk = ex.ok;
@@ -587,13 +587,13 @@ export function openInfo(S, uid) {
       const bi = E.builderInfo();
       const box2 = ui.h('div.cx-box');
       box2.append(ui.h('h4', { html: icon('hammer', 20) + `Constructoras: ${ctx.state.builders}` }));
-      if (!bi) box2.append(ui.h('span.muted', {}, '¡Tenés el equipo completo!'));
+      if (!bi) box2.append(ui.h('span.muted', {}, 'Tenés el equipo completo'));
       else {
         box2.append(ui.h('div.line', { html: `<span>Más obras al mismo tiempo</span><span class="cost">${ui.costHtml(bi.cost, 18)}</span>` }));
         box2.append(btn('Contratar', 'sky', 'plus', async () => {
           if (!store.canAfford(bi.cost)) { ctx.audio.sfx('error'); ui.toast('Te faltan gemas', { icon: 'gem' }); return; }
           const ok = await askYesNo(S, 'Contratar constructora', `¿Contratar otra constructora por ${icon('gem', 16)} ${bi.cost.gems}?`, 'Contratar', 'Mejor no');
-          if (ok && E.buyBuilder()) { ctx.audio.sfx('buy'); ui.toast('¡Nueva constructora en el equipo!', { icon: 'hammer', type: 'good' }); sig = ''; tick(); }
+          if (ok && E.buyBuilder()) { ctx.audio.sfx('buy'); ui.toast('Nueva constructora en el equipo', { icon: 'hammer', type: 'good' }); sig = ''; tick(); }
         }));
       }
       body.append(box2);
@@ -636,13 +636,13 @@ export function openInfo(S, uid) {
       const bar = refs.busyBar.querySelector('i');
       if (bar) bar.style.width = Math.min(100, (1 - rem / refs.busyTotal) * 100).toFixed(1) + '%';
       const cost = E.skipCost(b, now);
-      refs.skipBtn.innerHTML = icon('bolt', 20) + (cost ? `Terminar ya ${icon('gem', 18)}${cost}` : '¡Terminar gratis!');
+      refs.skipBtn.innerHTML = icon('bolt', 20) + (cost ? `Terminar ya ${icon('gem', 18)}${cost}` : 'Terminar gratis');
     }
     if (refs.prodBar && refs.prodBar.isConnected) {
       const ps = E.producerStatus(b, now);
       const bar = refs.prodBar.querySelector('i');
       if (bar) bar.style.width = (ps.full ? 100 : ps.progress * 100).toFixed(1) + '%';
-      refs.prodTxt.innerHTML = ps.full ? '¡Lleno! Cobralo para que siga produciendo'
+      refs.prodTxt.innerHTML = ps.full ? 'Lleno. Cobralo para que siga produciendo'
         : ps.siesta ? `Para cobrar: <b>${E.fmtNum(ps.amount)}</b> · la ciudad duerme la siesta: junta más lento (lleno en ${E.fmtTime(ps.fullInSec)})`
         : ps.ready ? `Para cobrar: <b>${E.fmtNum(ps.amount)}</b> · próxima tanda en ${E.fmtTime((1 - ps.progress) * ps.cycleSec)}`
         : `Próxima tanda en ${E.fmtTime((1 - ps.progress) * ps.cycleSec)}`;
@@ -660,7 +660,7 @@ export function openExpand(S) {
   const { ctx } = S;
   const { ui, economy: E } = ctx;
   const ex = E.expansionStatus();
-  if (!ex) { ui.toast('¡Tu terreno ya está al máximo!', { icon: 'map' }); return null; }
+  if (!ex) { ui.toast('Tu terreno ya está al máximo', { icon: 'map' }); return null; }
   const bnd = E.landBounds();
   const body = ui.h('div.cx-info');
   const cv = document.createElement('canvas');
@@ -675,13 +675,13 @@ export function openExpand(S) {
     g.fillRect(b.x, b.z, w, d);
   }
   body.append(ui.h('div.cx-exp-map', {}, cv));
-  body.append(ui.h('p.cx-desc.center', { html: `Tu terreno pasa de <b>${bnd.side}×${bnd.side}</b> a <b>${bnd.side + 2}×${bnd.side + 2}</b>: ¡más lugar para casas, negocios y jardines!` }));
+  body.append(ui.h('p.cx-desc.center', { html: `Tu terreno pasa de <b>${bnd.side}×${bnd.side}</b> a <b>${bnd.side + 2}×${bnd.side + 2}</b>: más lugar para casas, negocios y jardines.` }));
   const lvOk = ex.ok;
   const box = ui.h('div.cx-box');
   box.append(ui.h('div.line', { html: `<span>Costo</span><span class="cost">${ui.costHtml(ex.cost, 20)}</span>` }));
   if (!lvOk) box.append(ui.h('div.req', { html: icon('lock', 14) + ui.esc(ex.reason) }));
   body.append(box);
-  const m = ui.modal({ title: '¡Expandir!', icon: 'map', content: body, className: 'cx-modal', onClose: () => S.untrackModal(m),
+  const m = ui.modal({ title: 'Expandir', icon: 'map', content: body, className: 'cx-modal', onClose: () => S.untrackModal(m),
     actions: [{ label: 'Ahora no', cls: 'ghost' }, { html: `${icon('plus', 20)}Expandir`, label: 'Expandir', cls: 'mint', disabled: !lvOk, onClick: () => S.doExpand() ? undefined : false }] });
   S.trackModal(m);
   return m;
@@ -715,7 +715,7 @@ export function makePlaceBar(S, { onCancel, onRotate, onConfirm }) {
       lastKey = key;
       top.innerHTML = '';
       top.append(ui.h('b', {}, (p.mode === 'move' ? 'Mover: ' : '') + d.name), ui.h('span.grow'));
-      if (cost && (nFree > 0 || cost.free)) top.append(ui.h('span.chip.primary', { html: `${icon('🎁', 14)}¡Gratis!${nFree > 1 ? ' x' + nFree : ''}` }));
+      if (cost && (nFree > 0 || cost.free)) top.append(ui.h('span.chip.primary', { html: `${icon('🎁', 14)}Gratis${nFree > 1 ? ' x' + nFree : ''}` }));
       else if (cost) top.append(ui.h('span', { html: ui.costHtml(cost, 18) }));
       if (p.count) top.append(ui.h('span.chip.mint', { html: `${icon('check', 12)}${p.count}` }));
       const touch = S.lastPointer === 'touch' || (S.lastPointer !== 'mouse' && matchMedia('(pointer: coarse)').matches);

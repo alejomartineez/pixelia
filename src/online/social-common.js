@@ -161,7 +161,7 @@ const HEADWEAR = {
   tiara: ['crown'], corona: ['crown'], estrella: ['crown'], corona_p: ['crown'], corona_rey: ['crown'], laurel: ['crown', '#9bd35a'],
   corona_cristal: ['crown', '#9ff0ff'],
   flores: ['flowers'], diadema: ['flowers', '#6cc35d'],
-  'moño': ['bow', '#ff7eb6'], lacito: ['bow', '#ff7eb6'],
+  'moño': ['bow', '#e392b0'], lacito: ['bow', '#e392b0'],
   sombrero_mago: ['wizard'], sombrero_luna: ['wizard', '#4f5bd6'], sombrero_estrellas: ['wizard', '#3b3f9e'],
   galera: ['tophat', '#3b2340'], gorrito: ['party'],
   gorra: ['cap'], gorro: ['beanie'], piluso: ['beanie', '#f2e2b8'], casco: ['beanie', '#b8bfd0'], capucha: ['beanie'],
@@ -212,16 +212,16 @@ export function avatarUrl(look, seed = '') {
   if (avatarCache.has(key)) return avatarCache.get(key);
   const skin = SKIN_TONES[l.skin | 0] || SKIN_TONES[0];
   const hair = hexOf(HAIR_COLORS, l.hairColor, '#7a4a2a');
-  const dress = hexOf(OUTFIT_COLORS, l.dressColor, '#ff7eb6');
+  const dress = hexOf(OUTFIT_COLORS, l.dressColor, '#e392b0');
   const [hwKind, hwCol] = HEADWEAR[l.crown] || [];
   const hat = hwCol || shade(dress, 0.15);
   const pal = {
-    h: hair, s: skin, k: '#3b2340', p: '#ff9cc2', m: '#e0528f', d: animal && l.dress === 'pelito' ? shade(hair, 0.12) : dress,
+    h: hair, s: skin, k: '#3b2340', p: '#eaa9bf', m: '#c4678e', d: animal && l.dress === 'pelito' ? shade(hair, 0.12) : dress,
     f: hair, e: '#ffb3c8', w: l.type === 'zorrito' ? '#fff4ea' : lighten(hair, 0.55), n: '#3b2340',
-    y: hwKind === 'crown' ? (hwCol || '#ffd166') : '#ffd166', g: hwCol || '#6cc35d', b: hwCol || '#ff7eb6',
-    t: hat, r: hwKind === 'tophat' ? '#ff7eb6' : lighten(hat, 0.45),
+    y: hwKind === 'crown' ? (hwCol || '#ffd166') : '#ffd166', g: hwCol || '#6cc35d', b: hwCol || '#e392b0',
+    t: hat, r: hwKind === 'tophat' ? '#e392b0' : lighten(hat, 0.45),
   };
-  if (hwKind === 'flowers') pal.p = '#ff9cc2';
+  if (hwKind === 'flowers') pal.p = '#eaa9bf';
   const rows = (animal || (LONG_HAIR.has(l.hair) || !l.hair ? FACE_LONG : FACE_SHORT)).slice();
   const over = (list) => { for (const [y, pat] of list) rows[y] = [...pat].map((ch, x) => (ch === '.' ? rows[y][x] : ch)).join(''); };
   if (!animal && l.hair === 'barba') over(BEARD);
@@ -283,7 +283,7 @@ export async function busy(btn, fn) {
     return r;
   } catch (e) {
     console.error('[social]', e);
-    toast('Algo salió mal. Probá de nuevo en un ratito.', { icon: 'info', type: 'bad' });
+    toast('Algo salió mal. Probá de nuevo en un rato.', { icon: 'info', type: 'bad' });
     return { error: String(e) };
   } finally {
     if (btn?.isConnected) { delete btn.dataset.busy; btn.disabled = false; btn.classList.remove('soc-busy'); }
@@ -309,7 +309,7 @@ export function friendshipHtml(f) {
   const pct = Math.round(fl.progress * 100);
   const hearts = '<span class="soc-hearts">' + Array.from({ length: 5 }, (_, i) => `<i class="${i <= fl.index ? 'on' : ''}"></i>`).join('') + '</span>';
   return `<div class="soc-fl lv${fl.index}">
-    <div class="soc-fl-top">${hearts}<b>${esc(fl.name)}</b><small>${fl.next != null ? `${days}/${fl.next} días` : `${days} días · ¡máximo!`}</small></div>
+    <div class="soc-fl-top">${hearts}<b>${esc(fl.name)}</b><small>${fl.next != null ? `${days}/${fl.next} días` : `${days} días · nivel máximo`}</small></div>
     <div class="soc-fl-bar"><i style="width:${pct}%"></i></div>
   </div>`;
 }

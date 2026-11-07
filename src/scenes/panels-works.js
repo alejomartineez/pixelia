@@ -77,7 +77,7 @@ export function openWorks(ctx, params = {}) {
     const st = E.monumentStatus(id, ctx.state, now);
     const { def: d, mon, N } = st;
     const el = h('div.card.pnl-wk-card' + (st.done ? '.done' : '') + (!st.unlocked ? '.locked' : ''), { 'data-mon': id });
-    const stageName = st.done ? '¡Terminado!' : st.busy ? `Obra en curso: ${mon.stageNames[st.nextIdx] || 'etapa ' + (st.nextIdx + 1)}` : st.b ? `Etapa ${st.stagesDone} de ${N}` : 'Sin empezar';
+    const stageName = st.done ? 'Terminado' : st.busy ? `Obra en curso: ${mon.stageNames[st.nextIdx] || 'etapa ' + (st.nextIdx + 1)}` : st.b ? `Etapa ${st.stagesDone} de ${N}` : 'Sin empezar';
     el.append(h('div.pnl-wk-top', { html: `
       <span class="pnl-wk-thumb" data-building="${id}" data-level="${st.b ? Math.max(1, st.stagesDone) : N}">${icon('monument', 48)}</span>
       <span class="pnl-wk-meta">
@@ -90,7 +90,7 @@ export function openWorks(ctx, params = {}) {
       return el;
     }
     if (st.done) {
-      el.append(h('div.pnl-wk-okmsg', { html: `${icon('check', 18)}<span>¡Bonus activo para siempre! ${icon('sparkle', 14)} +${fmt(E.charmBase(d))} Encanto</span>` }));
+      el.append(h('div.pnl-wk-okmsg', { html: `${icon('check', 18)}<span>Bonus activo para siempre. ${icon('sparkle', 14)} +${fmt(E.charmBase(d))} Encanto</span>` }));
       return el;
     }
     if (st.busy) {
@@ -110,12 +110,12 @@ export function openWorks(ctx, params = {}) {
     btn.onclick = () => {
       const now2 = Date.now();
       const s2 = E.monumentStatus(id, ctx.state, now2);
-      if (!s2.can.ok) { audio.sfx('error'); ui.toast(s2.can.mats ? 'Te faltan materiales: ¡a jugar!' : s2.can.poor ? 'No te alcanza todavía' : s2.can.reason, { icon: 'info' }); return; }
+      if (!s2.can.ok) { audio.sfx('error'); ui.toast(s2.can.mats ? 'Te faltan materiales: salen jugando.' : s2.can.poor ? 'No te alcanza todavía' : s2.can.reason, { icon: 'info' }); return; }
       if (!s2.b) { audio.sfx('tap'); sh.close(); bus.emit('city:place', { id }); return; }
       const res = E.startUpgrade(s2.b.uid);
       if (res?.error) { audio.sfx('error'); ui.toast(res.error); return; }
       audio.sfx('build');
-      ui.toast(`¡Arrancó la etapa ${s2.nextIdx + 1} de ${d.name}!`, { icon: 'hammer', type: 'good' });
+      ui.toast(`Arrancó la etapa ${s2.nextIdx + 1} de ${d.name}`, { icon: 'hammer', type: 'good' });
       render();
     };
     el.append(btn);

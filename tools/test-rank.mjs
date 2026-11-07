@@ -180,8 +180,8 @@ try {
   await sleep(300);
   await run(bea, `ctx.bus.emit('hud:build', { focus: 'mansion' }); return true;`);
   ok(await waitFor(bea, `!!document.querySelector('.cx-build .cx-card')`, 4000), 'se abre el menú Construir');
-  const card = await bea.evaluate(() => [...document.querySelectorAll('.cx-build .cx-card')].find(c => /Mansión/.test(c.textContent))?.textContent || '');
-  ok(/Rango Pueblo/.test(card), 'la Mansión muestra el candado «Rango Pueblo»', card);
+  const card = await bea.evaluate(() => [...document.querySelectorAll('.cx-build .cx-card')].find(c => /Casona/.test(c.textContent))?.textContent || '');
+  ok(/Rango Pueblo/.test(card), 'la Casona muestra el candado «Rango Pueblo»', card);
   const deco = await bea.evaluate(() => document.querySelector('.cx-build .cx-card .cx-gives')?.innerHTML || '');
   ok(/sparkle/.test(deco), 'las tarjetas muestran cuánto Encanto suman');
   await shot(bea, 'menu-construir');

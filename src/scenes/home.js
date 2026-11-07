@@ -490,7 +490,7 @@ export default function create(ctx) {
   function putFromInventory(id) {
     const f = FURNITURE_BY_ID[id];
     const spot = freeSpot(id, 0);
-    if (!spot) { audio.sfx('error'); ui.toast('¡No hay lugar! Guardá algo o ampliá la casa', { icon: 'home' }); return; }
+    if (!spot) { audio.sfx('error'); ui.toast('No hay lugar. Guardá algo o ampliá la casa', { icon: 'home' }); return; }
     const it = placeItem(id, spot[0], spot[1], spot[2]);
     if (it.error) { audio.sfx('error'); ui.toast(it.error); return; }
     addItemObj(it);
@@ -608,7 +608,7 @@ export default function create(ctx) {
     const h = homeState();
     if (tab === 'mine') {
       const own = FURNITURE.filter(f => (h.owned[f.id] || 0) > 0);
-      if (!own.length) grid.append(ui.h('div.hm-empty', { html: `Todos tus muebles están puestos. ¡Comprá más en la <b>Tienda</b>!` }));
+      if (!own.length) grid.append(ui.h('div.hm-empty', { html: `Todos tus muebles están puestos. Hay más en la <b>Tienda</b>.` }));
       for (const f of own) {
         const c = ui.h('button.hm-card', { 'data-id': f.id });
         c.append(thumbEl(f.id), ui.h('span.nm', {}, f.name), ui.h('span.pr', { html: `${icon('heart', 12)}+${f.comfort}` }), ui.h('i.ct', {}, String(h.owned[f.id])));
@@ -682,24 +682,24 @@ export default function create(ctx) {
     if (E.isUpgrading(b, now)) {
       body.append(ui.h('p', { style: { margin: 0 }, html: `${icon('hammer', 18)} Ampliando: falta <b>${E.fmtTime(E.remainingMs(b, now) / 1000)}</b>` }));
     } else if (b.level >= HOME_LEVELS.length) {
-      body.append(ui.h('p', { style: { margin: 0 }, html: `${icon('trophy', 18)} ¡Tu casa ya es la más grande!` }));
+      body.append(ui.h('p', { style: { margin: 0 }, html: `${icon('trophy', 18)} Tu casa ya es la más grande` }));
     } else {
       const nx = HOME_LEVELS[b.level];
       const info = E.upgradeInfo(b);
       const can = E.canUpgrade(b);
       body.append(ui.h('p', { style: { margin: 0 }, html: `Próxima: <b>${ui.esc(nx.name)}</b> (${nx.size.join('×')}) · ${icon('sparkle', 14)} ${ui.esc(nx.look || '')}` }),
         ui.h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', fontSize: '18px' }, html: `<span class="cost">${ui.costHtml(info.cost, 20)}</span><span class="muted">${icon('clock', 14)} ${E.fmtTime(info.time)}</span>` }));
-      if (!can.ok) body.append(ui.h('div.req', { html: `${icon(can.mats ? 'monument' : can.poor ? 'coin' : 'lock', 14)}${ui.esc(can.mats ? 'Faltan materiales: ¡se ganan jugando!' : can.poor ? 'Te faltan monedas' : can.rank ? `Necesitás el rango ${E.rankName(can.rank)}` : can.reason)}` }));
+      if (!can.ok) body.append(ui.h('div.req', { html: `${icon(can.mats ? 'monument' : can.poor ? 'coin' : 'lock', 14)}${ui.esc(can.mats ? 'Faltan materiales: se ganan jugando.' : can.poor ? 'Te faltan monedas' : can.rank ? `Necesitás el rango ${E.rankName(can.rank)}` : can.reason)}` }));
       actions = [{ label: 'Más tarde', cls: 'ghost' }, { label: 'Ampliar', cls: 'primary', html: `${icon('up', 18)} Ampliar`, value: 'up' }];
       const m = ui.modal({ title: 'Ampliar la casa', icon: 'home', content: body, className: 'hm-up-modal',
         actions: actions.map(a => ({ ...a, onClick: () => {
           if (a.value !== 'up') return;
           const c = E.canUpgrade(b);
-          if (!c.ok) { audio.sfx('error'); ui.toast(c.mats ? 'Te faltan materiales: ¡a jugar!' : c.poor ? 'No te alcanza todavía' : c.reason, { icon: 'info' }); return false; }
+          if (!c.ok) { audio.sfx('error'); ui.toast(c.mats ? 'Te faltan materiales: salen jugando.' : c.poor ? 'No te alcanza todavía' : c.reason, { icon: 'info' }); return false; }
           const res = E.startUpgrade(b.uid);
           if (res?.error) { audio.sfx('error'); ui.toast(res.error); return false; }
           audio.sfx('build');
-          ui.toast(`¡Empezó la obra! En ${E.fmtTime(info.time)} tu casa crece`, { icon: 'hammer', type: 'good' });
+          ui.toast(`Empezó la obra. En ${E.fmtTime(info.time)} tu casa crece`, { icon: 'hammer', type: 'good' });
         } })) });
       return m;
     }
@@ -786,11 +786,11 @@ export default function create(ctx) {
         offs.push(bus.on('building:upgraded', ({ b } = {}) => {
           if (b?.id !== 'mi_casa') return;
           buildRoom(); buildItems(); settlePlayer(); fitView(); refreshTitle();
-          ui.toast(`¡Tu casa creció! Ahora es ${homeLevelDef(b.level).name}`, { icon: 'home', type: 'good' });
+          ui.toast(`Tu casa creció: ahora es ${homeLevelDef(b.level).name}`, { icon: 'home', type: 'good' });
         }));
         hint(params.decorate ? null : 'Tocá el ropero para vestirte · Decorar para mover muebles');
         if (params.decorate) setEditing(true);
-      } else hint('Estás de visita: ¡mirá qué linda casa!');
+      } else hint('Estás de visita: se mira, no se toca.');
       ctx.state.tutorial && (ctx.state.tutorial.homeVisited = true);
     },
     unmount() {

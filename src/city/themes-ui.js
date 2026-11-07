@@ -163,7 +163,7 @@ export function openThemePicker(ctx, opts = {}) {
       ctx.audio.sfx('pop'); // la tarjeta marcada "Elegido" y la ciudad de fondo ya muestran el cambio (sin toast que tape el título)
     }
     ui.modal({ title: 'Estilo de tu ciudad', icon: 'palette', content: body, className: 'tp-modal',
-      actions: [{ label: '¡Listo!', cls: 'primary' }],
+      actions: [{ label: 'Listo', cls: 'primary' }],
       onClose: () => resolve(chosen) });
     // la tarjeta elegida a la vista
     requestAnimationFrame(() => cards.get(chosen)?.scrollIntoView?.({ block: 'nearest' }));

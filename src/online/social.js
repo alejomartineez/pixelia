@@ -44,7 +44,7 @@ export const RANK_CATS = [
   { id: 'level', name: 'Nivel', icon: 'crown', short: 'Nivel' },
   { id: 'stars', name: 'Estrellas', icon: 'star', short: 'Estrellas' },
   // Ciudad más linda: Encanto actual (viaja en stats.week.charm del perfil, así no hace falta tocar el SQL)
-  { id: 'charm', name: 'Ciudad más linda', icon: 'sparkle', short: 'Encanto' },
+  { id: 'charm', name: 'Ciudad con más Encanto', icon: 'sparkle', short: 'Encanto' },
   { id: 'match3', name: 'Joyas Brillantes', icon: '💎', short: 'Joyas' },
   { id: 'blocks', name: 'Bloques Pixel', icon: '🧩', short: 'Bloques' },
   { id: 'parking', name: 'Estacionamiento', icon: '🅿️', short: 'Parking' },
@@ -334,7 +334,7 @@ export function giftPreview(friend) {
 /** Manda el regalito del día. A veces suma un objeto común o una figurita repetida (1–2★) tuya. -> { ok, payload } | { error } */
 export async function sendDailyGift(friend) {
   const z = S();
-  if (giftSentToday(friend.id)) return { error: 'Ya le mandaste el regalo de hoy 🎁 ¡Volvé mañana!' };
+  if (giftSentToday(friend.id)) return { error: 'Ya le mandaste el regalo de hoy. Volvé mañana.' };
   const payload = { coins: giftPreview(friend).coins };
   let sticker = null;
   const r = Math.random();
@@ -431,7 +431,7 @@ export async function createHelpRequest(kind, payload) {
 }
 export async function fillFriendRequest(req) {
   const cost = requestCost(req);
-  if (!sync.canAffordPayload(cost)) return { error: 'No tenés lo que necesita 😔' };
+  if (!sync.canAffordPayload(cost)) return { error: 'No tenés lo que necesita' };
   const r = await net.fillRequest(req.id);
   if (r?.error) { refreshSocial(['requests']); return r; }
   sync.deductPayload(cost, 'request');

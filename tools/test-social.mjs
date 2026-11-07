@@ -157,7 +157,7 @@ try {
   await shot(A, 'iphone-amigas-solicitud');
   await click(A, '.soc-req .btn.mint');
   await A.waitForSelector('.soc-friend', { timeout: 8000, polling: 150 });
-  ok(await A.$eval('.soc-friend', el => el.textContent.includes('Bea') && el.textContent.includes('Primer saludo')), 'ana acepta: bea en la lista con nivel de amistad');
+  ok(await A.$eval('.soc-friend', el => el.textContent.includes('Bea') && el.textContent.includes('Saludo')), 'ana acepta: bea en la lista con nivel de amistad');
 
   // ---------------------------------------------------------------
   section('Regalito diario');
@@ -181,7 +181,7 @@ try {
   ok((await ev(A, `return S.socialBadge()`)) >= 1, 'badge de ana suma el buzón');
   await tab(A, 'buzon');
   await A.waitForSelector('.soc-mail', { timeout: 8000, polling: 150 });
-  ok(await A.$eval('.soc-wrap', el => el.textContent.includes('Regalito de Bea')), 'ana ve "Regalito de Bea"');
+  ok(await A.$eval('.soc-wrap', el => el.textContent.includes('Regalo de Bea')), 'ana ve "Regalo de Bea"');
   await shot(A, 'iphone-buzon');
   const coins0 = await ev(A, `return P.store.state.coins`);
   await click(A, '.soc-claimall .btn.gold');

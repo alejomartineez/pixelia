@@ -68,7 +68,7 @@ function render() {
       <button class="hud-btn" data-act="quests">${icon('quest', 30)}<span>Misiones</span><i class="badge" data-badge="quests"></i></button>
       <button class="hud-btn big" data-act="build">${icon('hammer', 38)}<span>Construir</span></button>
       <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>Vestidor</span></button>
-      <button class="hud-btn" data-act="social">${icon('people', 30)}<span>Amigos</span><i class="badge" data-badge="social"></i></button>
+      <button class="hud-btn" data-act="social">${icon('people', 30)}<span>Contactos</span><i class="badge" data-badge="social"></i></button>
     </nav>`;
   lastFx = lastEv = lastPass = lastQuest = lastRank = null;
   refreshDynamic();

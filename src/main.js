@@ -2,7 +2,7 @@
 //
 // Orden de arranque: store.load → applyDebugParams → initChests → initAlbum → initSeason → initEvents → initQuests
 // → HUD → (online) initSync → social.initSocial. Al entrar a la ciudad se muestran, de a uno y sin pisarse:
-// regalo de bienvenida ("¡Te extrañamos!") → premio diario → subidas de nivel.
+// regalo de bienvenida ("Bienvenida de vuelta") → premio diario → subidas de nivel.
 import { bus } from './core/bus.js';
 import { store } from './core/state.js';
 import * as data from './core/data.js';
@@ -218,8 +218,8 @@ function loadSocial() {
 }
 async function openSocial(tab = 'amigas') {
   const m = await loadSocial();
-  if (!m?.openSocial) { toast('Muy pronto vas a poder jugar con tus amigos', { icon: 'people' }); return; }
-  try { return await m.openSocial(ctx, tab); } catch (e) { console.error(e); toast('No se pudo abrir Amigos', { type: 'bad' }); }
+  if (!m?.openSocial) { toast('Muy pronto vas a poder jugar con más gente', { icon: 'people' }); return; }
+  try { return await m.openSocial(ctx, tab); } catch (e) { console.error(e); toast('No se pudo abrir Contactos', { type: 'bad' }); }
 }
 async function openAccount() {
   const m = await loadSocial();
@@ -232,7 +232,7 @@ bus.on('album:trade', (p) => {
   p.handled = true;
   loadSocial().then(m => {
     if (m) bus.emit('album:trade', { ...p, handled: false });
-    else toast('Los intercambios con amigos se activan con tu cuenta online', { icon: 'people' });
+    else toast('Los intercambios con tus contactos se activan con tu cuenta online', { icon: 'people' });
   });
 });
 

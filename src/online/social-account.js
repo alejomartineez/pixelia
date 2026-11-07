@@ -1,5 +1,5 @@
 // Cuenta online (crear / entrar / salir / estado de sincronización / modo simulado) y elección de partida.
-import { h, esc, modal, toast, confirm, confetti } from '../core/ui.js';
+import { h, esc, modal, toast, confirm } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/bus.js';
@@ -38,7 +38,7 @@ export function openAccountUI(ctx, opts = {}) {
     body.innerHTML = `
       <div class="soc-off-art">${icon('🏡', 40)}${icon('💌', 40)}${icon('👭', 40)}</div>
       <h3 class="center" style="font-size:21px">Jugar online, ¡muy pronto!</h3>
-      <p class="center soc-muted" style="font-size:16px">${opts.reason === 'trade' ? 'Los intercambios de figuritas son con amigos online. ' : ''}El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder crear tu cuenta, sumar amigos con un código, visitar sus ciudades, mandarse regalitos e intercambiar figuritas.</p>
+      <p class="center soc-muted" style="font-size:16px">${opts.reason === 'trade' ? 'Los intercambios de figuritas son con tus contactos online. ' : ''}El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder crear tu cuenta, sumar contactos con un código, visitar sus ciudades, mandarse regalos e intercambiar figuritas.</p>
       <div class="soc-card mint soc-row">${icon('save', 28)}<span class="soc-muted">Mientras tanto, <b>tu ciudad se guarda en este dispositivo</b> y podés jugar todo igual.</span></div>`;
     const test = h('div.soc-card.soc-sec', { html: `<b>${icon('🧪', 18)} Modo simulado (para pruebas)</b><span class="soc-muted">Simula el servidor en este navegador: abrí dos pestañas con nombres distintos y probá la amistad.</span>` });
     const row = h('div.soc-row');
@@ -55,14 +55,14 @@ export function openAccountUI(ctx, opts = {}) {
     row.append(who, go);
     test.append(row);
     body.append(test);
-    body.append(h('button.btn.primary.block', { html: '¡Entendido!', onclick: () => { audio.sfx('tap'); m.close(); } }));
+    body.append(h('button.btn.primary.block', { html: 'Entendido', onclick: () => { audio.sfx('tap'); m.close(); } }));
   }
 
   function drawOut() {
     body.innerHTML = '';
     if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('🧪', 14)} Modo simulado: las cuentas viven en este navegador` }));
     body.append(h('div.soc-row', {
-      html: `${avatarHtml(store.state.avatar, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar figuritas con amigos necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus amigos.</p>`,
+      html: `${avatarHtml(store.state.avatar, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar figuritas con tus contactos necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus contactos.</p>`,
     }));
     const seg = h('div.soc-seg');
     for (const [id, label] of [['signup', 'Crear cuenta'], ['signin', 'Ya tengo cuenta']]) {
@@ -73,7 +73,7 @@ export function openAccountUI(ctx, opts = {}) {
     const name = h('input', { type: 'text', maxlength: '24', autocomplete: 'nickname', value: isDefaultName(store.state.player.name) ? '' : store.state.player.name });
     const email = h('input', { type: 'email', autocomplete: 'email', inputmode: 'email', autocapitalize: 'off', spellcheck: 'false' });
     const pass = h('input', { type: 'password', autocomplete: tab === 'signup' ? 'new-password' : 'current-password', minlength: '6' });
-    if (tab === 'signup') body.append(h('label', {}, 'Tu nombre (lo ven tus amigos)', name));
+    if (tab === 'signup') body.append(h('label', {}, 'Tu nombre (lo ven tus contactos)', name));
     body.append(h('label', {}, 'Email', email), h('label', {}, tab === 'signup' ? 'Contraseña (6 o más)' : 'Contraseña', pass));
     const go = h('button.btn.primary.block', { html: tab === 'signup' ? `${icon('sparkle', 20)} Crear mi cuenta` : `${icon('key', 20)} Entrar` });
     const submit = () => busy(go, async () => {
@@ -93,8 +93,8 @@ export function openAccountUI(ctx, opts = {}) {
         ctx?.hud?.refresh?.();
       }
       const z = socialState(); if (z) { z.skipAccount = false; store.markDirty(); }
-      audio.sfx('win'); confetti(50);
-      toast(tab === 'signup' ? '¡Cuenta creada! ¡Ya estás en Pixelia online! 💖' : `¡Hola de nuevo, ${store.state.player.name}!`, { icon: 'heart', type: 'good' });
+      audio.sfx('win');
+      toast(tab === 'signup' ? 'Cuenta creada. Ya estás en Pixelia online.' : `¡Hola de nuevo, ${store.state.player.name}!`, { icon: 'heart', type: 'good' });
       publishProfileNow(true);
       return r;
     });
@@ -122,7 +122,7 @@ export function openAccountUI(ctx, opts = {}) {
     else if (!online) line = 'Sin conexión: se guarda en este dispositivo y se sube sola cuando vuelva internet.';
     else if (st.syncing) line = 'Guardando en la nube…';
     else if (st.lastSync) line = `Guardado en la nube ${timeAgo(st.lastSync)}.`;
-    else line = 'Tu ciudad se guarda sola en la nube cada ratito.';
+    else line = 'Tu ciudad se guarda sola en la nube cada pocos minutos.';
     body.append(h('div.soc-card.sky.soc-sync' + (online ? '' : '.off'), {
       html: `<span class="soc-cloud">${icon(online ? '☁️' : '📴', 32)}</span><div class="soc-grow"><b>${online ? 'Sincronizada' : 'Sin conexión'}</b><div class="soc-muted">${line}</div></div>`,
     }));
@@ -144,12 +144,12 @@ export function openAccountUI(ctx, opts = {}) {
       audio.sfx('tap');
       if (!(await confirm('¿Cerrar sesión?', 'Tu ciudad queda guardada en la nube y en este dispositivo. Podés volver a entrar cuando quieras.', 'Cerrar sesión', 'Cancelar'))) return;
       await busy(out, async () => { await pushNow(); return net.signOut(); });
-      toast('Sesión cerrada. ¡Hasta prontito!', { icon: 'info' });
+      toast('Sesión cerrada. Hasta la próxima.', { icon: 'info' });
     };
     row.append(save, out);
     body.append(row);
     body.append(h('button.btn.primary.block', {
-      html: `${icon('people', 20)} Ir a mis amigos`,
+      html: `${icon('people', 20)} Ir a mis contactos`,
       onclick: () => { audio.sfx('tap'); m.close(); import('./social.js').then(mod => mod.openSocial(ctx, 'amigas')); },
     }));
   }

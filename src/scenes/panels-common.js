@@ -112,8 +112,8 @@ export function floatUp(x, y, html) {
   setTimeout(() => { el.remove(); maybeRemoveFx(); }, 1100);
 }
 
-/** Efecto de premio completo desde un elemento: íconos volando + confeti. */
-export function rewardFx(fromEl, reward = {}, { confetti = true, chestText = true } = {}) {
+/** Efecto de premio desde un elemento: íconos volando (+ confeti solo si se pide: es para momentos grandes). */
+export function rewardFx(fromEl, reward = {}, { confetti = false, chestText = true } = {}) {
   const r = fromEl?.getBoundingClientRect?.();
   const x = r && r.width ? r.left + r.width / 2 : innerWidth / 2;
   const y = r && r.width ? r.top + r.height / 2 : innerHeight / 2;
@@ -122,7 +122,7 @@ export function rewardFx(fromEl, reward = {}, { confetti = true, chestText = tru
   if (reward.gems) { setTimeout(() => flyTo(x, y, 'gems', 2 + reward.gems / 2), delay); delay += 120; }
   if (reward.xp) setTimeout(() => flyTo(x, y, 'xp', 3), delay);
   const chests = chestList(reward);
-  if (chests.length && chestText) setTimeout(() => floatUp(x, y - 30, `${chestArt(chests[0].type, 30)} ¡${esc(CHESTS[chests[0].type].name)}!`), delay + 150);
+  if (chests.length && chestText) setTimeout(() => floatUp(x, y - 30, `${chestArt(chests[0].type, 30)} ${esc(CHESTS[chests[0].type].name)}`), delay + 150);
   if (confetti) burst(x, y, 70);
 }
 
