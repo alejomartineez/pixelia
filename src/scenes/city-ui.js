@@ -2,6 +2,7 @@
 // barra de colocación, botones flotantes y estilos (prefijo cx-).
 import { thumbnail } from '../city/models.js';
 import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL, RANK_REQ_LABELS, MONUMENTS, ERAS } from '../core/data.js';
+import { cycleEffects, cycleUpgradeLines } from '../expedition/expedition.js';
 import { HOME_LEVELS, homeLevelDef, comfortInfo } from '../home/furniture.js';
 import { icon } from '../core/icons.js';
 import * as chests from '../chests/chests.js';
@@ -190,7 +191,9 @@ export const STYLE = `
 .cx-exp-map canvas { image-rendering: pixelated; width: 132px; height: 132px; border: 3px solid var(--ink); border-radius: 10px; background: #79bb8c; }
 `;
 
-const CAT_ICON = { casa: 'home', negocio: 'shop', especial: 'sparkle', monumento: 'monument', deco: 'flower', camino: 'map' };
+const CAT_ICON = { casa: 'home', ciclo: '🧭', negocio: 'shop', especial: 'sparkle', monumento: 'monument', deco: 'flower', camino: 'map' };
+// lo que mejora a la vista un edificio del ciclo en cada nivel (DESIGN-CORE.md §4.2; models-cycle.js)
+const CYCLE_LOOK = { 2: 'un anexo al costado', 3: 'un piso más y techo nuevo', 4: 'chimenea y aberturas más grandes', 5: 'mirador arriba y cerco alrededor' };
 const thumbs = new Map();
 let thumbTheme = 'pueblo';
 /** Tema con el que se dibujan las miniaturas del menú (el de la ciudad). */
@@ -209,6 +212,7 @@ function thumbImg(id, level, cls = 'th', era = 1) {
   return wrap;
 }
 
+const ui_esc = (t) => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function fmtCycle(E, sec) { return E.fmtTime(sec).replace(/ 00s$/, '').replace(/ 00m$/, ''); }
 
 /** Chips de lo que aporta un tipo de edificio (menú). */
@@ -218,6 +222,8 @@ function givesHtml(ctx, d) {
   if (d.pop) out.push(`<span class="chip primary">${icon('people', 14)}+${d.pop}</span>`);
   if (d.prod?.coins) out.push(`<span class="chip gold">${icon('coin', 14)}${d.prod.coins}/${fmtCycle(E, d.prod.cycle)}</span>`);
   if (d.prod?.gems) out.push(`<span class="chip sky">${icon('gem', 14)}${d.prod.gems}/${fmtCycle(E, d.prod.cycle)}</span>`);
+  if (d.prod?.prov) out.push(`<span class="chip gold">${icon('🍞', 14)}${d.prod.prov}/${fmtCycle(E, d.prod.cycle)}</span>`);
+  if (d.cat === 'ciclo' && !d.prod) { const fx = cycleEffects(d.id, 1)[0]; if (fx) out.push(`<span class="chip second" title="${ui_esc(fx.text)}">${icon('🧭', 14)}${ui_esc(fx.label)}: ${ui_esc(String(fx.value))}</span>`); }
   if (d.happy) out.push(`<span class="chip mint">${icon('smile', 14)}+${d.happy}</span>`);
   if (d.game) out.push(`<span class="chip second">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Juego'}</span>`);
   if (d.cat === 'camino') out.push(`<span class="chip">${icon('paw', 14)}Paseo</span>`);
@@ -470,11 +476,11 @@ export function openInfo(S, uid) {
     // ----- producción -----
     const ps = E.producerStatus(b, now);
     if (ps.producer && !busy) {
-      const cur = ps.currency === 'gems' ? 'gem' : 'coin';
+      const cur = ps.currency === 'gems' ? 'gem' : ps.currency === 'prov' ? '🍞' : 'coin';
       const box = ui.h('div.cx-box' + (ps.ready ? '.ready' : ''));
       box.append(ui.h('h4', { html: icon(cur, 20) + 'Producción' }));
       box.append(ui.h('div.line', { html: `<span>Cada <b>${E.fmtTime(ps.cycleSec)}</b></span><span class="cost">+${E.fmtNum(ps.perCycle)} ${icon(cur, 16)}</span>` }));
-      box.append(ui.h('div.line', { html: `<span class="muted">Guarda hasta ${ps.cap * ps.cycleSec >= 3600 ? Math.round(ps.cap * ps.cycleSec / 3600) + ' h' : E.fmtTime(ps.cap * ps.cycleSec)}</span><span class="muted">${isCastle ? '' : 'Bonus ciudad x' + E.globalMultiplier().toFixed(2)}</span>` }));
+      box.append(ui.h('div.line', { html: `<span class="muted">Guarda hasta ${ps.cap * ps.cycleSec >= 3600 ? Math.round(ps.cap * ps.cycleSec / 3600) + ' h' : E.fmtTime(ps.cap * ps.cycleSec)}</span><span class="muted">${isCastle ? '' : ps.currency === 'prov' ? `Depósito ${E.fmtNum(ctx.state.prov || 0)}/${E.fmtNum(E.provCap())}` : 'Bonus ciudad x' + E.globalMultiplier().toFixed(2)}</span>` }));
       refs.prodBar = ui.h('div', { html: ui.progressHtml(ps.progress, 'gold') });
       refs.prodTxt = ui.h('span.muted');
       box.append(refs.prodBar, ui.h('div.line', {}, refs.prodTxt));
@@ -482,8 +488,19 @@ export function openInfo(S, uid) {
       body.append(box);
     }
 
+    // ----- edificios del ciclo: qué dan hoy en la expedición -----
+    if (d.cat === 'ciclo' && !building) {
+      const fx = cycleEffects(d.id, b.level || 1);
+      if (fx.length) {
+        const box = ui.h('div.cx-box.cx-cycle');
+        box.append(ui.h('h4', { html: icon('🧭', 20) + 'En la expedición' }));
+        for (const f of fx) box.append(ui.h('div.line', { html: `<span>${ui.esc(f.text)}</span>` }));
+        body.append(box);
+      }
+    }
+
     // ----- maestría (si la economía ya la tiene) -----
-    const mi = !isCastle && mastery();
+    const mi = d.cat !== 'ciclo' && !isCastle && mastery();
     if (mi) {
       const stars = Math.max(0, Math.min(5, Math.round(+(mi.stars ?? mi.level) || 0)));
       let st = '';
@@ -537,6 +554,12 @@ export function openInfo(S, uid) {
           fx.push(b.level + 1 >= N ? `Al terminarlo: ${MONUMENTS[d.id].bonusText}` : 'La obra crece y se ve desde toda la ciudad');
           fx.push(`Encanto ${Math.round(E.charmBase(d) * E.charmLevelMult(d, b.level))} → ${Math.round(E.charmBase(d) * E.charmLevelMult(d, b.level + 1))}`);
         }
+        else if (d.cat === 'ciclo') {
+          // lo que el próximo nivel cambia en la expedición (probabilidades, lugares, carga, provisiones)
+          fx.push(...cycleUpgradeLines(b).map(t => ui.esc(t)));
+          const look = CYCLE_LOOK[b.level + 1];
+          if (look) fx.push(`Se ve de lejos: ${look}`);
+        }
         else {
           if (d.prod?.coins) fx.push(`Producción ${E.fmtNum(ps.perCycle || 0)} → ${E.fmtNum(Math.round((ps.perCycle || 0) * (1 + 0.5 * b.level) / (1 + 0.5 * (b.level - 1))))}`);
           if (d.pop) fx.push(`Vecinos ${E.buildingPop(b)} → ${Math.round(d.pop * (1 + 0.4 * b.level))}`);
@@ -561,7 +584,7 @@ export function openInfo(S, uid) {
           }
           box.append(ui.h('div.req', { html: icon('lock', 14) + 'Falta completar el expediente:' }), list);
         } else if (can.mats) {
-          box.append(ui.h('div.req', { html: icon('monument', 14) + 'Faltan materiales: se ganan jugando.' }));
+          box.append(ui.h('div.req', { html: icon('monument', 14) + (d.cat === 'ciclo' ? 'Faltan materiales: los trae la expedición.' : 'Faltan materiales: se ganan jugando.') }));
         } else if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.rank ? `Necesitás el rango ${ui.esc(E.rankName(can.rank))}` : can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
         box.append(btn(isMon ? 'Avanzar obra' : isHome ? 'Ampliar' : 'Mejorar', 'second', 'up', () => {
           const c = E.canUpgrade(b);
@@ -631,6 +654,10 @@ export function openInfo(S, uid) {
         m.close();
         if (isW) ctx.router.go('wardrobe'); else ctx.router.openGame(d.game);
       }));
+    }
+    if (d.panel && !building) {
+      const isExp = d.panel === 'expedition';
+      acts.append(btn(isExp ? 'Expedición' : 'Taller', 'primary', isExp ? 'map' : 'hammer', () => { m.close(); ctx.openPanel(d.panel); }));
     }
     if (b.id === 'garaje' && !building) acts.append(btn('Taller', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
     if (isCastle) acts.append(btn('Tu ciudad', 'gold', 'castle', () => { m.close(); ctx.openPanel('rank'); }));

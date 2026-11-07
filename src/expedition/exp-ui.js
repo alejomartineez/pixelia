@@ -334,6 +334,19 @@ function lootWords(L) {
 }
 
 /** Resultado final. res: result(run); info: { kind, regionName, zone, provLeft }. buttons: [{id, label, cls}] */
+/** Lo que la salida cambió en la ciudad: zona explorada, región completa y cuánto falta para ampliar el terreno. */
+function cityLines(res) {
+  const out = [];
+  if (res.zoneExplored) out.push(`${icon('🚩', 16)} La zona ${res.zone} de ${esc(res.regionName || '')} quedó explorada.`);
+  if (res.regionDone) out.push(`${icon('star', 16)} ${esc(res.regionName || 'La región')}: las 5 zonas exploradas.`);
+  if (res.recorrido) out.push('Recorrido por una región ya explorada: no avanza zonas.');
+  if (res.zoneExplored || res.canExpand) {
+    if (res.canExpand) out.push(`${icon('map', 16)} Ya se puede ampliar el terreno (desde la Municipalidad).`);
+    else if (res.missingZones > 0) out.push(`${icon('map', 16)} ${res.missingZones === 1 ? 'Falta 1 zona' : `Faltan ${res.missingZones} zonas`} para ampliar el terreno.`);
+  }
+  out.push('<span class="ex-note">Lo que trajeron ya está en la ciudad.</span>');
+  return out.map(t => `<p>${t}</p>`).join('');
+}
 export function openResult(root, res, info, onAction) {
   const reasonTitle = {
     volvio: res.starCount === 3 ? 'Salida completa' : res.objectiveDone ? 'Objetivo cumplido' : 'Volvieron todos',
@@ -350,15 +363,18 @@ export function openResult(root, res, info, onAction) {
   const items = [matsHtml(L.mats, 24), L.planos ? `<span class="ex-mat">${I('plano', 24)}${L.planos}</span>` : '',
     ...L.finds.map(f => `<span class="ex-mat">${I('find', 24)}<small>${'★'.repeat(f.stars)}</small></span>`),
     L.colonos ? `<span class="ex-mat">${I('colono', 24)}${L.colonos}</span>` : ''].join('');
-  const left = info.kind === 'corta' ? '' : res.reason === 'volvio' && res.provLeft ? `<p>${res.provLeft === 1 ? 'Sobró 1 provisión: vuelve' : `Sobraron ${res.provLeft} provisiones: vuelven`} al depósito.</p>` : '';
+  const back = info.city ? res.provBack || 0 : res.provLeft;
+  const left = info.kind === 'corta' ? '' : res.reason === 'volvio' && back ? `<p>${back === 1 ? 'Sobró 1 provisión: vuelve' : `Sobraron ${back} provisiones: vuelven`} al depósito.</p>` : '';
   const extra = res.starCount === 3 ? `<p>${icon('gem', 16)} +${res.gems || 1} gema por las 3 estrellas${res.chest ? ' y un cofre de madera' : ''}.</p>` : '';
   const html = `<h2>${esc(reasonTitle)}</h2><p>${sub}</p><div class="ex-stars">${stars}</div>
     <b>Lo que trajeron</b><div class="ex-loot">${items || '<span class="none">Nada esta vez</span>'}</div>${lootWords(L) ? `<p>${lootWords(L)}</p>` : ''}${left}${extra}
-    <p class="ex-note">Prototipo: lo que trajeron todavía no llega a la ciudad.</p>
-    <div class="ex-btns">
+    ${info.city ? cityLines(res) : '<p class="ex-note">Salida de práctica: lo que trajeron no llega a la ciudad.</p>'}
+    <div class="ex-btns">${info.city ? `
+      <button class="btn primary" data-a="city">${icon('home', 20)} A la ciudad</button>
+      <button class="btn second" data-a="again">${icon('map', 20)} Preparar otra salida</button>` : `
       <button class="btn primary" data-a="again">${icon('map', 20)} Otra salida</button>
       <button class="btn second" data-a="short">${icon('🥪', 20)} Salida corta</button>
-      <button class="btn ghost" data-a="city">${icon('home', 20)} A la ciudad</button>
+      <button class="btn ghost" data-a="city">${icon('home', 20)} A la ciudad</button>`}
     </div>`;
   const w = modalBox(root, html);
   w.querySelectorAll('[data-a]').forEach(b => { b.onclick = () => onAction(b.dataset.a); });

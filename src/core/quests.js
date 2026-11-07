@@ -2,7 +2,7 @@
 import { bus } from './bus.js';
 import { store, todayStr } from './state.js';
 import { MAIN_QUESTS, DAILY_POOL, DAILY_BONUS_ALL, ACHIEVEMENTS, LOGIN_REWARDS, rewardScale } from './data.js';
-import { population, happinessPoints, castleLevel, cityCharm, def } from './economy.js';
+import { population, happinessPoints, castleLevel, cityCharm, def, zonesExplored } from './economy.js';
 import { streakWithShield, consumeStreakShield, seasonInfo } from '../season/season.js';
 import { comfortInfo } from '../home/furniture.js';
 
@@ -19,6 +19,11 @@ function absoluteValue(goal) {
     case 'castle': return castleLevel(s);
     case 'charm': return cityCharm(s);
     case 'expand': return s.city.expansions;
+    case 'zone': {
+      if (!goal.region) return zonesExplored(s);
+      const r = s.expedition?.regions?.[goal.region];
+      return Math.max(0, Math.min(5, ((r && r.zone) || 1) - 1));
+    }
     case 'build':
       if (goal.id || goal.ids) {
         const ids = goal.ids || [goal.id];
@@ -41,6 +46,19 @@ function eventDelta(goal, ev) {
     case 'score': return name === 'minigame:finished' && p.game === goal.game ? { max: p.score || 0 } : 0;
     case 'customize': return name === 'customize:changed' ? 1 : 0;
     case 'buy': return name === 'item:bought' ? 1 : 0;
+    // expedición y Taller (DESIGN-CORE.md §6.1)
+    case 'expedition': {
+      if (name !== 'expedition:finished' || p.prototype) return 0;
+      if (goal.kind && p.kind !== goal.kind) return 0;
+      if (goal.region && p.region !== goal.region) return 0;
+      if (goal.equip && !(p.equip || []).includes(goal.equip)) return 0;
+      if (goal.minStars && (p.stars || 0) < goal.minStars) return 0;
+      return 1;
+    }
+    case 'expStars': return name === 'expedition:finished' && !p.prototype ? (p.stars || 0) : 0;
+    case 'expFar': return name === 'expedition:finished' && !p.prototype ? (p.far || 0) : 0;
+    case 'prov': return name === 'production:collected' && p.currency === 'prov' ? p.amount : 0;
+    case 'craft': return name === 'craft:done' && (!goal.id || p.id === goal.id) ? (p.n || 1) : 0;
     default: return 0;
   }
 }
@@ -50,24 +68,68 @@ function applyDelta(cur, d) {
 }
 
 // ---------- Principal ----------
+// La cadena se sigue por id (state.quests.done): la misión actual es la primera de MAIN_QUESTS sin cobrar. Así una fase
+// puede sumar misiones en el medio (t15–t17, Amenazas) sin correr las demás. state.quests.main queda como "cuántas van".
+// Cadena vieja (antes de la Fase 2: minijuegos). quests.main era el índice en esta lista.
+const OLD_MAIN = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10', 'm11', 'm12', 'm13', 'm14', 'm15', 'm16', 'm17',
+  'm18', 'm19', 'm20', 'm21', 'm22', 'm23', 'm24', 'm25', 'm26', 'm27', 'm28'];
+// Las que piden lo mismo en la cadena nueva: ya cobradas, no se repiten.
+const OLD_TO_NEW = { m1: 't1', m2: 't9', m7: 't8', m13: 't12', m14: 't14' };
+export const CHAIN_VERSION = 2;
+/**
+ * Pasa una partida a la cadena nueva (idempotente). Lo cobrado de la vieja no se repite; quien ya había avanzado
+ * saltea sin premio las primeras misiones que ya cumple y arranca en la primera que no (DESIGN-CORE.md §7.2, punto 8).
+ */
+export function migrateQuestChain(s = S()) {
+  const q = s.quests;
+  if (!q.done || typeof q.done !== 'object') q.done = {};
+  if ((q.chain || 0) >= CHAIN_VERSION) return false;
+  const oldIdx = Math.max(0, q.main | 0);
+  for (const id of OLD_MAIN.slice(0, oldIdx)) {
+    if (MAIN_QUESTS.some(m => m.id === id)) q.done[id] = 1;
+    if (OLD_TO_NEW[id]) q.done[OLD_TO_NEW[id]] = 1;
+  }
+  if (oldIdx > 0) {
+    for (const m of MAIN_QUESTS) {
+      if (q.done[m.id]) continue;
+      const abs = absoluteValue(m.goal);
+      if (abs === null || abs < m.goal.count) break;
+      q.done[m.id] = 1;
+    }
+  }
+  q.chain = CHAIN_VERSION;
+  q.mainProgress = 0;
+  q.main = MAIN_QUESTS.filter(m => q.done[m.id]).length;
+  store.markDirty();
+  return true;
+}
+function currentMain() {
+  const done = S().quests.done || {};
+  const index = MAIN_QUESTS.findIndex(m => !done[m.id]);
+  return index < 0 ? null : { q: MAIN_QUESTS[index], index };
+}
 export function mainQuest() {
   const s = S();
-  const q = MAIN_QUESTS[s.quests.main];
-  if (!q) return null;
+  const cur = currentMain();
+  if (!cur) return null;
+  const { q, index } = cur;
   const abs = absoluteValue(q.goal);
   const progress = abs !== null ? abs : s.quests.mainProgress;
-  return { ...q, index: s.quests.main, total: MAIN_QUESTS.length, progress: Math.min(progress, q.goal.count), done: progress >= q.goal.count };
+  return { ...q, index, total: MAIN_QUESTS.length, progress: Math.min(progress, q.goal.count), done: progress >= q.goal.count };
 }
 export function claimMain() {
   const q = mainQuest();
   if (!q || !q.done) return null;
   const s = S();
-  s.quests.main++;
+  s.quests.done[q.id] = 1;
+  s.quests.main = MAIN_QUESTS.filter(m => s.quests.done[m.id]).length;
   s.quests.mainProgress = 0;
   store.grant(q.reward, 'quest');
   changed();
   return q.reward;
 }
+/** ¿Esta misión principal ya se cobró? (para aperturas: Expedición en t4, Taller en t6, mapa de región en t11) */
+export const mainDone = (id) => !!S().quests.done?.[id];
 
 // ---------- Diarias ----------
 function seededPick(seedStr, arr, n) {
@@ -83,7 +145,7 @@ export function ensureDaily() {
   const s = S();
   const today = todayStr();
   if (s.quests.daily?.date === today) return;
-  const pool = DAILY_POOL.filter(q => (q.minLevel || 1) <= s.player.level);
+  const pool = DAILY_POOL.filter(q => (q.minLevel || 1) <= s.player.level && (!q.needs || s.city.buildings.some(b => b.id === q.needs)));
   const picks = seededPick(today + s.created, pool, 3);
   // el objetivo escalado se congela al elegirlo: si subís de nivel a mitad del día no se aleja una misión ya cumplida
   s.quests.daily = { date: today, list: picks.map(q => ({ id: q.id, progress: 0, claimed: false, count: dailyCount(q, s.player.level) })), bonusClaimed: false };
@@ -187,8 +249,10 @@ export function claimableCount() {
 }
 
 // ---------- Escucha de eventos ----------
-const TRACKED = ['building:built', 'building:upgraded', 'production:collected', 'coins:earned', 'minigame:finished', 'customize:changed', 'item:bought'];
+const TRACKED = ['building:built', 'building:upgraded', 'production:collected', 'coins:earned', 'minigame:finished', 'customize:changed', 'item:bought',
+  'expedition:finished', 'craft:done'];
 export function initQuests() {
+  migrateQuestChain();
   ensureDaily();
   // logro "Estrella de Temporada": mejor nivel del pase alcanzado (sobrevive al cambio de temporada)
   try { store.setMax('seasonLevelBest', seasonInfo().level); } catch {}
@@ -196,12 +260,12 @@ export function initQuests() {
   for (const ev of ['chests:changed', 'album:changed']) bus.on(ev, () => bus.emit('quests:changed'));
   bus.on('*', ({ name, payload }) => {
     if (!TRACKED.includes(name)) {
-      if (name === 'level:up' || name === 'city:expanded' || name === 'building:upgraded') bus.emit('quests:changed');
+      if (name === 'level:up' || name === 'city:expanded' || name === 'building:upgraded' || name === 'expedition:zone') bus.emit('quests:changed');
       return;
     }
     const s = S();
     const ev = { name, p: payload };
-    const mq = MAIN_QUESTS[s.quests.main];
+    const mq = currentMain()?.q;
     if (mq && absoluteValue(mq.goal) === null) {
       const d = eventDelta(mq.goal, ev);
       if (d) s.quests.mainProgress = applyDelta(s.quests.mainProgress, d);

@@ -6,6 +6,7 @@ import {
   BUILDING_BY_ID, MAP_SIZE, START_LAND, LAND_STEP, MAX_EXPANSIONS, MAX_BUILDING_LEVEL,
   CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS, MONUMENTS, MONUMENT_IDS, MATERIAL_BY_ID,
   eraOfRank, eraDef,
+  CYCLE, ROLE_BUILDING, PROV_CAP_BASE, PROV_CAP_PER_CASA, PROV_CAP_PER_GRANERO, EXPANSION_ZONES,
 } from './data.js';
 import { monumentComplete, monumentsDone, monumentBonus } from './monuments.js';
 import { HOME_LEVELS, comfortInfo } from '../home/furniture.js';
@@ -71,6 +72,7 @@ export function charmBase(d) {
     case 'deco': return 4 + (d.happy || 0) * 2;
     case 'negocio': return 6 + (d.happy || 0) * 2;
     case 'casa': return 3;
+    case 'ciclo': return 5 + (d.happy || 0) * 2;
     case 'especial': return 15 + (d.happy || 0);
     case 'camino': return d.id === 'camino' ? 0.3 : 0.6;
     default: return 0;
@@ -254,7 +256,7 @@ export function buildingHappy(b) {
 }
 /** Población: solo cuenta casas terminadas. */
 export function population(state = S(), now = Date.now()) {
-  return state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingPop(b)), 0);
+  return state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingPop(b)), 0) + (state.colonos || 0);
 }
 export function happinessPoints(state = S(), now = Date.now()) {
   const pts = state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingHappy(b)), 0);
@@ -274,6 +276,37 @@ export function boostMultiplier(now = Date.now()) {
 /** Bonus de toda la ciudad: felicidad × castillo × pociones × eventos (la maestría es aparte, por edificio). */
 export function globalMultiplier(state = S(), now = Date.now()) {
   return (1 + happiness(state, now).bonus) * (1 + CASTLE_BONUS_PER_LEVEL * (castleLevel(state) - 1)) * boostMultiplier(now);
+}
+
+// ---------- Ciclo de la expedición: niveles de rol y depósito de provisiones (DESIGN-CORE.md §2.3, §5) ----------
+/** Nivel más alto de un edificio terminado (0 si no hay ninguno). Mientras se mejora cuenta el nivel de antes. */
+export function cycleLevel(id, state = S(), now = Date.now()) {
+  let lv = 0;
+  for (const b of state.city.buildings) if (b.id === id && !isConstructing(b, now)) lv = Math.max(lv, b.level || 1);
+  return lv;
+}
+/** Nivel de un rol de expedición = nivel del edificio que lo entrena (0 si no está). */
+export function roleLevel(role, state = S(), now = Date.now()) {
+  const id = ROLE_BUILDING[role];
+  return id ? cycleLevel(id, state, now) : 0;
+}
+/** Valor de una tabla de CYCLE para un nivel (1..5); con nivel 0 devuelve `none`. */
+export function cycleValue(id, key, level, none = 0) {
+  const t = CYCLE[id]?.[key];
+  if (!t || level < 1) return none;
+  return t[Math.min(t.length, level) - 1];
+}
+/** Tope del depósito: 40 + 20 × nivel de la Casa de Expediciones + 40 × nivel de cada Granero (Fase 3). */
+export function provCap(state = S(), now = Date.now()) {
+  let granero = 0;
+  for (const b of state.city.buildings) if (b.id === 'granero' && !isConstructing(b, now)) granero += b.level || 1;
+  return PROV_CAP_BASE + PROV_CAP_PER_CASA * cycleLevel('casa_exp', state, now) + PROV_CAP_PER_GRANERO * granero;
+}
+store.provCap = () => provCap();
+/** Zonas exploradas en total (state.expedition.regions[r].zone es la próxima sin explorar, 1..6). */
+export function zonesExplored(state = S()) {
+  const regs = state.expedition?.regions || {};
+  return Object.values(regs).reduce((a, r) => a + Math.max(0, Math.min(5, ((r && r.zone) || 1) - 1)), 0);
 }
 
 // ---------- Maestría por tipo de edificio ----------
@@ -310,7 +343,7 @@ export const SIESTA_RATE = 0.08;
 export function storageCap(id) {
   const d = def(id);
   if (!d?.prod) return 0;
-  if (d.prod.gems) return d.prod.cap;   // las gemas no se estiran: siguen siendo escasas
+  if (d.prod.gems || d.prod.prov) return d.prod.cap;   // gemas y provisiones no se estiran: guardan sus tandas
   const hours = STORAGE_HOURS[d.cat] || 3;
   return Math.max(d.prod.cap, Math.ceil(hours * 3600 / d.prod.cycle));
 }
@@ -404,19 +437,20 @@ export function removeBuilding(uid, state = S()) {
 export function producerStatus(b, now = Date.now(), state = S()) {
   const d = def(b);
   if (!d.prod) return { producer: false };
-  const currency = d.prod.gems ? 'gems' : 'coins';
+  const currency = d.prod.gems ? 'gems' : d.prod.prov ? 'prov' : 'coins';
   const cap = storageCap(d.id);
   if (isBusy(b, now)) return { producer: true, currency, paused: true, ready: false, amount: 0, progress: 0, full: false, cap };
   const cycleMs = d.prod.cycle * 1000;
   const elapsed = Math.max(0, now - b.lastCollect);
   const cycles = Math.min(cap, Math.floor(elapsed / cycleMs));
   const full = cycles >= cap;
-  const awake = currency === 'gems' ? cap : Math.min(cap, d.prod.cap);   // tandas a ritmo normal
+  const awake = currency !== 'coins' ? cap : Math.min(cap, d.prod.cap);   // tandas a ritmo normal
   const siesta = Math.max(0, cycles - awake);
   const effective = cycles - siesta + siesta * SIESTA_RATE;
   const progress = full ? 1 : (elapsed % cycleMs) / cycleMs;
   let per;
   if (currency === 'gems') per = d.prod.gems;
+  else if (currency === 'prov') per = cycleValue(d.id, 'prov', b.level || 1, d.prod.prov);   // sin multiplicadores
   else {
     // el castillo no se da bonus a sí mismo (felicidad/castillo) pero sí recibe pociones y eventos
     const city = d.id === 'castillo' ? boostMultiplier(now) : globalMultiplier(state, now);
@@ -438,6 +472,17 @@ export function collect(uid, state = S()) {
   const st = producerStatus(b, now, state);
   if (!st.producer || !st.ready || st.amount <= 0) return null;
   const d = def(b);
+  if (st.currency === 'prov') {
+    // al depósito: lo que no entra queda en el edificio (se cobran las tandas que entran; si entra menos de una, una)
+    const space = provCap(state, now) - (state.prov || 0);
+    if (space <= 0) { bus.emit('production:full', { b, currency: 'prov' }); return { amount: 0, currency: 'prov', full: true }; }
+    const take = Math.min(st.cycles, Math.max(1, Math.floor(space / st.perCycle)));
+    b.lastCollect = take >= st.cycles && st.full ? now : b.lastCollect + take * d.prod.cycle * 1000;
+    const got = store.grant({ prov: take * st.perCycle, xp: Math.min(XP_COLLECT_MAX, Math.max(1, Math.round(Math.sqrt(take)))) }, 'collect').prov;
+    store.inc('provCollected', got);
+    bus.emit('production:collected', { b, amount: got, currency: 'prov' });
+    return { amount: got, currency: 'prov' };
+  }
   const before = st.currency === 'coins' ? masteryInfo(d.id, state).stars : 0;
   // conserva el progreso parcial del ciclo actual (si no estaba lleno)
   b.lastCollect = st.full ? now : b.lastCollect + st.cycles * d.prod.cycle * 1000;
@@ -454,10 +499,10 @@ export function collect(uid, state = S()) {
 }
 /** Cobra todo lo cobrable (botón "cobrar todo"). */
 export function collectAll(state = S()) {
-  const total = { coins: 0, gems: 0 };
+  const total = { coins: 0, gems: 0, prov: 0 };
   for (const b of state.city.buildings) {
     const r = collect(b.uid, state);
-    if (r) total[r.currency] += r.amount;
+    if (r) total[r.currency] = (total[r.currency] || 0) + r.amount;
   }
   return total;
 }
@@ -465,7 +510,7 @@ export function collectAll(state = S()) {
 // ---------- Mejoras ----------
 export function canUpgradeType(b) {
   const d = def(b);
-  return d.id === 'castillo' || d.id === 'mi_casa' || d.cat === 'monumento' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
+  return d.id === 'castillo' || d.id === 'mi_casa' || d.cat === 'monumento' || d.cat === 'ciclo' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
 }
 export function maxLevel(b) {
   const d = def(b);
@@ -498,6 +543,14 @@ export function upgradeInfo(b) {
     return { cost: { ...st.cost, mats: { ...st.cost.mats } }, time: stageTime(st.time), reqLevel: 1, stage: b.level + 1 };
   }
   const base = d.cost.coins || 200;
+  if (d.cat === 'ciclo') {
+    // edificios del ciclo: sin gemas; desde el nivel 3 piden materiales de región (y la Casa, planos en el 4 y el 5)
+    const up = CYCLE[d.id]?.up?.[b.level + 1] || {};
+    const cost = { coins: Math.round(base * UPGRADE_COST_MULT[b.level]) };
+    if (up.mats) cost.mats = { ...up.mats };
+    if (up.planos) cost.planos = up.planos;
+    return { cost, time: stageTime(Math.max(15, Math.round((d.time || 10) * (b.level + 1)))), reqLevel: d.unlock + b.level };
+  }
   return {
     cost: { coins: Math.round(base * UPGRADE_COST_MULT[b.level]), gems: b.level >= 3 ? b.level - 2 : 0 },
     time: stageTime(Math.max(15, Math.round((d.time || 10) * (b.level + 1)))),
@@ -513,6 +566,7 @@ export function canUpgrade(b, state = S(), now = Date.now()) {
   if (info.homeRank && townRank(state) < info.homeRank) return { ok: false, reason: `Rango ${rankName(info.homeRank)}`, locked: true, rank: info.homeRank };
   if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
   if (!store.hasMats(info.cost.mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
+  if ((info.cost.planos || 0) > (state.planos || 0)) return { ok: false, reason: `Faltan planos (${state.planos || 0}/${info.cost.planos})`, planos: true };
   if (!store.canAfford(info.cost)) return { ok: false, reason: 'No te alcanza', poor: true };
   return { ok: true };
 }
@@ -666,17 +720,26 @@ export function ensureHome(state = S(), now = Date.now()) {
 export function expansionInfo(state = S()) {
   const n = state.city.expansions;
   if (n >= MAX_EXPANSIONS) return null;
-  // la expansión n pide nivel 2+2n y un rango cuyo terreno (land) permita más de n expansiones
+  // la expansión n+1 pide zonas exploradas en total (EXPANSION_ZONES, §2.9) y un rango cuyo terreno (land) permita más
+  // de n expansiones. Sin requisito de nivel: el terreno se gana explorando.
   const reqRank = (TOWN_RANKS.find(r => r.land > n) || TOWN_RANKS[TOWN_RANKS.length - 1]).rank;
-  return { cost: { coins: Math.round(500 * Math.pow(2.1, n)), gems: n >= 3 ? (n - 2) * 5 : 0 }, reqLevel: 2 + n * 2, reqRank };
+  return { cost: { coins: Math.round(500 * Math.pow(2.1, n)), gems: n >= 3 ? (n - 2) * 5 : 0 }, reqLevel: 1, reqZones: EXPANSION_ZONES[n], reqRank };
 }
-/** ¿Se puede expandir ya? {...info, ok, reason, short} (short: texto corto para el cartel). null si está al máximo. */
+/**
+ * ¿Se puede expandir ya? {...info, ok, reason, short, zones, missingZones} (short: texto corto para el cartel).
+ * null si está al máximo.
+ */
 export function expansionStatus(state = S()) {
   const info = expansionInfo(state);
   if (!info) return null;
-  if (state.player.level < info.reqLevel) return { ...info, ok: false, reason: `Se desbloquea en nivel ${info.reqLevel}`, short: `Nivel ${info.reqLevel}` };
-  if (townRank(state) < info.reqRank) return { ...info, ok: false, reason: `Necesitás el rango ${rankName(info.reqRank)}`, short: `Rango ${rankName(info.reqRank)}` };
-  return { ...info, ok: true };
+  const zones = zonesExplored(state), missingZones = Math.max(0, info.reqZones - zones);
+  const out = { ...info, zones, missingZones };
+  if (missingZones > 0) {
+    const z = missingZones === 1 ? '1 zona más' : `${missingZones} zonas más`;
+    return { ...out, ok: false, reason: `Explorá ${z} para ampliar el terreno`, short: missingZones === 1 ? '1 zona' : `${missingZones} zonas`, zonesLock: true };
+  }
+  if (townRank(state) < info.reqRank) return { ...out, ok: false, reason: `Necesitás el rango ${rankName(info.reqRank)}`, short: `Rango ${rankName(info.reqRank)}` };
+  return { ...out, ok: true };
 }
 export function expand(state = S()) {
   const info = expansionInfo(state);

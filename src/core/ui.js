@@ -2,7 +2,8 @@
 import { icon } from './icons.js';
 import { audio } from './audio.js';
 import { fmtNum } from './economy.js';
-import { MATERIAL_BY_ID } from './data.js';
+import { MATERIAL_BY_ID, RESOURCES, RESERVES } from './data.js';
+import { EQUIPMENT } from '../expedition/exp-data.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 
@@ -42,6 +43,15 @@ export function costHtml(cost = {}, size = 16, opts = {}) {
   if (cost.mats) for (const [id, n] of Object.entries(cost.mats)) {
     const m = MATERIAL_BY_ID[id];
     if (m && n) parts.push(`<span class="cost cost-mat" title="${esc(m.name)}" aria-label="${n} ${esc(m.name.toLowerCase())}">${icon(m.icon, size)}${fmtNum(n)}</span>`);
+  }
+  // recursos del ciclo: provisiones, planos, colonos, equipo { id: n } y reservas { id: n }
+  for (const key of ['prov', 'planos', 'colonos']) {
+    const n = cost[key], r = RESOURCES[key];
+    if (n) parts.push(`<span class="cost cost-res" title="${esc(r.name)}" aria-label="${n} ${esc(n === 1 ? r.one : r.name.toLowerCase())}">${icon(r.icon, size)}${fmtNum(n)}</span>`);
+  }
+  for (const [kind, cat] of [['equip', EQUIPMENT], ['reserves', RESERVES]]) if (cost[kind]) for (const [id, n] of Object.entries(cost[kind])) {
+    const it = cat[id];
+    if (it && n) parts.push(`<span class="cost cost-res" title="${esc(it.name)}" aria-label="${n} ${esc(it.name.toLowerCase())}">${icon(it.icon, size)}${fmtNum(n)}</span>`);
   }
   if (opts.extras && cost.chest) {
     const type = typeof cost.chest === 'object' ? cost.chest.type : cost.chest;
@@ -164,7 +174,7 @@ export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, sta
       if (l == null || l === '') continue;
       if (l.nodeType) wrap.append(l); else wrap.append(h('p.reward-line', { html: l }));
     }
-    if (reward.coins || reward.gems || reward.xp || reward.mats) wrap.append(h('div.reward-items', { html: costHtml({ coins: reward.coins, gems: reward.gems, xp: reward.xp, mats: reward.mats }, 28) }));
+    if (reward.coins || reward.gems || reward.xp || reward.mats || reward.prov || reward.planos) wrap.append(h('div.reward-items', { html: costHtml({ coins: reward.coins, gems: reward.gems, xp: reward.xp, mats: reward.mats, prov: reward.prov, planos: reward.planos, colonos: reward.colonos, equip: reward.equip }, 28) }));
     modal({ title, content: wrap, closable: false, className: ('reward-modal ' + className).trim(), onClose: () => res(val),
       actions: buttons.map(b => ({ label: b.label, html: b.html, cls: b.cls || 'primary', onClick: () => { val = b.value; } })) });
     if (party && (stars === undefined || stars > 0)) confetti();   // confeti solo en momentos grandes (party: true)
@@ -209,7 +219,7 @@ export function flyCurrency(x, y, kind = 'coins', count = 6) {
   const target = document.querySelector(`[data-hud="${kind}"]`);
   const r = target?.getBoundingClientRect();
   const tx = r ? r.left + 14 : innerWidth / 2, ty = r ? r.top + r.height / 2 : 20;
-  const name = kind === 'gems' ? 'gem' : kind === 'xp' ? 'xp' : 'coin';
+  const name = kind === 'gems' ? 'gem' : kind === 'xp' ? 'xp' : kind === 'prov' ? '🍞' : 'coin';
   if (reducedMotion()) {
     // sin íconos volando: solo el sonido y el saltito del contador
     audio.sfx(kind === 'gems' ? 'gem' : 'coin');

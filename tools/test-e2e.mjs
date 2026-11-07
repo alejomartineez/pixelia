@@ -1,5 +1,6 @@
 // Partida de punta a punta como jugadora nueva (sin cheat) en iPhone, con la interfaz real:
-// splash → onboarding (personaje Osito, nombre, ciudad, estilo Bosque; se verifica el guardado) → premio diario → misiones m1–m8 (construir, cobrar, minijuego, vestidor) → subida de nivel con cofre
+// splash → onboarding (personaje Osito, nombre, ciudad, estilo Bosque; se verifica el guardado) → premio diario → tutorial t1–t10 (casa, huerta y cosecha, Casa de Expediciones, salida corta, Taller y Cuerda, población,
+// panadería, salida normal con Cuerda) → subida de nivel con cofre
 // → abrir cofre con figuritas → minijuego con potenciador → premio → Pase → Álbum → Cofres (gratis, mochila,
 // poción, martillo) → Eventos. Revisa que los globitos del HUD coincidan con los módulos en cada paso.
 // El tiempo se acelera editando timestamps (obras, producción, cofre gratis), nunca con ?cheat.
@@ -244,7 +245,7 @@ async function claimMainUI() {
     if (q) console.log('    (la misión ' + q.id + ' todavía no está cumplida: ' + JSON.stringify(await run(`return Q.mainQuest()`)) + ')');
     return null;
   }
-  const advanced = `window.__pixelia.store.state.quests.main > ${q.index}`;
+  const advanced = `!!window.__pixelia.store.state.quests.done?.['${q.id}']`;
   for (let attempt = 0; attempt < 3; attempt++) {
     await drainOverlays();
     await closeTop();
@@ -337,7 +338,7 @@ try {
   ok(saved?.theme === OB_THEME, `guardado: tema ${OB_THEME}`, saved);
 
   ok(await waitFor(`!!document.querySelector('.modal.pnl-login')`, 9000), 'aparece el premio diario al llegar a la ciudad');
-  ok(await run(`return !Q.mainQuest() ? false : Q.mainQuest().id === 'm1' && store.state.player.level === 1`), 'nivel 1 y misión m1');
+  ok(await run(`return !Q.mainQuest() ? false : Q.mainQuest().id === 't1' && store.state.player.level === 1`), 'nivel 1 y misión t1');
   await sleep(700);
   await shot('premio-diario');
   await tap('.modal.pnl-login .modal-foot .btn');
@@ -351,99 +352,127 @@ try {
   await checkBadges('inicio');
 
   // ===================================================================
-  section('Misiones m1–m4: construir y cobrar');
-  ok(await buildUI('casita') === 1, 'm1: Casita colocada con Construir → tarjeta → Colocar');
+  section('Tutorial t1–t4: casa, huerta, primera cosecha y la base');
+  ok(await buildUI('casita') === 1, 't1: Casa colocada con Construir → tarjeta → Colocar');
   await shot('obra-casita');
   await finishWorks();
   await sleep(500);
-  ok(await claimMainUI() === 'm1', 'm1 cobrada desde Misiones');
+  ok(await claimMainUI() === 't1', 't1 cobrada desde Misiones');
   await drainOverlays({ shots: { levelup: 'subida-nivel' } });
-  ok(await buildUI('panaderia') === 1, 'm2: Panadería colocada');
+  ok(await buildUI('huerta') === 1, 't2: Huerta colocada (pestaña Expedición)');
   await finishWorks();
-  ok(await claimMainUI() === 'm2', 'm2 cobrada');
+  ok(await claimMainUI() === 't2', 't2 cobrada');
   await drainOverlays({ shots: { levelup: 'subida-nivel', chest: 'cofre-apertura', cards: 'cofre-figuritas', summary: 'cofre-botin' } });
-  // m3: cobrar 60 monedas tocando la burbuja
-  await ageProduction(1);
+  // t3: la primera Huerta arranca con dos tandas: tocar su globito junta 4 provisiones
   await sleep(1200);
-  const bubble = await ev(() => { const e = [...document.querySelectorAll('.cx-bubble, [class*="bubble"]')].find(x => x.getBoundingClientRect().width > 4); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
-  if (bubble) { await tapXY(bubble.x, bubble.y); await sleep(800); }
-  ok(!!bubble, 'hay burbuja de cobro en la panadería');
-  await shot('cobrar');
-  for (let i = 0; i < 3 && (await mainId()) === 'm3' && !(await run(`return Q.mainQuest().done`)); i++) {
-    await ageProduction(1);
-    await run(`for (const b of store.state.city.buildings) E.collect(b.uid); return true;`);
-  }
-  ok(await claimMainUI() === 'm3', 'm3 (cobrar 60) cobrada');
-  await drainOverlays({ shots: { levelup: 'subida-nivel-2', chest: 'cofre-apertura', cards: 'cofre-figuritas', summary: 'cofre-botin' } });
-  ok(await buildUI('joyeria') === 1, 'm4: Joyería colocada');
+  const bubble = await ev(() => { const e = [...document.querySelectorAll('.cx-bubble')].find(x => x.getBoundingClientRect().width > 4 && x.querySelector('[data-pi="🍞"]')); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+  ok(!!bubble, 'la Huerta muestra el globito de provisiones');
+  const prov0 = await run(`return store.state.prov`);
+  if (bubble) { await tapXY(bubble.x, bubble.y); await sleep(900); }
+  await shot('cobrar-huerta');
+  if (!(await run(`return Q.mainQuest().done`))) await run(`for (const b of store.state.city.buildings) E.collect(b.uid); return true;`);
+  ok((await run(`return store.state.prov`)) >= prov0 + 4, 'las provisiones fueron al depósito');
+  ok(await claimMainUI() === 't3', 't3 (primera cosecha) cobrada');
+  await drainOverlays({ shots: { levelup: 'subida-nivel-2' } });
+  ok(!(await ev(() => document.querySelector('[data-act="expedition"]')?.style.display !== 'none')), 'el botón Expedición todavía no aparece');
+  ok(await buildUI('casa_exp') === 1, 't4: Casa de Expediciones colocada');
   await finishWorks();
-  ok(await claimMainUI() === 'm4', 'm4 cobrada');
-  await drainOverlays({ shots: { levelup: 'subida-nivel-3', chest: 'cofre-apertura', cards: 'cofre-figuritas', summary: 'cofre-botin' } });
-  await checkBadges('después de m4');
-  const st1 = await run(`return { level: store.state.player.level, coins: store.state.coins, chestsOpened: store.state.stats.chestsOpened || 0, stickers: A.albumProgress?.() }`);
-  console.log('    estado:', JSON.stringify(st1));
-
-  // ===================================================================
-  section('m5: minijuego (Joyas Brillantes) desde Juegos');
-  await tap('[data-act="games"]');
-  ok(await waitFor(`!!document.querySelector('.modal.pnl-games')`), 'panel Juegos abierto');
+  ok(await claimMainUI() === 't4', 't4 cobrada');
+  await drainOverlays({ shots: { levelup: 'subida-nivel-3' } });
   await sleep(600);
-  await shot('juegos');
-  await tap('.modal .btn.primary', 'Jugar');
-  ok(await waitFor(`!!document.querySelector('.scene-match3 .m3-play')`, 9000), 'tarjeta previa de Joyas Brillantes');
-  await sleep(500);
-  await shot('match3-tarjeta');
-  await tap('.m3-play');
-  ok(await waitFor(`window.__pixelia.ctx.router.current === 'match3' && document.querySelector('.scene-match3')?.__m3?.mode === 'play'`, 6000), 'partida empezada');
-  await sleep(1500);
-  await winMatch3();
-  ok(await waitFor(`!!document.querySelector('.modal.reward-modal')`, 15000), 'modal de premio al ganar');
-  await sleep(1000);
-  await shot('premio-minijuego');
-  const prize = await ev(() => document.querySelector('.modal.reward-modal')?.innerText.replace(/\s+/g, ' ').slice(0, 300));
-  ok(/chispas/i.test(prize || ''), 'el premio muestra las chispas del Pase', prize);
-  await tap('.modal.reward-modal .modal-foot .btn', 'Ciudad|Volver');
-  ok(await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 6000), 'vuelve a la ciudad');
-  await sleep(800);
-  await drainOverlays({ shots: { levelup: 'subida-nivel-4' } });
-  ok(await claimMainUI() === 'm5', 'm5 cobrada (trae Cofre de Madera)');
-  await drainOverlays();
-  await checkBadges('después de m5 (cofre en inventario)');
+  ok(await ev(() => document.querySelector('[data-act="expedition"]')?.style.display !== 'none'), 'aparece el botón Expedición en el riel');
+  await checkBadges('después de t4');
 
   // ===================================================================
-  section('m6–m8: árboles, población, vestidor');
-  const placed = await buildUI('arbol', 3);
-  ok(placed >= 3, `m6: ${placed} árboles pintados`);
-  await finishWorks();
-  ok(await claimMainUI() === 'm6', 'm6 cobrada');
+  section('t5: primera salida (corta, mapa fijo)');
+  await tap('[data-act="expedition"]');
+  ok(await waitFor(`!!document.querySelector('.modal.pnl-ex [data-ex-go="corta"]:not(:disabled)')`, 5000), 'panel de Expedición con la salida corta gratis');
+  await sleep(500);
+  await shot('panel-expedicion');
+  await tap('.modal.pnl-ex [data-ex-go="corta"]');
+  ok(await waitFor(`!!document.querySelector('.scene-expedition')?.__exp?.view`, 25000), 'escena de la salida');
+  ok(await ev(() => document.querySelector('.scene-expedition').__exp.run.seed === 110), 'es el mapa fijo del tutorial');
+  await sleep(1200);
+  // dos pasos tocando los rótulos de costo de las vecinas
+  for (let i = 0; i < 2; i++) {
+    const chip = await ev(() => { const c = [...document.querySelectorAll('.scene-expedition .ex-chip')].find(b => !b.classList.contains('hidden') && b.getBoundingClientRect().width > 4); if (!c) return null; const b = c.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+    if (chip) await tapXY(chip.x, chip.y);
+    await waitFor(`!document.querySelector('.scene-expedition').__exp.busy`, 8000);
+    await sleep(400);
+    if (await ev(() => !!document.querySelector('.scene-expedition .ex-card.in'))) { await tap('.scene-expedition .ex-opt:not(:disabled)'); await sleep(500); await waitFor(`!document.querySelector('.scene-expedition').__exp.busy`, 8000); }
+  }
+  ok(await ev(() => document.querySelector('.scene-expedition').__exp.run.steps >= 1), 'el grupo avanzó');
+  await shot('salida-corta');
+  await tap('.scene-expedition .ex-home');
+  await sleep(500);
+  if (await ev(() => !!document.querySelector('.scene-expedition [data-a="go"]'))) await tap('.scene-expedition [data-a="go"]');
+  ok(await waitFor(`!!document.querySelector('.scene-expedition [data-a="city"]')`, 15000), 'resultado de la salida');
+  await sleep(900);
+  await shot('resultado-salida');
+  await tap('.scene-expedition [data-a="city"]');
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 9000), 'vuelve a la ciudad');
+  await sleep(900);
   await drainOverlays();
-  // m7: 15 de población: casitas hasta llegar (con monedas propias, cobrando producción)
-  for (let i = 0; i < 6 && !(await run(`return Q.mainQuest()?.id !== 'm7' || Q.mainQuest().done`)); i++) {
+  ok(await claimMainUI() === 't5', 't5 cobrada (trae madera)');
+  await drainOverlays({ shots: { levelup: 'subida-nivel-4' } });
+
+  // ===================================================================
+  section('t6–t7: Taller y Cuerda');
+  ok(await run(`return E.canBuild('taller').ok`), 'alcanza la madera para el Taller');
+  ok(await buildUI('taller') === 1, 't6: Taller colocado');
+  await finishWorks();
+  ok(await claimMainUI() === 't6', 't6 cobrada');
+  await drainOverlays();
+  await tap('[data-act="expedition"]');
+  await waitFor(`!!document.querySelector('.modal.pnl-ex')`, 5000);
+  await sleep(400);
+  await tap('.modal.pnl-ex .btn', 'Ir al Taller');
+  ok(await waitFor(`!!document.querySelector('.modal.pnl-ws [data-craft="cuerda"] .btn:not(:disabled)')`, 5000), 'panel del Taller');
+  await sleep(400);
+  await shot('taller');
+  await tap('.modal.pnl-ws [data-craft="cuerda"] .btn');
+  ok(await waitFor(`(window.__pixelia.store.state.equipment.cuerda || 0) === 1`, 3000), 'Cuerda fabricada');
+  await closeTop();
+  ok(await claimMainUI() === 't7', 't7 cobrada');
+  await drainOverlays({ shots: { levelup: 'subida-nivel-5' } });
+
+  // ===================================================================
+  section('t8–t9: población y panadería');
+  for (let i = 0; i < 6 && !(await run(`return Q.mainQuest()?.id !== 't8' || Q.mainQuest().done`)); i++) {
     await ageProduction(2);
     await run(`for (const b of store.state.city.buildings) E.collect(b.uid); return true;`);
     const can = await run(`return E.canBuild('casita').ok`);
     if (can) { await buildUI('casita'); await finishWorks(); }
     await drainOverlays();
   }
-  ok(await claimMainUI() === 'm7', 'm7 (15 de población) cobrada');
-  await drainOverlays({ shots: { levelup: 'subida-nivel-5' } });
-  await tap('[data-act="wardrobe"]');
-  ok(await waitFor(`window.__pixelia.ctx.router.current === 'wardrobe'`, 8000), 'Vestidor abierto');
-  await sleep(1500);
-  await shot('vestidor');
-  // cambiar algo: el primer swatch o ítem que no esté seleccionado
-  const look0 = await run(`return JSON.stringify(store.state.avatar)`);
-  await tap('.scene-wardrobe .wd-list [data-id]', 'Tuyo');
-  await sleep(600);
-  const changed = (await run(`return JSON.stringify(store.state.avatar)`)) !== look0;
-  ok(changed, 'cambió el look en el vestidor');
-  await tap('.scene-wardrobe .wd-back');
-  await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 6000);
-  await sleep(800);
-  await drainOverlays();
-  ok(await claimMainUI() === 'm8', 'm8 cobrada');
+  ok(await claimMainUI() === 't8', 't8 (15 de población) cobrada');
   await drainOverlays({ shots: { levelup: 'subida-nivel-6' } });
-  await checkBadges('después de m8');
+  if (!(await run(`return E.canBuild('panaderia').ok`))) { await ageProduction(3); await run(`for (const b of store.state.city.buildings) E.collect(b.uid); return true;`); }
+  ok(await buildUI('panaderia') === 1, 't9: Panadería colocada');
+  await finishWorks();
+  ok(await claimMainUI() === 't9', 't9 cobrada');
+  await drainOverlays();
+
+  // ===================================================================
+  section('t10: salida normal con la Cuerda');
+  await tap('[data-act="expedition"]');
+  ok(await waitFor(`!!document.querySelector('.modal.pnl-ex [data-ex-go="normal"]:not(:disabled)')`, 5000), 'se puede salir (hay provisiones)');
+  ok(await ev(() => !!document.querySelector('.modal.pnl-ex [data-equip="cuerda"].on')), 'la Cuerda viene elegida');
+  await tap('.modal.pnl-ex [data-ex-go="normal"]');
+  ok(await waitFor(`!!document.querySelector('.scene-expedition')?.__exp?.view`, 25000), 'escena de la salida normal');
+  await sleep(1000);
+  await tap('.scene-expedition .ex-home');
+  await sleep(500);
+  if (await ev(() => !!document.querySelector('.scene-expedition [data-a="go"]'))) await tap('.scene-expedition [data-a="go"]');
+  ok(await waitFor(`!!document.querySelector('.scene-expedition [data-a="city"]')`, 15000), 'resultado');
+  await tap('.scene-expedition [data-a="city"]');
+  await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 9000);
+  await sleep(900);
+  await drainOverlays();
+  ok(await claimMainUI() === 't10', 't10 cobrada');
+  await drainOverlays();
+  ok(await run(`return Q.mainQuest()?.id === 't11' && /1 zona más/.test(E.expansionStatus().reason)`), 'sigue t11 (explorar la zona 1) y el terreno pide 1 zona');
+  await checkBadges('después de t10');
 
   // ===================================================================
   section('Cofres: gratis, abrir, mochila, poción y martillo');
@@ -495,6 +524,9 @@ try {
 
   // ===================================================================
   section('Minijuego con potenciador (+5 movidas)');
+  await drainOverlays();
+  // los minijuegos están en retirada: el tutorial ya no construye la Joyería, se pone acá para probar los potenciadores
+  await run(`if (!E.hasBuilt('joyeria')) { const { min, max } = E.landBounds(); let done = false; for (let z = min; z < max && !done; z++) for (let x = min; x < max && !done; x++) if (E.canPlace('joyeria', x, z, 0).ok) { const b = E.placeBuilding('joyeria', x, z, 0); if (!b.error) { b.buildEnd = Date.now() - 1; E.tick(); done = true; } } } return true;`);
   await drainOverlays();
   await run(`ctx.router.openGame('match3'); return true;`);
   ok(await waitFor(`!!document.querySelector('.scene-match3 .pxb-slot')`, 9000), 'tarjeta con potenciadores');
@@ -557,7 +589,7 @@ try {
   console.log('    social:', JSON.stringify(await run(`return { badge: ctx.social?.socialBadge?.(), tabs: ctx.social?.tabCounts?.() }`)));
   const fin = await run(`return { level: store.state.player.level, main: Q.mainQuest()?.id, coins: store.state.coins, gems: store.state.gems, chests: C.chestCount(), stickers: Object.keys(store.state.album?.have || {}).length, season: SE.seasonInfo().level }`);
   console.log('    final:', JSON.stringify(fin));
-  ok(fin.main === 'm9' || +String(fin.main).slice(1) > 8, 'misiones m1–m8 completas');
+  ok(fin.main === 't11', 'tutorial t1–t10 completo (sigue t11)', fin.main);
 
   // ===================================================================
   section('Recarga: la partida sigue con lo elegido en el onboarding');

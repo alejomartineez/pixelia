@@ -102,17 +102,22 @@ adentro (hasta dónde ir), no en un formulario.
 
 | Rol | id | Edificio | Habilidad base | Por nivel |
 |---|---|---|---|---|
-| Exploración | `exploracion` | Casa de Expediciones | visión 2; +25 en "pasar en silencio" (lobos) y +15 en "revisar a fondo" (ruinas) | +3 por nivel sobre 1 en sus decisiones; nivel 3+: el mirador revela radio 4 |
-| Ingeniería | `ingenieria` | Taller | +25 en cruzar ríos; +30 en despejar derrumbes | +3 por nivel sobre 1 |
+| Exploración | `exploracion` | Casa de Expediciones | visión 2; +25 en "pasar en silencio" (lobos) y +15 en "revisar a fondo" (ruinas) | +5 por nivel sobre 1 en sus decisiones; nivel 3+: el mirador revela radio 4 |
+| Ingeniería | `ingenieria` | Taller | +25 en cruzar ríos; +30 en despejar derrumbes | +5 por nivel sobre 1 |
 | Sanidad | `sanidad` | Dispensario | ánimo máximo +2; el campamento recupera +2 extra; el primer peligro fallado baja 1 menos | nivel 3+: una vez por salida, "Atender" (+2 de ánimo) |
 | Recolección | `recoleccion` | Huerta | cada casilla de recurso da `+1 + floor(nivel/2)` | — |
-| Guía | `guia` | Establo | −1 en terreno de costo ≥ 2; +20 en trepar y en seguir con tormenta; el regreso cuesta 1 menos (mínimo 1) | +3 por nivel sobre 1 |
+| Guía | `guia` | Establo | −1 en terreno de costo ≥ 2; +20 en trepar y en seguir con tormenta; el regreso cuesta 1 menos (mínimo 1) | +5 por nivel sobre 1 |
 
 - **Cansados**: si la salida fracasa (§2.7), los integrantes que fueron quedan cansados y no se pueden llevar por
   `120 − 20 × nivel del Dispensario` minutos (120 sin Dispensario, 20 con nivel 5). Nunca se pierde a nadie.
   Se ve en la ficha del grupo: "Descansando: 1 h 20 min".
 - Prototipo (Fase 1): 3 roles fijos en nivel 1 (Exploración, Ingeniería, Sanidad), grupo de 3, sin ciudad, 24 provisiones
-  y carga 15 (lo de una Casa nivel 3 y un Establo nivel 3). `EXP.prototype` en `exp-data.js`.
+  y carga 15 (lo de una Casa nivel 3 y un Establo nivel 3). `EXP.prototype` en `exp-data.js`. Desde la Fase 2 queda como
+  **salida de práctica**: solo sin Casa de Expediciones (o con `&proto=1`); sus eventos llevan `prototype: true` y lo traído
+  no llega a la ciudad.
+- Fase 2: el grupo se elige en el panel de Expedición (por defecto el último elegido, después por nivel); la Recolección
+  la entrena **la mejor Huerta**. Cada edificio del ciclo dice en su ficha qué da el próximo nivel en la expedición
+  ("Ingeniería 2: cruzar un río · 75% → 80%"), con la decisión típica de su rol (`roleChance`).
 
 ### 2.4 Provisiones, ánimo y carga
 | | Valor inicial | Cambia con |
@@ -186,7 +191,7 @@ Al entrar a un peligro o una ruina se abre una decisión con 2–3 opciones. Cad
 costo; nada de barras sin número. La probabilidad final es:
 
 ```
-p = base + rol (si el rol está en el grupo: bono + 3 × (nivel − 1)) + equipo + hallazgos de la región
+p = base + rol (si el rol está en el grupo: bono + 5 × (nivel − 1)) + equipo + hallazgos de la región
       − 3 × (zona − 1) − 2 × (tier de la región − 1)          → se recorta a [10, 95]
 ```
 
@@ -329,7 +334,17 @@ export function startExpedition({ region, kind, party, equip })  // descuenta pr
 export function finishExpedition(run)            // acredita (store.grant), avanza zonas, emite expedition:finished; devuelve el resumen para el modal
 export function zonesExplored()                  // total de zonas exploradas (lo usa economy.expansionStatus)
 export function roleLevel(role)                  // nivel del rol según su edificio (0 si no está)
+// además (Fase 2): expState() · activeRun() · defaultParty() · defaultEquip() · cargoMax(equip) · partySlots() · provMax()
+//   equipSlots() · tiredMinutes() · regionInfo(id) · expeditionBadge() (globito del HUD) · roleChance(role, nivel)
+//   cycleEffects(id, nivel) / cycleUpgradeLines(b) (ficha del edificio) · craftStatus(kind, id) / craft(kind, id) (Taller)
+//   TUTORIAL_SEED (la primera salida corta del Bosque usa un mapa fijo con "el aserradero abandonado" y madera cerca)
+// zonesExplored, roleLevel, cycleLevel, cycleValue y provCap viven en economy.js (sin ciclo de imports) y se reexportan.
 ```
+- La escena acredita la salida **apenas termina** (en su `persist()`, antes de la animación del resultado), así cerrar la app
+  en el medio no pierde el botín. `finishExpedition` es idempotente (`run.city.summary`). El run de la ciudad lleva
+  `run.city = { recorrido, tutorial, at, summary }`.
+- `expedition:finished` suma (además del contrato) `party`, `equip` y `far` (casillas lejanas pisadas: la diaria
+  "Explorá una casilla lejana").
 
 Router (`main.js`): `SCENES.expedition = () => import('./expedition/exp-scene.js')`; `ctx.router.go('expedition',
 { region, kind, resume })`. La escena **no** usa `ctx.endGame`: al terminar llama `finishExpedition(run)`, muestra el
@@ -685,7 +700,12 @@ Primeros ~30 minutos, después del onboarding (personaje, nombre, ciudad, estilo
 | t19 | Hacia las sierras | Explorá una zona de las Sierras Bajas | regiones |
 | t20 | Época de Piedra | Subí al rango Pueblo (pide 3 planos) | épocas |
 
-t1–t12 entran en ~30 minutos. Después siguen las misiones largas de siempre reescritas (monumentos, renovar, Villa,
+t1–t12 entran en ~30 minutos. **Fase 2**: la cadena se sigue por id (`state.quests.done`), así t15–t17 (Fase 3) se insertan
+entre t14 y t18 sin correr nada; quien ya pasó t14 las recibe como misión actual. La cadena vieja de minijuegos se migra
+sin repetir lo cobrado (m1→t1, m2→t9, m7→t8, m13→t12, m14→t14, m16–m28 iguales) y quien ya había avanzado saltea sin
+premio las primeras que ya cumple (`migrateQuestChain` en `quests.js`, idempotente). Ayudas: t3 sale enseguida porque la
+primera Huerta arranca con 2 tandas listas; t5 da 3 de madera y t6 otras 3 (Taller y Cuerda alcanzan aunque la salida
+corta vuelva con poco). Las diarias llevan `needs` (el edificio que tiene que existir). Después siguen las misiones largas de siempre reescritas (monumentos, renovar, Villa,
 Ciudad…, hasta Capital). Tipos de objetivo nuevos para `quests.js`: `expedition {kind?, region?}`, `zone {region?}`,
 `expStars` (suma), `prov` (provisiones juntadas, suma), `craft {id?}`, `threat` (amenazas pasadas), `renovate`,
 `era` (absoluto: época de la ciudad).
@@ -796,6 +816,9 @@ diga otra cosa, y `tools/sim-expedition.mjs` (Fase 1) con bots. Cada meta tiene 
     hallazgos;
   - "seguir" (jugar como el codicioso desde ahí) rinde más que "volver" en 25–65% de las vueltas voluntarias del prudente
     y el medio: si fuera casi siempre o casi nunca, la decisión sería obvia.
+- **Fase 2** (`roleStep` 3 → 5, `node tools/sim-expedition.mjs --n 300`): el % que se ve en la decisión típica sube 20 puntos
+del nivel 1 al 5 (cruzar un río 75% → 95% con Ingeniería). En el agregado: Exploración sola nivel 1 → 5, medio 3★ 29,7% →
+32,7% y objetivo 77,7% → 80,7%; Ingeniería + Sanidad, prudente 3★ 23% → 29%. El prototipo (nivel 1) no cambia.
 - **Resultado de la Fase 1** (prototipo: Bosque, zona 1, Exploración + Ingeniería + Sanidad en nivel 1, 24 provisiones,
   carga 15; `node tools/sim-expedition.mjs --only proto --n 1000`): prudente fracasa 0% y cumple el objetivo 82%; medio 3★
   36%; codicioso fracasa 15%; 14,8 pasos (p10–p90: 11–20); 12,2 materiales, 0,44 planos y 1,34 hallazgos; seguir > volver

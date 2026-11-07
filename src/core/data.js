@@ -14,7 +14,7 @@ export const BUILDER_GEM_COST = [0, 0, 0, 60, 150]; // costo del constructor n (
 export { PALETTE } from './palette.js';
 
 // ---------------- EDIFICIOS ----------------
-// cat: 'especial' | 'casa' | 'negocio' | 'deco' | 'camino' | 'monumento' (estos se agregan desde MONUMENTS, más abajo)
+// cat: 'especial' | 'casa' | 'ciclo' | 'negocio' | 'deco' | 'camino' | 'monumento' (estos se agregan desde MONUMENTS, más abajo)
 // size: [w, d] en tiles. cost: {coins, gems}. time: segundos de construcción (nivel 1).
 // pop: residentes que aporta (casas). popReq: población mínima para poder construirlo.
 // prod: {coins|gems: cantidad por ciclo, cycle: segundos, cap: ciclos acumulables}
@@ -76,6 +76,25 @@ export const BUILDINGS = [
   { id: 'teatro', name: 'Teatro de la Ópera', rank: 5, cat: 'negocio', size: [3, 3], unlock: 15, cost: { coins: 12000, gems: 10 }, time: 300, popReq: 180,
     prod: { coins: 800, cycle: 600, cap: 6 }, happy: 6, xp: 300, desc: 'Funciones de gala. Se ruega apagar el celular.' },
 
+  // --- Ciclo de la expedición (DESIGN-CORE.md §5.2; qué da cada nivel en CYCLE, más abajo) ---
+  // prod.prov: provisiones por tanda en el nivel 1 (CYCLE[id].prov da el valor por nivel); van al depósito al cobrar.
+  { id: 'casa_exp', name: 'Casa de Expediciones', cat: 'ciclo', size: [3, 3], unlock: 1, rank: 1, cost: { coins: 200 }, time: 20, max: 1,
+    happy: 2, xp: 30, panel: 'expedition', desc: 'De acá sale el grupo. Cada nivel suma lugar, provisiones por salida y vista larga.' },
+  { id: 'huerta', name: 'Huerta', cat: 'ciclo', size: [2, 2], unlock: 1, rank: 1, cost: { coins: 120 }, time: 10, max: 6,
+    happy: 1, xp: 12, prod: { prov: 2, cycle: 2700, cap: 6 }, desc: 'Verdura para la vianda. La mejor Huerta entrena Recolección.' },
+  { id: 'taller', name: 'Taller', cat: 'ciclo', size: [2, 2], unlock: 1, rank: 1, cost: { coins: 300, mats: { madera: 3 } }, time: 25, max: 1,
+    happy: 1, xp: 30, panel: 'workshop', desc: 'Cuerdas, palas y faroles. Entrena Ingeniería.' },
+  { id: 'establo', name: 'Establo', cat: 'ciclo', size: [3, 3], unlock: 2, rank: 1, cost: { coins: 600, mats: { madera: 4 } }, time: 40, max: 1,
+    happy: 2, xp: 40, desc: 'Mulas que cargan sin quejarse. Más carga y Guía.' },
+  { id: 'dispensario', name: 'Dispensario', cat: 'ciclo', size: [2, 2], unlock: 3, rank: 2, cost: { coins: 900, mats: { hierbas: 3 } }, time: 45, max: 1,
+    happy: 2, xp: 45, desc: 'Vendas, té de hierbas y alguien que escucha. Entrena Sanidad.' },
+  { id: 'tambo', name: 'Tambo', cat: 'ciclo', size: [3, 3], unlock: 3, rank: 2, cost: { coins: 900 }, time: 45, max: 3,
+    happy: 1, xp: 40, prod: { prov: 5, cycle: 3600, cap: 4 }, desc: 'Leche y queso para el camino. Las vacas no opinan.' },
+  { id: 'molino', name: 'Molino', cat: 'ciclo', size: [2, 2], unlock: 5, rank: 3, cost: { coins: 2400, mats: { piedra: 4 } }, time: 90, max: 3,
+    happy: 2, xp: 70, prod: { prov: 8, cycle: 5400, cap: 3 }, desc: 'Harina para el pan de la vianda.' },
+  { id: 'conservera', name: 'Conservera', cat: 'ciclo', size: [3, 3], unlock: 8, rank: 5, cost: { coins: 9000, mats: { mineral: 6 } }, time: 240, max: 2,
+    happy: 1, xp: 150, prod: { prov: 15, cycle: 7200, cap: 2 }, desc: 'Frascos y latas que aguantan cualquier viaje.' },
+
   // --- Decoración ---
   { id: 'arbol', name: 'Árbol', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 20 }, time: 0, happy: 1, xp: 2, desc: 'Sombra y pájaros.' },
   { id: 'arbusto', name: 'Arbusto con Flores', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 25 }, time: 0, happy: 1, xp: 2, desc: 'Flores de estación.' },
@@ -106,8 +125,72 @@ export const MATERIALS = [
   { id: 'tuerca', name: 'Tuercas', one: 'tuerca', game: 'parking', icon: 'tuerca', color: '#a9b4c2' },
   { id: 'mapa', name: 'Mapas', one: 'mapa', game: 'driving', icon: 'mapa', color: '#e9c48a' },
 ];
-export const MATERIAL_BY_ID = Object.fromEntries(MATERIALS.map(m => [m.id, m]));
+// Materiales de región (DESIGN-CORE.md §5.1): los trae la expedición y viven en state.materials con estos ids.
+// Los de minijuego de arriba quedan como están hasta la migración de la Fase 5.
+export const REGION_MATERIALS = [
+  { id: 'madera', name: 'Madera', one: 'madera', icon: '🪵', color: '#a8774a' },
+  { id: 'piedra', name: 'Piedra', one: 'piedra', icon: '🪨', color: '#9b9286' },
+  { id: 'mineral', name: 'Mineral', one: 'mineral', icon: '⛏️', color: '#7d8a99' },
+  { id: 'hierbas', name: 'Hierbas', one: 'hierbas', icon: '🌿', color: '#6f8a4f' },
+];
+export const REGION_MAT_IDS = REGION_MATERIALS.map(m => m.id);
+export const MATERIAL_BY_ID = Object.fromEntries([...MATERIALS, ...REGION_MATERIALS].map(m => [m.id, m]));
 export const MATERIAL_BY_GAME = Object.fromEntries(MATERIALS.map(m => [m.game, m]));
+
+// ---------------- RECURSOS DEL CICLO ----------------
+// Provisiones (depósito con tope), planos, equipo, reservas y colonos (DESIGN-CORE.md §5.1). Íconos: emojis pixelados.
+export const RESOURCES = {
+  prov: { name: 'Provisiones', one: 'provisión', icon: '🍞' },
+  planos: { name: 'Planos', one: 'plano', icon: '📜' },
+  colonos: { name: 'Colonos', one: 'colono', icon: '👪' },
+};
+export const PROV_START = 30;
+export const PROV_CAP_BASE = 40, PROV_CAP_PER_CASA = 20, PROV_CAP_PER_GRANERO = 40;   // tope del depósito
+export const RESERVE_CAP = 10;
+
+// Edificios del ciclo: qué da cada nivel (índice = nivel − 1). role = rol que entrena (nivel del rol = el del edificio).
+//  slots: lugares del grupo con quien lidera · provMax: provisiones por salida normal · cargo: carga extra
+//  equipSlots: equipo por salida · tiredMin: minutos de descanso tras un fracaso · prov: provisiones por tanda
+//  up: costo extra de la mejora a ese nivel (materiales desde el nivel 3; la Casa pide planos en el 4 y el 5)
+export const CYCLE = {
+  casa_exp: { role: 'exploracion', slots: [2, 2, 3, 3, 4], provMax: [18, 21, 24, 27, 30],
+    up: { 3: { mats: { madera: 4, piedra: 2 } }, 4: { mats: { piedra: 5, madera: 3 }, planos: 2 }, 5: { mats: { piedra: 6, mineral: 4 }, planos: 4 } } },
+  taller: { role: 'ingenieria', equipSlots: [1, 1, 2, 2, 3],
+    up: { 3: { mats: { madera: 4, mineral: 1 } }, 4: { mats: { mineral: 4, madera: 3 } }, 5: { mats: { mineral: 6, piedra: 3 } } } },
+  establo: { role: 'guia', cargo: [3, 6, 9, 12, 15],
+    up: { 3: { mats: { madera: 5 } }, 4: { mats: { madera: 6, hierbas: 3 } }, 5: { mats: { madera: 8, piedra: 4 } } } },
+  dispensario: { role: 'sanidad', tiredMin: [100, 80, 60, 40, 20],
+    up: { 3: { mats: { hierbas: 4 } }, 4: { mats: { hierbas: 6, madera: 2 } }, 5: { mats: { hierbas: 8, mineral: 2 } } } },
+  huerta: { role: 'recoleccion', prov: [2, 3, 4, 5, 6],
+    up: { 3: { mats: { madera: 2 } }, 4: { mats: { madera: 3, hierbas: 2 } }, 5: { mats: { madera: 4, hierbas: 3 } } } },
+  tambo: { prov: [5, 7, 9, 11, 13], up: { 3: { mats: { madera: 3 } }, 4: { mats: { madera: 4, hierbas: 2 } }, 5: { mats: { madera: 5, piedra: 3 } } } },
+  molino: { prov: [8, 11, 14, 17, 20], up: { 3: { mats: { piedra: 4 } }, 4: { mats: { piedra: 6, madera: 3 } }, 5: { mats: { piedra: 8, mineral: 3 } } } },
+  conservera: { prov: [15, 19, 23, 27, 31], up: { 3: { mats: { mineral: 4 } }, 4: { mats: { mineral: 6, piedra: 3 } }, 5: { mats: { mineral: 8, piedra: 4 } } } },
+};
+export const ROLE_BUILDING = { exploracion: 'casa_exp', ingenieria: 'taller', guia: 'establo', sanidad: 'dispensario', recoleccion: 'huerta' };
+export const TIRED_MIN_NONE = 120;   // descanso tras un fracaso sin Dispensario
+
+// Taller: equipo (1 uso por salida) y reservas para las amenazas (desde el rango Caserío). Fabricar es al instante.
+export const EQUIP_RECIPES = {
+  cuerda: { cost: { coins: 60, mats: { madera: 3 } } },
+  pala: { cost: { coins: 100, mats: { mineral: 2, madera: 1 } } },
+  lona: { cost: { coins: 80, mats: { hierbas: 1, madera: 2 } } },
+  farol: { cost: { coins: 80, mats: { mineral: 1, madera: 1 } } },
+  botiquin: { cost: { coins: 60, mats: { hierbas: 3 } } },
+  carreta: { cost: { coins: 250, mats: { madera: 6, mineral: 2 } }, establo: 2 },
+};
+export const EQUIP_IDS = Object.keys(EQUIP_RECIPES);
+export const RESERVES = {
+  arena: { name: 'Bolsas de arena', icon: '🧱', threat: 'crecida', cost: { coins: 40, mats: { piedra: 2 } } },
+  tinajas: { name: 'Tinajas de agua', icon: '🏺', threat: 'sequia', cost: { coins: 40, mats: { piedra: 1, hierbas: 1 } } },
+  baldes: { name: 'Baldes', icon: '🪣', threat: 'incendio', cost: { coins: 40, mats: { mineral: 1, madera: 1 } } },
+  lonas: { name: 'Lonas', icon: '⛺', threat: 'tormenta', cost: { coins: 40, mats: { hierbas: 1, madera: 1 } } },
+  lena: { name: 'Leña', icon: '🪵', threat: 'helada', cost: { coins: 20, mats: { madera: 2 } } },
+};
+export const RESERVE_IDS = Object.keys(RESERVES);
+export const RESERVES_RANK = 2;
+// Terreno: la expansión n (1..7) pide estas zonas exploradas en total (§2.9).
+export const EXPANSION_ZONES = [1, 3, 5, 8, 11, 14, 18];
 
 const ST4 = ['Cimientos', 'Paredes', 'Detalles', '¡Inauguración!'];
 const ST5 = ['Cimientos', 'Estructura', 'Paredes', 'Detalles', '¡Inauguración!'];
@@ -171,6 +254,7 @@ for (const [id, mo] of Object.entries(MONUMENTS)) {
 export const BUILDING_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
 export const CATEGORIES = [
   { id: 'casa', name: 'Casas' },
+  { id: 'ciclo', name: 'Expedición' },
   { id: 'negocio', name: 'Negocios' },
   { id: 'especial', name: 'Especiales' },
   { id: 'monumento', name: 'Monumentos' },
@@ -465,24 +549,33 @@ export const CUSTOM_CATALOG = {
 //  happy                 felicidad total >= count (absoluto)
 //  charm                 Encanto de la ciudad >= count (absoluto)
 //  castle                rango de la ciudad (nivel de la Municipalidad) >= count (absoluto)
-//  expand                expansiones de terreno
-//  castle                nivel del castillo >= count (absoluto)
+//  expand                expansiones de terreno (absoluto)
+//  expedition {kind?, region?, equip?, minStars?}   salidas terminadas (las que cumplen el filtro)
+//  zone {region?}        zonas exploradas (absoluto: en esa región o en total)
+//  expStars              estrellas de expedición (suma) · expFar: casillas lejanas pisadas (suma)
+//  prov                  provisiones cobradas de los productores (suma)
+//  craft {id?}           cosas fabricadas en el Taller (suma)
+// Las misiones se siguen por id (state.quests.done), así una fase puede sumar misiones en el medio de la cadena sin
+// correr las demás (t15–t17 son de la Fase 3, Amenazas). La cadena vieja de minijuegos (m1–m15) se reemplazó por el
+// tutorial del ciclo (DESIGN-CORE.md §6.1); lo ya cobrado no se repite (quests.js, OLD_MAIN).
 export const MAIN_QUESTS = [
-  { id: 'm1', title: '¡A construir!', text: 'Construí una Casa para la primera gente del pueblo.', goal: { type: 'build', id: 'casita', count: 1 }, reward: { coins: 100, xp: 20 } },
-  { id: 'm2', title: 'Pan para todos', text: 'Construí la Panadería.', goal: { type: 'build', id: 'panaderia', count: 1 }, reward: { coins: 120, xp: 25 } },
-  { id: 'm3', title: 'A cobrar', text: 'Tocá los globos sobre los edificios para cobrar 60 monedas.', goal: { type: 'collect', count: 60 }, reward: { coins: 80, gems: 2, xp: 20 } },
-  { id: 'm4', title: 'Joyas', text: 'Construí la Joyería.', goal: { type: 'build', id: 'joyeria', count: 1 }, reward: { coins: 100, xp: 25 } },
-  { id: 'm5', title: 'Primera partida', text: 'Jugá una partida de Joyas Brillantes.', goal: { type: 'play', game: 'match3', count: 1 }, reward: { gems: 3, xp: 30, chest: 'madera' } },
-  { id: 'm6', title: 'Algo de verde', text: 'Poné 3 árboles o arbustos.', goal: { type: 'build', ids: ['arbol', 'arbusto'], count: 3 }, reward: { coins: 150, xp: 25 } },
-  { id: 'm7', title: 'Más habitantes', text: 'Llegá a 15 de población.', goal: { type: 'pop', count: 15 }, reward: { coins: 200, xp: 40 } },
-  { id: 'm8', title: 'Tu look', text: 'Cambiá tu look en el Vestidor (botón de abajo).', goal: { type: 'customize', count: 1 }, reward: { gems: 5, xp: 40 } },
-  { id: 'm9', title: 'Bloque a bloque', text: 'Construí la Torre de Bloques y jugá una partida.', goal: { type: 'play', game: 'blocks', count: 1 }, reward: { coins: 250, xp: 50, chest: 'madera' } },
-  { id: 'm10', title: 'Helado para todos', text: 'Construí la Heladería.', goal: { type: 'build', id: 'heladeria', count: 1 }, reward: { coins: 250, xp: 50 } },
-  { id: 'm11', title: 'Sobre ruedas', text: 'Construí el Garaje.', goal: { type: 'build', id: 'garaje', count: 1 }, reward: { gems: 5, xp: 60 } },
-  { id: 'm12', title: 'Estacionamiento perfecto', text: 'Ganá 3 estrellas en Estacionamiento Express.', goal: { type: 'stars', game: 'parking', count: 3 }, reward: { coins: 400, xp: 60, chest: 'plata' } },
-  { id: 'm13', title: 'Más terreno', text: 'Expandí tu ciudad una vez.', goal: { type: 'expand', count: 1 }, reward: { gems: 5, xp: 60 } },
-  { id: 'm14', title: 'De Aldea a Caserío', text: 'Cumplí el expediente y subí la ciudad al rango Caserío.', goal: { type: 'castle', count: 2 }, reward: { gems: 8, xp: 80 } },
-  { id: 'm15', title: '¡A pasear!', text: 'Construí la Pista de Manejo y jugá Ruta Pixel.', goal: { type: 'play', game: 'driving', count: 1 }, reward: { coins: 600, xp: 80, chest: 'plata' } },
+  { id: 't1', title: 'Primera casa', text: 'Construí una Casa para la primera gente del pueblo.', goal: { type: 'build', id: 'casita', count: 1 }, reward: { coins: 100, xp: 20 } },
+  { id: 't2', title: 'Algo para comer', text: 'Construí una Huerta: da las provisiones para salir a explorar.', goal: { type: 'build', id: 'huerta', count: 1 }, reward: { coins: 80, xp: 20 } },
+  { id: 't3', title: 'Primera cosecha', text: 'Tocá la Huerta y juntá 4 provisiones.', goal: { type: 'prov', count: 4 }, reward: { coins: 60, xp: 15 } },
+  { id: 't4', title: 'Base de operaciones', text: 'Construí la Casa de Expediciones.', goal: { type: 'build', id: 'casa_exp', count: 1 }, reward: { gems: 2, xp: 30 } },
+  { id: 't5', title: 'Primera salida', text: 'Hacé la salida corta al Bosque del Arroyo (botón Expedición).', goal: { type: 'expedition', kind: 'corta', region: 'bosque', count: 1 }, reward: { coins: 100, xp: 30, mats: { madera: 3 } } },
+  { id: 't6', title: 'Con lo que trajiste', text: 'Construí el Taller: pide 3 de madera.', goal: { type: 'build', id: 'taller', count: 1 }, reward: { coins: 60, xp: 30, mats: { madera: 3 } } },
+  { id: 't7', title: 'Bien equipados', text: 'Fabricá una Cuerda en el Taller.', goal: { type: 'craft', id: 'cuerda', count: 1 }, reward: { coins: 100, xp: 25 } },
+  { id: 't8', title: 'Más gente', text: 'Llegá a 15 de población.', goal: { type: 'pop', count: 15 }, reward: { coins: 200, xp: 40 } },
+  { id: 't9', title: 'Pan del día', text: 'Construí la Panadería.', goal: { type: 'build', id: 'panaderia', count: 1 }, reward: { coins: 150, xp: 30 } },
+  { id: 't10', title: 'Salida en serio', text: 'Hacé una salida normal llevando la Cuerda.', goal: { type: 'expedition', kind: 'normal', equip: 'cuerda', count: 1 }, reward: { gems: 3, xp: 40, chest: 'madera' } },
+  { id: 't11', title: 'Zona explorada', text: 'Cumplí el objetivo de la zona 1 del Bosque del Arroyo.', goal: { type: 'zone', region: 'bosque', count: 1 }, reward: { gems: 3, xp: 50, prov: 10 } },
+  { id: 't12', title: 'Más terreno', text: 'Ampliá la ciudad: el terreno se gana explorando.', goal: { type: 'expand', count: 1 }, reward: { gems: 5, xp: 60 } },
+  { id: 't13', title: 'Animales de carga', text: 'Construí el Establo: más carga y alguien que conoce el camino.', goal: { type: 'build', id: 'establo', count: 1 }, reward: { coins: 300, xp: 60 } },
+  { id: 't14', title: 'De Aldea a Caserío', text: 'Cumplí el expediente y subí la ciudad al rango Caserío.', goal: { type: 'castle', count: 2 }, reward: { gems: 8, xp: 80 } },
+  { id: 't18', title: 'Tres estrellas', text: 'Hacé una salida con las 3 estrellas.', goal: { type: 'expedition', minStars: 3, count: 1 }, reward: { gems: 5, xp: 80, chest: 'plata' } },
+  { id: 't19', title: 'Hacia las sierras', text: 'Explorá una zona de las Sierras Bajas.', goal: { type: 'zone', region: 'sierras', count: 1 }, reward: { gems: 8, xp: 100 } },
+  { id: 't20', title: 'Época de Piedra', text: 'Subí la ciudad al rango Pueblo.', goal: { type: 'castle', count: 3 }, reward: { gems: 10, xp: 150, chest: 'plata' } },
   { id: 'm16', title: 'Ciudad feliz', text: 'Llegá a 40 de felicidad.', goal: { type: 'happy', count: 40 }, reward: { gems: 8, xp: 100 } },
   { id: 'm17', title: 'Gran ciudad', text: 'Llegá a 60 de población.', goal: { type: 'pop', count: 60 }, reward: { coins: 1000, xp: 120 } },
   { id: 'm18', title: 'Mejora todo', text: 'Mejorá 5 edificios.', goal: { type: 'upgrade', count: 5 }, reward: { gems: 10, xp: 150, chest: 'oro' } },
@@ -498,19 +591,23 @@ export const MAIN_QUESTS = [
   { id: 'm28', title: 'Capital de Pixelia', text: 'Llevá tu ciudad al rango Capital.', goal: { type: 'castle', count: 8 }, reward: { gems: 80, xp: 1500, chest: 'real' } },
 ];
 
-// Pool de misiones diarias (se eligen 3 por día con semilla de la fecha)
+// Pool de misiones diarias (se eligen 3 por día con semilla de la fecha). needs: edificio que tiene que existir.
 export const DAILY_POOL = [
   { id: 'd_collect', title: 'Recolectá monedas', goal: { type: 'collect', count: 300 }, reward: { coins: 150, xp: 20 }, scale: true },
   { id: 'd_earn', title: 'Ganá monedas', goal: { type: 'earn', count: 800 }, reward: { gems: 2, xp: 25 }, scale: true },
-  { id: 'd_match3', title: 'Jugá Joyas Brillantes 2 veces', goal: { type: 'play', game: 'match3', count: 2 }, reward: { coins: 120, xp: 20, mats: { cristal: 3 } } },
-  { id: 'd_blocks', title: 'Jugá Bloques Pixel 2 veces', goal: { type: 'play', game: 'blocks', count: 2 }, reward: { coins: 120, xp: 20, mats: { ladrillo: 3 } }, minLevel: 2 },
-  { id: 'd_parking', title: 'Estacioná 3 veces', goal: { type: 'play', game: 'parking', count: 3 }, reward: { gems: 2, xp: 25, mats: { tuerca: 4 } }, minLevel: 3 },
-  { id: 'd_driving', title: 'Salí a pasear 2 veces', goal: { type: 'play', game: 'driving', count: 2 }, reward: { gems: 2, xp: 25, mats: { mapa: 3 } }, minLevel: 5 },
-  { id: 'd_stars', title: 'Conseguí 6 estrellas', goal: { type: 'stars', count: 6 }, reward: { gems: 3, xp: 30 } },
+  { id: 'd_match3', title: 'Jugá Joyas Brillantes 2 veces', goal: { type: 'play', game: 'match3', count: 2 }, reward: { coins: 120, xp: 20, mats: { cristal: 3 } }, needs: 'joyeria' },
+  { id: 'd_blocks', title: 'Jugá Bloques Pixel 2 veces', goal: { type: 'play', game: 'blocks', count: 2 }, reward: { coins: 120, xp: 20, mats: { ladrillo: 3 } }, minLevel: 2, needs: 'torre_bloques' },
+  { id: 'd_parking', title: 'Estacioná 3 veces', goal: { type: 'play', game: 'parking', count: 3 }, reward: { gems: 2, xp: 25, mats: { tuerca: 4 } }, minLevel: 3, needs: 'garaje' },
+  { id: 'd_driving', title: 'Salí a pasear 2 veces', goal: { type: 'play', game: 'driving', count: 2 }, reward: { gems: 2, xp: 25, mats: { mapa: 3 } }, minLevel: 5, needs: 'pista' },
   { id: 'd_build', title: 'Construí 3 cosas', goal: { type: 'build', count: 3 }, reward: { coins: 200, xp: 25 } },
   { id: 'd_upgrade', title: 'Mejorá un edificio', goal: { type: 'upgrade', count: 1 }, reward: { gems: 2, xp: 30 }, minLevel: 3 },
   { id: 'd_customize', title: 'Cambiá tu look', goal: { type: 'customize', count: 1 }, reward: { coins: 100, xp: 15 }, minLevel: 2 },
-  { id: 'd_blockscore', title: 'Hacé 1500 puntos en Bloques', goal: { type: 'score', game: 'blocks', count: 1500 }, reward: { gems: 3, xp: 30 }, minLevel: 2 },
+  // expedición (DESIGN-CORE.md §6.1)
+  { id: 'd_exp2', title: 'Hacé 2 salidas', goal: { type: 'expedition', count: 2 }, reward: { coins: 150, xp: 25, prov: 6 }, needs: 'casa_exp' },
+  { id: 'd_prov', title: 'Juntá 20 provisiones', goal: { type: 'prov', count: 20 }, reward: { gems: 2, xp: 20 }, needs: 'huerta' },
+  { id: 'd_expstars', title: 'Conseguí 4 estrellas en expediciones', goal: { type: 'expStars', count: 4 }, reward: { gems: 3, xp: 30 }, needs: 'casa_exp' },
+  { id: 'd_craft', title: 'Fabricá 2 cosas en el Taller', goal: { type: 'craft', count: 2 }, reward: { coins: 150, xp: 25, mats: { madera: 2 } }, needs: 'taller' },
+  { id: 'd_far', title: 'Explorá una casilla lejana', goal: { type: 'expFar', count: 1 }, reward: { gems: 2, xp: 25 }, needs: 'casa_exp' },
 ];
 export const DAILY_BONUS_ALL = { gems: 3, xp: 50, chest: 'plata' }; // por completar las 3 (el cofre trae 3 figuritas)
 
