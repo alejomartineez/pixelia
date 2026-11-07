@@ -272,8 +272,18 @@ try {
   ok(a1.on.includes('xlarge') && a1.on.includes('on'), 'Ajustes marca las opciones elegidas');
   const confettiCount = await T(P, () => { window.__pixelia.ctx.ui.confetti(); return document.querySelectorAll('canvas.confetti').length; });
   ok(confettiCount === 0, 'sin confeti con reducir movimiento');
-  await P.click('.a11y-opt[data-v=normal]');
-  await P.click('.a11y-opt[data-v=off]');
+  // los toques van con el panel ya quieto (con la máquina cargada, la apertura puede tardar y el clic cae en el aire)
+  await sleep(500);
+  for (const v of ['normal', 'off']) {
+    await P.waitForFunction((val) => {
+      const b = document.querySelector(`.a11y-opt[data-v=${val}]`);
+      if (!b) return false;
+      const r = b.getBoundingClientRect();
+      return r.width > 0 && document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === b;
+    }, { timeout: 5000 }, v).catch(() => {});
+    await P.click(`.a11y-opt[data-v=${v}]`);
+    await P.waitForFunction((val) => document.querySelector(`.a11y-opt[data-v=${val}]`)?.classList.contains('on'), { timeout: 3000 }, v).catch(() => {});
+  }
   await sleep(200);
   const a2 = await T(P, () => ({ cls: document.documentElement.className, rm: window.__pixelia.ctx.ui.reducedMotion(), st: window.__pixelia.store.state.settings }));
   ok(!a2.cls.includes('text-xl') && a2.cls.includes('motion-full') && !a2.cls.includes('reduce-motion') && a2.rm === false && a2.st.textSize === 'normal' && a2.st.motion === 'off', 'tocar Normal / No lo cambia al toque y lo guarda', a2);
