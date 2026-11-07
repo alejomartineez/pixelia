@@ -585,12 +585,12 @@ export function eraRoof(m, x, y, z, w, d, era, opts)         // opts.kind: 'dos_
 export function eraOpening(m, face, plane, u, y, era, kind)  // kind: 'puerta' | 'ventana' | 'vidriera'
 export function eraVertical(m, x, y, z, era)                 // el elemento vertical del nivel 4
 export function eraRecolor(m, era)                           // respaldo para builders sin arte por época
-// upgradeDressing queda solo para el respaldo y se borra cuando la tanda 3 termine
+// upgradeDressing se borró al terminar la tanda 3
 
 // models.js
 buildTemplate(id, level, { flag, era }, themeId)
 //   def.eraArt === true → BUILDERS[id](m, level, { era, flag }) y nada más
-//   si no             → BUILDERS[id](m, level, opts) + upgradeDressing (casas/negocios) + eraRecolor(m, era) si era > 1
+//   si no             → BUILDERS[id](m, level, opts) + eraRecolor(m, era) si era > 1
 // clave de caché: id|nivel|era|flag|tema
 buildingModel(id, level, { era, ... })     // era por defecto 1
 thumbnail(id, level, era = 1)

@@ -169,14 +169,14 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
 - `group.userData.height` = altura en unidades de mundo (para ubicar burbujas arriba).
 - `group.userData.update?.(dt, t)` animaciones opcionales (agua de la fuente, rueda girando, banderas, humo de chimenea, patitos). La ciudad llama esto cada frame.
 - Mayor `level` = más detalle visible (piso extra, adornos dorados, banderas, flores). Cada mejora tiene que **notarse de lejos**.
-  Casas y negocios mejorables reciben además una capa común (`upgradeDressing` en models-kit.js, la aplica `buildTemplate`):
-  nivel 2 cantero de flores en los bordes del frente y la derecha · 3 faroles encendidos y macetas · 4 mástil con bandera más alto
-  que el techo · 5 borde dorado y estrella girando arriba. Los adornos solo van en columnas libres del lote.
-  **Se reemplaza** por la capa de época: cada nivel cambia la estructura y cada época el material y la paleta
-  (`b.era`, `eraWall/eraRoof/...`, `def.eraArt`; DESIGN-CORE.md §4). `upgradeDressing` queda como respaldo hasta la tanda 3.
-  Hecho (Fase 4): Municipalidad (`models-town.js`), las 5 casas (`eraHouse` en `models-houses.js`) y los 7 negocios de 2×2
-  (`shopBody`/`sidewalk` con época). Respaldo todavía: Cine, Baños, Rueda, Teatro, los especiales de minijuego y los
-  edificios del ciclo y defensas (Fases 2 y 3: les alcanza con `eraStyle`/`eraWall`/`eraRoof`… y `eraArt: true`).
+  Cada nivel cambia la estructura y cada época el material y la paleta (`b.era`, `eraWall/eraRoof/...`, `def.eraArt`;
+  DESIGN-CORE.md §4). Con arte por época (Fase 4, terminada): Municipalidad (`models-town.js`), casas (`eraHouse`),
+  negocios (`models-shops.js`, `models-shops3.js`), edificios del ciclo (`models-cycle.js`), defensas
+  (`models-defense.js`, usa `cycleBody` y `eraTower` de `models-cycle.js`), deco y caminos (`models-deco.js`, materiales
+  en `DS[era]`), Mi Casa (`models-home.js`) y la base de los monumentos (`eraBase` en `models-monuments.js`).
+  Deco, caminos, Mi Casa y monumentos no se renuevan: la escena les pasa la época de la ciudad (`drawEra` en `city.js`;
+  en las visitas, la del rango del dueño). Árbol, arbusto, cerezo y unicornio valen 1 siempre (comparten caché).
+  `upgradeDressing` ya no existe; el respaldo (`eraRecolor`) queda para los especiales de minijuego.
   `eraWall` arma volúmenes macizos (una cáscara hueca duplicaría los triángulos). El arte por época no pasa por
   `calmColors`: sus juntas e hiladas son a propósito.
 - Municipalidad (id `castillo`): 8 niveles, uno por rango (`TOWN_RANKS[].look` dice qué estrena: pórtico, alas, fuentes, cúpula

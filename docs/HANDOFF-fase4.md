@@ -1,7 +1,45 @@
 # Fase 4 — Épocas y arte por nivel (handoff)
 
-Ramas: `claude/silly-shtern-b6b733` (tandas 1 y 2, ya en master) y `claude/fase4b-arte-ca33f1` (3×3, ciclo, Molino y
-Carreta). Contratos: DESIGN-CORE.md §4 y §10.
+Ramas: `claude/silly-shtern-b6b733` (tandas 1 y 2, ya en master), `claude/fase4b-arte-ca33f1` (3×3, ciclo, Molino y
+Carreta, ya en master) y `claude/trusting-lehmann-2f58b5` (defensas, tanda 3, aceptación: **la Fase 4 queda terminada**).
+Contratos: DESIGN-CORE.md §4 y §10.
+
+## Hecho en la tercera sesión (`claude/trusting-lehmann-2f58b5`)
+- **Defensas** con arte por época y nivel (`src/city/models-defense.js`, reescrito; `eraArt: true` en las 6). Firma de
+  lejos de cada una: Dique = muro largo del material de la época con el arroyo al frente (2 compuerta con volante, 3 camino
+  de ronda, 4 casilla del cuidador, 5 escala de crecida, faroles y bandera celeste); Granero = hórreo sobre pilares con
+  muelas (Madera, Piedra, Ladrillo) o silo de tolva redondo sobre patas (Hierro, Vidrio y acero), bolsas de grano, agua
+  guardada en el 2, noria en el 4, bandera dorada en el 5; Cuartel de Bomberos = rojo (tablas pintadas, paños rojos o
+  montantes rojos en el muro cortina), portón ancho de la época, campana en el techo hasta el 3, carro / bomba a vapor /
+  autobomba en el 2, torre de mangueras con campana o sirena en el 4; Pararrayos = mástil (palo, obelisco, pilar de
+  ladrillo, torre reticulada, mástil de acero con balizas), punta de cobre, chapa con el rayo en el 3, corona de puntas
+  en el 4, bola de cobre y baliza en el 5; Refugio = techo a dos aguas hasta el piso con escarcha en la cumbrera (bóveda
+  de chapa o de paneles en Hierro y Vidrio y acero), chimenea grande con humo y ventanas encendidas (`m.light`), leñera
+  en el 2; Hospital = bloque blanco con marquesina, alas al frente en el 2 y el cartel azul con la H sobre el techo,
+  ambulancia en el 3. `models-cycle.js` exporta `cycleBody` y `eraTower` para reusar la regla de niveles.
+  La lógica de amenazas no se tocó.
+- **Tanda 3**: deco, caminos, Mi Casa y base de monumentos por época (`eraArt: true` en todos). No se renuevan
+  (`hasEra` es false): siguen a la **época de la ciudad**. `city.js` tiene `drawEra(b)` (b.era si `hasEra`, si no
+  `cityEra()`; se usa al dibujar y al comparar para reconstruir, así el cambio de época los redibuja solo) y
+  `city-visit.js` usa la del rango del dueño. `modelEra` en `models.js` ya no fuerza 1, salvo árbol, arbusto, cerezo y
+  unicornio (`ERA_FREE`, se ven igual siempre).
+  - `models-deco.js`: materiales en `DS[era]`; farol (aceite colgado, linterna sobre piedra, forjado verde, gas de dos
+    brazos, columna de acero), banco (medio tronco, losa de piedra, listones con hierro verde/negro, hormigón), fuente
+    (piso, borde, columna y remate de la época en vez del corazón), pedestal de la estatua, glorieta (techo de paja,
+    pizarra, tejas, chapa o vidrio), macetas, arco, orilla y muelle de la laguna. Caminos: Piedra (tierra con lajas →
+    lajas → adoquín parejo → granito → baldosones), Ladrillo (a soga → espina de pez → industrial → adoquín de hormigón),
+    Dorado (cambian las juntas; luces al ras).
+  - `models-home.js`: Mi Casa con `eraWall/eraOpening/gable` de la época; conserva puerta bordó, corazón en el hastial
+    (en Vidrio y acero, en la fachada, con techo terraza), buzón, canteros y árbol; cerco de la época en el 5.
+  - `models-monuments.js`: `eraBase` en `staged` (piso de la época desde Ladrillo y cerco de la época con entrada); el
+    monumento conserva su diseño.
+  - `upgradeDressing` borrado de `models-kit.js` y de `models.js` (nadie lo usaba).
+- `EQUIPMENT.carreta.text`: "+4 de carga (+6 desde la época Hierro)".
+- `tools/era-city.mjs`: `--set ciclo` (ciudad llena con ciclo y defensas, Dique en las calles y Pararrayos entre los
+  árboles, ignora `max`) y `--accept id1,id2` (prueba de aceptación: una fila por época, columnas niveles 1/3/5 de cada
+  id, ciudad chica; `--nohud` ahora también esconde la tarjeta de instalar).
+- Fuera de mi lista, chico: `src/scenes/city.js` (`drawEra`, 4 líneas), `src/scenes/city-visit.js` (época de deco en
+  visitas, 3 líneas), `DESIGN.md` y `DESIGN-CORE.md` (texto de `upgradeDressing`).
 
 ## Hecho en la segunda sesión (`claude/fase4b-arte-ca33f1`)
 - **Negocios de 3×3** en `src/city/models-shops3.js` (nuevo; `models-shops.js` los suma a `SHOP_BUILDERS`), con
@@ -61,20 +99,27 @@ Carreta). Contratos: DESIGN-CORE.md §4 y §10.
 - `src/city/models-town.js`
 - `src/city/models-shops3.js` (segunda sesión)
 - Herramientas: `tools/era-city.mjs`, `tools/era-shots.mjs` (no van al precache).
+- Tercera sesión: ningún .js nuevo (solo cambian archivos que ya estaban en el precache).
 
 ## Falta
-- **Defensas** (`models-defense.js`, Fase 3): siguen con el respaldo (`eraRecolor`). Para arte propio: dibujar con
-  `eraWall/eraRoof/eraOpening/...` usando `o.era` y marcar `eraArt: true` en `data.js` (ver `body` en `models-cycle.js`).
-- `exp-data.js` sigue diciendo "+4 de carga" en `EQUIPMENT.carreta.text`; los paneles ya usan `equipText`.
-- Captura de `smoke.mjs --device iphone` de la ciudad con edificios del ciclo (la de `era-city.mjs` no los pone: tienen
-  `max`); revisé las grillas de `era-shots.mjs` (nivel y época se distinguen) pero no la prueba de aceptación en iPhone.
-- **Tanda 3**: deco, caminos, exterior de Mi Casa, base de los monumentos; después borrar `upgradeDressing`.
-- Aviso "N edificios para renovar" fuera del festejo (por ejemplo en el chip de rango del HUD; es de la Fase 5).
-- `req.planos` solo cuenta si la partida tiene `state.planos` numérico (lo agrega la Fase 2); sin eso el expediente no
-  lo pide, para no trabar el rango 3.
-- Materiales de renovar (`piedra`, `madera`, `mineral`) son los ids nuevos de la Fase 2.
+- Nada de la Fase 4. Quedan para otras fases: aviso "N edificios para renovar" fuera del festejo (chip de rango del HUD,
+  Fase 5) y los especiales de minijuego (joyería, torre de bloques, garaje, pista, boutique real) con el respaldo
+  `eraRecolor` (se retiran en la Fase 5).
+- Detalle conocido: al **mover** una deco o un camino, el fantasma de `city-place.js` usa `b.era` (la época en que se
+  construyó) en vez de la de la ciudad; al soltarlo se dibuja bien. No lo toqué porque la colocación no es mía
+  (`era: movingB ? movingB.era : E.cityEra()` → para deco/caminos/Mi Casa/monumentos debería ser `E.cityEra()`).
+- `req.planos` solo cuenta si la partida tiene `state.planos` numérico (lo agrega la Fase 2).
 
 ## Pruebas
+- Tercera sesión: triángulos promedio por modelo (5 épocas × 5 niveles, en miles) antes → ahora: Dique 1,9 → 2,1,
+  Granero 2,8 → 3,8, Bomberos 2,7 → 3,7, Pararrayos 0,8 → 1,0, Refugio 2,8 → 3,5, Hospital 5,5 → 6,2; Farol 0,7 → 0,5,
+  Fuente 2,3 → 2,2, Glorieta 2,9 → 2,9, Camino 0,3 → 0,3, Mi Casa 3,2 → 3,3. Ciudad llena `--rank 8 --era mix --level mix`:
+  560 mil (565 mil antes); con ciclo y defensas (`--set ciclo`, 119 edificios): 506 mil.
+  Aceptación en iPhone (`era-city.mjs --accept bomberos,granero`, `refugio,huerta`, `hospital,dique`, `--nohud`, cámara
+  por defecto): la época se reconoce por material y techo en cada fila y el 1, el 3 y el 5 se separan por altura, anexos,
+  torre y remate (la H del Hospital y la compuerta del Dique se leen de lejos).
+  Grillas: `node tools/era-shots.mjs shots/eras --ids dique,granero,bomberos,pararrayos,refugio,hospital,mi_casa`; deco:
+  `node tools/gallery-shot.mjs "ids=farol,banco,fuente,estatua,glorieta,macetas,arco_rosas,lago,camino,camino_rosa,camino_dorado&eras=1,2,3,4,5&levels=1&cols=10" shots/deco.png 1600 1100`.
 - Segunda sesión: ciudad llena con épocas mezcladas (`era-city.mjs --rank 8 --era mix --level mix`) 565 mil triángulos
   (564 mil antes); 8/5/5 = 578 mil. Promedio por modelo (5 épocas × 5 niveles) antes → ahora: Casa de Expediciones
   5,8 → 6,8 mil, Huerta 2,6 → 2,8, Taller 2,9 → 3,2, Establo 5,6 → 6,3, Dispensario 3,0 → 3,2, Tambo 5,9 → 6,3,

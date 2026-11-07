@@ -140,9 +140,9 @@ function farol(m, L, o) {
     v.set(3, 13, 3, P.goldD); v.set(4, 14, 4, d.metal);
   } else {                // columna fina de acero con cabezal de luz
     v.box(3, 0, 3, 2, 1, 2, d.stoneD);
-    v.box(3, 1, 3, 2, 14, 2, (x, y) => (y === 3 ? d.metalD : d.metal));
-    v.box(3, 15, 1, 2, 1, 6, d.metal);
-    lamp.box(3, 14, 1, 2, 1, 2, d.lamp); lamp.box(3, 14, 5, 2, 1, 2, d.lamp);
+    v.box(3, 1, 3, 2, 12, 2, (x, y) => (y === 3 ? d.metal : d.metalD));
+    v.box(3, 13, 1, 2, 1, 6, d.metalD);
+    lamp.box(3, 12, 1, 2, 1, 2, d.lamp); lamp.box(3, 12, 5, 2, 1, 2, d.lamp);
   }
   m.animate((parts, ph) => { const p = parts.lamp[0]; return (dt, t) => { p.scale.setScalar(1 + Math.sin((t + ph) * 3) * 0.04); }; });
 }
