@@ -174,7 +174,7 @@ try {
   const ficha = await bea.evaluate(() => ({ txt: document.querySelector('.cx-info-modal')?.textContent || '', stars: document.querySelectorAll('.cx-info-modal .cx-ihead .cx-stars img').length, reqs: document.querySelectorAll('.cx-info-modal .cx-reqline').length }));
   ok(/Rango 2: Caserío/.test(ficha.txt), 'la ficha dice «Rango 2: Caserío»');
   ok(ficha.stars === 8, 'la Municipalidad muestra 8 estrellas', ficha.stars);
-  ok(ficha.reqs === 4, 'la ficha lista el expediente del próximo rango', ficha.reqs);
+  ok(ficha.reqs === 5, 'la ficha lista el expediente del próximo rango (con los 3 planos)', ficha.reqs);   // state.planos existe desde la Fase 2
   await shot(bea, 'ficha-municipalidad');
   await bea.evaluate(() => window.__pixelia.ctx.ui.closeAllModals());
   await sleep(300);

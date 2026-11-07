@@ -12,7 +12,8 @@ const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i + 1] : d; };
 const out = resolve(args[0] && !args[0].startsWith('--') ? args[0] : join(HERE, '..', 'shots', 'eras'));
 mkdirSync(out, { recursive: true });
-const DEFAULT = ['casita', 'cabana', 'chalet', 'torre_cristal', 'mansion', 'panaderia', 'heladeria', 'floreria', 'cafeteria', 'salon', 'pasteleria', 'boutique', 'cine', 'spa', 'rueda', 'teatro'];
+const DEFAULT = ['casita', 'cabana', 'chalet', 'torre_cristal', 'mansion', 'panaderia', 'heladeria', 'floreria', 'cafeteria', 'salon', 'pasteleria', 'boutique', 'cine', 'spa', 'rueda', 'teatro',
+  'casa_exp', 'huerta', 'taller', 'establo', 'dispensario', 'tambo', 'molino', 'conservera'];
 const ids = (opt('ids', '') || DEFAULT.join(',')).split(',').filter(Boolean);
 const levels = opt('levels', '1,2,3,4,5');
 const theme = opt('theme', '');
