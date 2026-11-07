@@ -1,12 +1,18 @@
 # Pixelia
 
-PWA de ciudad en 3D pixel art con minijuegos (Joyas Brillantes, Bloques Pixel, Estacionamiento Express, Ruta Pixel),
-rango de ciudad con Encanto, monumentos que se construyen con materiales de los minijuegos, cofres, pase de temporada,
-personajes y temas de ciudad, y online (cuentas, amigos, visitas) con Supabase.
-Para iPhone (instalable, offline) y PC. Textos del juego en español rioplatense, tono amable.
+PWA de ciudad vóxel en 3D: la ciudad es la base para salir de **expedición** (roguelite corto por turnos que trae materiales
+de región, planos, hallazgos y terreno) y para aguantar las **amenazas** de cada temporada (crecidas, incendios, tormentas…,
+con resolución automática si no estás). Los edificios cambian por **épocas** (Madera → Piedra → Ladrillo → Hierro →
+Vidrio y acero) según el rango. Además: rango con Encanto, monumentos, Mi Casa, pase de temporada, personajes y temas, y
+online (cuentas, contactos, visitas) con Supabase. Los 4 minijuegos (Joyas Brillantes, Bloques Pixel, Estacionamiento
+Express, Ruta Pixel) **están en retirada**: siguen en el código hasta la Fase 5, pero no se les agrega nada.
+Para adultos que juegan ratos cortos, en iPhone (instalable, offline) y PC. Textos en español rioplatense, tono cozy
+adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
 
-- Arquitectura y reglas de arte: [DESIGN.md](DESIGN.md) · online: [DESIGN-ONLINE.md](DESIGN-ONLINE.md) ·
-  retención: [DESIGN-RETENTION.md](DESIGN-RETENTION.md) · uso y hosting: [README.md](README.md).
+- Ciclo nuevo (Expedición, Amenazas, Épocas, recursos, tutorial, migración v3, metas de balance y qué archivos toca cada
+  fase): [DESIGN-CORE.md](DESIGN-CORE.md) · arquitectura, arte y guía de tono: [DESIGN.md](DESIGN.md) ·
+  online: [DESIGN-ONLINE.md](DESIGN-ONLINE.md) · retención: [DESIGN-RETENTION.md](DESIGN-RETENTION.md) ·
+  uso y hosting: [README.md](README.md).
 - JavaScript con módulos ES, **sin build**: three.js y supabase-js están en `vendor/` (importmap en `index.html`).
   No agregar bundlers ni dependencias en tiempo de ejecución.
 - Escenas: `create(ctx)` → `{ mount, unmount }`. 3D siempre con `createPixelRenderer` de `src/core/voxel.js`

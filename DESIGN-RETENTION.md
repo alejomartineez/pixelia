@@ -1,7 +1,17 @@
 # Pixelia — progresión a largo plazo y social (contratos)
 
 Basado en la investigación de docs/RESEARCH-retention.md (Hay Day, Township, Clash, Royal Match, Monopoly GO, Pokémon GO, Animal Crossing, Stardew).
-Principios "cozy": nada de energía ni muros, nunca castigar ausencias (la racha se pausa, no se pierde; volver da regalo), competir solo por puntaje y con premio para todas, generosidad > competencia, cada sesión de 2 minutos avanza algo, máximo 2 eventos a la vez, nada de presión de tiempo agresiva.
+Principios "cozy": nada de energía artificial ni muros, nunca castigar ausencias (la racha se pausa, no se pierde; volver da regalo), competir solo por puntaje y con premio para todo el mundo, generosidad > competencia, cada sesión de 2 minutos avanza algo, máximo 2 eventos a la vez, nada de presión de tiempo agresiva.
+
+**Revisión del principio "sin energía" (rediseño, DESIGN-CORE.md):** sigue sin haber un contador de energía que se recarga
+solo ni que se compra. Lo que limita cuánto se juega por día son las **provisiones que produce tu ciudad** (Huerta, Tambo,
+Molino, Conservera): una salida normal se lleva las del depósito y lo que sobra vuelve. Es un límite con sentido, porque
+mejorar la ciudad lo agranda (como el elixir en Clash), y no se vende con gemas. Para que nadie quede trabado hay **una
+salida corta gratis por día** con provisiones propias, y las amenazas se resuelven solas si no estás. Las ausencias tampoco
+castigan acá: un edificio dañado se arregla solo a las 72 h.
+
+Tono: los textos de este documento que dicen "amigas", "regalito", "brillitos" o "figuritas" describen el código de hoy;
+la Guía de tono de DESIGN.md manda para lo nuevo (Contactos, regalos, recortes, Hallazgos) y la Fase 6 los cambia en la UI.
 
 ## Módulos y dueños
 
@@ -23,7 +33,7 @@ Regla: cada módulo se comunica por **bus** y por las funciones exportadas abajo
 UI (`chests-ui.js`): `openChestsPanel(ctx, params)`, `openChestFlow(ctx, type)`, `playChestOpening(ctx, type, drops)`.
 Premios con cofre: `store.grant({ chest: 'plata' })` debe emitir `reward:chest {type, n, source}` (lo hace el núcleo).
 
-### Álbum (`src/album/album.js`)
+### Álbum (`src/album/album.js`) — pasa a ser Hallazgos en la Fase 5 (mismos ids; DESIGN-CORE.md §7.2)
 - 12 sets × 9 figuritas (108), cada una con 1–5 estrellas (rareza). Temas: Vecinos, Ropa y Estilo, Autitos, Postres, Mascotas, Flores, Edificios, Tesoros, Música, Playa, Noche estrellada, Fiesta. Arte procedural pixel (emoji pixelado + marco por estrellas + nombre).
 - `initAlbum()`; `grantStickers(n, {minStars, source}) -> [{id, stars, isNew}]`; `stickerCount(id)`; `duplicates() -> [{id, count}]`; `setProgress(setId)`; `claimSet(setId)` (premio: gemas + cofre + monedas escaladas; el álbum completo da Cofre de Diamante ×2 y título "Gran Coleccionista"); `brillitos()`; `convertDuplicates()` (repetidas → brillitos según estrellas); tienda de brillitos (sobres de figuritas, cofres); `stickerDef(id)`; `STICKER_SETS`.
 - `openAlbum(ctx, params)` (UI completa del álbum con páginas por set, animación de pegar figurita nueva).
@@ -31,7 +41,7 @@ Premios con cofre: `store.grant({ chest: 'plata' })` debe emitir `reward:chest {
 - Emite `album:changed`, `album:setComplete {setId}`.
 - Intercambio (online): solo repetidas (count ≥ 2), 1×1, estrellas ±1; 5★ solo con amistad ≥ 14 días. Escrow: al ofrecer se descuenta; payload `{stickers:{id:1}, stars:n}`.
 
-### Temporada (`src/season/season.js`)
+### Temporada (`src/season/season.js`) — puntos y costo por nivel se recalibran en la Fase 5 (DESIGN-CORE.md §8); las amenazas usan su mismo calendario (§3.1)
 - Temporadas de 28 días desde la época fija 2026-11-02 (lunes). Temas rotativos (nombre, paleta de acento, emoji): Primavera en Flor, Carnaval de Pixelia, Noche Estrellada, Verano de Helado, Bosque Encantado, Noche de Estrellas...
 - 30 niveles gratis; puntos de temporada ("✨ chispas") por: misión diaria cobrada 60, set del bonus diario 100, ganar minijuego 25 (+10 por estrella), cobrar edificio 2 (máx 60/día), terminar construcción 10, mejora 25, misión principal 80, ayudar/regalar a amiga 20, figurita nueva 5. Costo por nivel ≈ 120 (≈1 nivel por día de juego normal; 30 niveles en ~22 días).
 - Premios por nivel definidos por datos: monedas, gemas, cofres (madera/plata/oro, Real en el 30), sobres de figuritas, potenciadores; en 10/20/30 algo especial (prenda premium gratis vía desbloqueo de catálogo, Cofre de Diamante). Después del 30: cofre de madera cada 150 chispas.

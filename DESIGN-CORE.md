@@ -1,0 +1,814 @@
+# Pixelia — ciclo central: Expedición, Amenazas y Épocas (contratos)
+
+Documento de la Fase 0 del rediseño. Las Fases 1 a 7 se construyen leyendo **solo esto** (más DESIGN.md para motor y arte,
+y DESIGN-RETENTION.md para Pase, eventos y social). Si algo de acá choca con el código, gana el código que ya existe y
+se corrige este documento en el mismo commit.
+
+> **Tu ciudad es la base de operaciones para explorar una región desconocida y aguantar lo que trae cada temporada.**
+> Crecer deja de ser "tener más": es poder **llegar más lejos** en las expediciones y **resistir** amenazas cada vez más fuertes.
+
+Qué reemplaza: los 4 minijuegos (Joyas Brillantes, Bloques Pixel, Estacionamiento Express, Ruta Pixel) se retiran cuando la
+Expedición esté validada (Fase 1). Los materiales de minijuego pasan a ser materiales de región, el Álbum pasa a ser Hallazgos
+y los potenciadores pasan a ser equipo de expedición (ver §7 Migración).
+
+Convenciones: los ids de código van sin tildes y en minúscula (`madera`, `crecida`, `casa_exp`); los textos que ve la gente
+siguen la Guía de tono de DESIGN.md. Todos los números de este documento son **iniciales**: se calibran con
+`tools/sim-expedition.mjs` (Fase 1) y `tools/sim-economy.mjs` (Fase 5) contra las metas de §8, y viven en un solo archivo de
+datos por módulo (`exp-data.js`, `threat-data.js`, `data.js`) para tocarlos en un solo lugar.
+
+---
+
+## 1. El ciclo central
+
+```
+CIUDAD ──produce──► provisiones (Huerta, Tambo…), equipo (Taller), integrantes con nivel (sus edificios)
+   ▲                         │
+   │                         ▼
+mejoras, épocas,      EXPEDICIÓN: explorar, decidir, arriesgar (3–6 min, por turnos)
+renovaciones,                │
+defensas, terreno            ▼
+   ▲          materiales de región, planos, hallazgos, colonos, zonas exploradas (= terreno)
+   │                         │
+   └─────────────────────────┘
+                AMENAZA de temporada (con fecha y aviso): pone a prueba la ciudad que armaste;
+                lo que no aguanta queda dañado hasta que lo reparás (monedas + materiales)
+```
+
+Lo que tiene que entenderse sin explicación: **la ciudad habilita la expedición, la expedición trae lo que la ciudad necesita
+para crecer, y la amenaza mide si creciste bien.**
+
+| Sistema | Por qué te hace querer crecer |
+|---|---|
+| Productores de provisiones | Más provisiones en la salida = más pasos = casillas lejanas, que son las que dan planos y hallazgos raros. |
+| Casa de Expediciones | Cada nivel suma lugar en el grupo, provisiones por salida y nivel de Exploración. Los niveles 4–5 piden planos. |
+| Establo, Taller, Dispensario, Huerta | Su nivel **es** el nivel del rol que entrenan (Guía, Ingeniería, Sanidad, Recolección): mejorarlos sube las probabilidades que ves en cada decisión. |
+| Defensas con radio | Dónde construís importa: las amenazas golpean zonas concretas (el arroyo, el borde del monte, las casas de madera). |
+| Épocas | Cambian cómo se ve la ciudad de lejos y le dan poder al ciclo (la piedra aguanta el fuego, el hierro trae pararrayos integrados). |
+| Rango | Abre regiones, épocas, defensas y el tope de terreno. Lo frena el expediente (población, Encanto, monumentos, planos), no solo el nivel. |
+| Terreno | Se gana explorando zonas, no comprándolo con nivel: más mapa explorado = más lugar para construir. |
+| Monumentos | Se quedan, con materiales de región, y dan bonus al ciclo (§5.4). |
+
+Por qué volver mañana: la expedición quedó a medio camino (se guarda y se retoma), la amenaza llega en 3 días, faltan
+2 planos para la próxima época, la Huerta se llena en 4 horas, hay una salida corta gratis por día.
+
+---
+
+## 2. Expedición
+
+Roguelite de exploración **por turnos**, con toques, sobre un diorama vóxel chico. Cada salida dura 3–6 minutos.
+El mapa se genera con semilla desde la región y la zona, así que es infinito; la partida en curso se guarda en
+`state.expedition.active` y se puede dejar y retomar.
+
+### 2.1 Tipos de salida
+| | Salida normal | Salida corta (gratis, 1 por día) |
+|---|---|---|
+| Grilla | 7 × 9 | 5 × 6 |
+| Provisiones | las del depósito de la ciudad: se llevan `min(provMax, depósito)`; **mínimo 12** para poder salir | 10 fijas ("la vianda"), no salen del depósito |
+| Objetivo | a profundidad ≥ 7 | a profundidad 4–5 |
+| Avanza la zona | sí (si cumple el objetivo) | no |
+| Lo que sobra | las provisiones que sobran **vuelven al depósito** | lo que sobra se pierde |
+| Reinicio | — | a medianoche local (`todayStr()`); no se acumula |
+
+Como lo que sobra vuelve, no hay que decidir cuántas provisiones llevar: siempre se lleva el máximo. La decisión está
+adentro (hasta dónde ir), no en un formulario.
+
+### 2.2 Grilla, niebla y movimiento
+- Coordenadas `x` 0..w−1 (izquierda→derecha), `y` 0..h−1 (0 = lo más lejos). La **base** es la casilla de abajo al centro:
+  `(3, 8)` en la normal, `(2, 5)` en la corta.
+- **Profundidad** de una casilla = `|x − baseX| + (baseY − y)`. Anillos: **cerca** 1–3, **medio** 4–6, **lejos** 7+.
+  El anillo sube el valor (botín) y el riesgo (peligros) de las casillas.
+- Movimiento ortogonal (4 vecinas) a una casilla vecina. Cada paso gasta provisiones según el terreno:
+
+  | Terreno | id | Costo | Con Guía |
+  |---|---|---|---|
+  | Llano | `llano` | 1 | 1 |
+  | Monte | `bosque` | 1 | 1 |
+  | Colina | `colina` | 2 | 1 |
+  | Bañado | `pantano` | 2 | 1 |
+  | Roca | `roca` | 3 | 2 |
+
+- **Niebla**: se ve todo lo que está a distancia Manhattan ≤ **visión** de alguna casilla visitada. Visión 1; con
+  Exploración en el grupo, 2. El **mirador** revela radio 3 a su alrededor (4 con Exploración nivel 3+).
+  Una casilla vista muestra terreno y qué hay; una no vista muestra solo niebla.
+- **Cansancio del camino**: cada 6 pasos el grupo pierde 1 de ánimo ("el camino cansa").
+
+### 2.3 Grupo y roles
+- Tu personaje lidera (sin habilidad propia) y suma de 1 a 3 integrantes, **uno por rol** (no se repiten roles).
+  Lugares totales (con quien lidera) según el nivel de la Casa de Expediciones: **2 / 2 / 3 / 3 / 4**.
+- Cada rol existe si su edificio está construido; **el nivel del rol = el nivel más alto de ese edificio** (entrenar = mejorar
+  el edificio; no hay un sistema aparte).
+
+| Rol | id | Edificio | Habilidad base | Por nivel |
+|---|---|---|---|---|
+| Exploración | `exploracion` | Casa de Expediciones | visión 2; +25 en "pasar en silencio" (lobos) y +15 en "revisar a fondo" (ruinas) | +3 por nivel sobre 1 en sus decisiones; nivel 3+: el mirador revela radio 4 |
+| Ingeniería | `ingenieria` | Taller | +25 en cruzar ríos; +30 en despejar derrumbes | +3 por nivel sobre 1 |
+| Sanidad | `sanidad` | Dispensario | ánimo máximo +2; el campamento recupera +2 extra; el primer peligro fallado baja 1 menos | nivel 3+: una vez por salida, "Atender" (+2 de ánimo) |
+| Recolección | `recoleccion` | Huerta | cada casilla de recurso da `+1 + floor(nivel/2)` | — |
+| Guía | `guia` | Establo | −1 en terreno de costo ≥ 2; +20 en trepar y en seguir con tormenta; el regreso cuesta 1 menos (mínimo 1) | +3 por nivel sobre 1 |
+
+- **Cansados**: si la salida fracasa (§2.7), los integrantes que fueron quedan cansados y no se pueden llevar por
+  `120 − 20 × nivel del Dispensario` minutos (120 sin Dispensario, 20 con nivel 5). Nunca se pierde a nadie.
+  Se ve en la ficha del grupo: "Descansando: 1 h 20 min".
+- Prototipo (Fase 1): 3 roles fijos en nivel 1 (Exploración, Ingeniería, Sanidad), grupo de 3, sin ciudad.
+
+### 2.4 Provisiones, ánimo y carga
+| | Valor inicial | Cambia con |
+|---|---|---|
+| **Provisiones** (`prov`) | salida normal: `provMax` = 15 / 18 / 21 / 24 / 27 según la Casa de Expediciones; corta: 10 | cada paso gasta el costo del terreno; algunos peligros y opciones gastan |
+| **Ánimo** (`morale`) | 10 (12 con Sanidad), empieza lleno | peligros fallados −2/−3; cansancio −1 cada 6 pasos; campamento +4 (+2 con Sanidad); botiquín +3 |
+| **Carga** (`cargoMax`) | `6 + 3 × nivel del Establo` (6 sin Establo, 21 con nivel 5); Carreta +4 | cada unidad de material ocupa 1; **planos, hallazgos y colonos no ocupan carga** |
+
+Si un recurso no entra en la carga, queda en la casilla y se puede volver a buscarlo o soltar otra cosa ("Soltar 1 de madera").
+
+### 2.5 Casillas
+Contenido (`content`) de cada casilla:
+
+| id | Qué es | Qué pasa al entrar |
+|---|---|---|
+| `vacio` | nada para hacer | — |
+| `recurso` | madera, piedra, mineral o hierbas (`sub`) | se junta solo: cerca 2, medio 3, lejos 4 (+ Recolección, + `floor((tier−1)/2)` de la región) |
+| `ruina` | restos viejos | decisión (§2.6); botín de ruina |
+| `campamento` | lugar para descansar | "Descansar": +4 de ánimo (+2 con Sanidad), una vez |
+| `aldea` | gente de la zona | una opción a elegir: **Comerciar** (2 materiales → 3 provisiones; 4 con Encanto ≥ 3★), **Sumar colonos** (+1 colono; +2 con Encanto ≥ 4★) o **Pedir indicaciones** (revela el objetivo y +1 de ánimo) |
+| `mirador` | punto alto | revela radio 3 (4 con Exploración nivel 3+) |
+| `peligro` | río crecido, derrumbe, tormenta o lobos (`sub`) | decisión (§2.6) |
+| `objetivo` | el lugar de la misión de la salida | "Explorar": botín de objetivo y ★ de objetivo |
+
+**Generación** (`exp-gen.js`, determinista con semilla):
+1. Terreno por casilla con los pesos de la región; las casillas de profundidad 1 son siempre `llano`.
+2. Lugares garantizados: 1 `objetivo` (profundidad ≥ 7 en la normal, 4–5 en la corta), 1 `campamento` en el anillo medio,
+   1 `mirador` en profundidad 3–6. Las casillas de profundidad 1 solo pueden ser `vacio` o `recurso`.
+3. El resto se tira con la tabla de la región, aplicando el anillo: `peligro` ×0,6 / ×1 / ×1,4 y `ruina` ×0,5 / ×1 / ×1,5
+   (cerca / medio / lejos); la diferencia la absorbe `vacio`.
+4. Validez: tiene que haber un camino de la base al objetivo que cueste ≤ 10 provisiones sin contar peligros (≤ 6 en la
+   corta). Si no, se re-tira el terreno (hasta 20 veces) y después se allana el camino más corto.
+
+**Tabla de contenido por región** (%; suma 100):
+
+| Región | vacío | recurso | ruina | campamento | aldea | mirador | peligro |
+|---|---|---|---|---|---|---|---|
+| Bosque del Arroyo | 30 | 30 | 8 | 4 | 3 | 3 | 22 |
+| Sierras Bajas | 25 | 30 | 10 | 4 | 3 | 5 | 23 |
+| Bañado de los Juncos | 25 | 30 | 10 | 4 | 4 | 2 | 25 |
+| Cerro del Hierro | 22 | 32 | 10 | 4 | 2 | 4 | 26 |
+| Costa de los Faros | 24 | 26 | 14 | 4 | 4 | 4 | 24 |
+
+**Qué recurso y qué peligro** (% dentro de `recurso` y de `peligro`), y terreno:
+
+| Región | madera / piedra / mineral / hierbas | río / derrumbe / tormenta / lobos | llano / monte / colina / bañado / roca |
+|---|---|---|---|
+| Bosque del Arroyo | 50 / 20 / 0 / 30 | 40 / 10 / 15 / 35 | 35 / 40 / 15 / 5 / 5 |
+| Sierras Bajas | 15 / 50 / 35 / 0 | 10 / 45 / 30 / 15 | 30 / 15 / 30 / 5 / 20 |
+| Bañado de los Juncos | 35 / 10 / 0 / 55 | 50 / 15 / 20 / 15 | 30 / 20 / 5 / 40 / 5 |
+| Cerro del Hierro | 10 / 35 / 55 / 0 | 10 / 40 / 35 / 15 | 25 / 10 / 30 / 5 / 30 |
+| Costa de los Faros | 25 / 25 / 25 / 25 | 25 / 15 / 45 / 15 | 45 / 15 / 20 / 10 / 10 |
+
+Cada región tiene materiales que las otras no dan (hierbas: Bosque, Bañado, Costa; mineral: Sierras, Cerro, Costa):
+eso es lo que empuja a abrir regiones nuevas.
+
+### 2.6 Peligros y decisiones (probabilidades a la vista)
+Al entrar a un peligro o una ruina se abre una decisión con 2–3 opciones. Cada opción muestra **el número** ("70%") y el
+costo; nada de barras sin número. La probabilidad final es:
+
+```
+p = base + rol (si el rol está en el grupo: bono + 3 × (nivel − 1)) + equipo + hallazgos de la región
+      − 3 × (zona − 1) − 2 × (tier de la región − 1)          → se recorta a [10, 95]
+```
+
+La línea de detalle dice de dónde sale ("50 base · +25 Ingeniería · +15 Cuerda · −3 zona 2"). **Retroceder** siempre
+está y es gratis: volvés a la casilla anterior y el peligro sigue ahí sin resolver. Resuelto (bien o mal), el peligro
+desaparece y quedás en la casilla.
+
+| Peligro | Opción | Base | Rol | Equipo | Si sale bien | Si sale mal |
+|---|---|---|---|---|---|---|
+| Río crecido (`rio`) | Cruzar | 50 | Ingeniería +25 | Cuerda +15 | pasás | −2 ánimo y el agua se lleva 1 material al azar |
+| | Rodear | 100 | — | — | cuesta 3 provisiones (2 con Guía) | — |
+| Derrumbe (`derrumbe`) | Despejar | 45 | Ingeniería +30 | Pala +15 | pasás y +1 piedra | −3 ánimo |
+| | Trepar | 60 | Guía +20 | Cuerda +10 | pasás | −2 ánimo |
+| Tormenta (`tormenta`) | Seguir | 55 | Guía +20 | Lona +20 | pasás | −2 ánimo y −1 provisión |
+| | Esperar | 100 | — | Lona: cuesta 1 menos | cuesta 2 provisiones | — |
+| Lobos (`lobos`) | Pasar en silencio | 50 | Exploración +25 | — | pasás | −3 ánimo y −2 provisiones |
+| | Espantar con fuego | 85 | — | pide Farol, o 1 madera de la carga | pasás | −2 ánimo |
+| Ruina (`ruina`) | Revisar a fondo | 70 | Exploración +15 | Pala +10 | botín de ruina completo | −2 ánimo y botín chico |
+| | Mirar por arriba | 100 | — | — | botín chico | — |
+
+- **Botín de ruina completo**: 2 materiales de la región + hallazgo 60% + plano con chance 5% / 15% / 30% (cerca / medio / lejos).
+  **Botín chico**: 1 material + hallazgo 20%.
+- **Hallazgos**: estrellas según el anillo: cerca 1–2★, medio 1–3★, lejos 2–5★.
+- **Hallazgos de la región**: cada set de Hallazgos completo de una región suma +5 a todas las decisiones en esa región.
+
+### 2.7 Volver y fracasar
+- **Volver** se puede en cualquier momento. El botón siempre dice cuánto cuesta: "Volver · 3 provisiones".
+  Costo del regreso = `ceil(d / 3)`, con `d` = pasos del camino más corto **por casillas ya visitadas** hasta la base
+  (Guía: −1, mínimo 1; en la base es 0).
+- Si te alcanzan las provisiones: volvés con **toda la carga**; lo que sobra vuelve al depósito (salida normal).
+- **Fracaso** (`sin_provisiones` o `sin_animo`): volver sin provisiones para el regreso, o llegar a 0 de ánimo (en ese caso
+  se vuelve solo). Se conserva **la mitad de cada material** (`floor(n / 2)`), todos los planos, hallazgos y colonos,
+  y los integrantes quedan cansados (§2.3). Nunca se pierde a nadie ni nada de la ciudad.
+- Texto de ejemplo: "Se quedaron sin provisiones a mitad de camino. Volvieron con la mitad de la carga; nada grave".
+
+La tensión de "sigo o vuelvo" sale de que el regreso cuesta, que los peligros comen provisiones y ánimo, y que lo valioso
+está lejos.
+
+### 2.8 Estrellas y botín
+Tres estrellas independientes (no hace falta una para la otra):
+1. **Objetivo**: llegaste al objetivo y elegiste "Explorar" (o, si es de juntar, volviste con lo pedido).
+2. **Carga**: volviste con ≥ 75% de la carga máxima ocupada.
+3. **Todos bien**: no fracasaste y volviste con ánimo ≥ 3.
+
+Tipos de objetivo (`objective.type`), uno por salida:
+- `lugar`: "Encontrá la mina vieja" / "el aserradero abandonado". Al explorar: 3 materiales + hallazgo ≥ 2★ y, si la zona
+  es 3 o más, 1 plano.
+- `juntar`: "Traé 8 de piedra" (N = 6 + zona). Se cumple al volver con N de ese material.
+- `aldea`: "Llegá a la aldea perdida". Al llegar: +2 colonos y una opción de aldea gratis.
+
+Premios extra al volver: 1 gema por cada salida de 3★; cofre de madera 25% en salida de 3★ (es la única fuente de cofres de
+la expedición). **La expedición no da monedas**: las monedas siguen saliendo de la ciudad.
+
+Botín esperado (meta de calibración, §8): salida normal 8–14 materiales, 0,4–0,8 planos y 0,8–1,5 hallazgos.
+
+### 2.9 Regiones, zonas y mapa de región
+| id | Región | Abre en rango | Tier | Materiales fuertes |
+|---|---|---|---|---|
+| `bosque` | Bosque del Arroyo | 1 Aldea | 1 | madera, hierbas |
+| `sierras` | Sierras Bajas | 2 Caserío | 2 | piedra, mineral |
+| `banado` | Bañado de los Juncos | 3 Pueblo | 3 | hierbas, madera |
+| `cerro` | Cerro del Hierro | 5 Ciudad | 4 | mineral, piedra |
+| `costa` | Costa de los Faros | 6 Gran Ciudad | 5 | todos |
+
+- Cada región tiene **5 zonas** en fila (un camino de nodos en el mapa de región). La salida normal va siempre a la
+  **próxima zona sin explorar** de la región elegida (o, si ya están las 5, a un **recorrido**: zona 5 sin progreso, con
+  semilla nueva cada vez). Cumplir el objetivo con al menos ★ marca la zona como explorada y abre la siguiente.
+- Semilla de una salida: `hashSeed(region, zone, intento, state.created)`; el intento sube en cada salida, así que repetir
+  una zona da un mapa nuevo. La "Expedición del día" de la Fase 7b usa `hashSeed(todayStr(), region)`, igual para todos.
+- **Terreno de la ciudad se gana explorando**: la expansión `n` (1..7) pide **zonas exploradas en total** ≥
+  **1 / 3 / 5 / 8 / 11 / 14 / 18**, el rango que permite ese terreno (`TOWN_RANKS[].land`, igual que hoy) y monedas
+  (`500 × 2,1^n`, igual que hoy). **Se saca el requisito de nivel** de `expansionInfo`. Hay 25 zonas, así que 18 se alcanza
+  con margen.
+- El mapa de región es un panel (no una escena 3D en la Fase 2): las 5 regiones alrededor de la ciudad, candado con el rango
+  que la abre, nodos de zona con sus estrellas, botones "Salida" y "Salida corta". El panel muestra cuánto falta para la
+  próxima expansión ("2 zonas más para ampliar el terreno").
+
+### 2.10 Pantalla
+- Escena `expedition`: diorama vóxel de la grilla (1 casilla = 1 tile), con `createPixelRenderer` + `addLights` + `Voxels`,
+  terreno y naturaleza reusando `natureModel` y el kit de `models.js`. La niebla son casillas apagadas con nubes bajas
+  (`cloudModel`); el grupo es el `avatarModel` de quien lidera más figuras chicas por rol.
+- Tocar una casilla vecina = moverse (se marca el costo arriba de cada vecina alcanzable; las que no alcanzan, grises).
+  En PC: clic o flechas/WASD; Esc = menú (Volver / Seguir).
+- Barra de abajo: provisiones, ánimo, carga (`6/12`), botón **Volver · N** siempre visible. Arriba: objetivo y región.
+- Decisión: hoja desde abajo con las opciones, el % grande y la línea de detalle.
+- Resultado: modal con estrellas, la carga, "Lo que trajeron" y, si corresponde, "La zona 2 quedó explorada" y
+  "Falta 1 zona para ampliar el terreno". Sin confeti (es un momento chico); confeti solo si abre terreno o región.
+
+### 2.11 Contrato del módulo `src/expedition/`
+| Archivo | Fase | Qué es |
+|---|---|---|
+| `exp-data.js` | 1 | constantes y tablas: `EXP`, `TERRAIN`, `REGIONS`, `HAZARDS`, `OBJECTIVES`, `EQUIPMENT`, `ROLES` |
+| `exp-gen.js` | 1 | generador puro con semilla |
+| `exp-rules.js` | 1 | motor puro: **sin three.js, sin DOM, sin store ni bus** (se testea en Node) |
+| `exp-scene.js` | 1 | escena `expedition` (contrato de escena de DESIGN.md) |
+| `exp-ui.js` | 1 | DOM: preparar salida, barra, decisiones, resultado, mapa de región (este último en la Fase 2) |
+| `expedition.js` | 2 | integración con la ciudad: lee el estado, calcula los modificadores, da los premios, emite el bus |
+
+```js
+// exp-gen.js
+export function rng(seed)                                  // mulberry32: () => [0,1); el estado es un entero serializable
+export function hashSeed(...parts)                          // entero de 32 bits estable
+export function generateMap({ region, zone, kind, seed })   // kind: 'normal' | 'corta'
+// → { w, h, base:[x,y], cells:[{ terrain, content, sub, depth }], objective:{ type, cell?, mat?, n? } }   (cells en orden y*w+x)
+
+// exp-rules.js — muta `run` en el lugar y devuelve eventos; mismo seed + mismas elecciones = mismo resultado (repetible)
+export function newRun({ region, zone, kind, seed, party, equip, prov, mods })   // → run (JSON puro)
+//   party: ['exploracion', 'ingenieria'] · equip: ['cuerda'] · mods: { roleLevel:{rol:n}, cargoMax, moraleMax, regionBonus, encantoStars }
+export function view(run)            // → { cells visibles, pos, prov, morale, cargo, cargoMax, returnCost, moves:[{x,y,cost}], pending }
+export function move(run, x, y)      // → { ok, events:[...] }  (puede dejar run.pending con una decisión)
+export function choose(run, optionId)// → { ok, outcome:'ok'|'fail', events }
+export function useItem(run, id)     // botiquín, "Atender" de Sanidad, soltar carga: id = 'botiquin' | 'atender' | 'soltar:madera'
+export function goHome(run)          // → { result }  (termina la salida)
+export function result(run)          // → { stars:[bool,bool,bool], starCount, loot:{ mats, planos, finds:[{stars}], colonos }, reason, steps, objectiveDone }
+//   reason: 'volvio' | 'sin_provisiones' | 'sin_animo'
+// eventos: { type: 'step'|'reveal'|'loot'|'decision'|'morale'|'camp'|'objective'|'end', ... } (la escena los anima en orden)
+```
+
+```js
+// expedition.js (Fase 2)
+export function initExpedition()                 // completa state.expedition y escucha el bus
+export function expeditionStatus()               // → { canNormal, canShort, reason, provMax, partySlots, cargoMax, equipSlots, tired:{rol:ms}, regions:[...] }
+export function startExpedition({ region, kind, party, equip })  // descuenta provisiones/equipo, crea run, emite expedition:started
+export function finishExpedition(run)            // acredita (store.grant), avanza zonas, emite expedition:finished; devuelve el resumen para el modal
+export function zonesExplored()                  // total de zonas exploradas (lo usa economy.expansionStatus)
+export function roleLevel(role)                  // nivel del rol según su edificio (0 si no está)
+```
+
+Router (`main.js`): `SCENES.expedition = () => import('./expedition/exp-scene.js')`; `ctx.router.go('expedition',
+{ region, kind, resume })`. La escena **no** usa `ctx.endGame`: al terminar llama `finishExpedition(run)`, muestra el
+resultado y vuelve a `city`. Música: `'calm'` hasta que la Fase 6 agregue `'expedition'`.
+
+**Eventos de bus** (nombres estables; la Fase 7a ya los puede escuchar para métricas):
+| Evento | Payload |
+|---|---|
+| `expedition:started` | `{ region, zone, kind, party, equip, prov }` |
+| `expedition:decision` | `{ region, hazard, option, p, outcome }` |
+| `expedition:finished` | `{ region, zone, kind, stars, loot, reason, steps, objectiveDone }` |
+| `expedition:zone` | `{ region, zone, total }` (zona explorada; `total` = zonas exploradas en total) |
+| `expedition:region` | `{ region }` (las 5 zonas) |
+| `resources:changed` | `{ key, value, delta, reason }` para `prov`, `planos`, `equip`, `reserves`, `colonos` |
+
+**Estado** (`state.expedition`, lo completa `initExpedition`; lo inicializa `deepFill` con `{}`):
+```js
+expedition: {
+  active: null | run,                 // salida en curso (se retoma al volver a entrar)
+  freeDay: 'AAAA-MM-DD' | null,       // último día que se usó la salida corta
+  attempts: { [region]: n },          // para la semilla
+  regions: { [region]: { zone: 1..6, stars: { [zona]: 0..3 } } },   // zone = próxima zona sin explorar (6 = completa)
+  tired: { [rol]: msHasta },
+  last: null | resumen,               // último resultado (para el modal si se cerró la app)
+}
+```
+Recursos nuevos en la raíz del estado (§5): `prov`, `planos`, `equipment`, `reserves`, `colonos`.
+
+---
+
+## 3. Amenazas
+
+Cada temporada trae 2–4 amenazas **con fecha y aviso**. Se ven venir en la ciudad, se preparan con defensas y reservas, y el
+día que llegan se enfrentan en una escena corta por turnos sobre tu propia ciudad. Si no estás, se resuelven solas con tu
+preparación. Nunca se destruye nada para siempre.
+
+### 3.1 Calendario
+- Temporadas de 28 días desde la época fija **lunes 2026-11-02** (`EPOCH` de `season-data.js`; usar `dayIndex`,
+  `seasonIndexAt` y `epochDay` de `season.js`). Día 0 = lunes.
+- Días de amenaza dentro de la temporada: **5, 12, 19 y 26** (todos sábados). Cuántos te tocan según tu rango:
+  rango 2–3: días **12 y 26**; rango 4–5: **5, 12 y 26**; rango 6+: los **4**. El calendario es el mismo para todo el mundo
+  (así se puede ayudar a un contacto, Fase 7b).
+- Tipo por turno: `ORDER = ['crecida', 'incendio', 'tormenta', 'sequia', 'helada']`; el turno `i` (0..3) de la temporada `s`
+  es `ORDER[(s × 4 + i) % 5]`. Si ese tipo todavía no está abierto para vos, se usa el siguiente abierto del orden.
+- Id de amenaza: `` `${s}-${i}` `` (p. ej. `"3-2"`). La del tutorial es `"sim"`.
+- **Aviso**: 4 días antes a las 08:00 (6 con el Observatorio terminado). En el HUD: "Crecida del arroyo · en 4 días".
+  Las últimas 48 h se ve en la ciudad: cielo, nivel del arroyo, viento en los árboles, humo a lo lejos, escarcha.
+- **El día**: de 08:00 a 23:59 se puede "Enfrentar" una vez. A las 00:00 se resuelve sola (en la práctica: la próxima vez que
+  abrís el juego, si ya pasó).
+- **Quién la recibe**: hace falta tener rango ≥ 2 en el momento del aviso. Una amenaza se fija al avisarse (tipo y fuerza no
+  cambian si subís de rango en el medio).
+- **Tutorial**: al llegar a Caserío llega un **simulacro** propio (crecida chica, fuerza 1, fuera del calendario), avisado
+  al momento y que llega al día siguiente (≥ 16 h después).
+
+### 3.2 Tipos
+| Tipo | id | Abre en rango | Qué pone en riesgo | Cómo avanza en la escena | Defensa | Reserva | Material de reparación |
+|---|---|---|---|---|---|---|---|
+| Crecida del arroyo | `crecida` | 2 | edificios a ≤ 4 tiles del arroyo (borde +X del terreno) | el agua entra por el borde del arroyo y baja por las casillas más cercanas | Dique | Bolsas de arena | piedra |
+| Sequía | `sequia` | 2 | productores de provisiones | avanza desde los bordes del terreno hacia las huertas | Granero | Tinajas de agua | hierbas |
+| Incendio de monte | `incendio` | 3 | edificios de época Madera y la deco de árboles, con prioridad a los cercanos al monte (borde −Z) | el fuego salta a casillas vecinas con madera o árboles | Cuartel de Bomberos | Baldes | madera |
+| Tormenta eléctrica | `tormenta` | 3 | los edificios más altos | no avanza: cada turno caen `ceil(fuerza / 2)` rayos sobre candidatos | Pararrayos | Lonas | mineral |
+| Helada | `helada` | 4 | casas y productores | la escarcha avanza por los caminos desde el borde norte | Refugio | Leña | madera |
+
+El Hospital ayuda contra todas (§3.3). La ciudad necesita un **arroyo** visible en el borde +X y un **monte** en el −Z: los
+dibuja la Fase 3 en la decoración de afuera del terreno (`city-world.js`).
+
+### 3.3 Preparación
+- **Fuerza** `f` = tu rango al momento del aviso (1..8; el simulacro, 1).
+- **En riesgo**: `enRiesgo = min(candidatos, 3 + f)` edificios, elegidos por la regla del tipo. Si hay menos candidatos que eso,
+  la amenaza es más chica (no se inventan blancos).
+- **Cobertura** `c` = promedio, sobre los edificios en riesgo, de su eficacia de defensa:
+  - Una defensa del tipo que corresponde cubre los edificios con algún tile a distancia ≤ su radio. Eficacia de una defensa de
+    nivel L: `0,6 + 0,08 × L` (0,68 a 1,0). Si lo cubren varias, vale la mejor.
+  - Hospital: +0,1 a cualquier edificio dentro de su radio, contra cualquier tipo.
+  - Época del edificio (§4): incendio, época ≥ Piedra +0,3; crecida, ≥ Piedra +0,1; helada, ≥ Ladrillo +0,2;
+    tormenta, ≥ Hierro +0,2. Todo se recorta a 1.
+- **Reservas** `r = min(1, tenidas / necesarias)`, con `necesarias = ceil(enRiesgo / 2)`.
+- **Preparación** `prep = 0,6 × c + 0,4 × r`, mostrada en % en el panel de la amenaza, con la lista de edificios en riesgo
+  y cuáles están cubiertos (al tocarlos, la ciudad los resalta).
+- Al colocar una defensa, la ciudad dibuja su radio en el piso y marca qué edificios en riesgo cubre.
+
+### 3.4 Escena de defensa (si estás)
+Modo superpuesto de la ciudad (no es otra escena): `ctx.router.go('city', { defense: threatId })` monta la capa de
+`threat-scene.js` sobre la ciudad. Turnos: `5 + ceil(f / 2)` (6 a 9). Focos iniciales: `1 + floor(f / 3)`.
+
+Cada turno:
+1. **Cuadrillas**: ponés hasta `K` cuadrillas en tiles. Cada una baja 2 niveles de amenaza en su tile y 1 en las 4 vecinas,
+   y ese turno la amenaza no puede entrar a su tile. `K = 2 + floor(colonos / 5) + 1 si hay Hospital`, con tope 6.
+2. **Reservas**: usar una reserva en un tile lo bloquea para el resto de la amenaza (bolsas de arena, cortafuego, etc.).
+3. **Avanza la amenaza**: cada tile afectado sube 1 nivel (tope 3) y se extiende a 1 vecino según la regla del tipo.
+   Tormenta: en vez de extenderse, caen los rayos.
+4. **Golpes**: un edificio en riesgo con amenaza de nivel ≥ 2 sobre su lote al final del turno recibe 1 golpe; si está
+   cubierto, tira su eficacia para ignorarlo. **2 golpes = dañado.**
+
+Resultado: `salvado = 100 × (enRiesgo − dañados) / enRiesgo`. Meta de diseño: con `prep ≥ 0,7` y juego razonable, ≥ 90%.
+
+### 3.5 Resolución automática (si no estás)
+```
+salvado = clamp(round(35 + 60 × prep − (f − 1)), 30, 95)          // jugarla es la única forma de llegar a 100
+dañados = round((1 − salvado / 100) × enRiesgo)                     // primero los menos cubiertos
+reservas consumidas = min(tenidas, necesarias)
+```
+Al volver, un solo modal junta todo lo que pasó ("Mientras no estabas…"): "Pasó la tormenta: salvaste el 92%. Quedaron
+2 edificios para reparar". Nada de reproches por no haber estado.
+
+### 3.6 Daño y reparación
+- Un edificio dañado (`b.damaged = ms`) **deja de producir y no se puede mejorar** hasta repararlo. Se ve: andamio chico,
+  lona, humo o barro según el tipo.
+- **Reparar** (desde la ficha o "Reparar todo"): monedas `max(50, round(0,15 × costo de construcción × nivel))` +
+  `1 + floor(nivel / 2)` del material de reparación del tipo. Es al instante y no ocupa constructora.
+- **Nunca es permanente**: a las 72 h la vecindad lo arregla sola, gratis ("Lo arreglaron entre todos").
+
+### 3.7 Premios
+| Salvado | Premio (además de las chispas) |
+|---|---|
+| < 50% | 2 gemas |
+| 50–74% | 4 gemas, `100 × f` monedas, 2 materiales |
+| 75–89% | 6 gemas, `150 × f` monedas, 4 materiales, plano 25% |
+| 90–99% | 10 gemas, `200 × f` monedas, 6 materiales, plano 50%, cofre de plata |
+| 100% | lo de 90–99%, plano garantizado y, la primera vez, el título "Sin un rasguño" |
+
+Chispas del Pase: `40 + round(0,6 × salvado)`. Superar una amenaza con ≥ 90% es uno de los pocos momentos con festejo grande.
+
+### 3.8 Contrato del módulo `src/threats/`
+| Archivo | Qué es |
+|---|---|
+| `threat-data.js` | tipos, `ORDER`, días, aperturas por rango, eficacias, premios |
+| `threat-calendar.js` | puro: `schedule(seasonIndex, rank)`, `nextThreat(now, rank)`, `threatsBetween(a, b, rank)`, `phase(threat, now)` → `'lejos' \| 'aviso' \| 'señales' \| 'hoy' \| 'pasada'` |
+| `threat-rules.js` | puro (sin three.js/DOM/store): `atRisk(type, city, f)`, `prepInfo(type, city, reserves, f)`, `autoResolve(prep, f, enRiesgo, rand)`, `newDefense({...})`, `placeCrew(d, x, z)`, `useReserve(d, x, z)`, `endTurn(d)`, `defenseResult(d)` |
+| `threats.js` | integración: `initThreats()`, `threatStatus()`, `resolvePending()` (al cargar y en cada `tick`), `repair(uid)`, `repairAll()`, premios y bus |
+| `threat-scene.js` | capa sobre la ciudad: `attach(cityApi, threatId)` → `{ detach }` |
+| `threat-ui.js` | panel de la amenaza (aviso, preparación, en riesgo), resultado y "Mientras no estabas" |
+
+`city` pasa a `threat-rules` una vista plana de la ciudad (`{ bounds, buildings:[{uid, id, x, z, w, d, era, height, cat}], roads }`),
+nunca el estado vivo.
+
+**Eventos de bus**: `threat:announced {id, type, day, at, f}` · `threat:started {id}` (escena) ·
+`threat:resolved {id, type, pct, mode: 'jugada'|'auto', damaged:[uid], reward}` · `building:damaged {b, threat}` ·
+`building:repaired {b, paid}` · `craft:done {kind: 'equip'|'reserve', id, n}`.
+
+**Estado**:
+```js
+threats: {
+  seen: { [id]: true },                                   // avisos ya mostrados
+  results: { [id]: { pct, mode, at, damaged:[uid] } },    // se guardan las últimas 12
+  report: [id],                                           // pendientes de mostrar en "Mientras no estabas"
+  active: null | defensa,                                 // defensa en curso (se puede retomar el mismo día)
+  sim: null | { at, done },                               // simulacro del tutorial
+}
+// en cada edificio: b.damaged = ms | 0
+```
+
+---
+
+## 4. Épocas
+
+La ciudad cambia de época con el rango, y **cada edificio** muestra la época en la que está construido o renovado. Así la
+ciudad mezcla épocas como una ciudad real, renovar es una tarea con sentido (y un sumidero), y la época importa en las
+amenazas.
+
+### 4.1 Mapeo y requisitos
+| Época | id | era | Rangos | Planos para entrar | Material para renovar |
+|---|---|---|---|---|---|
+| Madera | `madera` | 1 | 1 Aldea, 2 Caserío | — | — |
+| Piedra | `piedra` | 2 | 3 Pueblo, 4 Villa | 3 | piedra |
+| Ladrillo | `ladrillo` | 3 | 5 Ciudad | 6 | piedra + madera |
+| Hierro | `hierro` | 4 | 6 Gran Ciudad, 7 Metrópolis | 10 | mineral + madera |
+| Vidrio y acero | `vidrio` | 5 | 8 Capital | 15 | mineral ×2 |
+
+- **Pasar de época** = subir al primer rango de la época siguiente. El expediente de ese rango suma `req.planos`
+  (`TOWN_RANKS[r].req.planos` = 3 en el 3, 6 en el 5, 10 en el 6, 15 en el 8; los planos se gastan al empezar la obra).
+  Es uno de los momentos de festejo grande.
+- `data.js` exporta `ERAS` (id, nombre, rangos, planos, material) y `eraOfRank(rank)`; `economy.js` exporta
+  `cityEra(state)`.
+- **Construir** algo nuevo lo hace en la época actual de la ciudad.
+- **Renovar** un edificio a la época actual: monedas `max(100, round(0,4 × costo de construcción × era))`, materiales
+  `w × d` (tiles del lote) de cada material de la tabla, obra de `2 min × era` con constructora. Conserva el nivel.
+  Se ofrece en la ficha ("Renovar a Piedra") y en un aviso después del cambio de época ("12 edificios para renovar").
+- Lo que la época le da al ciclo: resistencia en amenazas (§3.3); Ladrillo abre el Molino de dos piedras (nivel 4–5 del
+  Molino); Hierro abre la Carreta grande (+6 en vez de +4) y los puentes en las expediciones (los ríos cuestan 1 menos al
+  rodear); Vidrio y acero sube +1 la visión del mirador.
+- Estado: `b.era` (1..5) en cada edificio; los que no lo tienen valen 1. Online: viaja dentro de `city.buildings`, así que
+  las visitas ven las épocas sin cambios en el esquema.
+
+### 4.2 Qué cambia a la vista
+Paletas apagadas, cálidas y de pocos colores por época (valores de partida; la Fase 4 los ajusta con capturas):
+
+| Época | Materiales y siluetas | Paleta |
+|---|---|---|
+| Madera | tablas horizontales con juntas oscuras, base de piedra suelta, techos de paja o tejuela, cercos de palo, chimenea de piedra; todo bajo, de 1 piso | tabla `#a8774a` / `#8a5d36`, paja `#d9b46a`, tejuela `#7a5a3a`, piedra `#9b9286`, musgo `#6f8a4f` |
+| Piedra | muros de piedra en hiladas irregulares, esquinas de sillar, arcos de medio punto, techos de pizarra, torres cuadradas bajas, vigas a la vista | piedra `#a49b8c` / `#8c8375`, juntas `#6f675c`, pizarra `#5d6878`, viga `#5a4632` |
+| Ladrillo | ladrillo con juntas claras, teja colonial, balcones de hierro forjado, chimeneas altas, aberturas con dintel; 2–3 pisos | ladrillo `#b5603f`, junta `#e6d8c3`, teja `#a8492f`, carpintería `#3f5e4a`, crema `#efe3cc` |
+| Hierro | estructura remachada, galpones con techo de chapa en diente de sierra, tanques de agua, faroles a gas, escaleras de servicio | hierro `#5c6168`, óxido `#9a5a3a`, negro `#2f2b2a`, chapa `#8d949a`, farol `#f2c45a` |
+| Vidrio y acero | torres con muro cortina (vidrio con montantes), terrazas verdes, aleros finos, antenas, paneles | acero `#c7ccd1`, vidrio `#8fc1d0` / `#6aa3b8`, blanco `#f2f0ea`, terraza `#79a35a` |
+
+**Cada nivel cambia la estructura** (reemplaza a `upgradeDressing`, que eran solo adornos). Regla para casas, negocios y
+edificios del ciclo, en cualquier época:
+
+| Nivel | Cambio |
+|---|---|
+| 1 | volumen base de 1 piso con el techo de la época |
+| 2 | anexo lateral o galería (el lote se llena) |
+| 3 | un piso más y techo distinto (más pendiente, mansarda o terraza según la época) |
+| 4 | el elemento vertical de la época: chimenea de piedra / torre / chimenea alta / tanque de agua / antena; aberturas más grandes |
+| 5 | remate: mirador, cúpula, letrero iluminado o terraza verde, y vereda o cerco de la época alrededor del lote |
+
+Prueba de aceptación: en una captura de `smoke.mjs --device iphone` con la cámara por defecto, una persona distingue el
+nivel 1 del 3 y del 5, y la época, **sin leer nada**.
+
+### 4.3 Orden del arte (tandas)
+1. **Tanda 1 — el ciclo**: Municipalidad (sus 8 niveles se rehacen siguiendo las épocas: 1–2 Madera, 3–4 Piedra, 5 Ladrillo,
+   6–7 Hierro, 8 Vidrio y acero; se actualizan los `look` de `TOWN_RANKS`), Casa de Expediciones, Establo, Taller,
+   Dispensario, Huerta, Tambo, Molino, Conservera y las 6 defensas.
+2. **Tanda 2**: casas (5) y negocios (10).
+3. **Tanda 3**: deco, caminos, el exterior de Mi Casa y la base de los monumentos (los monumentos conservan su diseño).
+
+Hasta que un edificio tenga su arte por época, usa el **respaldo**: su modelo de siempre + `upgradeDressing` + recoloreo de
+la época (`eraRecolor`), para que el cambio de época se note en toda la ciudad desde el primer día.
+
+### 4.4 Contrato de la capa de época (`models-kit.js` / `models.js`)
+```js
+// models-kit.js
+export const ERA_STYLE = { 1: { wall, wallD, trim, roof, roofD, base, window, accent }, ... }   // paletas de §4.2
+export function eraStyle(era)
+export function eraWall(m, x, y, z, w, h, d, era, opts)      // muro con el patrón del material (tablas, hiladas, ladrillo, chapa, muro cortina)
+export function eraRoof(m, x, y, z, w, d, era, opts)         // opts.kind: 'dos_aguas' | 'cuatro_aguas' | 'plano' | 'mansarda' | 'diente'
+export function eraOpening(m, face, plane, u, y, era, kind)  // kind: 'puerta' | 'ventana' | 'vidriera'
+export function eraVertical(m, x, y, z, era)                 // el elemento vertical del nivel 4
+export function eraRecolor(m, era)                           // respaldo para builders sin arte por época
+// upgradeDressing queda solo para el respaldo y se borra cuando la tanda 3 termine
+
+// models.js
+buildTemplate(id, level, { flag, era }, themeId)
+//   def.eraArt === true → BUILDERS[id](m, level, { era, flag }) y nada más
+//   si no             → BUILDERS[id](m, level, opts) + upgradeDressing (casas/negocios) + eraRecolor(m, era) si era > 1
+// clave de caché: id|nivel|era|flag|tema
+buildingModel(id, level, { era, ... })     // era por defecto 1
+thumbnail(id, level, era = 1)
+```
+- La capa de época elige los colores base **antes** de `compile(m, themeId)`; el tema de la ciudad re-mapea encima como hoy.
+  La Fase 4 revisa que Bosque, Invierno Nevado y Luces de Noche sigan viéndose bien con las paletas nuevas.
+- `data.js`: `eraArt: true` en cada edificio a medida que su tanda está hecha.
+
+---
+
+## 5. Recursos y edificios nuevos
+
+### 5.1 Recursos
+| Recurso | Estado | Fuentes | Sumideros |
+|---|---|---|---|
+| **Provisiones** | `state.prov` (depósito con tope) | Huerta, Tambo, Molino, Conservera; aldeas (comercio); premios de amenaza; diarias | salidas normales (pasos); comercio en aldeas |
+| **Materiales de región**: madera, piedra, mineral, hierbas | `state.materials` (mismos ids nuevos) | expediciones (recursos, ruinas, objetivos, aldeas); amenazas; diarias; Pase | monumentos; equipo; reservas; reparaciones; renovaciones; mejoras de nivel 3+ de los edificios del ciclo y defensas; algunos edificios nuevos |
+| **Planos** | `state.planos` (número) | ruinas lejanas, objetivos de zona 3+, amenazas ≥ 75%, Pase (niveles 10, 20 y 30) | cambio de época (3 / 6 / 10 / 15); Casa de Expediciones niveles 4 y 5 (2 y 4); primera construcción de Bomberos, Pararrayos y Hospital (1 c/u) |
+| **Equipo** | `state.equipment` `{ id: n }` | Taller (fabricar); Pase; pocos en cofres | 1 uso por salida |
+| **Reservas** | `state.reserves` `{ id: n }`, tope 10 por tipo | Taller (desde el rango Caserío, cuando se abren las amenazas) | amenazas (se usan en la escena o se consumen en la automática) |
+| **Hallazgos** | `state.album` (el de siempre) | ruinas, objetivos, aldeas (raro), pocos cofres | repetidos → recortes; intercambios |
+| **Colonos** | `state.colonos` (número) | aldeas, objetivos de aldea | ninguno: cada colono suma 1 de población y cada 5 suman una cuadrilla |
+| **Monedas** | `state.coins` | la ciudad (negocios y casas), amenazas, diarias | construir, mejorar, renovar, reparar, equipo, reservas, expansiones |
+| **Gemas** | `state.gems` | rango, nivel, amenazas, salidas de 3★, logros, diarias, Rueda | acelerar, constructoras |
+
+- **Depósito de provisiones**: tope `40 + 20 × nivel de la Casa de Expediciones` (60 a 140) `+ 40 × nivel` de cada Granero.
+  Arranque: 30 provisiones.
+- **store**: `canAfford/spend/grant` entienden `prov`, `planos`, `equip: {id: n}`, `reserves: {id: n}` y `colonos` (solo en
+  premios), además de `mats` con los ids nuevos. Emiten `resources:changed {key, value, delta, reason}` (y
+  `materials:changed` como hoy para `mats`). `costHtml` los dibuja. `population()` suma `state.colonos`.
+- **Producción**: un productor de provisiones tiene `prod: { prov: n, cycle, cap }`; `producerStatus`/`collect` lo tratan
+  como a las monedas y lo cobrado va al depósito (lo que no entra queda en el edificio). Emite
+  `production:collected {b, amount, currency: 'prov'}`.
+
+**Equipo** (Taller; se elige al preparar la salida; lugares por salida según el Taller: 1 / 1 / 2 / 2 / 3, 0 sin Taller):
+| id | Nombre | Efecto | Costo |
+|---|---|---|---|
+| `cuerda` | Cuerda | +15 cruzar ríos, +10 trepar | 3 madera + 60 monedas |
+| `pala` | Pala | +15 despejar, +10 revisar ruinas | 2 mineral + 1 madera + 100 monedas |
+| `lona` | Lona | +20 seguir con tormenta; esperar cuesta 1 menos | 1 hierbas + 2 madera + 80 monedas |
+| `farol` | Farol | permite "Espantar con fuego" sin gastar madera | 1 mineral + 1 madera + 80 monedas |
+| `botiquin` | Botiquín | una vez: +3 de ánimo | 3 hierbas + 60 monedas |
+| `carreta` | Carreta | +4 de carga (+6 desde la época de Hierro); pide Establo nivel 2 | 6 madera + 2 mineral + 250 monedas |
+
+**Reservas** (Taller, desde el rango Caserío): bolsas de arena `arena` (2 piedra + 40), tinajas `tinajas` (1 piedra + 1 hierbas + 40),
+baldes `baldes` (1 mineral + 1 madera + 40), lonas `lonas` (1 hierbas + 1 madera + 40), leña `lena` (2 madera + 20).
+Fabricar es al instante (sin cola) en esta versión.
+
+### 5.2 Edificios nuevos
+`cat` nueva `'ciclo'` para los del ciclo y `'defensa'` para las defensas (pestañas propias en Construir).
+
+| id | Nombre | Tamaño | Rango | Máx. | Efecto por nivel (1 → 5) |
+|---|---|---|---|---|---|
+| `casa_exp` | Casa de Expediciones | 3×3 | 1 | 1 | lugares 2/2/3/3/4 · `provMax` 15/18/21/24/27 · Exploración = nivel · depósito +20 por nivel · niveles 4 y 5 piden 2 y 4 planos |
+| `taller` | Taller | 2×2 | 1 | 1 | Ingeniería = nivel · equipo por salida 1/1/2/2/3 · reservas desde el rango Caserío |
+| `establo` | Establo | 3×3 | 1 | 1 | Guía = nivel · carga +3 por nivel · Carreta desde nivel 2 |
+| `dispensario` | Dispensario | 2×2 | 2 | 1 | Sanidad = nivel · cansancio 100/80/60/40/20 min |
+| `huerta` | Huerta | 2×2 | 1 | 6 | 2/3/4/5/6 provisiones cada 45 min, guarda 6 tandas · Recolección = nivel de la mejor |
+| `tambo` | Tambo | 3×3 | 2 | 3 | 5/7/9/11/13 cada 60 min, guarda 4 |
+| `molino` | Molino | 2×2 | 3 | 3 | 8/11/14/17/20 cada 90 min, guarda 3 |
+| `conservera` | Conservera | 3×3 | 5 | 2 | 15/19/23/27/31 cada 120 min, guarda 2 |
+| `dique` | Dique | 3×1 | 2 | 4 | crecida, radio 4/4/5/5/6 |
+| `granero` | Granero | 2×2 | 2 | 2 | sequía, radio 4/4/5/5/6 · depósito +40 por nivel |
+| `bomberos` | Cuartel de Bomberos | 2×2 | 3 | 2 | incendio, radio 5/5/6/6/7 |
+| `pararrayos` | Pararrayos | 1×1 | 3 | 6 | tormenta, radio 3/3/4/4/5 |
+| `refugio` | Refugio | 2×2 | 4 | 2 | helada, radio 4/4/5/5/6 |
+| `hospital` | Hospital | 3×3 | 5 | 1 | todas: +0,1 de eficacia en radio 5/5/6/6/7 · +1 cuadrilla |
+
+Costos de partida (monedas; desde el nivel 3, las mejoras de estos edificios piden también materiales de región):
+Huerta 120, Casa de Expediciones 200, Taller 300 + 3 madera, Establo 600 + 4 madera, Dispensario 900 + 3 hierbas,
+Tambo 900, Dique 700 + 6 madera (estacas), Granero 800 + 3 madera, Molino 2400 + 4 piedra, Bomberos 2500 + 4 madera + 1 plano,
+Pararrayos 600 + 2 mineral + 1 plano (solo el primero), Refugio 3500 + 6 madera, Conservera 9000 + 6 mineral,
+Hospital 12000 + 6 mineral + 4 hierbas + 1 plano. La eficacia de defensa por nivel es la de §3.3.
+
+### 5.3 Edificios que se reconvierten (Fase 5)
+| Hoy | Pasa a ser | Por qué encaja |
+|---|---|---|
+| `joyeria` Joyería (2×2) | `taller` | mismo tamaño |
+| `torre_bloques` Torre de Bloques (2×2) | `dispensario` | mismo tamaño |
+| `garaje` Garaje (3×3) | `establo` | mismo tamaño |
+| `pista` Pista Arcoíris (3×3) | `casa_exp` | mismo tamaño |
+
+Mismo `uid`, lugar, rotación y nivel. `boutique_real` (vestidor) se queda.
+
+### 5.4 Monumentos
+Se quedan, con los materiales renombrados (§7) y bonus nuevos atados al ciclo:
+Faro: +1 de visión en todas las expediciones · Jardín Botánico: +25% de felicidad (igual) · Observatorio: avisos de amenaza
+2 días antes · Estadio: +25% de chispas del Pase en expediciones · Museo: +50% de chance de hallazgo en ruinas ·
+Torre del Reloj: obras 10% más rápidas (igual).
+
+---
+
+## 6. Tutorial y apertura escalonada
+
+### 6.1 Cadena de misiones nueva (reemplaza `MAIN_QUESTS`; ids `t1`…)
+Primeros ~30 minutos, después del onboarding (personaje, nombre, ciudad, estilo; sin cambios):
+
+| id | Título | Pide | Enseña |
+|---|---|---|---|
+| t1 | Primera casa | Construí una Casa | construir |
+| t2 | Algo para comer | Construí una Huerta | provisiones |
+| t3 | Primera cosecha | Juntá 4 provisiones (cobrá la Huerta) | cobrar |
+| t4 | Base de operaciones | Construí la Casa de Expediciones | el edificio central |
+| t5 | Primera salida | Hacé la salida corta al Bosque del Arroyo | moverse, niebla, volver (mapa fijo y guiado, objetivo "el aserradero viejo") |
+| t6 | Con lo que trajiste | Construí el Taller (pide 3 de madera) | el botín sirve en la ciudad |
+| t7 | Bien equipados | Fabricá una Cuerda | equipo |
+| t8 | Más gente | Llegá a 15 de población | casas |
+| t9 | Pan del día | Construí la Panadería | monedas |
+| t10 | Salida en serio | Hacé una salida normal con la Cuerda | provisiones del depósito, decisiones con % |
+| t11 | Zona explorada | Cumplí el objetivo de la zona 1 del Bosque | zonas |
+| t12 | Más terreno | Ampliá la ciudad | el terreno se gana explorando |
+| t13 | Animales de carga | Construí el Establo | carga y Guía |
+| t14 | De Aldea a Caserío | Subí al rango Caserío | expediente |
+| t15 | Se viene el agua | Construí un Dique (llega el aviso del simulacro) | amenazas y radio |
+| t16 | Bolsas de arena | Fabricá 2 bolsas de arena | reservas |
+| t17 | Primera prueba | Pasá el simulacro (jugado o automático) | resultado y reparación |
+| t18 | Tres estrellas | Hacé una salida de 3★ | estrellas |
+| t19 | Hacia las sierras | Explorá una zona de las Sierras Bajas | regiones |
+| t20 | Época de Piedra | Subí al rango Pueblo (pide 3 planos) | épocas |
+
+t1–t12 entran en ~30 minutos. Después siguen las misiones largas de siempre reescritas (monumentos, renovar, Villa,
+Ciudad…, hasta Capital). Tipos de objetivo nuevos para `quests.js`: `expedition {kind?, region?}`, `zone {region?}`,
+`expStars` (suma), `prov` (provisiones juntadas, suma), `craft {id?}`, `threat` (amenazas pasadas), `renovate`,
+`era` (absoluto: época de la ciudad).
+
+Diarias nuevas (`DAILY_POOL`): "Hacé 2 salidas", "Juntá 20 provisiones", "Conseguí 4 estrellas en expediciones",
+"Fabricá 2 cosas en el Taller", "Construí 3 cosas", "Mejorá un edificio", "Explorá una casilla lejana", y "Repará un
+edificio" solo si hay alguno dañado.
+
+### 6.2 Apertura escalonada
+Una función nueva por vez, como mucho **una por sesión al arrancar** ("Hoy se abre: el Pase de Temporada"), y el modal de
+llegada adelanta la próxima ("Mañana se abre: Contactos").
+
+| Función | Se abre |
+|---|---|
+| Construir, misiones | desde el principio |
+| Expedición (botón del HUD) | t4 |
+| Taller | t6 |
+| Diarias | al terminar t9 |
+| Mapa de región | t11 |
+| Pase de Temporada | día 2 de juego o rango Caserío, lo primero |
+| Amenazas | rango Caserío |
+| Contactos (social) | nivel 4 o día 2, lo último |
+| Eventos | día 3 |
+| Obras (monumentos) | rango Pueblo (igual que hoy) |
+| Hallazgos | al encontrar el primero |
+| Cofres | al ganar el primero |
+| Mi Casa | nivel 2 (igual que hoy) |
+
+---
+
+## 7. Migración
+
+### 7.1 Qué pasa con cada sistema
+| Sistema | Destino | Fase |
+|---|---|---|
+| 4 minijuegos (`src/games/*`, ~6.000 líneas) | se sacan cuando la Expedición esté validada; sus edificios se reconvierten (§5.3) | 5 |
+| Materiales cristal/ladrillo/tuerca/mapa | materiales de región 1:1 (§7.2) | 5 |
+| Monumentos | se quedan; costos con los materiales nuevos; bonus atados al ciclo (§5.4) | 2 y 5 |
+| Álbum de figuritas | **Hallazgos**: los 12 sets se reparten entre las regiones, se conservan ids y lo ya pegado | 5 (y textos en 6) |
+| Potenciadores de minijuego | equipo de expedición (§7.2) | 5 |
+| Cofres | muy recortados (§8) | 5 |
+| Pase y eventos | el Pase sigue, con puntos de expediciones y amenazas, ~1 nivel por día; los eventos de minijuego se cambian por eventos de región | 5 |
+| Encanto y rango | el rango maneja épocas, regiones y terreno; el Encanto mejora el trato en las aldeas | 2 y 4 |
+| Auto y garaje del Vestidor | el auto solo se usa en los minijuegos: queda abierto (§9) | 5 |
+| Mi Casa, Vestidor, temas, social | se quedan; el social se adapta en la Fase 7b | — |
+
+### 7.2 Guardado v3 (`state.js`, `VERSION = 3`, Fase 5)
+`migrateV3(s)` corre si `s.v < 3`, antes de `deepFill`, y es idempotente:
+1. **Materiales**: `cristal → mineral`, `ladrillo → piedra`, `tuerca → madera`, `mapa → hierbas`, sumando cantidades.
+   Los costos de `MONUMENTS` se renombran con la misma tabla (el Jardín queda mineral + madera: vidrio y madera de
+   invernadero), así que una etapa a medio juntar sigue igual de cerca.
+2. **Edificios de minijuego**: se reconvierten según §5.3. Si no había Pista, la Casa de Expediciones se coloca sola cerca de
+   la Municipalidad (misma búsqueda que `ensureHome`); si no entra, queda una construcción gratis en el menú.
+3. **Progreso de minijuegos → compensación** (modal único "Los minijuegos se retiraron"):
+   `gemas = min(150, 2 × (match3.level − 1) + 3 × (parking.level − 1) + floor(blocks.best / 1000) + floor(driving.best / 1000))`
+   y `hallazgos = min(10, floor(niveles totales / 5))` en sobres de 2★ o más. `state.games` queda guardado y sin uso.
+4. **Álbum → Hallazgos**: `state.album` no cambia (`have`, `claimedSets`, `seen`, `done`); `album.brillitos` sigue siendo el
+   campo de los **recortes** (cambia solo el texto). Reparto de sets por región, en orden: Bosque `princesas`, `vestidos`,
+   `autitos` · Sierras `postres`, `mascotas` · Bañado `flores`, `castillos` · Cerro `joyas`, `musica` · Costa `playa`,
+   `noche`, `fiesta`. Nombres y arte nuevos por región: Fase 5, con la Guía de tono.
+5. **Potenciadores → equipo**: `m3_moves → cuerda`, `m3_bomb → pala`, `blk_bomb → pala`, `park_time → farol`,
+   `drv_shield → lona` (1:1). Martillo, reloj de arena y pociones se quedan.
+6. **Épocas**: cada edificio recibe `era = eraOfRank(rango actual)`: lo ya ganado se ve en su época sin pagar renovación.
+7. **Recursos nuevos**: `prov = 30`, `planos = floor(rango / 2)`, `equipment`, `reserves`, `colonos = 0`, `expedition`,
+   `threats` (los completa `deepFill`).
+8. **Misiones**: quien ya jugó (rango ≥ 2 o nivel ≥ 5) arranca la cadena nueva en la primera misión que no cumple, salteando
+   t1–t12 sin premio (salvo lo que habilitan). Las diarias se re-sortean.
+9. **Logros de minijuegos**: se conservan los escalones ganados y se muestran como "Recuerdos"; no suman más.
+10. **Online**: el perfil público publica los ids nuevos y `era`; un cliente viejo vería edificios desconocidos como caja
+    neutra, pero con `npm run bump` todos se actualizan. Los intercambios de figuritas siguen andando (ids iguales).
+
+Prueba: cargar un guardado v2 real (con monumentos a medias, álbum y potenciadores) y confirmar que materiales, álbum,
+monumentos, edificios y niveles pasan sin pérdida, y que una segunda carga no cambia nada.
+
+---
+
+## 8. Metas de balance
+
+Las mide el `tools/sim-economy.mjs` nuevo (Fase 5) con el perfil **2 ratos por día** (9:00 y 20:00, ~10 min) salvo que
+diga otra cosa, y `tools/sim-expedition.mjs` (Fase 1) con bots. Cada meta tiene que salir en el reporte de la sim con
+✔/✘.
+
+**Monedas**
+- Al final de cada rato, del día 2 al 60: saldo entre **1× y 3× el próximo gasto grande** (la próxima mejora, construcción,
+  renovación, expansión u obra de rango que la sim quiere hacer) en ≥ 80% de los ratos.
+- Multiplicadores de producción **sumados y con tope**: `1 + felicidad + rango + maestría + monumentos`, tope ×2,5; las
+  pociones y los eventos multiplican después, con tope ×2 entre ambos.
+
+**Pase de Temporada**
+- ~1 nivel por día; el nivel 30 entre el **día 22 y el 25** con 2 ratos por día; con 4 ratos por día, no antes del día 16.
+- Propuesta inicial: chispas por diaria 40, bonus de las 3 diarias 60, misión principal 50, salida terminada 20 + 5 por ★,
+  zona explorada 30, amenaza `40 + 0,6 × %`, construir 5, mejorar 15, renovar 15, reparar 5, cobrar 1 (tope 30 por día),
+  hallazgo nuevo 5, ayudar a un contacto 20; `TIER_COST` = 60, 120, 180 y después 280. La sim manda sobre estos números.
+
+**Rango**
+- 2 ratos por día: rango 2 el día 1; 3 entre los días 4–6; 5 entre los días 18–25; 8 entre los días 70–90.
+- **El rango no lo frena solo el nivel**: en ≤ 25% de las subidas el último requisito en cumplirse es `reqLevel`, y el tiempo
+  esperando solo por nivel es < 10% del tiempo entre rangos.
+
+**Provisiones y expediciones**
+- Rango 1–2: alcanza para 2 salidas normales por día + la corta. Rango 5+: 3 normales por día.
+- El depósito llega al tope en < 30% de los ratos (no se tira producción a la basura).
+- Bots de `sim-expedition` (500 salidas por región y zona):
+  - **prudente** (vuelve con reserva ≥ 1,5 × regreso): fracasa ≤ 10%, ★ de objetivo ≥ 85%;
+  - **codicioso** (vuelve recién cuando no le alcanza para otro paso): fracasa 30–50%;
+  - **medio**: 3★ en 25–40%;
+  - salida normal de 12 a 25 pasos (≈ 3–6 min a 10–15 s por paso); botín 8–14 materiales, 0,4–0,8 planos y 0,8–1,5
+    hallazgos.
+
+**Amenazas**
+- La sim que juega normal llega a la amenaza con preparación ≥ 70%; la resolución automática da 75–95%; ≤ 2 edificios
+  dañados en promedio.
+
+**Otros**
+- Cofres: ≤ 1,5 por día en promedio (fuentes: rango, cada 5 niveles, Pase, amenazas ≥ 90%, salidas de 3★).
+- Gemas: 15–25 por día.
+- Primer monumento terminado: días 10–14.
+- Planos: nunca son lo último que falta para un cambio de época en más del 30% de las corridas.
+
+---
+
+## 9. Abierto (lo deciden las fases con el juego en la mano)
+- Fuerza, focos y turnos de amenaza: validar en la Fase 3 que con preparación media se llegue a ~90% jugando.
+- Si quien lidera tiene alguna habilidad propia (hoy no).
+- Colonos: si hace falta un tope por vivienda libre.
+- Dibujo del arroyo y el monte alrededor del terreno (Fase 3) y cómo se ve la crecida.
+- `TIER_COST` y chispas finales (Fase 5, con la sim).
+- El auto y su taller en el Vestidor: sin minijuegos no tiene uso. Propuesta: pasa a ser la carreta/vehículo de la Casa de
+  Expediciones (se ve al salir); decide la Fase 5.
+- Nombres finales de las regiones, de los sets de Hallazgos y de los objetivos: con la Guía de tono, en la fase que los use.
+- Fabricar con cola de tiempo en el Taller (hoy es al instante).
+
+---
+
+## 10. Dueños de archivos por fase
+Cada fase toca **solo** sus archivos. Si necesita algo de otro dueño, lo deja anotado en la carpeta de notas compartida
+para la sesión coordinadora. Archivos nuevos: dentro de la carpeta de la fase con su prefijo.
+
+| Fase | Puede tocar | No toca |
+|---|---|---|
+| **1** Prototipo de Expedición | `src/expedition/exp-*.js` (nuevos), `tools/sim-expedition.mjs`, `tools/test-expedition.mjs`; en `src/main.js` **solo** la línea de `SCENES.expedition` | `src/core/*`, la ciudad, `data.js` (íconos: usa emojis con `icon('🪵')`, no edita `icons.js`) |
+| **2** Expedición ↔ ciudad | `src/expedition/expedition.js`; `data.js` (edificios del ciclo, `MAIN_QUESTS`, `DAILY_POOL`); `state.js` (campos nuevos y `grant/spend/canAfford`, **sin** migración v3); `economy.js` (provisiones, `expansionStatus` por zonas, `roleLevel`); `quests.js` (tipos nuevos); `src/city/models-cycle.js` (nuevo) y su registro en `models.js`; `src/scenes/panels-expedition.js` y `panels-workshop.js` (nuevos); en `hud.js` **solo** el botón Expedición | `src/games/*`, temporada, cofres, social |
+| **3** Amenazas | `src/threats/*` (nuevo); `src/city/models-defense.js` (nuevo); `data.js` (defensas y misiones t15–t17); `economy.js` (daño y reparación en `producerStatus`/`canUpgrade`); `state.js` (`threats`, `b.damaged`); `city.js`, `city-ui.js` y `city-world.js` (capa de defensa, radio al colocar, arroyo y monte) | `season.js` (solo lee `EPOCH` y sus funciones de fecha) |
+| **4** Épocas y arte | `models-kit.js` (capa de época), `models.js` (`buildTemplate`, caché, `thumbnail`), `models-*.js` por tandas; `data.js` (`ERAS`, `eraOfRank`, `req.planos`, `look`, `eraArt`); `economy.js` (`cityEra`, renovar); `palette.js` (paletas de época, coordinando con lo que dejó la Fase 6) | lógica de expedición y amenazas |
+| **5** Sacar minijuegos, v3, economía, HUD | borrar `src/games/*` y `panels-games.js`; `main.js` (router, `finishGame`); `state.js` (migración v3); `season-data.js` (puntos, niveles, eventos); `src/chests/*` (recorte); `src/album/*` (Hallazgos); `hud.js` (rearmado en 3 capas: *Hoy*, *Temporada*, *Largo plazo*; ≤ 14 controles y ≤ 4 globitos); `quests.js`; `tools/sim-economy.mjs`; las suites de `tools/test-*.mjs` | arte de época, motor de amenazas |
+| **6** Tono (en paralelo desde ahora) | **solo literales de texto** (`name`, `desc`, `title`, `text`, mensajes) en `data.js`, `season-data.js`, `album.js`, `src/online/social*.js`, `src/scenes/*`, `src/core/ui.js`; `palette.js`, `styles.css` (reglas existentes), `audio.js` (música nueva `expedition` y `amenaza`), `avatar-outfits.js`, `themes.js` | no agrega ni saca entradas de catálogos ni cambia ids o números |
+| **7a** Métricas y accesibilidad (en paralelo desde ahora) | `src/online/telemetry.js` (nuevo, escucha el bus); `supabase/schema.sql` (tabla `events`, solo inserción con RLS); `panels-settings.js` (métricas, tamaño de texto, reducir movimiento); `styles.css` **solo en un bloque nuevo al final** marcado `/* === Accesibilidad (Fase 7a) === */`; `index.html` (zoom); en `main.js` **solo** la línea de `initTelemetry()` | catálogos y lógica de juego |
+| **7b** Social adaptado (al final) | `src/online/*`, `schema.sql`: Expedición del día, mandar una cuadrilla a un contacto, intercambio de hallazgos | — |
+
+Reglas para las sesiones en paralelo:
+- Ninguna fase corre `npm run bump` ni toca `sw.js`/`VERSION`: lo hace la sesión coordinadora al unir.
+- Los nombres de eventos de bus y de campos de estado de este documento son el contrato: si una fase necesita cambiarlos,
+  actualiza este documento en el mismo commit y lo avisa en la carpeta de notas.
+- La Fase 7a registra al menos: los pasos `t1`–`t12` del tutorial (`quests:changed`), `expedition:started/finished`,
+  `expedition:zone`, `threat:resolved`, `era:changed` y `town:rankup`. Mientras esos eventos no existan, el oyente no hace
+  nada (no rompe).
+- `era:changed {era, from}` lo emite la Fase 4 al terminar la obra de rango que cambia de época (junto a `town:rankup`).

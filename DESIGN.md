@@ -1,9 +1,52 @@
 # Pixelia · Tu ciudad, tu estilo — documento de diseño y contratos
 
-PWA (HTML + ES modules, **sin build**) para iPhone **y PC**. Juego de construir ciudad (estilo city-builder casual) con minijuegos.
+PWA (HTML + ES modules, **sin build**) para iPhone **y PC**. Juego de construir ciudad (estilo city-builder casual) donde la
+ciudad es la base para salir de **expedición** y aguantar las **amenazas** de cada temporada. Los minijuegos están en retirada:
+el ciclo nuevo (Expedición, Amenazas, Épocas, recursos, tutorial y migración) está en [DESIGN-CORE.md](DESIGN-CORE.md).
 Estética: **3D vóxel nítido** (modelos de vóxeles dibujados a alta resolución con antialias, oclusión ambiental y contorno tinta) + UI pixel art "pueblo acogedor" (terracota, verdes, cielo y crema; el rosa solo como acento) con bordes gruesos color tinta café.
-Público: una pareja adulta que juega casual en el celu; neutro de género (cada jugador elige su personaje). Tiene que ser **amigable, linda, con recompensas frecuentes y enganchante** (sesiones cortas, cosas para cobrar, metas claras), nunca frustrante (sin energía, sin muros de pago; las gemas se ganan jugando).
+Público: **adultos que juegan ratos cortos, en el celu y en la PC** (2 a 10 minutos, varias veces por día), solos o con su gente.
+Neutro de género: cada quien elige su personaje y los textos no suponen quién juega. El tono es **cozy adulto**: cálido pero
+sobrio, más cerca de Townscaper o Dorfromantik que de un juego infantil (ver **Guía de tono**). Tiene que ser **claro,
+con decisiones que pesan y metas que se ven** (cada rato avanza algo, el progreso se nota de lejos), nunca frustrante
+(sin energía artificial: el límite son las provisiones que produce tu ciudad, con una salida corta gratis por día; sin
+muros de pago; las gemas se ganan jugando; nunca se pierde nada para siempre).
 Idioma: **español rioplatense** (vos, tocá, construí). Nada de marcas o personajes de juegos existentes: todo original.
+
+## Guía de tono
+Vale para todo texto nuevo y para la pasada sobre lo que queda (Fase 6). Ante la duda: ¿lo diría una persona adulta del
+barrio, sin hablarle a un chico?
+- **Sin diminutivos** en sistemas, premios, botones, recursos ni nombres de edificios: "regalos", no "regalitos"; "casa",
+  no "casita". Se permiten solo cuando son la palabra normal del objeto ("bombilla", "palito") o en un chiste puntual.
+- **Humor seco y local** en vez de tierno: observaciones del barrio, ironía suave, cosas que pasan en cualquier pueblo.
+  "El arroyo creció. Como todos los años, nadie movió el auto". Nada de "¡¡Yaaay!!", corazones ni "mimos".
+- **Neutro de género con sustantivos**, no con "@", "x" ni "e": gente, vecindad, el grupo, contactos, quien lidera, la
+  persona que te visita. "Llegó gente nueva", no "llegaron vecinos/as". Sin "amigas" ni "princesas" como público supuesto.
+- **Premios y festejos proporcionados**: un toast o un sonido para lo chico; **confeti y fanfarria solo en momentos grandes**:
+  cambio de época, monumento terminado, amenaza superada con ≥ 90%, región explorada completa. Una subida de nivel o un
+  cobro no llevan confeti.
+- **Exclamaciones con medida**: una por pantalla como mucho. Los títulos de resultado describen lo que pasó ("Volvieron
+  todos", "Zona explorada", "Casi") en vez de calificar ("¡Divino!", "¡Increíble!").
+- **Números a la vista y frases cortas**: "Cruzar el arroyo · 70%", "Volver · 3 provisiones". Los textos de ayuda dicen qué
+  hacer, no venden.
+- **Ausencias sin culpa**: "Mientras no estabas pasó la tormenta: salvaste el 92%". Nunca "¡Te extrañamos!" ni "¡No nos
+  abandones!".
+- **Nombres sobrios**: edificios por lo que son (Panadería, Taller, Dispensario), temas por estación o lugar (Otoño, Puerto).
+
+Reemplazos de ejemplo:
+
+| Antes | Ahora |
+|---|---|
+| regalitos | regalos |
+| brillitos (moneda del álbum) | recortes |
+| Amigas (pestaña y botón) | Contactos |
+| niveles de amistad Conocidas → Amigas → Compinches → Íntimas → Inseparables | Saludo → Mate → Asado → Llave de casa → Familia |
+| "¡Divino!" (combo de Joyas) | "Combo" |
+| tema Dulce Pastel | Otoño (o Puerto) |
+| Panadería Dulce, Café Gatito, Tienda Brillo | Panadería, Café, Tienda |
+| Casita, Banquito, florcitas, pajaritos | Casa, Banco, flores, pájaros |
+| figuritas / Álbum | Hallazgos (cuando llegue la Fase 5) |
+| "¡Te extrañamos!" | "Mientras no estabas…" |
+| tipo de personaje por defecto Chica, "animalitos" | Gente; los animales quedan como opción ("Animales") |
 
 ## Estructura
 
@@ -35,8 +78,16 @@ src/games/match3.js        Joyas Brillantes                           (agente Ma
 src/games/blocks.js        Bloques Pixel                        (agente Bloques)
 src/games/parking.js       Estacionamiento Express                   (agente Parking)
 src/games/driving.js       Ruta Pixel                             (agente Driving)
+src/expedition/            Expedición: exp-data, exp-gen, exp-rules, exp-scene, exp-ui, expedition (DESIGN-CORE.md §2)
+src/threats/               Amenazas de temporada (DESIGN-CORE.md §3)
 tools/smoke.mjs            prueba headless con capturas
 ```
+
+> **Minijuegos en retirada.** Joyas Brillantes, Bloques Pixel, Estacionamiento Express y Ruta Pixel (`src/games/*`) **se
+> reemplazan por la Expedición** (ver [DESIGN-CORE.md](DESIGN-CORE.md)). Se sacan en la Fase 5, cuando la Expedición esté
+> validada; hasta entonces su documentación técnica de acá abajo (`endGame`, `openGame`, materiales por partida,
+> potenciadores) sigue valiendo para el código que existe. No agregar funciones nuevas a los minijuegos. Quién toca qué
+> archivo en cada fase: DESIGN-CORE.md §10.
 
 Cada agente es dueño **solo** de sus archivos (puede crear archivos nuevos dentro de su carpeta con prefijo propio, p.ej. `src/games/match3-sprites.js`). Si necesita un cambio en `src/core/*`, `main.js`, `styles.css` o `index.html`, **no lo hace**: lo reporta en `coreRequests`. Puede agregar CSS propio inyectando un `<style>` desde su módulo (con selectores prefijados por la clase de su escena, p.ej. `.scene-match3 ...`), y quitarlo en `unmount`.
 
@@ -58,7 +109,8 @@ export default function create(ctx) {
 - `ctx.router.openGame(gameId)` — verifica desbloqueo (nivel + edificio construido) y muestra toast si no.
 - `ctx.gameStatus(gameId)` → `{ok, reason, locked?, needsBuilding?}`.
 - `ctx.openPanel(name, params)` → panels.js (`quests`, `games`, `settings`, `login`, `levelup`, `help`).
-- `ctx.endGame(result)` — **todos los minijuegos terminan con esto**:
+- `ctx.router.go('expedition', { region, kind, resume })` — escena de la Expedición (DESIGN-CORE.md §2.11); no usa `endGame`.
+- `ctx.endGame(result)` — *(minijuegos, en retirada)* **todos los minijuegos terminan con esto**:
   `result = { game, score, stars (0..3), won, coins (BASE, se multiplica por nivel), gems, xp, title?, subtitle?, lines?: [html], newBest?, againLabel? }`
   Acredita premios, emite `minigame:finished`, muestra el modal de premio y devuelve `'again'` o `'city'` (si es `'city'` ya navega solo). Si devuelve `'again'`, el juego reinicia/avanza al siguiente nivel.
 - Imports directos permitidos: `import { store } from '../core/state.js'`, etc. Rutas relativas.
@@ -77,7 +129,8 @@ export default function create(ctx) {
 - 2D (match3/bloques): canvas a baja resolución con `image-rendering: pixelated`, sprites pixel-art dibujados por código, con "volumen" (bisel claro arriba-izquierda, sombra abajo-derecha) para que combine con lo 3D.
 - Fuente: `var(--font)` (Pixelify). Íconos: `icon('coin')`, `icon('gem')`, `icon('star')`, `icon('heart')`, `icon('crown')`, `icon('xp')` + cualquier emoji pixelado (`icon('🌸')`) o nombres en `icons.js`.
 - Clases CSS listas: `.btn` (+ `.pink .lilac .mint .sky .gold .ghost .small .block`), `.icon-btn`, `.panel`, `.card` (+ `.locked .selected`), `.row .col .grid .grid.tight`, `.chip`, `.badge`, `.progress` (+ `.xp .pink .gold`), `.tabs .tab .tab.active`, `.swatches .swatch`, `.scroll`, `.game-bar` (+ `.game-stat` con `<small>` y `<b>`, `.game-title`, `.spacer`), `.game-bg`, `.game-bg.pattern`, `.game-help`.
-- Feedback "jugoso": sonido (`audio.sfx`), partículas, `ui.floatText`, `ui.flyCurrency`, rebotes, confeti en logros.
+- Feedback claro: sonido (`audio.sfx`), partículas, `ui.floatText`, `ui.flyCurrency`, rebotes. Confeti y fanfarria solo en los
+  momentos grandes de la Guía de tono (cambio de época, monumento, amenaza superada, región completa).
 
 ## Personajes, temas y contorno
 - **Personajes** (`data.js` → `AVATAR_TYPES`): Chica, Chico y animalitos (Gatito, Zorrito, Conejito, Osito). La primera partida (`onboarding.js`, si `state.onboarded` es false) elige tipo (al azar al empezar), colores, nombre y ciudad; después se cambia en el Vestidor (pestaña Personaje) o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel. Textos neutros: nada de "princesa" salvo el nombre del tipo.
@@ -119,6 +172,8 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
   Casas y negocios mejorables reciben además una capa común (`upgradeDressing` en models-kit.js, la aplica `buildTemplate`):
   nivel 2 cantero de flores en los bordes del frente y la derecha · 3 faroles encendidos y macetas · 4 mástil con bandera más alto
   que el techo · 5 borde dorado y estrella girando arriba. Los adornos solo van en columnas libres del lote.
+  **Se reemplaza** por la capa de época: cada nivel cambia la estructura y cada época el material y la paleta
+  (`b.era`, `eraWall/eraRoof/...`, `def.eraArt`; DESIGN-CORE.md §4). `upgradeDressing` queda como respaldo hasta la tanda 3.
 - Municipalidad (id `castillo`): 8 niveles, uno por rango (`TOWN_RANKS[].look` dice qué estrena: pórtico, alas, fuentes, cúpula
   dorada, techo azul con torrecitas, mirador con alfombra roja, arco dorado con fuegos artificiales). `buildingModel` admite nivel 8 solo para ella.
 - Monumentos (`cat:'monumento'`, `models-monuments.js`): un modelo por etapa. Cada builder dibuja el monumento **terminado**;
@@ -167,7 +222,8 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
 - Balance (`SIM_DAYS=120 node tools/sim-economy.mjs .`, con monumentos y materiales): jugando 4 ratos por día, rango 2 el día 1, rango 5 ≈ día 12
   y rango 8 ≈ día 51; con 2 ratos por día (`SIM_DAYS=150 node tools/sim-economy.mjs . new 1 9,20`), 2 / 20 / 95. Las monedas sobran: el ritmo
   lo marcan `reqLevel`, la población (terreno), el Encanto (variedad) y los monumentos (materiales). La sim reacomoda la ciudad si un monumento no entra.
-- **Materiales y monumentos** (Fase 3). Cada minijuego da su material (`MATERIALS` en data.js): Joyas Brillantes → cristales,
+- **Materiales y monumentos** (Fase 3; *se reemplaza*: los materiales pasan a ser de región —madera, piedra, mineral,
+  hierbas— y salen de las expediciones, ver DESIGN-CORE.md §5 y §7). Cada minijuego da su material (`MATERIALS` en data.js): Joyas Brillantes → cristales,
   Bloques Pixel → ladrillos, Estacionamiento Express → tuercas, Ruta Pixel → mapas. Por partida: 1 por estrella (mínimo 1) +1 si ganaste,
   × el evento del juego (`finishGame` en main.js). También salen en las diarias de cada juego, en la "Bolsa de materiales" de los cofres
   (elige lo que más te falta; antes del rango Pueblo da monedas) y en algunos niveles del Pase (`mats` en `TIERS`).
@@ -195,7 +251,8 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
   las partidas cada 40 (tope +10%), +1% de monedas en el premio diario cada 20 (tope +25%) y suma Confort/4 al Encanto de la ciudad.
   Online: el perfil publica `city.home` (paredes, piso y hasta 120 muebles) y al visitar una ciudad tocar su casa entra a mirarla (`{visit}`).
 - Constructoras limitadas (2, se compran más con gemas). Obras con tiempo; se aceleran con gemas (≤5s gratis).
-- Minijuegos dan monedas (escaladas por nivel), xp y a veces gemas. Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
+- *(En retirada)* Minijuegos dan monedas (escaladas por nivel), xp y a veces gemas. Lo nuevo: provisiones, materiales de
+  región, planos, equipo, reservas y colonos (DESIGN-CORE.md §5); la expedición no da monedas. Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
 
 ## Pruebas
 ```
