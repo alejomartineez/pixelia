@@ -35,9 +35,10 @@ solo maneja los gestos y le pasa al módulo lo que le toca.
 - **Tocar/clic en el pasto** lleva el fantasma ahí (no construye). Con mouse, **clic sobre el fantasma = colocar**.
 - **Casillas por casilla**: verde libre, roja ocupada o fuera del terreno, ámbar si el lugar está bien pero falta otra cosa.
   El fantasma se tiñe apenas (sin perder sus colores) cuando no entra.
-- **Paneo en los bordes**: arrastrando contra un borde (después de 0,25 s quieto en la franja, arranque suave).
-- **Toque largo** (420 ms, también con mouse) sobre un edificio: se levanta y sigue al puntero; al soltar en un lugar
-  libre queda ahí. Si no entra, queda levantado con el motivo y los botones. "Mover" de la ficha sigue (y la primera vez
+- **Paneo en los bordes**: arrastrando contra un borde (después de 0,25 s en la franja, arranque suave; medido con reloj
+  real, así funciona igual si los cuadros vienen lentos).
+- **Toque largo** (420 ms, también con mouse) sobre un edificio: se levanta (sin saltar: respeta de dónde lo agarraste)
+  y sigue al puntero; al soltar en un lugar libre queda ahí. El toque largo gana sobre los carteles de terreno vecinos. Si no entra, queda levantado con el motivo y los botones. "Mover" de la ficha sigue (y la primera vez
   avisa del atajo).
 - **Deshacer** el último movimiento o giro (mover es gratis, deshacer también): botón junto al edificio por 8 s y Ctrl+Z.
   No hay deshacer de construcciones nuevas a propósito (devolver la plata dejaría farmear XP/estadísticas).
@@ -77,4 +78,13 @@ hay que pasarlo a `onGhostMove` (el `updateGhost` ya no existe; ahora es `update
 fantasma mueve la vista, rotar (botón y R), lugar ocupado (motivo con el nombre, ✓ apagado, casillas rojas), cancelar
 (✕ y Esc) sin gastar, toque largo para levantar y soltar, Deshacer (botón y Ctrl+Z), Mover desde la ficha, caminos
 seguidos arrastrando sin huecos, paneo en el borde, flechas, clic sobre el fantasma y el gancho `onGhostMove`.
-Capturas: `node smoke.mjs` en iPhone y PC (ver `shots/colocacion-*.png`, no se commitean).
+Capturas: `node smoke.mjs` en iPhone y PC → `shots/colocacion-{iphone,pc}-{libre,ocupado,caminos}.png`, y las de
+`test-place.mjs` en `shots/place/` (la carpeta `shots/` no se commitea).
+
+Resultado de `npm test` (corrido por partes porque la cadena corta en la primera falla; la máquina estaba cargada por otras
+sesiones): `test-e2e` 85 OK (en la primera pasada falló por carga al tocar una pestaña del menú; reintentada sola, verde),
+`test-place` 65 OK, `test-stress`, `test-visit`, `test-mock`, `test-social`, `test-works`, `test-home`, `test-expedition`,
+`test-cycle`, `test-telemetry` y `test-sql` en verde.
+**`test-rank` tiene 1 falla que ya está en master** (`15df6a6`, comprobado en un worktree aparte sin mis cambios): "la
+ficha lista el expediente del próximo rango" espera 4 requisitos y hay 5 (el de planos que sumó la Fase 4). No es de
+colocación; no la toqué. Hay que ajustar el `=== 4` de `tools/test-rank.mjs:177` o la ficha.
