@@ -90,7 +90,6 @@ function spend() {
     }
     if (mon) continue;
     const want = [];
-    for (const g of data.GAMES) if (L >= g.unlock && !E.countOf(g.building)) want.push(g.building);
     if (L >= 2 && !E.countOf('boutique_real')) want.push('boutique_real');
     const biz = data.BUILDINGS.filter(b => b.cat === 'negocio' && b.prod?.coins && b.unlock <= L);
     const houses = data.BUILDINGS.filter(b => b.cat === 'casa' && b.unlock <= L);
@@ -135,26 +134,13 @@ function spend() {
     break;
   }
 }
-const hasGame = (g) => s.player.level >= g.unlock && E.hasBuilt(g.building);
-function pickGame() {
-  const games = data.GAMES.filter(hasGame);
-  // la mitad de las veces juega lo que más le falta para su próxima etapa; si no, cualquiera
-  if (Math.random() < 0.5) {
-    for (const g of games) { const h = E.materialHint(data.MATERIAL_BY_GAME[g.id].id); if (h && h.missing > 0) return g; }
-  }
-  return games[Math.floor(Math.random() * games.length)] || data.GAMES[0];
-}
+// Sin minijuegos (Fase 5): una salida de expedición aproximada da materiales de región y experiencia, sin monedas.
+// La sim nueva de la Fase 5b reemplaza esto por las salidas reales (sim-expedition) y las provisiones.
 function playGame() {
-  const scale = data.rewardScale(s.player.level);
-  const won = Math.random() < 0.75;
-  const base = won ? 60 : 5;
-  const coins = Math.round(base * scale);
-  tally.games += coins;
-  const g = pickGame();
-  const stars = won ? 1 + Math.floor(Math.random() * 3) : 0;
-  const mat = data.MATERIAL_BY_GAME[g.id];
-  store.grant({ coins, xp: Math.round((won ? 16 : 5) * Math.sqrt(scale) * (1 + E.monumentBonus('gameXp'))), mats: { [mat.id]: Math.max(1, stars) + (won ? 1 : 0) } }, 'game');
-  if (won && Math.random() < 0.3) { const c = Math.round(170 * scale); tally.games += c; store.grant({ coins: c }, 'chest'); }
+  const stars = Math.floor(Math.random() * 4);
+  const mats = {};
+  for (let i = 0; i < 10; i++) { const m = data.REGION_MAT_IDS[Math.floor(Math.random() * data.REGION_MAT_IDS.length)]; mats[m] = (mats[m] || 0) + 1; }
+  store.grant({ xp: Math.round((10 + 5 * stars) * (1 + E.monumentBonus('gameXp'))), mats }, 'expedition');
 }
 const rnd = (() => { let h = 12345; return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; })();
 Math.random = rnd;

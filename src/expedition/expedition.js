@@ -13,6 +13,8 @@ import * as E from '../core/economy.js';
 import { EXP, REGIONS, REGION_IDS, ROLES, ROLE_IDS, EQUIPMENT, HAZARDS, ringOf } from './exp-data.js';
 import { hashSeed } from './exp-gen.js';
 import * as R from './exp-rules.js';
+import { eventMult } from '../season/events.js';
+import { comfortInfo } from '../home/furniture.js';
 
 export { zonesExplored, roleLevel } from '../core/economy.js';
 
@@ -21,6 +23,8 @@ const MIN = 60e3;
 // Primera salida corta (tutorial t5): mapa fijo del Bosque con "el aserradero abandonado" de objetivo y madera cerca
 // (semilla buscada con exp-gen: 4 casillas de madera a profundidad ≤ 3 y 2 peligros lejos de la base).
 export const TUTORIAL_SEED = 110;
+// Experiencia por salida terminada (la daban los minijuegos; Fase 5): base + por estrella, × Observatorio y Mi Casa.
+export const EXP_XP = { base: 10, perStar: 5 };
 // Orden en que se arma el grupo por defecto (si no hay uno elegido antes).
 const ROLE_PRIORITY = ['exploracion', 'ingenieria', 'guia', 'sanidad', 'recoleccion'];
 
@@ -207,12 +211,26 @@ export function finishExpedition(run, state = S()) {
   const now = Date.now();
   run.city = run.city || {};
   const L = res.loot;
-  const reward = { mats: { ...L.mats }, planos: L.planos || 0, colonos: L.colonos || 0, gems: res.gems || 0 };
-  if (res.chest) reward.chest = 'madera';
+  // eventos de región y monumentos (reemplazan a los de los minijuegos, Fase 5): materiales ×, cofre de 3★ con segunda
+  // tirada en "Lluvia de Cofres", hallazgos dobles en su fin de semana, Museo (+50% de chance de un hallazgo más) y la
+  // experiencia de la salida con el Observatorio y el confort de Mi Casa
+  const mult = (k) => { try { return eventMult(k) || 1; } catch { return 1; } };
+  const matMult = mult('expMats') * mult('region_' + run.region);
+  const mats = {};
+  for (const [id, n] of Object.entries(L.mats || {})) mats[id] = Math.round((n || 0) * matMult);
+  const reward = { mats, planos: L.planos || 0, colonos: L.colonos || 0, gems: res.gems || 0 };
+  if (res.chest || (res.starCount === 3 && mult('chestDrop') > 1 && Math.random() < EXP.chestAt3 * (mult('chestDrop') - 1))) reward.chest = 'madera';
+  let xpBonus = 0;
+  try { xpBonus = E.monumentBonus('gameXp', state) + (comfortInfo().xpBonus || 0); } catch {}
+  reward.xp = run.prototype ? 0 : Math.round((EXP_XP.base + EXP_XP.perStar * res.starCount) * (1 + xpBonus));
   if (run.kind === 'normal' && res.reason === 'volvio' && res.provLeft > 0) reward.prov = res.provLeft;
   const got = store.grant(reward, 'expedition');
   const finds = [];
-  for (const f of L.finds || []) { const o = store.grant({ stickers: { n: 1, minStars: f.stars } }, 'expedition'); finds.push(...(o.stickers || [])); }
+  const findN = Math.max(1, Math.round(mult('stickers')));
+  for (const f of L.finds || []) { const o = store.grant({ stickers: { n: findN, minStars: f.stars, region: run.region } }, 'expedition'); finds.push(...(o.stickers || [])); }
+  let museo = 0;
+  try { museo = E.monumentBonus('stickers', state); } catch {}
+  if (museo > 0 && (L.finds || []).length && Math.random() < museo) finds.push(...(store.grant({ stickers: { n: 1, region: run.region } }, 'expedition').stickers || []));
   // zonas
   let zoneExplored = false, regionDone = false;
   const rs = e.regions[run.region];

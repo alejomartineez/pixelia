@@ -1,14 +1,15 @@
 // Arranque, router de escenas y contexto compartido (ctx) que reciben todas las escenas.
 //
-// Orden de arranque: store.load → applyDebugParams → initChests → initAlbum → initSeason → initEvents → initQuests
-// → HUD → (online) initSync → social.initSocial. Al entrar a la ciudad se muestran, de a uno y sin pisarse:
-// regalo de bienvenida ("Bienvenida de vuelta") → premio diario → subidas de nivel.
+// Orden de arranque: store.load (con la migración v3) → applyDebugParams → initChests → initAlbum → initSeason
+// → initEvents → initExpedition → initThreats → initQuests → HUD → (online) initSync → social.initSocial. Al entrar a la
+// ciudad se muestran, de a uno y sin pisarse: regalo de bienvenida ("Bienvenida de vuelta") → "Los minijuegos se
+// retiraron" (una sola vez, partidas de antes de la v3) → "Mientras no estabas" → premio diario → subidas de nivel.
 import { bus } from './core/bus.js';
 import { store } from './core/state.js';
 import * as data from './core/data.js';
 import * as economy from './core/economy.js';
 import * as quests from './core/quests.js';
-import { ui, h, esc, toast, rewardModal, closeAllModals, hasModal, rewardArt, applyA11y } from './core/ui.js';
+import { ui, toast, rewardModal, closeAllModals, hasModal, rewardArt, applyA11y } from './core/ui.js';
 import { icon } from './core/icons.js';
 import { audio } from './core/audio.js';
 import { hud } from './core/hud.js';
@@ -26,12 +27,8 @@ const SCENES = {
   city: () => import('./scenes/city.js'),
   wardrobe: () => import('./scenes/wardrobe.js'),
   onboarding: () => import('./scenes/onboarding.js'),   // primera vez: elegir personaje, nombre y ciudad
-  match3: () => import('./games/match3.js'),
-  blocks: () => import('./games/blocks.js'),
-  parking: () => import('./games/parking.js'),
-  driving: () => import('./games/driving.js'),
   home: () => import('./scenes/home.js'),   // Mi Casa por dentro (también la de una amistad: {visit})
-  expedition: () => import('./expedition/exp-scene.js'),   // Expedición (DESIGN-CORE.md §2; prototipo de la Fase 1)
+  expedition: () => import('./expedition/exp-scene.js'),   // Expedición (DESIGN-CORE.md §2)
 };
 
 const sceneEl = document.getElementById('scene');
@@ -84,122 +81,7 @@ const router = {
     if (id === 'city' && !p?.visit) runArrival();
     return true;
   },
-  /** Abre un minijuego verificando que esté desbloqueado. */
-  openGame(gameId, p = {}) {
-    const st = gameStatus(gameId);
-    if (!st.ok) { audio.sfx('error'); toast(st.reason, { icon: 'lock' }); return false; }
-    router.go(gameId, p);
-    return true;
-  },
 };
-
-/** {ok, reason} — un juego está disponible si el nivel alcanza y su edificio está construido. */
-function gameStatus(gameId) {
-  const g = data.GAME_BY_ID[gameId];
-  if (!g) return { ok: false, reason: '???' };
-  if (store.state.player.level < g.unlock) return { ok: false, reason: `Se desbloquea en nivel ${g.unlock}`, locked: true };
-  if (!economy.hasBuilt(g.building)) return { ok: false, reason: `Construí ${data.BUILDING_BY_ID[g.building].name} para jugar`, needsBuilding: g.building };
-  return { ok: true };
-}
-
-// ---------- Fin de partida ----------
-/**
- * Fin de partida de cualquier minijuego.
- * result: { game, score, stars(0..3), won(bool), coins(base), gems, xp, title?, subtitle?, lines?:[html], newBest?, againLabel? }
- * Las monedas base se multiplican por rewardScale(nivel) y por el evento activo del juego (eventMult(game+'Rewards')).
- * Además: cofre (rollGameChest, con segunda tirada en "Lluvia de Cofres"), figurita (35% al ganar, x eventMult('stickers'))
- * y chispas del Pase (las suma season.js al escuchar minigame:finished). Devuelve 'again' | 'city'.
- */
-const GAME_STICKER_CHANCE = 0.35;
-let ending = null;
-function endGame(result) {
-  // si un juego llama dos veces seguidas (doble toque, timers), no duplicar premios ni apilar modales
-  if (ending) return ending;
-  ending = finishGame(result).finally(() => { ending = null; });
-  return ending;
-}
-async function finishGame(result) {
-  const s = store.state;
-  const t0 = Date.now();
-  const stars = Math.max(0, Math.min(3, result.stars || 0));
-  const scale = data.rewardScale(s.player.level);
-  const mult = safe(() => events.eventMult(result.game + 'Rewards'), 1);
-  const reward = {
-    coins: Math.round((result.coins || 0) * scale * mult),
-    gems: Math.round((result.gems || 0) * mult),
-    // Observatorio terminado: +XP en las partidas
-    xp: Math.round((result.xp ?? 10) * Math.sqrt(scale) * (1 + safe(() => economy.monumentBonus('gameXp'), 0) + safe(() => home.comfortInfo().xpBonus, 0))),
-  };
-  // material del juego para los monumentos: 1 por estrella (mínimo 1) y +1 si ganaste, con el evento del juego
-  const mat = data.MATERIAL_BY_GAME[result.game];
-  if (mat) reward.mats = { [mat.id]: Math.max(1, Math.round((Math.max(1, stars) + (result.won ? 1 : 0)) * mult)) };
-  store.grant(reward, 'game:' + result.game);
-  store.inc('played_' + result.game);
-  store.inc('gamesPlayed');
-
-  // cofre por ganar (+ tiradas extra si hay evento de cofres)
-  const chestsWon = [];
-  if (result.won) {
-    const rolls = Math.max(1, Math.round(safe(() => events.eventMult('chestDrop'), 1)));
-    for (let i = 0; i < rolls; i++) { const t = safe(() => chests.rollGameChest({ won: true, stars }), null); if (t) chestsWon.push(t); }
-  }
-  // figurita
-  let sticker = null;
-  // Museo terminado: más chance de figurita
-  const stickerChance = GAME_STICKER_CHANCE * safe(() => events.eventMult('stickers'), 1) * (1 + safe(() => economy.monumentBonus('stickers'), 0));
-  if (result.won && Math.random() < stickerChance) {
-    const p = { n: 1, minStars: 1, source: 'game' };
-    bus.emit('reward:stickers', p);
-    sticker = p.result?.[0] || null;
-  }
-  bus.emit('minigame:finished', { game: result.game, score: result.score || 0, stars, won: !!result.won });
-  store.save();
-  audio.sfx(result.won === false ? 'lose' : 'win');
-
-  const sp = safe(() => season.lastMinigamePoints(), null);
-  const chispas = sp && sp.at >= t0 ? sp.pts : 0;
-  const lines = [];
-  if (result.newBest) lines.push(`${icon('trophy', 22)} <b>¡Nuevo récord!</b>`);
-  lines.push(...(result.lines || []));
-  if (mult > 1 && (reward.coins || reward.gems)) lines.push(`${icon('⚡', 18)} ¡Premio x${String(mult).replace('.', ',')} por el evento!`);
-  const extras = h('div.rw-extras');
-  for (const type of chestsWon) {
-    const def = chests.CHESTS[type];
-    extras.append(h('div.rw-extra.rw-chest', { style: `--c:${def?.color || '#ffd166'}`, html:
-      `<span class="rw-art">${chestIcon(type, 46)}</span><span class="rw-txt"><small>¡Ganaste un cofre!</small><b>${esc(def?.name || 'Cofre')}</b><em>Abrilo desde Cofres</em></span>` }));
-  }
-  if (sticker) {
-    const def = album.stickerDef(sticker.id);
-    const card = h('span.rw-art.rw-stk');
-    if (def) card.append(album.renderStickerCard(def, { isNew: sticker.isNew, showCount: false }));
-    extras.append(h('div.rw-extra.rw-sticker', { style: `--c:${def?.color || '#ee8a5c'}` }, card,
-      h('span.rw-txt', { html: `<small>${sticker.isNew ? '¡Figurita nueva!' : 'Figurita repetida'}</small><b>${esc(def?.name || 'Figurita')}</b><em>${'★'.repeat(sticker.stars)}${sticker.isNew ? ' · ya está en tu Álbum' : ' · cambiala por brillitos'}</em>` })));
-  }
-  if (chispas) extras.append(h('div.rw-chispas', { html: `${icon('sparkle', 20)}<b>+${chispas}</b> chispas del Pase` }));
-  // cuánto falta de este material para la próxima etapa de un monumento
-  const hint = mat ? safe(() => economy.materialHint(mat.id), null) : null;
-  if (hint) {
-    const txt = hint.missing > 0
-      ? `Te ${hint.missing === 1 ? 'falta' : 'faltan'} <b>${hint.missing} ${esc(hint.missing === 1 ? hint.mat.one : hint.mat.name.toLowerCase())}</b> para ${hint.stage === 1 ? 'empezar ' + esc(hint.the) : 'la etapa ' + hint.stage + ' ' + esc(hint.of)}`
-      : `¡Ya tenés los ${esc(hint.mat.name.toLowerCase())} para ${hint.stage === 1 ? 'empezar ' + esc(hint.the) : 'la etapa ' + hint.stage + ' ' + esc(hint.of)}!`;
-    extras.append(h('div.rw-mathint' + (hint.missing > 0 ? '' : '.ok'), { html: `${icon('monument', 20)}<span>${txt}</span>` }));
-  }
-  if (extras.childElementCount) lines.push(extras);
-
-  const choice = await rewardModal({
-    title: result.title || (result.won === false ? '¡Casi!' : '¡Muy bien!'),
-    subtitle: result.subtitle || (result.score != null ? `Puntaje: ${Number(result.score).toLocaleString('es-AR')}` : ''),
-    stars: result.stars,
-    lines,
-    reward,
-    buttons: [{ label: 'Ciudad', value: 'city', cls: 'ghost' }, { label: result.againLabel || 'Otra vez', value: 'again', cls: 'primary' }],
-    dismissValue: 'city',
-    className: 'game-reward',
-  });
-  if (choice === 'city') router.go('city');
-  return choice;
-}
-function safe(fn, def) { try { return fn(); } catch (e) { console.error(e); return def; } }
 
 async function openPanel(name, p = {}) {
   try {
@@ -244,14 +126,14 @@ const lazyUi = (loader, fail) => async (...args) => {
   try { return await loader(...args); } catch (e) { console.error(e); toast(fail, { type: 'bad' }); }
 };
 const openChests = lazyUi(p => import('./chests/chests-ui.js').then(m => m.openChestsPanel(ctx, p || {})), 'No se pudieron abrir los cofres');
-const openAlbum = lazyUi(p => import('./album/album-ui.js').then(m => m.openAlbum(ctx, p || {})), 'No se pudo abrir el álbum');
+const openAlbum = lazyUi(p => import('./album/album-ui.js').then(m => m.openAlbum(ctx, p || {})), 'No se pudo abrir Hallazgos');
 const openSeasonPass = lazyUi(() => season.openSeasonPass(ctx), 'No se pudo abrir el Pase');
 const openEvents = lazyUi(() => events.openEventsPanel(ctx), 'No se pudieron abrir los eventos');
 
 export const ctx = {
   store, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats,
   get state() { return store.state; },
-  endGame, openPanel, gameStatus,
+  openPanel,
   // progresión y social
   chests, album, season, events, net,
   social: null,      // módulo social.js cuando está cargado
@@ -282,6 +164,10 @@ async function arrivalSteps() {
   if (!(await waitIdle())) return false;
   if (season.welcomeBackStatus()) {
     await season.openWelcomeBack(ctx);
+    if (!(await waitIdle())) return false;
+  }
+  if (v3Pending()) {
+    await openV3Notice();
     if (!(await waitIdle())) return false;
   }
   // amenazas que se resolvieron solas: un solo aviso "Mientras no estabas" (src/threats/threat-ui.js)
@@ -336,6 +222,42 @@ bus.on('city:placing', ({ active } = {}) => {
 // bienvenida que aparece al volver a la app después de días en segundo plano (iPhone deja la PWA abierta)
 bus.on('season:welcome', () => { if (cityReady()) runArrival(); });
 
+// ---------- Migración v3: los minijuegos se retiraron (DESIGN-CORE.md §7.2.3) ----------
+const v3Pending = () => { const v = store.state.v3; return !!v && !v.shown; };
+/** Hallazgos de compensación (de 2★ o más): se acreditan al arrancar, después de initAlbum, una sola vez. */
+function grantV3Finds() {
+  const v = store.state.v3;
+  if (!v || v.findsGiven || !(v.finds > 0)) return;
+  v.findsGiven = 1;
+  v.got = [];
+  for (let i = 0; i < v.finds; i++) v.got.push(...(store.grant({ stickers: { n: 1, minStars: 2 } }, 'migration').stickers || []).map(x => x.id));
+  store.markDirty();
+}
+const V3_NAMES = { joyeria: ['la Joyería', 'el Taller'], torre_bloques: ['la Torre de Bloques', 'el Dispensario'], garaje: ['el Garaje', 'el Establo'], pista: ['la Pista', 'la Casa de Expediciones'] };
+async function openV3Notice() {
+  const v = store.state.v3;
+  v.shown = 1;
+  store.save();
+  const li = (ic, html) => `${icon(ic, 22)} <span>${html}</span>`;
+  const lines = [];
+  const conv = (v.conv || []).filter(id => V3_NAMES[id]).map(id => `${V3_NAMES[id][0]} ahora es <b>${V3_NAMES[id][1]}</b>`);
+  if (conv.length) lines.push(li('hammer', `Tus edificios quedan donde estaban y con su nivel: ${conv.join(', ')}.`));
+  if (v.expPlaced) lines.push(li('🧭', 'La <b>Casa de Expediciones</b> ya está en tu ciudad, cerca de la Municipalidad.'));
+  else if (v.expFree) lines.push(li('🧭', 'La <b>Casa de Expediciones</b> te espera gratis en Construir.'));
+  lines.push(li('monument', 'Cristales, ladrillos, tuercas y mapas pasaron a ser <b>mineral, piedra, madera y hierbas</b>: las obras a medio juntar siguen igual de cerca.'));
+  lines.push(li('album', `Tu álbum ahora se llama <b>Hallazgos</b>, con todo lo que tenías${v.finds ? ` y ${v.finds === 1 ? 'un hallazgo nuevo' : v.finds + ' hallazgos nuevos'} de regalo` : ''}.`));
+  lines.push(li('🎒', 'Los potenciadores que guardabas ahora son <b>equipo de expedición</b>.'));
+  if (v.refund) lines.push(li('coin', `Tenías dos edificios que ahora serían el mismo: te devolvimos ${v.refund.toLocaleString('es-AR')} monedas.`));
+  await rewardModal({
+    title: 'Los minijuegos se retiraron',
+    subtitle: 'Pixelia ahora gira alrededor de las expediciones: salir, traer lo que hace falta y volver a la ciudad.',
+    lines,
+    reward: v.gems ? { gems: v.gems } : {},
+    buttons: [{ label: 'Vamos', value: 'ok', cls: 'primary' }],
+    className: 'v3-notice',
+  });
+}
+
 // ---------- Online ----------
 async function startOnline() {
   try {
@@ -364,7 +286,7 @@ function applyDebugParams() {
 
 function initProgression() {
   const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['threats', threats.initThreats], ['quests', quests.initQuests],
-    ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })]];
+    ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds]];
   for (const [name, fn] of steps) { try { fn(); } catch (e) { console.error('[init] ' + name, e); } }
   // íconos pixel de cofres y sobres en los premios (costHtml)
   rewardArt.chest = (type, size) => chestIcon(type, size);
@@ -398,7 +320,7 @@ async function boot() {
   });
 
   // Zoom con pellizco: se puede en el HUD, los menús y los avisos (accesibilidad), pero no sobre la escena,
-  // donde el pellizco es de la cámara de la ciudad o del minijuego (#scene tiene touch-action:none; en iOS además gesture*)
+  // donde el pellizco es de la cámara de la ciudad o de la expedición (#scene tiene touch-action:none; en iOS además gesture*)
   const inScene = (e) => !!e.target?.closest?.('#scene');
   document.addEventListener('gesturestart', e => { if (inScene(e)) e.preventDefault(); });
   document.addEventListener('gesturechange', e => { if (inScene(e)) e.preventDefault(); });

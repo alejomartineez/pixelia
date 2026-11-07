@@ -142,7 +142,7 @@ export function renderStickerCard(def, opts = {}) {
   root.style.setProperty('--cl', def.light);
   if (delay) root.style.animationDelay = delay + 's';
   root.dataset.id = def.id;
-  root.setAttribute('aria-label', owned ? `${def.name}, ${def.stars} estrellas${count > 1 ? `, tenés ${count}` : ''}` : `Figurita ${def.n}: te falta`);
+  root.setAttribute('aria-label', owned ? `${def.name}, ${def.stars} estrellas${count > 1 ? `, tenés ${count}` : ''}` : `Hallazgo ${def.n}: te falta`);
 
   const inner = el('div', 'stk-in');
   const win = el('div', 'stk-win');
@@ -216,7 +216,7 @@ export function renderPack(item, opts = {}) {
   root.append(body);
   root.append(el('div', 'pk-top'));
   const label = el('div', 'pk-label');
-  label.innerHTML = `<img data-pi="${item?.emoji || '🌸'}" src="${iconUrl(item?.emoji || '🌸', 40)}" alt="" draggable="false"><b>${escTxt(item?.name || 'Sobre')}</b>${opts.small ? '' : `<small>FIGURITAS</small>`}`;
+  label.innerHTML = `<img data-pi="${item?.emoji || '🌸'}" src="${iconUrl(item?.emoji || '🌸', 40)}" alt="" draggable="false"><b>${escTxt(item?.name || 'Sobre')}</b>${opts.small ? '' : `<small>HALLAZGOS</small>`}`;
   root.append(label);
   return root;
 }

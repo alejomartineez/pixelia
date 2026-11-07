@@ -174,7 +174,7 @@ export function openSettings(ctx) {
   };
   paintStats();
   root.append(section(icon('heart', 24), 'Ayudanos a mejorar', statsBtn,
-    h('p.small.muted.a11y-hint', {}, 'Mandamos qué partes del juego usás (niveles, minijuegos, menús), cuánto dura cada sesión y los errores, con un código al azar de este dispositivo. Nunca tu nombre, tu email ni tu ciudad.'),
+    h('p.small.muted.a11y-hint', {}, 'Mandamos qué partes del juego usás (niveles, expediciones, menús), cuánto dura cada sesión y los errores, con un código al azar de este dispositivo. Nunca tu nombre, tu email ni tu ciudad.'),
   ));
 
   // ---------- Copia de seguridad ----------
@@ -353,7 +353,7 @@ function accountSection(ctx, sh, section) {
       text = who + when + (net.online ? '' : ' Cuando vuelva internet se sincroniza sola.');
     } else {
       chip = `<span class="chip second">${icon('people', 14)} Sin cuenta</span>`;
-      text = 'Creá tu cuenta para visitar las ciudades de tus amigos, mandarles regalitos, intercambiar figuritas y guardar tu partida en la nube.';
+      text = 'Creá tu cuenta para visitar las ciudades de tus amigos, mandarles regalos, intercambiar hallazgos y guardar tu partida en la nube.';
     }
     if (mode === 'mock') chip += ` <span class="chip primary">${icon('sparkle', 14)} Modo prueba</span>`;
     box.append(h('div.pnl-acc-status', { html: `<div class="pnl-chips">${chip}</div><p class="small muted">${text}</p>` }));
@@ -401,26 +401,26 @@ export function openHelp(ctx) {
       ['people', 'Población', 'Las casas traen vecinos. Muchos negocios piden un mínimo de vecinos para abrir.'],
       ['smile', 'Felicidad', 'Árboles, flores y deco hacen feliz a tu ciudad: ¡todo produce hasta un 50% más!'],
       ['castle', 'Rango y Encanto', 'Mejorá la <b>Municipalidad</b> para subir de rango, de Aldea a Capital. Cada rango pide un expediente: vecinos, felicidad, tipos de negocio y <b>Encanto</b> (deco variada y edificios mejorados). Tocá el cartel de tu rango, arriba a la izquierda.'],
-      ['monument', 'Monumentos', 'Desde el rango Pueblo construís monumentos por etapas con los <b>materiales</b> que ganás en los minijuegos: cristales, ladrillos, tuercas y mapas. Cada uno terminado da un bonus para siempre. Mirá <b>Obras</b>.'],
+      ['monument', 'Monumentos', 'Desde el rango Pueblo construís monumentos por etapas con los <b>materiales</b> que trae la expedición: madera, piedra, mineral y hierbas. Cada uno terminado da un bonus para siempre. Mirá <b>Obras</b>.'],
       ['👷', 'Constructoras', 'Cada obra ocupa una constructora un ratito. Si faltan menos de 5 segundos, terminala gratis.'],
-      ['games', 'Minijuegos', 'Construí la Joyería, la Torre, el Garaje y la Pista para jugar y ganar premios.'],
+      ['🧭', 'Expedición', 'Con la <b>Casa de Expediciones</b> salís a explorar la región: cada paso gasta provisiones y lo que traés (materiales, planos, hallazgos) sirve para crecer.'],
       ['quest', 'Misiones', 'Seguí la misión principal, hacé las 3 diarias para abrir el cofre y juntá estrellas de logro.'],
-      ['gem', 'Gemas', 'Se ganan con misiones, logros, subiendo de nivel y jugando. Sirven para cosas especiales.'],
+      ['gem', 'Gemas', 'Se ganan con misiones, logros, subiendo de nivel, en las amenazas y en las salidas de 3★. Sirven para cosas especiales.'],
     ]],
     ['gift', 'Premios y colección', [
       ['fire', 'Racha diaria', 'Entrá cada día por tu regalo. Si un día no podés, tu <b>escudo de racha</b> de la semana la cuida. Y si volvés después de unos días, ¡te espera un regalo de bienvenida!'],
-      ['chest:plata', 'Cofres', 'Los ganás jugando, subiendo de nivel y con misiones, y cada 4 horas hay uno <b>gratis</b>. Traen monedas, gemas, potenciadores, prendas y construcciones sorpresa.'],
-      ['bag', 'Mochila y potenciadores', 'Lo que sale de los cofres se guarda en tu <b>mochila</b>. Los potenciadores (movidas extra, bombas, relojes, escudos) se eligen antes de empezar un minijuego.'],
-      ['🃏', 'Álbum de figuritas', 'Juntá figuritas de 12 colecciones: salen en cofres y minijuegos. Completá una página para ganar un premio grande. Las repetidas se cambian por <b>brillitos</b> o se intercambian con amigos.'],
+      ['chest:plata', 'Cofres', 'Salen en las expediciones de 3★, las amenazas, el Pase, cada 5 niveles y con las misiones, y cada día hay uno <b>gratis</b>. Traen monedas, gemas, equipo, prendas y construcciones sorpresa.'],
+      ['bag', 'Mochila y equipo', 'Lo que sale de los cofres se guarda en tu <b>mochila</b> (martillos, relojes, pociones). El <b>equipo</b> (cuerda, pala, lona, farol) se elige al preparar una salida.'],
+      ['🃏', 'Hallazgos', 'Lo que encontrás explorando: 12 colecciones repartidas entre las regiones. Salen en ruinas, objetivos y algunos cofres. Completá una página para ganar un premio grande. Los repetidos se cambian por <b>recortes</b> o se intercambian con tus contactos.'],
       ['sparkle', 'Pase de Temporada', 'Cada temporada dura 4 semanas. Todo lo que hacés suma <b>chispas</b> y cada nivel del pase trae premios gratis. ¡Sin apuro!'],
-      ['calendar', 'Eventos', 'Cada semana hay eventos especiales: producción doble, lluvia de cofres, fiebre de figuritas, carrera de estrellas… Mirá el cartelito arriba de la pantalla.'],
+      ['calendar', 'Eventos', 'Cada semana hay eventos especiales: producción doble, semanas de región, lluvia de cofres, hallazgos dobles, carrera de estrellas… Mirá el cartelito arriba de la pantalla.'],
     ]],
     ['heart', 'Con tus amigos', [
       ['people', 'Amigos', 'Sumá gente con tu <b>código de amistad</b> (está en Amigos y en Ajustes). Cuanto más juegan en equipo, más crece la amistad.'],
       ['home', 'Visitas', 'Visitá sus ciudades, dejales un corazón y una notita, y dales una mano para terminar sus obras.'],
       ['gift', 'Regalos', 'Mandá un regalito por día a cada persona de tu lista. Lo que te mandan llega a tu <b>Buzón</b>.'],
       ['🙋', 'Pedidos', '¿Te falta algo? Pedí una mano (hasta 3 por día) y tu gente te ayuda. Ayudar a los demás también da premios.'],
-      ['rotate', 'Intercambios', 'Cambiá figuritas repetidas, monedas u objetos con tus amigos: del otro lado aceptan o rechazan.'],
+      ['rotate', 'Intercambios', 'Cambiá hallazgos repetidos, monedas u objetos con tus contactos: del otro lado aceptan o rechazan.'],
       ['build', 'Obra en Equipo', 'Entre todos llenan una barra semanal con 5 escalones de premios. ¡Todo lo que jugás suma!'],
       ['trophy', 'Ranking', 'Cada semana se comparan récords y estrellas. Hay premio para todos, ¡y medalla si superás tu mejor marca!'],
     ]],

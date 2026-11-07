@@ -39,7 +39,7 @@ export function costHtml(cost = {}, size = 16, opts = {}) {
   if (cost.coins) parts.push(`<span class="cost">${icon('coin', size)}${fmtNum(cost.coins)}</span>`);
   if (cost.gems) parts.push(`<span class="cost">${icon('gem', size)}${fmtNum(cost.gems)}</span>`);
   if (cost.xp) parts.push(`<span class="cost">${icon('xp', size)}${fmtNum(cost.xp)}</span>`);
-  // materiales de los minijuegos: { cristal: n, ladrillo: n, tuerca: n, mapa: n }
+  // materiales de región: { madera: n, piedra: n, mineral: n, hierbas: n }
   if (cost.mats) for (const [id, n] of Object.entries(cost.mats)) {
     const m = MATERIAL_BY_ID[id];
     if (m && n) parts.push(`<span class="cost cost-mat" title="${esc(m.name)}" aria-label="${n} ${esc(m.name.toLowerCase())}">${icon(m.icon, size)}${fmtNum(n)}</span>`);
@@ -63,7 +63,7 @@ export function costHtml(cost = {}, size = 16, opts = {}) {
   if (opts.extras && cost.stickers) {
     const n = typeof cost.stickers === 'object' ? cost.stickers.n : cost.stickers;
     const art = rewardArt.pack ? rewardArt.pack(Math.round(size * 1.15)) : icon('🃏', size);
-    parts.push(`<span class="cost cost-pack" title="Figuritas" aria-label="${n} figuritas">${art}×${n}</span>`);
+    parts.push(`<span class="cost cost-pack" title="Hallazgos" aria-label="${n} hallazgos">${art}×${n}</span>`);
   }
   return parts.join(' ') || '<span class="cost">Gratis</span>';
 }

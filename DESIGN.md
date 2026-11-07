@@ -1,8 +1,8 @@
 # Pixelia · Tu ciudad, tu estilo — documento de diseño y contratos
 
 PWA (HTML + ES modules, **sin build**) para iPhone **y PC**. Juego de construir ciudad (estilo city-builder casual) donde la
-ciudad es la base para salir de **expedición** y aguantar las **amenazas** de cada temporada. Los minijuegos están en retirada:
-el ciclo nuevo (Expedición, Amenazas, Épocas, recursos, tutorial y migración) está en [DESIGN-CORE.md](DESIGN-CORE.md).
+ciudad es la base para salir de **expedición** y aguantar las **amenazas** de cada temporada. Los minijuegos se retiraron en la
+Fase 5 (guardado v3); el ciclo nuevo (Expedición, Amenazas, Épocas, recursos, tutorial y migración) está en [DESIGN-CORE.md](DESIGN-CORE.md).
 Estética: **3D vóxel nítido** (modelos de vóxeles dibujados a alta resolución con antialias, oclusión ambiental y contorno tinta) + UI pixel art "pueblo acogedor" (terracota, verdes, cielo y crema; el rosa solo como acento) con bordes gruesos color tinta café.
 Público: **adultos que juegan ratos cortos, en el celu y en la PC** (2 a 10 minutos, varias veces por día), solos o con su gente.
 Neutro de género: cada quien elige su personaje y los textos no suponen quién juega. El tono es **cozy adulto**: cálido pero
@@ -72,24 +72,19 @@ src/avatar/avatar*.js      modelo del personaje (todos los tipos)  (agente Avata
 src/city/themes*.js        temas de ciudad + selector             (agente Ciudad)
 src/scenes/onboarding.js   primera partida: personaje, nombre, ciudad, tema
 src/avatar/car.js          modelo auto                            (agente Avatar)
-src/scenes/wardrobe.js     vestidor + taller                      (agente Avatar)
-src/scenes/panels.js       misiones, juegos, ajustes, login, nivel (agente Paneles)
-src/games/match3.js        Joyas Brillantes                           (agente Match3)
-src/games/blocks.js        Bloques Pixel                        (agente Bloques)
-src/games/parking.js       Estacionamiento Express                   (agente Parking)
-src/games/driving.js       Ruta Pixel                             (agente Driving)
+src/scenes/wardrobe.js     vestidor + auto                        (agente Avatar)
+src/scenes/panels.js       misiones, ajustes, login, nivel, obras    (agente Paneles)
 src/expedition/            Expedición: exp-data, exp-gen, exp-rules, exp-scene, exp-ui, expedition (DESIGN-CORE.md §2)
 src/threats/               Amenazas de temporada (DESIGN-CORE.md §3)
 tools/smoke.mjs            prueba headless con capturas
 ```
 
-> **Minijuegos en retirada.** Joyas Brillantes, Bloques Pixel, Estacionamiento Express y Ruta Pixel (`src/games/*`) **se
-> reemplazan por la Expedición** (ver [DESIGN-CORE.md](DESIGN-CORE.md)). Se sacan en la Fase 5, cuando la Expedición esté
-> validada; hasta entonces su documentación técnica de acá abajo (`endGame`, `openGame`, materiales por partida,
-> potenciadores) sigue valiendo para el código que existe. No agregar funciones nuevas a los minijuegos. Quién toca qué
-> archivo en cada fase: DESIGN-CORE.md §10.
+> **Minijuegos retirados (Fase 5).** Joyas Brillantes, Bloques Pixel, Estacionamiento Express y Ruta Pixel se sacaron del
+> código: sus edificios pasaron a Taller, Dispensario, Establo y Casa de Expediciones, los materiales a los de región, los
+> potenciadores a equipo y el Álbum a **Hallazgos** (mismos ids). La migración del guardado (v3) está en `state.js` y en
+> DESIGN-CORE.md §7.2. Quién toca qué archivo en cada fase: DESIGN-CORE.md §10.
 
-Cada agente es dueño **solo** de sus archivos (puede crear archivos nuevos dentro de su carpeta con prefijo propio, p.ej. `src/games/match3-sprites.js`). Si necesita un cambio en `src/core/*`, `main.js`, `styles.css` o `index.html`, **no lo hace**: lo reporta en `coreRequests`. Puede agregar CSS propio inyectando un `<style>` desde su módulo (con selectores prefijados por la clase de su escena, p.ej. `.scene-match3 ...`), y quitarlo en `unmount`.
+Cada agente es dueño **solo** de sus archivos (puede crear archivos nuevos dentro de su carpeta con prefijo propio, p.ej. `src/expedition/exp-ui.js`). Si necesita un cambio en `src/core/*`, `main.js`, `styles.css` o `index.html`, **no lo hace**: lo reporta en `coreRequests`. Puede agregar CSS propio inyectando un `<style>` desde su módulo (con selectores prefijados por la clase de su escena, p.ej. `.scene-expedition ...`), y quitarlo en `unmount`.
 
 ## Contrato de escena
 
@@ -97,27 +92,22 @@ Cada agente es dueño **solo** de sus archivos (puede crear archivos nuevos dent
 // default export: fábrica que recibe ctx y devuelve la instancia
 export default function create(ctx) {
   return {
-    hud: false,            // false oculta el HUD de la ciudad (los minijuegos y el vestidor lo ocultan)
-    music: 'game',         // 'city' | 'game' | 'drive' | 'calm' | null
+    hud: false,            // false oculta el HUD de la ciudad (la expedición y el vestidor lo ocultan)
+    music: 'game',         // 'city' | 'game' | 'calm' | 'expedition' | 'threat' | null
     async mount(container, params) {},  // container: div.scene-root.scene-<id> a pantalla completa
     unmount() {},          // liberar TODO: renderer.dispose(), listeners de window/document, timers, bus.on(...) (guardar el unsubscribe), estilos inyectados
   };
 }
 ```
-`ctx` = `{ store, state, bus, ui, audio, data, economy, quests, router, hud, endGame, openPanel, gameStatus }`
-- `ctx.router.go(id, params)` — ids: `city`, `wardrobe`, `match3`, `blocks`, `parking`, `driving`.
-- `ctx.router.openGame(gameId)` — verifica desbloqueo (nivel + edificio construido) y muestra toast si no.
-- `ctx.gameStatus(gameId)` → `{ok, reason, locked?, needsBuilding?}`.
-- `ctx.openPanel(name, params)` → panels.js (`quests`, `games`, `settings`, `login`, `levelup`, `help`).
+`ctx` = `{ store, state, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats, openPanel, chests, album, season, events, net, … }`
+- `ctx.router.go(id, params)` — ids: `city`, `wardrobe`, `onboarding`, `home`, `expedition`.
+- `ctx.openPanel(name, params)` → panels.js (`quests`, `settings`, `login`, `levelup`, `help`, `rank`, `works`, `expedition`, `workshop`).
 - `ctx.router.go('expedition', { region, kind, resume })` — escena de la Expedición (DESIGN-CORE.md §2.11); no usa `endGame`.
-- `ctx.endGame(result)` — *(minijuegos, en retirada)* **todos los minijuegos terminan con esto**:
-  `result = { game, score, stars (0..3), won, coins (BASE, se multiplica por nivel), gems, xp, title?, subtitle?, lines?: [html], newBest?, againLabel? }`
-  Acredita premios, emite `minigame:finished`, muestra el modal de premio y devuelve `'again'` o `'city'` (si es `'city'` ya navega solo). Si devuelve `'again'`, el juego reinicia/avanza al siguiente nivel.
 - Imports directos permitidos: `import { store } from '../core/state.js'`, etc. Rutas relativas.
 
 ## Plataformas: iPhone y PC (obligatorio)
 - Usar **Pointer Events** (`pointerdown/move/up`) para todo, funcionan con touch y mouse. `touch-action: none` en áreas de juego. Para arrastres usar `setPointerCapture`.
-- **Teclado en PC**: juegos de manejo con flechas/WASD (+ espacio); Esc = pausa/salir/cancelar; en Bloques/Joyas el mouse alcanza.
+- **Teclado en PC**: Esc = salir/cancelar; en la expedición y los tableros el mouse alcanza.
 - Layout: celular vertical (390×844 con notch: respetar `var(--safe-t)` / `var(--safe-b)`), PC apaisado (1366×800): centrar tableros con tamaño máximo, no estirar. iPad también.
 - La ciudad en PC: rueda = zoom, arrastrar = mover cámara.
 - Sin hover-only: todo debe funcionar con toques.
@@ -126,7 +116,7 @@ export default function create(ctx) {
 ## Estilo visual
 - Paleta única en `src/core/palette.js` (`PALETTE`, re-exportada por `data.js`) y variables CSS en `styles.css` (`--primary` terracota, `--second` azul pizarra, `--mint`, `--sky`, `--gold`, `--ink`...; clases `.btn.primary` / `.btn.second`). Contorno tinta café `#3d2f2a`. Nada de realeza: sin coronas, castillos ni princesas (la Municipalidad es el centro de la ciudad).
 - 3D: usar SIEMPRE `createPixelRenderer` + `addLights` + `Voxels` de `voxel.js` (material compartido). 1 tile de ciudad = 1 unidad de mundo; edificios con **8 vóxeles por tile** (`scale: 1/8`).
-- 2D (match3/bloques): canvas a baja resolución con `image-rendering: pixelated`, sprites pixel-art dibujados por código, con "volumen" (bisel claro arriba-izquierda, sombra abajo-derecha) para que combine con lo 3D.
+- 2D (íconos, tableros): canvas a baja resolución con `image-rendering: pixelated`, sprites pixel-art dibujados por código, con "volumen" (bisel claro arriba-izquierda, sombra abajo-derecha) para que combine con lo 3D.
 - Fuente: `var(--font)` (Pixelify). Íconos: `icon('coin')`, `icon('gem')`, `icon('star')`, `icon('heart')`, `icon('crown')`, `icon('xp')` + cualquier emoji pixelado (`icon('🌸')`) o nombres en `icons.js`.
 - Clases CSS listas: `.btn` (+ `.pink .lilac .mint .sky .gold .ghost .small .block`), `.icon-btn`, `.panel`, `.card` (+ `.locked .selected`), `.row .col .grid .grid.tight`, `.chip`, `.badge`, `.progress` (+ `.xp .pink .gold`), `.tabs .tab .tab.active`, `.swatches .swatch`, `.scroll`, `.game-bar` (+ `.game-stat` con `<small>` y `<b>`, `.game-title`, `.spacer`), `.game-bg`, `.game-bg.pattern`, `.game-help`.
 - Feedback claro: sonido (`audio.sfx`), partículas, `ui.floatText`, `ui.flyCurrency`, rebotes. Confeti y fanfarria solo en los
@@ -148,9 +138,9 @@ export default function create(ctx) {
 - `coins, gems, player{name,cityName,level,xp}`
 - `onboarded`, `avatar{type, skin(index), hair, hairColor(id), dress, dressColor(id), crown, acc}` (`state.princess` = alias viejo, no enumerable), `avatarLooks{[type]: look}`, `city.theme`; `car{body, color(id de OUTFIT_COLORS), wheels, topper}`; `owned{hair:[],dress:[],...}`
 - `city{buildings:[{uid,id,x,z,rot,level,buildEnd,upgradeEnd,lastCollect}], nextUid, expansions, flagColor, camera, rankPerks{builders}}` (`rankPerks`: constructoras ya regaladas por rango, para no darlas dos veces)
-- `materials{cristal, ladrillo, tuerca, mapa}`: materiales de los minijuegos para los monumentos (ver Economía).
+- `materials{madera, piedra, mineral, hierbas}`: materiales de región (expedición; monumentos, obras, equipo). Ver DESIGN-CORE.md §5.
 - `home{items:[{uid,id,x,z,rot}], owned{id:n}, wall, floor, nextUid, started, trophies{id:ms}}`: Mi Casa por dentro (`src/home/furniture.js`). El nivel de la casa es el del edificio `mi_casa`.
-- `games.match3{level, stars{}}`, `games.blocks{best}`, `games.parking{level, stars{}}`, `games.driving{best}`
+- `games{…}`: solo en partidas de antes de la v3 (progreso de los minijuegos retirados, guardado y sin uso) · `v3{gems, finds, conv, refund, placeExp, shown}`: lo que hizo la migración v3 (el aviso "Los minijuegos se retiraron" sale una vez).
 - `stats{}` (usar `store.inc(key,n)` / `store.setMax`): `match3Wins`, `blocksLines`, `parkingWins`, `drivingMeters`, `rankBest`, `charmBest` alimentan logros; `matsEarned` cuenta materiales ganados.
 - `tutorial{}` flags libres. `settings{music,sfx,lowQuality}`.
 - Mutar estado solo vía store/economy cuando exista función; si se toca a mano, llamar `store.markDirty()`.
@@ -227,12 +217,12 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
 - Balance (`SIM_DAYS=120 node tools/sim-economy.mjs .`, con monumentos y materiales): jugando 4 ratos por día, rango 2 el día 1, rango 5 ≈ día 12
   y rango 8 ≈ día 51; con 2 ratos por día (`SIM_DAYS=150 node tools/sim-economy.mjs . new 1 9,20`), 2 / 20 / 95. Las monedas sobran: el ritmo
   lo marcan `reqLevel`, la población (terreno), el Encanto (variedad) y los monumentos (materiales). La sim reacomoda la ciudad si un monumento no entra.
-- **Materiales y monumentos** (Fase 3; *se reemplaza*: los materiales pasan a ser de región —madera, piedra, mineral,
-  hierbas— y salen de las expediciones, ver DESIGN-CORE.md §5 y §7). Cada minijuego da su material (`MATERIALS` en data.js): Joyas Brillantes → cristales,
-  Bloques Pixel → ladrillos, Estacionamiento Express → tuercas, Ruta Pixel → mapas. Por partida: 1 por estrella (mínimo 1) +1 si ganaste,
-  × el evento del juego (`finishGame` en main.js). También salen en las diarias de cada juego, en la "Bolsa de materiales" de los cofres
-  (elige lo que más te falta; antes del rango Pueblo da monedas) y en algunos niveles del Pase (`mats` en `TIERS`).
-  `store.canAfford/spend/grant` entienden `cost.mats`/`reward.mats` (`{cristal: n, ...}`); `costHtml` los dibuja.
+- **Materiales y monumentos**: los materiales son los de región (madera, piedra, mineral, hierbas: `REGION_MATERIALS` en
+  data.js) y los trae la expedición (cada región tiene los suyos, DESIGN-CORE.md §2.9); también salen en diarias, amenazas, en la
+  "Bolsa de materiales" de los cofres (elige lo que más te falta; antes del rango Pueblo da monedas) y en algunos niveles del Pase
+  (`mats` en `TIERS`). Los de los minijuegos retirados se migraron 1:1 (cristal→mineral, ladrillo→piedra, tuerca→madera,
+  mapa→hierbas) junto con los costos de `MONUMENTS`.
+  `store.canAfford/spend/grant` entienden `cost.mats`/`reward.mats` (`{madera: n, ...}`); `costHtml` los dibuja.
   `MONUMENTS` (Faro, Jardín Botánico, Observatorio, Estadio, Museo, Torre del Reloj) también son edificios `cat:'monumento'`, `max:1`:
   el **nivel es la etapa** (4 o 5). Construir paga la etapa 1; cada etapa siguiente es una mejora (`upgradeInfo` → `stages[nivel]`,
   con materiales + monedas + obra con constructora). Encanto = `charm` × etapas hechas / N. Terminado da un bonus permanente
@@ -256,8 +246,8 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
   las partidas cada 40 (tope +10%), +1% de monedas en el premio diario cada 20 (tope +25%) y suma Confort/4 al Encanto de la ciudad.
   Online: el perfil publica `city.home` (paredes, piso y hasta 120 muebles) y al visitar una ciudad tocar su casa entra a mirarla (`{visit}`).
 - Constructoras limitadas (2, se compran más con gemas). Obras con tiempo; se aceleran con gemas (≤5s gratis).
-- *(En retirada)* Minijuegos dan monedas (escaladas por nivel), xp y a veces gemas. Lo nuevo: provisiones, materiales de
-  región, planos, equipo, reservas y colonos (DESIGN-CORE.md §5); la expedición no da monedas. Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
+- Recursos del ciclo: provisiones, materiales de región, planos, equipo, reservas y colonos (DESIGN-CORE.md §5); la expedición
+  no da monedas (sí experiencia: 10 + 5 por ★, con el Observatorio y el confort de Mi Casa). Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
 
 ## Pruebas
 ```
@@ -268,11 +258,12 @@ URL params: `?scene=id`, `?cheat=nivel` (+100k monedas, +1000 gemas), `?reset`, 
 
 Suites de punta a punta (todas con `--out carpeta` para las capturas; salen con 1 si algo falla):
 ```
-node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onboarding con toques reales (Osito, color de ropa, nombre y ciudad tipeados, estilo Bosque; verifica el guardado) → premio diario → m1–m8 → nivel + cofre → minijuego con potenciador → Pase/Álbum/Cofres/Eventos; revisa los globitos del HUD; al final recarga y confirma que no repite el onboarding
+node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onboarding con toques reales (Osito, color de ropa, nombre y ciudad tipeados, estilo Bosque; verifica el guardado) → premio diario → tutorial t1–t10 → nivel → cofre → potenciador viejo → equipo → Pase/Hallazgos/Cofres/Eventos; revisa los globitos del HUD; al final recarga y confirma que no repite el onboarding
+node tools/test-migration.mjs guardado v2 armado a mano (minijuegos jugados, álbum a medias, materiales viejos, monumento a medias, potenciadores) → v3 sin pérdidas; segunda carga igual; Joyería + Taller; sin Pista; importCode; partida nueva
 node tools/test-visit.mjs    ana y bea (mock): amistad por código, regalito, visita (like, notita, ayudar obra) → buzón → la obra se acelera; pedido "Acelerá mi obra"
 node tools/test-social.mjs   UI social completa (intercambios con escrow, ranking, Obra en Equipo, cuenta, conflicto)
 node tools/test-rank.mjs     rango y Encanto (mock + cheat): chip del HUD → panel con expediente → Mejorar → festejo, constructora de regalo, ficha, menú, perfil público visto por una amistad
-node tools/test-works.mjs    monumentos (mock + cheat): rango Pueblo → botón Obras → partida de Joyas da cristales y avisa cuánto falta → panel Obras → Construir y colocar el Faro → etapas → bonus de negocios y expediente; capturas de cada etapa
+node tools/test-works.mjs    monumentos (mock + cheat): rango Pueblo → botón Obras → materiales de región con «Salir» a la expedición → panel Obras → Construir y colocar el Faro → etapas → bonus de negocios y expediente; capturas de cada etapa
 node tools/test-home.mjs     Mi Casa (mock + cheat): aparece en la ciudad → Entrar → comprar y poner un mueble, arrastrarlo, rotarlo, guardarlo, pared y piso → ropero abre el Vestidor → volver → recarga conserva todo → ampliar la casa → visita a la casa de una amistad
 node tools/test-mock.mjs     API de net.js con dos pestañas     ·     node tools/test-sql.mjs   schema.sql en PGlite
 node tools/test-stress.mjs   recorre escenas + paneles N veces (--rounds 3) y mide fugas (WebGL, listeners, bus, intervalos)

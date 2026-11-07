@@ -35,7 +35,7 @@ export function partIcon(p, size = 40) {
     case 'gems': return icon('gem', size);
     case 'chest': return chestIcon(p.type, size);
     case 'stickers': return packIcon(size);
-    case 'item': return icon(p.icon || 'gift', size);
+    case 'item': case 'equip': return icon(p.icon || 'gift', size);
     case 'mats': return icon(p.icon || 'gift', size);
     case 'furniture': return icon('home', size);
     case 'cosmetic': return icon(COSMETIC_IC[p.target] || 'ribbon', size);
@@ -48,8 +48,8 @@ export function partLabel(p) {
     case 'coins': return `${fmtNum(p.amount)} monedas`;
     case 'gems': return `${fmtNum(p.amount)} gemas`;
     case 'chest': return (p.n > 1 ? `${p.n}× ` : '') + (p.name || CHESTS[p.type]?.name || 'Cofre');
-    case 'stickers': return `${p.n} figurita${p.n > 1 ? 's' : ''}${p.minStars > 1 ? ` (${p.minStars}★+)` : ''}`;
-    case 'item': return (p.n > 1 ? `${p.n}× ` : '') + p.name;
+    case 'stickers': return `${p.n} hallazgo${p.n > 1 ? 's' : ''}${p.minStars > 1 ? ` (${p.minStars}★+)` : ''}`;
+    case 'item': case 'equip': return (p.n > 1 ? `${p.n}× ` : '') + p.name;
     case 'mats': return `${p.n} ${(p.name || '').toLowerCase()}`;
     case 'furniture': return p.name || 'Mueble';
     case 'cosmetic': return COSMETIC_NAME[p.target] ? COSMETIC_NAME[p.target](p.name, p.id) : p.name;

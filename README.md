@@ -1,7 +1,7 @@
 # Pixelia · Tu ciudad, tu estilo 👑
 
-Juego de construir tu ciudad a tu estilo en **3D pixel art**, con minijuegos:
-**Joyas Brillantes** (combiná 3), **Bloques Pixel** (encastrar bloques), **Estacionamiento Express** y **Ruta Pixel** (manejar).
+Juego de construir tu ciudad a tu estilo en **3D pixel art**: la ciudad es la base para salir de **expedición** (por turnos,
+ratos cortos) y aguantar las **amenazas** de cada temporada; los edificios cambian de **época** a medida que crece.
 Funciona en iPhone (instalable como app, offline) y en PC (mouse + teclado).
 
 Al empezar elegís tu personaje (chica, chico o un animalito), tu nombre, el de tu
@@ -21,7 +21,7 @@ npm run serve      # http://127.0.0.1:5173/  ·  npm run serve:lan para abrirlo 
 
 Cualquier otro servidor estático también sirve (por ejemplo `npx serve .`). Pruebas: `npm test`. (Abrir `index.html` con doble clic no funciona: los módulos JS necesitan http.)
 
-Atajos para probar: `?cheat=15` (monedas, gemas y nivel 15), `?reset` (borra la partida), `?scene=match3` (abre una escena directo).
+Atajos para probar: `?cheat=15` (monedas, gemas y nivel 15), `?reset` (borra la partida), `?scene=expedition` (abre una escena directo).
 
 ## Hostear gratis
 

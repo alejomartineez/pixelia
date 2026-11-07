@@ -165,7 +165,7 @@ export function rewardHtml(reward = {}, size = 16, { names = true } = {}) {
     parts.push(`<span class="cost pnl-rw" title="${esc(nm)}">${chestArt(type, Math.round(size * 1.25))}${names ? `<span>${esc(nm)}</span>` : ''}${n > 1 || !names ? `<span>×${n}</span>` : ''}</span>`);
   }
   const st = stickerCount(reward.stickers);
-  if (st) parts.push(`<span class="cost pnl-rw" title="Figuritas">${icon('🃏', size)}<span>${names ? `${st} figurita${st === 1 ? '' : 's'}` : '×' + st}</span></span>`);
+  if (st) parts.push(`<span class="cost pnl-rw" title="Hallazgos">${icon('🃏', size)}<span>${names ? `${st} hallazgo${st === 1 ? '' : 's'}` : '×' + st}</span></span>`);
   if (reward.items && typeof reward.items === 'object') {
     for (const [id, n] of Object.entries(reward.items)) {
       const it = ITEMS[id];
@@ -311,9 +311,8 @@ const ART = {
   ],
 };
 const artDone = new Set();
-/** <img> de un ícono propio: 'match3' | 'blocks' | 'parking' | 'driving' (dibujados en icons.js) | 'share' | 'addHome' */
+/** <img> de un ícono propio dibujado acá: 'share' | 'addHome' */
 export function art(name, size = 48, cls = '') {
-  if (ICON_NAMES.includes('game-' + name)) return icon('game-' + name, size, cls);
   if (!artDone.has(name)) { artDone.add(name); registerIcon('art-' + name, gridToCanvas(ART[name]())); }
   return icon('art-' + name, size, cls);
 }
@@ -344,14 +343,11 @@ export function flagArt(hex, size = 48) {
 }
 
 // ---------- Helpers de misiones ----------
-export const GAME_ART = { match3: 'match3', blocks: 'blocks', parking: 'parking', driving: 'driving' };
-
 /** Ícono (HTML) para un objetivo de misión. */
 export function goalIcon(goal, size = 32) {
-  if (goal.game && GAME_ART[goal.game]) return art(GAME_ART[goal.game], size);
   if (goal.type === 'chest' || goal.type === 'chests' || goal.type === 'openChest') return chestArt(goal.chest || 'madera', size);
   const map = {
-    build: 'hammer', upgrade: 'up', collect: 'coin', earn: 'coin', play: 'games', stars: 'star', score: 'trophy',
+    build: 'hammer', upgrade: 'up', collect: 'coin', earn: 'coin',
     customize: 'dress', buy: 'shop', level: 'xp', pop: 'people', happy: 'smile', expand: 'map', castle: 'castle', charm: 'sparkle', rank: 'castle',
     sticker: '🃏', stickers: '🃏', album: '🃏', season: 'sparkle', friend: 'people', friends: 'people', help: 'heart', gift: 'gift', visit: 'home',
   };
@@ -372,17 +368,6 @@ export function goalAction(ctx, goal, close) {
     // Encanto: deco variada (la que todavía no tiene suma más); rango: el panel "Tu ciudad" con el expediente
     case 'charm': return buildFocus(['banco', 'fuente', 'cerezo', 'macetas', 'farol', 'arbusto'].find(id => econ.canBuild(id).ok && econ.countOf(id) === 0) || 'arbusto');
     case 'castle': case 'rank': return { label: 'Ver ciudad', ic: 'castle', run: () => { close(); setTimeout(() => ctx.openPanel('rank'), 260); } };
-    case 'play': case 'stars': case 'score': {
-      if (!goal.game) return { label: 'Jugar', ic: 'games', run: () => { close(); setTimeout(() => ctx.openPanel('games'), 260); } };
-      const st = ctx.gameStatus(goal.game);
-      if (st.ok) return { label: 'Jugar', ic: 'play', run: () => { close(); ctx.router.openGame(goal.game); } };
-      if (st.needsBuilding) {
-        const placed = ctx.state.city.buildings.some(b => b.id === st.needsBuilding);
-        if (placed) return null; // está en obra
-        return buildFocus(st.needsBuilding);
-      }
-      return null;
-    }
     case 'customize': case 'buy':
       if (!econ.hasBuilt('boutique_real') && !ctx.state.city.buildings.some(b => b.id === 'boutique_real')) return buildFocus('boutique_real');
       return { label: 'Vestidor', ic: 'dress', run: () => { close(); ctx.router.go('wardrobe'); } };

@@ -111,7 +111,7 @@ function cosmeticPlan(index, claimed) {
  * Convierte la definición de un nivel en partes concretas (montos escalados, prenda elegida).
  * Partes: {kind:'coins'|'gems', amount} | {kind:'chest', type, n} | {kind:'stickers', n, minStars}
  *       | {kind:'item', id, n, name, icon} | {kind:'cosmetic', target, id, name} (o gemas si ya tiene todo)
- *       | {kind:'mats', id, n, name, icon} (materiales de los monumentos)
+ *       | {kind:'mats', id, n, name, icon} (materiales de región) | {kind:'equip', id, n, name, icon} (equipo de expedición)
  */
 function resolveTier(n, index, plan) {
   const t = TIERS[n - 1];
@@ -127,6 +127,7 @@ function resolveTier(n, index, plan) {
   if (t.chest) parts.push({ kind: 'chest', type: t.chest, n: 1, name: CHESTS[t.chest]?.name || 'Cofre' });
   if (t.stickers) parts.push({ kind: 'stickers', n: t.stickers.n, minStars: t.stickers.minStars || 1 });
   for (const [id, k] of Object.entries(t.items || {})) parts.push({ kind: 'item', id, n: k, name: ITEMS[id]?.name || id, icon: ITEMS[id]?.icon || 'gift' });
+  for (const [id, k] of Object.entries(t.equip || {})) parts.push({ kind: 'equip', id, n: k, name: EQUIP_LOOK[id]?.name || id, icon: EQUIP_LOOK[id]?.icon || '🎒' });
   if (t.furniture) parts.push({ kind: 'furniture', id: t.furniture, n: 1, name: FURNITURE_BY_ID[t.furniture]?.name || 'Mueble', icon: 'home' });
   for (const [id, k] of Object.entries(t.mats || {})) parts.push({ kind: 'mats', id, n: k, name: MATERIAL_BY_ID[id]?.name || id, icon: MATERIAL_BY_ID[id]?.icon || 'gift' });
   return parts;
@@ -150,6 +151,7 @@ function grantParts(parts, source = 'season') {
     else if (p.kind === 'stickers') bus.emit('reward:stickers', { n: p.n, minStars: p.minStars || 1, source });
     else if (p.kind === 'item') addBackpackItem(p.id, p.n);
     else if (p.kind === 'mats') store.grant({ mats: { [p.id]: p.n } }, source);
+    else if (p.kind === 'equip') store.grant({ equip: { [p.id]: p.n } }, source);
     else if (p.kind === 'furniture') giveFurniture(p.id, p.n || 1, source);
     else if (p.kind === 'cosmetic') {
       const owned = S().owned;
@@ -320,9 +322,11 @@ export function ackSeasonEnd() {
   if (z.lastEnd && !z.lastEnd.seen) { z.lastEnd.seen = true; store.markDirty(); bus.emit('season:changed', { reason: 'ack' }); }
 }
 
-let lastGame = null;
-/** Chispas ganadas en la última partida (para mostrar en el modal de fin de partida). {pts, at} | null */
-export function lastMinigamePoints() { return lastGame; }
+let lastExp = null;
+/** Chispas ganadas en la última expedición terminada (para el resumen de la vuelta). {pts, at} | null */
+export function lastExpeditionPoints() { return lastExp; }
+// nombre e ícono del equipo para las partes del Pase (los datos de expedición viven en exp-data.js)
+const EQUIP_LOOK = { cuerda: { name: 'Cuerda', icon: '🪢' }, pala: { name: 'Pala', icon: '🪏' }, lona: { name: 'Lona', icon: '⛺' }, farol: { name: 'Farol', icon: '🏮' }, botiquin: { name: 'Botiquín', icon: '🩹' }, carreta: { name: 'Carreta', icon: '🛒' } };
 
 // ---------- Bienvenida de vuelta ----------
 let awayFrom = null;   // lastSeen capturado ANTES del autoguardado
@@ -425,12 +429,14 @@ export function initSeason(now) {
   ensureSeason(toMs(now));
   snap = questSnap();
 
-  bus.on('minigame:finished', ({ won, stars = 0 } = {}) => {
-    // Estadio terminado: +chispas por partida
-    const pts = Math.round((won ? POINTS.gameWin + POINTS.perStar * (stars || 0) : POINTS.gameTry) * (1 + monumentBonus('pass')));
-    lastGame = { pts, at: Date.now() };
-    if (pts) addSeasonPoints(pts, 'game');
+  bus.on('expedition:finished', ({ stars = 0, prototype } = {}) => {
+    if (prototype) return;
+    // Estadio terminado: +25% de chispas en las expediciones
+    const pts = Math.round((POINTS.expedition + POINTS.perStar * (stars || 0)) * (1 + monumentBonus('pass')));
+    lastExp = { pts, at: Date.now() };
+    if (pts) addSeasonPoints(pts, 'expedition');
   });
+  bus.on('expedition:zone', () => addSeasonPoints(Math.round(POINTS.zone * (1 + monumentBonus('pass'))), 'zone'));
   bus.on('production:collected', () => {
     const z = ss();
     const today = todayStr();

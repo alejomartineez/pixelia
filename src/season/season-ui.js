@@ -19,7 +19,7 @@ function storageToast(parts) {
   const where = parts.filter(p => p.kind !== 'coins' && p.kind !== 'gems');
   if (!where.length) return;
   const p = where[0];
-  const dest = p.kind === 'chest' ? 'a tus cofres' : p.kind === 'item' ? 'a tu mochila' : p.kind === 'stickers' ? 'para tu álbum' : p.kind === 'mats' ? 'para tus obras' : p.kind === 'furniture' ? 'para tu casa' : 'a tu vestidor';
+  const dest = p.kind === 'chest' ? 'a tus cofres' : p.kind === 'item' ? 'a tu mochila' : p.kind === 'equip' ? 'para tus expediciones' : p.kind === 'stickers' ? 'para tus Hallazgos' : p.kind === 'mats' ? 'para tus obras' : p.kind === 'furniture' ? 'para tu casa' : 'a tu vestidor';
   toast(`¡${partLabel(p)} ${dest}!`, { icon: p.kind === 'cosmetic' ? 'dress' : p.kind === 'stickers' ? '🃏' : 'gift', type: 'good' });
 }
 const partsLine = (parts, size = 22) => `<span class="ssn-parts">${parts.map(p => partChip(p, size)).join('')}</span>`;
@@ -90,7 +90,7 @@ export function openSeasonPass(ctx, now) {
     else if (r.state === 'claimed') foot = `<small>${icon('check', 14)} ¡Cobrado!</small>`;
     else if (r.state === 'next') foot = `<small>Faltan ${fmtNum(r.at - info.points)} ${icon('sparkle', 12)}</small>`;
     else foot = `<small>${fmtNum(r.at)} ${icon('sparkle', 12)}</small>`;
-    const sub = main.kind === 'cosmetic' ? '<small>Prenda premium gratis</small>' : main.kind === 'item' ? '<small>Potenciador</small>' : main.note ? `<small>${esc(main.note)}</small>` : '';
+    const sub = main.kind === 'cosmetic' ? '<small>Prenda premium gratis</small>' : main.kind === 'item' ? '<small>Para la mochila</small>' : main.kind === 'equip' ? '<small>Equipo de expedición</small>' : main.note ? `<small>${esc(main.note)}</small>` : '';
     return `<div class="ssn-row ${side} ${r.state}${reached ? ' reached' : ''}${r.special ? ' special' : ''}" data-row="${r.n}">
       <div class="ssn-rail"><i style="height:${railFill(r.n)}%"></i></div>
       <div class="ssn-node">${r.n}${r.state === 'claimed' ? `<span class="ssn-ok">${icon('check', 20)}</span>` : ''}</div>

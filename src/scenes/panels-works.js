@@ -1,8 +1,9 @@
-// Panel "Obras": los monumentos de la ciudad, que se construyen por etapas con materiales de los minijuegos
-// (cristales, ladrillos, tuercas y mapas). Muestra los materiales que tenés, cada monumento con su etapa, lo que
-// pide la próxima etapa (con "Jugar" para conseguir lo que falta) y el bonus que da al terminarlo.
+// Panel "Obras": los monumentos de la ciudad, que se construyen por etapas con materiales de región (madera, piedra,
+// mineral y hierbas, los trae la expedición). Muestra los materiales que tenés, cada monumento con su etapa, lo que
+// pide la próxima etapa (con "Salir" para ir a buscar lo que falta) y el bonus que da al terminarlo.
 import { icon } from '../core/icons.js';
-import { MATERIALS, MATERIAL_BY_ID, MONUMENT_IDS, GAME_BY_ID } from '../core/data.js';
+import { REGION_MATERIALS, MATERIAL_BY_ID, MONUMENT_IDS } from '../core/data.js';
+import { REGIONS } from '../expedition/exp-data.js';
 import { openShell } from './panels-common.js';
 
 export function openWorks(ctx, params = {}) {
@@ -12,12 +13,18 @@ export function openWorks(ctx, params = {}) {
   if (!sh) return;
   const fmt = E.fmtNum;
 
-  function play(game) {
-    const st = ctx.gameStatus(game);
-    if (!st.ok) { audio.sfx('error'); ui.toast(st.reason, { icon: 'lock' }); return; }
+  // la región abierta donde más sale cada material (la de mayor peso en REGIONS[].mats)
+  const rank = E.townRank();
+  function bestRegion(matId) {
+    let best = null;
+    for (const r of Object.values(REGIONS)) if ((r.rank || 1) <= rank && (r.mats?.[matId] || 0) > (best?.mats?.[matId] || 0)) best = r;
+    return best;
+  }
+  function goOut() {
+    if (!E.hasBuilt('casa_exp')) { audio.sfx('error'); ui.toast('Construí la Casa de Expediciones para salir a buscar materiales', { icon: 'lock' }); return; }
     audio.sfx('tap');
     sh.close();
-    ctx.router.openGame(game);
+    setTimeout(() => ctx.openPanel('expedition'), 260);
   }
 
   function wallet() {
@@ -25,19 +32,19 @@ export function openWorks(ctx, params = {}) {
     const el = h('div.card.pnl-wk-wallet');
     el.append(h('h4.pnl-rk-h', { html: `${icon('bag', 20)}<span>Tus materiales</span>` }));
     const grid = h('div.pnl-wk-mats');
-    for (const m of MATERIALS) {
-      const g = GAME_BY_ID[m.game];
-      const st = ctx.gameStatus(m.game);
+    const canGo = E.hasBuilt('casa_exp');
+    for (const m of REGION_MATERIALS) {
+      const r = bestRegion(m.id);
       const cell = h('div.pnl-wk-mat', { style: { '--c': m.color }, html: `
         <span class="pnl-wk-mat-ic">${icon(m.icon, 34)}</span>
-        <span class="pnl-wk-mat-txt"><b data-mat="${m.id}">${fmt(mats[m.id] || 0)}</b><small>${esc(m.name)}</small><em>${esc(g?.name || '')}</em></span>` });
-      const btn = h('button.btn.second.pnl-wk-play' + (st.ok ? '' : '.off'), { html: `${icon('play', 14)}Jugar`, title: st.ok ? `Jugá ${g?.name} para ganar ${m.name.toLowerCase()}` : st.reason });
-      btn.onclick = () => play(m.game);
+        <span class="pnl-wk-mat-txt"><b data-mat="${m.id}">${fmt(mats[m.id] || 0)}</b><small>${esc(m.name)}</small><em>${esc(r?.name || '')}</em></span>` });
+      const btn = h('button.btn.second.pnl-wk-play' + (canGo ? '' : '.off'), { html: `${icon('🧭', 14)}Salir`, title: r ? `Sale más en ${r.name}` : 'Salí de expedición' });
+      btn.onclick = goOut;
       cell.append(btn);
       grid.append(cell);
     }
     el.append(grid);
-    el.append(h('p.pnl-rk-tip', { html: `${icon('info', 16)}<span>Cada partida te da materiales: más estrellas, más materiales (y uno extra si ganás). También salen en misiones diarias y cofres.</span>` }));
+    el.append(h('p.pnl-rk-tip', { html: `${icon('info', 16)}<span>Los materiales los trae la expedición: cada región tiene los suyos y las casillas lejanas dan más. También salen en misiones diarias, amenazas y cofres.</span>` }));
     return el;
   }
 
@@ -62,8 +69,8 @@ export function openWorks(ctx, params = {}) {
         </span>` });
       if (ok) row.append(h('span.pnl-rk-req-check', { html: icon('check', 22) }));
       else {
-        const b = h('button.btn.second.pnl-wk-get', { html: `${icon('play', 14)}Jugar` });
-        b.onclick = () => play(m.game);
+        const b = h('button.btn.second.pnl-wk-get', { html: `${icon('🧭', 14)}Salir` });
+        b.onclick = goOut;
         row.append(b);
       }
       box.append(row);
@@ -139,7 +146,7 @@ export function openWorks(ctx, params = {}) {
   function signature() {
     const now = Date.now();
     const mats = E.materials();
-    return [E.townRank(), ...MATERIALS.map(m => mats[m.id] || 0),
+    return [E.townRank(), ...REGION_MATERIALS.map(m => mats[m.id] || 0),
       ...MONUMENT_IDS.map(id => { const s = E.monumentStatus(id, ctx.state, now); return [s.stagesDone, s.busy, s.can.ok].join(','); })].join('|');
   }
   let sig = '';

@@ -26,7 +26,7 @@ export function requestWhat(req, size = 40) {
   if (req.kind === 'sticker') {
     const id = Object.keys(p.stickers || {})[0];
     const d = stickerDef(id);
-    return { ic: null, sticker: id, title: d ? `${d.name}` : 'Una figurita', sub: d ? `Figurita #${d.n} · ${d.setName} · ${'★'.repeat(d.stars)}` : '' };
+    return { ic: null, sticker: id, title: d ? `${d.name}` : 'Un hallazgo', sub: d ? `Hallazgo #${d.n} · ${d.setName} · ${'★'.repeat(d.stars)}` : '' };
   }
   if (req.kind === 'item') {
     const id = Object.keys(p.items || {})[0];
@@ -118,7 +118,7 @@ function friendRequestCard(api, r) {
   return c;
 }
 function needText(r) {
-  if (r.kind === 'sticker') return 'Necesitás una repetida';
+  if (r.kind === 'sticker') return 'Necesitás uno repetido';
   if (r.kind === 'item') return 'No lo tenés';
   return 'No te alcanza';
 }
@@ -128,7 +128,7 @@ const KIND = {
   gift: { ic: 'gift', t: g => `Regalo de ${g.from_name || 'alguien'}` },
   help: { ic: '🔨', t: g => `${g.from_name || 'Alguien'} te ayudó con una obra` },
   trade: { ic: '🔄', t: g => (/devoluci/i.test(g.note || '') ? 'Te devolvieron lo de un intercambio' : `Entrega del intercambio con ${g.from_name || 'alguien'}`) },
-  sticker: { ic: '🃏', t: g => `${g.from_name || 'Alguien'} te regaló una figurita` },
+  sticker: { ic: '🃏', t: g => `${g.from_name || 'Alguien'} te regaló un hallazgo` },
   like: { ic: 'heart', t: g => `A ${g.from_name || 'alguien'} le gustó tu ciudad` },
   request_fill: { ic: '🤝', t: g => `${g.from_name || 'Alguien'} completó tu pedido` },
 };
@@ -202,7 +202,7 @@ function celebrate(el, total, count) {
   const items = Object.values(total.items || {}).reduce((a, b) => a + b, 0);
   if (items) bits.push(`${items} objeto${items > 1 ? 's' : ''}`);
   const st = Object.values(total.stickers || {}).reduce((a, b) => a + b, 0);
-  if (st) bits.push(`${st} figurita${st > 1 ? 's' : ''}`);
+  if (st) bits.push(`${st} hallazgo${st > 1 ? 's' : ''}`);
   toast(bits.length ? `Cobraste ${bits.join(', ')}.` : `Listo: ${count} cosa${count > 1 ? 's' : ''} cobrada${count > 1 ? 's' : ''}`, { icon: 'gift', type: 'good' });
   if (total.likes) setTimeout(() => toast(`+${total.likes} me gusta para tu ciudad`, { icon: 'heart' }), 700);
   if (total.speedups) setTimeout(() => toast(`Tus contactos adelantaron ${total.speedups} obra${total.speedups > 1 ? 's' : ''}`, { icon: 'hammer', type: 'good' }), 1300);
@@ -285,7 +285,7 @@ function tradeCard(api, t) {
       return r;
     });
     row.style.justifyContent = 'flex-end';
-    if (!can) row.append(h('span.soc-muted.soc-grow', { html: 'No tenés lo que te pide (las figuritas tienen que ser repetidas).' }));
+    if (!can) row.append(h('span.soc-muted.soc-grow', { html: 'No tenés lo que te pide (los hallazgos tienen que ser repetidos).' }));
     row.append(no, yes);
   }
   c.append(row);

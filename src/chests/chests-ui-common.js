@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { addLights, disposeObject, outlineCanvas } from '../core/voxel.js';
 import { icon, iconUrl, registerIcon, watchIcon } from '../core/icons.js';
 import { fmtNum } from '../core/economy.js';
-import { GAME_BY_ID } from '../core/data.js';
 import { CHESTS, RARITIES, ITEMS } from './chests.js';
 import { chestModel } from './chest-model.js';
 import { CHX_CSS } from './chests-ui-style.js';
@@ -57,12 +56,13 @@ export function dropNote(d) {
     case 'coins': return 'Monedas para tu ciudad';
     case 'gems': return 'Gemas';
     case 'xp': return 'Experiencia para subir de nivel';
-    case 'item': return it?.use === 'game' ? `A tu mochila · para ${GAME_BY_ID[it.game]?.name || 'un juego'}` : 'Guardado en tu mochila';
-    case 'cosmetic': return CAR_KINDS.has(d.cosmeticKind) ? 'Pieza nueva · estrenala en el Taller' : 'Prenda nueva · estrenala en el Vestidor';
+    case 'item': return 'Guardado en tu mochila';
+    case 'equip': return 'Equipo para tus expediciones · se elige al salir';
+    case 'cosmetic': return CAR_KINDS.has(d.cosmeticKind) ? 'Pieza nueva · estrenala en el Vestidor' : 'Prenda nueva · estrenala en el Vestidor';
     case 'build': return 'Construcción gratis · colocala desde Construir';
-    case 'material': return 'Para tus monumentos · mirá las Obras';
+    case 'material': return 'Material de región · para tus obras y el Taller';
     case 'furniture': return 'Para tu casa · ponelo desde Decorar';
-    case 'stickers': return d.fresh ? `¡${d.fresh === 1 ? 'Una nueva' : d.fresh + ' nuevas'} para tu Álbum!` : 'Repetidas · se cambian en el Álbum';
+    case 'stickers': return d.fresh ? `¡${d.fresh === 1 ? 'Uno nuevo' : d.fresh + ' nuevos'} para tus Hallazgos!` : 'Repetidos · se cambian en Hallazgos';
     default: return '';
   }
 }

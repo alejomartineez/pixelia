@@ -1,4 +1,4 @@
-// Estrés de navegación: recorre todas las escenas (ciudad, visita, vestidor, 4 minijuegos, Mi Casa, expedición) y todos los paneles
+// Estrés de navegación: recorre todas las escenas (ciudad, visita, vestidor, Mi Casa, expedición) y todos los paneles
 // N veces y mide fugas: contextos WebGL vivos, canvas en el DOM, listeners de window/document, listeners del bus,
 // intervalos activos, <style> inyectados y modales abiertos. Compara cada vuelta contra la primera.
 //
@@ -139,16 +139,16 @@ const panel = (code) => page.evaluate(async (code) => {
 }, code);
 
 const PANELS = [
-  ['Juegos', `ctx.openPanel('games')`], ['Misiones', `ctx.openPanel('quests')`], ['Ajustes', `ctx.openPanel('settings')`],
+  ['Misiones', `ctx.openPanel('quests')`], ['Ajustes', `ctx.openPanel('settings')`],
   ['Ayuda', `ctx.openPanel('help')`], ['Cofres', `ctx.openChests()`], ['Mochila', `ctx.openChests({ tab: 'mochila' })`],
-  ['Álbum', `ctx.openAlbum()`], ['Pase', `ctx.openSeasonPass()`], ['Eventos', `ctx.openEvents()`],
+  ['Hallazgos', `ctx.openAlbum()`], ['Pase', `ctx.openSeasonPass()`], ['Eventos', `ctx.openEvents()`],
   ['Contactos', `ctx.openSocial('amigas')`], ['Buzón', `ctx.openSocial('buzon')`], ['Ranking', `ctx.openSocial('ranking')`],
   ['Equipo', `ctx.openSocial('equipo')`], ['Cuenta', `ctx.openAccount()`], ['Tu ciudad', `ctx.openPanel('rank')`], ['Obras', `ctx.openPanel('works')`],
   // selector de estilo de ciudad: maquetas con su propio WebGL (se libera a los 1,5 s)
   ['Temas', `import('/src/city/themes-ui.js').then(m => { m.openThemePicker(ctx); })`],
   ['Construir', `ctx.bus.emit('hud:build')`],
 ];
-const SCENES = [['onboarding'], ['wardrobe'], ['match3'], ['blocks'], ['parking'], ['driving'], ['city', { visit: null }], ['wardrobe', { tab: 'car' }], ['home'], ['home', { visit: null }], ['expedition']];
+const SCENES = [['onboarding'], ['wardrobe'], ['city', { visit: null }], ['wardrobe', { tab: 'car' }], ['home'], ['home', { visit: null }], ['expedition']];
 
 await page.evaluate(() => window.__pixelia && null);
 await page.evaluate((s) => (0, eval)(`(${s})()`), MEASURE.toString()).catch(() => {});
@@ -166,7 +166,6 @@ for (let round = 1; round <= ROUNDS; round++) {
       const had = await panel(code);
       if (had) okPanels++; else console.log('    no abrió', name);
     }
-    if (id !== 'match3') continue;
   }
   await go('city');
   await sleep(1500);

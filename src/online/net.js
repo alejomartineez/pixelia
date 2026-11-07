@@ -277,7 +277,7 @@ export const net = {
   coopStatus(week = null) { return call('coop_status', { p_week: week || null }); },
 
   // ----- Ranking semanal -----
-  /** -> [{ id, name, level, week:{id, match3, blocks, parking, driving, stars}|null, me }] */
+  /** -> [{ id, name, level, week:{id, stars, exps, charm, rank}|null, me }] */
   leaderboard(week = isoWeek()) { return call('friends_leaderboard', { p_week: week || null }, arr); },
 };
 

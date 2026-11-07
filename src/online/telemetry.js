@@ -31,7 +31,6 @@ const MAX_PROPS = 1800;           // el servidor rechaza props ≥ 2 KB
 export const TRACKED_EVENTS = {
   'level:up': p => ({ level: p?.level }),
   'town:rankup': p => ({ rank: p?.rank }),
-  'minigame:finished': p => ({ game: p?.game, stars: p?.stars, won: !!p?.won, score: p?.score }),
   'building:built': p => ({ id: p?.b?.id }),
   'onboarding:step': p => ({ step: p?.step }),
   'onboarding:done': () => ({}),

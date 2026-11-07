@@ -19,21 +19,13 @@ export { PALETTE } from './palette.js';
 // pop: residentes que aporta (casas). popReq: población mínima para poder construirlo.
 // prod: {coins|gems: cantidad por ciclo, cycle: segundos, cap: ciclos acumulables}
 // happy: felicidad que aporta. xp: experiencia al terminar de construir.
-// max: cantidad máxima (undefined = ilimitado). game: minijuego que abre al tocarlo.
+// max: cantidad máxima (undefined = ilimitado). game: escena que abre al tocarlo (hoy solo el Vestidor).
 // rank: rango de ciudad mínimo para construirlo. charm: Encanto (si falta, sale de la categoría: ver economy.charmBase).
 // eraArt: el modelo tiene arte propio por época (models.js no le agrega adornos ni recoloreo; DESIGN-CORE.md §4.4).
 export const BUILDINGS = [
   // --- Especiales ---
   { id: 'castillo', name: 'Municipalidad', cat: 'especial', size: [4, 4], unlock: 1, cost: { coins: 0 }, time: 0, max: 1,
     happy: 10, charm: 20, xp: 0, prod: { coins: 15, cycle: 60, cap: 8 }, eraArt: true, desc: 'El corazón de la ciudad. Mejorala para dar bonus a toda la ciudad.' },
-  { id: 'joyeria', name: 'Joyería', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 150 }, time: 10, max: 1,
-    happy: 3, xp: 15, game: 'match3', desc: 'Abre el minijuego Joyas Brillantes (combina 3).' },
-  { id: 'torre_bloques', name: 'Torre de Bloques', cat: 'especial', size: [2, 2], unlock: 2, cost: { coins: 300 }, time: 20, max: 1,
-    happy: 3, xp: 25, game: 'blocks', desc: 'Abre el minijuego Bloques Pixel.' },
-  { id: 'garaje', name: 'Garaje', cat: 'especial', size: [3, 3], unlock: 3, cost: { coins: 600 }, time: 30, max: 1,
-    happy: 4, xp: 40, game: 'parking', desc: 'Abre Estacionamiento Express y el taller para tunear tu auto.' },
-  { id: 'pista', name: 'Pista de Manejo', cat: 'especial', size: [3, 3], unlock: 5, cost: { coins: 1200 }, time: 45, max: 1,
-    happy: 5, xp: 60, game: 'driving', desc: 'Abre el minijuego Ruta Pixel (manejar).' },
   // Mi Casa: aparece sola al llegar a nivel 2 (economy.ensureHome). Su nivel es el de la casa por dentro (home/furniture.js).
   { id: 'mi_casa', name: 'Mi Casa', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 0 }, time: 0, max: 1, auto: true,
     happy: 2, charm: 10, xp: 0, desc: 'Tu casa: entrá, decorala con muebles y ampliala.' },
@@ -131,17 +123,9 @@ export const BUILDINGS = [
 ];
 
 // ---------------- MATERIALES Y MONUMENTOS ----------------
-// Cada minijuego da su material (main.js finishGame: 1 por estrella, mínimo 1, +1 si ganaste). Con los materiales se
-// construyen los monumentos, por etapas: el nivel del edificio es la etapa (1 = cimientos … N = terminado).
-// cost.mats = { cristal: n, ... } (store.canAfford/spend/grant los entienden igual que monedas y gemas).
-export const MATERIALS = [
-  { id: 'cristal', name: 'Cristales', one: 'cristal', game: 'match3', icon: 'cristal', color: '#c08cff' },
-  { id: 'ladrillo', name: 'Ladrillos', one: 'ladrillo', game: 'blocks', icon: 'ladrillo', color: '#e0764a' },
-  { id: 'tuerca', name: 'Tuercas', one: 'tuerca', game: 'parking', icon: 'tuerca', color: '#a9b4c2' },
-  { id: 'mapa', name: 'Mapas', one: 'mapa', game: 'driving', icon: 'mapa', color: '#e9c48a' },
-];
-// Materiales de región (DESIGN-CORE.md §5.1): los trae la expedición y viven en state.materials con estos ids.
-// Los de minijuego de arriba quedan como están hasta la migración de la Fase 5.
+// Los materiales de región los trae la expedición (DESIGN-CORE.md §5.1) y viven en state.materials con estos ids.
+// Con ellos se construyen los monumentos, por etapas: el nivel del edificio es la etapa (1 = cimientos … N = terminado).
+// cost.mats = { madera: n, ... } (store.canAfford/spend/grant los entienden igual que monedas y gemas).
 export const REGION_MATERIALS = [
   { id: 'madera', name: 'Madera', one: 'madera', icon: '🪵', color: '#a8774a' },
   { id: 'piedra', name: 'Piedra', one: 'piedra', icon: '🪨', color: '#9b9286' },
@@ -149,8 +133,15 @@ export const REGION_MATERIALS = [
   { id: 'hierbas', name: 'Hierbas', one: 'hierbas', icon: '🌿', color: '#6f8a4f' },
 ];
 export const REGION_MAT_IDS = REGION_MATERIALS.map(m => m.id);
-export const MATERIAL_BY_ID = Object.fromEntries([...MATERIALS, ...REGION_MATERIALS].map(m => [m.id, m]));
-export const MATERIAL_BY_GAME = Object.fromEntries(MATERIALS.map(m => [m.game, m]));
+export const MATERIAL_BY_ID = Object.fromEntries(REGION_MATERIALS.map(m => [m.id, m]));
+
+// ---------------- MIGRACIÓN v3 (DESIGN-CORE.md §7.2; la usa state.js) ----------------
+// Materiales de los minijuegos retirados → materiales de región (1:1, se suman).
+export const LEGACY_MATS = { cristal: 'mineral', ladrillo: 'piedra', tuerca: 'madera', mapa: 'hierbas' };
+// Edificios de minijuego → edificios del ciclo (mismo tamaño: mismo uid, lugar, rotación y nivel; §5.3).
+export const LEGACY_BUILDINGS = { joyeria: 'taller', torre_bloques: 'dispensario', garaje: 'establo', pista: 'casa_exp' };
+// Potenciadores de minijuego (mochila de cofres) → equipo de expedición (1:1).
+export const LEGACY_BOOSTERS = { m3_moves: 'cuerda', m3_bomb: 'pala', blk_bomb: 'pala', park_time: 'farol', drv_shield: 'lona' };
 
 // ---------------- RECURSOS DEL CICLO ----------------
 // Provisiones (depósito con tope), planos, equipo, reservas y colonos (DESIGN-CORE.md §5.1). Íconos: emojis pixelados.
@@ -225,52 +216,52 @@ const ST4 = ['Cimientos', 'Paredes', 'Detalles', '¡Inauguración!'];
 const ST5 = ['Cimientos', 'Estructura', 'Paredes', 'Detalles', '¡Inauguración!'];
 const stg = (coins, mats, time, gems = 0) => ({ cost: gems ? { coins, gems, mats } : { coins, mats }, time });
 // art: artículo del nombre ('el Faro', 'la Torre del Reloj') para armar frases.
-// bonus.type: shopCoins (monedas de negocios) · happy (puntos de felicidad) · gameXp (XP de minijuegos)
-//             pass (chispas del Pase por partida) · stickers (chance de figurita al ganar) · time (obras más rápidas)
+// bonus.type: shopCoins (monedas de negocios) · happy (puntos de felicidad) · gameXp (XP de las expediciones)
+//             pass (chispas del Pase por expedición) · stickers (chance de un hallazgo más al volver) · time (obras más rápidas)
 export const MONUMENTS = {
   faro: {
     name: 'Faro', art: 'el', size: [3, 3], rank: 3, charm: 120, happy: 8, bonus: { type: 'shopCoins', value: 0.10 }, bonusIcon: 'coin',
     bonusText: '+10% de monedas en todos los negocios', desc: 'Ilumina el pueblo de noche. Terminado: +10% de monedas en todos los negocios.',
     stageNames: ST4, stages: [
-      stg(1500, { ladrillo: 6, cristal: 4 }, 120), stg(2500, { ladrillo: 10, cristal: 6 }, 300),
-      stg(4000, { ladrillo: 12, cristal: 10 }, 600), stg(6000, { ladrillo: 16, cristal: 12 }, 1200),
+      stg(1500, { piedra: 6, mineral: 4 }, 120), stg(2500, { piedra: 10, mineral: 6 }, 300),
+      stg(4000, { piedra: 12, mineral: 10 }, 600), stg(6000, { piedra: 16, mineral: 12 }, 1200),
     ] },
   jardin: {
     name: 'Jardín Botánico', art: 'el', size: [4, 4], rank: 4, charm: 150, happy: 15, bonus: { type: 'happy', value: 0.25 }, bonusIcon: 'smile',
     bonusText: '+25% de felicidad en toda la ciudad', desc: 'Un invernadero gigante lleno de plantas. Terminado: +25% de felicidad.',
     stageNames: ST4, stages: [
-      stg(3000, { cristal: 8, tuerca: 5 }, 300), stg(5000, { cristal: 12, tuerca: 8 }, 600),
-      stg(8000, { cristal: 16, tuerca: 12 }, 1200), stg(12000, { cristal: 20, tuerca: 16 }, 1800, 5),
+      stg(3000, { mineral: 8, madera: 5 }, 300), stg(5000, { mineral: 12, madera: 8 }, 600),
+      stg(8000, { mineral: 16, madera: 12 }, 1200), stg(12000, { mineral: 20, madera: 16 }, 1800, 5),
     ] },
   observatorio: {
     name: 'Observatorio', art: 'el', size: [3, 3], rank: 5, charm: 170, happy: 10, bonus: { type: 'gameXp', value: 0.25 }, bonusIcon: 'xp',
-    bonusText: '+25% de XP en los minijuegos', desc: 'Para mirar las estrellas. Terminado: +25% de experiencia en cada partida.',
+    bonusText: '+25% de experiencia en las expediciones', desc: 'Para mirar las estrellas. Terminado: +25% de experiencia en cada expedición.',
     stageNames: ST5, stages: [
-      stg(6000, { cristal: 10, mapa: 6 }, 600), stg(9000, { cristal: 14, mapa: 10 }, 900), stg(13000, { cristal: 18, mapa: 14 }, 1500),
-      stg(18000, { cristal: 22, mapa: 18 }, 2400), stg(24000, { cristal: 26, mapa: 22 }, 3600, 10),
+      stg(6000, { mineral: 10, hierbas: 6 }, 600), stg(9000, { mineral: 14, hierbas: 10 }, 900), stg(13000, { mineral: 18, hierbas: 14 }, 1500),
+      stg(18000, { mineral: 22, hierbas: 18 }, 2400), stg(24000, { mineral: 26, hierbas: 22 }, 3600, 10),
     ] },
   estadio: {
     name: 'Estadio', art: 'el', size: [4, 4], rank: 5, charm: 190, happy: 14, bonus: { type: 'pass', value: 0.25 }, bonusIcon: 'sparkle',
-    bonusText: '+25% de chispas del Pase por partida', desc: '¡Que empiece el partido! Terminado: +25% de chispas del Pase en cada partida.',
+    bonusText: '+25% de chispas del Pase en las expediciones', desc: '¡Que empiece el partido! Terminado: +25% de chispas del Pase en cada expedición.',
     stageNames: ST5, stages: [
-      stg(7000, { ladrillo: 12, tuerca: 8 }, 600), stg(10000, { ladrillo: 16, tuerca: 12 }, 900), stg(14000, { ladrillo: 20, tuerca: 16 }, 1500),
-      stg(19000, { ladrillo: 24, tuerca: 20 }, 2400), stg(26000, { ladrillo: 28, tuerca: 24 }, 3600, 10),
+      stg(7000, { piedra: 12, madera: 8 }, 600), stg(10000, { piedra: 16, madera: 12 }, 900), stg(14000, { piedra: 20, madera: 16 }, 1500),
+      stg(19000, { piedra: 24, madera: 20 }, 2400), stg(26000, { piedra: 28, madera: 24 }, 3600, 10),
     ] },
   museo: {
     name: 'Museo', art: 'el', size: [4, 4], rank: 6, charm: 220, happy: 12, bonus: { type: 'stickers', value: 0.5 }, bonusIcon: '🃏',
-    bonusText: '+50% de chance de figurita al ganar', desc: 'Historia, arte ¡y un dinosaurio! Terminado: más figuritas al ganar partidas.',
+    bonusText: '+50% de chance de un hallazgo más al volver', desc: 'Historia, arte ¡y un dinosaurio! Terminado: más hallazgos al volver de expedición.',
     stageNames: ST5, stages: [
-      stg(15000, { mapa: 12, ladrillo: 10, cristal: 8 }, 1200), stg(22000, { mapa: 16, ladrillo: 14, cristal: 12 }, 1800),
-      stg(30000, { mapa: 20, ladrillo: 18, cristal: 16 }, 2700), stg(40000, { mapa: 26, ladrillo: 22, cristal: 20 }, 3600),
-      stg(52000, { mapa: 30, ladrillo: 28, cristal: 24 }, 5400, 15),
+      stg(15000, { hierbas: 12, piedra: 10, mineral: 8 }, 1200), stg(22000, { hierbas: 16, piedra: 14, mineral: 12 }, 1800),
+      stg(30000, { hierbas: 20, piedra: 18, mineral: 16 }, 2700), stg(40000, { hierbas: 26, piedra: 22, mineral: 20 }, 3600),
+      stg(52000, { hierbas: 30, piedra: 28, mineral: 24 }, 5400, 15),
     ] },
   torre_reloj: {
     name: 'Torre del Reloj', art: 'la', size: [3, 3], rank: 7, charm: 260, happy: 12, bonus: { type: 'time', value: 0.10 }, bonusIcon: 'clock',
     bonusText: 'Obras y mejoras 10% más rápidas', desc: 'La más alta del pueblo, con campana. Terminada: todas las obras tardan 10% menos.',
     stageNames: ST5, stages: [
-      stg(30000, { tuerca: 14, mapa: 12, ladrillo: 10, cristal: 10 }, 1800), stg(42000, { tuerca: 18, mapa: 16, ladrillo: 14, cristal: 14 }, 2700),
-      stg(56000, { tuerca: 24, mapa: 20, ladrillo: 18, cristal: 18 }, 3600), stg(75000, { tuerca: 30, mapa: 26, ladrillo: 24, cristal: 24 }, 5400),
-      stg(100000, { tuerca: 36, mapa: 32, ladrillo: 30, cristal: 30 }, 7200, 20),
+      stg(30000, { madera: 14, hierbas: 12, piedra: 10, mineral: 10 }, 1800), stg(42000, { madera: 18, hierbas: 16, piedra: 14, mineral: 14 }, 2700),
+      stg(56000, { madera: 24, hierbas: 20, piedra: 18, mineral: 18 }, 3600), stg(75000, { madera: 30, hierbas: 26, piedra: 24, mineral: 24 }, 5400),
+      stg(100000, { madera: 36, hierbas: 32, piedra: 30, mineral: 30 }, 7200, 20),
     ] },
 };
 export const MONUMENT_IDS = Object.keys(MONUMENTS);
@@ -342,16 +333,7 @@ export const eraDef = (era) => ERAS[Math.max(1, Math.min(ERAS.length, Math.round
 export const CASTLE_LEVELS = TOWN_RANKS.slice(1).map(r => ({ level: r.rank, cost: r.cost, time: r.time, reqLevel: r.reqLevel }));
 export const CASTLE_BONUS_PER_LEVEL = 0.08; // +8% producción global por nivel extra de castillo
 
-// ---------------- MINIJUEGOS ----------------
-export const GAMES = [
-  { id: 'match3', name: 'Joyas Brillantes', desc: 'Combiná 3 o más joyas iguales.', building: 'joyeria', unlock: 1, color: '#ff7eb6' },
-  { id: 'blocks', name: 'Bloques Pixel', desc: 'Encajá bloques y completá filas.', building: 'torre_bloques', unlock: 2, color: '#b58cff' },
-  { id: 'parking', name: 'Estacionamiento Express', desc: 'Estacioná tu auto sin chocar.', building: 'garaje', unlock: 3, color: '#6fe3c1' },
-  { id: 'driving', name: 'Ruta Pixel', desc: 'Manejá por la ciudad juntando monedas y gemas.', building: 'pista', unlock: 5, color: '#8fd3ff' },
-];
-export const GAME_BY_ID = Object.fromEntries(GAMES.map(g => [g.id, g]));
-
-// Escala de premios de minijuegos según nivel del jugador (para que sigan valiendo la pena)
+// Escala de premios según nivel del jugador (para que sigan valiendo la pena)
 export function rewardScale(playerLevel) { return 1 + (playerLevel - 1) * 0.15; }
 
 // ---------------- NIVELES ----------------
@@ -536,7 +518,7 @@ export const LEGACY_ITEMS = {
 };
 
 // ---------------- PERSONALIZACIÓN AUTO ----------------
-// stats: speed / handling 1..5 (los usan los minijuegos de manejo)
+// stats: speed / handling 1..5 (de cuando el auto se manejaba en los minijuegos; hoy solo se muestran en el Vestidor)
 export const CAR_BODIES = [
   { id: 'convertible', name: 'Convertible', free: true, speed: 3, handling: 3 },
   { id: 'mini', name: 'Mini', price: { coins: 600 }, unlock: 3, speed: 2, handling: 5 },
@@ -569,11 +551,8 @@ export const CUSTOM_CATALOG = {
 //  upgrade {id?}         terminar una mejora
 //  collect               monedas recolectadas de edificios (suma)
 //  earn                  monedas ganadas de cualquier fuente (suma)
-//  play {game?}          partidas jugadas de un minijuego
-//  stars {game?}         estrellas obtenidas en minijuegos (suma)
-//  score {game}          puntaje en UNA partida >= count (count es el puntaje)
-//  customize             cambios en vestidor/garaje
-//  buy                   compras en vestidor/garaje
+//  customize             cambios en el Vestidor (personaje o auto)
+//  buy                   compras en el Vestidor
 //  level                 llegar a nivel count (absoluto)
 //  pop                   población >= count (absoluto)
 //  happy                 felicidad total >= count (absoluto)
@@ -630,10 +609,6 @@ export const MAIN_QUESTS = [
 export const DAILY_POOL = [
   { id: 'd_collect', title: 'Recolectá monedas', goal: { type: 'collect', count: 300 }, reward: { coins: 150, xp: 20 }, scale: true },
   { id: 'd_earn', title: 'Ganá monedas', goal: { type: 'earn', count: 800 }, reward: { gems: 2, xp: 25 }, scale: true },
-  { id: 'd_match3', title: 'Jugá Joyas Brillantes 2 veces', goal: { type: 'play', game: 'match3', count: 2 }, reward: { coins: 120, xp: 20, mats: { cristal: 3 } }, needs: 'joyeria' },
-  { id: 'd_blocks', title: 'Jugá Bloques Pixel 2 veces', goal: { type: 'play', game: 'blocks', count: 2 }, reward: { coins: 120, xp: 20, mats: { ladrillo: 3 } }, minLevel: 2, needs: 'torre_bloques' },
-  { id: 'd_parking', title: 'Estacioná 3 veces', goal: { type: 'play', game: 'parking', count: 3 }, reward: { gems: 2, xp: 25, mats: { tuerca: 4 } }, minLevel: 3, needs: 'garaje' },
-  { id: 'd_driving', title: 'Salí a pasear 2 veces', goal: { type: 'play', game: 'driving', count: 2 }, reward: { gems: 2, xp: 25, mats: { mapa: 3 } }, minLevel: 5, needs: 'pista' },
   { id: 'd_build', title: 'Construí 3 cosas', goal: { type: 'build', count: 3 }, reward: { coins: 200, xp: 25 } },
   { id: 'd_upgrade', title: 'Mejorá un edificio', goal: { type: 'upgrade', count: 1 }, reward: { gems: 2, xp: 30 }, minLevel: 3 },
   { id: 'd_customize', title: 'Cambiá tu look', goal: { type: 'customize', count: 1 }, reward: { coins: 100, xp: 15 }, minLevel: 2 },
@@ -652,19 +627,20 @@ export const LOGIN_REWARDS = [
   { coins: 150 }, { coins: 250 }, { gems: 3 }, { coins: 400 }, { gems: 5 }, { coins: 700 }, { gems: 10, coins: 500, chest: 'plata' },
 ];
 
-// Logros con niveles (tiers). stat: clave de state.stats
+// Logros con niveles (tiers). stat: clave de state.stats. retired: logro de los minijuegos retirados: lo ganado se
+// muestra como "Recuerdo" y no suma más (DESIGN-CORE.md §7.2.9).
 export const ACHIEVEMENTS = [
   { id: 'a_coins', name: 'Bolsillo Lleno', desc: 'Ganá {n} monedas en total', stat: 'coinsEarned', tiers: [1000, 10000, 50000, 200000, 1000000], reward: [3, 5, 10, 15, 25] },
   { id: 'a_build', name: 'Manos a la Obra', desc: 'Construí {n} cosas', stat: 'built', tiers: [5, 20, 50, 120, 250], reward: [3, 5, 8, 12, 20] },
   { id: 'a_upgrade', name: 'Siempre mejor', desc: 'Mejorá {n} veces', stat: 'upgrades', tiers: [3, 10, 25, 60, 120], reward: [3, 5, 8, 12, 20] },
-  { id: 'a_match3', name: 'Ojo de Joya', desc: 'Pasá {n} niveles de Joyas', stat: 'match3Wins', tiers: [3, 10, 25, 50, 100], reward: [3, 5, 8, 12, 20] },
-  { id: 'a_blocks', name: 'Rompebloques', desc: 'Limpiá {n} líneas en Bloques', stat: 'blocksLines', tiers: [20, 100, 400, 1000, 3000], reward: [3, 5, 8, 12, 20] },
-  { id: 'a_parking', name: 'Estaciona perfecto', desc: 'Estacioná {n} veces', stat: 'parkingWins', tiers: [3, 10, 25, 50, 100], reward: [3, 5, 8, 12, 20] },
-  { id: 'a_driving', name: 'Al Volante', desc: 'Manejá {n} metros en total', stat: 'drivingMeters', tiers: [2000, 10000, 40000, 100000, 300000], reward: [3, 5, 8, 12, 20] },
+  { id: 'a_match3', name: 'Ojo de Joya', desc: 'Pasá {n} niveles de Joyas', stat: 'match3Wins', tiers: [3, 10, 25, 50, 100], reward: [3, 5, 8, 12, 20], retired: true },
+  { id: 'a_blocks', name: 'Rompebloques', desc: 'Limpiá {n} líneas en Bloques', stat: 'blocksLines', tiers: [20, 100, 400, 1000, 3000], reward: [3, 5, 8, 12, 20], retired: true },
+  { id: 'a_parking', name: 'Estaciona perfecto', desc: 'Estacioná {n} veces', stat: 'parkingWins', tiers: [3, 10, 25, 50, 100], reward: [3, 5, 8, 12, 20], retired: true },
+  { id: 'a_driving', name: 'Al Volante', desc: 'Manejá {n} metros en total', stat: 'drivingMeters', tiers: [2000, 10000, 40000, 100000, 300000], reward: [3, 5, 8, 12, 20], retired: true },
   { id: 'a_fashion', name: 'Ropero Lleno', desc: 'Comprá {n} prendas o partes', stat: 'bought', tiers: [2, 6, 12, 20, 30], reward: [3, 5, 8, 12, 20] },
   { id: 'a_streak', name: 'Fiel a Pixelia', desc: 'Entrá {n} días seguidos', stat: 'bestStreak', tiers: [2, 5, 7, 14, 30], reward: [3, 5, 8, 12, 25] },
   { id: 'a_chests', name: 'Cazatesoros', desc: 'Abrí {n} cofres', stat: 'chestsOpened', tiers: [3, 15, 40, 100, 250], reward: [3, 5, 8, 12, 20] },
-  { id: 'a_stickers', name: 'Coleccionista', desc: 'Conseguí {n} figuritas distintas', stat: 'stickersNew', tiers: [10, 30, 60, 90, 108], reward: [3, 5, 10, 15, 30] },
+  { id: 'a_stickers', name: 'Coleccionista', desc: 'Conseguí {n} hallazgos distintos', stat: 'stickersNew', tiers: [10, 30, 60, 90, 108], reward: [3, 5, 10, 15, 30] },
   { id: 'a_rank', name: 'Intendencia', desc: 'Llevá tu ciudad al rango {n}', stat: 'rankBest', tiers: [2, 3, 5, 7, 8], reward: [3, 6, 10, 20, 30] },
   { id: 'a_charm', name: 'Ciudad Encantadora', desc: 'Llegá a {n} de Encanto', stat: 'charmBest', tiers: [100, 300, 600, 1000, 1500], reward: [3, 6, 10, 15, 25] },
   { id: 'a_season', name: 'Estrella de Temporada', desc: 'Llegá al nivel {n} del Pase', stat: 'seasonLevelBest', tiers: [5, 10, 20, 30], reward: [3, 6, 10, 20] },

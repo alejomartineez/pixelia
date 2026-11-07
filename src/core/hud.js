@@ -2,7 +2,7 @@
 //  arriba:     perfil (nivel, nombre, xp; tocarlo abre Ajustes) + botón de Ajustes + monedas y gemas
 //  izquierda:  rango de la ciudad + Encanto (abre "Tu ciudad"), población / felicidad / constructoras, efectos activos con tiempo, misión actual
 //  derecha:    botones redondos con globito: Expedición (con las provisiones del depósito), Cofres, Pase, Álbum, Evento
-//  abajo:      Juegos · Misiones · Construir · Vestidor · Amigos
+//  abajo:      Misiones · Construir · Vestidor · Contactos
 // Los globitos se refrescan con eventos del bus y cada 30 s; los números y los efectos, cada segundo.
 import { bus } from './bus.js';
 import { store } from './state.js';
@@ -61,12 +61,11 @@ function render() {
       <button class="rail-btn exp" data-act="expedition" data-hud="prov" aria-label="Expedición">${icon('🧭', 30)}<span>Expedición</span><em class="rail-tag" data-hud="provtag"></em><i class="badge" data-badge="expedition"></i></button>
       <button class="rail-btn" data-act="chests" aria-label="Cofres">${chestIcon('madera', 34)}<span>Cofres</span><i class="badge" data-badge="chests"></i></button>
       <button class="rail-btn pass" data-act="pass" aria-label="Pase de Temporada"><span class="rail-ic" data-hud="passic">${icon('sparkle', 30)}</span><span>Pase</span><em class="rail-tag" data-hud="passlv"></em><i class="badge" data-badge="pass"></i></button>
-      <button class="rail-btn" data-act="album" aria-label="Álbum de figuritas">${icon('album', 30)}<span>Álbum</span><i class="badge" data-badge="album"></i></button>
+      <button class="rail-btn" data-act="album" aria-label="Hallazgos">${icon('album', 30)}<span>Hallazgos</span><i class="badge" data-badge="album"></i></button>
       <button class="rail-btn works" data-act="works" data-hud="works" aria-label="Obras: monumentos">${icon('monument', 30)}<span>Obras</span><i class="badge" data-badge="works"></i></button>
       <button class="rail-btn event" data-act="events" aria-label="Eventos"><span class="rail-ic" data-hud="evic">${icon('calendar', 30)}</span><span data-hud="evname">Eventos</span><em class="rail-tag" data-hud="evtime"></em></button>
     </div>
     <nav class="hud-bottom">
-      <button class="hud-btn" data-act="games">${icon('games', 30)}<span>Juegos</span></button>
       <button class="hud-btn" data-act="quests">${icon('quest', 30)}<span>Misiones</span><i class="badge" data-badge="quests"></i></button>
       <button class="hud-btn big" data-act="build">${icon('hammer', 38)}<span>Construir</span></button>
       <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>Vestidor</span></button>

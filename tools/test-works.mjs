@@ -1,5 +1,5 @@
 // Monumentos y materiales (Fase 3), con la interfaz real y el modo online de prueba:
-// rango Pueblo → aparece "Obras" en el HUD → jugar Joyas Brillantes da cristales y el fin de partida dice cuánto falta
+// rango Pueblo → aparece "Obras" en el HUD → los materiales son los de región y «Salir» lleva a la expedición
 // → panel Obras → Construir el Faro (colocar en la ciudad) → avanzar sus etapas → bonus de negocios activo
 // → el expediente del rango Villa cuenta el monumento terminado. Toma capturas de cada etapa para revisarlas a ojo.
 //
@@ -135,42 +135,29 @@ try {
   ok(await run(cleo, `return getComputedStyle(document.querySelector('#hud [data-act="works"]')).display === 'none'`), 'en Aldea el botón «Obras» no aparece');
   const r3 = await run(cleo, `${BUILD_FN}
     const c = store.state.city.buildings.find(b => b.id === 'castillo'); c.level = 3;
-    const k = placeNow('casita'); const j = placeNow('joyeria'); const p = placeNow('panaderia');
+    const k = placeNow('casita'); const j = placeNow('casa_exp'); const p = placeNow('panaderia');
     E.tick(); return { rank: E.townRank(), j: typeof j, p: typeof p, mats: { ...store.state.materials } };`);
-  ok(r3.rank === 3 && r3.j === 'object' && r3.p === 'object', 'rango Pueblo con Joyería y Panadería', r3);
-  ok(r3.mats && r3.mats.cristal === 0 && r3.mats.ladrillo === 0, 'arranca sin materiales', r3.mats);
+  ok(r3.rank === 3 && r3.j === 'object' && r3.p === 'object', 'rango Pueblo con Casa de Expediciones y Panadería', r3);
+  ok(r3.mats && r3.mats.piedra === 0 && r3.mats.mineral === 0 && !('cristal' in r3.mats), 'arranca sin materiales', r3.mats);
   ok(await waitFor(cleo, `getComputedStyle(document.querySelector('#hud [data-act="works"]')).display !== 'none'`, 3000), 'en Pueblo aparece «Obras» en el HUD');
   const faroLock = await run(cleo, `return E.canBuild('faro')`);
   ok(!faroLock.ok && faroLock.mats, 'el Faro pide materiales', faroLock);
   const jLock = await run(cleo, `return E.canBuild('jardin')`);
   ok(!jLock.ok && /Rango Villa/.test(jLock.reason), 'el Jardín Botánico pide el rango Villa', jLock);
 
-  section('Jugar da materiales');
-  await run(cleo, `ctx.router.openGame('match3'); return true;`);
-  ok(await waitFor(cleo, `!!document.querySelector('.scene-match3 .m3-play')`, 12000), 'abre Joyas Brillantes');
-  await sleep(500);
-  await tap(cleo, '.m3-play');
-  ok(await waitFor(cleo, `document.querySelector('.scene-match3')?.__m3?.mode === 'play'`, 8000), 'partida empezada');
-  await sleep(1200);
-  const t0 = Date.now();
-  while (Date.now() - t0 < 15000) {
-    const mode = await cleo.evaluate(() => { const m = document.querySelector('.scene-match3')?.__m3; if (!m) return null; if (m.mode === 'play') m.finishNow(true); return m.mode; });
-    if (mode === 'end') break;
-    await sleep(250);
-  }
-  ok(await waitFor(cleo, `!!document.querySelector('.modal.reward-modal .cost-mat')`, 15000), 'el premio muestra los cristales ganados');
-  await sleep(1400);
-  const end = await cleo.evaluate(() => ({ hint: document.querySelector('.reward-modal .rw-mathint')?.textContent || '', mats: window.__pixelia.store.state.materials.cristal }));
-  ok(end.mats >= 2, 'ganar suma cristales (1 por estrella + 1 por ganar)', end.mats);
-  ok(/Faro/.test(end.hint) && /cristal/i.test(end.hint), 'el fin de partida dice cuánto falta para el Faro', end.hint);
-  await shot(cleo, 'fin-partida-materiales');
-  await tap(cleo, '.modal.reward-modal .modal-foot .btn', 'Ciudad');
-  ok(await waitFor(cleo, `window.__pixelia.ctx.router.current === 'city' && !!document.querySelector('#hud .hud-rank')`, 10000), 'vuelve a la ciudad');
-  await sleep(1200);
+  section('Los materiales vienen de la expedición');
+  ok(await tap(cleo, '#hud [data-act="works"]'), 'toca «Obras»');
+  ok(await waitFor(cleo, `!!document.querySelector('.modal.pnl-works .pnl-wk-play')`, 5000), 'Obras muestra los materiales con «Salir»');
+  const wl = await cleo.evaluate(() => [...document.querySelectorAll('.pnl-works .pnl-wk-mat')].map(e => e.textContent.replace(/\s+/g, ' ').trim()));
+  ok(wl.length === 4 && /Madera/.test(wl.join()) && /Bosque del Arroyo/.test(wl.join()), 'madera, piedra, mineral y hierbas con su región', wl);
+  await tap(cleo, '.pnl-works .pnl-wk-play');
+  ok(await waitFor(cleo, `!!document.querySelector('.modal.pnl-ex')`, 5000), '«Salir» abre el panel de Expedición');
+  await sleep(600);
   await cleo.evaluate(() => window.__pixelia.ctx.ui.closeAllModals());
+  await sleep(600);
 
   section('Panel Obras y construir el Faro');
-  await run(cleo, `store.grant({ mats: { cristal: 60, ladrillo: 60 }, coins: 30000 }, 'test'); return true;`);
+  await run(cleo, `store.grant({ mats: { mineral: 60, piedra: 60 }, coins: 30000 }, 'test'); return true;`);
   ok(await tap(cleo, '#hud [data-act="works"]'), 'toca «Obras»');
   ok(await waitFor(cleo, `!!document.querySelector('.modal.pnl-works .pnl-wk-card')`, 5000), 'se abre el panel de Obras');
   await sleep(1500);
@@ -192,7 +179,7 @@ try {
   await tap(cleo, '.cx-pc .cx-pc-ok');
   ok(await waitFor(cleo, `window.__pixelia.economy.countOf('faro') === 1`, 5000), 'Faro colocado');
   const m1 = await run(cleo, `return { ...store.state.materials }`);
-  ok(m0.ladrillo - m1.ladrillo === 6 && m0.cristal - m1.cristal === 4, 'la etapa 1 gastó 6 ladrillos y 4 cristales', { m0, m1 });
+  ok(m0.piedra - m1.piedra === 6 && m0.mineral - m1.mineral === 4, 'la etapa 1 gastó 6 de piedra y 4 de mineral', { m0, m1 });
   ok(await run(cleo, finishFn('faro')) === 1, 'terminan los cimientos (etapa 1)');
   await cityShot(cleo, 'faro', 'faro-etapa-1');
 

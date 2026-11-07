@@ -182,7 +182,7 @@ export function createLife(r, ctx) {
   // ---------- Autito ----------
   let car = null;
   function syncCar() {
-    const garage = ctx.state.city.buildings.find(b => b.id === 'garaje' && !isConstructing(b));
+    const garage = ctx.state.city.buildings.find(b => b.id === 'establo' && !isConstructing(b));   // el auto vive en el Establo (ex Garaje)
     if (!garage) { if (car) { group.remove(car.obj); disposeObject(car.obj); car = null; } return; }
     if (!car) {
       const obj = carModel(ctx.state.car, { city: true });
@@ -200,7 +200,7 @@ export function createLife(r, ctx) {
         if (spot) { place(car, spot[0], spot[1]); car.parked = false; car.obj.visible = true; }
       }
     } else {
-      // estacionado al lado del garaje
+      // estacionado al lado del Establo
       const [gw, gd] = footprint(garage.id, garage.rot);
       const cand = [];
       for (let x = garage.x - 1; x <= garage.x + gw; x++) for (let z = garage.z - 1; z <= garage.z + gd; z++)

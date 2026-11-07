@@ -233,7 +233,7 @@ try {
   ok(after.wall === 'menta' && after.floor === 'baldosa' && after.puff?.x === target[0] && after.reloj?.rot % 2 === 1 && after.tele === 1, 'paredes, piso, muebles e inventario se guardaron', after);
 
   section('Ampliar la casa (niveles 2 a 5)');
-  await run(dani, `store.grant({ coins: 200000, gems: 100, mats: { ladrillo: 200, tuerca: 200, cristal: 200, mapa: 200 } }, 'test'); const c = store.state.city.buildings.find(b => b.id === 'castillo'); c.level = 5; E.tick(); return true;`);
+  await run(dani, `store.grant({ coins: 200000, gems: 100, mats: { piedra: 200, madera: 200, mineral: 200, hierbas: 200 } }, 'test'); const c = store.state.city.buildings.find(b => b.id === 'castillo'); c.level = 5; E.tick(); return true;`);
   ok(await tap(dani, '.scene-home [data-hm="up"]'), 'toca «Ampliar»');
   ok(await waitFor(dani, `/Casa con ventanal/.test(document.querySelector('.hm-up-modal')?.textContent || '')`, 4000), 'muestra la próxima: «Casa con ventanal»');
   await shot(dani, 'ampliar');

@@ -8,11 +8,11 @@
 //   handleConflict(ctx, conflict)       -> Promise<'local'|'cloud'|null> elegir partida (resolveConflict)
 //   socialBadge()                       número sincrónico (cacheado); bus 'social:badge' {count} cuando cambia
 // Eventos que emite: 'social:badge', 'social:changed', 'social:helped' {kind}, 'social:gift' {sent:true}.
-// Escucha: 'album:trade' {id, mode:'offer'|'ask'} (pone handled=true), 'minigame:finished', 'building:built',
+// Escucha: 'album:trade' {id, mode:'offer'|'ask'} (pone handled=true), 'expedition:finished', 'building:built',
 // 'building:upgraded', 'online:inbox', 'online:status', 'online:conflict'.
 //
 // Estado local en state.social = { giftDay:{friendId:'YYYY-MM-DD'}, coop:{week, local, pending, claimed[], reached, carry[]},
-//                                  rank:{hist:{week:{match3,blocks,parking,driving,stars,played}}, claimed[]} }
+//                                  rank:{hist:{week:{stars,played}}, claimed[]} }
 import { net, friendLevel, isoWeek, isDefaultName } from './net.js';
 import * as sync from './sync.js';
 import { bus } from '../core/bus.js';
@@ -36,7 +36,7 @@ export const COOP_TIERS = [
 ];
 /** Monedas BASE del regalito diario según nivel de amistad (Conocidas → Inseparables). */
 export const GIFT_COINS = [60, 90, 130, 180, 250];
-export const GIFT_ITEMS = ['hammer', 'm3_moves', 'blk_bomb', 'park_time'];
+export const GIFT_ITEMS = ['hammer', 'hourglass'];
 /** Premio de participación del ranking semanal (para todas las que jugaron). */
 export const RANK_PRIZE = { coins: 250, chests: { madera: 1 } };
 export const RANK_BEST_GEMS = 5;
@@ -45,12 +45,8 @@ export const RANK_CATS = [
   { id: 'stars', name: 'Estrellas', icon: 'star', short: 'Estrellas' },
   // Ciudad más linda: Encanto actual (viaja en stats.week.charm del perfil, así no hace falta tocar el SQL)
   { id: 'charm', name: 'Ciudad con más Encanto', icon: 'sparkle', short: 'Encanto' },
-  { id: 'match3', name: 'Joyas Brillantes', icon: '💎', short: 'Joyas' },
-  { id: 'blocks', name: 'Bloques Pixel', icon: '🧩', short: 'Bloques' },
-  { id: 'parking', name: 'Estacionamiento', icon: '🅿️', short: 'Parking' },
-  { id: 'driving', name: 'Ruta Pixel', icon: '🚗', short: 'Paseo' },
 ];
-const WEEK_KEYS = ['match3', 'blocks', 'parking', 'driving', 'stars'];
+const WEEK_KEYS = ['stars'];   // estrellas de expedición de la semana (las de los minijuegos se retiraron)
 /** Objetos de mochila que se pueden pedir / intercambiar. */
 export const TRADE_ITEMS = Object.values(ITEMS).filter(i => i.kind === 'item').map(i => i.id);
 
@@ -189,7 +185,7 @@ export function grantPack(r, source = 'social') {
   if (out.coins || out.gems) store.grant({ coins: out.coins, gems: out.gems }, source);
   for (const [t, n] of Object.entries(out.chests)) addChest(t, n, source);
   if (r.stickers?.n) {
-    try { out.stickers = album.grantStickers(r.stickers.n, { minStars: r.stickers.minStars || 1, source }); } catch (e) { console.warn('[social] figuritas', e); }
+    try { out.stickers = album.grantStickers(r.stickers.n, { minStars: r.stickers.minStars || 1, source }); } catch (e) { console.warn('[social] hallazgos', e); }
   }
   store.save();
   return out;
@@ -272,12 +268,11 @@ export function claimCoopTier(n, carryIndex = null) {
 }
 
 // ---------- Ranking semanal ----------
-function recordWeek({ game, score = 0, stars = 0 } = {}) {
+function recordWeek({ stars = 0 } = {}) {
   const z = S();
   if (!z) return;
   const w = isoWeek();
-  const h = (z.rank.hist[w] ||= { match3: 0, blocks: 0, parking: 0, driving: 0, stars: 0, played: 0 });
-  if (WEEK_KEYS.includes(game) && game !== 'stars') h[game] = Math.max(h[game] || 0, Math.round(score) || 0);
+  const h = (z.rank.hist[w] ||= { stars: 0, played: 0 });
   h.stars += Math.max(0, stars | 0);
   h.played++;
   store.markDirty();
@@ -305,7 +300,7 @@ export function personalBest(cat, week = isoWeek()) {
 export function rankInfo() {
   const z = S();
   const week = isoWeek();
-  const mine = { ...(z?.rank.hist[week] || { match3: 0, blocks: 0, parking: 0, driving: 0, stars: 0, played: 0 }) };
+  const mine = { ...(z?.rank.hist[week] || { stars: 0, played: 0 }) };
   const best = Object.fromEntries(WEEK_KEYS.map(k => [k, personalBest(k, week)]));
   const d = new Date();
   const daysToSunday = (7 - d.getDay()) % 7;
@@ -367,8 +362,8 @@ export function stickerRules(friend) {
 /** ¿Es válido este par de figuritas? -> null | 'texto del problema' */
 export function stickerPairProblem(offerId, askId, friend) {
   const a = album.stickerDef(offerId), b = album.stickerDef(askId);
-  if (!a || !b) return 'Elegí una figurita de cada lado';
-  if (album.stickerCount(offerId) < 2) return 'Solo podés ofrecer repetidas';
+  if (!a || !b) return 'Elegí un hallazgo de cada lado';
+  if (album.stickerCount(offerId) < 2) return 'Solo podés ofrecer repetidos';
   if (Math.abs(a.stars - b.stars) > 1) return 'Tienen que tener estrellas parecidas (como mucho 1 de diferencia)';
   if (Math.max(a.stars, b.stars) === 5 && !stickerRules(friend).fiveOk) return 'Las de 5★ se cambian con amistades de 14 días o más (o en la Semana Dorada)';
   return null;
@@ -409,7 +404,7 @@ export async function cancelTrade(t) {
 
 // ---------- Pedidos de ayuda ----------
 export const REQUEST_KINDS = {
-  sticker: { name: 'Figurita que me falta', icon: '🃏' },
+  sticker: { name: 'Hallazgo que me falta', icon: '🃏' },
   item: { name: 'Un objeto', icon: '🔨' },
   coins: { name: 'Monedas', icon: 'coin' },
   speedup: { name: 'Acelerá mi obra', icon: '⏳' },
@@ -508,7 +503,7 @@ export function initSocial(ctx) {
   sync.setStickerAdder((id, n) => album.giveStickers({ [id]: n }, 'online'));
   sync.setStickerTaker((id, n) => album.takeStickers(id, n), (id, n) => album.stickerCount(id) - n >= 1);
 
-  bus.on('minigame:finished', (r) => { recordWeek(r); if (r?.won) addCoopPoints(COOP_POINTS.win, 'win'); computeBadge(); });
+  bus.on('expedition:finished', (r) => { if (r?.prototype) return; recordWeek(r); if (r?.reason === 'volvio') addCoopPoints(COOP_POINTS.win, 'win'); computeBadge(); });
   bus.on('building:built', ({ b } = {}) => { if (b && BUILDING_BY_ID[b.id]?.cat !== 'camino') addCoopPoints(COOP_POINTS.built, 'built'); });
   bus.on('building:upgraded', () => addCoopPoints(COOP_POINTS.upgraded, 'upgraded'));
   bus.on('social:helped', (p) => addCoopPoints(p?.kind === 'request' ? COOP_POINTS.request : COOP_POINTS.help, 'helped'));
