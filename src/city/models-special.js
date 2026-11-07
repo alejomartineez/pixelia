@@ -1,4 +1,4 @@
-// Edificios especiales: municipalidad (id castillo, 8 niveles: uno por rango de ciudad), joyería, torre de bloques, garaje, pista y boutique.
+// Edificios especiales: joyería, torre de bloques, garaje, pista y boutique.
 import {
   P, C, shade, lot, path, win, door, awning, gable, hip, cone, battlements, roundBattlements, flowerBed, bush, smallTree,
   tulip, flower, fbox, fset, pattern, HEART3, HEART5, STAR5, addSmoke, spinStar, sparkle, wavingFlag, crown, rng, pick,
@@ -8,144 +8,7 @@ import {
 const S = 1 / 8;
 const RAINBOW = ['#ff7a8a', '#ffb38a', '#ffe066', '#7fe3a8', '#8fd3ff', '#9fb5e9'];
 
-// ======================= MUNICIPALIDAD =======================
-// (id 'castillo' por compatibilidad). 5 niveles: casona con torre de reloj → alas, pórtico con columnas,
-// fuente en la plaza y cúpula dorada.
-function castillo(m, L, opts) {
-  const v = m.v;
-  const flag = opts.flag || P.sky;
-  const cream = '#f8eedc', creamB = '#f1e3cb', brick = '#d98f6a', brickD = '#c27a56', white = '#ffffff';
-  // desde Gran Ciudad el techo pasa a pizarra azul (cambio que se nota de lejos)
-  const roofC = L >= 6 ? C.roofSlate : C.roofClay, gold = P.gold;
-  const trim = L >= 5 ? gold : white;
-  const wall = (x, y, z) => (y <= 2 ? ((x + z + y) % 3 === 0 ? brickD : brick) : (y % 4 === 0 ? creamB : cream));
-  // plaza de baldosas con borde de pasto
-  lot(v, 32, 32, (x, z) => {
-    if (x < 1 || z < 1 || x > 30 || z > 30) return '#9ee385';
-    return (Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? '#f4ede2' : '#ece2d2';
-  });
-  const WH = [9, 10, 11, 12, 13, 13, 14, 14][L - 1];
-  const TH = WH + 14 + 2 * L;             // alto de la torre del reloj (bien por encima del techo)
-  // --- cuerpo principal ---
-  const x0 = 7, x1 = 24, z0 = 8, z1 = 19;
-  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) for (let y = 1; y <= WH; y++) v.set(x, y, z, wall(x, y, z));
-  for (const [x, z] of [[x0, z1], [x1, z1], [x0, z0], [x1, z0]]) v.box(x, 1, z, 1, WH, 1, white);   // pilastras
-  for (let x = x0; x <= x1; x++) { v.set(x, WH, z1, trim); v.set(x, WH, z0, trim); }
-  for (let z = z0; z <= z1; z++) { v.set(x0, WH, z, trim); v.set(x1, WH, z, trim); }
-  // puerta y ventanas del frente
-  door(v, 'pz', z1, 14, 1, 4, 5, P.woodD, { frame: white, glass: true });
-  const rows = WH >= 11 ? [4, 8] : [4];
-  for (const y of rows) {
-    for (const u of [8, 11, 19, 22]) win(v, 'pz', z1, u, y, 2, 3, { arch: cream, archTop: white, shutters: L >= 3 ? P.mintD : null });
-    for (const u of [10, 14, 18]) { win(v, 'px', x1, u, y, 2, 3, { sill: white }); win(v, 'nx', x0, u, y, 2, 3, { sill: white }); }
-  }
-  let peak = hip(v, x0, x1, z0, z1, WH + 1, roofC, { oh: 1, trim: white });
-  // --- pórtico con columnas y frontón (nivel 2+) ---
-  if (L >= 2) {
-    v.box(11, 1, 20, 10, 1, 3, '#efe6d8');                 // escalinata
-    v.box(12, 0, 23, 8, 1, 1, '#e4d8c4');
-    for (const x of [11, 13, 18, 20]) v.box(x, 2, 21, 1, WH - 2, 1, white);
-    v.box(10, WH, 20, 12, 1, 3, trim);
-    gable(v, 'z', 10, 21, 20, 22, WH + 1, roofC, { oh: 0, wall: cream, trim: white });
-    pattern(v, 'pz', 22, 15, WH + 2, ['XX', 'XX'], L >= 4 ? gold : P.slate);  // escudito
-  } else {
-    awning(v, 'pz', z1, 13, 7, 6, P.clay, white, { depth: 1 });
-  }
-  // --- torre del reloj ---
-  const tx0 = 12, tx1 = 19, tz0 = 9, tz1 = 16;
-  for (let x = tx0; x <= tx1; x++) for (let z = tz0; z <= tz1; z++) for (let y = WH + 1; y <= TH; y++) {
-    const corner = (x === tx0 || x === tx1) && (z === tz0 || z === tz1);
-    v.set(x, y, z, corner ? white : (y % 4 === 0 ? creamB : cream));
-  }
-  for (let x = tx0 - 1; x <= tx1 + 1; x++) for (let z = tz0 - 1; z <= tz1 + 1; z++)
-    if (x === tx0 - 1 || x === tx1 + 1 || z === tz0 - 1 || z === tz1 + 1) v.set(x, TH, z, trim);
-  const ring = L >= 3 ? gold : white;
-  const CLOCK = ['..GGGG..', '.GWWWWG.', 'GWWWKWWG', 'GWWWKWWG', 'GWWWKKKG', 'GWWWWWWG', '.GWWWWG.', '..GGGG..'];
-  const cmap = { G: ring, W: '#fffaf0', K: P.ink };
-  pattern(v, 'pz', tz1, tx0, TH - 9, CLOCK, cmap, 1);
-  // costados: ventanales del campanario (un reloj por cara en la esquina parece una cara con ojos)
-  for (const [f, pl] of [['px', tx1], ['nx', tx0]]) {
-    win(v, f, pl, tz0 + 1, TH - 8, 2, 5, { arch: cream, archTop: ring, sill: white });
-    win(v, f, pl, tz0 + 5, TH - 8, 2, 5, { arch: cream, archTop: ring, sill: white });
-  }
-  for (const u of [13, 17]) win(v, 'pz', tz1, u, TH - 13, 2, 2, { sill: white });
-  // techo de la torre
-  let top;
-  if (L <= 2) top = hip(v, tx0, tx1, tz0, tz1, TH + 1, roofC, { oh: 1, trim: white });
-  else if (L >= 7) {
-    // Metrópolis: mirador con columnas sobre el reloj y una gran cúpula dorada con bandas
-    v.box(tx0, TH + 1, tz0, 8, 1, 8, gold);
-    for (const [cx, cz] of [[tx0, tz0], [tx1, tz0], [tx0, tz1], [tx1, tz1], [tx0, 12], [tx1, 12], [15, tz1], [15, tz0]]) v.box(cx, TH + 2, cz, 1, 4, 1, white);
-    v.box(tx0, TH + 6, tz0, 8, 1, 8, white);
-    m.light.set(15, TH + 3, 12, C.yellow); m.light.set(16, TH + 3, 13, C.yellow);   // farol encendido adentro
-    top = cone(v, 15.5, TH + 7, 12.5, 5.4, 10, gold, { trim: white, bands: 3 });
-  } else {
-    v.box(tx0, TH + 1, tz0, 8, 2, 8, white);
-    top = cone(v, 15.5, TH + 3, 12.5, 4.9, L >= 4 ? 7 : 6, L >= 5 ? gold : L >= 4 ? P.slate : roofC, { trim: gold, bands: L >= 4 ? 2 : 0 });
-  }
-  if (L >= 8) { v.box(15, top, 12, 1, 3, 1, gold); spinStar(m, 15, top + 5, 12, gold, 0.9); spinStar(m, 15, top + 5, 12, '#ffffff', -1.4); top += 9; }
-  else if (L >= 5) { v.set(15, top, 12, gold); spinStar(m, 15, top + 3, 12, gold, 1.1); top += 6; }
-  else { v.box(15, top + 1, 12, 1, 4, 1, white); v.set(15, top + 5, 12, gold); wavingFlag(m, 15, top + 2, 12, 4, 3, flag); top += 6; }
-  peak = Math.max(peak, top);
-  // --- alas laterales (nivel 3+) ---
-  if (L >= 3) for (const [ax0, ax1] of [[1, 6], [25, 30]]) {
-    const AH = L >= 6 ? WH - 1 : WH - 3;
-    for (let x = ax0; x <= ax1; x++) for (let z = 11; z <= 19; z++) for (let y = 1; y <= AH; y++) v.set(x, y, z, wall(x, y, z));
-    gable(v, 'z', ax0, ax1, 11, 19, AH + 1, roofC, { oh: 0, wall: cream, trim: white });
-    win(v, 'pz', 19, ax0 + 2, 4, 2, 3, { box: P.woodD, flowers: [P.berry, C.yellow, '#ffffff'] });
-    if (L >= 6) win(v, 'pz', 19, ax0 + 2, 8, 2, 2, { sill: gold });   // segundo piso en las alas
-  }
-  // --- plaza: sendero, canteros, faroles y fuente ---
-  for (let z = 23; z <= 31; z++) for (let x = 14; x <= 17; x++) v.set(x, 0, z, (x === 14 || x === 17) ? (L >= 4 ? gold : '#ddd5c8') : (x + z) % 2 ? '#fdf6e3' : '#efe4d0');
-  bush(v, 4, 1, 25, 1.6, C.leaf, [P.berry, '#ffffff'], 3);
-  bush(v, 27, 1, 25, 1.6, C.leaf, [P.clay, C.yellow], 4);
-  if (L <= 2) { smallTree(v, 3, 1, 14, 5, 2.2, C.leaf, 9, [P.berry]); smallTree(v, 28, 1, 14, 5, 2.2, C.leaf, 10, ['#ffffff']); }
-  flowerBed(v, 8, 1, 21, 2, 1, 12 + L); flowerBed(v, 22, 1, 21, 2, 1, 18 + L);
-  if (L >= 2) for (const x of [11, 20]) { v.box(x, 1, 26, 1, 4, 1, P.ink); m.light.set(x, 5, 26, C.yellow); v.set(x, 6, 26, P.ink); }
-  if (L >= 4) {
-    // fuente redonda en la plaza (a los costados del sendero)
-    for (const fx of [6.5, 25.5]) {
-      v.cylinder(fx, 1, 28, 2.6, 1, '#ddd5c8');
-      v.cylinder(fx, 1, 28, 1.7, 1, C.water);
-      v.box(Math.floor(fx), 2, 28, 1, 2, 1, '#ddd5c8');
-      v.set(Math.floor(fx), 4, 28, C.waterL);
-    }
-  }
-  if (L >= 5) {
-    for (let i = 0; i < 6; i++) sparkle(m, 4 + i * 5, WH + 4 + (i % 3) * 3, 22 - (i % 2) * 12, i % 2 ? P.goldL : '#ffffff', 2 + i * 0.3);
-    for (let x = 1; x <= 30; x++) if (x < 10 || x > 21) v.set(x, WH - 1, 20, RAINBOW[x % RAINBOW.length]);   // banderines
-  }
-  // Gran Ciudad (6+): torrecitas con cúpula dorada en las cuatro esquinas del techo y setos recortados en la plaza
-  if (L >= 6) {
-    for (const [cx, cz] of [[x0 + 0.5, z1 - 0.5], [x1 - 0.5, z1 - 0.5], [x0 + 0.5, z0 + 0.5], [x1 - 0.5, z0 + 0.5]]) {
-      v.cylinder(cx, WH + 1, cz, 1.9, 6, (x, y) => (y === WH + 4 ? gold : white));
-      const tt = cone(v, cx, WH + 7, cz, 2.7, 5, gold, { trim: white, bands: 1 });
-      v.set(Math.floor(cx), tt, Math.floor(cz), '#ffffff');
-      peak = Math.max(peak, tt);
-    }
-    for (const hx of [3, 9, 22, 28]) { v.box(hx - 1, 1, 22, 3, 2, 2, C.leafD); v.box(hx - 1, 3, 22, 3, 1, 2, C.leaf); v.set(hx, 4, 22, P.berry); }
-  }
-  // Metrópolis (7+): alfombra roja, faroles a lo largo del paseo y mástiles altos con banderas grandes
-  if (L >= 7) {
-    for (let z = 20; z <= 31; z++) for (const x of [15, 16]) v.set(x, z >= 23 ? 0 : 1, z, (z % 3) ? C.red : '#e04a5e');
-    for (const z of [24, 28]) for (const x of [12, 19]) { v.box(x, 1, z, 1, 5, 1, P.ink); v.set(x, 6, z, gold); m.light.set(x, 7, z, C.yellow); }
-    for (const fx of [2, 29]) {
-      v.box(fx, 1, 29, 1, 18, 1, white); v.set(fx, 19, 29, gold);
-      wavingFlag(m, fx, 14, 29, 6, 4, flag);
-    }
-  }
-  // Capital (8): arco dorado de entrada, ribete de luces en el techo y fuegos artificiales de brillitos
-  if (L >= 8) {
-    for (const ax of [11, 20]) { v.box(ax, 1, 30, 2, 10, 1, gold); v.box(ax, 0, 30, 2, 1, 1, P.goldD); }
-    v.box(11, 11, 30, 11, 2, 1, gold);
-    pattern(v, 'pz', 30, 14, 13, ['..X..', '.XXX.', 'XXXXX', '.X.X.'], '#ffffff');
-    m.light.set(16, 14, 31, C.yellow);
-    for (let x = x0; x <= x1; x += 3) { m.light.set(x, WH + 1, z1 + 1, C.yellow); m.light.set(x, WH + 1, z0 - 1, C.yellow); }
-    const FW = [P.goldL, P.berryL, '#ffffff', C.waterL, P.goldL, P.berryL, '#ffffff', C.yellow, P.slateL, P.goldL];
-    for (let i = 0; i < FW.length; i++) sparkle(m, 3 + (i * 7) % 27, TH + 4 + (i % 4) * 4, 4 + (i * 5) % 22, FW[i], 1.4 + i * 0.22);
-  }
-  m.height = peak + 1;
-}
+// La Municipalidad (id 'castillo') está en models-town.js: un modelo por rango atado a las épocas.
 
 // ======================= JOYERÍA MÁGICA =======================
 function joyeria(m, L) {
@@ -418,4 +281,4 @@ function boutiqueReal(m, L) {
   pattern(v, 'pz', z1, 6, ay1 + 2, ['X'], P.clay);
 }
 
-export const SPECIAL_BUILDERS = { castillo, joyeria, torre_bloques: torreBloques, garaje, pista, boutique_real: boutiqueReal };
+export const SPECIAL_BUILDERS = { joyeria, torre_bloques: torreBloques, garaje, pista, boutique_real: boutiqueReal };

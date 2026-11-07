@@ -1,7 +1,7 @@
 // Interfaz de la ciudad: menú Construir, ficha de edificio, castillo, expansión,
 // barra de colocación, botones flotantes y estilos (prefijo cx-).
 import { thumbnail } from '../city/models.js';
-import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL, RANK_REQ_LABELS, MONUMENTS } from '../core/data.js';
+import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL, RANK_REQ_LABELS, MONUMENTS, ERAS } from '../core/data.js';
 import { HOME_LEVELS, homeLevelDef, comfortInfo } from '../home/furniture.js';
 import { icon } from '../core/icons.js';
 import * as chests from '../chests/chests.js';
@@ -195,16 +195,16 @@ const thumbs = new Map();
 let thumbTheme = 'pueblo';
 /** Tema con el que se dibujan las miniaturas del menú (el de la ciudad). */
 export function setThumbTheme(t) { thumbTheme = t || 'pueblo'; }
-function thumbImg(id, level, cls = 'th') {
+function thumbImg(id, level, cls = 'th', era = 1) {
   const wrap = document.createElement('span');
   wrap.style.display = 'contents';
   const th = thumbTheme;
-  const key = id + ':' + level + ':' + th;
+  const key = id + ':' + level + ':' + era + ':' + th;
   const put = (url) => { wrap.innerHTML = `<img class="${cls}" src="${url}" alt="" draggable="false">`; };
   if (thumbs.has(key)) put(thumbs.get(key));
   else {
     wrap.innerHTML = icon('hammer', 36, 'ph');
-    Promise.resolve().then(() => thumbnail(id, level, th)).then(url => { if (!url) return; thumbs.set(key, url); put(url); }).catch(() => {});
+    Promise.resolve().then(() => thumbnail(id, level, era, th)).then(url => { if (!url) return; thumbs.set(key, url); put(url); }).catch(() => {});
   }
   return wrap;
 }
@@ -320,7 +320,7 @@ export function openBuildMenu(S, focusId = null) {
       const lockedHard = !can.ok && !isFree && (can.locked || can.reason === 'Ya lo tenés');
       const card = ui.h(`button.card.cx-card.cx-cat-${d.cat}` + (lockedHard ? '.locked' : '') + (can.poor && !isFree ? '.poor' : '') + (isFree ? '.cx-isfree' : '') + (d.id === focusId ? '.cx-focus' : ''));
       const th = ui.h('div.cx-thumb');
-      th.append(thumbImg(d.id, 1));
+      th.append(thumbImg(d.id, 1, 'th', E.cityEra()));
       if (qids.includes(d.id)) th.append(ui.h('span.cx-qbadge', {}, 'Misión'));
       if (d.max) th.append(ui.h('span.cx-count', {}, `${E.countOf(d.id)}/${d.max}`));
       if (showLock) th.append(ui.h('div.cx-lock', { html: `<span>${lockLabel(d, can, ctx)}</span>` }));
@@ -396,7 +396,7 @@ export function openInfo(S, uid) {
   function signature() {
     const now = Date.now();
     const ps = E.producerStatus(b, now);
-    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level, hammerCount(), masteryStars(), isCastle ? E.rankStatus().reqs.map(r => r.ok ? 1 : 0).join('') : ''].join('|');
+    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level, hammerCount(), masteryStars(), isCastle ? E.rankStatus().reqs.map(r => r.ok ? 1 : 0).join('') : '', b.era || 1, E.renovateInfo(b) ? E.canRenovate(b).ok : '-'].join('|');
   }
   function mastery() {
     if (typeof E.masteryInfo !== 'function' || !d.prod) return null;
@@ -412,7 +412,7 @@ export function openInfo(S, uid) {
     // ----- cabecera -----
     const head = ui.h('div.cx-ihead');
     const th = ui.h('div.cx-ithumb');
-    th.append(thumbImg(b.id, building ? 1 : b.level));
+    th.append(thumbImg(b.id, building ? 1 : b.level, 'th', E.buildingEra(b)));
     const meta = ui.h('div.cx-imeta');
     if (E.canUpgradeType(b)) {
       let st = '';
@@ -439,7 +439,7 @@ export function openInfo(S, uid) {
     if (busy) {
       const total = building ? d.time * 1000 : (E.upgradeInfo(b)?.time || 1) * 1000;
       const box = ui.h('div.cx-box.' + (building ? 'busy' : 'up'));
-      box.append(ui.h('h4', { html: icon('hammer', 20) + (building ? 'En construcción' : isMon ? `Etapa ${b.level + 1}: ${MONUMENTS[d.id].stageNames[b.level] || ''}` : isHome ? `Ampliando: ${HOME_LEVELS[b.level]?.name || ''}` : `Mejorando a nivel ${b.level + 1}`) }));
+      box.append(ui.h('h4', { html: icon('hammer', 20) + (building ? 'En construcción' : isMon ? `Etapa ${b.level + 1}: ${MONUMENTS[d.id].stageNames[b.level] || ''}` : isHome ? `Ampliando: ${HOME_LEVELS[b.level]?.name || ''}` : b.renovating ? `Renovando a ${ERAS[b.renovating - 1]?.name || ''}` : `Mejorando a nivel ${b.level + 1}`) }));
       refs.busyTime = ui.h('b');
       refs.busyBar = ui.h('div', { html: ui.progressHtml(0, building ? '' : 'xp') });
       box.append(ui.h('div.line', {}, ui.h('span.muted', {}, 'Falta'), refs.busyTime), refs.busyBar);
@@ -540,8 +540,12 @@ export function openInfo(S, uid) {
         else {
           if (d.prod?.coins) fx.push(`Producción ${E.fmtNum(ps.perCycle || 0)} → ${E.fmtNum(Math.round((ps.perCycle || 0) * (1 + 0.5 * b.level) / (1 + 0.5 * (b.level - 1))))}`);
           if (d.pop) fx.push(`Vecinos ${E.buildingPop(b)} → ${Math.round(d.pop * (1 + 0.4 * b.level))}`);
-          // adorno nuevo que se ve en la ciudad (models-kit.js: upgradeDressing)
-          const look = { 2: 'cantero de flores', 3: 'faroles encendidos y macetas', 4: 'mástil con bandera', 5: 'borde dorado y estrella girando' }[b.level + 1];
+          // lo que cambia a la vista: estructura por nivel (arte por época) o el adorno del respaldo (upgradeDressing)
+          const VERT = { madera: 'chimenea de piedra', piedra: 'torre de piedra', ladrillo: 'chimenea alta', hierro: 'tanque de agua', vidrio: 'antena' };
+          const eraId = ERAS[E.buildingEra(b) - 1]?.id;
+          const look = d.eraArt
+            ? { 2: d.cat === 'negocio' ? 'galería y depósito al costado' : 'un anexo al costado', 3: 'un piso más y otro techo', 4: `${VERT[eraId] || 'elemento alto'} y ventanas más grandes`, 5: d.cat === 'negocio' ? 'letrero iluminado y cerco' : 'remate en el techo y cerco' }[b.level + 1]
+            : { 2: 'cantero de flores', 3: 'faroles encendidos y macetas', 4: 'mástil con bandera', 5: 'borde dorado y estrella girando' }[b.level + 1];
           if (look && d.prod) fx.push(`Se le suma: ${look}`);
         }
         for (const f of fx) box.append(ui.h('div.line', { html: `<span>${icon('sparkle', 14)} ${f}</span>` }));
@@ -567,6 +571,26 @@ export function openInfo(S, uid) {
           m.close();
         }, !can.ok && !can.poor));
       }
+      body.append(box);
+    }
+
+    // ----- renovar a la época de la ciudad (DESIGN-CORE.md §4.1) -----
+    const ren = !busy && E.renovateInfo(b);
+    if (ren) {
+      const box = ui.h('div.cx-box.up');
+      const cr = E.canRenovate(b);
+      box.append(ui.h('h4', { html: icon('hammer', 20) + `Renovar a ${ui.esc(ren.name)}` }));
+      box.append(ui.h('div.line', { html: `<span>${icon('sparkle', 14)} Pasa de ${ui.esc(ERAS[E.buildingEra(b) - 1].name)} a ${ui.esc(ren.name)} y conserva el nivel ${b.level}</span>` }));
+      box.append(ui.h('div.line', { html: `<span class="cost">${ui.costHtml(ren.cost, 18)}</span><span class="muted">${icon('clock', 14)} ${E.fmtTime(ren.time)}</span>` }));
+      if (!cr.ok && cr.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(cr.mats ? 'monument' : 'info', 14) + (cr.mats ? 'Faltan materiales: se traen de las expediciones.' : ui.esc(cr.reason)) }));
+      box.append(btn('Renovar', 'second', 'hammer', () => {
+        const c = E.canRenovate(b);
+        if (!c.ok) { ctx.audio.sfx('error'); ui.toast(c.poor ? 'No te alcanza todavía' : c.reason, { icon: 'info' }); return; }
+        const res = E.startRenovate(b.uid);
+        if (res.error) { ctx.audio.sfx('error'); ui.toast(res.error); return; }
+        ctx.audio.sfx('build');
+        m.close();
+      }, !cr.ok && !cr.poor));
       body.append(box);
     }
 

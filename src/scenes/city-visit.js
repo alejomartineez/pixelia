@@ -270,7 +270,7 @@ export function createVisit(ctx) {
     if (e.model) { e.root.remove(e.model); e.model = null; }
     if (e.scaffold) { e.root.remove(e.scaffold); e.scaffold = null; }
     if (mode !== 'build') {
-      e.model = safeModel(() => buildingModel(b.id, b.level, { flagColor: vstate.city.flagColor, theme: vstate.city.theme }), [c.w, c.d]);
+      e.model = safeModel(() => buildingModel(b.id, b.level, { flagColor: vstate.city.flagColor, theme: vstate.city.theme, era: b.era }), [c.w, c.d]);
       e.model.rotation.y = b.rot * Math.PI / 2;
       e.root.add(e.model);
       e.height = e.model.userData.height || 1;

@@ -5,6 +5,7 @@ import { store } from './state.js';
 import {
   BUILDING_BY_ID, MAP_SIZE, START_LAND, LAND_STEP, MAX_EXPANSIONS, MAX_BUILDING_LEVEL,
   CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS, MONUMENTS, MONUMENT_IDS, MATERIAL_BY_ID,
+  eraOfRank, eraDef,
 } from './data.js';
 import { monumentComplete, monumentsDone, monumentBonus } from './monuments.js';
 import { HOME_LEVELS, comfortInfo } from '../home/furniture.js';
@@ -128,6 +129,7 @@ export function rankReqValue(key, state = S(), now = Date.now()) {
     case 'charm': return cityCharm(state, now);
     case 'shops': return shopKinds(state, now);
     case 'monuments': return monumentsDone(state, now);
+    case 'planos': return state.planos || 0;
     default: return 0;
   }
 }
@@ -139,7 +141,8 @@ export function rankStatus(state = S(), now = Date.now()) {
   const rank = townRank(state);
   const cur = rankDef(rank);
   const next = rank < TOWN_RANKS.length ? rankDef(rank + 1) : null;
-  const reqs = next ? Object.entries(next.req || {}).map(([key, need]) => {
+  // los planos cuentan cuando la partida ya los tiene (state.planos, Fase 2); antes, el expediente no los pide
+  const reqs = next ? Object.entries(next.req || {}).filter(([key]) => key !== 'planos' || hasPlanos(state)).map(([key, need]) => {
     const have = rankReqValue(key, state, now);
     return { key, have, need, ok: have >= need };
   }) : [];
@@ -152,6 +155,74 @@ export function rankStatus(state = S(), now = Date.now()) {
     levelOk: !!next && state.player.level >= next.reqLevel,
   };
 }
+const hasPlanos = (state) => typeof state.planos === 'number';
+/** Planos que pide la obra del próximo rango (0 si no pide o si la partida todavía no maneja planos). */
+export function rankPlanos(state = S()) {
+  const r = townRank(state);
+  const next = r < TOWN_RANKS.length ? rankDef(r + 1) : null;
+  return next && hasPlanos(state) ? (next.req?.planos || 0) : 0;
+}
+
+// ---------- Épocas (DESIGN-CORE.md §4) ----------
+/** Época actual de la ciudad (1..5): la del rango. Lo nuevo se construye en esta época. */
+export const cityEra = (state = S()) => eraOfRank(townRank(state));
+/** Época con la que se dibuja un edificio: la Municipalidad sigue al rango; el resto, b.era (1 si falta). */
+export function buildingEra(b) {
+  if (!b) return 1;
+  if (b.id === 'castillo') return eraOfRank(b.level);
+  return Math.max(1, Math.min(5, Math.round(b.era) || 1));
+}
+/** ¿Este edificio cambia con la época? (no: Municipalidad, Mi Casa, deco, caminos y monumentos). */
+export function hasEra(b) {
+  const d = def(b);
+  if (!d || d.id === 'castillo' || d.id === 'mi_casa') return false;
+  return !['deco', 'camino', 'monumento'].includes(d.cat);
+}
+/**
+ * Renovar a la época actual: {era, cost:{coins, mats}, time} o null si no hace falta.
+ * Monedas max(100, 0,4 × costo × época), materiales lote × tabla de la época, obra de 2 min × época. Conserva el nivel.
+ */
+export function renovateInfo(b, state = S()) {
+  if (!b || !hasEra(b)) return null;
+  const era = cityEra(state);
+  if (buildingEra(b) >= era) return null;
+  const d = def(b), [w, dd] = d.size, ed = eraDef(era);
+  const mats = {};
+  for (const [k, n] of Object.entries(ed.mats || {})) mats[k] = n * w * dd;
+  const cost = { coins: Math.max(100, Math.round(0.4 * (d.cost.coins || 0) * era)) };
+  if (Object.keys(mats).length) cost.mats = mats;
+  return { era, name: ed.name, cost, time: stageTime(120 * era, state) };
+}
+export function canRenovate(b, state = S(), now = Date.now()) {
+  const info = renovateInfo(b, state);
+  if (!info) return { ok: false, reason: 'Ya está en la época actual' };
+  if (isBusy(b, now)) return { ok: false, reason: 'Está en obra' };
+  if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
+  if (!store.hasMats(info.cost.mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
+  if (!store.canAfford(info.cost)) return { ok: false, reason: 'No te alcanza', poor: true };
+  return { ok: true };
+}
+/** Empieza la renovación (usa la obra de mejora: upgradeEnd + b.renovating = época destino). */
+export function startRenovate(uid, state = S()) {
+  const b = state.city.buildings.find(o => o.uid === uid);
+  if (!b) return { error: 'No existe' };
+  const can = canRenovate(b, state);
+  if (!can.ok) return { error: can.reason };
+  const info = renovateInfo(b, state);
+  collect(uid, state);
+  if (!store.spend(info.cost, 'renovate:' + b.id)) return { error: 'No te alcanza' };
+  b.renovating = info.era;
+  b.upgradeEnd = Date.now() + info.time * 1000;
+  store.markDirty();
+  bus.emit('building:upgradeStarted', { b, renovate: true });
+  return b;
+}
+/** Edificios de una época anterior a la de la ciudad (para el aviso después del cambio de época). */
+export function outdatedBuildings(state = S(), now = Date.now()) {
+  const era = cityEra(state);
+  return state.city.buildings.filter(b => hasEra(b) && !isConstructing(b, now) && !b.renovating && buildingEra(b) < era);
+}
+
 /** Constructoras que regalan los rangos alcanzados. */
 export const rankBuilders = (rank) => TOWN_RANKS.slice(0, rank).reduce((s, r) => s + (r.builders || 0), 0);
 /**
@@ -287,7 +358,7 @@ export function placeBuilding(id, x, z, rot = 0, state = S()) {
   if (can.free) { if (!consumeFreeBuild(id)) return { error: 'No te queda esa construcción gratis' }; }
   else if (!store.spend(placeCost(id, state), 'build:' + id)) return { error: 'No te alcanza' };
   const d = def(id);
-  const b = { uid: state.city.nextUid++, id, x, z, rot, level: 1, buildEnd: d.time > 0 ? now + stageTime(d.time, state) * 1000 : 0, upgradeEnd: 0, lastCollect: now };
+  const b = { uid: state.city.nextUid++, id, x, z, rot, level: 1, era: cityEra(state), buildEnd: d.time > 0 ? now + stageTime(d.time, state) * 1000 : 0, upgradeEnd: 0, lastCollect: now };
   state.city.buildings.push(b);
   store.markDirty();
   bus.emit('building:placed', { b, free: !!can.free });
@@ -491,6 +562,12 @@ export function startUpgrade(uid, state = S()) {
   // cobrar lo pendiente antes de pausar la producción
   collect(uid, state);
   if (!store.spend(info.cost, 'upgrade:' + b.id)) return { error: 'No te alcanza' };
+  // la obra de rango gasta los planos del expediente al empezar
+  const planos = b.id === 'castillo' ? rankPlanos(state) : 0;
+  if (planos > 0) {
+    state.planos = Math.max(0, state.planos - planos);
+    bus.emit('resources:changed', { key: 'planos', value: state.planos, delta: -planos, reason: 'rank' });
+  }
   b.upgradeEnd = Date.now() + info.time * 1000;
   store.markDirty();
   bus.emit('building:upgradeStarted', { b });
@@ -499,6 +576,16 @@ export function startUpgrade(uid, state = S()) {
 function finishUpgrade(b) {
   const end = b.upgradeEnd || Date.now();
   b.upgradeEnd = 0;
+  if (b.renovating) {          // renovación: cambia la época, conserva el nivel
+    const from = buildingEra(b);
+    b.era = b.renovating;
+    delete b.renovating;
+    b.lastCollect = Math.min(Date.now(), end);
+    store.inc('renovations');
+    store.addXp(Math.round((def(b).xp || 20) * 0.5 * b.era));
+    bus.emit('building:renovated', { b, era: b.era, from });
+    return;
+  }
   b.level++;
   b.lastCollect = Math.min(Date.now(), end);
   store.inc('upgrades');
@@ -508,7 +595,9 @@ function finishUpgrade(b) {
     const r = rankDef(b.level);
     if (r.reward) store.grant(r.reward, 'rank');
     syncRank();
-    bus.emit('town:rankup', { rank: b.level, def: r });
+    const from = eraOfRank(b.level - 1), era = eraOfRank(b.level);
+    bus.emit('town:rankup', { rank: b.level, def: r, era, eraChanged: era !== from });
+    if (era !== from) bus.emit('era:changed', { era, from });
   }
 }
 

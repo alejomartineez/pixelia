@@ -92,7 +92,7 @@ export default function create(ctx) {
     const mode = E.isConstructing(b, now) ? 'build' : E.isUpgrading(b, now) ? 'upgrade' : 'done';
     const c = footCenter(b.id, b.x, b.z, b.rot);
     if (e.root.position.x !== c.x || e.root.position.z !== c.z) { e.root.position.x = c.x; e.root.position.z = c.z; batch.markDirty(); }
-    if (!force && mode === e.mode && b.level === e.level && b.rot === e.rot) return false;
+    if (!force && mode === e.mode && b.level === e.level && b.rot === e.rot && (b.era || 1) === e.era) return false;
     batch.markDirty();
     if (e.model) { e.root.remove(e.model); e.model = null; }
     if (e.scaffold) { e.root.remove(e.scaffold); e.scaffold = null; }
@@ -101,7 +101,7 @@ export default function create(ctx) {
       e.root.add(e.scaffold);
       e.height = e.scaffold.userData.height || 0.8;
     } else {
-      e.model = safe(() => buildingModel(b.id, b.level, modelOpts()), [c.w, c.d]);
+      e.model = safe(() => buildingModel(b.id, b.level, { ...modelOpts(), era: b.era }), [c.w, c.d]);
       e.model.rotation.y = b.rot * Math.PI / 2;
       e.root.add(e.model);
       e.height = e.model.userData.height || 1;
@@ -111,7 +111,7 @@ export default function create(ctx) {
         e.height = Math.max(e.height, e.scaffold.userData.height || 0.8);
       }
     }
-    e.mode = mode; e.level = b.level; e.rot = b.rot;
+    e.mode = mode; e.level = b.level; e.rot = b.rot; e.era = b.era || 1;
     if (e.timer) e.timer.pos.copy(topPos(e, 0.1));
     if (e.bubble) e.bubble.pos.copy(topPos(e, 0.2));
     return true;
@@ -285,7 +285,7 @@ export default function create(ctx) {
     const movingB = p.uid != null ? entries.get(p.uid)?.b : null;
     const isCon = !!movingB && E.isConstructing(movingB);
     const fp = E.footprint(p.id, 0);
-    const model = isCon ? safe(() => constructionModel(...fp, themeId), fp) : safe(() => buildingModel(p.id, p.level, modelOpts()), fp);
+    const model = isCon ? safe(() => constructionModel(...fp, themeId), fp) : safe(() => buildingModel(p.id, p.level, { ...modelOpts(), era: movingB ? movingB.era : E.cityEra() }), fp);
     const mats = makeGhost(model, 0.62);
     const root = new THREE.Group();
     root.add(model);

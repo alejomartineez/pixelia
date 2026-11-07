@@ -5,19 +5,20 @@
 // Las geometrías se construyen una sola vez por id+nivel y se reusan en cada Group nuevo.
 import * as THREE from 'three';
 import { voxelMaterial, glowMaterial, addLights, setIsoCamera, Voxels, shade, outlineCanvas } from '../core/voxel.js';
-import { BUILDING_BY_ID, OUTFIT_COLORS, MONUMENTS } from '../core/data.js';
-import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS, upgradeDressing } from './models-kit.js';
+import { BUILDING_BY_ID, OUTFIT_COLORS, MONUMENTS, eraOfRank } from '../core/data.js';
+import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS, upgradeDressing, eraRecolor, clampEra } from './models-kit.js';
 import { SPECIAL_BUILDERS } from './models-special.js';
 import { HOUSE_BUILDERS } from './models-houses.js';
 import { SHOP_BUILDERS } from './models-shops.js';
 import { DECO_BUILDERS } from './models-deco.js';
 import { MONUMENT_BUILDERS } from './models-monuments.js';
 import { HOME_BUILDERS } from './models-home.js';
+import { TOWN_BUILDERS } from './models-town.js';
 import { DEFAULT_THEME, themeOf, mapColor, isGlass } from './themes.js';
 
 export const VOXELS_PER_TILE = 8;
 const S = 1 / VOXELS_PER_TILE;
-const BUILDERS = { ...SPECIAL_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS, ...HOME_BUILDERS };
+const BUILDERS = { ...SPECIAL_BUILDERS, ...TOWN_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS, ...HOME_BUILDERS };
 
 // ---------- Materiales ----------
 let _light = null, _ghost = null;
@@ -135,9 +136,12 @@ function meshAO(v, scale) {
 }
 
 // ---------- Compilación y caché ----------
-function compile(model, themeId = DEFAULT_THEME) {
-  calmColors(model.v); calmColors(model.glow);
-  for (const p of model.parts) calmColors(p.v);
+function compile(model, themeId = DEFAULT_THEME, o = {}) {
+  // el arte por época dibuja sus juntas y hiladas a propósito: no se "calma"
+  if (o.calm !== false) {
+    calmColors(model.v); calmColors(model.glow);
+    for (const p of model.parts) calmColors(p.v);
+  }
   applyTheme(model, themeId);
   const ox = model.W / 2, oz = model.D / 2;
   const parts = [];
@@ -191,19 +195,35 @@ function flagHex(c) {
   return OUTFIT_COLORS.find(o => o.id === c)?.hex || P.clay;
 }
 
+/**
+ * Época con la que se dibuja un edificio. La Municipalidad sigue al rango (su nivel); monumentos, deco, caminos y
+ * Mi Casa todavía no cambian con la época (tanda 3): valen 1 y comparten la caché.
+ */
+export function modelEra(id, level, era) {
+  if (id === 'castillo') return eraOfRank(level);
+  const def = BUILDING_BY_ID[id];
+  if (!def || id === 'mi_casa' || def.cat === 'deco' || def.cat === 'camino' || def.cat === 'monumento') return 1;
+  return clampEra(era);
+}
+
 function buildTemplate(id, level, opts, themeId) {
   const def = BUILDING_BY_ID[id];
   const W = (def ? def.size[0] : 1) * VOXELS_PER_TILE, D = (def ? def.size[1] : 1) * VOXELS_PER_TILE;
   const m = new Model(W, D);
   const fn = BUILDERS[id];
-  if (fn) fn(m, level, opts);
-  // casas y negocios mejorables: cada nivel suma algo bien visible (macetas, faroles, bandera, estrella dorada)
-  if (fn && def && (def.cat === 'casa' || def.cat === 'negocio') && def.prod) upgradeDressing(m, level, [...id].reduce((a, c) => a + c.charCodeAt(0), 0));
-  if (!fn) { // id desconocido: cajita neutra (no debería pasar)
+  const era = opts.era || 1;
+  const eraArt = !!(fn && def?.eraArt);
+  if (eraArt) fn(m, level, { era, flag: opts.flag });
+  else if (fn) {
+    fn(m, level, opts);
+    // respaldo: casas y negocios sin arte por época conservan los adornos por nivel; todos se recolorean con la época
+    if (def && (def.cat === 'casa' || def.cat === 'negocio') && def.prod) upgradeDressing(m, level, [...id].reduce((a, c) => a + c.charCodeAt(0), 0));
+    if (era > 1) eraRecolor(m, era);
+  } else { // id desconocido: cajita neutra (no debería pasar)
     m.v.box(1, 0, 1, W - 2, 6, D - 2, P.clayL);
     m.v.box(1, 6, 1, W - 2, 1, D - 2, P.clay);
   }
-  const tpl = compile(m, themeId);
+  const tpl = compile(m, themeId, { calm: !eraArt });
   // caminos: baldosa de 1 vóxel, su sombra no se ve y cuesta una pasada extra por baldosa
   if (def?.cat === 'camino') for (const p of tpl.parts) p.cast = false;
   return tpl;
@@ -212,16 +232,20 @@ function buildTemplate(id, level, opts, themeId) {
 /** Nivel máximo con modelo propio: la Municipalidad tiene uno por rango (8), los monumentos uno por etapa; el resto, 5. */
 const modelMaxLevel = (id) => (id === 'castillo' ? 8 : MONUMENTS[id] ? MONUMENTS[id].stages.length : 5);
 
-/** Modelo de un edificio del catálogo. opts: { flagColor (id de OUTFIT_COLORS o hex), ghost, theme } */
+/**
+ * Modelo de un edificio del catálogo. opts: { era (1..5, la de b.era; default 1), flagColor (id de OUTFIT_COLORS o hex),
+ * ghost, theme }. Caché por id|nivel|época|bandera|tema.
+ */
 export function buildingModel(id, level = 1, opts = {}) {
   const lv = Math.max(1, Math.min(modelMaxLevel(id), Math.round(level) || 1));
   const def = BUILDING_BY_ID[id];
   const flag = id === 'castillo' ? flagHex(opts.flagColor) : null;
   const th = themeOf(opts.theme).id;
-  const key = id + '|' + lv + (flag ? '|' + flag : '') + '|' + th;
+  const era = modelEra(id, lv, opts.era);
+  const key = id + '|' + lv + '|' + era + (flag ? '|' + flag : '') + '|' + th;
   let tpl = tplCache.get(key);
-  if (!tpl) { tpl = buildTemplate(id, lv, { flag }, th); tplCache.set(key, tpl); }
-  const g = instantiate(tpl, opts, { id, level: lv, size: def ? def.size.slice() : [1, 1] });
+  if (!tpl) { tpl = buildTemplate(id, lv, { flag, era }, th); tplCache.set(key, tpl); }
+  const g = instantiate(tpl, opts, { id, level: lv, era, size: def ? def.size.slice() : [1, 1] });
   g.name = 'building:' + id;
   return g;
 }
@@ -526,8 +550,8 @@ function thumbRig() {
   return T;
 }
 const _box = new THREE.Box3(), _v = new THREE.Vector3();
-function renderThumb(id, level, theme) {
-  return renderObjectThumb(buildingModel(id, level, { theme }));
+function renderThumb(id, level, theme, era = 1) {
+  return renderObjectThumb(buildingModel(id, level, { theme, era }));
 }
 /** Miniatura de cualquier objeto armado con voxelModel (muebles de Mi Casa). Promise<dataURL>, cacheada por key. */
 export function objectThumbnail(key, make) {
@@ -583,16 +607,21 @@ function fallbackThumb(id) {
   g.fillRect(20, 30, 56, 46); g.fillStyle = '#3d2f2a'; g.fillRect(20, 26, 56, 4);
   return cv.toDataURL();
 }
-/** Ícono 288x288 del edificio (dataURL), cacheado. theme: id de tema de ciudad (default pastel). */
-export function thumbnail(id, level = 1, theme = DEFAULT_THEME) {
+/**
+ * Ícono 288x288 del edificio (dataURL), cacheado. thumbnail(id, level, era = 1, theme) — por compatibilidad también
+ * thumbnail(id, level, theme, era) (si el tercero es texto es el tema).
+ */
+export function thumbnail(id, level = 1, a = 1, b) {
+  const [eraIn, theme] = typeof a === 'string' ? [b ?? 1, a] : [a ?? 1, b ?? DEFAULT_THEME];
   const lv = Math.max(1, Math.min(modelMaxLevel(id), Math.round(level) || 1));
   const th = themeOf(theme).id;
-  const k = id + '|' + lv + '|' + th;
+  const era = modelEra(id, lv, eraIn);
+  const k = id + '|' + lv + '|' + era + '|' + th;
   let p = thumbCache.get(k);
   if (p) return p;
   p = thumbQueue = thumbQueue.then(() => new Promise(res => {
     // cederle el hilo al juego entre miniaturas
-    const run = () => { try { res(renderThumb(id, lv, th)); } catch (e) { console.warn('miniatura', id, e); res(fallbackThumb(id)); } };
+    const run = () => { try { res(renderThumb(id, lv, th, era)); } catch (e) { console.warn('miniatura', id, e); res(fallbackThumb(id)); } };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 120 }); else setTimeout(run, 0);
   }));
   thumbCache.set(k, p);
