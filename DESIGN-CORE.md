@@ -63,8 +63,9 @@ El mapa se genera con semilla desde la región y la zona, así que es infinito; 
 | | Salida normal | Salida corta (gratis, 1 por día) |
 |---|---|---|
 | Grilla | 7 × 9 | 5 × 6 |
-| Provisiones | las del depósito de la ciudad: se llevan `min(provMax, depósito)`; **mínimo 12** para poder salir | 10 fijas ("la vianda"), no salen del depósito |
-| Objetivo | a profundidad ≥ 7 | a profundidad 4–5 |
+| Provisiones | las del depósito de la ciudad: se llevan `min(provMax, depósito)`; **mínimo 12** para poder salir | 12 fijas ("la vianda"), no salen del depósito |
+| Carga | la del grupo (§2.4) | la mitad ("la mochila chica"), redondeando para arriba |
+| Objetivo | a profundidad 7–8 (+1 cada 2 zonas) | a profundidad 4–5 |
 | Avanza la zona | sí (si cumple el objetivo) | no |
 | Lo que sobra | las provisiones que sobran **vuelven al depósito** | lo que sobra se pierde |
 | Reinicio | — | a medianoche local (`todayStr()`); no se acumula |
@@ -88,9 +89,10 @@ adentro (hasta dónde ir), no en un formulario.
   | Roca | `roca` | 3 | 2 |
 
 - **Niebla**: se ve todo lo que está a distancia Manhattan ≤ **visión** de alguna casilla visitada. Visión 1; con
-  Exploración en el grupo, 2. El **mirador** revela radio 3 a su alrededor (4 con Exploración nivel 3+).
+  Exploración en el grupo, 2. El **mirador** revela un cuadrado de radio 3 a su alrededor (7×7; 4 con Exploración nivel 3+).
+  La zona del objetivo se ve desde el principio: un cuadrado de 3×3 marcado en dorado que lo contiene.
   Una casilla vista muestra terreno y qué hay; una no vista muestra solo niebla.
-- **Cansancio del camino**: cada 6 pasos el grupo pierde 1 de ánimo ("el camino cansa").
+- **Cansancio del camino**: cada 5 pasos el grupo pierde 1 de ánimo ("el camino cansa").
 
 ### 2.3 Grupo y roles
 - Tu personaje lidera (sin habilidad propia) y suma de 1 a 3 integrantes, **uno por rol** (no se repiten roles).
@@ -109,13 +111,14 @@ adentro (hasta dónde ir), no en un formulario.
 - **Cansados**: si la salida fracasa (§2.7), los integrantes que fueron quedan cansados y no se pueden llevar por
   `120 − 20 × nivel del Dispensario` minutos (120 sin Dispensario, 20 con nivel 5). Nunca se pierde a nadie.
   Se ve en la ficha del grupo: "Descansando: 1 h 20 min".
-- Prototipo (Fase 1): 3 roles fijos en nivel 1 (Exploración, Ingeniería, Sanidad), grupo de 3, sin ciudad.
+- Prototipo (Fase 1): 3 roles fijos en nivel 1 (Exploración, Ingeniería, Sanidad), grupo de 3, sin ciudad, 24 provisiones
+  y carga 15 (lo de una Casa nivel 3 y un Establo nivel 3). `EXP.prototype` en `exp-data.js`.
 
 ### 2.4 Provisiones, ánimo y carga
 | | Valor inicial | Cambia con |
 |---|---|---|
-| **Provisiones** (`prov`) | salida normal: `provMax` = 15 / 18 / 21 / 24 / 27 según la Casa de Expediciones; corta: 10 | cada paso gasta el costo del terreno; algunos peligros y opciones gastan |
-| **Ánimo** (`morale`) | 10 (12 con Sanidad), empieza lleno | peligros fallados −2/−3; cansancio −1 cada 6 pasos; campamento +4 (+2 con Sanidad); botiquín +3 |
+| **Provisiones** (`prov`) | salida normal: `provMax` = 18 / 21 / 24 / 27 / 30 según la Casa de Expediciones; corta: 12 | cada paso gasta el costo del terreno; algunos peligros y opciones gastan |
+| **Ánimo** (`morale`) | 8 (10 con Sanidad), empieza lleno | peligros fallados −2/−3; cansancio −1 cada 5 pasos; imprevistos −1; campamento +3 (+2 con Sanidad); botiquín +3 |
 | **Carga** (`cargoMax`) | `6 + 3 × nivel del Establo` (6 sin Establo, 21 con nivel 5); Carreta +4 | cada unidad de material ocupa 1; **planos, hallazgos y colonos no ocupan carga** |
 
 Si un recurso no entra en la carga, queda en la casilla y se puede volver a buscarlo o soltar otra cosa ("Soltar 1 de madera").
@@ -126,32 +129,44 @@ Contenido (`content`) de cada casilla:
 | id | Qué es | Qué pasa al entrar |
 |---|---|---|
 | `vacio` | nada para hacer | — |
-| `recurso` | madera, piedra, mineral o hierbas (`sub`) | se junta solo: cerca 2, medio 3, lejos 4 (+ Recolección, + `floor((tier−1)/2)` de la región) |
+| `recurso` | madera, piedra, mineral o hierbas (`sub`) | se junta solo: cerca 2, medio 2, lejos 3 (+ Recolección, + `floor((tier−1)/2)` de la región) |
 | `ruina` | restos viejos | decisión (§2.6); botín de ruina |
-| `campamento` | lugar para descansar | "Descansar": +4 de ánimo (+2 con Sanidad), una vez |
-| `aldea` | gente de la zona | una opción a elegir: **Comerciar** (2 materiales → 3 provisiones; 4 con Encanto ≥ 3★), **Sumar colonos** (+1 colono; +2 con Encanto ≥ 4★) o **Pedir indicaciones** (revela el objetivo y +1 de ánimo) |
-| `mirador` | punto alto | revela radio 3 (4 con Exploración nivel 3+) |
+| `campamento` | lugar para descansar | "Descansar": +3 de ánimo (+2 con Sanidad), una vez (o "Seguir de largo" y guardarlo) |
+| `aldea` | gente de la zona | una opción a elegir: **Comerciar** (2 materiales → 3 provisiones; 4 con Encanto ≥ 3★), **Sumar gente** (+1 colono; +2 con Encanto ≥ 4★), **Pedir indicaciones** (revela la casilla del objetivo o, si es de juntar, un radio 3 alrededor; +1 de ánimo; no aparece con el objetivo ya cumplido) o **Más tarde** |
+| `mirador` | punto alto | revela un cuadrado de radio 3 (4 con Exploración nivel 3+) |
 | `peligro` | río crecido, derrumbe, tormenta o lobos (`sub`) | decisión (§2.6) |
 | `objetivo` | el lugar de la misión de la salida | "Explorar": botín de objetivo y ★ de objetivo |
 
 **Generación** (`exp-gen.js`, determinista con semilla):
 1. Terreno por casilla con los pesos de la región; las casillas de profundidad 1 son siempre `llano`.
-2. Lugares garantizados: 1 `objetivo` (profundidad ≥ 7 en la normal, 4–5 en la corta), 1 `campamento` en el anillo medio,
+2. Lugares garantizados: 1 `objetivo` (profundidad 7–8 en la normal, 4–5 en la corta), 1 `campamento` en el anillo medio,
    1 `mirador` en profundidad 3–6. Las casillas de profundidad 1 solo pueden ser `vacio` o `recurso`.
+   **Barrera** (solo salida normal): con la chance de la región (`REGIONS[].barrier`: Bosque 75%, Sierras 60%, Bañado 90%,
+   Cerro 60%, Costa 50%) una fila entera entre la base y el objetivo (fila 3–5) es un río (un derrumbe largo en Sierras y
+   Cerro) con **un solo vado** libre. Casi toda salida tiene así una decisión con número o un rodeo que se paga en pasos;
+   en el diorama se ve un río que cruza el mapa.
 3. El resto se tira con la tabla de la región, aplicando el anillo: `peligro` ×0,6 / ×1 / ×1,4 y `ruina` ×0,5 / ×1 / ×1,5
    (cerca / medio / lejos); la diferencia la absorbe `vacio`.
-4. Validez: tiene que haber un camino de la base al objetivo que cueste ≤ 10 provisiones sin contar peligros (≤ 6 en la
+4. Validez: tiene que haber un camino de la base al objetivo que cueste ≤ 9 provisiones sin contar peligros (≤ 6 en la
    corta). Si no, se re-tira el terreno (hasta 20 veces) y después se allana el camino más corto.
 
 **Tabla de contenido por región** (%; suma 100):
 
 | Región | vacío | recurso | ruina | campamento | aldea | mirador | peligro |
 |---|---|---|---|---|---|---|---|
-| Bosque del Arroyo | 30 | 30 | 8 | 4 | 3 | 3 | 22 |
-| Sierras Bajas | 25 | 30 | 10 | 4 | 3 | 5 | 23 |
-| Bañado de los Juncos | 25 | 30 | 10 | 4 | 4 | 2 | 25 |
-| Cerro del Hierro | 22 | 32 | 10 | 4 | 2 | 4 | 26 |
-| Costa de los Faros | 24 | 26 | 14 | 4 | 4 | 4 | 24 |
+| Bosque del Arroyo | 38 | 24 | 8 | 2 | 3 | 3 | 22 |
+| Sierras Bajas | 33 | 24 | 10 | 2 | 3 | 5 | 23 |
+| Bañado de los Juncos | 33 | 24 | 10 | 2 | 4 | 2 | 25 |
+| Cerro del Hierro | 30 | 26 | 10 | 2 | 2 | 4 | 26 |
+| Costa de los Faros | 32 | 20 | 14 | 2 | 4 | 4 | 24 |
+
+(Fase 1: recurso −6 y campamento −2 respecto de la propuesta, a vacío: con más, la carga se llenaba sola y el ánimo no
+pesaba.)
+
+**Imprevistos**: al pisar por primera vez una casilla del anillo medio (10%) o lejano (25%) puede pasar algo chico:
+−1 provisión ("Se rompió una bolsa de la vianda", "No había vado…"), −1 de ánimo ("Una ampolla…") o las dos ("Niebla
+cerrada…"). El regreso se conoce de antemano; lo de allá lejos no: es lo que hace que ir justo al límite sea un riesgo
+(`EXP.mishap`, `EXP.mishaps`).
 
 **Qué recurso y qué peligro** (% dentro de `recurso` y de `peligro`), y terreno:
 
@@ -176,23 +191,27 @@ p = base + rol (si el rol está en el grupo: bono + 3 × (nivel − 1)) + equipo
 ```
 
 La línea de detalle dice de dónde sale ("50 base · +25 Ingeniería · +15 Cuerda · −3 zona 2"). **Retroceder** siempre
-está y es gratis: volvés a la casilla anterior y el peligro sigue ahí sin resolver. Resuelto (bien o mal), el peligro
-desaparece y quedás en la casilla.
+está y es gratis: la tarjeta se abre antes de dar el paso, así que no se paga nada y el peligro sigue ahí sin resolver.
+Al elegir una opción se paga el paso (terreno) más el costo de la opción. Resuelto (bien o mal), el peligro desaparece y
+quedás en la casilla: **fallar no frena**, lo que cuesta es ánimo y provisiones.
+**Con cuidado**: después de fallar una opción arriesgada, la próxima tiene +10, a la vista en la línea de detalle ("+10 con
+cuidado"); se gasta al usarla (`EXP.care`). Es la red para las rachas: con los números a la vista, tres fallos seguidos al
+75–85% se sienten injustos aunque sean honestos (pasó jugando el prototipo).
 
 | Peligro | Opción | Base | Rol | Equipo | Si sale bien | Si sale mal |
 |---|---|---|---|---|---|---|
-| Río crecido (`rio`) | Cruzar | 50 | Ingeniería +25 | Cuerda +15 | pasás | −2 ánimo y el agua se lleva 1 material al azar |
-| | Rodear | 100 | — | — | cuesta 3 provisiones (2 con Guía) | — |
-| Derrumbe (`derrumbe`) | Despejar | 45 | Ingeniería +30 | Pala +15 | pasás y +1 piedra | −3 ánimo |
-| | Trepar | 60 | Guía +20 | Cuerda +10 | pasás | −2 ánimo |
-| Tormenta (`tormenta`) | Seguir | 55 | Guía +20 | Lona +20 | pasás | −2 ánimo y −1 provisión |
+| Río crecido (`rio`) | Cruzar | 50 | Ingeniería +25 | Cuerda +15 | pasás | −2 ánimo, −1 provisión y el agua se lleva 1 material al azar |
+| | Rodear | 100 | — | — | cuesta 2 provisiones (1 con Guía) | — |
+| Derrumbe (`derrumbe`) | Despejar | 45 | Ingeniería +30 | Pala +15 | pasás y +1 piedra | −2 ánimo y −2 provisiones |
+| | Trepar | 60 | Guía +20 | Cuerda +10 | pasás | −2 ánimo y −1 provisión |
+| Tormenta (`tormenta`) | Seguir | 55 | Guía +20 | Lona +20 | pasás | −2 ánimo y −2 provisiones |
 | | Esperar | 100 | — | Lona: cuesta 1 menos | cuesta 2 provisiones | — |
 | Lobos (`lobos`) | Pasar en silencio | 50 | Exploración +25 | — | pasás | −3 ánimo y −2 provisiones |
 | | Espantar con fuego | 85 | — | pide Farol, o 1 madera de la carga | pasás | −2 ánimo |
-| Ruina (`ruina`) | Revisar a fondo | 70 | Exploración +15 | Pala +10 | botín de ruina completo | −2 ánimo y botín chico |
+| Ruina (`ruina`) | Revisar a fondo | 70 | Exploración +15 | Pala +10 | botín de ruina completo | −2 ánimo, −1 provisión y botín chico |
 | | Mirar por arriba | 100 | — | — | botín chico | — |
 
-- **Botín de ruina completo**: 2 materiales de la región + hallazgo 60% + plano con chance 5% / 15% / 30% (cerca / medio / lejos).
+- **Botín de ruina completo**: 2 materiales de la región + hallazgo 60% + plano con chance 10% / 25% / 40% (cerca / medio / lejos).
   **Botín chico**: 1 material + hallazgo 20%.
 - **Hallazgos**: estrellas según el anillo: cerca 1–2★, medio 1–3★, lejos 2–5★.
 - **Hallazgos de la región**: cada set de Hallazgos completo de una región suma +5 a todas las decisiones en esa región.
@@ -213,14 +232,17 @@ está lejos.
 ### 2.8 Estrellas y botín
 Tres estrellas independientes (no hace falta una para la otra):
 1. **Objetivo**: llegaste al objetivo y elegiste "Explorar" (o, si es de juntar, volviste con lo pedido).
-2. **Carga**: volviste con ≥ 75% de la carga máxima ocupada.
-3. **Todos bien**: no fracasaste y volviste con ánimo ≥ 3.
+2. **Carga llena**: volviste con la carga completa (`EXP.cargoStar` = 1). Con "≥ 75%" salía casi sola; "llena" se
+   entiende sin explicación y es la que empuja a seguir un poco más.
+3. **Todos bien**: no fracasaste y volviste con ánimo ≥ 4.
 
 Tipos de objetivo (`objective.type`), uno por salida:
 - `lugar`: "Encontrá la mina vieja" / "el aserradero abandonado". Al explorar: 3 materiales + hallazgo ≥ 2★ y, si la zona
   es 3 o más, 1 plano.
-- `juntar`: "Traé 8 de piedra" (N = 6 + zona). Se cumple al volver con N de ese material.
+- `juntar`: "Traé 5 de piedra" (N = 4 + ⌈zona / 2⌉ en la normal, 2 + ⌈zona / 2⌉ en la corta; el material es uno de los
+  fuertes de la región). Se cumple al volver con N de ese material.
 - `aldea`: "Llegá a la aldea perdida". Al llegar: +2 colonos y una opción de aldea gratis.
+- Pesos: `lugar` 50, `juntar` 25, `aldea` 25 (`EXP.objectiveWeights`).
 
 Premios extra al volver: 1 gema por cada salida de 3★; cofre de madera 25% en salida de 3★ (es la única fuente de cofres de
 la expedición). **La expedición no da monedas**: las monedas siguen saliendo de la ciudad.
@@ -255,10 +277,13 @@ Botín esperado (meta de calibración, §8): salida normal 8–14 materiales, 0,
   (`cloudModel`); el grupo es el `avatarModel` de quien lidera más figuras chicas por rol.
 - Tocar una casilla vecina = moverse (se marca el costo arriba de cada vecina alcanzable; las que no alcanzan, grises).
   En PC: clic o flechas/WASD; Esc = menú (Volver / Seguir).
-- Barra de abajo: provisiones, ánimo, carga (`6/12`), botón **Volver · N** siempre visible. Arriba: objetivo y región.
+- Arriba: barra con provisiones, ánimo (`8/10`) y carga (`6/15`), y debajo el objetivo y la región. Abajo: botón
+  **Volver · N provisiones** siempre visible (en rojo "faltan N" si no alcanza; volver igual pide confirmación porque es
+  fracaso). Sobre cada vecina, un rótulo con su costo; en rojo "sin vuelta" si ese paso deja sin provisiones para volver.
 - Decisión: hoja desde abajo con las opciones, el % grande y la línea de detalle.
 - Resultado: modal con estrellas, la carga, "Lo que trajeron" y, si corresponde, "La zona 2 quedó explorada" y
-  "Falta 1 zona para ampliar el terreno". Sin confeti (es un momento chico); confeti solo si abre terreno o región.
+  "Falta 1 zona para ampliar el terreno". Sin confeti en el resultado: el festejo grande es al cumplir el objetivo, en el
+  diorama, y (Fase 2) al abrir terreno o región.
 
 ### 2.11 Contrato del módulo `src/expedition/`
 | Archivo | Fase | Qué es |
@@ -287,7 +312,13 @@ export function useItem(run, id)     // botiquín, "Atender" de Sanidad, soltar 
 export function goHome(run)          // → { result }  (termina la salida)
 export function result(run)          // → { stars:[bool,bool,bool], starCount, loot:{ mats, planos, finds:[{stars}], colonos }, reason, steps, objectiveDone }
 //   reason: 'volvio' | 'sin_provisiones' | 'sin_animo'
-// eventos: { type: 'step'|'reveal'|'loot'|'decision'|'morale'|'camp'|'objective'|'end', ... } (la escena los anima en orden)
+// eventos: { type: 'step'|'reveal'|'loot'|'decision'|'morale'|'prov'|'camp'|'objective'|'end', ... } (la escena los anima en orden)
+//   y además: 'outcome' {hazard, option, p, outcome, text} · 'mishap' {id, text} · 'mirador' · 'hint' (indicaciones)
+//   · 'lose'/'spend'/'drop' {mats} · 'back' (retroceder) · 'skip' · 'village' {option}
+// extras: returnCostFrom(run, x, y), optionChance(run, hz, opt), stepCost(run, cell), cloneRun(run) (para el simulador)
+// run.pending = { kind: 'peligro'|'ruina'|'campamento'|'aldea', at: 'enter'|'here', x, y, step, options:[{ id, label, p, sure,
+//   detail, prov, mats, can, why, ok, fail }] }   ('enter' = todavía no se dio el paso: Retroceder es gratis)
+// result(run) suma: provLeft (vuelve al depósito en la normal), cargoN, cargoMax, morale, value, gems (1 si 3★), chest (25% si 3★)
 ```
 
 ```js
@@ -587,7 +618,7 @@ Fabricar es al instante (sin cola) en esta versión.
 
 | id | Nombre | Tamaño | Rango | Máx. | Efecto por nivel (1 → 5) |
 |---|---|---|---|---|---|
-| `casa_exp` | Casa de Expediciones | 3×3 | 1 | 1 | lugares 2/2/3/3/4 · `provMax` 15/18/21/24/27 · Exploración = nivel · depósito +20 por nivel · niveles 4 y 5 piden 2 y 4 planos |
+| `casa_exp` | Casa de Expediciones | 3×3 | 1 | 1 | lugares 2/2/3/3/4 · `provMax` 18/21/24/27/30 · Exploración = nivel · depósito +20 por nivel · niveles 4 y 5 piden 2 y 4 planos |
 | `taller` | Taller | 2×2 | 1 | 1 | Ingeniería = nivel · equipo por salida 1/1/2/2/3 · reservas desde el rango Caserío |
 | `establo` | Establo | 3×3 | 1 | 1 | Guía = nivel · carga +3 por nivel · Carreta desde nivel 2 |
 | `dispensario` | Dispensario | 2×2 | 2 | 1 | Sanidad = nivel · cansancio 100/80/60/40/20 min |
@@ -762,7 +793,23 @@ diga otra cosa, y `tools/sim-expedition.mjs` (Fase 1) con bots. Cada meta tiene 
   - **codicioso** (vuelve recién cuando no le alcanza para otro paso): fracasa 30–50%;
   - **medio**: 3★ en 25–40%;
   - salida normal de 12 a 25 pasos (≈ 3–6 min a 10–15 s por paso); botín 8–14 materiales, 0,4–0,8 planos y 0,8–1,5
-    hallazgos.
+    hallazgos;
+  - "seguir" (jugar como el codicioso desde ahí) rinde más que "volver" en 25–65% de las vueltas voluntarias del prudente
+    y el medio: si fuera casi siempre o casi nunca, la decisión sería obvia.
+- **Resultado de la Fase 1** (prototipo: Bosque, zona 1, Exploración + Ingeniería + Sanidad en nivel 1, 24 provisiones,
+  carga 15; `node tools/sim-expedition.mjs --only proto --n 1000`): prudente fracasa 0% y cumple el objetivo 82%; medio 3★
+  36%; codicioso fracasa 15%; 14,8 pasos (p10–p90: 11–20); 12,2 materiales, 0,44 planos y 1,34 hallazgos; seguir > volver
+  en 38%. Dos metas de partida quedan afuera, y se aceptan así:
+  - *prudente ≥ 85%*: el bot pierde provisiones paseando por la niebla antes de ubicar la casilla del objetivo; una persona
+    va derecho a la zona dorada (jugando a mano, el objetivo se encontró en todas las salidas).
+  - *codicioso 30–50%*: el regreso se ve siempre ("Volver · 3", "sin vuelta" en rojo), así que quien apura con cuidado solo
+    fracasa por los dados (imprevistos y peligros fallados al final). Llevarlo a 30% pedía tanta suerte en contra que el
+    juego prudente también se sentía al azar. Con menos ayudas (sin Sanidad, regiones de tier 3+) sube solo a 35–55%,
+    casi todo "sin ánimo". Meta efectiva: **15–35% en el prototipo**. El codicioso trae ~10% más valor que el medio:
+    apurar paga, pero con varianza.
+  - Corta (`--kind corta`): prudente cumple 87%, medio 3★ 22%, 8 pasos.
+  - Roles: sin nadie, 3★ 9%; con Exploración sola, 29%; con los 3 del prototipo, 40%. El nivel del rol mueve poco (+3 por
+    nivel): la Fase 2 puede querer subirlo (p. ej. +5) para que mejorar el edificio se note en las decisiones.
 
 **Amenazas**
 - La sim que juega normal llega a la amenaza con preparación ≥ 70%; la resolución automática da 75–95%; ≤ 2 edificios

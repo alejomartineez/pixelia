@@ -29,6 +29,7 @@ const SCENES = {
   parking: () => import('./games/parking.js'),
   driving: () => import('./games/driving.js'),
   home: () => import('./scenes/home.js'),   // Mi Casa por dentro (también la de una amistad: {visit})
+  expedition: () => import('./expedition/exp-scene.js'),   // Expedición (DESIGN-CORE.md §2; prototipo de la Fase 1)
 };
 
 const sceneEl = document.getElementById('scene');
