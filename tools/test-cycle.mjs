@@ -315,6 +315,8 @@ try {
   // ===================================================================
   section('Salida a medias: recargar y retomar');
   await run(`store.grant({ prov: 20 }, 'test'); return true;`);
+  // después de ampliar el terreno el HUD vuelve cuando termina la animación (con la máquina cargada tarda)
+  await waitFor(`!!document.querySelector('[data-act="expedition"]')`, 8000);
   await tapSel('[data-act="expedition"]');
   await waitFor(`!!document.querySelector('.modal.pnl-ex [data-ex-go="normal"]:not(:disabled)')`, 5000);
   await tapSel('.modal.pnl-ex [data-ex-go="normal"]');
