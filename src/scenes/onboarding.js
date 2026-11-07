@@ -12,10 +12,10 @@ import { buildPlatform, thumbnail, hasThumb, disposeThumbs } from '../avatar/war
 const NAMES = {
   fem: ['Luna', 'Mora', 'Olivia', 'Nina', 'Emma', 'Sofi', 'Cami', 'Abril', 'Lola', 'Pilar', 'Uma', 'Juli'],
   masc: ['Tomi', 'Bruno', 'Simón', 'Benja', 'Joaco', 'Santi', 'Felipe', 'Teo', 'Lautaro', 'Nico', 'Lucas', 'Gael'],
-  animal: ['Pipo', 'Kiki', 'Nube', 'Copito', 'Canela', 'Mostaza', 'Rulo', 'Miel', 'Bombón', 'Chispa', 'Pompón', 'Tofu'],
+  animal: ['Pipo', 'Kiki', 'Nube', 'Pancho', 'Canela', 'Mostaza', 'Rulo', 'Miel', 'Rocco', 'Chispa', 'Mate', 'Tofu'],
 };
-const CITY_NAMES = ['Villa Frutilla', 'Ciudad Arcoíris', 'Pueblo Nube', 'Bahía Caramelo', 'Valle Brillante', 'Pixelandia',
-  'Monte Algodón', 'Puerto Estrella', 'Villa Merengue', 'Ciudad Burbuja', 'Lomas del Sol', 'Bosque Confite'];
+const CITY_NAMES = ['Villa del Lago', 'Puerto Sereno', 'Las Acacias', 'Bahía Mansa', 'Valle Viejo', 'Pixelandia',
+  'Los Álamos', 'Puerto Piedra', 'San Pixel', 'Cerro Chato', 'Lomas del Sol', 'Paso Hondo'];
 const COLOR_NAMES = {
   castano: 'Castaño', negro: 'Negro', rubio: 'Rubio', pelirrojo: 'Colorado', rosa: 'Rosa', lila: 'Lila', celeste: 'Celeste',
   menta: 'Menta', blanco: 'Blanco', chocolate: 'Chocolate', gris: 'Gris', fucsia: 'Fucsia', violeta: 'Violeta', azul: 'Azul',
@@ -91,9 +91,10 @@ export default function create(ctx) {
 
   const S = () => store.state;
   const look = normalizeLook(S().avatar);
-  // partida nueva: el personaje arranca al azar (no siempre el mismo) con su look inicial
+  // partida nueva: el personaje arranca con un tipo de "Gente" al azar (los animales quedan como opción en la lista)
   if (JSON.stringify(look) === JSON.stringify(normalizeLook({ ...avatarType(look.type).look, type: look.type }))) {
-    const ty = AVATAR_TYPES[Math.floor(Math.random() * AVATAR_TYPES.length)];
+    const people = AVATAR_TYPES.filter(t => t.family === 'casual');
+    const ty = people[Math.floor(Math.random() * people.length)];
     Object.assign(look, normalizeLook({ ...ty.look, type: ty.id }));
   }
   // colores que tocó el jugador (se conservan al cambiar de tipo; los demás vienen del look del tipo)
@@ -231,7 +232,7 @@ export default function create(ctx) {
     const t = avatarType(look.type);
     renderDots();
     if (step === 0) {
-      setTitle('¡Te damos la bienvenida!', 'Elegí tu personaje. Lo cambiás gratis en el Vestidor.');
+      setTitle('Te damos la bienvenida', 'Elegí tu personaje. Lo cambiás gratis en el Vestidor.');
       let html = `<div class="ob-step"><h2 class="ob-h">${icon('sparkle', 20)} ¿Quién vas a ser?</h2>`;
       for (const fam of AVATAR_FAMILIES) {
         html += `<div class="ob-fam">${icon(fam.emoji, 18)}${ui.esc(fam.name)}</div><div class="ob-types">`;
@@ -262,7 +263,7 @@ export default function create(ctx) {
       </div>`;
       const ni = body.querySelector('[data-f=name]'), ci = body.querySelector('[data-f=city]');
       ni.value = name; ci.value = city;
-      foot.innerHTML = `<button class="btn ghost ob-back" aria-label="Volver">${icon('back', 20)}</button><button class="btn primary ob-next">${icon('sparkle', 20)}¡A jugar!</button>`;
+      foot.innerHTML = `<button class="btn ghost ob-back" aria-label="Volver">${icon('back', 20)}</button><button class="btn primary ob-next">${icon('sparkle', 20)}Empezar</button>`;
     }
     body.scrollTop = 0;
   }
@@ -295,7 +296,7 @@ export default function create(ctx) {
     rebuild();
     const body = root.querySelector('.ob-body'), y = body.scrollTop;
     renderStep();
-    body.scrollTop = y; // no saltar arriba si eligió un animalito al fondo de la lista
+    body.scrollTop = y; // no saltar arriba si eligió un animal al fondo de la lista
   }
 
   function onClick(e) {
@@ -354,7 +355,6 @@ export default function create(ctx) {
     store.markDirty();
     store.save();
     audio.sfx('win');
-    ui.confetti();
     hopT = -0.15; burst(24);
     ctx.hud?.refresh?.();
     await new Promise(res => setTimeout(res, 700));

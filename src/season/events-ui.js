@@ -76,7 +76,7 @@ export function openEventsPanel(ctx, now) {
     const act = activeEvents(t);
     const soon = upcomingEvents(t, 3);
     let html = act.length ? act.map(eventCard).join('')
-      : `<div class="ssn-empty">${icon('calendar', 48)}<h3>Ahora no hay eventos</h3><p class="muted">¡Pero ya viene uno! Mirá abajo cuándo empieza.</p></div>`;
+      : `<div class="ssn-empty">${icon('calendar', 48)}<h3>Ahora no hay eventos</h3><p class="muted">Ya viene uno: mirá abajo cuándo empieza.</p></div>`;
     if (soon.length) {
       html += `<div class="ssn-soon"><h4>Próximamente</h4>${soon.map(e => `<div class="ssn-soon-row">${icon(e.emoji, 28)}
         <span><b>${esc(e.title)}</b><br><small>${startsLabel(e, t)} · ${esc(e.short)}</small></span>

@@ -120,10 +120,10 @@ export function openRank(ctx, params = {}) {
     wrap.append(head);
 
     // cómo sumar encanto
-    wrap.append(h('p.pnl-rk-tip', { html: `${icon('info', 16)}<span>El <b>Encanto</b> sube con deco, negocios y edificios mejorados. ¡Variá! Repetir el mismo suma cada vez menos. Variedad: <b>${ci.kinds}</b> ${ci.kinds === 1 ? 'tipo' : 'tipos'} (×${String(Math.round(ci.variety * 100) / 100).replace('.', ',')}).</span>` }));
+    wrap.append(h('p.pnl-rk-tip', { html: `${icon('info', 16)}<span>El <b>Encanto</b> sube con deco, negocios y edificios mejorados. Conviene variar: repetir lo mismo suma cada vez menos. Variedad: <b>${ci.kinds}</b> ${ci.kinds === 1 ? 'tipo' : 'tipos'} (×${String(Math.round(ci.variety * 100) / 100).replace('.', ',')}).</span>` }));
 
     if (!st.next) {
-      wrap.append(h('div.pnl-lv-empty', { html: `${icon('trophy', 40)}<span><b>¡Tu ciudad es una Capital!</b> Llegaste al rango máximo. Ahora a decorar y lucirte con tus amistades.</span>` }));
+      wrap.append(h('div.pnl-lv-empty', { html: `${icon('trophy', 40)}<span><b>¡Tu ciudad es una Capital!</b> Llegaste al rango máximo. Ahora queda decorar y mostrársela a tus contactos.</span>` }));
       sh.body.append(wrap);
       return;
     }
@@ -175,7 +175,7 @@ export function openRank(ctx, params = {}) {
         const res = E.startUpgrade(b.uid);
         if (res?.error) { audio.sfx('error'); ui.toast(res.error); return; }
         audio.sfx('build');
-        ui.toast(`¡Empezó la obra! En ${E.fmtTime(info.time)} tu ciudad será ${nx.name}`, { icon: 'hammer', type: 'good' });
+        ui.toast(`Empezó la obra. En ${E.fmtTime(info.time)} tu ciudad pasa a ser ${nx.name}`, { icon: 'hammer', type: 'good' });
         render();
       };
       foot.append(btn);

@@ -75,7 +75,7 @@ export function openGames(ctx) {
     const card = h('div.card.pnl-bag' + (bagOpen ? '.open' : ''));
     const head = h('button.pnl-bag-head', { 'aria-expanded': bagOpen ? 'true' : 'false' });
     head.innerHTML = `<span class="pnl-bag-ic">${icon('bag', 28)}</span>
-      <span class="pnl-bag-txt"><b>Potenciadores en tu mochila</b><small>${total ? `Tenés <b>${fmt(total)}</b> · se eligen antes de jugar` : 'Salen en los cofres: ¡ayudan un montón!'}</small></span>
+      <span class="pnl-bag-txt"><b>Potenciadores en tu mochila</b><small>${total ? `Tenés <b>${fmt(total)}</b> · se eligen antes de jugar` : 'Salen en los cofres y ayudan bastante.'}</small></span>
       <span class="pnl-bag-arrow">${icon(bagOpen ? 'up' : 'plus', 18)}</span>`;
     head.onclick = () => { audio.sfx('select'); bagOpen = !bagOpen; render(); };
     card.append(head);
@@ -114,7 +114,7 @@ export function openGames(ctx) {
     sh.body.innerHTML = '';
     const totalStars = sumStars(ctx.state.games.match3?.stars) + sumStars(ctx.state.games.parking?.stars);
     sh.body.append(h('div.pnl-games-head', { html: `
-      <p>¡Jugá y ganá ${icon('coin', 18)} monedas, ${icon('gem', 18)} gemas, cofres y figuritas!</p>
+      <p>Jugá y ganá ${icon('coin', 18)} monedas, ${icon('gem', 18)} gemas, cofres y figuritas.</p>
       <span class="chip gold">${icon('star', 16)} ${fmt(totalStars)} estrellas</span>` }));
     const strip = eventStrip();
     if (strip) sh.body.append(strip);

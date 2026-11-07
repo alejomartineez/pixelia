@@ -71,7 +71,7 @@ const nextId = db => db.seq++;
 function isFriend(db, a, b) { return db.friendships[pk(a, b)]?.status === 'accepted'; }
 function pairLock(db, me, other) {
   const f = db.friendships[pk(me, other)];
-  if (!f || f.status !== 'accepted') E('Solo podés hacer eso con tus amigos');
+  if (!f || f.status !== 'accepted') E('Solo podés hacer eso con tus contactos');
   return f;
 }
 function bump(db, a, b, pts = 1) {
@@ -190,14 +190,14 @@ const RPC = {
     if (o.id === me) E('Ese es tu propio código 😄');
     const f = db.friendships[pk(me, o.id)];
     if (f) {
-      if (f.status === 'accepted') E(`Ya son amigos con ${o.name}`);
+      if (f.status === 'accepted') E(`${o.name} ya está entre tus contactos`);
       if (f.requested_by === me) E(`Ya le mandaste una solicitud a ${o.name}, falta que acepte`);
       f.status = 'accepted'; f.accepted_at = nowIso(db);
       return { id: o.id, name: o.name, status: 'accepted' };
     }
     const mine = Object.values(db.friendships);
     if (mine.filter(x => x.requested_by === me && x.status === 'pending').length >= 30) E('Tenés muchas solicitudes sin responder. Esperá que te acepten');
-    if (friendIds(db, me).length >= 100) E('Llegaste al máximo de 100 amigos');
+    if (friendIds(db, me).length >= 100) E('Llegaste al máximo de 100 contactos');
     const [a, b] = me < o.id ? [me, o.id] : [o.id, me];
     db.friendships[pk(a, b)] = { a, b, status: 'pending', requested_by: me, points: 0, days: 0, last_day: null, created_at: nowIso(db), accepted_at: null };
     return { id: o.id, name: o.name, status: 'pending' };
@@ -211,7 +211,7 @@ const RPC = {
   },
   remove_friend(db, me, { p_other }) {
     const k = pk(me, p_other);
-    if (!db.friendships[k]) E('No son amigos');
+    if (!db.friendships[k]) E('No está entre tus contactos');
     delete db.friendships[k];
     for (const t of db.trades) {
       if (t.status === 'pending' && ((t.from_id === me && t.to_id === p_other) || (t.from_id === p_other && t.to_id === me))) {
@@ -356,7 +356,7 @@ const RPC = {
   leave_note(db, me, { p_host, p_text }) {
     const t = String(p_text || '').trim();
     if (p_host === me) E('Esa es tu ciudad 😄');
-    if (!t) E('Escribí algo cortito');
+    if (!t) E('Escribí algo antes de mandarla');
     if ([...t].length > 80) E('La nota puede tener hasta 80 letras');
     pairLock(db, me, p_host);
     const v = visitRow(db, p_host, me);

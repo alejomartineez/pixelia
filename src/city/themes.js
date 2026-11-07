@@ -5,7 +5,7 @@
 //   THEMES, THEME_BY_ID, themeOf(id)        datos
 //   mapColor(themeId, int) -> int           color de un vóxel en ese tema (cacheado)
 //   themeHex(themeId, '#hex') -> '#hex'     igual, para colores CSS / canvas
-//   currentThemeId(state)                   state.city.theme válido o 'pueblo'
+//   currentThemeId(state)                   state.city.theme válido (con alias resueltos) o 'pueblo'
 //
 // Los modelos están pintados con la paleta "pueblo" (src/core/palette.js): ese tema no re-mapea nada.
 // Las reglas de los demás temas usan "ranuras": 'pink' = el color principal (terracota) y 'lilac' = el
@@ -79,22 +79,30 @@ export const THEMES = [
     fam: {},
   },
   {
-    id: 'pastel', name: 'Dulce Pastel', emoji: '🌸', desc: 'Rosas, lilas y menta. Dulce y brillante.',
-    swatch: ['#ff7eb6', '#b58cff', '#6fe3c1', '#ffd166'],
-    sky: 'linear-gradient(180deg, #ffcfe6 0%, #f3dbff 34%, #d6e6ff 66%, #c5f0ee 100%)', stars: 0.55,
-    lights: { sky: 0xffffff, ground: 0xcdb8f0, hemi: 1.15, sun: 0xfff3e6, sunI: 2.44 },
-    ground: { inA: '#a3e68b', inB: '#97dc80', outA: '#79bb8c', outB: '#72b386', tuftIn: '#82cc70', tuftOut: '#5f9e78',
-      lightIn: '#b9f0a0', lightOut: '#8cc89a', rim: '#d2f7b8', shadowOut: '#5d9a74', lip: '#a6dca4',
-      flowers: ['#ffffff', '#ff9ccb', '#ffd166', '#cdb5ff', '#ff7eb6'] },
-    cliff: { top: '#79c47e', grass: '#69b572', dirt: '#e7bd92',
-      bands: [['#e2b58c', '#d8a77f'], ['#cf9a7c', '#c48e78'], ['#c49aa0', '#b78f9e'], ['#a99fbf', '#9f95b9'], ['#9388b0', '#8a7fab']],
-      gems: ['#ff9ccb', '#a5e1ff'], isletTop: '#9bdc8a' },
-    cloud: ['#ffffff', '#f7f9ff', '#e6ecff'],
-    nature: [['tree', 0.3], ['pine', 0.2], ['bush', 0.18], ['flowers', 0.16], ['rock', 0.1], ['mushroom', 0.06]],
+    // Reemplaza a "Dulce Pastel" (id viejo 'pastel' → alias, ver THEME_ALIASES): ocres, terracotas apagadas y árboles rojizos.
+    id: 'otono', name: 'Otoño', emoji: '🍂', desc: 'Ocres, terracotas apagadas y árboles rojizos.',
+    swatch: ['#b8704a', '#c9923f', '#9a3f2c', '#8e9460'],
+    sky: 'linear-gradient(180deg, #b9c9d0 0%, #d6d8cf 36%, #ead8bd 70%, #efcfa4 100%)', stars: 0.3,
+    lights: { sky: 0xfff4e6, ground: 0xb89a70, hemi: 1.08, sun: 0xffe2bc, sunI: 2.36 },
+    ground: { inA: '#b3b46c', inB: '#a9ab64', outA: '#8f955f', outB: '#888e59', tuftIn: '#a0a25c', tuftOut: '#73784f',
+      lightIn: '#c6c47f', lightOut: '#a1a46c', rim: '#d9cf9c', shadowOut: '#686e4b', lip: '#b6ae7a',
+      flowers: ['#f1e2c4', '#b8553a', '#d9a23e', '#9a3f2c', '#efe0bf'] },
+    cliff: { top: '#979a5e', grass: '#868a54', dirt: '#c09468',
+      bands: [['#b98c64', '#ae825c'], ['#a07454', '#956b4e'], ['#86654e', '#7c5d48'], ['#6d5646', '#654f41'], ['#57483d', '#4f4238']],
+      gems: ['#d9a23e', '#b8553a'], isletTop: '#a5a865' },
+    cloud: ['#fffaf2', '#f3ebdf', '#e0d6c8'],
+    nature: [['tree', 0.36], ['bush', 0.2], ['pine', 0.12], ['flowers', 0.12], ['rock', 0.12], ['mushroom', 0.08]],
     fam: {
-      pink: (h, s, l) => [334, Math.min(1, s * 1.15), l > 0.85 ? l : Math.min(0.92, l / 0.9)],
-      lilac: (h, s, l) => [262, Math.min(1, s * 1.4), l / 0.94],
-      neutral: (h, s, l) => (h >= 20 && h < 50 && s > 0.05 ? [285, s * 0.7, l] : [h, s, l]),
+      pink: (h, s, l) => [16, s * 0.62, l * 0.86],            // techos: terracota apagada
+      lilac: (h, s, l) => [205, s * 0.32, l * 0.78],          // segundo color: pizarra gris
+      red: (h, s, l) => [8, s * 0.62, l * 0.82],
+      orange: (h, s, l) => [24, s * 0.68, l * 0.86],
+      gold: (h, s, l) => [38, s * 0.78, l * 0.9],             // ocre
+      // follaje: lo oscuro se vuelve rojizo, lo medio naranja tostado y lo claro (pasto) verde oliva
+      green: (h, s, l) => (l > 0.64 ? [60, 0.3, l * 0.9] : l > 0.5 ? [24, 0.55, l * 0.9] : [8, 0.5, l * 0.95]),
+      mint: (h, s, l) => [78, s * 0.3, l * 0.84],
+      sky: (h, s, l) => [204, s * 0.45, l * 0.94],
+      neutral: (h, s, l) => (l > 0.9 ? [36, 0.32, l * 0.95] : l > 0.3 ? [30, Math.max(s, 0.08), l * 0.95] : [h, s, l]),
     },
   },
   {
@@ -225,9 +233,15 @@ export const THEMES = [
   },
 ];
 
+/** Ids viejos que ya no están en la lista: los guardados (y las ciudades que se visitan) los siguen teniendo. */
+export const THEME_ALIASES = { pastel: 'otono' };
 export const THEME_BY_ID = Object.fromEntries(THEMES.map(t => [t.id, t]));
+for (const [old, to] of Object.entries(THEME_ALIASES)) Object.defineProperty(THEME_BY_ID, old, { value: THEME_BY_ID[to], enumerable: false });
 export const themeOf = (id) => THEME_BY_ID[id] || THEME_BY_ID[DEFAULT_THEME];
-export const currentThemeId = (state) => (THEME_BY_ID[state?.city?.theme] ? state.city.theme : DEFAULT_THEME);
+export const currentThemeId = (state) => {
+  const id = THEME_ALIASES[state?.city?.theme] || state?.city?.theme;
+  return THEME_BY_ID[id] ? id : DEFAULT_THEME;
+};
 
 // ---------- Mapeo de colores (cacheado por tema) ----------
 const caches = new Map();

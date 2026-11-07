@@ -339,10 +339,10 @@ export function welcomeBackStatus(now) {
   const big = days >= WELCOME.bigDays;
   const reward = { coins: Math.round(WELCOME.coinsPerDay * counted * rewardScale(S().player.level)), gems: big ? WELCOME.bigGems : 0 };
   const name = S().player.name || 'Pixelín';
-  const message = days >= 14 ? `¡${name}, qué alegría verte! Pixelia te estuvo esperando todo este tiempo. Los vecinos cuidaron tu ciudad y te juntaron un regalito.`
-    : days >= 7 ? `¡Volviste, ${name}! Los vecinos regaron las flores y te guardaron algo especial.`
-      : `¡Hola de nuevo, ${name}! Te guardamos un regalito mientras no estabas.`;
-  return { days, counted, reward, chests: big ? 2 : 1, chestType: 'madera', title: '¡Te extrañamos!', message };
+  const message = days >= 14 ? `${name}, tanto tiempo. El vecindario cuidó tu ciudad mientras no estabas y te juntó un regalo.`
+    : days >= 7 ? `Volviste, ${name}. En el barrio regaron las flores y te guardaron algo.`
+      : `Hola de nuevo, ${name}. Te guardamos un regalo mientras no estabas.`;
+  return { days, counted, reward, chests: big ? 2 : 1, chestType: 'madera', title: 'Bienvenida de vuelta', message };
 }
 /** Acredita el regalo de bienvenida. Devuelve el status cobrado o null. */
 export function claimWelcomeBack(now) {

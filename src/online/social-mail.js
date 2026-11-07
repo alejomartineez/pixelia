@@ -1,5 +1,5 @@
 // Pestañas "Pedidos" (pedí una mano / ayudá a tus amigas) y "Buzón" (regalos, entregas, intercambios, visitas).
-import { h, esc, toast, confetti } from '../core/ui.js';
+import { h, esc, toast } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
 import { fmtNum } from '../core/economy.js';
@@ -32,7 +32,7 @@ export function requestWhat(req, size = 40) {
     const id = Object.keys(p.items || {})[0];
     return { ic: itemIcon(id, size), title: itemName(id), sub: 'Objeto de la mochila' };
   }
-  if (req.kind === 'coins') return { ic: icon('coin', size), title: `${fmtNum(p.coins || 0)} monedas`, sub: 'Para terminar algo lindo' };
+  if (req.kind === 'coins') return { ic: icon('coin', size), title: `${fmtNum(p.coins || 0)} monedas`, sub: 'Para terminar una obra' };
   return { ic: icon('⏳', size), title: `Acelerar una obra`, sub: `Le adelantás ${p.minutes || 30} minutos (no te cuesta nada)` };
 }
 function needIcon(w) {
@@ -70,7 +70,7 @@ export async function renderRequests(api, tok) {
 
     // --- pedidos de amigas ---
     const fr = cache.friendReqs || [];
-    const sec = h('div.soc-sec', { html: `<h4>${icon('people', 22)} Pedidos de tus amigos<small>${fr.length}</small></h4>` });
+    const sec = h('div.soc-sec', { html: `<h4>${icon('people', 22)} Pedidos de tus contactos<small>${fr.length}</small></h4>` });
     if (!fr.length) sec.append(h('div.soc-card', { html: emptyHtml('🌤️', 'Nadie necesita nada por ahora', 'Cuando alguien pida una mano, aparece acá. Ayudar te da monedas, chispas del pase y amistad.') }));
     for (const r of fr) sec.append(friendRequestCard(api, r));
     nodes.push(sec);
@@ -109,8 +109,7 @@ function friendRequestCard(api, r) {
     if (res?.error) { audio.sfx('error'); api.rerender(); return res; }
     audio.sfx('win');
     flyFrom(btn, res.reward);
-    confetti(40);
-    toast(`¡Le diste una mano a ${r.from_name || 'alguien'}! 💖`, { icon: 'heart', type: 'good' });
+    toast(`Le diste una mano a ${r.from_name || 'alguien'}.`, { icon: 'heart', type: 'good' });
     setTimeout(() => api.rerender(), 650);
     return res;
   });
@@ -126,11 +125,11 @@ function needText(r) {
 
 // ---------- Buzón ----------
 const KIND = {
-  gift: { ic: 'gift', t: g => `Regalito de ${g.from_name || 'alguien'}` },
+  gift: { ic: 'gift', t: g => `Regalo de ${g.from_name || 'alguien'}` },
   help: { ic: '🔨', t: g => `${g.from_name || 'Alguien'} te ayudó con una obra` },
   trade: { ic: '🔄', t: g => (/devoluci/i.test(g.note || '') ? 'Te devolvieron lo de un intercambio' : `Entrega del intercambio con ${g.from_name || 'alguien'}`) },
   sticker: { ic: '🃏', t: g => `${g.from_name || 'Alguien'} te regaló una figurita` },
-  like: { ic: 'heart', t: g => `A ${g.from_name || 'alguien'} le encantó tu ciudad` },
+  like: { ic: 'heart', t: g => `A ${g.from_name || 'alguien'} le gustó tu ciudad` },
   request_fill: { ic: '🤝', t: g => `${g.from_name || 'Alguien'} completó tu pedido` },
 };
 
@@ -153,8 +152,8 @@ export async function renderInbox(api, tok) {
 
     // cobrar todo
     const top = h('div.soc-card.soc-claimall', {
-      html: `${icon('📮', 44)}<div class="soc-grow"><b style="font-size:18px">${inbox.length ? `Tenés ${inbox.length} cosita${inbox.length > 1 ? 's' : ''} para cobrar` : 'Tu buzón está al día ✨'}</b>
-        <div class="soc-muted">${inbox.length ? 'Regalos, ayudas y entregas de tus amigos.' : 'Cuando tus amigos te manden algo, aparece acá.'}</div></div>`,
+      html: `${icon('📮', 44)}<div class="soc-grow"><b style="font-size:18px">${inbox.length ? `Tenés ${inbox.length} cosa${inbox.length > 1 ? 's' : ''} para cobrar` : 'Tu buzón está al día'}</b>
+        <div class="soc-muted">${inbox.length ? 'Regalos, ayudas y entregas de tus contactos.' : 'Cuando alguien te mande algo, aparece acá.'}</div></div>`,
     });
     if (inbox.length) {
       const all = h('button.btn.gold', { html: `${icon('gift', 20)} Cobrar todo` });
@@ -187,7 +186,7 @@ export async function renderInbox(api, tok) {
     }
     const vis = (cache.visitors || []).filter(v => v.visited || v.liked || v.note || v.helped);
     const sv = h('div.soc-sec', { html: `<h4>${icon('home', 22)} Visitas a tu ciudad<small>últimos 7 días</small></h4>` });
-    if (!vis.length) sv.append(h('div.soc-card', { html: emptyHtml('🏡', 'Todavía no pasó nadie', 'Cuando alguien visite tu ciudad, te va a dejar corazones, ayudas y notitas.') }));
+    if (!vis.length) sv.append(h('div.soc-card', { html: emptyHtml('🏡', 'Todavía no pasó nadie', 'Cuando alguien visite tu ciudad, te puede dejar un me gusta, una ayuda o una nota.') }));
     for (const v of vis.slice(0, 20)) sv.append(visitRow(v));
     nodes.push(sv);
     pane.replaceChildren(...nodes);
@@ -197,7 +196,6 @@ export async function renderInbox(api, tok) {
 function celebrate(el, total, count) {
   audio.sfx('win');
   flyFrom(el, total);
-  confetti(70);
   const bits = [];
   if (total.coins) bits.push(`${fmtNum(total.coins)} monedas`);
   if (total.gems) bits.push(`${fmtNum(total.gems)} gemas`);
@@ -205,9 +203,9 @@ function celebrate(el, total, count) {
   if (items) bits.push(`${items} objeto${items > 1 ? 's' : ''}`);
   const st = Object.values(total.stickers || {}).reduce((a, b) => a + b, 0);
   if (st) bits.push(`${st} figurita${st > 1 ? 's' : ''}`);
-  toast(bits.length ? `¡Cobraste ${bits.join(', ')}!` : `¡Listo! ${count} cosita${count > 1 ? 's' : ''} cobrada${count > 1 ? 's' : ''}`, { icon: 'gift', type: 'good' });
-  if (total.likes) setTimeout(() => toast(`+${total.likes} corazón${total.likes > 1 ? 'es' : ''} para tu ciudad ❤️`, { icon: 'heart' }), 700);
-  if (total.speedups) setTimeout(() => toast(`¡Tus amigos adelantaron ${total.speedups} obra${total.speedups > 1 ? 's' : ''}!`, { icon: 'hammer', type: 'good' }), 1300);
+  toast(bits.length ? `Cobraste ${bits.join(', ')}.` : `Listo: ${count} cosa${count > 1 ? 's' : ''} cobrada${count > 1 ? 's' : ''}`, { icon: 'gift', type: 'good' });
+  if (total.likes) setTimeout(() => toast(`+${total.likes} me gusta para tu ciudad`, { icon: 'heart' }), 700);
+  if (total.speedups) setTimeout(() => toast(`Tus contactos adelantaron ${total.speedups} obra${total.speedups > 1 ? 's' : ''}`, { icon: 'hammer', type: 'good' }), 1300);
 }
 
 function giftRow(api, g) {
@@ -281,7 +279,7 @@ function tradeCard(api, t) {
     yes.onclick = () => busy(yes, async () => {
       const r = await acceptTrade(t);
       if (r?.error) { api.rerender(); return r; }
-      audio.sfx('win'); confetti(60);
+      audio.sfx('win');
       toast(`¡Trato hecho con ${t.other_name}! Cobrá tu parte en el buzón`, { icon: 'gift', type: 'good' });
       api.rerender();
       return r;
@@ -294,12 +292,12 @@ function tradeCard(api, t) {
   return c;
 }
 function resolvedRow(t) {
-  const txt = t.status === 'accepted' ? `${esc(t.other_name || 'Alguien')} aceptó tu intercambio 🎉` : t.status === 'declined' ? `${esc(t.other_name || 'Alguien')} prefirió no cambiar` : 'Cancelaste un intercambio';
+  const txt = t.status === 'accepted' ? `${esc(t.other_name || 'Alguien')} aceptó tu intercambio` : t.status === 'declined' ? `${esc(t.other_name || 'Alguien')} prefirió no cambiar` : 'Cancelaste un intercambio';
   return h('div.soc-card.soc-row', { style: { opacity: '.75' }, html: `${icon(t.status === 'accepted' ? 'check' : 'info', 22)}<span class="soc-grow">${txt}</span><small class="soc-muted">${timeAgo(t.resolved_at)}</small>` });
 }
 function visitRow(v) {
   const chips = [];
-  if (v.liked) chips.push(`<span class="soc-chip">${icon('heart', 16)} Le encantó</span>`);
+  if (v.liked) chips.push(`<span class="soc-chip">${icon('heart', 16)} Le gustó</span>`);
   if (v.helped) chips.push(`<span class="soc-chip">${icon('🔨', 16)} Ayudó ${v.helped}</span>`);
   const day = v.day === utcDay() ? 'hoy' : timeAgo(v.at);
   return h('div.soc-card.soc-visit', {

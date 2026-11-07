@@ -314,7 +314,7 @@ try {
   await page.keyboard.type(OB_CITY, { delay: 30 });
   await sleep(300);
   await shot('onboarding-nombre');
-  await tap('.scene-onboarding .ob-next', 'jugar');
+  await tap('.scene-onboarding .ob-next', 'Empezar');
   ok(await waitFor(`!!document.querySelector('.modal.tp-modal .tp-card')`, 9000), 'al terminar se abre "Estilo de tu ciudad"');
   ok(await run(`return ctx.router.current === 'city' && store.state.onboarded === true`), 'ya en la ciudad y marcado como onboarded');
   ok(!(await ev(() => !!document.querySelector('.modal.pnl-login'))), 'el premio diario espera a que se cierre el selector de estilo');
@@ -358,7 +358,7 @@ try {
   await sleep(500);
   ok(await claimMainUI() === 'm1', 'm1 cobrada desde Misiones');
   await drainOverlays({ shots: { levelup: 'subida-nivel' } });
-  ok(await buildUI('panaderia') === 1, 'm2: Panadería Dulce colocada');
+  ok(await buildUI('panaderia') === 1, 'm2: Panadería colocada');
   await finishWorks();
   ok(await claimMainUI() === 'm2', 'm2 cobrada');
   await drainOverlays({ shots: { levelup: 'subida-nivel', chest: 'cofre-apertura', cards: 'cofre-figuritas', summary: 'cofre-botin' } });

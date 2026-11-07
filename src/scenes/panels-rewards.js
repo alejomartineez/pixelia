@@ -1,7 +1,7 @@
 // Paneles festivos: premio diario (login) y subida de nivel.
 import { icon } from '../core/icons.js';
 import { BUILDINGS, GAMES, CUSTOM_CATALOG, TOWN_RANKS, LOGIN_REWARDS, MAX_EXPANSIONS, fitsType, avatarType } from '../core/data.js';
-import { openShell, rewardFx, burst, art, GAME_ART, rewardHtml, chestArt, chestList } from './panels-common.js';
+import { openShell, rewardFx, art, GAME_ART, rewardHtml, chestArt, chestList } from './panels-common.js';
 import { CHESTS, chestCount, levelUpChests } from '../chests/chests.js';
 
 // ---------- Premio diario ----------
@@ -17,7 +17,7 @@ export function openLogin(ctx) {
   const sh = openShell(ctx, 'login', {
     title: 'Premio diario', ic: 'gift', className: 'pnl-md pnl-login reward-modal', closable: false,
     actions: [{
-      html: claimed ? `${icon('heart', 20)} ¡Hasta mañana!` : `${icon('gift', 22)} ¡Abrir regalo!`, cls: 'gold',
+      html: claimed ? `${icon('check', 20)} Hasta mañana` : `${icon('gift', 22)} Abrir regalo`, cls: 'gold',
       onClick: () => { if (claimed) return; claim(); return false; },
     }],
   });
@@ -26,7 +26,7 @@ export function openLogin(ctx) {
 
   const wrap = h('div.pnl-login-wrap');
   const stage = h('div.pnl-stage');
-  const streakTxt = claimed ? `¡Ya cobraste hoy! Racha de <b>${streakNow}</b> ${streakNow === 1 ? 'día' : 'días'}` : streakNow > 1 ? `¡Volviste! Racha de <b>${streakNow}</b> días` : '¡Hola! Tu regalo de hoy:';
+  const streakTxt = claimed ? `Ya cobraste hoy. Racha de <b>${streakNow}</b> ${streakNow === 1 ? 'día' : 'días'}` : streakNow > 1 ? `Volviste. Racha de <b>${streakNow}</b> días` : 'Tu regalo de hoy:';
   const head = h('p.pnl-streak', { html: `${icon(streakNow > 1 ? 'fire' : 'sparkle', 22)}<span>${streakTxt}</span>` });
   const grid = h('div.pnl-days');
   const cells = [];
@@ -80,15 +80,14 @@ export function openLogin(ctx) {
       const ch = chestList(reward)[0];
       const coinsGems = (reward.coins || reward.gems || reward.xp) ? costHtml(reward, ch ? 28 : 34) : '';
       stage.innerHTML = `<div class="pnl-rays spin"></div><div class="pnl-stage-reward pnl-pop">${ch ? `<span class="pnl-stage-chest">${chestArt(ch.type, 48)}</span>` : ''}${coinsGems}</div>`
-        + `<p class="pnl-stage-txt">${ch ? `¡${CHESTS[ch.type].name}! Te espera en Cofres` : '¡Es todo tuyo!'}</p>`;
+        + `<p class="pnl-stage-txt">${ch ? `¡${CHESTS[ch.type].name}! Te espera en Cofres` : 'Es tuyo.'}</p>`;
       const cell = cells[day - 1];
       cell.classList.remove('today'); cell.classList.add('past', 'today', 'pnl-pop');
       rewardFx(stage, reward, { chestText: false });
-      burst(innerWidth / 2, innerHeight * 0.3, 110);
       const st = ctx.state.login.streak || 1;
-      head.innerHTML = `${icon(status?.shielded ? '🛡️' : 'fire', 22)}<span>Racha de <b>${st}</b> ${st === 1 ? 'día' : 'días'}. ¡Volvé mañana!</span>`;
+      head.innerHTML = `${icon(status?.shielded ? '🛡️' : 'fire', 22)}<span>Racha de <b>${st}</b> ${st === 1 ? 'día' : 'días'}. Volvé mañana.</span>`;
       primaryBtn.disabled = false;
-      primaryBtn.innerHTML = `${icon('heart', 20)} ¡Gracias!`;
+      primaryBtn.innerHTML = `${icon('check', 20)} Gracias`;
       sh.escAction = () => sh.close();
     });
   }
@@ -154,16 +153,16 @@ export function openLevelUp(ctx, params = {}) {
   let openNow = false;
   const actions = canOpen
     ? [{ label: 'Después', cls: 'ghost' }, { html: `${icon('gift', 20)} Abrir ahora`, cls: 'gold', onClick: () => { openNow = true; } }]
-    : [{ html: more ? `${icon('sparkle', 20)} ¡Genial! Ver nivel ${level + 1}` : `${icon('sparkle', 20)} ¡Genial!`, cls: 'primary' }];
+    : [{ html: more ? `${icon('sparkle', 20)} Ver nivel ${level + 1}` : `${icon('check', 20)} Seguir`, cls: 'primary' }];
   const sh = openShell(ctx, 'levelup:' + level, {
-    title: '¡Subiste de nivel!', ic: 'star', className: 'pnl-md pnl-levelup reward-modal', closable: false, actions,
+    title: 'Subiste de nivel', ic: 'star', className: 'pnl-md pnl-levelup reward-modal', closable: false, actions,
   });
   if (!sh) return;
 
   const wrap = h('div.pnl-lv');
   wrap.append(h('div.pnl-lv-burst', { html: `<div class="pnl-rays spin"></div><div class="pnl-lv-star">${icon('star', 120)}<b>${level}</b></div>` }));
   wrap.append(h('h2.pnl-lv-title', {}, `¡Nivel ${level}!`));
-  wrap.append(h('p.pnl-lv-sub', {}, level >= 10 ? '¡Tu ciudad está cada vez más hermosa!' : '¡Tu ciudad crece!'));
+  wrap.append(h('p.pnl-lv-sub', {}, level >= 10 ? 'La ciudad se va armando.' : 'La ciudad crece.'));
   if (reward.coins || reward.gems) {
     wrap.append(h('div.pnl-lv-reward', { html: `<small>Premio</small>${costHtml(reward, 26)}` }));
   }
@@ -179,7 +178,7 @@ export function openLevelUp(ctx, params = {}) {
   }
   const items = unlocksAt(level, ctx.state);
   if (items.length) {
-    wrap.append(h('h4.pnl-lv-h', { html: `${icon('lock', 18)} ¡Se desbloqueó!` }));
+    wrap.append(h('h4.pnl-lv-h', { html: `${icon('lock', 18)} Se desbloqueó` }));
     const grid = h('div.pnl-unlocks');
     items.forEach((it, i) => {
       const el = h('div.pnl-unlock' + (it.hot ? '.hot' : ''), { style: { animationDelay: (0.35 + i * 0.07) + 's' }, html: `
@@ -193,7 +192,7 @@ export function openLevelUp(ctx, params = {}) {
   }
   const nx = nextUnlock(level);
   if (!items.length) {
-    wrap.append(h('div.pnl-lv-empty', { html: `${icon('castle', 40)}<span>${nx ? '¡Seguí construyendo y jugando! Cada nivel trae más premios.' : '¡Ya desbloqueaste todos los edificios! Ahora a mejorar, decorar y lucirte.'}</span>` }));
+    wrap.append(h('div.pnl-lv-empty', { html: `${icon('castle', 40)}<span>${nx ? 'Cada nivel trae más premios.' : 'Ya desbloqueaste todos los edificios. Queda mejorar y decorar.'}</span>` }));
   }
   if (nx) wrap.append(h('p.pnl-lv-next', { html: `${icon('sparkle', 16)}<span>Próximamente, en el <b>nivel ${nx.level}</b>: ${nx.names.map(esc).join(', ')}</span>` }));
   sh.body.append(wrap);
@@ -218,8 +217,6 @@ export function openLevelUp(ctx, params = {}) {
   }
 
   audio.sfx('star');
-  sh.later(250, () => burst(innerWidth / 2, innerHeight * 0.32, 120));
-  sh.later(900, () => burst(innerWidth / 2, innerHeight * 0.32, 60));
   sh.escAction = () => sh.close();
   // Enter = botón principal (el último: "Abrir ahora" o "¡Genial!")
   sh.keyHandler = (e) => {

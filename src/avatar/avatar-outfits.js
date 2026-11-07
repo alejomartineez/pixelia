@@ -72,7 +72,7 @@ export const DRESS = {
   overol: {
     torso(v, p, seated) {
       v.box(-3, 6, -2, 6, 4, 4, WHITE);
-      for (let x = -3; x <= 2; x++) for (let z = -2; z <= 1; z++) v.set(x, 7, z, 0xffc2dc);
+      for (let x = -3; x <= 2; x++) for (let z = -2; z <= 1; z++) v.set(x, 7, z, 0xf0d2dc);
       v.box(-2, 5, 1, 4, 4, 1, p.c);
       v.box(-1, 6, 2, 2, 2, 1, p.d);
       v.set(-2, 8, 2, GOLD); v.set(1, 8, 2, GOLD);
@@ -95,7 +95,7 @@ export const DRESS = {
       v.set(-2, 8, 1, p.ll); v.set(-1, 8, 1, p.l); v.set(0, 8, 1, p.l); v.set(1, 8, 1, p.ll);
       v.set(-2, 7, 1, p.l); v.set(1, 7, 1, p.l);
       for (const x of [-2, 0]) v.set(x, 9, 1, WHITE);
-      for (const x of [-1, 1]) v.set(x, 9, 1, 0xffe0ee);
+      for (const x of [-1, 1]) v.set(x, 9, 1, 0xf4e8ec);
       v.set(-3, 9, 0, p.c); v.set(2, 9, 0, p.c);
       if (seated) return;
       skirt(v, 2, 3, 3.6, 3.5, () => p.c);
@@ -196,7 +196,7 @@ export function buildArm(v, style, p) {
       break;
     }
     case 'short': v.box(-1, -2, -1, 2, 2, 2, p.c); v.box(-1, -2, -1, 2, 1, 2, p.l); break;
-    case 'tee': v.box(-1, -2, -1, 2, 2, 2, WHITE); v.set(0, -2, 0, 0xffc2dc); v.set(-1, -2, 0, 0xffc2dc); break;
+    case 'tee': v.box(-1, -2, -1, 2, 2, 2, WHITE); v.set(0, -2, 0, 0xf0d2dc); v.set(-1, -2, 0, 0xf0d2dc); break;
     case 'glove': v.box(-1, -5, -1, 2, 3, 2, WHITE); v.set(0, -3, 0, 0xffe6f2); break;
     case 'sport':
       v.box(-1, -4, -1, 2, 4, 2, p.c);
@@ -226,7 +226,7 @@ export function buildCapeC(v, cc, overHair = false) {
 // ---------- Piezas de ropa comunes ----------
 const PANTS_W = 0xf3eefc, DARK_PANTS = 0x4d4560;
 const LEAF = 0x6cc35d, LEAF_D = 0x4c9e4f, LEAF_L = 0xa6e38f;
-function jeans(v, c = DENIM, shoe = WHITE, accent = 0xff7eb6) {
+function jeans(v, c = DENIM, shoe = WHITE, accent = 0xe392b0) {
   v.box(-1, -3, -1, 2, 3, 2, c);
   v.set(0, -2, 1, shade(c, 0.12)); v.set(0, -3, 0, shade(c, -0.12));
   shoes(v, shoe, accent, true);
@@ -290,7 +290,7 @@ Object.assign(DRESS, {
     torso(v, p) {
       jacketTorso(v, p, WHITE, { pants: p.dd, belt: GOLD_D, trim: p.c });
       for (let y = 5; y <= 9; y++) { const x = y - 7; v.set(x, y, 2, p.c); v.set(x + 1, y, 2, p.d); }
-      v.set(-3, 8, 2, GOLD); v.set(-3, 7, 2, 0xff5a6e);
+      v.set(-3, 8, 2, GOLD); v.set(-3, 7, 2, 0xcf5f5f);
     },
     arm: 'jacketW', leg: (v, p) => { boots(v, p.dd); v.set(0, -2, 0, GOLD); v.set(0, -1, 0, GOLD); },
   },
@@ -565,7 +565,7 @@ Object.assign(DRESS, {
       v.box(-3, 5, -2, 6, 4, 4, p.c);
       for (let y = 5; y <= 9; y++) { v.set(-1, y, 1, 0xffffff); v.set(0, y, 1, 0xffffff); }
       v.set(-1, 6, 2, GOLD); v.set(-1, 7, 2, GOLD);
-      const bow = 0xff5a6e;
+      const bow = 0xcf5f5f;
       v.set(-2, 9, 2, bow); v.set(1, 9, 2, bow); v.set(-1, 9, 2, shade(bow, -0.2)); v.set(0, 9, 2, shade(bow, -0.2));
       v.set(-3, 9, 2, bow); v.set(2, 9, 2, bow);
     },

@@ -340,7 +340,7 @@ export default function create(ctx) {
     if (c.colors) {
       const cur = pv[t][c.id];
       html += `<div class="wd-swatches">${c.colors.map(col => `<button class="wd-sw${String(col.id) === String(cur) ? ' on' : ''}" data-id="${col.id}" aria-label="${col.name}"><i style="background:${col.hex}">${String(col.id) === String(cur) ? icon('heart', 24) : ''}</i>${col.name}</button>`).join('')}</div>`;
-      html += `<p class="wd-note">${icon('sparkle', 14)} Los colores son gratis: ¡probá todos!</p>`;
+      html += `<p class="wd-note">${icon('sparkle', 14)} Los colores son gratis: probá sin miedo.</p>`;
     } else {
       html += '<div class="wd-grid">';
       for (const item of itemsFor(c)) {
@@ -404,7 +404,7 @@ export default function create(ctx) {
     if (m === 'car' && !garageOk()) {
       audio.sfx('error');
       const enObra = S().city.buildings.some(b => b.id === 'garaje');
-      ui.toast(enObra ? `¡Tu ${BUILDING_BY_ID.garaje.name} está en obra! Cuando termine vas a poder tunear tu auto`
+      ui.toast(enObra ? `Tu ${BUILDING_BY_ID.garaje.name} está en obra. Cuando termine vas a poder tunear tu auto`
         : `Construí el ${BUILDING_BY_ID.garaje.name} para tunear tu auto`, { icon: enObra ? 'hammer' : 'lock' });
       return;
     }
@@ -481,22 +481,21 @@ export default function create(ctx) {
     if (!store.canAfford(price)) {
       audio.sfx('error');
       const miss = price.gems && S().gems < price.gems ? `${price.gems - S().gems} gemas` : `${fmtNum((price.coins || 0) - S().coins)} monedas`;
-      ui.toast(`Te faltan ${miss}. ¡Jugá minijuegos para ganar más!`, { icon: price.gems ? 'gem' : 'coin', type: 'bad' });
+      ui.toast(`Te faltan ${miss}. Se ganan jugando.`, { icon: price.gems ? 'gem' : 'coin', type: 'bad' });
       return;
     }
     audio.sfx('tap');
-    const ok = await ui.confirm('¿Lo comprás?', `<b>${ui.esc(item.name)}</b><br><br>${ui.costHtml(price, 22)}`, '¡Comprar!', 'Ahora no');
+    const ok = await ui.confirm('¿Lo comprás?', `<b>${ui.esc(item.name)}</b><br><br>${ui.costHtml(price, 22)}`, 'Comprar', 'Ahora no');
     if (!ok || !alive) return;
     if (!store.buyItem(p.kind, p.id)) { audio.sfx('error'); ui.toast('No se pudo comprar', { icon: 'info', type: 'bad' }); return; }
     pending = pending.filter(x => x !== p);
     pv[p.target][p.key] = p.id;
     store.setLook(p.target, p.key, p.id);
     audio.sfx('buy');
-    ui.confetti();
     const btn = root.querySelector('.wd-buybtn').getBoundingClientRect();
     ui.floatText(btn.left + btn.width / 2, btn.top, `-${ui.costHtml(price, 20)}`);
     bumpRes(price.gems ? 'gems' : 'coins');
-    ui.toast(`¡${item.name} ya es tuyo!`, { icon: 'sparkle', type: 'good' });
+    ui.toast(`Compraste: ${item.name}`, { icon: 'sparkle', type: 'good' });
     hop(true);
     renderList(); renderBuy(); renderRes();
   }

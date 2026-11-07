@@ -1,6 +1,6 @@
-// Pantalla social: hoja con pestañas Amigas · Pedidos · Buzón · Ranking · Equipo.
+// Pantalla social: hoja con pestañas Contactos (id amigas) · Pedidos · Buzón · Ranking · Equipo.
 // Las pestañas Pedidos/Buzón están en social-mail.js y Ranking/Equipo en social-week.js.
-import { h, esc, modal, toast, confirm, confetti } from '../core/ui.js';
+import { h, esc, modal, toast, confirm } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/bus.js';
@@ -17,7 +17,7 @@ import { renderRequests, renderInbox } from './social-mail.js';
 import { renderRanking, renderTeam } from './social-week.js';
 
 export const TABS = [
-  { id: 'amigas', name: 'Amigos', icon: 'people' },
+  { id: 'amigas', name: 'Contactos', icon: 'people' },
   { id: 'pedidos', name: 'Pedidos', icon: '🤝' },
   { id: 'buzon', name: 'Buzón', icon: '📮' },
   { id: 'ranking', name: 'Ranking', icon: 'trophy' },
@@ -35,7 +35,7 @@ export function openSocialUI(ctx, tab = 'amigas', opts = {}) {
   const offs = [];
   let closed = false, token = 0, tabNow = tab;
   const m = modal({
-    title: 'Amigos', icon: 'people', content: pane, className: 'sheet soc',
+    title: 'Contactos', icon: 'people', content: pane, className: 'sheet soc',
     onClose: () => { closed = true; offs.forEach(f => f()); release(); current = null; },
   });
   m.el.classList.add('soc');
@@ -78,7 +78,7 @@ export function openSocialUI(ctx, tab = 'amigas', opts = {}) {
     drawTabs(); drawAcc();
     tabsEl.querySelector('.soc-tab.on')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     try { await RENDER[t](api, tok); }
-    catch (e) { console.error('[social] pestaña', t, e); if (api.live(tok)) pane.innerHTML = emptyHtml('info', 'Ups, algo falló', 'Cerrá y volvé a abrir, o probá de nuevo en un ratito.'); }
+    catch (e) { console.error('[social] pestaña', t, e); if (api.live(tok)) pane.innerHTML = emptyHtml('info', 'Ups, algo falló', 'Cerrá y volvé a abrir, o probá de nuevo en un rato.'); }
     if (api.live(tok)) { m.body.scrollTop = top; drawTabs(); }
   }
 
@@ -99,15 +99,15 @@ export function closeSocialUI() { current?.close(); }
 export function connectCard(api, what = 'amigas') {
   const off = net.mode === 'off';
   const txt = {
-    amigas: 'sumar amigos, visitar sus ciudades y mandarse regalitos',
+    amigas: 'sumar contactos, visitar sus ciudades y mandarse regalos',
     pedidos: 'pedirle una mano a tu gente y darles una mano',
-    buzon: 'recibir regalitos, ayudas e intercambios',
-  }[what] || 'jugar con tus amigos';
+    buzon: 'recibir regalos, ayudas e intercambios',
+  }[what] || 'jugar con tus contactos';
   const box = h('div.soc-card.soc-connect', {
     html: `<div class="soc-pals">${avatarHtml(null, 'ana', 44)}${avatarHtml(store.state.avatar, myName(), 52, 'me')}${avatarHtml(null, 'bea', 44)}</div>
-      <h3>${off ? 'Pixelia con amigos' : '¡Entrá a tu cuenta!'}</h3>
+      <h3>${off ? 'Pixelia con más gente' : 'Entrá a tu cuenta'}</h3>
       <p>${off
-        ? `El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder ${txt}. Mientras tanto tu ciudad se guarda en este dispositivo y podés jugar todo igual 💖`
+        ? `El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder ${txt}. Mientras tanto tu ciudad se guarda en este dispositivo y podés jugar todo igual.`
         : `Creá tu cuenta (o entrá con la que ya tenés) para ${txt}. Tu ciudad se guarda en la nube y la podés seguir desde cualquier dispositivo.`}</p>`,
   });
   box.append(h('button.btn.' + (off ? 'sky' : 'primary'), {
@@ -117,12 +117,12 @@ export function connectCard(api, what = 'amigas') {
   return box;
 }
 
-// ---------- Pestaña Amigas ----------
+// ---------- Pestaña Contactos (id amigas) ----------
 let myProfile = null;
 async function renderFriends(api, tok) {
   const { pane } = api;
   if (!net.user) { pane.replaceChildren(connectCard(api, 'amigas')); return; }
-  if (!cache.friends || !myProfile || myProfile.id !== net.user.id) pane.innerHTML = loadingHtml('Buscando a tus amigos…');
+  if (!cache.friends || !myProfile || myProfile.id !== net.user.id) pane.innerHTML = loadingHtml('Buscando tus contactos…');
   else draw();
   const [p] = await Promise.all([myProfile?.id === net.user.id ? myProfile : net.getMyProfile(), refreshSocial(['friends'])]);
   if (p && !p.error) myProfile = p;
@@ -139,9 +139,9 @@ async function renderFriends(api, tok) {
       for (const f of incoming) sec.append(incomingCard(api, f));
       nodes.push(sec);
     }
-    const sec = h('div.soc-sec', { html: `<h4>${icon('people', 22)} Tus amigos<small>${accepted.length}</small></h4>` });
+    const sec = h('div.soc-sec', { html: `<h4>${icon('people', 22)} Tus contactos<small>${accepted.length}</small></h4>` });
     if (!accepted.length) {
-      sec.append(h('div.soc-card', { html: emptyHtml('🌷', 'Todavía no tenés amigos en Pixelia', 'Compartí tu código con tu grupo, o pedile el suyo a alguien y escribilo arriba. ¡Es gratis y súper lindo!') }));
+      sec.append(h('div.soc-card', { html: emptyHtml('🌷', 'Todavía no tenés contactos en Pixelia', 'Compartí tu código, o pedile el suyo a alguien y escribilo arriba. Es gratis.') }));
     } else for (const f of accepted) sec.append(friendCard(api, f));
     nodes.push(sec);
     if (outgoing.length) {
@@ -165,7 +165,7 @@ function meCard(api) {
     html: `${icon('📋', 18)} Copiar`,
     onclick: async () => {
       audio.sfx('tap');
-      try { await navigator.clipboard.writeText(code); toast('¡Código copiado! Pasáselo a tu gente', { icon: 'check', type: 'good' }); }
+      try { await navigator.clipboard.writeText(code); toast('Código copiado. Pasáselo a quien quieras', { icon: 'check', type: 'good' }); }
       catch { toast(`Tu código es ${code}`, { icon: 'people' }); }
     },
   }));
@@ -175,7 +175,7 @@ function meCard(api) {
       onclick: async () => {
         audio.sfx('tap');
         const url = location.origin + location.pathname;
-        try { await navigator.share({ title: 'Pixelia', text: `¡Sumate a Pixelia y juguemos! Mi código es ${code} 🏡`, url }); } catch {}
+        try { await navigator.share({ title: 'Pixelia', text: `Sumate a Pixelia. Mi código es ${code}`, url }); } catch {}
       },
     }));
   }
@@ -196,7 +196,7 @@ function addCard(api) {
     const r = await net.requestFriend(code);
     if (r?.error) { audio.sfx('error'); return r; }
     input.value = '';
-    if (r.status === 'accepted') { audio.sfx('win'); confetti(50); toast(`¡Ahora vos y ${r.name} son amigos!`, { icon: 'heart', type: 'good' }); }
+    if (r.status === 'accepted') { audio.sfx('win'); toast(`${r.name} ya está entre tus contactos`, { icon: 'heart', type: 'good' }); }
     else { audio.sfx('swoosh'); toast(`Solicitud enviada a ${r.name} 💌`, { icon: 'check', type: 'good' }); }
     await refreshSocial(['friends']);
     api.rerender();
@@ -218,8 +218,8 @@ function incomingCard(api, f) {
   yes.onclick = () => busy(yes, async () => {
     const r = await net.respondFriend(f.id, true);
     if (r?.error) return r;
-    audio.sfx('win'); confetti(50);
-    toast(`¡Ahora vos y ${f.name} son amigos!`, { icon: 'heart', type: 'good' });
+    audio.sfx('win');
+    toast(`${f.name} ya está entre tus contactos`, { icon: 'heart', type: 'good' });
     await refreshSocial(['friends']); api.rerender();
     return r;
   });
@@ -256,14 +256,14 @@ function friendCard(api, f) {
     html: `<span style="position:relative">${avatarHtml(f.look, f.name, 56)}${on ? '<i class="soc-on" title="En línea"></i>' : ''}</span>
       <div class="soc-grow">
         <div class="soc-name"><b>${esc(f.name)}</b><span class="soc-lv">${icon('star', 14)}${f.level}</span>${f.rank ? `<span class="soc-lv soc-rk" title="Rango de su ciudad${f.charm ? ` · ${fmtNum(f.charm)} de Encanto` : ''}">${icon(rankDef(f.rank).emoji, 14)}${esc(rankDef(f.rank).name)}</span>` : ''}</div>
-        <div class="soc-seen${on ? ' on' : ''}">${on ? '¡En línea ahora!' : `Se conectó ${timeAgo(f.last_seen)}`}${f.city_name ? ` · ${esc(f.city_name)}` : ''}</div>
+        <div class="soc-seen${on ? ' on' : ''}">${on ? 'En línea' : `Se conectó ${timeAgo(f.last_seen)}`}${f.city_name ? ` · ${esc(f.city_name)}` : ''}</div>
         ${friendshipHtml(f)}
       </div>`,
   });
-  const rm = h('button.soc-x', { 'aria-label': `Dejar de ser amigos con ${f.name}`, html: icon('close', 14) });
+  const rm = h('button.soc-x', { 'aria-label': `Quitar a ${f.name} de tus contactos`, html: icon('close', 14) });
   rm.onclick = async () => {
     audio.sfx('tap');
-    if (!(await confirm('¿Dejar de ser amigos?', `Vas a dejar de ver a <b>${esc(f.name)}</b> y se pierde su nivel de amistad. Los intercambios pendientes se devuelven.`, 'Sí, quitar', 'No'))) return;
+    if (!(await confirm('¿Quitar de tus contactos?', `Vas a dejar de ver a <b>${esc(f.name)}</b> y se pierde su nivel de amistad. Los intercambios pendientes se devuelven.`, 'Sí, quitar', 'No'))) return;
     const r = await net.removeFriend(f.id);
     if (r?.error) { toast(r.error, { icon: 'info', type: 'bad' }); return; }
     await refreshSocial(['friends', 'trades']); api.rerender();
@@ -276,15 +276,15 @@ function friendCard(api, f) {
   }));
   const sent = giftSentToday(f.id);
   const gift = h('button.btn.primary.small' + (sent ? '.done' : ''), {
-    html: sent ? `${icon('check', 16)} Enviado` : `${icon('gift', 18)} Regalito`,
+    html: sent ? `${icon('check', 16)} Enviado` : `${icon('gift', 18)} Regalo`,
     disabled: sent, title: sent ? 'Mañana le podés mandar otro' : `Le mandás ${fmtNum(giftPreview(f).coins)} monedas y a veces una sorpresa`,
   });
   gift.onclick = () => busy(gift, async () => {
     const r = await sendDailyGift(f);
     if (r?.error) { if (/Ya le mandaste/.test(r.error)) api.rerender(); return r; }
     audio.sfx('swoosh');
-    const extra = r.payload.items || r.payload.stickers ? ' ¡con sorpresa!' : '';
-    toast(`¡Regalito enviado a ${f.name}!${extra}`, { icon: 'gift', type: 'good' });
+    const extra = r.payload.items || r.payload.stickers ? ' Con sorpresa.' : '';
+    toast(`Regalo enviado a ${f.name}.${extra}`, { icon: 'gift', type: 'good' });
     gift.classList.add('done'); gift.innerHTML = `${icon('check', 16)} Enviado`;
     setTimeout(() => { if (gift.isConnected) gift.disabled = true; }, 0);
     return r;

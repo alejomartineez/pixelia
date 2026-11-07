@@ -20,7 +20,7 @@ const CHROME = 0xf1ecf8, CHROME_D = 0xc9c0da;
 const GOLD = 0xffd166, GOLD_D = 0xe8a93a, GOLD_L = 0xfff0c2;
 const GLASS = 0xcdeeff, GLASS_D = 0xa8dcff;
 const SEAT = 0xfff0f6, SEAT_D = 0xf2d2e2;
-const LIGHT = 0xfff6c8, TAIL = 0xff5a6e;
+const LIGHT = 0xfff6c8, TAIL = 0xcf5f5f;
 const DARK = 0x4a3a55;
 const WHITE = 0xffffff;
 
@@ -254,7 +254,7 @@ const BODIES = {
       for (let x = -5; x <= 4; x++) v.set(x, 1, 11, CHROME_D);
       v.set(-1, 5, 9, GOLD); v.set(0, 5, 9, GOLD); v.set(-1, 6, 9, GOLD_L); v.set(0, 6, 9, GOLD);
       // banderines
-      for (const x of [-5, 4]) { v.set(x, 6, 8, CHROME_D); v.set(x, 7, 8, CHROME_D); v.set(x, 8, 8, CHROME_D); v.set(x, 8, 7, 0xff7eb6); v.set(x, 7, 7, 0xff7eb6); v.set(x, 8, 6, 0xff7eb6); }
+      for (const x of [-5, 4]) { v.set(x, 6, 8, CHROME_D); v.set(x, 7, 8, CHROME_D); v.set(x, 8, 8, CHROME_D); v.set(x, 8, 7, 0xe392b0); v.set(x, 7, 7, 0xe392b0); v.set(x, 8, 6, 0xe392b0); }
       for (const x of [-4, -3, 2, 3]) v.set(x, 4, -11, TAIL);
       for (let x = -5; x <= 4; x++) v.set(x, 1, -12, CHROME_D);
     },
@@ -294,7 +294,7 @@ const BODIES = {
       wells(v, 12, this.wz, this.r);
       // asiento de terciopelo
       v.box(-3, 5, -2, 6, 1, 3, 0xff9cc8);
-      v.box(-3, 6, -3, 6, 4, 1, 0xff7eb6);
+      v.box(-3, 6, -3, 6, 4, 1, 0xe392b0);
       // tallo y hojita
       v.box(-1, 15, -2, 2, 2, 2, 0x5fc46a);
       v.set(-1, 17, -2, 0x3e9e52); v.set(-2, 17, -2, 0x3e9e52); v.set(-3, 18, -2, 0x3e9e52);
@@ -343,7 +343,7 @@ function wheelGeo(style, r) {
 const TOPPER = {
   'moño'(v, p) {
     const pinkish = ['rosa', 'fucsia', 'rojo'].includes(p.id);
-    const c = pinkish ? 0xfff4fa : 0xff7eb6, d = pinkish ? 0xf0d0e4 : 0xe0528f, l = pinkish ? WHITE : 0xffb3d1;
+    const c = pinkish ? 0xfff4fa : 0xe392b0, d = pinkish ? 0xf0d0e4 : 0xc4678e, l = pinkish ? WHITE : 0xffb3d1;
     v.box(-1, 0, 0, 2, 2, 2, d);
     for (const s of [-1, 1]) {
       const X = (x) => (s < 0 ? x : -1 - x);
@@ -358,11 +358,11 @@ const TOPPER = {
   corona(v) {
     for (let x = -3; x <= 2; x++) for (let z = -2; z <= 1; z++) {
       const edge = x === -3 || x === 2 || z === -2 || z === 1;
-      if (edge) { v.set(x, 0, z, GOLD_D); v.set(x, 1, z, GOLD); } else v.set(x, 0, z, 0xe0528f);
+      if (edge) { v.set(x, 0, z, GOLD_D); v.set(x, 1, z, GOLD); } else v.set(x, 0, z, 0xc4678e);
     }
     for (const [x, z] of [[-3, -2], [2, -2], [-3, 1], [2, 1], [-1, 1], [0, 1], [-1, -2], [0, -2]]) v.set(x, 2, z, GOLD);
     v.set(-1, 3, 1, GOLD_L); v.set(0, 3, -2, GOLD_L);
-    v.set(-1, 1, 1, 0xff5a6e); v.set(0, 1, 1, 0xff5a6e);
+    v.set(-1, 1, 1, 0xcf5f5f); v.set(0, 1, 1, 0xcf5f5f);
     v.set(-3, 1, 0, 0x4f7ce0); v.set(2, 1, -1, 0x6fe3c1);
   },
   corazon(v) {

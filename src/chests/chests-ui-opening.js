@@ -63,7 +63,7 @@ export function playChestOpening(ctx, type, drops = []) {
       h('h2', {}, def.name),
       h('div.chx-sub', { html: `${icon('gift', 20)}<span>${drops.length} premios</span>` }));
     const pips = h('div.chx-pips', {}, ...Array.from({ length: TAPS }, () => h('i')));
-    const hint = h('div.chx-hint', {}, h('span', {}, '¡Tocá el cofre!'), pips);
+    const hint = h('div.chx-hint', {}, h('span', {}, 'Tocá el cofre'), pips);
     const got = h('div.chx-got');
     const deckNum = h('b', {}, String(drops.length));
     const deck = h('div.chx-deck', {}, h('div.chx-stack', {}, h('i'), h('i'), h('i')), h('div', {}, deckNum, h('small', {}, 'quedan')));
@@ -356,9 +356,8 @@ export function playChestOpening(ctx, type, drops = []) {
       if (r.order >= 3) {
         later(60, () => sfx('levelup'));
         shakeScreen();
-        confetti(cardEl, 150);
         flashI = 1; flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go');
-      } else if (r.order === 2) confetti(cardEl, 60);
+      }
     }
 
     // ---------- Resumen ----------
@@ -377,7 +376,7 @@ export function playChestOpening(ctx, type, drops = []) {
         grid.append(h('div.chx-mini', { style: rarityVars(d.rarity) + `animation-delay:${0.08 + i * 0.07}s`, html:
           `<small>${esc(d.kind === 'stickers' ? 'Álbum' : r.name)}</small>${dropIcon(d, 48)}<b>${esc(d.name)}</b><em>${d.kind === 'stickers' ? (d.fresh ? `¡${d.fresh} nueva${d.fresh > 1 ? 's' : ''}!` : 'Repetidas') : dropAmountHtml(d, 18)}</em>` }));
       });
-      const okBtn = h('button.btn.primary.block', { html: `${icon('heart', 22)} ¡Genial!` });
+      const okBtn = h('button.btn.primary.block', { html: `${icon('check', 22)} Listo` });
       okBtn.addEventListener('pointerdown', e => e.stopPropagation());
       okBtn.addEventListener('click', e => { e.stopPropagation(); finish(); });
       const hasBuild = drops.some(d => d.kind === 'build'), hasItem = drops.some(d => d.kind === 'item');
@@ -386,13 +385,12 @@ export function playChestOpening(ctx, type, drops = []) {
         : hasStk ? 'Las figuritas nuevas ya están en tu Álbum.' : '';
       sumEl = h('div.chx-sum', {},
         h('div.chx-sumbox', {},
-          h('div.chx-sumhead', { html: `${icon('crown', 32)}<h2>¡Tu botín!</h2>${icon('crown', 32)}` }),
+          h('div.chx-sumhead', { html: `${icon('crown', 32)}<h2>Lo que había adentro</h2>${icon('crown', 32)}` }),
           grid,
           h('div.chx-sumfoot', {}, tip ? h('p', {}, tip) : null, okBtn)));
       sumEl.addEventListener('pointerdown', e => e.stopPropagation());
       shake.append(sumEl);
       sfx('win');
-      if (best === 'legendaria' || best === 'epica') confetti(null, best === 'legendaria' ? 120 : 60);
       later(250, () => okBtn.focus({ preventScroll: true }));
     }
 
@@ -402,40 +400,7 @@ export function playChestOpening(ctx, type, drops = []) {
       later(600, () => root.classList.remove('quake'));
       try { navigator.vibrate?.([70, 40, 110]); } catch {}
     }
-    let confettiRaf = 0;
-    const confettiParts = [];
-    let confCv = null, confG = null;
-    function confetti(fromEl, n = 100) {
-      const scale = 4;
-      if (!confCv) {
-        confCv = h('canvas.chx-confetti');
-        root.append(confCv);
-        confCv.width = Math.ceil(innerWidth / scale); confCv.height = Math.ceil(innerHeight / scale);
-        confG = confCv.getContext('2d');
-      }
-      const r = fromEl?.getBoundingClientRect?.();
-      const ox = (r ? r.left + r.width / 2 : innerWidth / 2) / scale, oy = (r ? r.top + r.height * 0.35 : innerHeight * 0.3) / scale;
-      const cols = [bestR.color, '#ee8a5c', '#7f9ee8', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'];
-      for (let i = 0; i < n; i++) {
-        const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 3.4;
-        confettiParts.push({ x: ox, y: oy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 2.4, c: cols[(Math.random() * cols.length) | 0], s: Math.random() < 0.3 ? 2 : 1, star: Math.random() < 0.2, t: 0 });
-      }
-      if (!confettiRaf) confettiRaf = requestAnimationFrame(confFrame);
-    }
-    function confFrame() {
-      confettiRaf = 0;
-      if (finished || !confG) return;
-      confG.clearRect(0, 0, confCv.width, confCv.height);
-      for (let i = confettiParts.length - 1; i >= 0; i--) {
-        const p = confettiParts[i];
-        p.vy += 0.085; p.x += p.vx; p.y += p.vy; p.vx *= 0.985;
-        if (++p.t > 170 || p.y > confCv.height + 4) { confettiParts.splice(i, 1); continue; }
-        const x = Math.round(p.x), y = Math.round(p.y);
-        confG.fillStyle = p.c;
-        if (p.star) { confG.fillRect(x - 1, y, 3, 1); confG.fillRect(x, y - 1, 1, 3); } else confG.fillRect(x, y, p.s, p.s);
-      }
-      if (confettiParts.length) confettiRaf = requestAnimationFrame(confFrame);
-    }
+    // (sin confeti: abrir un cofre es cotidiano; el confeti queda para rango, monumentos y logros grandes)
 
     // ---------- Entrada (toque / teclado) ----------
     function advance() {
@@ -482,7 +447,6 @@ export function playChestOpening(ctx, type, drops = []) {
       timers.clear();
       removeEventListener('keydown', onKey, true);
       root.removeEventListener('pointerdown', onPointer);
-      cancelAnimationFrame(confettiRaf);
       root.classList.add('closing');
       setTimeout(() => {
         offFrame();

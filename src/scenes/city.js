@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { buildingModel, constructionModel } from '../city/models.js';
 import { icon } from '../core/icons.js';
-import { MAP, HALF, ROAD_H, footCenter, clamp, easeOutElastic, makeGhost } from './city-common.js';
+import { PALETTE } from '../core/palette.js';
+import { MAP, HALF, ROAD_H, footCenter, clamp, easeOutElastic, makeGhost, greeting } from './city-common.js';
 import { createWorld } from './city-world.js';
 import { createCameraCtl } from './city-camera.js';
 import { createLife } from './city-life.js';
@@ -268,7 +269,7 @@ export default function create(ctx) {
     const can = E.canBuild(id);
     if (!can.ok) { audio.sfx('error'); ui.toast(can.reason, { icon: 'info' }); return; }
     const spot = findFreeSpot(id, 0);
-    if (!spot) { audio.sfx('error'); ui.toast('¡No queda lugar libre! Expandí tu terreno', { icon: 'map' }); return; }
+    if (!spot) { audio.sfx('error'); ui.toast('No queda lugar libre. Expandí tu terreno', { icon: 'map' }); return; }
     beginPlacing({ mode: 'new', id, rot: 0, x: spot[0], z: spot[1], level: 1, uid: null });
   }
   function startMove(uid) {
@@ -376,7 +377,7 @@ export default function create(ctx) {
       if (paintable(p.id)) {
         p.paint = true; p.count++;
         const cb = E.canBuild(p.id);
-        if (!cb.ok) { ui.toast(cb.poor ? '¡Se terminaron las monedas para más!' : cb.reason, { icon: 'coin' }); endPlacement(true); return; }
+        if (!cb.ok) { ui.toast(cb.poor ? 'No alcanzan las monedas para más' : cb.reason, { icon: 'coin' }); endPlacement(true); return; }
         // al tocar (no al pintar arrastrando) el fantasma salta al lugar libre más cercano para seguir poniendo
         if (gesture !== 'ghost') {
           const nx = nearestFreeTile(p.id, p.x, p.z, p.rot, p.lastDir);
@@ -483,7 +484,7 @@ export default function create(ctx) {
 
   function doExpand() {
     const ex = E.expansionStatus();
-    if (!ex) { ui.toast('¡Tu terreno ya está al máximo!', { icon: 'map' }); return false; }
+    if (!ex) { ui.toast('Tu terreno ya está al máximo', { icon: 'map' }); return false; }
     if (!ex.ok) { audio.sfx('error'); ui.toast(ex.reason, { icon: 'lock' }); return false; }
     if (!store.canAfford(ex.cost)) { audio.sfx('error'); ui.toast('No te alcanza todavía', { icon: 'coin' }); return false; }
     const res = E.expand();
@@ -553,13 +554,13 @@ export default function create(ctx) {
     if (hitSign(x, y)) { audio.sfx('tap'); openExpand(S); return; }
     if (hitWalker(life.player, x, y, 30)) {
       audio.sfx('pop');
-      ui.floatText(x, y - 30, icon('heart', 26));
-      setTimeout(() => ctx.router.go('wardrobe'), 260);
+      ui.floatText(x, y - 34, 'Voy a cambiarme.', 'say');
+      setTimeout(() => ctx.router.go('wardrobe'), 420);
       return;
     }
     for (const w of life.npcs) if (hitWalker(w, x, y, 22)) {
       audio.sfx('pop');
-      ui.floatText(x, y - 26, icon('heart', 22));
+      ui.floatText(x, y - 30, greeting(), 'say');
       w.idle = 1.6; w.t = 1; w.tx = w.fx; w.tz = w.fz;
       return;
     }
@@ -756,7 +757,7 @@ export default function create(ctx) {
     const blocked = placing || myModals.size || ui.hasModal();
     // flecha al botón Construir
     let tipText = null;
-    if (!T().cityIntro && ctx.state.city.buildings.length <= 1) tipText = `${icon('hammer', 20)}¡Tocá <b>Construir</b> para empezar!`;
+    if (!T().cityIntro && ctx.state.city.buildings.length <= 1) tipText = `${icon('hammer', 20)}Tocá <b>Construir</b> para empezar`;
     else {
       const q = ctx.quests.mainQuest();
       const ids = questBuildIds(ctx).filter(id => E.canBuild(id).ok);
@@ -769,8 +770,8 @@ export default function create(ctx) {
     } else hideTip();
     // cobrar
     const firstBubble = !T().collect && !blocked ? pickTipBubble() : null;
-    if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}¡Tocá para cobrar!`);
-    else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('games', 18)}¡Tocala para jugar!`);
+    if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}Tocá para cobrar`);
+    else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('games', 18)}Tocala para jugar`);
     else clearWorldTip();
     if (gameTip && performance.now() > gameTip.until) gameTip = null;
   }
@@ -801,9 +802,8 @@ export default function create(ctx) {
       e.anim = { type: 'pop', t: 0 };
       audio.sfx('done');
       const c = e.root.position;
-      fx.confetti(c.x, e.height * 0.8, c.z);
       fx.sparkle(c.x, e.height * 0.5, c.z);
-      setTimeout(() => !disposed && floatAt(e, '¡Listo!'), 120);
+      setTimeout(() => !disposed && floatAt(e, 'Listo'), 120);
       const d = E.def(b);
       if (d.game && !T()['game_' + d.game]) gameTip = { uid: b.uid, until: performance.now() + 12000 };
       syncStatus();
@@ -824,13 +824,15 @@ export default function create(ctx) {
       e.anim = { type: 'pop', t: 0 };
       audio.sfx('done');
       const c = e.root.position;
-      fx.confetti(c.x, e.height * 0.8, c.z);
-      fx.sparkle(c.x, e.height * 0.6, c.z, ['#7f9ee8', '#ffffff', '#ffd166']);
+      // confeti solo en los momentos grandes: subir de rango (Municipalidad) o terminar un monumento
+      const big = b.id === 'castillo' || (E.def(b).cat === 'monumento' && level >= E.maxLevel(b));
+      if (big) fx.confetti(c.x, e.height * 0.8, c.z);
+      fx.sparkle(c.x, e.height * 0.6, c.z, [PALETTE.slate, '#ffffff', PALETTE.gold]);
       // casas y negocios: el cartel cuenta qué adorno nuevo se sumó (ver upgradeDressing en models-kit.js)
-      const d = E.def(b), NEW = { 2: 'Flores', 3: 'Faroles', 4: 'Bandera', 5: '¡Todo dorado!' };
+      const d = E.def(b), NEW = { 2: 'Flores', 3: 'Faroles', 4: 'Bandera', 5: 'Detalles dorados' };
       const extra = (d.cat === 'casa' || d.cat === 'negocio') && d.prod && NEW[level] ? ` · ${NEW[level]}` : b.id === 'castillo' ? ` · ${E.rankName(level)}` : '';
       setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Nivel ${level}!${extra}`), 120);
-      if (b.id === 'castillo') ui.confetti();
+      if (big) ui.confetti();
       life.refreshGrid();
       syncStatus();
     }));
@@ -944,7 +946,7 @@ export default function create(ctx) {
     const lvOk = ex.ok;
     for (const s of world.signs) {
       // si todavía no llega al nivel o al rango, el cartel lo dice (así sabe cuándo podrá crecer)
-      const el = ui.h('div.cx-sign' + (lvOk ? '' : '.locked'), { html: lvOk ? `${icon('plus', 16)}¡Expandir!` : `${icon('lock', 14)}${ui.esc(ex.short)}` });
+      const el = ui.h('div.cx-sign' + (lvOk ? '' : '.locked'), { html: lvOk ? `${icon('plus', 16)}Expandir` : `${icon('lock', 14)}${ui.esc(ex.short)}` });
       const it = ov.add(el, s.pos);
       it.label = true;
       it.hidden = !!placing;
@@ -994,7 +996,7 @@ export default function create(ctx) {
     boostFx(dt);
   }
 
-  /** Los carteles "¡Expandir!" se esconden si chocan con un reloj de obra o una burbuja (esos tienen prioridad). */
+  /** Los carteles "Expandir" se esconden si chocan con un reloj de obra o una burbuja (esos tienen prioridad). */
   const elW = (it, def) => it.w || ((it.w = it.el.offsetWidth) || def);
   function declutterSigns() {
     if (!signItems.length) return;

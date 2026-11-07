@@ -39,14 +39,14 @@ export const PITY_LEGENDARY = 20;         // a lo sumo 20 cofres sin legendaria
 //  'furniture'           — un mueble para Mi Casa (pool: CHEST_FURNITURE de home/furniture.js)
 //  'material'            — materiales de los monumentos (amount = [min,max]; elige el que más falta para tus obras)
 export const ITEMS = {
-  coins_s: { name: 'Bolsita de monedas', rarity: 'comun', kind: 'coins', amount: [120, 220], icon: 'coin' },
+  coins_s: { name: 'Bolsa de monedas', rarity: 'comun', kind: 'coins', amount: [120, 220], icon: 'coin' },
   xp_s: { name: 'Pergamino de saber', rarity: 'comun', kind: 'xp', amount: [25, 45], icon: 'xp' },
   hammer: { name: 'Martillo Mágico', rarity: 'comun', kind: 'item', use: 'city', icon: '🔨', desc: 'Termina una obra o mejora al instante.' },
   m3_moves: { name: '+5 Movidas', rarity: 'comun', kind: 'item', use: 'game', game: 'match3', icon: '👟', desc: 'Empezá un nivel de Joyas Brillantes con 5 movidas extra.' },
   blk_bomb: { name: 'Bomba de Bloques', rarity: 'comun', kind: 'item', use: 'game', game: 'blocks', icon: '💣', desc: 'En Bloques Pixel: limpia un área de 3x3 cuando quieras.' },
   park_time: { name: 'Reloj Extra', rarity: 'comun', kind: 'item', use: 'game', game: 'parking', icon: '⏱️', desc: 'Estacionamiento Express: +30 segundos y 2 toques gratis.' },
 
-  coins_m: { name: 'Cofrecito de monedas', rarity: 'rara', kind: 'coins', amount: [400, 650], icon: 'coin' },
+  coins_m: { name: 'Caja de monedas', rarity: 'rara', kind: 'coins', amount: [400, 650], icon: 'coin' },
   gems_s: { name: 'Puñado de gemas', rarity: 'rara', kind: 'gems', amount: [3, 6], icon: 'gem' },
   hourglass: { name: 'Reloj de Arena', rarity: 'rara', kind: 'item', use: 'city', icon: '⏳', desc: 'Adelanta 1 hora todas las obras y mejoras en curso.' },
   potion_prod: { name: 'Poción Dorada', rarity: 'rara', kind: 'item', use: 'city', icon: '🧪', desc: 'Producción x2 en toda la ciudad durante 30 minutos.', boost: { type: 'prod', mult: 2, minutes: 30 } },
@@ -63,7 +63,7 @@ export const ITEMS = {
   gems_l: { name: 'Tesoro de gemas', rarity: 'legendaria', kind: 'gems', amount: [30, 45], icon: 'gem' },
   potion_mega: { name: 'Elixir Dorado', rarity: 'legendaria', kind: 'item', use: 'city', icon: '✨', desc: 'Producción x3 en toda la ciudad durante 2 horas.', boost: { type: 'prod', mult: 3, minutes: 120 } },
   cosmetic_gems: { name: 'Prenda legendaria', rarity: 'legendaria', kind: 'cosmetic', pool: 'gems', icon: '🌟', desc: 'Una prenda o parte de auto premium (de las que cuestan gemas), gratis.' },
-  build_legend: { name: 'Construcción legendaria', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: '🦄', desc: 'Una construcción legendaria gratis, ¡aunque no tengas el nivel!' },
+  build_legend: { name: 'Construcción legendaria', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: '🦄', desc: 'Una construcción legendaria gratis, aunque no tengas el nivel.' },
 };
 for (const [id, it] of Object.entries(ITEMS)) it.id = id;
 const BY_RARITY = Object.fromEntries(RARITY_LIST.map(r => [r.id, Object.values(ITEMS).filter(i => i.rarity === r.id)]));
@@ -144,7 +144,7 @@ function resolveDrop(item) {
     Object.assign(d, { amount: 1, furniture: id, name: FURNITURE_BY_ID[id]?.name || 'Mueble' });
   } else if (item.kind === 'material') {
     // en la Aldea y el Caserío todavía no hay monumentos: mejor monedas
-    if (rankOf(S()) < 3) return { ...d, kind: 'coins', amount: Math.round(randInt(250, 450) * rewardScale(lvl)), name: 'Cofrecito de monedas', icon: 'coin', converted: true };
+    if (rankOf(S()) < 3) return { ...d, kind: 'coins', amount: Math.round(randInt(250, 450) * rewardScale(lvl)), name: 'Caja de monedas', icon: 'coin', converted: true };
     const m = neededMaterial() || MATERIALS[Math.floor(rand() * MATERIALS.length)];
     Object.assign(d, { amount: randInt(...item.amount), material: m.id, name: m.name, icon: m.icon });
   } else if (item.kind === 'build') {
@@ -302,14 +302,14 @@ export function useCityItem(id, opts = {}) {
     if (!b || !(b.buildEnd > now || b.upgradeEnd > now)) return { ok: false, msg: 'No hay ninguna obra en curso' };
     if (b.buildEnd > now) b.buildEnd = now - 1; else b.upgradeEnd = now - 1;
     consumeItem(id);
-    return { ok: true, msg: '¡Obra terminada!', uid: b.uid };
+    return { ok: true, msg: 'Obra terminada', uid: b.uid };
   }
   if (id === 'hourglass') {
     const busy = s.city.buildings.filter(x => x.buildEnd > now || x.upgradeEnd > now);
     if (!busy.length) return { ok: false, msg: 'No hay obras en curso' };
     for (const b of busy) { if (b.buildEnd > now) b.buildEnd -= 3600e3; if (b.upgradeEnd > now) b.upgradeEnd -= 3600e3; }
     consumeItem(id);
-    return { ok: true, msg: `¡${busy.length} obra${busy.length > 1 ? 's' : ''} adelantada${busy.length > 1 ? 's' : ''} 1 hora!` };
+    return { ok: true, msg: `${busy.length} obra${busy.length > 1 ? 's' : ''} adelantada${busy.length > 1 ? 's' : ''} 1 hora` };
   }
   if (item.boost) {
     const c = cs();
@@ -320,7 +320,7 @@ export function useCityItem(id, opts = {}) {
     c.boosts[item.boost.type] = { mult: Math.max(mult, cur && cur.until > now ? cur.mult || 1 : 1), until: (cur && cur.until > now && (cur.mult || 1) === mult ? base : now) + item.boost.minutes * 60e3 };
     consumeItem(id);
     bus.emit('boosts:changed', { type: item.boost.type });
-    return { ok: true, msg: item.boost.type === 'prod' ? `¡Producción x${c.boosts.prod.mult}!` : '¡La ciudad está feliz!' };
+    return { ok: true, msg: item.boost.type === 'prod' ? `¡Producción x${c.boosts.prod.mult}!` : 'La ciudad está de buen humor' };
   }
   return { ok: false, msg: 'Ese objeto se usa en un minijuego' };
 }

@@ -231,7 +231,6 @@ export const CHX_CSS = `
 .chx-mini em { display: flex; align-items: center; gap: 3px; font-style: normal; font-size: 18px; font-weight: 700; }
 .chx-sumfoot { padding: 6px 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .chx-sumfoot p { margin: 0; text-align: center; font-size: 14px; color: var(--ink-l); }
-.chx-confetti { position: absolute; inset: 0; z-index: 5; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
 
 @keyframes chx-spin { to { transform: rotate(360deg); } }
 @keyframes chx-fadein { from { opacity: 0; } }

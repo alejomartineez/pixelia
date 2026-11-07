@@ -7,7 +7,7 @@ import { buildingModel, constructionModel } from '../city/models.js';
 import { icon } from '../core/icons.js';
 import { rewardScale, MAX_EXPANSIONS } from '../core/data.js';
 import { def, population, happiness, landBounds, fmtTime, fmtNum, townRank, rankDef, cityCharm } from '../core/economy.js';
-import { HALF, footCenter, clamp } from './city-common.js';
+import { HALF, footCenter, clamp, greeting } from './city-common.js';
 import { createWorld } from './city-world.js';
 import { createCameraCtl } from './city-camera.js';
 import { createLife } from './city-life.js';
@@ -69,7 +69,7 @@ const VSTYLE = `
 .cv-note .cv-ideas button { font-family: var(--font); font-size: 13px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 3px 8px; color: var(--ink); cursor: pointer; }
 `;
 
-const NOTE_IDEAS = ['¡Qué linda ciudad! 🌸', '¡Me encantó tu plaza! 🏡', 'Pasé a saludarte 💕', '¡Qué talento para construir! ✨'];
+const NOTE_IDEAS = ['Linda ciudad. Me quedo a vivir.', 'Pasé a saludar.', 'Te copio la plaza, avisame si molesta.', 'Buen ritmo de obras.'];
 
 /** Día UTC (igual que el servidor) para los límites diarios. */
 const dayKey = () => new Date().toISOString().slice(0, 10);
@@ -138,7 +138,7 @@ export function createVisit(ctx) {
   function fail(msg) {
     if (disposed) return;
     audio.sfx('error');
-    ui.toast(msg || 'No pudimos abrir esa ciudad. Probá de nuevo en un ratito.', { icon: 'info' });
+    ui.toast(msg || 'No pudimos abrir esa ciudad. Probá de nuevo en un rato.', { icon: 'info' });
     later(goHome, 250);
   }
 
@@ -148,13 +148,13 @@ export function createVisit(ctx) {
   async function load(id) {
     try {
       net = (await import('../online/net.js')).net;
-    } catch (err) { console.warn('[visit] net', err); return fail('No pudimos conectarnos. Probá de nuevo en un ratito.'); }
+    } catch (err) { console.warn('[visit] net', err); return fail('No pudimos conectarnos. Probá de nuevo en un rato.'); }
     if (disposed) return;
     if (net.mode === 'off') return fail('Para visitar ciudades tenés que jugar online.');
     await net.init();
     if (disposed) return;
-    if (!net.user) return fail('Iniciá sesión para visitar a tus amigos.');
-    if (id === net.user.id) return fail('¡Esa es tu ciudad! 😄');
+    if (!net.user) return fail('Iniciá sesión para visitar a tus contactos.');
+    if (id === net.user.id) return fail('Esa es tu ciudad.');
     const res = await net.getProfiles([id]);
     if (disposed) return;
     if (res?.error) return fail(res.error);
@@ -162,7 +162,7 @@ export function createVisit(ctx) {
     if (!p) return fail('No encontramos esa ciudad.');
     hostName = String(p.name || hostName).slice(0, 24);
     if (p.friend === false) return fail(`Para visitar a ${hostName}, primero agréguense con su código de amistad.`);
-    if (!p.city || !Array.isArray(p.city.buildings) || !p.city.buildings.length) return fail(`${hostName} todavía no publicó su ciudad. ¡Probá más tarde!`);
+    if (!p.city || !Array.isArray(p.city.buildings) || !p.city.buildings.length) return fail(`${hostName} todavía no publicó su ciudad. Probá más tarde.`);
     try { build(p); } catch (err) { console.error('[visit] armando la ciudad', err); return fail('Ups, no pudimos dibujar esa ciudad.'); }
     // visita del día (suma amistad); no hace falta esperarla
     Promise.resolve(net.visit(id)).then(v => {
@@ -323,7 +323,7 @@ export function createVisit(ctx) {
       const busy = [...entries.values()].filter(e => canHelp(e, now)).length;
       const html = !busy ? `${icon('sparkle', 16)}Paseá por la ciudad de ${ui.esc(hostName)}`
         : left > 0 ? `${icon('hammer', 16)}Tocá una obra para ayudar · te quedan <b>${left}</b> ayuda${left === 1 ? '' : 's'} hoy`
-          : `${icon('check', 16)}¡Ya ayudaste ${HELPS_PER_DAY} veces hoy! Mañana más`;
+          : `${icon('check', 16)}Ya ayudaste ${HELPS_PER_DAY} veces hoy. Mañana más`;
       if (hintEl.innerHTML !== html) hintEl.innerHTML = html;
     }
     return n;
@@ -332,8 +332,8 @@ export function createVisit(ctx) {
   async function help(e) {
     if (busyAct || !e?.help || disposed) return;
     const L = hostLog();
-    if (L.helped.includes(e.b.uid)) { audio.sfx('tap'); ui.toast(`Ya ayudaste en esta obra. ¡${hostName} te lo agradece!`, { icon: 'heart' }); return; }
-    if (helpsLeft() <= 0) { audio.sfx('error'); ui.toast('Ya ayudaste 3 veces hoy en esta ciudad. ¡Mañana más!', { icon: 'info' }); return; }
+    if (L.helped.includes(e.b.uid)) { audio.sfx('tap'); ui.toast(`Ya ayudaste en esta obra. ${hostName} te lo agradece.`, { icon: 'heart' }); return; }
+    if (helpsLeft() <= 0) { audio.sfx('error'); ui.toast('Ya ayudaste 3 veces hoy en esta ciudad. Mañana más.', { icon: 'info' }); return; }
     if (!canHelp(e)) return;
     busyAct = true;
     const it = e.help;
@@ -367,14 +367,14 @@ export function createVisit(ctx) {
     fx.dust(c.x, 0.05, c.z, 0.7);
     e.anim = { t: 0 };
     syncHelp();
-    if (!helpsLeft()) later(() => ui.toast(`¡Gracias por ayudar a ${hostName}! 💕`, { icon: 'heart', type: 'good' }), 700);
+    if (!helpsLeft()) later(() => ui.toast(`Ayudaste a ${hostName}. Te lo va a agradecer.`, { icon: 'heart', type: 'good' }), 700);
   }
 
   // ---------- ❤️ ----------
   async function like() {
     if (busyAct || disposed || !net) return;
     const L = hostLog();
-    if (L.liked) { audio.sfx('tap'); hearts(6); ui.toast(`Ya le diste ❤️ a ${hostName} hoy. ¡Mañana podés de nuevo!`, { icon: 'heart' }); return; }
+    if (L.liked) { audio.sfx('tap'); hearts(6); ui.toast(`Ya le diste un me gusta a ${hostName} hoy. Mañana podés de nuevo.`, { icon: 'heart' }); return; }
     busyAct = true;
     likeBtn.disabled = true;
     const res = await net.like(host);
@@ -394,7 +394,7 @@ export function createVisit(ctx) {
     const c = vstate.city.buildings.find(b => b.id === 'castillo');
     const ce = c && entries.get(c.uid);
     if (ce) fx.burst(ce.root.position.x, ce.height * 0.8, ce.root.position.z, { n: 30, colors: ['#ee8a5c', '#f1a181', '#ffffff', '#fde9d8'], speed: 1.6, up: 3.5, gravity: 3, size: 0.09, life: 1.4, spread: 0.8 });
-    ui.toast(`¡Le diste ❤️ a la ciudad de ${hostName}!`, { icon: 'heart', type: 'good' });
+    ui.toast(`Le diste un me gusta a la ciudad de ${hostName}.`, { icon: 'heart', type: 'good' });
     renderBar();
   }
   function hearts(n) {
@@ -420,9 +420,9 @@ export function createVisit(ctx) {
   function openNote() {
     if (!net) return;
     const L = hostLog();
-    if (L.note) { audio.sfx('tap'); ui.toast(`Ya le dejaste una notita a ${hostName} hoy`, { icon: 'info' }); return; }
+    if (L.note) { audio.sfx('tap'); ui.toast(`Ya le dejaste una nota a ${hostName} hoy`, { icon: 'info' }); return; }
     const body = ui.h('div.cv-note');
-    const ta = ui.h('textarea', { maxlength: String(NOTE_MAX), placeholder: `Escribile algo lindo a ${hostName}…`, 'aria-label': 'Notita' });
+    const ta = ui.h('textarea', { maxlength: String(NOTE_MAX), placeholder: `Escribile algo a ${hostName}…`, 'aria-label': 'Nota' });
     const cnt = ui.h('div.cv-count', {}, `0/${NOTE_MAX}`);
     const upd = () => {
       const chars = [...ta.value];
@@ -436,11 +436,11 @@ export function createVisit(ctx) {
     for (const t of NOTE_IDEAS) ideas.append(ui.h('button', { type: 'button', onclick: () => { ta.value = t; upd(); ta.focus(); } }, t));
     body.append(ta, cnt, ideas);
     let sending = false;
-    const m = ui.modal({ title: `Notita para ${hostName}`, icon: '💌', content: body, className: 'cx-modal',
-      actions: [{ label: 'Cancelar', cls: 'ghost' }, { html: `${icon('💌', 20)}Dejar notita`, label: 'Dejar notita', cls: 'primary', onClick: async () => {
+    const m = ui.modal({ title: `Nota para ${hostName}`, icon: '💌', content: body, className: 'cx-modal',
+      actions: [{ label: 'Cancelar', cls: 'ghost' }, { html: `${icon('💌', 20)}Dejar nota`, label: 'Dejar nota', cls: 'primary', onClick: async () => {
         if (sending) return false;
         const t = ta.value.trim();
-        if (!t) { audio.sfx('error'); ui.toast('Escribí algo cortito', { icon: 'info' }); return false; }
+        if (!t) { audio.sfx('error'); ui.toast('Escribí algo antes de mandarla', { icon: 'info' }); return false; }
         sending = true;
         const ok = await sendNote(t);
         sending = false;
@@ -463,7 +463,7 @@ export function createVisit(ctx) {
     L.note = true;
     store.markDirty();
     audio.sfx('done');
-    ui.toast(`¡Le dejaste una notita a ${hostName}! 💌`, { icon: 'heart', type: 'good' });
+    ui.toast(`Le dejaste una nota a ${hostName}.`, { icon: 'heart', type: 'good' });
     const s = screenOfCastle();
     ui.floatText(s.x, s.y - 20, icon('💌', 30));
     renderBar();
@@ -498,10 +498,10 @@ export function createVisit(ctx) {
   function renderBar() {
     if (!likeBtn) return;
     const L = hostLog();
-    likeBtn.innerHTML = L.liked ? `${icon('heart', 20)}¡Te encantó!` : `${icon('heart', 20)}¡Qué linda!`;
+    likeBtn.innerHTML = L.liked ? `${icon('heart', 20)}Te gustó` : `${icon('heart', 20)}Me gusta`;
     likeBtn.classList.toggle('done', L.liked);
     likeBtn.disabled = false;
-    noteBtn.innerHTML = L.note ? `${icon('check', 18)}Notita enviada` : `${icon('💌', 20)}Dejar notita`;
+    noteBtn.innerHTML = L.note ? `${icon('check', 18)}Nota enviada` : `${icon('💌', 20)}Dejar nota`;
     noteBtn.classList.toggle('done', L.note);
   }
   function makeLoading(name) {
@@ -595,12 +595,12 @@ export function createVisit(ctx) {
     if (he) { help(he); return; }
     if (hitWalker(life.player, x, y, 30)) {
       audio.sfx('pop');
-      ui.floatText(x, y - 30, `${icon('heart', 22)}¡Hola!`);
+      ui.floatText(x, y - 34, `Hola, ${hostName}.`, 'say');
       return;
     }
     for (const w of life.npcs) if (hitWalker(w, x, y, 22)) {
       audio.sfx('pop');
-      ui.floatText(x, y - 26, icon('heart', 22));
+      ui.floatText(x, y - 30, greeting(), 'say');
       w.idle = 1.6; w.t = 1; w.tx = w.fx; w.tz = w.fz;
       return;
     }
@@ -615,7 +615,7 @@ export function createVisit(ctx) {
       const s = screenOf(topPos(e, 0.3));
       // su casa: se puede entrar a mirarla (solo mirar, con los muebles que publicó)
       if (d.id === 'mi_casa') {
-        ui.floatText(s.x, s.y, `${icon('home', 18)}¡Pasá!`);
+        ui.floatText(s.x, s.y, `${icon('home', 18)}Pasá`);
         later(() => ctx.router.go('home', { visit: host, name: hostName }), 350);
         return;
       }

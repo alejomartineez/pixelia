@@ -84,7 +84,7 @@ export function openQuests(ctx, params = {}) {
     if (!q) {
       wrap.append(h('div.card.pnl-mq.pnl-allDone', { html: `
         <div class="pnl-mq-icon pnl-bob">${icon('crown', 72)}</div>
-        <h3 class="pnl-mq-title">¡Completaste todas las misiones!</h3>
+        <h3 class="pnl-mq-title">Completaste todas las misiones</h3>
         <p class="muted">Sos oficialmente la estrella de Pixelia. Seguí con las diarias y los logros para juntar más gemas.</p>
         <div class="pnl-chips"><span class="chip gold">${icon('star', 16)} ${MAIN_QUESTS.length}/${MAIN_QUESTS.length}</span></div>` }));
       return wrap;
@@ -96,11 +96,11 @@ export function openQuests(ctx, params = {}) {
       <div class="pnl-mq-icon ${q.done ? 'pnl-bob' : ''}">${q.done ? icon('gift', 64) : goalIcon(q.goal, 56)}</div>
       <h3 class="pnl-mq-title">${esc(q.title)}</h3>
       <p class="pnl-mq-text">${esc(q.text)}</p>
-      <div class="pnl-prog">${progressHtml(pct, q.done ? 'gold' : '')}<b>${q.done ? '¡Lista!' : progressLabel(q.progress, q.goal.count, fmt)}</b></div>
+      <div class="pnl-prog">${progressHtml(pct, q.done ? 'gold' : '')}<b>${q.done ? 'Lista' : progressLabel(q.progress, q.goal.count, fmt)}</b></div>
       <div class="pnl-reward"><span class="pnl-reward-lbl">Premio</span>${rewardHtml(q.reward, 22) || costHtml(q.reward, 22)}</div>`;
     const foot = h('div.pnl-mq-foot');
     if (q.done) {
-      const btn = h('button.btn.gold.block.pnl-glow', { html: `${icon('gift', 24)} ¡Cobrar premio!` });
+      const btn = h('button.btn.gold.block.pnl-glow', { html: `${icon('gift', 24)} Cobrar premio` });
       btn.onclick = () => {
         // un cobro por botón: si no, un doble toque cobraba también la misión siguiente (si ya estaba lista)
         if (btn.disabled) return;
@@ -110,7 +110,7 @@ export function openQuests(ctx, params = {}) {
         audio.sfx('done');
         hold(900);
         card.classList.add('claimed');
-        card.append(h('div.pnl-stamp', {}, '¡Cumplida!'));
+        card.append(h('div.pnl-stamp', {}, 'Cumplida'));
         rewardFx(btn, reward);
       };
       foot.append(btn);
@@ -133,7 +133,7 @@ export function openQuests(ctx, params = {}) {
         <span class="pnl-step-body"><span class="pnl-step-txt"><small>Misión ${q.index + 2 + i}</small><b class="pnl-blur">${esc(nq.title)}</b></span>
         <span class="pnl-step-rew">${rewardHtml({ coins: nq.reward.coins, gems: nq.reward.gems, chest: nq.reward.chest }, 16, { names: false }) || costHtml(nq.reward, 16)}</span></span>` }));
     });
-    if (!next.length) path.append(h('div.pnl-step.last', { html: `<span class="pnl-step-dot">${icon('crown', 18)}</span><span class="pnl-step-body"><span class="pnl-step-txt"><b>¡Última misión!</b><small>Después sos una estrella total.</small></span></span>` }));
+    if (!next.length) path.append(h('div.pnl-step.last', { html: `<span class="pnl-step-dot">${icon('crown', 18)}</span><span class="pnl-step-body"><span class="pnl-step-txt"><b>Última misión</b><small>Después, la ciudad es toda tuya.</small></span></span>` }));
     wrap.append(path);
     return wrap;
   }
@@ -146,7 +146,7 @@ export function openQuests(ctx, params = {}) {
       case 'expand': return 'Tocá el cartel de terreno en el borde de tu ciudad.';
       case 'level': return 'Ganás experiencia construyendo, cobrando y jugando.';
       case 'play': case 'stars': case 'score': return 'Primero construí el edificio del minijuego.';
-      default: return '¡Vos podés!';
+      default: return 'Sin apuro.';
     }
   }
 
@@ -169,7 +169,7 @@ export function openQuests(ctx, params = {}) {
       if (q.claimed) side.innerHTML = `<span class="pnl-done">${icon('check', 28)}</span>`;
       else if (q.done) {
         const b = h('button.btn.gold.small.pnl-glow', {}, 'Cobrar');
-        b.onclick = () => { if (b.disabled) return; b.disabled = true; const r = quests.claimDaily(q.id); if (r) { audio.sfx('done'); hold(450); rewardFx(b, r, { confetti: false }); burst(...center(b), 40); } };
+        b.onclick = () => { if (b.disabled) return; b.disabled = true; const r = quests.claimDaily(q.id); if (r) { audio.sfx('done'); hold(450); rewardFx(b, r); } };
         side.append(b);
       } else {
         const act = goalAction(ctx, q.goal, close);
@@ -185,8 +185,8 @@ export function openQuests(ctx, params = {}) {
     chest.innerHTML = `
       <div class="pnl-chest-ic ${bonus.ready ? 'pnl-shake' : ''}">${icon(bonus.claimed ? 'sparkle' : 'gift', 52)}</div>
       <div class="pnl-q-main">
-        <b class="pnl-q-title">${bonus.claimed ? '¡Cofre abierto!' : 'Cofre del día'}</b>
-        <small class="muted">${bonus.claimed ? 'Mañana hay otro. ¡Te espero!' : 'Cobrá las 3 diarias para abrirlo.'}</small>
+        <b class="pnl-q-title">${bonus.claimed ? 'Cofre abierto' : 'Cofre del día'}</b>
+        <small class="muted">${bonus.claimed ? 'Mañana hay otro.' : 'Cobrá las 3 diarias para abrirlo.'}</small>
         <div class="pnl-pips">${list.map((_, i) => `<i class="${i < claimedN ? 'on' : ''}"></i>`).join('')}</div>
         <div class="pnl-q-rew">${rewardHtml(bonus.reward, 18) || costHtml(bonus.reward, 18)}</div>
       </div>`;
@@ -228,7 +228,7 @@ export function openQuests(ctx, params = {}) {
         <div class="pnl-q-ic">${achIcon(a, 32)}</div>
         <div class="pnl-q-main">
           <div class="pnl-q-top"><b class="pnl-q-title">${esc(a.name || '')}</b>${isNew ? '<span class="chip primary pnl-newchip">¡Nuevo!</span>' : ''}<span class="pnl-stars" aria-label="Nivel ${a.tier || 0} de ${nT}">${stars}</span></div>
-          <small class="pnl-q-desc">${a.maxed ? '¡Lo completaste todo!' : esc(a.label || a.desc || '')}</small>
+          <small class="pnl-q-desc">${a.maxed ? 'Completo' : esc(a.label || a.desc || '')}</small>
           <div class="pnl-prog sm">${progressHtml(pct, a.ready || a.maxed ? 'gold' : 'primary')}<b>${a.maxed ? 'MAX' : progressLabel(a.value || 0, a.target || 0, fmt)}</b></div>
         </div>`;
       const side = h('div.pnl-q-side');
@@ -238,7 +238,7 @@ export function openQuests(ctx, params = {}) {
         if (a.ready) {
           const b = h('button.btn.gold.small.pnl-glow', {}, 'Cobrar');
           // un tier por toque: un doble toque no debe cobrar el tier siguiente sin que se vea
-          b.onclick = () => { if (b.disabled) return; b.disabled = true; const r = quests.claimAchievement(a.id); if (r) { audio.sfx('star'); hold(450); rewardFx(b, r, { confetti: false }); burst(...center(b), 50); } };
+          b.onclick = () => { if (b.disabled) return; b.disabled = true; const r = quests.claimAchievement(a.id); if (r) { audio.sfx('star'); hold(450); rewardFx(b, r); if (a.tier + 1 >= 4) burst(...center(b), 50); } };   // confeti solo en los logros grandes
           side.append(b);
         }
       }

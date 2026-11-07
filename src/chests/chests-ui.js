@@ -49,7 +49,7 @@ function oddsHtml(def) {
 function guaranteeChip(def) {
   if (!def.guarantee) return '';
   const r = RARITIES[def.guarantee];
-  const txt = def.guarantee === 'legendaria' ? '¡Legendaria segura!' : `Garantiza ${r.name} o más`;
+  const txt = def.guarantee === 'legendaria' ? 'Legendaria asegurada' : `Garantiza ${r.name} o más`;
   return `<span class="chx-rchip" style="${rarityVars(r.id)}"><i></i>${txt}</span>`;
 }
 const slotsChip = (def) => {
@@ -74,7 +74,7 @@ function showWhat(ctx, type) {
       <div class="chx-whatlist">${rows}</div>
       <p class="center small muted" style="margin-top:10px">${packIcon(16)} Además trae <b>${stickerDropsForChest(type).n} figuritas</b> para tu Álbum${stickerDropsForChest(type).minStars > 1 ? ` (una de ${stickerDropsForChest(type).minStars}★ o más)` : ''}.</p>
       <p class="center small muted">${icon('sparkle', 16)} Racha de suerte: nunca pasan más de ${C.PITY_LEGENDARY} cofres sin una Legendaria.</p>`,
-    actions: [{ label: '¡Entendido!', cls: 'primary' }],
+    actions: [{ label: 'Entendido', cls: 'primary' }],
   });
 }
 
@@ -199,7 +199,7 @@ export async function openChestsPanel(ctx, params = {}) {
         <h3>Cofre gratis</h3>
         ${ready
           ? `<div class="chx-chips"><span class="chx-rchip" style="${rarityVars('legendaria')}">${icon('sparkle', 14)}¡${fs.ready > 1 ? `${fs.ready} listos` : 'Listo'}!</span></div>
-             <div class="chx-timer">${fs.ready < fs.max ? `Y otro más en <b data-chx-free>…</b>` : `Tenés ${fs.max} guardados: ¡reclamalos!`}</div>`
+             <div class="chx-timer">${fs.ready < fs.max ? `Y otro más en <b data-chx-free>…</b>` : `Tenés ${fs.max} guardados: reclamalos.`}</div>`
           : `<div class="chx-timer">El próximo en <b data-chx-free>…</b></div>
              <div class="progress gold"><i data-chx-freebar style="width:0%"></i></div>`}
         <small class="muted">Uno cada 4 horas · se guardan hasta ${fs.max}</small>
@@ -298,7 +298,7 @@ export async function openChestsPanel(ctx, params = {}) {
 
   function renderTienda() {
     const gems = ctx.state.gems;
-    pane.append(h('div.card.chx-shophead', { html: `${icon('diamond', 36)}<p>Comprá cofres con gemas. ¡Las gemas se ganan jugando, subiendo de nivel y en los cofres!</p>` }));
+    pane.append(h('div.card.chx-shophead', { html: `${icon('diamond', 36)}<p>Comprá cofres con gemas. Las gemas se ganan jugando, subiendo de nivel y en los cofres.</p>` }));
     const list = h('div.chx-list');
     for (const t of ORDER) {
       const def = CHESTS[t];
@@ -306,7 +306,7 @@ export async function openChestsPanel(ctx, params = {}) {
       const can = gems >= (def.price.gems || 0);
       const card = h('div.card.chx-chest.chx-shop', { style: chestVars(t) });
       card.innerHTML = `
-        ${t === 'oro' ? '<span class="chx-best">¡El más elegido!</span>' : ''}
+        ${t === 'oro' ? '<span class="chx-best">El más elegido</span>' : ''}
         <div class="chx-thumbbox">${thumbImg(t)}</div>
         <div class="chx-info">
           <h3>${esc(def.name)}</h3>
@@ -328,7 +328,7 @@ export async function openChestsPanel(ctx, params = {}) {
     const need = def.price.gems - ctx.state.gems;
     if (need > 0) {
       audio.sfx('error');
-      toast(`Te faltan ${need} gemas. ¡Ganalas jugando!`, { icon: 'gem', type: 'bad' });
+      toast(`Te faltan ${need} gemas. Se ganan jugando.`, { icon: 'gem', type: 'bad' });
       return;
     }
     const ok = await new Promise(res => {

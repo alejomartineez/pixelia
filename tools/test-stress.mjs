@@ -139,7 +139,7 @@ const PANELS = [
   ['Juegos', `ctx.openPanel('games')`], ['Misiones', `ctx.openPanel('quests')`], ['Ajustes', `ctx.openPanel('settings')`],
   ['Ayuda', `ctx.openPanel('help')`], ['Cofres', `ctx.openChests()`], ['Mochila', `ctx.openChests({ tab: 'mochila' })`],
   ['Álbum', `ctx.openAlbum()`], ['Pase', `ctx.openSeasonPass()`], ['Eventos', `ctx.openEvents()`],
-  ['Amigas', `ctx.openSocial('amigas')`], ['Buzón', `ctx.openSocial('buzon')`], ['Ranking', `ctx.openSocial('ranking')`],
+  ['Contactos', `ctx.openSocial('amigas')`], ['Buzón', `ctx.openSocial('buzon')`], ['Ranking', `ctx.openSocial('ranking')`],
   ['Equipo', `ctx.openSocial('equipo')`], ['Cuenta', `ctx.openAccount()`], ['Tu ciudad', `ctx.openPanel('rank')`], ['Obras', `ctx.openPanel('works')`],
   // selector de estilo de ciudad: maquetas con su propio WebGL (se libera a los 1,5 s)
   ['Temas', `import('/src/city/themes-ui.js').then(m => { m.openThemePicker(ctx); })`],

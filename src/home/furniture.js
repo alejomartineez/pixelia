@@ -11,7 +11,7 @@ import { store } from '../core/state.js';
 // wall: va colgado en una pared (cuadros, estantes, ventanas) · shop: false = no se vende (sale de cofres, Pase o trofeos)
 export const FURNITURE = [
   // --- básicos ---
-  { id: 'cama', name: 'Cama', size: [1, 2], comfort: 12, price: { coins: 300 }, bed: true, desc: 'Para soñar lindo.' },
+  { id: 'cama', name: 'Cama', size: [1, 2], comfort: 12, price: { coins: 300 }, bed: true, desc: 'Ocho horas, si te dejan.' },
   { id: 'mesa', name: 'Mesa de madera', size: [2, 1], comfort: 6, price: { coins: 200 } },
   { id: 'silla', name: 'Silla', size: [1, 1], comfort: 3, price: { coins: 80 }, sit: true },
   { id: 'ropero', name: 'Ropero', size: [2, 1], comfort: 6, price: { coins: 400 }, wardrobe: true, desc: 'Tocalo para abrir el Vestidor.' },
@@ -21,7 +21,7 @@ export const FURNITURE = [
   // --- living ---
   { id: 'sillon', name: 'Sillón', size: [2, 1], comfort: 14, price: { coins: 700 }, sit: true },
   { id: 'puff', name: 'Puf', size: [1, 1], comfort: 6, price: { coins: 250 }, sit: true },
-  { id: 'mesita', name: 'Mesita ratona', size: [1, 1], comfort: 4, price: { coins: 220 } },
+  { id: 'mesita', name: 'Mesa ratona', size: [1, 1], comfort: 4, price: { coins: 220 } },
   { id: 'tele', name: 'Tele', size: [2, 1], comfort: 10, price: { coins: 900 } },
   { id: 'biblioteca', name: 'Biblioteca', size: [2, 1], comfort: 10, price: { coins: 800 } },
   { id: 'alfombra_larga', name: 'Alfombra a rayas', size: [3, 2], comfort: 8, price: { coins: 450 }, rug: true },
@@ -34,7 +34,7 @@ export const FURNITURE = [
   { id: 'consola', name: 'Consola retro', size: [1, 1], comfort: 9, price: { gems: 10 } },
   { id: 'acuario', name: 'Acuario', size: [2, 1], comfort: 16, price: { gems: 15 }, rank: 2, light: true },
   { id: 'piano', name: 'Piano', size: [2, 1], comfort: 18, price: { gems: 25 }, rank: 3 },
-  { id: 'cama_gato', name: 'Camita de mascota', size: [1, 1], comfort: 8, price: { coins: 500 } },
+  { id: 'cama_gato', name: 'Cama de mascota', size: [1, 1], comfort: 8, price: { coins: 500 } },
   // --- pared ---
   { id: 'cuadro', name: 'Cuadro', size: [1, 1], comfort: 4, price: { coins: 150 }, wall: true },
   { id: 'estante', name: 'Estante con libros', size: [2, 1], comfort: 5, price: { coins: 250 }, wall: true },
@@ -42,7 +42,7 @@ export const FURNITURE = [
   { id: 'poster', name: 'Póster de Pixelia', size: [1, 1], comfort: 4, price: { coins: 200 }, wall: true },
   { id: 'guirnalda', name: 'Guirnalda de luces', size: [3, 1], comfort: 7, price: { gems: 8 }, wall: true, light: true },
   // --- especiales (cofres, Pase, rangos) ---
-  { id: 'arcoiris', name: 'Lámpara arcoíris', size: [1, 1], comfort: 14, shop: false, light: true, desc: 'Sale en cofres.' },
+  { id: 'arcoiris', name: 'Lámpara de colores', size: [1, 1], comfort: 14, shop: false, light: true, desc: 'Sale en cofres.' },
   { id: 'trono', name: 'Sillón de terciopelo', size: [2, 1], comfort: 20, shop: false, sit: true, desc: 'Sale en cofres.' },
   { id: 'globo', name: 'Globo terráqueo', size: [1, 1], comfort: 10, shop: false, desc: 'Sale en el Pase.' },
   { id: 'telescopio', name: 'Telescopio', size: [1, 1], comfort: 12, shop: false, desc: 'Sale en el Pase.' },
@@ -53,7 +53,7 @@ export const FURNITURE = [
   { id: 'trofeo_album', name: 'Medalla del Álbum', size: [1, 1], comfort: 8, shop: false, trophy: true, desc: 'Por completar una página del Álbum.' },
 ];
 export const FURNITURE_BY_ID = Object.fromEntries(FURNITURE.map(f => [f.id, f]));
-/** Muebles que pueden salir en cofres (los que no se venden + algunos lindos). */
+/** Muebles que pueden salir en cofres (los que no se venden + algunos especiales). */
 export const CHEST_FURNITURE = ['arcoiris', 'trono', 'acuario', 'piano', 'chimenea', 'consola', 'guirnalda'];
 
 export const WALLS = [
