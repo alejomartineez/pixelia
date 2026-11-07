@@ -82,6 +82,9 @@ const MEASURE = async () => {
     bus: busN, intervals: T.intervals.size, styles: document.querySelectorAll('style').length,
     modals: document.querySelectorAll('.modal').length, overlays: document.querySelectorAll('.chx-open, .alb-open, .fx-layer > *').length,
     nodes: document.getElementsByTagName('*').length, winTypes: byType(T.win), docTypes: byType(T.doc),
+    // si quedó algo abierto, qué es (para diagnosticar sin volver a correr todo)
+    openModals: [...document.querySelectorAll('.modal')].map(m => (m.className + ' · ' + (m.querySelector('h2, .modal-title, b')?.textContent || '')).slice(0, 80)),
+    lastStyles: [...document.querySelectorAll('style')].slice(-2).map(s => (s.id || '') + ':' + s.textContent.slice(0, 50)),
   };
 };
 
