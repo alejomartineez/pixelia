@@ -291,7 +291,10 @@ export function createWorld(r, { bounds, hooks = {}, theme }) {
   let signTiles = new Set();
   function rebuildNature() {
     if (natureGroup) { group.remove(natureGroup); disposeGeometries(natureGroup); }
-    natureTiles = allNature.filter(n => !inLand(n.tx, n.tz) && !signTiles.has(n.tx + ',' + n.tz));
+    // el arroyo (+X) y el monte (−Z) van pegados al terreno (amenazas, DESIGN-CORE.md §3.2): ahí no va la naturaleza suelta
+    natureTiles = allNature.filter(n => !inLand(n.tx, n.tz) && !signTiles.has(n.tx + ',' + n.tz) && !onStream(n.tx, n.tz) && !onMonte(n.tx, n.tz));
+    natureTiles.push(...monteTiles());
+    buildStream();
     const objs = natureTiles.map(n => {
       const o = natureModel(n.kind, n.seed, T.id);
       const h1 = hash2(n.tx, n.tz, 41), h2 = hash2(n.tx, n.tz, 43);
@@ -305,6 +308,47 @@ export function createWorld(r, { bounds, hooks = {}, theme }) {
     natureGroup.name = 'nature';
     group.add(natureGroup);
   }
+
+  // ----- Arroyo (+X) y monte (−Z) alrededor del terreno -----
+  const onStream = (tx, tz) => tx === land.max && tz >= land.min - 1 && tz <= land.max;
+  const onMonte = (tx, tz) => (tz === land.min - 1 || tz === land.min - 2) && tx >= land.min - 2 && tx < land.max;
+  const firmIsland = (tx, tz) => { const cx = (tx + PAD) * PX + 4, cz = (tz + PAD) * PX + 4; return islandPx(cx - 3, cz - 3) && islandPx(cx + 3, cz + 3) && islandPx(cx - 3, cz + 3) && islandPx(cx + 3, cz - 3); };
+  function monteTiles() {
+    const out = [];
+    for (let tx = land.min - 2; tx < land.max; tx++) for (const tz of [land.min - 1, land.min - 2]) {
+      if (signTiles.has(tx + ',' + tz) || tx < -PAD || tz < -PAD || !firmIsland(tx, tz)) continue;
+      const h = hash2(tx, tz, 131);
+      if (h > (tz === land.min - 1 ? 0.62 : 0.8)) continue;
+      out.push({ tx, tz, kind: h < 0.42 ? 'pine' : 'tree', seed: Math.floor(hash2(tx, tz, 137) * 100000) });
+    }
+    return out;
+  }
+  let streamGroup = null, streamLevel = 0, streamTarget = 0;
+  const waterMat = new THREE.MeshLambertMaterial({ color: 0x5fb0de, transparent: true, opacity: 0.92 });
+  const foamMat = new THREE.MeshLambertMaterial({ color: 0xd8eef6 });
+  const bankMat = new THREE.MeshLambertMaterial({ color: 0x9b9286 });
+  const plankMat = new THREE.MeshLambertMaterial({ color: 0xa8774a });
+  function buildStream() {
+    if (streamGroup) { group.remove(streamGroup); disposeGeometries(streamGroup); }
+    streamGroup = new THREE.Group();
+    streamGroup.name = 'stream';
+    const len = land.max - land.min + 2, cz = (land.min - 1 + land.max + 1) / 2 - HALF, x = land.max + 0.5 - HALF;
+    const water = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, len), waterMat);
+    water.position.set(x, 0.03, cz); water.receiveShadow = true;
+    streamGroup.userData.water = water;
+    streamGroup.add(water);
+    // piedras de la orilla y espuma
+    for (let tz = land.min - 1; tz <= land.max; tz++) {
+      const h = hash2(land.max, tz, 151);
+      if (h < 0.35) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.22), bankMat); st.position.set(x + (h < 0.17 ? -0.48 : 0.48), 0.06, tz + 0.5 - HALF); st.castShadow = true; streamGroup.add(st); }
+      if (h > 0.8) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.12), foamMat); f.position.set(x + (h - 0.9) * 2, 0.085, tz + 0.5 - HALF); streamGroup.add(f); }
+      // pasarela de tablas debajo del cartel de expansión del lado del arroyo
+      if (signTiles.has(land.max + ',' + tz)) { const pl = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.06, 0.8), plankMat); pl.position.set(x, 0.1, tz + 0.5 - HALF); pl.castShadow = true; streamGroup.add(pl); }
+    }
+    group.add(streamGroup);
+  }
+  /** Nivel del arroyo para las señales: 1 crecido, 0 normal, −1 bajo (sequía). */
+  function setStream(k) { streamTarget = k; }
 
   // ----- Carteles de expansión -----
   const signs = [];
@@ -379,6 +423,13 @@ export function createWorld(r, { bounds, hooks = {}, theme }) {
 
   let camAngle = Math.PI / 4;
   function update(dt, t) {
+    if (streamGroup?.userData.water) {
+      streamLevel += (streamTarget - streamLevel) * Math.min(1, dt * 0.8);
+      const w = streamGroup.userData.water;
+      w.scale.set(1 + 0.45 * Math.max(0, streamLevel) - 0.35 * Math.max(0, -streamLevel), 1 + 1.6 * Math.max(0, streamLevel), 1);
+      w.position.y = 0.03 + 0.05 * streamLevel + Math.sin(t * 1.3) * 0.006;
+      waterMat.color.setHex(streamLevel > 0.3 ? 0x4f93c4 : streamLevel < -0.3 ? 0x9cbcb8 : 0x5fb0de);
+    }
     for (const c of clouds) {
       const u = c.userData;
       u.ang += u.speed * dt;
@@ -413,12 +464,14 @@ export function createWorld(r, { bounds, hooks = {}, theme }) {
     get bounds() { return land; },
     setCamAngle(a) { camAngle = a; },
     showGrid(v) { gridMesh.visible = v; },
-    animateExpand,
+    animateExpand, setStream,
     refreshSigns(canExpand) { placeSigns(canExpand); rebuildNature(); },
     update,
     dispose() {
       tex.dispose(); gtex.dispose(); groundMat.dispose(); gridMesh.material.dispose();
       if (natureGroup) disposeGeometries(natureGroup);
+      if (streamGroup) disposeGeometries(streamGroup);
+      waterMat.dispose(); foamMat.dispose(); bankMat.dispose(); plankMat.dispose();
       disposeGeometries(cliffs);
       disposeGeometries(signProto);
       for (const o of islets) o.userData.own?.dispose();

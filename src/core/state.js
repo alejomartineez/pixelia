@@ -54,7 +54,7 @@ export function defaultState() {
     car: { body: 'convertible', color: 'celeste', wheels: 'clasica', topper: 'ninguno' },
     owned: freeOwned(),
     city: {
-      // b: { uid, id, x, z, rot(0..3), level, buildEnd(ms|0), upgradeEnd(ms|0), lastCollect(ms) }
+      // b: { uid, id, x, z, rot(0..3), level, buildEnd(ms|0), upgradeEnd(ms|0), lastCollect(ms), damaged(ms|0, amenazas) }
       // x,z = esquina mínima del footprint en la grilla MAP_SIZE x MAP_SIZE
       buildings: [
         { uid: 1, id: 'castillo', x: c - 2, z: c - 2, rot: 0, level: 1, buildEnd: 0, upgradeEnd: 0, lastCollect: Date.now() },
@@ -76,6 +76,7 @@ export function defaultState() {
     reserves: {},
     colonos: 0,
     expedition: {},   // lo completa initExpedition (src/expedition/expedition.js)
+    threats: {},      // lo completa initThreats (src/threats/threats.js): avisos, resultados, defensa en curso, simulacro
     // done: misiones principales cobradas por id; main: cuántas van (compatibilidad); chain: versión de la cadena
     quests: { main: 0, mainProgress: 0, daily: null, achTier: {}, done: {}, chain: 0 },
     login: { last: null, streak: 0 },

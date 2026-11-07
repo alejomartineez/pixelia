@@ -1,5 +1,6 @@
 // Interfaz de la ciudad: menú Construir, ficha de edificio, castillo, expansión,
 // barra de colocación, botones flotantes y estilos (prefijo cx-).
+import { infoBoxes as threatInfoBoxes } from '../threats/threat-ui.js';
 import { thumbnail } from '../city/models.js';
 import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL, RANK_REQ_LABELS, MONUMENTS, ERAS } from '../core/data.js';
 import { cycleEffects, cycleUpgradeLines } from '../expedition/expedition.js';
@@ -191,7 +192,7 @@ export const STYLE = `
 .cx-exp-map canvas { image-rendering: pixelated; width: 132px; height: 132px; border: 3px solid var(--ink); border-radius: 10px; background: #79bb8c; }
 `;
 
-const CAT_ICON = { casa: 'home', ciclo: '🧭', negocio: 'shop', especial: 'sparkle', monumento: 'monument', deco: 'flower', camino: 'map' };
+const CAT_ICON = { casa: 'home', ciclo: '🧭', defensa: '🛡️', negocio: 'shop', especial: 'sparkle', monumento: 'monument', deco: 'flower', camino: 'map' };
 // lo que mejora a la vista un edificio del ciclo en cada nivel (DESIGN-CORE.md §4.2; models-cycle.js)
 const CYCLE_LOOK = { 2: 'un anexo al costado', 3: 'un piso más y techo nuevo', 4: 'chimenea y aberturas más grandes', 5: 'mirador arriba y cerco alrededor' };
 const thumbs = new Map();
@@ -402,7 +403,7 @@ export function openInfo(S, uid) {
   function signature() {
     const now = Date.now();
     const ps = E.producerStatus(b, now);
-    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level, hammerCount(), masteryStars(), isCastle ? E.rankStatus().reqs.map(r => r.ok ? 1 : 0).join('') : '', b.era || 1, E.renovateInfo(b) ? E.canRenovate(b).ok : '-'].join('|');
+    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level, hammerCount(), masteryStars(), isCastle ? E.rankStatus().reqs.map(r => r.ok ? 1 : 0).join('') : '', b.era || 1, E.renovateInfo(b) ? E.canRenovate(b).ok : '-', b.damaged ? 1 : 0].join('|');
   }
   function mastery() {
     if (typeof E.masteryInfo !== 'function' || !d.prod) return null;
@@ -475,7 +476,7 @@ export function openInfo(S, uid) {
 
     // ----- producción -----
     const ps = E.producerStatus(b, now);
-    if (ps.producer && !busy) {
+    if (ps.producer && !busy && !ps.damaged) {   // dañado: lo explica la caja de amenazas (más abajo)
       const cur = ps.currency === 'gems' ? 'gem' : ps.currency === 'prov' ? '🍞' : 'coin';
       const box = ui.h('div.cx-box' + (ps.ready ? '.ready' : ''));
       box.append(ui.h('h4', { html: icon(cur, 20) + 'Producción' }));
@@ -487,6 +488,9 @@ export function openInfo(S, uid) {
       if (ps.ready) box.append(btn(`Cobrar ${E.fmtNum(ps.amount)} ${icon(cur, 18)}`, 'gold', null, () => { m.close(); S.collect(b.uid); }));
       body.append(box);
     }
+
+    // ----- amenazas: dañado → reparar; defensa → contra qué y radio (src/threats/threat-ui.js) -----
+    if (!building) for (const n of threatInfoBoxes(ctx, b, () => m.close())) body.append(n);
 
     // ----- edificios del ciclo: qué dan hoy en la expedición -----
     if (d.cat === 'ciclo' && !building) {

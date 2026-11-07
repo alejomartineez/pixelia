@@ -17,6 +17,8 @@ import { createBatcher } from './city-batch.js';
 import { createVisit } from './city-visit.js';
 import { activeBoosts } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
+// Amenazas (Fase 3): capa de defensa por turnos, cartel/señales/daño y radio al colocar una defensa
+import { attach as attachDefense, createDecor, createCoverage, openPanel as openThreatPanel } from '../threats/threat-scene.js';
 // ícono de lo que produce cada edificio (globito y cobro): monedas, gemas o provisiones (Huerta, Tambo…)
 const CUR_ICON = { coins: 'coin', gems: 'gem', prov: '🍞' };
 
@@ -48,6 +50,7 @@ export default function create(ctx) {
   const myModals = new Set();
   let placing = null;
   let visit = null;
+  let defense = null, decor = null, TA = null;   // amenazas: defensa en curso, decoración y API para su capa
   let syncAcc = 0, disposed = false, batchCollect = false;
   let okMat, badMat, tileGeo, tileTex;
   const raycaster = new THREE.Raycaster();
@@ -179,6 +182,7 @@ export default function create(ctx) {
       } else removeBubble(e);
     }
     if (popSfx) { popSfx = false; audio.sfx('pop'); }
+    decor?.sync();
     quietPops = false;
     for (const it of signItems) it.hidden = !!placing;
     if (collectBtn) {
@@ -293,6 +297,7 @@ export default function create(ctx) {
     root.add(model);
     r.scene.add(root);
     placing = { ...p, ghost: root, model, mats, tiles: [], valid: false, reason: '', paint: false, count: 0, lastPaint: null, t: 0, isConstructionGhost: isCon, hoverAt: performance.now(), settled: null };
+    if (E.def(p.id).cat === 'defensa') placing.cov = createCoverage(TA);   // radio de la defensa en el piso
     world.showGrid(true);
     ctx.hud.hide();
     sideEl.classList.add('hide');
@@ -311,6 +316,7 @@ export default function create(ctx) {
     r.scene.remove(p.ghost);
     for (const m of p.mats) m.dispose();
     for (const t of p.tiles) r.scene.remove(t);
+    p.cov?.dispose();
     ov.remove(p.pin);
     if (p.uid != null) { const e = entries.get(p.uid); if (e) { e.root.visible = true; } }
     world.showGrid(false);
@@ -364,6 +370,7 @@ export default function create(ctx) {
       m.position.set(x + 0.5 - HALF, other && E.def(other).cat === 'camino' ? ROAD_H + 0.02 : 0.03, z + 0.5 - HALF);
     }
     if (p.pin) p.pin.el.classList.toggle('bad', !p.valid);
+    p.cov?.update(p.id, p.x, p.z, p.rot, p.level);
     placeBar?.update(p);
   }
   function confirmPlacement() {
@@ -538,6 +545,7 @@ export default function create(ctx) {
     return null;
   }
   function onTap(x, y, type) {
+    if (defense) { defense.onTap(x, y); return; }   // en la defensa, tocar el piso manda cuadrillas
     if (placing) {
       if (type === 'mouse') {
         hoverGhost(x, y);
@@ -976,6 +984,7 @@ export default function create(ctx) {
     life.setCamAngle(cam.angle);
     life.update(dt, t);
     fx.update(dt);
+    decor?.update(dt); defense?.update(dt);
     if (placing) {
       const p = placing;
       p.t += dt;
@@ -1045,6 +1054,35 @@ export default function create(ctx) {
     const e = shops[boostIdx++ % shops.length];
     const c = e.root.position;
     fx.burst(c.x, e.height * 0.55, c.z, { n: 4, colors: ['#ffd166', '#ffd166', '#fff0c2', '#ffffff'], speed: 0.35, up: 0.9, gravity: -0.35, size: 0.075, life: 1.6, spread: Math.max(0.6, e.height * 0.6), drag: 2.2 });
+  }
+
+  // =====================================================================
+  // Amenazas: defensa por turnos sobre la ciudad (src/threats/threat-scene.js)
+  // =====================================================================
+  function startDefense(id) {
+    if (defense || disposed) return;
+    if (placing) endPlacement(true);
+    for (const m of [...myModals]) m.close();
+    const d = attachDefense(TA, id);
+    if (!d) return;
+    defense = d;
+    TA.hidden = true;
+    ctx.hud.hide(); sideEl.classList.add('hide'); hideTip(); clearWorldTip();
+    for (const e of entries.values()) if (e.bubble) e.bubble.hidden = true;
+    decor?.sync();
+  }
+  function endDefense() {
+    if (!defense) return;
+    defense.detach(); defense = null;
+    TA.hidden = false;
+    if (!disposed) { ctx.hud.show(); sideEl.classList.remove('hide'); syncStatus(); }
+  }
+  function highlightBuilding(uid) {
+    const e = entries.get(uid);
+    if (!e) return;
+    cam.flyTo(e.root.position.x, e.root.position.z + 0.5);
+    e.anim = { type: 'hop', t: 0 };
+    setTimeout(() => { if (!disposed && entries.get(uid) === e) fx.sparkle(e.root.position.x, e.height + 0.2, e.root.position.z, ['#ffd166', '#ffffff', '#6fe3c1']); }, 350);
   }
 
   // =====================================================================
@@ -1130,19 +1168,27 @@ export default function create(ctx) {
       addEventListener('blur', onBlur);
       document.addEventListener('visibilitychange', onVisibility);
 
+      TA = { ctx, r, ov, entries, fx, cam, container, sideEl, HALF, get world() { return world; }, topPos: (e, extra) => topPos(e, extra),
+        startDefense, onDefenseEnd: endDefense, highlight: highlightBuilding, hidden: false };
+      decor = createDecor(TA);
+      offs.push(bus.on('threat:defend', ({ id } = {}) => { if (id) startDefense(id); }));
+      offs.push(bus.on('threat:panel', () => openThreatPanel(TA)));
       bindEvents();
       rebuildSignLabels();
       syncStatus();
+      if (params.defense) setTimeout(() => !disposed && startDefense(params.defense), 400);
       r.onFrame(frame);
       r.start();
       // gancho de depuración para pruebas headless (tools/smoke.mjs)
-      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placing; }, get theme() { return themeId; }, openThemes };
+      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placing; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; } };
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },
     unmount() {
       disposed = true;
       if (visit) { const v = visit; visit = null; v.unmount(); return; }
       if (window.__pixelia?.city?.r === r) delete window.__pixelia.city;
+      if (defense) { defense.detach(); defense = null; }
+      decor?.dispose(); decor = null;
       offs.forEach(f => f()); offs.length = 0;
       removeEventListener('keydown', onKey);
       removeEventListener('keyup', onKey);
@@ -1150,7 +1196,7 @@ export default function create(ctx) {
       document.removeEventListener('visibilitychange', onVisibility);
       ro?.disconnect();
       for (const m of [...myModals]) m.close();
-      if (placing) { const p = placing; placing = null; for (const m of p.mats) m.dispose(); ctx.hud.show(); }
+      if (placing) { const p = placing; placing = null; for (const m of p.mats) m.dispose(); p.cov?.dispose(); ctx.hud.show(); }
       if (cam) { ctx.state.city.camera = cam.save(); store.markDirty(); }
       ov?.dispose();
       tipEl?.remove();
