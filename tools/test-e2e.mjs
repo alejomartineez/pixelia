@@ -1,7 +1,7 @@
 // Partida de punta a punta como jugadora nueva (sin cheat) en iPhone, con la interfaz real:
 // splash → onboarding (personaje Osito, nombre, ciudad, estilo Bosque; se verifica el guardado) → premio diario → tutorial t1–t10 (casa, huerta y cosecha, Casa de Expediciones, salida corta, Taller y Cuerda, población,
-// panadería, salida normal con Cuerda) → subida de nivel con cofre
-// → abrir cofre con figuritas → minijuego con potenciador → premio → Pase → Álbum → Cofres (gratis, mochila,
+// panadería, salida normal con Cuerda) → subida de nivel
+// → cofre con hallazgos → potenciador viejo → equipo → Pase → Hallazgos → Cofres (gratis, mochila,
 // poción, martillo) → Eventos. Revisa que los globitos del HUD coincidan con los módulos en cada paso.
 // El tiempo se acelera editando timestamps (obras, producción, cofre gratis), nunca con ?cheat.
 //
@@ -261,17 +261,6 @@ async function claimMainUI() {
   }
   return null;
 }
-/** Gana la partida de Joyas Brillantes en curso. finishNow se ignora mientras el tablero está ocupado (cascadas,
- *  potenciadores entrando), así que se reintenta hasta que la partida termina. */
-async function winMatch3(ms = 12000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < ms) {
-    const mode = await ev(() => { const m = document.querySelector('.scene-match3')?.__m3; if (!m) return null; if (m.mode === 'play') m.finishNow(true); return m.mode; });
-    if (mode === 'end') return true;
-    await sleep(250);
-  }
-  return false;
-}
 const mainId = () => run(`return Q.mainQuest()?.id || null`);
 
 try {
@@ -476,7 +465,7 @@ try {
 
   // ===================================================================
   section('Cofres: gratis, abrir, mochila, poción y martillo');
-  await run(`store.state.chests.freeBase = Date.now() - 4 * 3600e3 - 5000; store.markDirty(); ctx.bus.emit('chests:changed'); return true;`);
+  await run(`store.state.chests.freeBase = Date.now() - C.FREE_CHEST_EVERY_MS - 5000; store.markDirty(); ctx.bus.emit('chests:changed'); return true;`);
   await checkBadges('cofre gratis listo');
   await tap('[data-act="chests"]');
   ok(await waitFor(`!!document.querySelector('.chx-free')`), 'panel de Cofres abierto');
@@ -490,7 +479,7 @@ try {
   await tap('.modal .chx-actions .btn.primary, .modal .btn.primary', 'Abrir');
   await drainOverlays({ shots: { chest: 'cofre-apertura-2', cards: 'cofre-figuritas-2', summary: 'cofre-botin-2' } });
   // objetos de la mochila (si los cofres no trajeron poción/martillo, se agregan para probar el flujo)
-  await run(`const it = store.state.chests.items; if (!it.potion_prod) it.potion_prod = 1; if (!it.hammer) it.hammer = 1; if (!it.m3_moves) it.m3_moves = 1; store.markDirty(); ctx.bus.emit('chests:changed'); return true;`);
+  await run(`const it = store.state.chests.items; if (!it.potion_prod) it.potion_prod = 1; if (!it.hammer) it.hammer = 1; store.markDirty(); ctx.bus.emit('chests:changed'); return true;`);
   await tap('.modal [data-tab="mochila"]');
   await sleep(600);
   await shot('mochila');
@@ -523,34 +512,17 @@ try {
   await checkBadges('después de cofres');
 
   // ===================================================================
-  section('Minijuego con potenciador (+5 movidas)');
-  await drainOverlays();
-  // los minijuegos están en retirada: el tutorial ya no construye la Joyería, se pone acá para probar los potenciadores
-  await run(`if (!E.hasBuilt('joyeria')) { const { min, max } = E.landBounds(); let done = false; for (let z = min; z < max && !done; z++) for (let x = min; x < max && !done; x++) if (E.canPlace('joyeria', x, z, 0).ok) { const b = E.placeBuilding('joyeria', x, z, 0); if (!b.error) { b.buildEnd = Date.now() - 1; E.tick(); done = true; } } } return true;`);
-  await drainOverlays();
-  await run(`ctx.router.openGame('match3'); return true;`);
-  ok(await waitFor(`!!document.querySelector('.scene-match3 .pxb-slot')`, 9000), 'tarjeta con potenciadores');
-  await sleep(500);
-  await tap('.scene-match3 .pxb-slot:not(.empty)');
-  await sleep(300);
-  await shot('match3-potenciador');
-  const moves0 = await ev(() => document.querySelector('.scene-match3 .pxb-slot.on') ? 1 : 0);
-  ok(moves0 === 1, 'potenciador seleccionado');
-  await tap('.m3-play');
-  await waitFor(`document.querySelector('.scene-match3')?.__m3?.mode === 'play'`, 6000);
-  await sleep(1800);
-  ok(await ev(() => document.querySelector('.scene-match3').__m3.boosts.includes('m3_moves')), 'el potenciador se aplicó y se consumió');
-  await shot('match3-jugando');
-  await winMatch3();
-  ok(await waitFor(`!!document.querySelector('.modal.reward-modal')`, 15000), 'modal de premio del segundo minijuego',
-    await ev(() => ({ scene: window.__pixelia.ctx.router.current, mode: document.querySelector('.scene-match3')?.__m3?.mode, modals: [...document.querySelectorAll('.modal')].map(m => m.className) })));
-  await sleep(900);
-  await shot('premio-minijuego-2');
-  await tap('.modal.reward-modal .modal-foot .btn', 'Ciudad|Volver');
-  await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 6000);
+  section('Potenciador viejo en la mochila → equipo de expedición');
+  // los minijuegos se retiraron (Fase 5): un potenciador que llegue a la mochila (regalo viejo) pasa a ser equipo
+  const cuerda0 = await run(`return store.state.equipment?.cuerda || 0`);
+  await run(`store.state.chests.items.m3_moves = 2; ctx.bus.emit('chests:changed', { item: 'm3_moves', n: 2 }); return true;`);
+  ok(await run(`return !store.state.chests.items.m3_moves && (store.state.equipment.cuerda || 0) === ${cuerda0} + 2`), '+5 Movidas → 2 Cuerdas');
+  ok(await run(`return !document.querySelector('[data-act="games"]') && !window.__pixelia.ctx.router.openGame`), 'sin botón Juegos ni router.openGame');
+  await checkBadges('después del potenciador');
+  // antes la partida cerraba todo al cambiar de escena: se cierran los paneles que quedaron abiertos (Cofres)
+  await run(`ctx.ui.closeAllModals(); return true;`);
   await sleep(800);
   await drainOverlays();
-  await checkBadges('después del segundo minijuego');
 
   // ===================================================================
   section('Pase de Temporada, Álbum y Eventos');

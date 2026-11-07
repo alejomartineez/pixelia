@@ -90,14 +90,14 @@ export async function openTradeEditor(ctx, opts = {}) {
 
   function drawSeg() {
     seg.innerHTML = '';
-    for (const [id, label, ic] of [['stickers', 'Figuritas', '🃏'], ['res', 'Monedas y más', 'coin']]) {
+    for (const [id, label, ic] of [['stickers', 'Hallazgos', '🃏'], ['res', 'Monedas y más', 'coin']]) {
       seg.append(h('button' + (mode === id ? '.on' : ''), { html: `${icon(ic, 18)}${label}`, onclick: () => { if (mode !== id) { audio.sfx('tap'); mode = id; draw(); } } }));
     }
   }
   function validate() {
     let problem = null;
     if (mode === 'stickers') {
-      if (!offerSt || !askSt) problem = 'Elegí una figurita de cada lado';
+      if (!offerSt || !askSt) problem = 'Elegí un hallazgo de cada lado';
       else problem = stickerPairProblem(offerSt, askSt, friend);
     } else {
       const empty = p => !p.coins && !p.gems && !Object.values(p.items).some(Boolean);
@@ -134,11 +134,11 @@ export async function openTradeEditor(ctx, opts = {}) {
   function drawStickers() {
     const offerDef = offerSt && stickerDef(offerSt);
     // lo que doy: mis repetidas
-    const gBox = h('div.soc-pane-box.give', { html: `<h5>${icon('gift', 20)} Vos das <small>una repetida</small></h5>` });
+    const gBox = h('div.soc-pane-box.give', { html: `<h5>${icon('gift', 20)} Vos das <small>uno repetido</small></h5>` });
     const mine = dups.map(d => ({ id: d.id, cnt: d.count, off: d.stars === 5 && !rules.fiveOk }));
     const gg = stickerGrid(mine, offerSt, id => { offerSt = id; if (askSt && stickerPairProblem(offerSt, askSt, friend)?.includes('parecidas')) askSt = null; draw(); },
       it => (fal && !fal[it.id] ? '¡Le falta!' : ''));
-    gBox.append(gg || h('div', { html: emptyHtml('🃏', 'No tenés repetidas', 'Abrí cofres y sobres: las repetidas se pueden cambiar con tus contactos.') }));
+    gBox.append(gg || h('div', { html: emptyHtml('🃏', 'No tenés repetidos', 'Abrí cofres y sobres: los repetidos se pueden cambiar con tus contactos.') }));
     // lo que recibo
     const rBox = h('div.soc-pane-box.get', { html: `<h5>${icon('🃏', 20)} Vos recibís <small>${fal ? `repetidas de ${esc(friend.name)}` : 'una que te falte'}</small></h5>` });
     let cand = fal
@@ -151,7 +151,7 @@ export async function openTradeEditor(ctx, opts = {}) {
       return { id, owned: true, missing: stickerCount(id) === 0, off: bad, stars: d.stars, n: d.n };
     }).sort((a, b) => (a.off - b.off) || (b.missing - a.missing) || (b.stars - a.stars) || (a.n - b.n));
     const rg = stickerGrid(cand, askSt, id => { askSt = id; draw(); }, it => (it.missing ? '¡Te falta!' : ''));
-    rBox.append(rg || h('div', { html: emptyHtml('🙈', `${friend.name} no tiene repetidas todavía`, 'Probá con monedas y objetos, o hacé un pedido.') }));
+    rBox.append(rg || h('div', { html: emptyHtml('🙈', `${friend.name} no tiene repetidos todavía`, 'Probá con monedas y objetos, o hacé un pedido.') }));
     const rulesEl = h('div.soc-rules', {
       html: `<span>${icon('🃏', 14)} 1 por lado</span><span>${icon('star', 14)} estrellas parecidas (±1)</span><span>${rules.fiveOk ? `${icon('check', 14)} 5★ habilitadas${rules.golden ? ' (Semana Dorada)' : ''}` : `${icon('lock', 14)} 5★ con 14 días de amistad`}</span>`,
     });
@@ -236,7 +236,7 @@ export async function openRequestCreator(ctx, opts = {}) {
   body.append(h('p.soc-muted', { html: 'Tus contactos ven tu pedido durante 24 horas. Quien ayude primero te lo manda a tu buzón.' }), kindsEl, area, err);
   if (opts.sticker) {
     body.append(h('button.btn.ghost.small', {
-      html: `${icon('🔄', 18)} O proponé un intercambio por esta figurita`,
+      html: `${icon('🔄', 18)} O proponé un intercambio por este hallazgo`,
       onclick: () => { audio.sfx('tap'); m.close(); openTradeEditor(ctx, { askSticker: opts.sticker }); },
     }));
   }
@@ -262,13 +262,13 @@ export async function openRequestCreator(ctx, opts = {}) {
     area.innerHTML = '';
     if (!kind) { area.innerHTML = `<div class="soc-muted" style="text-align:center;padding:16px">Elegí qué necesitás 👆</div>`; return; }
     if (kind === 'sticker') {
-      area.append(h('h5', { html: `${icon('🃏', 18)} ¿Qué figurita te falta? <small>las que tienen tus contactos, primero</small>` }));
+      area.append(h('h5', { html: `${icon('🃏', 18)} ¿Qué hallazgo te falta? <small>los que tienen tus contactos, primero</small>` }));
       const miss = STICKERS.filter(s => stickerCount(s.id) === 0).map(s => ({ id: s.id, who: friendsWith(s.id), s }))
         .sort((a, b) => (b.who.length > 0) - (a.who.length > 0) || a.s.n - b.s.n);
-      if (!miss.length) { area.append(h('div', { html: emptyHtml('🏆', '¡No te falta ninguna!', 'Completaste el álbum. No queda nada por pegar.') })); return; }
+      if (!miss.length) { area.append(h('div', { html: emptyHtml('🏆', '¡No te falta ninguno!', 'Completaste Hallazgos. No queda nada por pegar.') })); return; }
       const g = h('div.soc-pickgrid');
       for (const it of miss) {
-        const b = h('button.soc-pick' + (sticker === it.id ? '.on' : ''), { 'aria-label': `Figurita ${it.s.n}` });
+        const b = h('button.soc-pick' + (sticker === it.id ? '.on' : ''), { 'aria-label': `Hallazgo ${it.s.n}` });
         b.append(stickerCard(it.id, { owned: false }));
         if (it.who.length) b.append(h('span.soc-has', { html: esc(it.who[0]) + (it.who.length > 1 ? ` +${it.who.length - 1}` : '') }));
         b.onclick = () => { audio.sfx('select'); sticker = it.id; draw(); };
@@ -277,7 +277,7 @@ export async function openRequestCreator(ctx, opts = {}) {
       area.append(g);
       if (sticker) {
         const d = stickerDef(sticker);
-        area.append(h('small.soc-muted', { html: `Elegiste la <b>#${d.n}</b> de ${esc(d.setName)} (${'★'.repeat(d.stars)}). Te la puede dar alguien que la tenga repetida.` }));
+        area.append(h('small.soc-muted', { html: `Elegiste el <b>#${d.n}</b> de ${esc(d.setName)} (${'★'.repeat(d.stars)}). Te lo puede dar alguien que lo tenga repetido.` }));
       }
     } else if (kind === 'item') {
       area.append(h('h5', { html: `${icon('🔨', 18)} ¿Qué objeto?` }));

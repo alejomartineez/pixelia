@@ -26,8 +26,9 @@ export const TIER_COST = Array.from({ length: MAX_TIER }, (_, i) => (i === 0 ? 6
 
 // ---------- Premios por nivel ----------
 // coins: BASE (se multiplica por rewardScale(nivel de jugadora)); gems; chest: tipo; stickers: {n, minStars};
-// items: {id: cantidad} (potenciadores de la mochila, ver ITEMS de chests.js); cosmetic: true (prenda premium gratis);
-// mats: {material: cantidad} (cristal, ladrillo, tuerca, mapa: para los monumentos); furniture: id de mueble para Mi Casa.
+// items: {id: cantidad} (objetos de la mochila, ver ITEMS de chests.js); equip: {id: cantidad} (equipo de expedición);
+// cosmetic: true (prenda premium gratis); mats: {material: cantidad} (madera, piedra, mineral, hierbas);
+// furniture: id de mueble para Mi Casa.
 // special: true = nivel destacado (10/20/30).
 export const TIERS = [
   /* 1 */ { coins: 150 },
@@ -35,25 +36,25 @@ export const TIERS = [
   /* 3 */ { items: { hammer: 1 } },
   /* 4 */ { gems: 5 },
   /* 5 */ { chest: 'madera' },
-  /* 6 */ { coins: 300, mats: { ladrillo: 4 } },
-  /* 7 */ { items: { m3_moves: 2 } },
+  /* 6 */ { coins: 300, mats: { piedra: 4 } },
+  /* 7 */ { equip: { cuerda: 2 } },
   /* 8 */ { stickers: { n: 3 } },
   /* 9 */ { items: { potion_prod: 1 } },
   /* 10 */ { cosmetic: true, gems: 10, special: true },
-  /* 11 */ { coins: 450, mats: { cristal: 5 } },
+  /* 11 */ { coins: 450, mats: { mineral: 5 } },
   /* 12 */ { chest: 'madera' },
   /* 13 */ { items: { hourglass: 1 } },
   /* 14 */ { gems: 8, furniture: 'globo' },
   /* 15 */ { chest: 'plata' },
   /* 16 */ { stickers: { n: 3, minStars: 2 } },
-  /* 17 */ { items: { blk_bomb: 1, park_time: 1 } },
-  /* 18 */ { coins: 650, mats: { tuerca: 6 } },
+  /* 17 */ { equip: { pala: 1, farol: 1 } },
+  /* 18 */ { coins: 650, mats: { madera: 6 } },
   /* 19 */ { items: { potion_happy: 1 } },
   /* 20 */ { cosmetic: true, chest: 'oro', special: true },
   /* 21 */ { gems: 10 },
   /* 22 */ { stickers: { n: 4 } },
-  /* 23 */ { items: { drv_shield: 1, m3_bomb: 1 } },
-  /* 24 */ { coins: 850, mats: { mapa: 6, ladrillo: 6 } },
+  /* 23 */ { equip: { lona: 1, pala: 1 } },
+  /* 24 */ { coins: 850, mats: { hierbas: 6, piedra: 6 } },
   /* 25 */ { chest: 'plata' },
   /* 26 */ { items: { potion_mega: 1 } },
   /* 27 */ { gems: 15, furniture: 'telescopio' },
@@ -69,15 +70,15 @@ export const POINTS = {
   dailyQuest: 60,        // misión diaria cobrada
   dailyBonus: 100,       // set del bonus diario (las 3)
   mainQuest: 80,         // misión principal cobrada
-  gameWin: 25,           // ganar minijuego
-  perStar: 10,           // + por estrella
-  gameTry: 5,            // partida no ganada (cozy: 2 minutos siempre avanzan algo). 0 para desactivar
+  expedition: 20,        // salida terminada (corta o normal; vuelta o fracaso: siempre avanza algo)
+  perStar: 5,            // + por estrella de la salida
+  zone: 30,              // zona explorada
   collect: 2,            // cobrar un edificio
   collectDailyMax: 60,   // tope diario por cobros
   built: 10,             // terminar construcción (no cuenta caminos)
   upgraded: 25,          // terminar mejora
   helped: 20,            // ayudar/regalar a una amiga
-  newSticker: 5,         // figurita nueva
+  newSticker: 5,         // hallazgo nuevo
 };
 
 /** Textos de "¿Cómo gano chispas?" */
@@ -85,11 +86,12 @@ export const POINT_SOURCES = [
   { ic: 'quest', text: 'Cobrar una misión diaria', pts: POINTS.dailyQuest },
   { ic: 'gift', text: 'Completar las 3 diarias (bonus)', pts: POINTS.dailyBonus },
   { ic: 'crown', text: 'Cobrar una misión principal', pts: POINTS.mainQuest },
-  { ic: 'games', text: 'Ganar un minijuego', pts: `${POINTS.gameWin} +${POINTS.perStar}/★` },
+  { ic: '🧭', text: 'Terminar una expedición', pts: `${POINTS.expedition} +${POINTS.perStar}/★` },
+  { ic: '🗺️', text: 'Explorar una zona', pts: POINTS.zone },
   { ic: 'up', text: 'Terminar una mejora', pts: POINTS.upgraded },
   { ic: 'people', text: 'Ayudar o hacerle un regalo a alguien', pts: POINTS.helped },
   { ic: 'build', text: 'Terminar una construcción', pts: POINTS.built },
-  { ic: '🃏', text: 'Pegar una figurita nueva', pts: POINTS.newSticker },
+  { ic: '🃏', text: 'Encontrar un hallazgo nuevo', pts: POINTS.newSticker },
   { ic: 'coin', text: `Cobrar un edificio (hasta ${POINTS.collectDailyMax} por día)`, pts: POINTS.collect },
 ];
 
@@ -104,38 +106,40 @@ export const WELCOME = {
 
 // ---------- Eventos rotativos ----------
 // days: [desde, hasta] con 0 = lunes … 6 = domingo (hora local). mult: multiplicadores que lee eventMult(key).
-// keys válidas de mult: production, chestDrop, stickers, match3Rewards, blocksRewards, parkingRewards, drivingRewards
+// keys válidas de mult: production, chestDrop (cofre de las salidas de 3★), stickers (hallazgos al volver),
+// expMats (materiales de todas las expediciones), region_<id> (materiales de las salidas a esa región)
 export const EVENT_TEMPLATES = {
   doble_prod: { short: 'Producción ×2', title: 'Finde de Doble Producción', emoji: '🧺', color: '#ffd166', dark: '#e8a93a', days: [4, 6],
     desc: 'Todos tus negocios producen el doble. Conviene pasar a cobrar seguido.', mult: { production: 2 } },
   lluvia_cofres: { short: 'Cofres ×2', title: 'Lluvia de Cofres', emoji: '🎁', color: '#ff9a62', dark: '#e0743a', days: [3, 6],
-    desc: 'Ganar minijuegos da el doble de chances de cofre.', mult: { chestDrop: 2 } },
-  fiebre_figus: { short: 'Figuritas ×2', title: 'Fiebre de Figuritas', emoji: '🃏', color: '#7f9ee8', dark: '#5a78c4', days: [3, 6],
-    desc: 'Doble chance de figuritas en minijuegos y cofres.', mult: { stickers: 2 } },
-  joyas: { short: 'Joyas Brillantes ×1,5', title: 'Semana de Joyas', emoji: '💎', color: '#8fd3ff', dark: '#4fa8e0', days: [0, 6],
-    desc: 'Joyas Brillantes da premios ×1,5 toda la semana.', mult: { match3Rewards: 1.5 } },
-  bloques: { short: 'Bloques ×1,5', title: 'Semana de Bloques Pixel', emoji: '🧩', color: '#6fe3c1', dark: '#3cbf9a', days: [0, 6],
-    desc: 'Bloques Pixel da premios ×1,5 toda la semana.', mult: { blocksRewards: 1.5 } },
-  parking: { short: 'Estacionamiento ×1,5', title: 'Semana del Estacionamiento', emoji: '🅿️', color: '#ee8a5c', dark: '#c8673d', days: [0, 6],
-    desc: 'Estacionamiento Express da premios ×1,5 toda la semana.', mult: { parkingRewards: 1.5 } },
-  paseo: { short: 'Ruta Pixel ×1,5', title: 'Semana del Ruta Pixel', emoji: '🚗', color: '#ffb38a', dark: '#e0743a', days: [0, 6],
-    desc: 'Ruta Pixel da premios ×1,5 toda la semana.', mult: { drivingRewards: 1.5 } },
+    desc: 'Las salidas de 3★ tienen el doble de chances de traer un cofre.', mult: { chestDrop: 2 } },
+  fiebre_figus: { short: 'Hallazgos ×2', title: 'Fin de semana de Hallazgos', emoji: '🃏', color: '#7f9ee8', dark: '#5a78c4', days: [3, 6],
+    desc: 'Cada hallazgo que traés de una expedición viene con otro de regalo.', mult: { stickers: 2 } },
+  // semanas de región (reemplazan a las de los minijuegos; los ids viejos quedan por compatibilidad de calendario)
+  joyas: { short: 'Bosque ×1,5', title: 'Semana del Bosque del Arroyo', emoji: '🌲', color: '#8fbf6a', dark: '#5f8f3c', days: [0, 6],
+    desc: 'Las salidas al Bosque del Arroyo traen 50% más de materiales toda la semana.', mult: { region_bosque: 1.5 } },
+  bloques: { short: 'Sierras ×1,5', title: 'Semana de las Sierras Bajas', emoji: '⛰️', color: '#c9a77a', dark: '#9c7b4e', days: [0, 6],
+    desc: 'Las salidas a las Sierras Bajas traen 50% más de materiales toda la semana.', mult: { region_sierras: 1.5 } },
+  parking: { short: 'Bañado ×1,5', title: 'Semana del Bañado de los Juncos', emoji: '🪷', color: '#6fbfb0', dark: '#3f8f80', days: [0, 6],
+    desc: 'Las salidas al Bañado de los Juncos traen 50% más de materiales toda la semana.', mult: { region_banado: 1.5 } },
+  paseo: { short: 'Expediciones ×1,25', title: 'Semana de Expediciones', emoji: '🧭', color: '#ffb38a', dark: '#e0743a', days: [0, 6],
+    desc: 'Todas las expediciones traen 25% más de materiales toda la semana.', mult: { expMats: 1.25 } },
   estrellas: { short: 'Meta de estrellas', title: 'Carrera de Estrellas', emoji: '⭐', color: '#ffd166', dark: '#e8a93a', days: [0, 6],
-    desc: 'Juntá estrellas en cualquier minijuego: hay 3 escalones con premio. Es una meta tuya, sin apuro.', mult: {},
+    desc: 'Juntá estrellas en tus expediciones: hay 3 escalones con premio. Es una meta tuya, sin apuro.', mult: {},
     race: [
       { goal: 9, reward: { coins: 300, stickers: { n: 1 } } },
       { goal: 21, reward: { gems: 8, chest: 'madera' } },
       { goal: 39, reward: { gems: 12, chest: 'plata' } },
     ] },
   dorada: { short: 'Todo ×1,25', title: 'Semana Dorada', emoji: '🏆', color: '#ffd166', dark: '#e8a93a', days: [0, 6], golden: true,
-    desc: 'Una vez por mes: todos los minijuegos dan ×1,25, producción ×1,25 y se pueden intercambiar figuritas de 5★.',
-    mult: { production: 1.25, match3Rewards: 1.25, blocksRewards: 1.25, parkingRewards: 1.25, drivingRewards: 1.25 },
+    desc: 'Una vez por mes: expediciones con 25% más de materiales, producción ×1,25 y se pueden intercambiar hallazgos de 5★.',
+    mult: { production: 1.25, expMats: 1.25 },
     flags: { trade5: true } },
 };
 for (const [id, t] of Object.entries(EVENT_TEMPLATES)) t.id = id;
 
 /** Slot A: evento de semana entera (lun–dom). Cada 3 semanas toca la Carrera de Estrellas; las otras rotan
- *  entre estas semanas de minijuego. La Semana Dorada lo reemplaza la primera semana ISO de cada mes. */
+ *  entre estas semanas de región. La Semana Dorada lo reemplaza la primera semana ISO de cada mes. */
 export const RACE_EVERY = 3;
 export const WEEK_POOL = ['joyas', 'bloques', 'parking', 'paseo'];
 /** Slot B: evento de fin de semana largo (jue/vie–dom). Sin repetidos. */

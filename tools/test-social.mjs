@@ -276,7 +276,7 @@ try {
 
   // ---------------------------------------------------------------
   section('Obra en Equipo');
-  for (const p of [A, B]) await ev(p, `P.bus.emit('minigame:finished', { game: 'match3', score: ${p === A ? 1500 : 2300}, stars: 3, won: true }); P.bus.emit('building:upgraded', { b: P.store.state.city.buildings[0], level: 1 }); await S.flushCoop();`);
+  for (const p of [A, B]) await ev(p, `P.bus.emit('expedition:finished', { region: 'bosque', kind: 'normal', stars: 3, reason: 'volvio' }); P.bus.emit('building:upgraded', { b: P.store.state.city.buildings[0], level: 1 }); await S.flushCoop();`);
   const coop = await ev(A, `S.addCoopPoints(600, 'test'); await S.flushCoop(); await S.refreshSocial(['coop']); return S.coopInfo()`);
   ok(coop.online && coop.members.length === 2 && coop.members.every(m => m.points > 0), 'coopStatus online con aportes de ana y bea', coop.members);
   ok(coop.goal === 2000 && coop.tiers[0].reached, `meta = 1000 × 2 activas, escalón 1 alcanzado (total ${coop.total})`);
@@ -292,9 +292,9 @@ try {
   section('Ranking semanal');
   await ev(B, `await sync.publishProfileNow(true)`);
   const prof = await ev(A, `const f = S.socialCache.friends.find(x => x.name === 'Bea'); return (await net.getProfiles([f.id]))[0].stats.week`);
-  ok(prof?.id && prof.match3 === 2300 && prof.stars >= 3, 'stats.week publicado en el perfil de bea', prof);
+  ok(prof?.id && prof.stars >= 3 && prof.exps >= 1 && !('match3' in prof), 'stats.week publicado en el perfil de bea (estrellas y salidas de expedición)', prof);
   const prev = await ev(A, `const w = (await import('/src/online/net.js')).isoWeek(new Date(Date.now() - 7 * 864e5));
-    P.store.state.social.rank.hist[w] = { match3: 900, blocks: 0, parking: 0, driving: 0, stars: 2, played: 2 }; return w`);
+    P.store.state.social.rank.hist[w] = { stars: 2, played: 2 }; return w`);
   await tab(A, 'ranking');
   await A.waitForSelector('.soc-podium', { timeout: 8000, polling: 150 });
   const rk = await A.$$eval('.soc-rrow', rows => rows.map(r => r.textContent.replace(/\s+/g, ' ').trim()));
@@ -307,7 +307,7 @@ try {
   await sleep(600);
   ok((await ev(A, `return P.store.state.coins`)) > rc0 && (await ev(A, `return S.rankPrizeWeeks().length`)) === 0, 'cobrar el premio de participación (una vez)');
   await click(A, '.soc-cat:nth-child(3)');
-  await shot(A, 'iphone-ranking-joyas');
+  await shot(A, 'iphone-ranking-encanto');
 
   // ---------------------------------------------------------------
   section('Badge y álbum');
@@ -343,7 +343,7 @@ try {
   await ev(O, `ctx.ui.closeAllModals(); await ctx.openSocial('amigas')`);
   await O.waitForSelector('.soc-connect', { timeout: 8000, polling: 150 });
   await shot(O, 'iphone-amigas-off');
-  await ev(O, `P.bus.emit('minigame:finished', { game: 'blocks', score: 900, stars: 2, won: true })`);
+  await ev(O, `P.bus.emit('expedition:finished', { region: 'bosque', kind: 'normal', stars: 2, reason: 'volvio' })`);
   await tab(O, 'equipo');
   ok((await ev(O, `return S.coopInfo()`)).total === 30, 'sin conexión la Obra en Equipo es personal (suma igual)');
   await O.close();

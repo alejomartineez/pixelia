@@ -171,7 +171,7 @@ export default function create(ctx) {
   const catLabel = (c) => (typeof c.label === 'function' ? c.label(tdef()) : c.label);
   const itemsFor = (c) => (mode === 'avatar' ? c.list.filter(i => fitsType(i, pv.avatar.type)) : c.list);
   const cat = () => cats().find(c => c.id === catId) || cats()[0];
-  const garageOk = () => ctx.economy.hasBuilt('garaje');
+  const garageOk = () => ctx.economy.hasBuilt('establo');   // el auto vive en el Establo (ex Garaje, DESIGN-CORE.md §5.3)
   const S = () => store.state;
 
   // ---------------- UI ----------------
@@ -403,9 +403,9 @@ export default function create(ctx) {
     if (m === mode) return;
     if (m === 'car' && !garageOk()) {
       audio.sfx('error');
-      const enObra = S().city.buildings.some(b => b.id === 'garaje');
-      ui.toast(enObra ? `Tu ${BUILDING_BY_ID.garaje.name} está en obra. Cuando termine vas a poder tunear tu auto`
-        : `Construí el ${BUILDING_BY_ID.garaje.name} para tunear tu auto`, { icon: enObra ? 'hammer' : 'lock' });
+      const enObra = S().city.buildings.some(b => b.id === 'establo');
+      ui.toast(enObra ? `Tu ${BUILDING_BY_ID.establo.name} está en obra. Cuando termine vas a poder tunear tu auto`
+        : `Construí el ${BUILDING_BY_ID.establo.name} para tunear tu auto`, { icon: enObra ? 'hammer' : 'lock' });
       return;
     }
     if (!silent) audio.sfx('swoosh');

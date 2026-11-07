@@ -8,8 +8,9 @@ import { seasonInfo, toMs, dayIndex } from './season.js';
 import { useStyle, setTheme, partIcon, partLabel } from './season-ui-common.js';
 
 const MULT_NAMES = {
-  production: 'Producción', chestDrop: 'Cofres en minijuegos', stickers: 'Figuritas', match3Rewards: 'Joyas Brillantes',
-  blocksRewards: 'Bloques Pixel', parkingRewards: 'Estacionamiento', drivingRewards: 'Ruta Pixel',
+  production: 'Producción', chestDrop: 'Cofres de las salidas de 3★', stickers: 'Hallazgos', expMats: 'Materiales de expedición',
+  region_bosque: 'Bosque del Arroyo', region_sierras: 'Sierras Bajas', region_banado: 'Bañado de los Juncos',
+  region_cerro: 'Cerro del Hierro', region_costa: 'Costa de los Faros',
 };
 const DAYS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const fmtMult = (x) => '×' + String(Math.round(x * 100) / 100).replace('.', ',');
@@ -37,7 +38,7 @@ function startsLabel(e, t) {
 function eventCard(e) {
   const chips = Object.entries(e.mult).filter(([, v]) => v !== 1)
     .map(([k, v]) => `<span class="chip gold">${esc(MULT_NAMES[k] || k)} ${fmtMult(v)}</span>`);
-  if (e.flags.trade5) chips.push(`<span class="chip second">${icon('star', 14)} Intercambio de figuritas 5★</span>`);
+  if (e.flags.trade5) chips.push(`<span class="chip second">${icon('star', 14)} Intercambio de hallazgos 5★</span>`);
   let race = '';
   if (e.progress) {
     const p = e.progress;

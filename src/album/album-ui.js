@@ -1,5 +1,5 @@
-// UI del Álbum de figuritas: portada con progreso, grilla de sets, páginas de 9 casilleros con animación de "pegar",
-// repetidas (→ brillitos / intercambio) y tienda de brillitos con apertura de sobres.
+// UI de Hallazgos (antes Álbum de figuritas): portada con progreso, sets agrupados por región, páginas de 9 casilleros
+// con animación de "pegar", repetidos (→ recortes / intercambio) y tienda de recortes con apertura de sobres.
 // openAlbum(ctx, {tab:'album'|'dupes'|'shop', set}) · playPackOpening(ctx, stickers, {pack, title}) · closeAlbum()
 import { h, esc, modal, toast, confirm, rewardModal, floatText, progressHtml } from '../core/ui.js';
 import { icon } from '../core/icons.js';
@@ -125,7 +125,7 @@ const CSS = `
 @keyframes albFade { from { opacity: 0; } }
 @keyframes albPop { from { transform: scale(.6); opacity: 0; } }
 
-/* ---------- Repetidas ---------- */
+/* ---------- Repetidos ---------- */
 .alb-dhead { display: flex; flex-direction: column; gap: 10px; padding: 14px; background: linear-gradient(135deg, #fff, var(--second-l)); }
 .alb-dhead-top { display: flex; align-items: center; gap: 12px; }
 .alb-dhead-ic { flex: none; width: 60px; height: 60px; display: grid; place-items: center; background: var(--gold-l); border: 3px solid var(--ink); border-radius: 14px; box-shadow: inset 0 -4px 0 var(--gold); }
@@ -240,7 +240,7 @@ export function openAlbum(ctx, params = {}) {
   let pop = null;
 
   const m = modal({
-    title: 'Álbum de Figuritas', icon: '📒', className: 'alb',
+    title: 'Hallazgos', icon: '📒', className: 'alb',
     onClose: () => {
       closed = true;
       for (const id of timers) clearTimeout(id);
@@ -254,13 +254,13 @@ export function openAlbum(ctx, params = {}) {
   });
 
   // brillitos en la cabecera
-  const bri = h('div.alb-bri', { title: 'Brillitos' });
+  const bri = h('div.alb-bri', { title: 'Recortes' });
   const head = m.el.querySelector('.modal-head');
   head.insertBefore(bri, head.querySelector('.modal-x'));
 
   const tabs = [
-    ['album', 'Álbum', '📒'],
-    ['dupes', 'Repetidas', '🔁'],
+    ['album', 'Hallazgos', '📒'],
+    ['dupes', 'Repetidos', '🔁'],
     ['shop', 'Tienda', 'sparkle'],
   ];
   const bar = h('div.alb-bar');
@@ -316,7 +316,7 @@ export function openAlbum(ctx, params = {}) {
       h('div', { html: progressHtml(p.pct, 'gold') }),
     );
     if (p.albumDone) {
-      cover.append(h('div.alb-final.done', { html: `<small>¡ÁLBUM COMPLETO!</small><span>${icon('crown', 20)} Sos <b>${esc(p.title || A.ALBUM_TITLE)}</b></span>` }));
+      cover.append(h('div.alb-final.done', { html: `<small>¡HALLAZGOS COMPLETOS!</small><span>${icon('crown', 20)} Sos <b>${esc(p.title || A.ALBUM_TITLE)}</b></span>` }));
     } else {
       cover.append(h('div.alb-final', {
         html: `<small>PREMIO POR COMPLETARLO</small><span>${icon('🎁', 20)} <b>2 Cofres de Diamante</b> + ${icon('gem', 18)}${A.ALBUM_REWARD.gems}</span>`
@@ -324,8 +324,14 @@ export function openAlbum(ctx, params = {}) {
       }));
     }
     const grid = h('div.alb-sets');
-    for (const set of A.STICKER_SETS) grid.append(renderTile(set));
-    const right = h('div', {}, grid, h('p.alb-hint', { html: `${icon('🎁', 18)} Las figuritas salen de cofres, minijuegos y de la Tienda de brillitos` }));
+    // agrupados por región de la expedición (DESIGN-CORE.md §7.2.4)
+    for (const r of A.REGION_ORDER) {
+      const sets = A.STICKER_SETS.filter(s => s.region === r);
+      if (!sets.length) continue;
+      grid.append(h('h4.alb-region', { style: { gridColumn: '1 / -1', margin: '6px 2px 0', fontSize: '15px' }, html: `${icon('🧭', 16)} ${esc(A.regionName(r))}` }));
+      for (const set of sets) grid.append(renderTile(set));
+    }
+    const right = h('div', {}, grid, h('p.alb-hint', { html: `${icon('🎁', 18)} Los hallazgos salen de las expediciones, de algunos cofres y de la Tienda de recortes` }));
     wrap.append(cover, right);
     return wrap;
   }
@@ -347,7 +353,7 @@ export function openAlbum(ctx, params = {}) {
     if (p.claimable) tile.append(h('span.btn.gold.small', { role: 'button', html: `${icon('gift', 16)} ¡Reclamar!`, onclick: (e) => { e.stopPropagation(); doClaim(set.id); } }));
     else if (p.claimed) tile.append(h('span.alb-done-chip', { html: `${icon('check', 14)} Completo` }));
     else tile.append(h('span.alb-rew-items', { style: { fontSize: '13px', gap: '6px', justifyContent: 'center' }, html: `<span class="cost">${icon('gem', 14)}${p.reward.gems}</span><span class="cost">${icon('🎁', 14)}</span>` }));
-    if (unseen) tile.append(h('i.badge', { title: 'Figuritas nuevas para pegar' }, String(unseen)));
+    if (unseen) tile.append(h('i.badge', { title: 'Hallazgos nuevos para pegar' }, String(unseen)));
     return tile;
   }
 
@@ -359,7 +365,7 @@ export function openAlbum(ctx, params = {}) {
     const page = setVars(h('div.alb-page'), set);
     const nav = (d) => { audio.sfx('swoosh'); go({ set: A.STICKER_SETS[(idx + d + A.STICKER_SETS.length) % A.STICKER_SETS.length].id }); };
     page.append(h('div.alb-page-head', {},
-      h('button.icon-btn', { 'aria-label': 'Volver al álbum', html: icon('back', 22), onclick: () => { audio.sfx('close'); go({ set: null }); } }),
+      h('button.icon-btn', { 'aria-label': 'Volver a Hallazgos', html: icon('back', 22), onclick: () => { audio.sfx('close'); go({ set: null }); } }),
       h('div.alb-page-title', { html: `<span class="alb-tile-em">${icon(set.emoji, 28)}</span><div><b>${esc(set.name)}</b><small>Set ${idx + 1} de ${A.STICKER_SETS.length} · ${p.have}/9</small></div>` }),
       h('button.icon-btn', { 'aria-label': 'Set anterior', html: '<b style="font-size:22px">‹</b>', onclick: () => nav(-1) }),
       h('button.icon-btn', { 'aria-label': 'Set siguiente', html: '<b style="font-size:22px">›</b>', onclick: () => nav(1) }),
@@ -396,7 +402,7 @@ export function openAlbum(ctx, params = {}) {
     rew.append(h('div', { html: progressHtml(p.have / 9, p.complete ? 'gold' : 'primary') }));
     if (p.claimable) rew.append(h('button.btn.gold.block', { html: `${icon('gift', 20)} ¡Reclamar premio!`, onclick: () => doClaim(setId) }));
     else if (p.claimed) rew.append(h('div.row', { html: `${icon('check', 20)} <b>¡Set completo!</b>` }));
-    else rew.append(h('div.muted.small', {}, `Te ${9 - p.have === 1 ? 'falta 1 figurita' : `faltan ${9 - p.have} figuritas`}. Tocá una para pedírsela a tus amigos.`));
+    else rew.append(h('div.muted.small', {}, `Te ${9 - p.have === 1 ? 'falta 1 hallazgo' : `faltan ${9 - p.have} hallazgos`}. Tocá uno para pedírselo a tus contactos.`));
     side.append(rew);
     const legend = h('div.alb-legend');
     for (let s = 1; s <= 5; s++) legend.append(h('span.chip' + (s >= 5 ? '.primary' : s >= 3 ? '.gold' : s === 2 ? '.sky' : ''), {}, `${starsTxt(s)} ${A.RARITY_NAMES[s]}`));
@@ -429,18 +435,18 @@ export function openAlbum(ctx, params = {}) {
     box.append(cardWrap,
       h('h3', {}, owned ? def.name : '¿?'),
       h('div.alb-pop-meta', {}, `${def.setName} · #${def.n} · ${A.RARITY_NAMES[def.stars]} ${starsTxt(def.stars)}`),
-      h('div.alb-pop-status', { html: owned ? `Tenés <b>${count}</b>${count > 1 ? ` (${count - 1} repetida${count > 2 ? 's' : ''})` : ''}` : 'Todavía no la tenés' }),
+      h('div.alb-pop-status', { html: owned ? `Tenés <b>${count}</b>${count > 1 ? ` (${count - 1} repetido${count > 2 ? 's' : ''})` : ''}` : 'Todavía no lo tenés' }),
     );
     const btns = h('div.alb-pop-btns');
     if (owned && count > 1) {
       const val = (count - 1) * A.BRILLO_VALUE[def.stars];
-      btns.append(h('button.btn.sky', { html: `${icon('people', 20)} Ofrecer a amigos`, onclick: () => trade(def.id, 'offer') }));
+      btns.append(h('button.btn.sky', { html: `${icon('people', 20)} Ofrecer a contactos`, onclick: () => trade(def.id, 'offer') }));
       btns.append(h('button.btn.gold', {
         html: `Cambiar por ${icon('sparkle', 18)}${val}`,
         onclick: () => { const r = A.convertDuplicates({ ids: [def.id] }); celebrateBrillitos(r); closePop(); },
       }));
     } else if (!owned) {
-      btns.append(h('button.btn.primary', { html: `${icon('people', 20)} Pedir a amigos`, onclick: () => trade(def.id, 'ask') }));
+      btns.append(h('button.btn.primary', { html: `${icon('people', 20)} Pedir a contactos`, onclick: () => trade(def.id, 'ask') }));
     }
     btns.append(h('button.btn.ghost', { onclick: () => { audio.sfx('close'); closePop(); } }, 'Listo'));
     box.append(btns);
@@ -452,7 +458,7 @@ export function openAlbum(ctx, params = {}) {
     audio.sfx('tap');
     const payload = { id, mode, handled: false };
     bus.emit('album:trade', payload);
-    if (!payload.handled) toast(mode === 'ask' ? 'Pedido anotado: los intercambios con amigos se activan con tu cuenta online' : 'Los intercambios con amigos se activan con tu cuenta online', { icon: 'people' });
+    if (!payload.handled) toast(mode === 'ask' ? 'Pedido anotado: los intercambios con contactos se activan con tu cuenta online' : 'Los intercambios con contactos se activan con tu cuenta online', { icon: 'people' });
     closePop();
   }
 
@@ -475,7 +481,7 @@ export function openAlbum(ctx, params = {}) {
       if (res.album) {
         audio.sfx('levelup');
         await rewardModal({
-          title: '¡Álbum completo!', subtitle: `¡Sos ${res.album.title}!`,
+          title: '¡Hallazgos completos!', subtitle: `¡Sos ${res.album.title}!`,
           reward: { gems: res.album.gems },
           lines: [icon('crown', 60), `${icon('🎁', 24)} <b>2 Cofres de Diamante</b>`, `Nuevo título: <b>${esc(res.album.title)}</b>`],
           buttons: [{ label: '¡Soy una estrella!', value: 'ok', cls: 'gold' }],
@@ -494,7 +500,7 @@ export function openAlbum(ctx, params = {}) {
     const head = h('div.card.alb-dhead');
     head.append(h('div.alb-dhead-top', {},
       h('span.alb-dhead-ic', { html: icon('sparkle', 40) }),
-      h('div.alb-dhead-txt', { html: `<span>Tenés <b>${total.count}</b> repetida${total.count === 1 ? '' : 's'}</span><span>Valen <b>${v.brillitos}</b> ${icon('sparkle', 18)} brillitos</span>` }),
+      h('div.alb-dhead-txt', { html: `<span>Tenés <b>${total.count}</b> repetido${total.count === 1 ? '' : 's'}</span><span>Valen <b>${v.brillitos}</b> ${icon('sparkle', 18)} recortes</span>` }),
     ));
     const tog = h('button.chip.alb-toggle' + (keep45 ? '.on' : ''), {
       html: `${icon(keep45 ? 'check' : 'lock', 14)} Guardar las de 4★ y 5★ para intercambiar`,
@@ -502,9 +508,9 @@ export function openAlbum(ctx, params = {}) {
     });
     const convBtn = h('button.btn.gold.block', {
       disabled: !v.count,
-      html: `${icon('rotate', 20)} Cambiar repetidas por brillitos`,
+      html: `${icon('rotate', 20)} Cambiar repetidos por recortes`,
       onclick: async () => {
-        const ok = await confirm('Cambiar repetidas', `¿Cambiar <b>${v.count}</b> repetida${v.count === 1 ? '' : 's'} por <b>${v.brillitos}</b> brillitos?<br><small>Siempre te quedás con una de cada figurita.</small>`, '¡Dale!', 'Mejor no');
+        const ok = await confirm('Cambiar repetidos', `¿Cambiar <b>${v.count}</b> repetido${v.count === 1 ? '' : 's'} por <b>${v.brillitos}</b> recortes?<br><small>Siempre te quedás con uno de cada hallazgo.</small>`, '¡Dale!', 'Mejor no');
         if (!ok || closed) return;
         const ids = new Set(dups.filter(d => d.stars <= maxStars).map(d => d.id));
         pane.querySelectorAll('.alb-dupe').forEach((el, i) => { if (ids.has(el.dataset.id)) { el.style.animationDelay = (i * 0.04) + 's'; el.classList.add('alb-melt'); } });
@@ -514,7 +520,7 @@ export function openAlbum(ctx, params = {}) {
     head.append(tog, convBtn);
     wrap.append(head);
     if (!dups.length) {
-      wrap.append(h('div.alb-empty', { html: `${icon('🔁', 48)}<b>Todavía no tenés repetidas</b><span class="muted">Abrí cofres y sobres: las repetidas se cambian por brillitos o se intercambian con amigos.</span>` }));
+      wrap.append(h('div.alb-empty', { html: `${icon('🔁', 48)}<b>Todavía no tenés repetidos</b><span class="muted">Abrí cofres y sobres: los repetidos se cambian por recortes o se intercambian con tus contactos.</span>` }));
     } else {
       const grid = h('div.alb-dgrid');
       for (const d of dups) {
@@ -531,7 +537,7 @@ export function openAlbum(ctx, params = {}) {
     }
     const vals = h('div.alb-values');
     for (let s = 1; s <= 5; s++) vals.append(h('span.chip.gold', { html: `${starsTxt(s)} = ${A.BRILLO_VALUE[s]}${icon('sparkle', 12)}` }));
-    wrap.append(h('p.alb-hint', {}, 'Cada repetida vale brillitos según sus estrellas:'), vals);
+    wrap.append(h('p.alb-hint', {}, 'Cada repetido vale recortes según sus estrellas:'), vals);
     return wrap;
   }
 
@@ -541,14 +547,14 @@ export function openAlbum(ctx, params = {}) {
     const rc = bri.getBoundingClientRect();
     floatText(rc.left + rc.width / 2, rc.bottom + 16, `+${r.brillitos} ${icon('sparkle', 22)}`);
     bri.classList.remove('bump'); void bri.offsetWidth; bri.classList.add('bump');
-    toast(`¡${r.count} repetida${r.count === 1 ? '' : 's'} → ${r.brillitos} brillitos!`, { icon: 'sparkle', type: 'good' });
+    toast(`¡${r.count} repetido${r.count === 1 ? '' : 's'} → ${r.brillitos} recortes!`, { icon: 'sparkle', type: 'good' });
   }
 
   // ---------- Tienda ----------
   function renderShop() {
     const wrap = h('div');
     const b = A.brillitos();
-    wrap.append(h('div.card.alb-shead', { html: `${icon('sparkle', 44)}<div><b>${fmtNum(b)}</b><div class="muted small">brillitos · conseguilos cambiando repetidas</div></div>` }));
+    wrap.append(h('div.card.alb-shead', { html: `${icon('sparkle', 44)}<div><b>${fmtNum(b)}</b><div class="muted small">recortes · conseguilos cambiando repetidos</div></div>` }));
     const grid = h('div.alb-sgrid');
     for (const it of A.SHOP) {
       const card = h('div.card.alb-sitem');
@@ -563,7 +569,7 @@ export function openAlbum(ctx, params = {}) {
       grid.append(card);
     }
     wrap.append(grid);
-    if (b < 10) wrap.append(h('p.alb-hint', { html: `${icon('🔁', 18)} Cambiá tus repetidas por brillitos en la pestaña Repetidas` }));
+    if (b < 10) wrap.append(h('p.alb-hint', { html: `${icon('🔁', 18)} Cambiá tus repetidos por recortes en la pestaña Repetidos` }));
     return wrap;
   }
 
@@ -573,7 +579,7 @@ export function openAlbum(ctx, params = {}) {
     buying = true;
     try {
       const res = A.buyShopItem(itemId);
-      if (!res) { audio.sfx('error'); toast('Te faltan brillitos', { type: 'bad', icon: 'sparkle' }); return; }
+      if (!res) { audio.sfx('error'); toast('Te faltan recortes', { type: 'bad', icon: 'sparkle' }); return; }
       audio.sfx('buy');
       if (res.item.kind === 'chest') { toast(`¡${res.item.name} a tus cofres!`, { icon: '🎁', type: 'good' }); return; }
       await playPackOpening(ctx, res.stickers, { pack: res.item });
@@ -659,7 +665,7 @@ export function playPackOpening(ctx, stickers = [], opts = {}) {
         const nNew = stickers.filter(s => s.isNew).length;
         const nRep = stickers.length - nNew;
         if (nNew) sum.append(h('span.chip.mint', {}, `¡${nNew} nueva${nNew === 1 ? '' : 's'}!`));
-        if (nRep) sum.append(h('span.chip', {}, `${nRep} repetida${nRep === 1 ? '' : 's'}`));
+        if (nRep) sum.append(h('span.chip', {}, `${nRep} repetido${nRep === 1 ? '' : 's'}`));
         if (nNew) audio.sfx('done');
         foot.append(h('button.btn.primary', { html: `${icon('📒', 20)} ${nNew ? '¡A pegarlas!' : '¡Genial!'}`, onclick: finish }));
       });

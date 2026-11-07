@@ -3,12 +3,14 @@
 import { bus } from './bus.js';
 import {
   CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
-  LEGACY_TYPES, LEGACY_ITEMS, MATERIALS, REGION_MATERIALS, PROV_START, RESERVE_CAP,
+  LEGACY_TYPES, LEGACY_ITEMS, REGION_MATERIALS, PROV_START, RESERVE_CAP, LEGACY_MATS, LEGACY_BUILDINGS, LEGACY_BOOSTERS,
+  TOWN_RANKS, eraOfRank,
 } from './data.js';
 
 const BASE_KEY = 'pixelia.save.v1';
 // 1: original · 2: sin realeza (tipos/piezas de princesa → gente) y tema por defecto "pueblo"
-const VERSION = 2;
+// 3: sin minijuegos (materiales de región, edificios del ciclo, equipo, épocas; DESIGN-CORE.md §7.2)
+export const VERSION = 3;
 
 /**
  * Clave de guardado. En modo online simulado (?mock=1&mockuser=ana) cada jugadora simulada tiene su
@@ -65,9 +67,8 @@ export function defaultState() {
       camera: null, // la escena de ciudad puede guardar acá su posición/zoom
     },
     builders: START_BUILDERS,
-    // materiales: los de minijuego para los monumentos ({ cristal, ladrillo, tuerca, mapa }, hasta la Fase 5) y los de
-    // región que trae la expedición ({ madera, piedra, mineral, hierbas })
-    materials: Object.fromEntries([...MATERIALS, ...REGION_MATERIALS].map(m => [m.id, 0])),
+    // materiales de región que trae la expedición ({ madera, piedra, mineral, hierbas }): monumentos, obras, equipo…
+    materials: Object.fromEntries(REGION_MATERIALS.map(m => [m.id, 0])),
     // recursos del ciclo (DESIGN-CORE.md §5.1): provisiones en el depósito (tope en economy.provCap), planos,
     // equipo de expedición { id: n }, reservas para las amenazas { id: n } y colonos (suman población)
     prov: PROV_START,
@@ -81,12 +82,8 @@ export function defaultState() {
     quests: { main: 0, mainProgress: 0, daily: null, achTier: {}, done: {}, chain: 0 },
     login: { last: null, streak: 0 },
     stats: {},
-    games: {
-      match3: { level: 1, stars: {} },   // stars: { [nivel]: 0..3 }
-      blocks: { best: 0 },
-      parking: { level: 1, stars: {} },
-      driving: { best: 0 },
-    },
+    // games: progreso de los minijuegos retirados (solo en partidas de antes de la v3; queda guardado y sin uso)
+    // v3: compensación de la migración { gems, finds, at, shown, placeExp } (la muestra main.js una sola vez)
     tutorial: {},   // flags libres para tips mostrados una vez: tutorial[key] = true
     // telemetry: métricas anónimas (online/telemetry.js) · textSize: 'normal'|'large'|'xlarge' · motion: 'auto'|'on'|'off'
     // (reducir movimiento: automático según el sistema, sí o no). Los saves viejos los reciben por deepFill.
@@ -113,6 +110,7 @@ function migrate(s) {
   if (!s.avatar || typeof s.avatar !== 'object') s.avatar = { type: 'princesa', ...(old && typeof old === 'object' ? old : {}) };
   delete s.princess;
   if ((s.v || 1) < 2) migrateNoRoyalty(s);
+  if ((s.v || 1) < 3) migrateV3(s);
   if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'chica';
   if (s.onboarded === undefined) s.onboarded = true;
   // el nombre por defecto viejo era 'Princesa': ahora el juego es neutro
@@ -153,6 +151,83 @@ function migrateNoRoyalty(s) {
   if (s.city && s.city.theme === 'pastel') s.city.theme = 'pueblo';
   if (s.city && s.city.flagColor === 'rosa') s.city.flagColor = 'celeste';
   s.v = 2;
+}
+/**
+ * v2 → v3 (DESIGN-CORE.md §7.2): se retiran los minijuegos sin que se pierda nada. Corre antes de deepFill, una sola
+ * vez (s.v pasa a 3) y cada paso es seguro de repetir:
+ *  1. materiales cristal/ladrillo/tuerca/mapa → mineral/piedra/madera/hierbas (se suman);
+ *  2. Joyería/Torre de Bloques/Garaje/Pista → Taller/Dispensario/Establo/Casa de Expediciones (mismo uid, lugar,
+ *     rotación, nivel y obra en curso). Si ya había uno del ciclo, queda el de nivel más alto y el otro se devuelve en
+ *     monedas. Sin Casa de Expediciones, economy.ensureExpHouse la coloca sola (v3.placeExp);
+ *  3. progreso de minijuegos → gemas (se suman acá) y hallazgos (los entrega main.js con el aviso, v3.finds);
+ *  4. el álbum no cambia (pasa a llamarse Hallazgos con los mismos ids);
+ *  5. potenciadores de la mochila → equipo de expedición;
+ *  6. cada edificio sin época recibe la del rango actual (lo ya ganado no paga renovación);
+ *  7. planos = ⌊rango / 2⌋ si la partida todavía no tenía (el resto de los recursos nuevos los completa deepFill);
+ *  8. las diarias se vuelven a sortear (la cadena de misiones la migra quests.migrateQuestChain).
+ * Monumentos, Mi Casa, rango, contactos, temas, ropa y auto no se tocan.
+ */
+const LEGACY_REFUND = { joyeria: 150, torre_bloques: 300, garaje: 600, pista: 1200 };
+const num = (v) => Math.max(0, Math.round(Number(v) || 0));
+function migrateV3(s) {
+  if ((s.v || 1) >= 3) return;
+  const fresh = isFreshGame(s);
+  const v3 = (s.v3 && typeof s.v3 === 'object') ? s.v3 : (s.v3 = {});
+  // 1. materiales
+  const m = (s.materials && typeof s.materials === 'object') ? s.materials : (s.materials = {});
+  for (const [from, to] of Object.entries(LEGACY_MATS)) {
+    if (!(from in m)) continue;
+    const n = num(m[from]);
+    if (n) m[to] = num(m[to]) + n;
+    delete m[from];
+  }
+  // 2. edificios de minijuego → edificios del ciclo
+  const list = Array.isArray(s.city?.buildings) ? s.city.buildings : [];
+  let refund = 0;
+  const conv = [];
+  for (const b of list.slice()) {
+    const to = b && LEGACY_BUILDINGS[b.id];
+    if (!to) continue;
+    conv.push(b.id);
+    const other = list.find(o => o !== b && o.id === to);
+    if (!other) { b.id = to; continue; }
+    // ya había uno del ciclo (máximo 1): queda el de nivel más alto en el lugar del que ya estaba
+    refund += (LEGACY_REFUND[b.id] || 0) * Math.max(1, num(b.level));
+    if (num(b.level) > num(other.level) && !other.buildEnd && !other.upgradeEnd) other.level = num(b.level);
+    list.splice(list.indexOf(b), 1);
+  }
+  if (conv.length) v3.conv = conv;
+  if (refund) { s.coins = num(s.coins) + refund; v3.refund = refund; }
+  if (!fresh && !list.some(b => b.id === 'casa_exp')) v3.placeExp = 1;
+  // 3. compensación por el progreso de los minijuegos
+  const g = (s.games && typeof s.games === 'object') ? s.games : {};
+  const lv = (k) => Math.max(0, num(g[k]?.level) - 1);
+  const gems = Math.min(150, 2 * lv('match3') + 3 * lv('parking') + Math.floor(num(g.blocks?.best) / 1000) + Math.floor(num(g.driving?.best) / 1000));
+  const finds = Math.min(10, Math.floor((lv('match3') + lv('parking')) / 5));
+  if (v3.gems == null) {
+    v3.gems = gems; v3.finds = finds; v3.at = Date.now(); v3.shown = fresh;
+    if (gems) s.gems = num(s.gems) + gems;
+  }
+  // 5. potenciadores → equipo
+  const items = s.chests?.items;
+  if (items && typeof items === 'object') {
+    const eq = (s.equipment && typeof s.equipment === 'object') ? s.equipment : (s.equipment = {});
+    for (const [from, to] of Object.entries(LEGACY_BOOSTERS)) {
+      if (!(from in items)) continue;
+      const n = num(items[from]);
+      if (n) eq[to] = num(eq[to]) + n;
+      delete items[from];
+    }
+  }
+  // 6. épocas: la del rango actual para lo que no tenía
+  const castle = list.find(b => b.id === 'castillo');
+  const rank = Math.max(1, Math.min(TOWN_RANKS.length, num(castle?.level) || 1));
+  for (const b of list) if (b && b.era == null && b.id !== 'castillo') b.era = eraOfRank(rank);
+  // 7. planos
+  if (s.planos == null) s.planos = Math.floor(rank / 2);
+  // 8. diarias de nuevo (las de minijuego ya no existen)
+  if (s.quests && typeof s.quests === 'object') s.quests.daily = null;
+  s.v = 3;
 }
 /** state.princess → state.avatar (no enumerable: no se guarda dos veces ni cambia el hash de sincronización). */
 function withAlias(s) {
@@ -224,7 +299,7 @@ export const store = {
       && (cost.prov || 0) <= (state.prov || 0) && (cost.planos || 0) <= (state.planos || 0)
       && store.hasItems('equipment', cost.equip) && store.hasItems('reserves', cost.reserves);
   },
-  /** ¿Alcanzan los materiales? mats: { cristal: n, madera: n, ... } (sin mats: sí). */
+  /** ¿Alcanzan los materiales? mats: { madera: n, piedra: n, ... } (sin mats: sí). */
   hasMats(mats) {
     if (!mats) return true;
     const have = state.materials || {};
@@ -279,10 +354,11 @@ export const store = {
   },
   /**
    * Suma premios. reward: {coins, gems, xp, chest, stickers, mats, furniture, prov, planos, equip, reserves, colonos}.
-   * mats: { cristal: n, madera: n, ... } → emite 'materials:changed'. prov/planos/colonos/equip/reserves → 'resources:changed'
+   * mats: { madera: n, piedra: n, ... } → emite 'materials:changed'. prov/planos/colonos/equip/reserves → 'resources:changed'
    * (las provisiones respetan el tope del depósito). source: 'collect'|'game'|'quest'|'levelup'|'login'|'expedition'|...
    *  - chest: 'madera'|'plata'|'oro'|'real' (o {type, n}); chests: cantidad (default 1) → emite 'reward:chest' {type, n, source}
-   *  - stickers: n (o {n, minStars}) → emite 'reward:stickers' {n, minStars, source}; el álbum deja el resultado en payload.result
+   *  - stickers: n (o {n, minStars, region}) → emite 'reward:stickers' {n, minStars, region, source}; Hallazgos deja el
+   *    resultado en payload.result (con region, de los sets de esa región)
    * Devuelve { stickers: [{id, stars, isNew, count}], prov (lo que entró al depósito) }.
    */
   grant(reward = {}, source = '') {
@@ -326,7 +402,7 @@ export const store = {
     }
     if (reward.stickers) {
       const st = typeof reward.stickers === 'object' ? reward.stickers : { n: reward.stickers };
-      const payload = { n: Math.max(0, Math.round(st.n || 0)), minStars: st.minStars || 1, source };
+      const payload = { n: Math.max(0, Math.round(st.n || 0)), minStars: st.minStars || 1, region: st.region || null, source };
       if (payload.n) { bus.emit('reward:stickers', payload); out.stickers = payload.result || []; }
     }
     dirty = true;

@@ -1,7 +1,7 @@
 // Paneles festivos: premio diario (login) y subida de nivel.
 import { icon } from '../core/icons.js';
-import { BUILDINGS, GAMES, CUSTOM_CATALOG, TOWN_RANKS, LOGIN_REWARDS, MAX_EXPANSIONS, fitsType, avatarType } from '../core/data.js';
-import { openShell, rewardFx, art, GAME_ART, rewardHtml, chestArt, chestList } from './panels-common.js';
+import { BUILDINGS, CUSTOM_CATALOG, TOWN_RANKS, LOGIN_REWARDS, MAX_EXPANSIONS, fitsType, avatarType } from '../core/data.js';
+import { openShell, rewardFx, rewardHtml, chestArt, chestList } from './panels-common.js';
 import { CHESTS, chestCount, levelUpChests } from '../chests/chests.js';
 
 // ---------- Premio diario ----------
@@ -109,7 +109,6 @@ const CAT_NAME = { casa: 'Casa', negocio: 'Negocio', deco: 'Deco', especial: 'Es
 
 function unlocksAt(level, state) {
   const list = [];
-  for (const g of GAMES.filter(g => g.unlock === level)) list.push({ kind: 'Minijuego', name: g.name, ic: art(GAME_ART[g.id], 44), hot: true });
   // rango actual de la ciudad (nivel de la Municipalidad): algunos edificios además piden rango
   const rank = state?.city?.buildings?.find(b => b.id === 'castillo')?.level || 1;
   for (const b of BUILDINGS.filter(b => b.unlock === level)) {
@@ -134,9 +133,8 @@ function unlocksAt(level, state) {
 function nextUnlock(level) {
   let best = Infinity;
   for (const b of BUILDINGS) if (b.unlock > level) best = Math.min(best, b.unlock);
-  for (const g of GAMES) if (g.unlock > level) best = Math.min(best, g.unlock);
   if (!isFinite(best)) return null;
-  return { level: best, names: [...GAMES.filter(g => g.unlock === best), ...BUILDINGS.filter(b => b.unlock === best)].map(x => x.name).slice(0, 3) };
+  return { level: best, names: BUILDINGS.filter(b => b.unlock === best).map(x => x.name).slice(0, 3) };
 }
 
 export function openLevelUp(ctx, params = {}) {

@@ -50,7 +50,7 @@ export const FURNITURE = [
   { id: 'trofeo_rango', name: 'Copa de la Municipalidad', size: [1, 1], comfort: 10, shop: false, trophy: true, desc: 'Por llevar tu ciudad al rango Villa.' },
   { id: 'trofeo_obra', name: 'Maqueta del Faro', size: [1, 1], comfort: 10, shop: false, trophy: true, desc: 'Por terminar tu primer monumento.' },
   { id: 'trofeo_joyas', name: 'Trofeo de Joyas', size: [1, 1], comfort: 8, shop: false, trophy: true, desc: 'Por pasar 10 niveles de Joyas Brillantes.' },
-  { id: 'trofeo_album', name: 'Medalla del Álbum', size: [1, 1], comfort: 8, shop: false, trophy: true, desc: 'Por completar una página del Álbum.' },
+  { id: 'trofeo_album', name: 'Medalla de Hallazgos', size: [1, 1], comfort: 8, shop: false, trophy: true, desc: 'Por completar una página de Hallazgos.' },
 ];
 export const FURNITURE_BY_ID = Object.fromEntries(FURNITURE.map(f => [f.id, f]));
 /** Muebles que pueden salir en cofres (los que no se venden + algunos especiales). */
@@ -76,10 +76,10 @@ export const FLOORS = [
 // look: lo que se estrena (también se nota por fuera, en la ciudad).
 export const HOME_LEVELS = [
   { level: 1, name: 'Monoambiente', size: [6, 6] },
-  { level: 2, name: 'Casa con ventanal', size: [8, 8], cost: { coins: 2500, mats: { ladrillo: 8 } }, time: 600, look: 'ventanal y más lugar' },
-  { level: 3, name: 'Casa con cocina', size: [10, 9], cost: { coins: 7000, mats: { ladrillo: 14, tuerca: 8 } }, time: 1800, rank: 3, look: 'cocina con mesada, pileta y alacenas' },
-  { level: 4, name: 'Casa con dos ambientes', size: [12, 10], cost: { coins: 18000, mats: { ladrillo: 20, tuerca: 12, cristal: 10 } }, time: 3600, rank: 4, look: 'segundo ambiente con arco' },
-  { level: 5, name: 'Casa con altillo', size: [14, 12], cost: { coins: 45000, gems: 15, mats: { ladrillo: 28, tuerca: 18, cristal: 16, mapa: 12 } }, time: 7200, rank: 5, look: 'altillo con escalera y claraboya' },
+  { level: 2, name: 'Casa con ventanal', size: [8, 8], cost: { coins: 2500, mats: { piedra: 8 } }, time: 600, look: 'ventanal y más lugar' },
+  { level: 3, name: 'Casa con cocina', size: [10, 9], cost: { coins: 7000, mats: { piedra: 14, madera: 8 } }, time: 1800, rank: 3, look: 'cocina con mesada, pileta y alacenas' },
+  { level: 4, name: 'Casa con dos ambientes', size: [12, 10], cost: { coins: 18000, mats: { piedra: 20, madera: 12, mineral: 10 } }, time: 3600, rank: 4, look: 'segundo ambiente con arco' },
+  { level: 5, name: 'Casa con altillo', size: [14, 12], cost: { coins: 45000, gems: 15, mats: { piedra: 28, madera: 18, mineral: 16, hierbas: 12 } }, time: 7200, rank: 5, look: 'altillo con escalera y claraboya' },
 ];
 export const homeLevelDef = (lv) => HOME_LEVELS[Math.max(1, Math.min(HOME_LEVELS.length, lv | 0 || 1)) - 1];
 
@@ -312,7 +312,7 @@ export const comfort = (state = S()) => comfortInfo(state).value;
 const TROPHIES = [
   { id: 'trofeo_rango', test: (s) => (s.stats?.rankBest || 0) >= 4 },
   { id: 'trofeo_obra', test: (s) => MONUMENT_DONE(s) },
-  { id: 'trofeo_joyas', test: (s) => (s.stats?.match3Wins || 0) >= 10 },
+  { id: 'trofeo_joyas', test: (s) => (s.stats?.match3Wins || 0) >= 10 },   // recuerdo de los minijuegos: queda para quien lo ganó
   { id: 'trofeo_album', test: (s) => (s.stats?.stickersNew || 0) >= 30 },
 ];
 let MONUMENT_DONE = () => false;

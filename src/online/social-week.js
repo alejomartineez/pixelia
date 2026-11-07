@@ -19,7 +19,7 @@ function celebrateGot(el, got) {
   flyFrom(el, got);
   const ch = Object.keys(got.chests || {});
   if (ch.length) setTimeout(() => toast(`¡${CHESTS[ch[0]]?.name || 'Cofre'} a tus cofres!`, { icon: 'gift', type: 'good' }), 500);
-  if (got.stickers?.length) setTimeout(() => toast(`¡${got.stickers.length} figuritas para tu álbum!`, { icon: '🃏', type: 'good' }), 1000);
+  if (got.stickers?.length) setTimeout(() => toast(`¡${got.stickers.length} hallazgos nuevos en tu colección!`, { icon: '🃏', type: 'good' }), 1000);
 }
 function weekLabel(w) { return `Semana ${Number(String(w).split('W')[1]) || ''}`; }
 function smallConnect(api, text) {
@@ -111,7 +111,7 @@ export async function renderRanking(api, tok) {
     } else {
       const played = info.mine.played > 0;
       prize.innerHTML = `${chestIcon('madera', 48)}<div><b style="font-size:17px">Premio para quienes jueguen · el domingo</b>
-        <div class="soc-muted">${played ? `${icon('check', 14)} Ya estás participando. ${info.daysToSunday ? `Faltan ${info.daysToSunday} día${info.daysToSunday > 1 ? 's' : ''}.` : ''}` : 'Jugá al menos un minijuego esta semana para participar.'}
+        <div class="soc-muted">${played ? `${icon('check', 14)} Ya estás participando. ${info.daysToSunday ? `Faltan ${info.daysToSunday} día${info.daysToSunday > 1 ? 's' : ''}.` : ''}` : 'Hacé al menos una expedición esta semana para participar.'}
         ${anyBest ? ' Con mejor marca personal sumás gemas.' : ''}</div><div class="soc-chips" style="margin-top:4px">${chips}</div></div>`;
     }
     nodes.push(prize);
@@ -207,7 +207,7 @@ export async function renderTeam(api, tok) {
     const how = h('div.soc-sec', { html: `<h4>${icon('sparkle', 20)} ¿Cómo sumo puntos?</h4>` });
     how.append(h('div.soc-how', {
       html: [
-        ['games', 'Ganar un minijuego', COOP_POINTS.win],
+        ['🧭', 'Volver de una expedición', COOP_POINTS.win],
         ['build', 'Terminar una obra', COOP_POINTS.built],
         ['up', 'Mejorar un edificio', COOP_POINTS.upgraded],
         ['🤝', 'Cumplir un pedido', COOP_POINTS.request],

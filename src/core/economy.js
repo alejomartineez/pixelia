@@ -11,7 +11,7 @@ import {
 import { monumentComplete, monumentsDone, monumentBonus } from './monuments.js';
 import { HOME_LEVELS, comfortInfo } from '../home/furniture.js';
 export { monumentComplete, monumentsDone, monumentBonus };
-import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild } from '../chests/chests.js';
+import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild, addFreeBuild } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
 
 const S = () => store.state;
@@ -693,6 +693,7 @@ export function tick(state = S()) {
   }
   syncRank(state, now);
   ensureHome(state, now);
+  ensureExpHouse(state, now);
 }
 
 // ---------- Mi Casa ----------
@@ -705,24 +706,46 @@ export function ensureHome(state = S(), now = Date.now()) {
   if ((state.player?.level || 1) < 2 || state.city.buildings.some(b => b.id === 'mi_casa')) return null;
   if (now - homeTry < 30e3) return null;
   homeTry = now;
+  const b = placeNearCastle('mi_casa', state, now);
+  if (b) bus.emit('home:ready', { b });
+  return b;
+}
+/** Coloca un edificio (nivel 1, ya terminado) en el lugar libre más cercano a la Municipalidad. null si no entra. */
+function placeNearCastle(id, state = S(), now = Date.now(), extra = {}) {
   const c = state.city.buildings.find(b => b.id === 'castillo');
   const [cw, cd] = c ? footprint('castillo', c.rot) : [0, 0];
   const cx = c ? c.x + cw / 2 : MAP_SIZE / 2, cz = c ? c.z + cd / 2 : MAP_SIZE / 2;
+  const [w, d] = footprint(id, 0);
   const { min, max } = landBounds(state);
   let best = null, bd = Infinity;
-  for (let x = min; x <= max - 2; x++) for (let z = min; z <= max - 2; z++) {
-    if (!canPlace('mi_casa', x, z, 0, null, state).ok) continue;
+  for (let x = min; x <= max - w; x++) for (let z = min; z <= max - d; z++) {
+    if (!canPlace(id, x, z, 0, null, state).ok) continue;
     // cerca de la Municipalidad, preferentemente adelante (se ve apenas entrás)
-    const d = Math.hypot(x + 1 - cx, z + 1 - cz) - (z + 1 > cz ? 0.6 : 0);
-    if (d < bd) { bd = d; best = [x, z]; }
+    const dist = Math.hypot(x + w / 2 - cx, z + d / 2 - cz) - (z + d / 2 > cz ? 0.6 : 0);
+    if (dist < bd) { bd = dist; best = [x, z]; }
   }
   if (!best) return null;
-  const b = { uid: state.city.nextUid++, id: 'mi_casa', x: best[0], z: best[1], rot: 0, level: 1, buildEnd: 0, upgradeEnd: 0, lastCollect: now };
+  const b = { uid: state.city.nextUid++, id, x: best[0], z: best[1], rot: 0, level: 1, buildEnd: 0, upgradeEnd: 0, lastCollect: now, ...extra };
   state.city.buildings.push(b);
   store.markDirty();
   bus.emit('building:placed', { b, auto: true });
-  bus.emit('home:ready', { b });
   return b;
+}
+/**
+ * Migración v3 (DESIGN-CORE.md §7.2.2): una partida que ya jugaba y no tenía Pista (→ Casa de Expediciones) recibe la
+ * Casa de Expediciones colocada sola cerca de la Municipalidad; si no entra, queda como construcción gratis en el menú.
+ */
+export function ensureExpHouse(state = S(), now = Date.now()) {
+  const v3 = state.v3;
+  if (!v3?.placeExp) return null;
+  v3.placeExp = 0;
+  store.markDirty();
+  if (state.city.buildings.some(b => b.id === 'casa_exp')) return null;
+  const b = placeNearCastle('casa_exp', state, now, { era: cityEra(state) });
+  if (b) { v3.expPlaced = b.uid; return b; }
+  addFreeBuild('casa_exp');
+  v3.expFree = 1;
+  return null;
 }
 
 // ---------- Expansiones / constructoras ----------

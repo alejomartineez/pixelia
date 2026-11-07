@@ -55,7 +55,7 @@ function guaranteeChip(def) {
 const slotsChip = (def) => {
   const st = stickerDropsForChest(def.id);
   return `<span class="chx-rchip" style="--rcl:#fff">${icon('gift', 14)}${def.slots} premios</span>`
-    + (st.n ? `<span class="chx-rchip" style="--rcl:#fbf6ef">${packIcon(16)}+${st.n} figuritas</span>` : '');
+    + (st.n ? `<span class="chx-rchip" style="--rcl:#fbf6ef">${packIcon(16)}+${st.n} hallazgos</span>` : '');
 };
 
 // ---------- "¿Qué puede salir?" ----------
@@ -72,7 +72,7 @@ function showWhat(ctx, type) {
     title: def.name, icon: 'gift', className: 'chx-whatmodal',
     content: `<p class="center">${g}</p><p class="center small muted">Probabilidad de cada premio:</p>
       <div class="chx-whatlist">${rows}</div>
-      <p class="center small muted" style="margin-top:10px">${packIcon(16)} Además trae <b>${stickerDropsForChest(type).n} figuritas</b> para tu Álbum${stickerDropsForChest(type).minStars > 1 ? ` (una de ${stickerDropsForChest(type).minStars}★ o más)` : ''}.</p>
+      <p class="center small muted" style="margin-top:10px">${packIcon(16)} Además trae <b>${stickerDropsForChest(type).n} hallazgos</b> para tus Hallazgos${stickerDropsForChest(type).minStars > 1 ? ` (uno de ${stickerDropsForChest(type).minStars}★ o más)` : ''}.</p>
       <p class="center small muted">${icon('sparkle', 16)} Racha de suerte: nunca pasan más de ${C.PITY_LEGENDARY} cofres sin una Legendaria.</p>`,
     actions: [{ label: 'Entendido', cls: 'primary' }],
   });
@@ -230,13 +230,13 @@ export async function openChestsPanel(ctx, params = {}) {
       const what = h('button.chx-what', { html: `${icon('info', 14)}¿Qué puede salir?`, onclick: () => { audio.sfx('tap'); showWhat(ctx, t); } });
       if (n) actions.append(h('button.btn.primary', { html: `${icon('sparkle', 20)}Abrir${n > 1 ? ` <small>(${n})</small>` : ''}`, onclick: () => openFromPanel(t) }));
       else if (def.price) actions.append(h('button.btn.ghost.small', { html: `${icon('shop', 16)}Comprar ${icon('gem', 16)}${def.price.gems}`, onclick: () => { audio.sfx('select'); setTab('tienda'); } }));
-      else actions.append(h('div.chx-ingame', { html: `${icon('games', 16)} Ganalo en los minijuegos y subiendo de nivel` }));
+      else actions.append(h('div.chx-ingame', { html: `${icon('🧭', 16)} Sale en las expediciones de 3★, las amenazas, el Pase y cada 5 niveles` }));
       card.querySelector('.chx-info').append(what);
       card.append(actions);
       list.append(card);
     }
     pane.append(list);
-    pane.append(h('p.chx-tip', { html: `${icon('star', 14)} Ganás cofres en los minijuegos, al subir de nivel y con el cofre gratis.` }));
+    pane.append(h('p.chx-tip', { html: `${icon('star', 14)} Ganás cofres en las expediciones de 3★, las amenazas, el Pase, cada 5 niveles y con el cofre gratis del día.` }));
   }
 
   function renderMochila() {
@@ -289,7 +289,6 @@ export async function openChestsPanel(ctx, params = {}) {
           <div class="chx-ic">${icon(it.icon, 60)}</div>
           <b>${esc(it.name)}</b><p>${esc(it.desc || '')}</p>` });
         if (it.use === 'city') card.append(h('button.btn.mint.small', { html: `${icon('wand', 18)}Usar`, onclick: (e) => useItem(it.id, e.currentTarget) }));
-        else if (it.use === 'game') card.append(h('div.chx-ingame', { html: `Se usa al empezar <b>${esc(ctx.data.GAME_BY_ID?.[it.game]?.name || 'el juego')}</b>` }));
         grid.append(card);
       }
       pane.append(grid);

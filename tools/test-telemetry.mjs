@@ -107,7 +107,7 @@ try {
   const by = n => evs.filter(e => e.n === n);
   ok(by('level:up')[0]?.p.level === 4 && by('level:up')[0].p.reward === undefined, 'level:up con el nivel (sin objetos anidados)');
   ok(by('town:rankup')[0]?.p.rank === 2, 'town:rankup');
-  ok(JSON.stringify(by('minigame:finished')[0]?.p) === JSON.stringify({ game: 'match3', stars: 3, won: true, score: 1234 }), 'minigame:finished con juego, estrellas, ganó y puntaje');
+  ok(by('minigame:finished').length === 0, 'minigame:finished ya no se registra (los minijuegos se retiraron)');
   ok(by('building:built')[0]?.p.id === 'casita', 'building:built con el id del edificio');
   ok(by('onboarding:step').map(e => e.p.step).join() === '0,1' && by('onboarding:done').length === 1, 'pasos del onboarding (sin repetir el mismo paso)');
   ok(by('expedition:start')[0]?.p.zone === 'bosque' && by('expedition:start')[0].p.nested === undefined, 'expedition:* se registra solo (eventos futuros)');

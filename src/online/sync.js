@@ -237,8 +237,8 @@ export async function pushNow(opts = {}) {
 // ---------- Perfil público ----------
 /** Arma el perfil público a partir del estado (puro). */
 export function buildPublicProfile(s = store.state, now = Date.now()) {
-  const g = s.games || {};
-  const week = s.online?.week?.id === isoWeek() ? s.online.week : { id: isoWeek(), match3: 0, blocks: 0, parking: 0, driving: 0, stars: 0 };
+  // semana: estrellas y salidas de expedición (las claves de los minijuegos retirados ya no se publican)
+  const week = s.online?.week?.id === isoWeek() ? { id: s.online.week.id, stars: s.online.week.stars || 0, exps: s.online.week.exps || 0 } : { id: isoWeek(), stars: 0, exps: 0 };
   let pop = 0, happy = 0, charm = 0, rank = 1;
   try { pop = population(s, now); happy = happiness(s, now).pct; charm = cityCharm(s, now); rank = townRank(s); } catch {}
   return {
@@ -266,10 +266,6 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
     },
     stats: {
       pop, happy, rank, charm,
-      best: {
-        match3: g.match3?.level || 1, blocks: g.blocks?.best || 0,
-        parking: g.parking?.level || 1, driving: g.driving?.best || 0,
-      },
       // rango y Encanto también van en week: friends_leaderboard solo devuelve stats.week (así no hay que tocar el SQL)
       week: { ...week, charm, rank },
       album: albumCode(s),
@@ -307,15 +303,15 @@ export async function publishProfileNow(force = false) {
 
 // Estadísticas de la semana (para el ranking): se guardan en state.online.week
 function trackWeekStats() {
-  bus.on('minigame:finished', ({ game, score = 0, stars = 0 } = {}) => {
+  bus.on('expedition:finished', ({ stars = 0, prototype } = {}) => {
     const s = store.state;
-    if (!s) return;
+    if (!s || prototype) return;
     s.online ??= {};
     const id = isoWeek();
-    if (s.online.week?.id !== id) s.online.week = { id, match3: 0, blocks: 0, parking: 0, driving: 0, stars: 0 };
+    if (s.online.week?.id !== id) s.online.week = { id, stars: 0, exps: 0 };
     const w = s.online.week;
-    if (game in w && game !== 'id' && game !== 'stars') w[game] = Math.max(w[game] || 0, Math.round(score) || 0);
-    w.stars += Math.max(0, stars | 0);
+    w.stars = (w.stars || 0) + Math.max(0, stars | 0);
+    w.exps = (w.exps || 0) + 1;
     store.markDirty();
   });
 }

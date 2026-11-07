@@ -2,7 +2,7 @@
 // UI en chests-ui.js. Los premios {chest:'plata'} en store.grant llegan acá vía el evento 'reward:chest'.
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
-import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType, MATERIALS, MONUMENTS, MONUMENT_IDS } from '../core/data.js';
+import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType, REGION_MATERIALS, MONUMENTS, MONUMENT_IDS, EQUIP_RECIPES, LEGACY_BOOSTERS } from '../core/data.js';
 import { stickerDropsForChest, grantStickers } from '../album/album.js';
 import { CHEST_FURNITURE, FURNITURE_BY_ID, giveFurniture } from '../home/furniture.js';
 
@@ -26,33 +26,32 @@ export const CHESTS = {
   real: { id: 'real', name: 'Cofre de Diamante', slots: 6, odds: { comun: 0, rara: 45, epica: 38, legendaria: 17 }, guarantee: 'legendaria', price: { gems: 120 }, color: '#5aa6e0', trim: '#ffd166' },
 };
 export const CHEST_LIST = Object.values(CHESTS);
-export const FREE_CHEST_EVERY_MS = 4 * 3600 * 1000;
-export const FREE_CHEST_MAX = 2;          // se acumulan hasta 2 cofres gratis
+// Cofres recortados con la salida de los minijuegos (DESIGN-CORE.md §7.1 y §8: ≤ 1,5 por día): uno gratis por día, sin
+// acumular; el resto sale del rango, cada 5 niveles, el Pase, las amenazas y las salidas de 3★.
+export const FREE_CHEST_EVERY_MS = 24 * 3600 * 1000;
+export const FREE_CHEST_MAX = 1;
 export const PITY_LEGENDARY = 20;         // a lo sumo 20 cofres sin legendaria
 
 // ---------- Objetos ----------
 // kind:
 //  'coins'|'gems'|'xp'   — se acreditan al abrir (amount = [min,max], monedas escalan con nivel)
-//  'item'                — va a la mochila (consumible). use: 'city' (se usa desde la mochila) | 'game' (se usa al empezar ese juego)
+//  'item'                — va a la mochila (consumible). use: 'city' (se usa desde la mochila)
+//  'equip'               — una pieza de equipo de expedición (va a state.equipment; pool: ids de EQUIP_RECIPES)
 //  'cosmetic'            — desbloquea una prenda/parte de auto que no tengas (pool: 'coins' o 'gems' según su precio)
 //  'build'               — una construcción gratis de esos edificios (pool), sin requisito de nivel
 //  'furniture'           — un mueble para Mi Casa (pool: CHEST_FURNITURE de home/furniture.js)
-//  'material'            — materiales de los monumentos (amount = [min,max]; elige el que más falta para tus obras)
+//  'material'            — materiales de región (amount = [min,max]; elige el que más falta para tus obras)
 export const ITEMS = {
   coins_s: { name: 'Bolsa de monedas', rarity: 'comun', kind: 'coins', amount: [120, 220], icon: 'coin' },
   xp_s: { name: 'Pergamino de saber', rarity: 'comun', kind: 'xp', amount: [25, 45], icon: 'xp' },
   hammer: { name: 'Martillo Mágico', rarity: 'comun', kind: 'item', use: 'city', icon: '🔨', desc: 'Termina una obra o mejora al instante.' },
-  m3_moves: { name: '+5 Movidas', rarity: 'comun', kind: 'item', use: 'game', game: 'match3', icon: '👟', desc: 'Empezá un nivel de Joyas Brillantes con 5 movidas extra.' },
-  blk_bomb: { name: 'Bomba de Bloques', rarity: 'comun', kind: 'item', use: 'game', game: 'blocks', icon: '💣', desc: 'En Bloques Pixel: limpia un área de 3x3 cuando quieras.' },
-  park_time: { name: 'Reloj Extra', rarity: 'comun', kind: 'item', use: 'game', game: 'parking', icon: '⏱️', desc: 'Estacionamiento Express: +30 segundos y 2 toques gratis.' },
 
   coins_m: { name: 'Caja de monedas', rarity: 'rara', kind: 'coins', amount: [400, 650], icon: 'coin' },
   gems_s: { name: 'Puñado de gemas', rarity: 'rara', kind: 'gems', amount: [3, 6], icon: 'gem' },
   hourglass: { name: 'Reloj de Arena', rarity: 'rara', kind: 'item', use: 'city', icon: '⏳', desc: 'Adelanta 1 hora todas las obras y mejoras en curso.' },
   potion_prod: { name: 'Poción Dorada', rarity: 'rara', kind: 'item', use: 'city', icon: '🧪', desc: 'Producción x2 en toda la ciudad durante 30 minutos.', boost: { type: 'prod', mult: 2, minutes: 30 } },
-  m3_bomb: { name: 'Bomba de Joyas', rarity: 'rara', kind: 'item', use: 'game', game: 'match3', icon: '💥', desc: 'Empezá un nivel de Joyas Brillantes con 2 bombas en el tablero.' },
-  mats_bag: { name: 'Bolsa de materiales', rarity: 'rara', kind: 'material', amount: [4, 8], icon: 'monument', desc: 'Cristales, ladrillos, tuercas o mapas para tus monumentos.' },
-  drv_shield: { name: 'Escudo de Viaje', rarity: 'rara', kind: 'item', use: 'game', game: 'driving', icon: '🛡️', desc: 'Empezá Ruta Pixel con escudo y turbo cargado.' },
+  mats_bag: { name: 'Bolsa de materiales', rarity: 'rara', kind: 'material', amount: [4, 8], icon: 'monument', desc: 'Madera, piedra, mineral o hierbas para tus obras.' },
+  equip: { name: 'Equipo de expedición', rarity: 'rara', kind: 'equip', pool: ['cuerda', 'pala', 'lona', 'farol', 'botiquin'], icon: '🎒', desc: 'Una pieza de equipo para la próxima salida.' },
 
   gems_m: { name: 'Bolsa de gemas', rarity: 'epica', kind: 'gems', amount: [10, 16], icon: 'gem' },
   potion_happy: { name: 'Perfume de Alegría', rarity: 'epica', kind: 'item', use: 'city', icon: '🌸', desc: 'Felicidad al máximo (+50% producción) durante 1 hora.', boost: { type: 'happy', minutes: 60 } },
@@ -66,6 +65,8 @@ export const ITEMS = {
   build_legend: { name: 'Construcción legendaria', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: '🦄', desc: 'Una construcción legendaria gratis, aunque no tengas el nivel.' },
 };
 for (const [id, it] of Object.entries(ITEMS)) it.id = id;
+// nombres del equipo (los datos de expedición viven en exp-data.js; acá alcanza con el nombre para la carta)
+const EQUIP_NAMES = { cuerda: 'Cuerda', pala: 'Pala', lona: 'Lona', farol: 'Farol', botiquin: 'Botiquín', carreta: 'Carreta' };
 const BY_RARITY = Object.fromEntries(RARITY_LIST.map(r => [r.id, Object.values(ITEMS).filter(i => i.rarity === r.id)]));
 
 // ---------- Estado ----------
@@ -80,7 +81,6 @@ function cs() {
   c.freeBase ??= Date.now() - FREE_CHEST_EVERY_MS; // el primer cofre gratis ya está listo
   c.sinceLegend ??= 0;
   c.opened ??= 0;
-  c.winsSinceChest ??= 0;
   return c;
 }
 
@@ -121,7 +121,7 @@ function neededMaterial() {
     if (idx >= mo.stages.length) continue;
     for (const [mat, need] of Object.entries(mo.stages[idx].cost.mats || {})) {
       const g = need - (have[mat] || 0);
-      if (g > gap) { gap = g; best = MATERIALS.find(m => m.id === mat); }
+      if (g > gap) { gap = g; best = REGION_MATERIALS.find(m => m.id === mat) || null; }
     }
   }
   return best;
@@ -145,8 +145,12 @@ function resolveDrop(item) {
   } else if (item.kind === 'material') {
     // en la Aldea y el Caserío todavía no hay monumentos: mejor monedas
     if (rankOf(S()) < 3) return { ...d, kind: 'coins', amount: Math.round(randInt(250, 450) * rewardScale(lvl)), name: 'Caja de monedas', icon: 'coin', converted: true };
-    const m = neededMaterial() || MATERIALS[Math.floor(rand() * MATERIALS.length)];
+    const m = neededMaterial() || REGION_MATERIALS[Math.floor(rand() * REGION_MATERIALS.length)];
     Object.assign(d, { amount: randInt(...item.amount), material: m.id, name: m.name, icon: m.icon });
+  } else if (item.kind === 'equip') {
+    const pool = item.pool.filter(id => EQUIP_RECIPES[id]);
+    const id = pool[Math.floor(rand() * pool.length)] || 'cuerda';
+    Object.assign(d, { amount: 1, equip: id, name: EQUIP_NAMES[id] || 'Equipo' });
   } else if (item.kind === 'build') {
     const id = item.pool[Math.floor(rand() * item.pool.length)];
     Object.assign(d, { amount: 1, building: id, name: BUILDING_BY_ID[id].name });
@@ -190,6 +194,7 @@ function applyDrops(drops) {
       bus.emit('item:unlocked', { kind: d.cosmeticKind, id: d.targetId, source: 'chest' });
     } else if (d.kind === 'build') c.freeBuilds[d.building] = (c.freeBuilds[d.building] || 0) + 1;
     else if (d.kind === 'material') store.grant({ mats: { [d.material]: d.amount } }, 'chest');
+    else if (d.kind === 'equip') store.grant({ equip: { [d.equip]: d.amount } }, 'chest');
     else if (d.kind === 'furniture') giveFurniture(d.furniture, 1, 'chest');
   }
   if (totals.coins || totals.gems || totals.xp) store.grant(totals, 'chest');
@@ -212,7 +217,7 @@ function stickerDrop(got, type) {
   const fresh = got.filter(g => g.isNew).length;
   return {
     item: 'stickers', kind: 'stickers', rarity: STAR_RARITY[best] || 'comun', icon: '🌟', amount: got.length,
-    name: got.length === 1 ? '1 figurita' : `${got.length} figuritas`, stickers: got, fresh, chest: type,
+    name: got.length === 1 ? '1 hallazgo' : `${got.length} hallazgos`, stickers: got, fresh, chest: type,
   };
 }
 
@@ -276,10 +281,10 @@ export function claimFreeChest(now = Date.now()) {
 export function itemCount(id) { return cs().items[id] || 0; }
 export function backpack() {
   const c = cs();
-  return Object.entries(c.items).filter(([, n]) => n > 0).map(([id, n]) => ({ ...ITEMS[id], count: n }))
+  return Object.entries(c.items).filter(([id, n]) => n > 0 && ITEMS[id]).map(([id, n]) => ({ ...ITEMS[id], count: n }))
     .sort((a, b) => RARITIES[b.rarity].order - RARITIES[a.rarity].order);
 }
-/** Gasta un objeto (para potenciadores de minijuegos). Devuelve true si había. */
+/** Gasta un objeto de la mochila. Devuelve true si había. */
 export function consumeItem(id) {
   const c = cs();
   if (!c.items[id]) return false;
@@ -337,6 +342,14 @@ export function happyBoostActive(now = Date.now()) { return !!activeBoosts(now).
 
 // ---------- Construcciones gratis ----------
 export function freeBuildCount(id) { return cs().freeBuilds[id] || 0; }
+/** Suma una construcción gratis de ese edificio (sale en el menú Construir). */
+export function addFreeBuild(id, n = 1) {
+  if (!BUILDING_BY_ID[id]) return;
+  const c = cs();
+  c.freeBuilds[id] = (c.freeBuilds[id] || 0) + n;
+  store.markDirty();
+  bus.emit('chests:changed', { addedBuild: id });
+}
 export function consumeFreeBuild(id) {
   const c = cs();
   if (!c.freeBuilds[id]) return false;
@@ -347,25 +360,9 @@ export function consumeFreeBuild(id) {
 }
 
 // ---------- Fuentes de cofres ----------
-/**
- * Cofre por terminar un minijuego. Devuelve el tipo ganado o null.
- * Ganar da chance de madera/plata; cada 4 victorias sin cofre se garantiza uno.
- */
-export function rollGameChest({ won, stars = 0 }) {
-  if (!won) return null;
-  const c = cs();
-  c.winsSinceChest++;
-  let type = null;
-  const r = rand();
-  if (stars >= 3 && r < 0.12) type = 'plata';
-  else if (r < 0.22 + stars * 0.06) type = 'madera';
-  if (!type && c.winsSinceChest >= 4) type = 'madera';
-  if (type) { c.winsSinceChest = 0; addChest(type, 1, 'game'); }
-  return type;
-}
-/** Cofres por subir de nivel: madera siempre, oro cada 5 niveles, real en 20/30/40. */
+/** Cofres por subir de nivel: oro cada 5 niveles y además real en 20/30/40 (§8: ya no hay uno por nivel). */
 export function levelUpChests(level) {
-  const out = ['madera'];
+  const out = [];
   if (level % 5 === 0) out.push('oro');
   if (level % 10 === 0 && level >= 20) out.push('real');
   return out;
@@ -374,8 +371,19 @@ export function levelUpChests(level) {
 /** Cantidad de cosas para atender (badge): cofres sin abrir + gratis listos. */
 export function chestBadge() { return chestCount() + freeChestStatus().ready; }
 
+/** Potenciadores de los minijuegos retirados que sigan en la mochila (un regalo viejo, un save sin migrar) → equipo. */
+function convertLegacyBoosters() {
+  const c = cs();
+  for (const [from, to] of Object.entries(LEGACY_BOOSTERS)) {
+    const n = c.items[from] || 0;
+    delete c.items[from];
+    if (n > 0) store.grant({ equip: { [to]: n } }, 'migration');
+  }
+}
 export function initChests() {
   cs();
+  convertLegacyBoosters();
+  bus.on('chests:changed', (p) => { if (p?.item && LEGACY_BOOSTERS[p.item]) convertLegacyBoosters(); });
   bus.on('reward:chest', ({ type, n = 1, source }) => addChest(type, n, source));
   bus.on('level:up', ({ level }) => { for (const t of levelUpChests(level)) addChest(t, 1, 'levelup'); });
 }

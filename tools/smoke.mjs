@@ -1,12 +1,12 @@
 // Prueba de humo con Chrome headless: abre el juego, ejecuta pasos, saca capturas y lista errores.
 //
-//   node tools/smoke.mjs --scene match3 --shot shots/m3.png
+//   node tools/smoke.mjs --scene expedition --shot shots/exp.png
 //   node tools/smoke.mjs --scene city --device desktop --wait 3000 --shot shots/city.png
 //   node tools/smoke.mjs --scene city --steps tools/steps-example.json
-//   node tools/smoke.mjs --url "?scene=parking&cheat=10" --eval "window.__pixelia.store.state.coins"
+//   node tools/smoke.mjs --url "?scene=wardrobe&cheat=10" --eval "window.__pixelia.store.state.coins"
 //
 // Opciones:
-//   --scene <id>        escena inicial (city, wardrobe, match3, blocks, parking, driving)
+//   --scene <id>        escena inicial (city, wardrobe, home, expedition)
 //   --url <query>       query string completo (reemplaza --scene). Siempre se agrega nosplash&nosw.
 //   --device iphone|iphone-se|landscape|ipad|desktop   (default iphone: 390x844 táctil; iphone-se 375x667;
 //                       landscape 844x390 táctil apaisado; ipad 820x1180; desktop 1366x800 con mouse)

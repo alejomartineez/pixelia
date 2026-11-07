@@ -296,7 +296,7 @@ export function playChestOpening(ctx, type, drops = []) {
         <div class="chx-flipper">
           <div class="chx-face chx-back">${icon('crown', 84)}<b>?</b></div>
           <div class="chx-face chx-front">
-            <div class="chx-banner">${esc(d.kind === 'stickers' ? 'Figuritas' : r.name)}</div>
+            <div class="chx-banner">${esc(d.kind === 'stickers' ? 'Hallazgos' : r.name)}</div>
             <div class="chx-icwrap">${d.kind === 'stickers' ? '' : icon(d.icon || 'gift', 96)}</div>
             <div class="chx-klabel">${esc(dropKindLabel(d))}</div>
             <div class="chx-cname">${esc(d.name)}</div>
@@ -374,7 +374,7 @@ export function playChestOpening(ctx, type, drops = []) {
       drops.forEach((d, i) => {
         const r = RARITIES[d.rarity] || RARITIES.comun;
         grid.append(h('div.chx-mini', { style: rarityVars(d.rarity) + `animation-delay:${0.08 + i * 0.07}s`, html:
-          `<small>${esc(d.kind === 'stickers' ? 'Álbum' : r.name)}</small>${dropIcon(d, 48)}<b>${esc(d.name)}</b><em>${d.kind === 'stickers' ? (d.fresh ? `¡${d.fresh} nueva${d.fresh > 1 ? 's' : ''}!` : 'Repetidas') : dropAmountHtml(d, 18)}</em>` }));
+          `<small>${esc(d.kind === 'stickers' ? 'Hallazgos' : r.name)}</small>${dropIcon(d, 48)}<b>${esc(d.name)}</b><em>${d.kind === 'stickers' ? (d.fresh ? `¡${d.fresh} nuevo${d.fresh > 1 ? 's' : ''}!` : 'Repetidos') : dropAmountHtml(d, 18)}</em>` }));
       });
       const okBtn = h('button.btn.primary.block', { html: `${icon('check', 22)} Listo` });
       okBtn.addEventListener('pointerdown', e => e.stopPropagation());
@@ -382,7 +382,7 @@ export function playChestOpening(ctx, type, drops = []) {
       const hasBuild = drops.some(d => d.kind === 'build'), hasItem = drops.some(d => d.kind === 'item');
       const hasStk = drops.some(d => d.kind === 'stickers' && d.fresh);
       const tip = hasBuild ? 'Las construcciones gratis se colocan desde Construir.' : hasItem ? 'Los objetos quedaron en tu mochila.'
-        : hasStk ? 'Las figuritas nuevas ya están en tu Álbum.' : '';
+        : hasStk ? 'Los hallazgos nuevos ya están en Hallazgos.' : '';
       sumEl = h('div.chx-sum', {},
         h('div.chx-sumbox', {},
           h('div.chx-sumhead', { html: `${icon('crown', 32)}<h2>Lo que había adentro</h2>${icon('crown', 32)}` }),

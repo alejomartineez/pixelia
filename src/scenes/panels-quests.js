@@ -2,23 +2,22 @@
 import { icon, ICON_NAMES } from '../core/icons.js';
 import { todayStr } from '../core/state.js';
 import { MAIN_QUESTS } from '../core/data.js';
-import { openShell, rewardFx, burst, goalIcon, goalAction, progressLabel, art, rewardHtml, chestArt, GAME_ART } from './panels-common.js';
+import { openShell, rewardFx, burst, goalIcon, goalAction, progressLabel, rewardHtml, chestArt } from './panels-common.js';
 
-// Íconos de logros: data-driven. Se usa a.icon si viene en los datos (nombre de ícono, emoji, minijuego
+// Íconos de logros: data-driven. Se usa a.icon si viene en los datos (nombre de ícono, emoji
 // o 'chest:plata'); si no, uno por id conocido; si no, uno por la estadística que mide; si no, un trofeo.
 const ACH_ICON = {
-  a_coins: 'coin', a_build: 'hammer', a_upgrade: 'up', a_match3: 'match3', a_blocks: 'blocks', a_parking: 'parking',
-  a_driving: 'driving', a_fashion: 'dress', a_streak: 'fire',
+  a_coins: 'coin', a_build: 'hammer', a_upgrade: 'up', a_match3: '💎', a_blocks: '🧩', a_parking: '🅿️',
+  a_driving: '🚗', a_fashion: 'dress', a_streak: 'fire',
 };
 const STAT_ICON = [
   [/chest/i, 'chest:madera'], [/sticker|figu|album/i, '🃏'], [/friend|amig|gift|regal|help|ayud|visit/i, 'people'],
-  [/season|chisp|tier/i, 'sparkle'], [/match3/i, 'match3'], [/blocks/i, 'blocks'], [/parking/i, 'parking'], [/driving/i, 'driving'],
+  [/season|chisp|tier/i, 'sparkle'],
   [/coin/i, 'coin'], [/gem/i, 'gem'], [/built|build/i, 'hammer'], [/upgrade/i, 'up'], [/streak|login/i, 'fire'], [/bought|fashion/i, 'dress'],
 ];
 function achIcon(a, size = 32) {
   const key = a.icon || ACH_ICON[a.id] || STAT_ICON.find(([re]) => re.test(a.stat || a.id || ''))?.[1] || 'trophy';
   if (typeof key === 'string' && key.startsWith('chest:')) return chestArt(key.slice(6), size);
-  if (GAME_ART[key]) return art(GAME_ART[key], size);
   if (/^chests?$/i.test(key)) return chestArt('madera', size);
   // un nombre que no es ícono conocido ni emoji se vería como letras pixeladas: mejor un trofeo
   if (/^[\w-]+$/.test(key) && !ICON_NAMES.includes(key)) return icon('trophy', size);
@@ -215,7 +214,7 @@ export function openQuests(ctx, params = {}) {
     const order = (a) => (a.ready ? 0 : a.maxed ? 2 : 1);
     const sorted = list.map((a, i) => ({ a, i })).sort((x, y) => order(x.a) - order(y.a) || x.i - y.i).map(o => o.a);
     const tiersOf = (a) => (Array.isArray(a.tiers) ? a.tiers.length : 1);
-    const totalStars = list.reduce((s, a) => s + (a.tier || 0), 0), maxStars = list.reduce((s, a) => s + tiersOf(a), 0);
+    const totalStars = list.reduce((s, a) => s + (a.tier || 0), 0), maxStars = list.reduce((s, a) => s + (a.memory ? a.tier || 0 : tiersOf(a)), 0);
     wrap.append(h('div.pnl-timer.second', { html: `${icon('trophy', 20)}<span>Estrellas de logro: <b>${totalStars}/${maxStars}</b></span>` }));
     for (const a of sorted) {
       const pct = a.maxed ? 1 : Math.min(1, (a.value || 0) / Math.max(1, a.target || 1));
@@ -228,11 +227,12 @@ export function openQuests(ctx, params = {}) {
         <div class="pnl-q-ic">${achIcon(a, 32)}</div>
         <div class="pnl-q-main">
           <div class="pnl-q-top"><b class="pnl-q-title">${esc(a.name || '')}</b>${isNew ? '<span class="chip primary pnl-newchip">¡Nuevo!</span>' : ''}<span class="pnl-stars" aria-label="Nivel ${a.tier || 0} de ${nT}">${stars}</span></div>
-          <small class="pnl-q-desc">${a.maxed ? 'Completo' : esc(a.label || a.desc || '')}</small>
-          <div class="pnl-prog sm">${progressHtml(pct, a.ready || a.maxed ? 'gold' : 'primary')}<b>${a.maxed ? 'MAX' : progressLabel(a.value || 0, a.target || 0, fmt)}</b></div>
+          <small class="pnl-q-desc">${a.memory ? esc(a.label) : a.maxed ? 'Completo' : esc(a.label || a.desc || '')}</small>
+          <div class="pnl-prog sm">${progressHtml(pct, a.ready || a.maxed ? 'gold' : 'primary')}<b>${a.memory ? 'Recuerdo' : a.maxed ? 'MAX' : progressLabel(a.value || 0, a.target || 0, fmt)}</b></div>
         </div>`;
       const side = h('div.pnl-q-side');
-      if (a.maxed) side.innerHTML = `<span class="pnl-done">${icon('crown', 30)}</span>`;
+      if (a.memory) side.innerHTML = `<span class="pnl-done">${icon('trophy', 30)}</span>`;
+      else if (a.maxed) side.innerHTML = `<span class="pnl-done">${icon('crown', 30)}</span>`;
       else {
         side.append(h('span.pnl-gemrew', { html: rewardHtml(rw, 18, { names: false }) || costHtml(rw, 18) }));
         if (a.ready) {

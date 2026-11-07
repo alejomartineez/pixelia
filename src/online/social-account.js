@@ -38,7 +38,7 @@ export function openAccountUI(ctx, opts = {}) {
     body.innerHTML = `
       <div class="soc-off-art">${icon('🏡', 40)}${icon('💌', 40)}${icon('👭', 40)}</div>
       <h3 class="center" style="font-size:21px">Jugar online, ¡muy pronto!</h3>
-      <p class="center soc-muted" style="font-size:16px">${opts.reason === 'trade' ? 'Los intercambios de figuritas son con tus contactos online. ' : ''}El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder crear tu cuenta, sumar contactos con un código, visitar sus ciudades, mandarse regalos e intercambiar figuritas.</p>
+      <p class="center soc-muted" style="font-size:16px">${opts.reason === 'trade' ? 'Los intercambios de hallazgos son con tus contactos online. ' : ''}El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder crear tu cuenta, sumar contactos con un código, visitar sus ciudades, mandarse regalos e intercambiar hallazgos.</p>
       <div class="soc-card mint soc-row">${icon('save', 28)}<span class="soc-muted">Mientras tanto, <b>tu ciudad se guarda en este dispositivo</b> y podés jugar todo igual.</span></div>`;
     const test = h('div.soc-card.soc-sec', { html: `<b>${icon('🧪', 18)} Modo simulado (para pruebas)</b><span class="soc-muted">Simula el servidor en este navegador: abrí dos pestañas con nombres distintos y probá la amistad.</span>` });
     const row = h('div.soc-row');
@@ -62,7 +62,7 @@ export function openAccountUI(ctx, opts = {}) {
     body.innerHTML = '';
     if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('🧪', 14)} Modo simulado: las cuentas viven en este navegador` }));
     body.append(h('div.soc-row', {
-      html: `${avatarHtml(store.state.avatar, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar figuritas con tus contactos necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus contactos.</p>`,
+      html: `${avatarHtml(store.state.avatar, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar hallazgos con tus contactos necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus contactos.</p>`,
     }));
     const seg = h('div.soc-seg');
     for (const [id, label] of [['signup', 'Crear cuenta'], ['signin', 'Ya tengo cuenta']]) {

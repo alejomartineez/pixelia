@@ -791,6 +791,29 @@ llegada adelanta la próxima ("Mañana se abre: Contactos").
 Prueba: cargar un guardado v2 real (con monumentos a medias, álbum y potenciadores) y confirmar que materiales, álbum,
 monumentos, edificios y niveles pasan sin pérdida, y que una segunda carga no cambia nada.
 
+**Resultado de la Fase 5a** (`migrateV3` en `state.js`, `tools/test-migration.mjs` en `npm test`):
+- Si la partida ya tenía el edificio del ciclo (p. ej. Joyería **y** Taller, posible desde la v20), queda uno solo con el nivel
+  más alto y el repetido se devuelve en monedas (costo de base × nivel; `v3.refund`).
+- "Niveles totales" para los hallazgos = (Joyas − 1) + (Estacionamiento − 1). Cada hallazgo de compensación es de 2★ o más.
+  Las gemas se suman en la migración; los hallazgos se entregan al arrancar (después de `initAlbum`) y el aviso sale una vez en
+  la llegada a la ciudad (`state.v3`). Una partida recién empezada (`isFreshGame`) no recibe aviso ni la Casa automática.
+- La Casa de Expediciones automática la coloca `economy.ensureExpHouse` en el primer `tick` (misma búsqueda que Mi Casa).
+- Hallazgos: `SET_REGION` en `album.js`; `grantStickers({region})` saca solo de los sets de esa región (la expedición pasa
+  `run.region`). La pantalla agrupa los sets por región. Nombres y arte nuevos de los sets: pendiente (Fase 6).
+- Cofres: sin cofre por partida ganada; el cofre gratis pasa a 1 por día (sin acumular) y subir de nivel ya no da madera
+  (oro cada 5 niveles, diamante en 20/30/40). Nueva carta rara "Equipo de expedición". La Bolsa de materiales da de región.
+- Pase: los potenciadores de los niveles 7, 17 y 23 pasan a equipo (`equip` en `TIERS`); chispas por expedición
+  (20 + 5 por ★) y por zona explorada (30) en lugar de las partidas (números de la propuesta de §8, sin recalibrar).
+- Eventos: las 4 semanas de minijuego pasan a semanas de región (`region_bosque`, `region_sierras`, `region_banado`:
+  ×1,5 materiales en esa región; `expMats` ×1,25 en todas); Lluvia de Cofres da segunda tirada al cofre de 3★; Fin de
+  semana de Hallazgos duplica cada hallazgo; la Carrera de Estrellas cuenta las estrellas de expedición.
+- Monumentos (§5.4): Estadio = +25% de chispas en expediciones y Museo = +50% de chance de un hallazgo más al volver (ya
+  andan). El Observatorio queda, por ahora, en +25% de experiencia de expedición (la salida da 10 + 5 por ★ de XP, como
+  daban las partidas); el aviso de amenazas 2 días antes y el Faro (+1 de visión) quedan para la fase que toque
+  `src/threats/` y `exp-rules.js`.
+- El auto del Vestidor queda atado al Establo (ex Garaje): botón "Auto" en su ficha y se estaciona al lado (§9).
+- Ranking semanal de contactos: solo Nivel, Estrellas (de expedición) y Encanto; el perfil publica `week {stars, exps}`.
+
 ---
 
 ## 8. Metas de balance

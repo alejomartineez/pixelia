@@ -1,9 +1,12 @@
-// Álbum de figuritas: 12 sets × 9 figuritas (108), rarezas 1–5★, repetidas → brillitos, tienda de sobres.
+// Hallazgos (antes Álbum de figuritas; ids internos de siempre): 12 sets × 9 (108), rarezas 1–5★, repetidos → recortes
+// (el campo sigue siendo album.brillitos), tienda de sobres. Cada set es de una región de la expedición (SET_REGION,
+// DESIGN-CORE.md §7.2.4): lo que se encuentra explorando una región sale de sus sets.
 // Datos + lógica. UI en album-ui.js, arte de las cartas en album-art.js.
 // Estado: state.album = { have:{id:count}, claimedSets:[], brillitos, seen:[], done:[], since5, albumDone, title }
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 import { rewardScale } from '../core/data.js';
+import { REGIONS } from '../expedition/exp-data.js';
 export { renderStickerCard, renderPack } from './album-art.js';
 
 // ---------- Datos ----------
@@ -71,6 +74,16 @@ const RAW = [
     ['🪅', 'Piñata Llenita'], ['🎊', 'Lluvia de Papelitos'],
     ['🎆', 'Fuegos Artificiales'], ['🥳', 'El Alma de la Fiesta']]],
 ];
+// Reparto de los sets por región, en orden (DESIGN-CORE.md §7.2.4)
+export const SET_REGION = {
+  princesas: 'bosque', vestidos: 'bosque', autitos: 'bosque',
+  postres: 'sierras', mascotas: 'sierras',
+  flores: 'banado', castillos: 'banado',
+  joyas: 'cerro', musica: 'cerro',
+  playa: 'costa', noche: 'costa', fiesta: 'costa',
+};
+export const REGION_ORDER = ['bosque', 'sierras', 'banado', 'cerro', 'costa'];
+export const regionName = (id) => REGIONS[id]?.name || '';
 const STARS_BY_INDEX = [1, 1, 1, 2, 2, 3, 3, 4, 5];
 // Orden en la página (casillero → índice en la lista): la 5★ queda en el centro, como figurita estrella.
 const SLOT_ORDER = [0, 3, 1, 5, 8, 6, 2, 7, 4];
@@ -84,7 +97,7 @@ export const ALBUM_TITLE = 'Gran Coleccionista';
 export const ALBUM_REWARD = { chest: 'real', chests: 2, gems: 50, title: ALBUM_TITLE };
 
 export const STICKER_SETS = RAW.map(([id, name, emoji, color, dark, light, list], si) => {
-  const set = { id, name, emoji, color, dark, light, index: si, stickers: [] };
+  const set = { id, name, emoji, color, dark, light, index: si, region: SET_REGION[id] || 'bosque', stickers: [] };
   for (let slot = 0; slot < 9; slot++) {
     const di = SLOT_ORDER[slot];
     const [em, nm] = list[di];
@@ -114,10 +127,10 @@ export function stickerDropsForChest(type) { return { ...(CHEST_STICKERS[type] |
 
 /** Tienda de brillitos. */
 export const SHOP = [
-  { id: 'sobre_comun', kind: 'pack', name: 'Sobre Común', cost: 10, n: 3, minStars: 1, desc: '3 figuritas', color: '#ee8a5c', dark: '#c8673d', emoji: '🌸' },
-  { id: 'sobre_brillante', kind: 'pack', name: 'Sobre Brillante', cost: 30, n: 3, minStars: 3, desc: '3 figuritas · una de 3★ o más', color: '#8fd3ff', dark: '#4fa8e0', emoji: '💎' },
-  { id: 'sobre_dorado', kind: 'pack', name: 'Sobre Dorado', cost: 70, n: 5, minStars: 4, desc: '5 figuritas · una de 4★ o más', color: '#ffd166', dark: '#e8a93a', emoji: '🌟' },
-  { id: 'cofre_plata', kind: 'chest', name: 'Cofre de Plata', cost: 45, chest: 'plata', desc: 'Un cofre con premios y 3 figuritas', color: '#c9d6ea', dark: '#8fa3c2', emoji: '🎁' },
+  { id: 'sobre_comun', kind: 'pack', name: 'Sobre Común', cost: 10, n: 3, minStars: 1, desc: '3 hallazgos', color: '#ee8a5c', dark: '#c8673d', emoji: '🌸' },
+  { id: 'sobre_brillante', kind: 'pack', name: 'Sobre Brillante', cost: 30, n: 3, minStars: 3, desc: '3 hallazgos · uno de 3★ o más', color: '#8fd3ff', dark: '#4fa8e0', emoji: '💎' },
+  { id: 'sobre_dorado', kind: 'pack', name: 'Sobre Dorado', cost: 70, n: 5, minStars: 4, desc: '5 hallazgos · uno de 4★ o más', color: '#ffd166', dark: '#e8a93a', emoji: '🌟' },
+  { id: 'cofre_plata', kind: 'chest', name: 'Cofre de Plata', cost: 45, chest: 'plata', desc: 'Un cofre con premios y 3 hallazgos', color: '#c9d6ea', dark: '#8fa3c2', emoji: '🎁' },
 ];
 export const SHOP_BY_ID = Object.fromEntries(SHOP.map(i => [i.id, i]));
 /** Sobre genérico para mostrar figuritas que llegan de otras fuentes (cofres, juegos, regalos). */
@@ -227,9 +240,11 @@ function pickWeighted(entries) { // [[valor, peso]]
 function pickTier(minStars = 1) {
   return Number(pickWeighted(Object.entries(STAR_WEIGHTS).filter(([s]) => Number(s) >= minStars)));
 }
-function pickSticker(stars, inPack) {
+function pickSticker(stars, inPack, region = null) {
   const a = A();
-  return pickWeighted(BY_STARS[stars].map(s => {
+  // explorando una región: solo de sus sets (si una región no tuviera de esa rareza, de todos)
+  const own = region ? BY_STARS[stars].filter(s => SET_REGION[s.set] === region) : [];
+  return pickWeighted((own.length ? own : BY_STARS[stars]).map(s => {
     let w = (a.have[s.id] || 0) > 0 ? 1 : NEW_BIAS;
     if (inPack.has(s.id)) w *= 0.25;
     return [s, w];
@@ -272,7 +287,7 @@ function checkCompletions() {
  * Sortea y acredita n figuritas. minStars: al menos una tendrá esa rareza o más.
  * Devuelve [{id, stars, isNew, count}] ordenadas de menor a mayor rareza (lo mejor al final).
  */
-export function grantStickers(n = 1, { minStars = 1, source = '' } = {}) {
+export function grantStickers(n = 1, { minStars = 1, source = '', region = null } = {}) {
   const a = A();
   n = Math.max(0, Math.min(60, Math.round(Number(n) || 0)));
   if (!n) return [];
@@ -289,7 +304,7 @@ export function grantStickers(n = 1, { minStars = 1, source = '' } = {}) {
   const last5 = tiers.lastIndexOf(5);
   a.since5 = last5 >= 0 ? n - 1 - last5 : a.since5 + n;
   const inPack = new Set();
-  const picks = tiers.map(t => { const s = pickSticker(t, inPack); inPack.add(s.id); return s.id; });
+  const picks = tiers.map(t => { const s = pickSticker(t, inPack, REGIONS[region] ? region : null); inPack.add(s.id); return s.id; });
   // se acreditan una por una: si la misma sale dos veces, la segunda ya no es nueva
   return addStickers(picks.map(id => [id, 1]), source, 'grant');
 }
@@ -394,8 +409,8 @@ export function initAlbum() {
   if (inited) return;
   inited = true;
   offs.push(bus.on('reward:stickers', (p = {}) => {
-    const { n = 1, minStars = 1, source = 'reward' } = p;
-    const res = grantStickers(n, { minStars, source });
+    const { n = 1, minStars = 1, source = 'reward', region = null } = p;
+    const res = grantStickers(n, { minStars, source, region });
     // quien emitió puede leer el resultado para mostrarlo
     if (p && typeof p === 'object') p.result = res;
   }));

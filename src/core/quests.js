@@ -42,9 +42,6 @@ function eventDelta(goal, ev) {
     case 'upgrade': return name === 'building:upgraded' && (!goal.id || p.b.id === goal.id) ? 1 : 0;
     case 'collect': return name === 'production:collected' && p.currency === 'coins' ? p.amount : 0;
     case 'earn': return name === 'coins:earned' ? p.amount : 0;
-    case 'play': return name === 'minigame:finished' && (!goal.game || p.game === goal.game) ? 1 : 0;
-    case 'stars': return name === 'minigame:finished' && (!goal.game || p.game === goal.game) ? (p.stars || 0) : 0;
-    case 'score': return name === 'minigame:finished' && p.game === goal.game ? { max: p.score || 0 } : 0;
     case 'customize': return name === 'customize:changed' ? 1 : 0;
     case 'buy': return name === 'item:bought' ? 1 : 0;
     // expedición y Taller (DESIGN-CORE.md §6.1)
@@ -192,8 +189,10 @@ export function claimDailyBonus() {
 // ---------- Logros ----------
 export function achievements() {
   const s = S();
-  return ACHIEVEMENTS.map(a => {
+  // los de los minijuegos retirados quedan como "Recuerdos" con lo ganado (y no aparecen si no se ganó ninguno)
+  return ACHIEVEMENTS.filter(a => !a.retired || (s.quests.achTier[a.id] || 0) > 0).map(a => {
     const tier = s.quests.achTier[a.id] || 0; // cantidad de tiers ya cobrados
+    if (a.retired) return { ...a, tier, value: s.stats[a.stat] || 0, target: a.tiers[Math.max(0, tier - 1)], maxed: true, memory: true, ready: false, reward: 0, label: 'Recuerdo de los minijuegos' };
     const value = s.stats[a.stat] || 0;
     const maxed = tier >= a.tiers.length;
     const target = maxed ? a.tiers[a.tiers.length - 1] : a.tiers[tier];
@@ -250,7 +249,7 @@ export function claimableCount() {
 }
 
 // ---------- Escucha de eventos ----------
-const TRACKED = ['building:built', 'building:upgraded', 'production:collected', 'coins:earned', 'minigame:finished', 'customize:changed', 'item:bought',
+const TRACKED = ['building:built', 'building:upgraded', 'production:collected', 'coins:earned', 'customize:changed', 'item:bought',
   'expedition:finished', 'craft:done'];
 export function initQuests() {
   migrateQuestChain();

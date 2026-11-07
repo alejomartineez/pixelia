@@ -11,7 +11,7 @@ import { EVENT_TEMPLATES, WEEK_POOL, WEEKEND_POOL, RACE_EVERY } from './season-d
 import { toMs, weekIndex, epochDay, isoWeekKey, fmtLeft } from './season.js';
 
 export { EVENT_TEMPLATES };
-export const MULT_KEYS = ['production', 'chestDrop', 'stickers', 'match3Rewards', 'blocksRewards', 'parkingRewards', 'drivingRewards'];
+export const MULT_KEYS = ['production', 'chestDrop', 'stickers', 'expMats', 'region_bosque', 'region_sierras', 'region_banado', 'region_cerro', 'region_costa'];
 
 // ---------- Rotación determinista ----------
 const mod = (a, n) => ((a % n) + n) % n;
@@ -143,7 +143,7 @@ function grantRaceReward(r) {
   if (rw.stickers) bus.emit('reward:stickers', { n: rw.stickers.n, minStars: rw.stickers.minStars || 1, source: 'event' });
   return rw;
 }
-/** Suma estrellas a la carrera (lo llama el listener de minigame:finished). Devuelve escalones ganados. */
+/** Suma estrellas a la carrera (lo llama el listener de expedition:finished). Devuelve escalones ganados. */
 export function addRaceStars(stars, now) {
   const t = toMs(now);
   const inst = weekSchedule(weekIndex(t)).find(i => EVENT_TEMPLATES[i.id].race && i.startsAt <= t && t < i.endsAt);
@@ -172,7 +172,7 @@ export function initEvents() {
   if (inited) return;
   inited = true;
   es();
-  bus.on('minigame:finished', ({ stars = 0 } = {}) => addRaceStars(stars || 0));
+  bus.on('expedition:finished', ({ stars = 0, prototype } = {}) => { if (!prototype) addRaceStars(stars || 0); });
   // avisa cuando cambia el set de eventos activos (para que el HUD refresque el banner)
   const check = () => {
     const k = activeEvents().map(e => e.key).join('|');

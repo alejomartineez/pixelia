@@ -212,7 +212,7 @@ function givesHtml(ctx, d) {
   if (d.prod?.prov) out.push(`<span class="chip gold">${icon('🍞', 14)}${d.prod.prov}/${fmtCycle(E, d.prod.cycle)}</span>`);
   if (d.cat === 'ciclo' && !d.prod) { const fx = cycleEffects(d.id, 1)[0]; if (fx) out.push(`<span class="chip second" title="${ui_esc(fx.text)}">${icon('🧭', 14)}${ui_esc(fx.label)}: ${ui_esc(String(fx.value))}</span>`); }
   if (d.happy) out.push(`<span class="chip mint">${icon('smile', 14)}+${d.happy}</span>`);
-  if (d.game) out.push(`<span class="chip second">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Juego'}</span>`);
+  if (d.game === 'wardrobe') out.push(`<span class="chip second">${icon('dress', 14)}Vestidor</span>`);
   if (d.cat === 'camino') out.push(`<span class="chip">${icon('paw', 14)}Paseo</span>`);
   if (d.cat === 'monumento') out.push(`<span class="chip second">${icon('monument', 14)}${MONUMENTS[d.id].stages.length} etapas</span>`);
   // Encanto que sumaría otra copia (rinde menos si ya tenés del mismo)
@@ -233,10 +233,6 @@ export function questBuildIds(ctx) {
   if (g.type === 'build') {
     const ids = g.ids || (g.id ? [g.id] : []);
     return ids.filter(id => g.ids ? true : E.countOf(id) === 0);
-  }
-  if (g.type === 'play' && g.game) {
-    const st = ctx.gameStatus(g.game);
-    return st.needsBuilding && E.countOf(st.needsBuilding) === 0 ? [st.needsBuilding] : [];
   }
   // personalizar se hace en el vestidor (el personaje o la municipalidad): no hace falta construir la boutique
   if (g.type === 'customize') return [];
@@ -416,7 +412,7 @@ export function openInfo(S, uid) {
     const chips = [];
     if (d.pop) chips.push(`<span class="chip primary">${icon('people', 14)}${E.buildingPop(b)} habitantes</span>`);
     if (d.happy) chips.push(`<span class="chip mint">${icon('smile', 14)}+${E.buildingHappy(b)} felicidad</span>`);
-    if (d.game) chips.push(`<span class="chip second">${icon(d.game === 'wardrobe' ? 'dress' : 'games', 14)}${d.game === 'wardrobe' ? 'Vestidor' : 'Minijuego'}</span>`);
+    if (d.game === 'wardrobe') chips.push(`<span class="chip second">${icon('dress', 14)}Vestidor</span>`);
     if (isCastle) chips.push(`<span class="chip gold">${icon('sparkle', 14)}${E.fmtNum(E.cityCharm())} Encanto</span>`);
     else if (isHome) { const ci = comfortInfo(); chips.push(`<span class="chip primary">${icon('heart', 14)}${E.fmtNum(ci.value)} Confort</span>`, `<span class="chip gold">${icon('sparkle', 14)}+${ci.charm} Encanto</span>`); }
     else if (!building && !isHome) {
@@ -638,18 +634,13 @@ export function openInfo(S, uid) {
 
     // ----- acciones -----
     const acts = ui.h('div.cx-actions');
-    if (d.game && !building) {
-      const isW = d.game === 'wardrobe';
-      acts.append(btn(isW ? 'Vestidor' : 'Jugar', 'primary', isW ? 'dress' : 'play', () => {
-        m.close();
-        if (isW) ctx.router.go('wardrobe'); else ctx.router.openGame(d.game);
-      }));
-    }
+    if (d.game === 'wardrobe' && !building) acts.append(btn('Vestidor', 'primary', 'dress', () => { m.close(); ctx.router.go('wardrobe'); }));
     if (d.panel && !building) {
       const isExp = d.panel === 'expedition';
       acts.append(btn(isExp ? 'Expedición' : 'Taller', 'primary', isExp ? 'map' : 'hammer', () => { m.close(); ctx.openPanel(d.panel); }));
     }
-    if (b.id === 'garaje' && !building) acts.append(btn('Taller', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
+    // el auto del Vestidor vive en el Establo (era del Garaje, que se reconvirtió en Establo: DESIGN-CORE.md §5.3 y §9)
+    if (b.id === 'establo' && !building) acts.append(btn('Auto', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
     if (isCastle) acts.append(btn('Tu ciudad', 'gold', 'castle', () => { m.close(); ctx.openPanel('rank'); }));
     if (isMon) acts.append(btn('Obras', 'gold', 'monument', () => { m.close(); ctx.openPanel('works', { focus: d.id }); }));
     if (isHome) acts.append(btn('Entrar', 'primary', 'home', () => { m.close(); ctx.router.go('home'); }));
