@@ -2,54 +2,89 @@
 import {
   P, C, shade, lot, path, win, door, awning, gable, hip, cone, flowerBed, bush, smallTree, tulip, flower,
   fbox, fset, pattern, HEART3, HEART5, STAR5, addSmoke, spinStar, sparkle, wavingFlag, crown, rng, pick, uid, doorLamps,
-  FLOWER_COLORS,
+  FLOWER_COLORS, eraStyle, eraWall, eraRoof, eraOpening, eraVertical, eraFence, eraGround,
 } from './models-kit.js';
 
 const S = 1 / 8;
 
 // ---------- piezas compartidas ----------
+// Negocios de 2×2 con arte por época: shopBody y sidewalk leen la época del modelo en curso (ERA, la pone withEra) y
+// arman la estructura por nivel; cada negocio conserva su firma (cartel, vidriera, toldo) encima.
+//   1 local de la época · 2 galería con postes bajo el toldo y depósito al costado · 3 un piso más y alero del techo
+//   4 elemento vertical de la época y ventanas más grandes · 5 letrero iluminado alrededor del techo y cerco o vereda
+let ERA = 1;
+const withEra = (fn) => (m, L, o = {}) => { ERA = o.era || 1; try { fn(m, L, o); } finally { ERA = 1; } };
+
 /** Edificio base de negocio 2x2. Devuelve medidas útiles. */
 function shopBody(m, L, o) {
-  const v = m.v;
-  const pave = o.pave || ['#fdf6e3', '#ffe8d6'];
-  lot(v, m.W, m.D, (x, z) => ((x + z) % 2 ? pave[0] : pave[1]));
+  const v = m.v, era = ERA, s = eraStyle(era);
+  eraGround(m, era);
   const x0 = 2, x1 = m.W - 3, z0 = 2, z1 = o.z1 ?? 9;
   const GF = o.gf ?? 9, UF = 6;
-  const floors = o.floors ?? (L >= 3 ? 2 : 1);
+  const floors = (o.floors ?? 1) + (era >= 4 ? 1 : 0) + (L >= 3 ? 1 : 0);
   const top = 1 + GF + (floors - 1) * UF;
-  const wall = o.wall;
-  v.box(x0, 1, z0, x1 - x0 + 1, top - 1, z1 - z0 + 1, (x, y, z) => (y === 1 ? C.stoneL : (o.wallFn ? o.wallFn(x, y, z) : wall)));
-  // cornisa entre pisos y arriba
-  const trim = L >= 4 ? P.gold : (o.trim || '#ffffff');
-  for (let f = 1; f <= floors; f++) {
-    const y = f === floors ? top : 1 + GF + (f - 1) * UF;
-    if (f < floors) { for (let x = x0; x <= x1; x++) v.set(x, y - 1, z1 + 1, trim); continue; }
-    for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = z0 - 1; z <= z1 + 1; z++) v.set(x, y, z, (x === x0 - 1 || x === x1 + 1 || z === z0 - 1 || z === z1 + 1) ? trim : (o.roof || shade(wall, -0.12)));
+  eraWall(m, x0, 1, z0, x1 - x0 + 1, top - 1, z1 - z0 + 1, era, { FH: GF, seed: o.seed || 5 });
+  // cornisa entre pisos
+  for (let f = 1; f < floors; f++) { const y = 1 + GF + (f - 1) * UF; for (let x = x0; x <= x1; x++) v.set(x, y - 1, z1 + 1, s.trim); }
+  // techo plano de la época con parapeto; Madera: fachada falsa de tablas al frente
+  eraRoof(m, x0, x1, z0, z1, top, era, { kind: 'plano', oh: 1 });
+  if (s.id === 'madera') for (let x = x0 - 1; x <= x1 + 1; x++) {
+    const hh = 2 + (Math.abs(x - (x0 + x1) / 2) < 3 ? 2 : Math.abs(x - (x0 + x1) / 2) < 5 ? 1 : 0);
+    for (let j = 1; j <= hh; j++) v.set(x, top + j, z1 + 1, j === hh ? s.trim : (j % 3 === 0 ? s.wallD : s.wall));
   }
-  // parapeto
-  if (o.parapet !== false) for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = z0 - 1; z <= z1 + 1; z++)
-    if ((x === x0 - 1 || x === x1 + 1 || z === z0 - 1 || z === z1 + 1) && (x + z) % 2 === 0) v.set(x, top + 1, z, trim);
-  // ventanas del piso de arriba
-  if (floors > 1 && o.upperWins !== false) {
-    const wy = 2 + GF;
-    for (const u of [3, 7, 11]) win(v, 'pz', z1, u, wy, 2, 3, { shutters: o.shutters, box: L >= 2 ? (o.box || P.clayD) : undefined, flowers: o.flowers });
-    win(v, 'px', x1, 4, wy, 3, 3, { shutters: o.shutters });
-    win(v, 'nx', x0, 4, wy, 3, 3, { shutters: o.shutters });
+  // nivel 3+: alero inclinado alrededor del techo (otro perfil de techo)
+  if (L >= 3) for (let st = 1; st <= 2; st++) for (let x = x0 - st; x <= x1 + st; x++) for (let z = z0 - st; z <= z1 + st; z++) {
+    if (x > x0 - st && x < x1 + st && z > z0 - st && z < z1 + st) continue;
+    if (s.id === 'madera' && z === z1 + st) continue;
+    v.set(x, top + 1 - st, z, s.id === 'vidrio' ? (st === 1 ? s.light : null) : st === 1 ? s.roof2 || s.roof : s.roofD);
   }
-  win(v, 'px', x1, 4, 4, 3, 3, { shutters: o.shutters });
-  win(v, 'nx', x0, 4, 4, 3, 3, { shutters: o.shutters });
-  return { x0, x1, z0, z1, top, GF, floors, trim };
+  // ventanas: pisos altos al frente y los costados
+  const big = L >= 4;
+  for (let f = 1; f < floors; f++) {
+    const wy = 2 + GF + (f - 1) * UF;
+    if (o.upperWins !== false && s.id !== 'vidrio') for (const u of [3, 7, 11]) eraOpening(m, 'pz', z1, u - (s.id === 'hierro' ? 1 : 0), wy, era, 'ventana', { big: big && s.id !== 'hierro', box: L >= 2 && s.id !== 'hierro' ? (o.box || P.clayD) : undefined, flowers: o.flowers });
+    eraOpening(m, 'px', x1, 3, wy, era, 'ventana', { big });
+    eraOpening(m, 'nx', x0, 3, wy, era, 'ventana');
+  }
+  if (s.id === 'vidrio') for (let f = 1; f < floors; f++) fbox(v, 'pz', z1, x0 + 1, 2 + GF + (f - 1) * UF, x1 - x0 - 1, 2, 0, (i, j) => (i % 3 === 2 ? s.trim : j ? C.glass : C.glassD));
+  eraOpening(m, 'px', x1, 3, 4, era, 'ventana', { big });
+  eraOpening(m, 'nx', x0, 3, 4, era, 'ventana');
+  return { x0, x1, z0, z1, top, GF, floors, trim: s.trim };
 }
 
-/** Vereda: macetas, bancos y faroles según nivel. */
+/** Vereda: la estructura por nivel (galería, depósito, elemento vertical, letrero y cerco) + macetas. */
 function sidewalk(m, L, b, o = {}) {
-  const v = m.v;
+  const v = m.v, era = ERA, s = eraStyle(era);
   const zF = m.D - 2;
+  // 2+: galería con postes bajo el toldo y depósito al costado derecho
+  if (L >= 2) {
+    const pz = b.z1 + 3;
+    for (let x = b.x0 - 1; x <= b.x1 + 1; x++) for (let z = b.z1 + 1; z <= pz; z++) if (!v.has(x, 1, z)) v.set(x, 1, z, s.id === 'madera' ? s.wallD : s.trim);
+    for (const x of [b.x0 - 1, b.x1 + 1]) {
+      v.box(x, 2, pz, 1, b.GF - 3, 1, s.id === 'madera' ? s.trim : s.id === 'piedra' ? s.trim : s.trim);
+      if (s.id === 'piedra') v.set(x, b.GF - 1, pz, s.wall);
+    }
+    const sx = b.x1 + 1, sh = Math.min(b.GF - 1, 7);
+    eraWall(m, sx, 1, b.z0 + 1, 2, sh, 5, era, { FH: 9 });
+    for (let z = b.z0; z <= b.z0 + 6; z++) for (const x of [sx, sx + 1]) v.set(x, sh + 1, z, s.id === 'vidrio' ? s.light : s.id === 'hierro' ? s.sheet : s.roof);
+  }
   if (L >= 2) {
     for (const x of o.pots || [1, m.W - 2]) { v.set(x, 1, zF, P.coral); v.set(x, 2, zF, shade(P.coral, -0.15)); bush(v, x, 3, zF, 1, C.leaf, [pick(rng(x), FLOWER_COLORS)], x); }
   }
-  if (L >= 4) doorLamps(m, 'pz', b.z1, o.lampU ?? b.x0 + 1, o.lampU2 ?? b.x1 - 1, 3);
-  if (L >= 5) { sparkle(m, b.x0, b.top + 4, b.z1 + 2, '#ffffff'); sparkle(m, b.x1, b.top + 6, b.z1, P.goldL, 2.1); }
+  // 4+: elemento vertical de la época sobre el techo, atrás a la derecha
+  if (L >= 4) {
+    if (s.id === 'piedra') eraVertical(m, b.x1 - 2, b.top + 1, b.z0, era, { w: 3, h: 6 });
+    else if (s.id === 'hierro') eraVertical(m, b.x1 - 3, b.top + 1, b.z0, era, { w: 4, h: 3 });
+    else if (s.id === 'vidrio') eraVertical(m, b.x1 - 1, b.top + 1, b.z0 + 1, era, { h: 9 });
+    else eraVertical(m, b.x1 - 1, b.top - 1, b.z0, era, { h: s.id === 'ladrillo' ? 10 : 6 });
+    doorLamps(m, 'pz', b.z1, o.lampU ?? b.x0 + 1, o.lampU2 ?? b.x1 - 1, 3);
+  }
+  // 5: letrero iluminado (lamparitas por todo el borde del techo) y cerco de la época
+  if (L >= 5) {
+    for (let x = b.x0 - 1; x <= b.x1 + 1; x++) for (const z of [b.z0 - 1, b.z1 + 1]) if (x % 2 === 0 && !v.has(x, b.top + 2, z)) m.light.set(x, b.top + 2, z, x % 4 ? '#fff3cf' : C.yellow);
+    for (let z = b.z0; z <= b.z1; z++) for (const x of [b.x0 - 1, b.x1 + 1]) if (z % 2 === 0 && !v.has(x, b.top + 2, z)) m.light.set(x, b.top + 2, z, z % 4 ? '#fff3cf' : C.yellow);
+    eraFence(m, era, { gaps: o.gaps || [8, 9, 10, 11, 12] });
+  }
 }
 
 /** Mesita con sombrilla */
@@ -110,7 +145,6 @@ function panaderia(m, L) {
   if (L >= 2) { cafeTable(v, 12, 13, P.peach, '#ffffff'); }
   if (L >= 3) { v.box(4, 1, 12, 3, 1, 2, P.wood); v.set(5, 2, 12, P.clay); v.set(5, 3, 12, '#ffffff'); v.set(5, 4, 12, C.red); }
   sidewalk(m, L, b, { pots: [1, 8] });
-  if (L >= 5) spinStar(m, 7, top + 11, 4);
 }
 
 // ======================= HELADERÍA =======================
@@ -295,7 +329,6 @@ function pasteleria(m, L) {
   if (L >= 2) cafeTable(v, 12, 13, P.sky, '#ffffff');
   if (L >= 3) for (let x = x0; x <= x1; x += 3) v.set(x, GF + 7, z1 + 1, P.clayL);
   sidewalk(m, L, b, { pots: [7] });
-  if (L >= 5) spinStar(m, 7, y0 + 13, 6);
 }
 
 // ======================= TIENDA BRILLO =======================
@@ -570,4 +603,7 @@ function teatro(m, L) {
   if (L >= 5) { wavingFlag(m, 11, H + 13 + Math.ceil(dr) - 4, 6, 4, 3, P.clay); v.box(11, H + 7 + Math.ceil(dr), 6, 1, 6, 1, '#ffffff'); sparkle(m, 5, H + 6, 14, '#ffffff'); sparkle(m, 19, H + 4, 15, P.goldL); }
 }
 
-export const SHOP_BUILDERS = { panaderia, heladeria, floreria, cafeteria, salon, pasteleria, boutique, cine, spa, rueda, teatro };
+export const SHOP_BUILDERS = {
+  panaderia: withEra(panaderia), heladeria: withEra(heladeria), floreria: withEra(floreria), cafeteria: withEra(cafeteria),
+  salon: withEra(salon), pasteleria: withEra(pasteleria), boutique: withEra(boutique), cine, spa, rueda, teatro,
+};
