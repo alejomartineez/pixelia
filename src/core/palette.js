@@ -25,14 +25,15 @@ export const PALETTE = {
 
 // Paletas de época (DESIGN-CORE.md §4.2): pocos colores, apagados y cálidos, uno por material.
 // Las usa la capa de época de models-kit.js (ERA_STYLE). Los pares claro/oscuro se separan al menos 28 en algún
-// canal para que la limpieza de tonos de models.js no los junte.
+// canal para que la limpieza de tonos de models.js no los junte. Las cremas tienen algo de croma a propósito: si son
+// neutras, el tema Luces de Noche las corre a rosa.
 export const ERA_PALETTES = {
   madera: { plank: '#a8774a', plankD: '#86592f', joint: '#5e3f24', thatch: '#d9b46a', thatchD: '#b8913f', shingle: '#7a5a3a',
     stone: '#9b9286', stoneD: '#7b7266', moss: '#6f8a4f', post: '#6e4a2c', light: '#e9d6b0' },
   piedra: { stone: '#a49b8c', stoneD: '#857b6c', stoneL: '#c4bba9', joint: '#6f675c', slate: '#5d6878', slateD: '#47505e',
     beam: '#5a4632', light: '#e4dccb' },
-  ladrillo: { brick: '#b5603f', brickD: '#94492e', joint: '#e6d8c3', tile: '#a8492f', tileD: '#86361f', frame: '#3f5e4a',
-    cream: '#efe3cc', creamD: '#d5c4a4', iron: '#3b3634' },
+  ladrillo: { brick: '#b5603f', brickD: '#94492e', joint: '#e8d6b8', tile: '#a8492f', tileD: '#86361f', frame: '#3f5e4a',
+    cream: '#f0e0c0', creamD: '#d5c4a4', iron: '#3b3634' },
   hierro: { iron: '#6b7077', ironD: '#50555b', rust: '#9a5a3a', black: '#2f2b2a', sheet: '#8d949a', sheetD: '#6f767d',
     lamp: '#f2c45a', brick: '#8f5a44', light: '#d6d2c8' },
   vidrio: { steel: '#c7ccd1', steelD: '#9aa1a8', glass: '#8fc1d0', glassD: '#6aa3b8', white: '#f2f0ea', terrace: '#79a35a',

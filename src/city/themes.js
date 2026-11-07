@@ -227,6 +227,8 @@ export const THEMES = [
     fam: {
       gold: (h, s, l) => [h, s, l * 0.96],
       pink: (h, s, l) => [towards(h, 262, 0.5), s * 0.7, l * 0.7],
+      // ladrillo, tejas y maderas de las épocas: pardos bajo la luna (con la regla general se iban a fucsia)
+      orange: (h, s, l) => [towards(h, 250, 0.06), s * 0.62, l * 0.72],
       neutral: (h, s, l) => (l > 0.9 ? [228, 0.35, l * 0.8] : [towards(h, 240, 0.5), Math.max(s, 0.12), l * 0.72]),
       _: (h, s, l) => [towards(h, 245, 0.28), s * 0.85, l * 0.74],
     },

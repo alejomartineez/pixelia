@@ -25,7 +25,7 @@ function plaza(m, era, L) {
         break;
       }
       case 'piedra': c = rim ? P.grass : (Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? '#c4bba9' : '#b3aa98'; break;
-      case 'ladrillo': c = rim ? P.grass : ((Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? '#c58d70' : '#d9cdb8'); break;
+      case 'ladrillo': c = rim ? P.grass : ((Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? '#c58d70' : '#dccbab'); break;
       case 'hierro': c = rim ? P.grassD : (((z % 2 ? x + 1 : x) >> 1) % 2 ? '#8e8a84' : '#76726c'); break;
       default: c = rim ? P.grass : (x % 4 === 0 || z % 4 === 0) ? '#c9c5bb' : '#e4e1d9';
     }

@@ -488,7 +488,7 @@ export const ERA_STYLE = {
     wall: EP.ladrillo.brick, wallD: EP.ladrillo.brickD, joint: EP.ladrillo.joint, trim: EP.ladrillo.cream, roof: EP.ladrillo.tile,
     roofD: EP.ladrillo.tileD, roof2: EP.ladrillo.tile, base: EP.ladrillo.creamD, baseD: EP.ladrillo.creamD,
     frame: EP.ladrillo.frame, accent: EP.ladrillo.iron, door: EP.ladrillo.frame, fence: EP.ladrillo.iron, light: EP.ladrillo.cream,
-    ground: '#d9cdb8', groundD: '#c4b69d', path: '#e6dcc8', roofKind: 'cuatro_aguas', roofKind3: 'mansarda', floors: 2, FH: 6 },
+    ground: '#dccbab', groundD: '#c4b69d', path: '#e8d9bb', roofKind: 'cuatro_aguas', roofKind3: 'mansarda', floors: 2, FH: 6 },
   4: { id: 'hierro', name: 'Hierro',
     wall: EP.hierro.brick, wallD: '#734536', sheet: EP.hierro.sheet, sheetD: EP.hierro.sheetD, joint: EP.hierro.ironD, trim: EP.hierro.iron, roof: EP.hierro.sheet,
     roofD: EP.hierro.sheetD, roof2: EP.hierro.rust, base: EP.hierro.black, baseD: EP.hierro.black,
@@ -621,8 +621,9 @@ export function eraRoof(m, x0, x1, z0, z1, y, era, o = {}) {
         const edge = x === x0 || x === x1 || z === z0 || z === z1;
         v.set(x, y + 1, z, edge ? s.trim : ((x * 3 + z) % 7 === 0 ? EP.vidrio.terraceD : s.roof2));
       }
-      for (let x = x0; x <= x1; x++) for (const z of [z0, z1]) if (x % 2 === 0) v.set(x, y + 2, z, s.trim);
-      for (let z = z0; z <= z1; z++) for (const x of [x0, x1]) if (z % 2 === 0) v.set(x, y + 2, z, s.trim);
+      // baranda de vidrio corrida (nada de almenas)
+      for (let x = x0; x <= x1; x++) for (const z of [z0, z1]) v.set(x, y + 2, z, C.glassD);
+      for (let z = z0; z <= z1; z++) for (const x of [x0, x1]) v.set(x, y + 2, z, C.glassD);
       return y + 2;
     }
     default: {          // plano con parapeto de la época
@@ -863,6 +864,7 @@ export function eraRecolor(m, era) {
     return (Math.round(r + (((b >> 16) & 255) - r) * k) << 16) | (Math.round(g + (((b >> 8) & 255) - g) * k) << 8) | Math.round(bl + ((b & 255) - bl) * k);
   };
   const glass = new Set([C.glass, C.glassD, C.glassHi].map(hx));
+  const waterSet = new Set([C.water, C.waterD, C.waterL, P.water].map(hx));
   const yOf = (k) => +k.slice(k.indexOf(',') + 1, k.lastIndexOf(','));
   let maxY = 1;
   for (const k of m.v.map.keys()) { const y = yOf(k); if (y > maxY) maxY = y; }
@@ -879,7 +881,7 @@ export function eraRecolor(m, era) {
         const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
         const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 510, sat = mx ? (mx - mn) / mx : 0;
         const plant = g > r + 10 && g >= b;                 // plantas
-        const water = b > r + 25 && b > g && l > 0.55;      // agua y cielo
+        const water = waterSet.has(c) || (b > r + 60 && g > r + 30 && sat > 0.4);   // agua (cian), no muros azul pizarra
         if (!plant && !water) {
           if (l > 0.82) out = mix(c, tgt.wallL, 0.55);
           else if (sat > 0.35 && hi) out = mix(c, l > 0.5 ? tgt.roof : tgt.roofD, 0.7);
