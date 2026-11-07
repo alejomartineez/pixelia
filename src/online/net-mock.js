@@ -251,7 +251,7 @@ const RPC = {
       v.helped++; v.updated_at = nowIso(db);
       pts = 1;
     } else {
-      if (db.gifts.filter(g => g.from_id === me && g.to_id === p_to && g.kind === 'sticker' && g.day === d).length >= 3) E('Ya le regalaste 3 hallazgos hoy');
+      if (db.gifts.filter(g => g.from_id === me && g.to_id === p_to && g.kind === 'sticker' && g.day === d).length >= 3) E('Ya le regalaste 3 figuritas hoy');
       pts = 2;
     }
     const g = addGift(db, me, p_to, p_kind, pl);
@@ -283,17 +283,17 @@ const RPC = {
     const st = 'stickers' in o || 'stickers' in r;
     if (st) {
       const onlySt = x => Object.keys(x).every(k => k === 'stickers' || k === 'stars' || k === 'golden');
-      if (!onlySt(o) || !onlySt(r)) E('En un intercambio de hallazgos solo van hallazgos (sin monedas ni objetos)');
-      if (!('stickers' in o && 'stickers' in r)) E('Hace falta un hallazgo de cada lado');
+      if (!onlySt(o) || !onlySt(r)) E('En un intercambio de figuritas solo van figuritas (sin monedas ni objetos)');
+      if (!('stickers' in o && 'stickers' in r)) E('Hace falta una figurita de cada lado');
       const one = x => Object.keys(x.stickers).length === 1 && Object.values(x.stickers).reduce((a, b) => a + b, 0) === 1;
-      if (!one(o) || !one(r)) E('Se intercambia de a un hallazgo por lado');
-      if (typeof o.stars !== 'number' || typeof r.stars !== 'number') E('Faltan las estrellas de los hallazgos');
+      if (!one(o) || !one(r)) E('Se intercambia de a una figurita por lado');
+      if (typeof o.stars !== 'number' || typeof r.stars !== 'number') E('Faltan las estrellas de las figuritas');
       const ok = s => s >= 1 && s <= 5 && s === Math.trunc(s);
       if (!ok(o.stars) || !ok(r.stars)) E('Las estrellas van de 1 a 5');
-      if (Math.abs(o.stars - r.stars) > 1) E('Los hallazgos tienen que tener estrellas parecidas (como mucho 1 de diferencia)');
+      if (Math.abs(o.stars - r.stars) > 1) E('Las figuritas tienen que tener estrellas parecidas (como mucho 1 de diferencia)');
       // golden: Semana Dorada (eventFlag('trade5'), calculado en el cliente) habilita 5★ sin los 14 días
-      if (Math.max(o.stars, r.stars) === 5 && f.days < 14 && o.golden !== true) E('Los hallazgos de 5 estrellas se cambian con amistades de 14 días o más');
-      if (stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de hallazgos hoy. ¡Mañana más!');
+      if (Math.max(o.stars, r.stars) === 5 && f.days < 14 && o.golden !== true) E('Las figuritas de 5 estrellas se cambian con amistades de 14 días o más');
+      if (stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!');
     }
     const t = { id: nextId(db), from_id: me, to_id: p_to, offer: o, request: r, status: 'pending', is_sticker: st, day: today(db), created_at: nowIso(db), resolved_at: null };
     db.trades.push(t);
@@ -316,7 +316,7 @@ const RPC = {
     if (t.status !== 'pending') E(`Ese intercambio ya no está disponible (${t.status === 'accepted' ? 'ya fue aceptado' : t.status === 'declined' ? 'fue rechazado' : 'fue cancelado'})`);
     if (p_accept) {
       pairLock(db, me, t.from_id);
-      if (t.is_sticker && stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de hallazgos hoy. ¡Mañana más!');
+      if (t.is_sticker && stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!');
       t.status = 'accepted'; t.resolved_at = nowIso(db);
       if (!isEmpty(t.offer)) addGift(db, t.from_id, t.to_id, 'trade', t.offer, t.id, 'Intercambio aceptado');
       if (!isEmpty(t.request)) addGift(db, t.to_id, t.from_id, 'trade', t.request, t.id, 'Intercambio aceptado');

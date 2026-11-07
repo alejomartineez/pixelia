@@ -465,7 +465,7 @@ try {
 
   // ===================================================================
   section('Cofres: gratis, abrir, mochila, poción y martillo');
-  await run(`store.state.chests.freeBase = Date.now() - 4 * 3600e3 - 5000; store.markDirty(); ctx.bus.emit('chests:changed'); return true;`);
+  await run(`store.state.chests.freeBase = Date.now() - C.FREE_CHEST_EVERY_MS - 5000; store.markDirty(); ctx.bus.emit('chests:changed'); return true;`);
   await checkBadges('cofre gratis listo');
   await tap('[data-act="chests"]');
   ok(await waitFor(`!!document.querySelector('.chx-free')`), 'panel de Cofres abierto');
@@ -519,6 +519,10 @@ try {
   ok(await run(`return !store.state.chests.items.m3_moves && (store.state.equipment.cuerda || 0) === ${cuerda0} + 2`), '+5 Movidas → 2 Cuerdas');
   ok(await run(`return !document.querySelector('[data-act="games"]') && !window.__pixelia.ctx.router.openGame`), 'sin botón Juegos ni router.openGame');
   await checkBadges('después del potenciador');
+  // antes la partida cerraba todo al cambiar de escena: se cierran los paneles que quedaron abiertos (Cofres)
+  await run(`ctx.ui.closeAllModals(); return true;`);
+  await sleep(800);
+  await drainOverlays();
 
   // ===================================================================
   section('Pase de Temporada, Álbum y Eventos');

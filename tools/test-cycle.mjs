@@ -228,7 +228,9 @@ try {
   section('El botín aparece en la ciudad');
   const mats1 = await run(`return { ...store.state.materials }`);
   ok((cargo.madera || 0) >= 3, `trajeron madera (${cargo.madera || 0})`, cargo);
-  ok(Object.entries(cargo).every(([m, n]) => (mats1[m] || 0) === (mats0[m] || 0) + n), 'los materiales de la carga se sumaron a la ciudad', { cargo, antes: mats0, despues: mats1 });
+  // las semanas de región / de expediciones (eventos, Fase 5) multiplican lo que se trae: se cuenta con el multiplicador activo
+  const matMult = await run(`const ev = window.__pixelia.events; return ev.eventMult('expMats') * ev.eventMult('region_bosque')`);
+  ok(Object.entries(cargo).every(([m, n]) => (mats1[m] || 0) === (mats0[m] || 0) + Math.round(n * matMult)), `los materiales de la carga se sumaron a la ciudad (×${matMult} por eventos)`, { cargo, antes: mats0, despues: mats1 });
   ok(await run(`return !store.state.expedition.active && store.state.expedition.last?.kind === 'corta' && store.state.stats.expeditions === 1`), 'la salida queda cerrada y contada');
   await tapSel('.scene-expedition [data-a="city"]');
   ok(await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 10000), 'vuelve a la ciudad');
@@ -273,7 +275,8 @@ try {
   section('Salida normal: zona 1 explorada y terreno');
   await tapSel('[data-act="expedition"]');
   await waitFor(`!!document.querySelector('.modal.pnl-ex [data-ex-go="normal"]')`, 5000);
-  ok(await page.evaluate(() => !!document.querySelector('.modal.pnl-ex [data-equip="cuerda"].on')), 'la Cuerda viene elegida');
+  ok(await page.evaluate(() => !!document.querySelector('.modal.pnl-ex [data-equip="cuerda"].on')), 'la Cuerda viene elegida',
+    await page.evaluate(() => ({ modals: [...document.querySelectorAll('.modal')].map(m => m.className), equip: window.__pixelia.store.state.equipment, btns: [...document.querySelectorAll('.modal.pnl-ex [data-equip]')].map(b => b.outerHTML.slice(0, 120)) })));
   const prov0 = await run(`return store.state.prov`);
   await tapSel('.modal.pnl-ex [data-ex-go="normal"]');
   ok(await waitFor(`!!document.querySelector('.scene-expedition')?.__exp?.view`, 25000), 'la escena se monta');

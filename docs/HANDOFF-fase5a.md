@@ -46,7 +46,9 @@ código precisa o se aparta del diseño están en DESIGN-CORE.md §7.2, bloque "
 - Nombres y arte de los 12 sets de Hallazgos por región (hoy conservan los nombres de figurita; Fase 6 con la Guía de tono).
 - Música `drive` de `audio.js` quedó sin uso (Fase 6).
 - 7b: rehacer el ranking semanal alrededor de la expedición (hoy solo estrellas) y el intercambio de hallazgos por región.
-- `supabase/schema.sql` tiene un comentario con `week:{id, match3, …}` (no lo toqué: no cambia el esquema).
+- `supabase/schema.sql` tiene un comentario con `week:{id, match3, …}` y los mensajes de error de los intercambios dicen
+  "figuritas"; `src/online/net-mock.js` repite esos mensajes a propósito (test-mock los compara), así que quedaron igual.
+  Cambiarlos es de la 7b (hay que correr el SQL entero).
 
 ## Archivos .js (para el precache con `npm run bump`)
 - Borrados: `src/games/blocks-art.js`, `blocks-logic.js`, `blocks.js`, `boosters.js`, `driving-sky.js`, `driving-world.js`,
@@ -66,4 +68,7 @@ código precisa o se aparta del diseño están en DESIGN-CORE.md §7.2, bloque "
 - Suites actualizadas: `test-e2e` (potenciador viejo → equipo, sin botón Juegos), `test-works` (materiales de región y
   «Salir» a la expedición, Faro con piedra + mineral), `test-stress` (sin escenas ni panel de juegos), `test-social`
   (eventos de expedición, perfil sin `match3`), `test-telemetry`, `test-home` (materiales nuevos), `smoke.mjs` (ayuda).
-- Resultado de `npm test`: ver el resumen de la sesión (se completa al final).
+- `npm test` en verde, suite por suite: e2e 83/0, migración 48/0, colocación 65/0, stress 15/0, visitas 20/0, mock 69/0,
+  social 46/0, rango 32/0, obras 34/0, Mi Casa 43/0, expedición 30/0, ciclo 61/0, amenazas 69/0, telemetría 67/0, SQL 153/0.
+  `test-place` y `test-cycle` fallaron una vez con la máquina cargada y pasaron solas al reintentar.
+- `test-cycle` ahora cuenta el multiplicador de eventos al comparar el botín (esta semana toca "Semana de Expediciones").
