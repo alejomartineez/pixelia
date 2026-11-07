@@ -141,7 +141,7 @@ export const EQUIPMENT = {
   lona: { id: 'lona', name: 'Lona', icon: '⛺', text: '+20 seguir con tormenta; esperar cuesta 1 menos' },
   farol: { id: 'farol', name: 'Farol', icon: '🏮', text: 'Espantar con fuego sin gastar madera' },
   botiquin: { id: 'botiquin', name: 'Botiquín', icon: '🩹', text: 'Una vez: +3 de ánimo' },
-  carreta: { id: 'carreta', name: 'Carreta', icon: '🛒', text: '+4 de carga' },
+  carreta: { id: 'carreta', name: 'Carreta', icon: '🛒', text: '+4 de carga (+6 desde la época Hierro)' },
 };
 
 // Peligros y ruinas (§2.6). Cada opción: base (100 = seguro), rol {id: bono}, equip {id: bono}, cost (se paga al elegir),

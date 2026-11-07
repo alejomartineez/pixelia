@@ -4,7 +4,7 @@
 // grúa, pilas de materiales y un cartel con la etapa. Así cada etapa se ve bien distinta: andamio → mitad → terminado.
 import {
   P, C, shade, lot, win, door, gable, cone, flowerBed, bush, smallTree, fset, pattern,
-  sparkle, wavingFlag, spinStar, rng, pick, FLOWER_COLORS, lampPost,
+  sparkle, wavingFlag, spinStar, rng, pick, FLOWER_COLORS, lampPost, eraStyle, eraFence, clampEra,
 } from './models-kit.js';
 import { MONUMENTS } from '../core/data.js';
 
@@ -21,7 +21,27 @@ function staged(id, draw) {
     draw(m, lv >= N, opts);
     if (lv >= N) celebrate(m);
     else underConstruction(m, id, lv, N);
+    eraBase(m, clampEra(opts.era));
   };
+}
+
+/**
+ * Base del monumento por época (tanda 3; el monumento conserva su diseño): desde Ladrillo el pasto del lote pasa al piso
+ * de la época, y en todas un cerco de la época lo rodea dejando la entrada al frente.
+ */
+const hexI = (c) => (typeof c === 'number' ? c : parseInt(c.slice(1), 16));
+const GRASS = new Set([P.grass, P.grassD, P.grassL, '#a2e589', '#99e07f'].map(hexI));
+function eraBase(m, era) {
+  const { v, W, D } = m, s = eraStyle(era);
+  if (era >= 3) for (const [k, c] of [...v.map]) {
+    if (!GRASS.has(c)) continue;
+    const [x, y, z] = k.split(',').map(Number);
+    if (y !== 0) continue;
+    const g = era === 3 ? (Math.floor(x / 2) + Math.floor(z / 2)) % 2 : era === 4 ? ((z % 2 ? x + 1 : x) >> 1) % 2 : (x % 4 === 0 || z % 4 === 0) ? 0 : 1;
+    v.set(x, 0, z, g ? s.ground : s.groundD);
+  }
+  const mid = Math.floor(W / 2);
+  eraFence(m, era, { gaps: [mid - 2, mid - 1, mid, mid + 1] });
 }
 
 /** Terminado: borde dorado en el lote y brillitos (que se note que está completo). */

@@ -5,8 +5,8 @@ import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { buildingModel, constructionModel } from '../city/models.js';
 import { icon } from '../core/icons.js';
-import { rewardScale, MAX_EXPANSIONS } from '../core/data.js';
-import { def, population, happiness, landBounds, fmtTime, fmtNum, townRank, rankDef, cityCharm } from '../core/economy.js';
+import { rewardScale, MAX_EXPANSIONS, eraOfRank } from '../core/data.js';
+import { def, population, happiness, landBounds, fmtTime, fmtNum, townRank, rankDef, cityCharm, hasEra } from '../core/economy.js';
 import { HALF, footCenter, clamp, greeting } from './city-common.js';
 import { createWorld } from './city-world.js';
 import { createCameraCtl } from './city-camera.js';
@@ -270,7 +270,7 @@ export function createVisit(ctx) {
     if (e.model) { e.root.remove(e.model); e.model = null; }
     if (e.scaffold) { e.root.remove(e.scaffold); e.scaffold = null; }
     if (mode !== 'build') {
-      e.model = safeModel(() => buildingModel(b.id, b.level, { flagColor: vstate.city.flagColor, theme: vstate.city.theme, era: b.era }), [c.w, c.d]);
+      e.model = safeModel(() => buildingModel(b.id, b.level, { flagColor: vstate.city.flagColor, theme: vstate.city.theme, era: hasEra(b) ? b.era : eraOfRank(townRank(vstate)) }), [c.w, c.d]);
       e.model.rotation.y = b.rot * Math.PI / 2;
       e.root.add(e.model);
       e.height = e.model.userData.height || 1;

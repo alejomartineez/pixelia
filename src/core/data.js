@@ -35,7 +35,7 @@ export const BUILDINGS = [
   { id: 'pista', name: 'Pista de Manejo', cat: 'especial', size: [3, 3], unlock: 5, cost: { coins: 1200 }, time: 45, max: 1,
     happy: 5, xp: 60, game: 'driving', desc: 'Abre el minijuego Ruta Pixel (manejar).' },
   // Mi Casa: aparece sola al llegar a nivel 2 (economy.ensureHome). Su nivel es el de la casa por dentro (home/furniture.js).
-  { id: 'mi_casa', name: 'Mi Casa', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 0 }, time: 0, max: 1, auto: true,
+  { id: 'mi_casa', name: 'Mi Casa', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 0 }, time: 0, max: 1, auto: true, eraArt: true,
     happy: 2, charm: 10, xp: 0, desc: 'Tu casa: entrá, decorala con muebles y ampliala.' },
   { id: 'boutique_real', name: 'Sastrería', cat: 'especial', size: [2, 2], unlock: 2, cost: { coins: 250 }, time: 15, max: 1,
     happy: 4, xp: 20, game: 'wardrobe', desc: 'Tu vestidor: ropa, peinados y sombreros.' },
@@ -111,23 +111,23 @@ export const BUILDINGS = [
     happy: 4, xp: 200, eraArt: true, desc: 'Ayuda contra cualquier amenaza en su radio y suma una cuadrilla en la defensa.' },
 
   // --- Decoración ---
-  { id: 'arbol', name: 'Árbol', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 20 }, time: 0, happy: 1, xp: 2, desc: 'Sombra y pájaros.' },
-  { id: 'arbusto', name: 'Arbusto con Flores', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 25 }, time: 0, happy: 1, xp: 2, desc: 'Flores de estación.' },
-  { id: 'farol', name: 'Farol', cat: 'deco', size: [1, 1], unlock: 2, cost: { coins: 40 }, time: 0, happy: 1, xp: 3, desc: 'Ilumina las noches.' },
-  { id: 'banco', name: 'Banco', cat: 'deco', size: [1, 1], unlock: 2, cost: { coins: 50 }, time: 0, happy: 2, xp: 3, desc: 'Para sentarse a ver pasar a la gente.' },
-  { id: 'cerezo', name: 'Cerezo', cat: 'deco', size: [1, 1], unlock: 3, cost: { coins: 90 }, time: 0, happy: 2, xp: 5, desc: 'Flores de cerezo todo el año.' },
-  { id: 'fuente', name: 'Fuente de la Plaza', cat: 'deco', size: [2, 2], unlock: 3, cost: { coins: 300 }, time: 10, happy: 6, xp: 15, desc: 'Agua fresca en el medio de la plaza.' },
-  { id: 'macetas', name: 'Macetas de Tulipanes', cat: 'deco', size: [1, 1], unlock: 4, cost: { coins: 70 }, time: 0, happy: 2, xp: 4, desc: 'Tulipanes de colores.' },
-  { id: 'estatua', name: 'Estatua del Fundador', cat: 'deco', size: [2, 2], unlock: 6, cost: { coins: 900 }, time: 20, happy: 10, xp: 30, desc: 'Homenaje a quien fundó el pueblo. Sí, a vos.' },
-  { id: 'glorieta', name: 'Glorieta', rank: 3, cat: 'deco', size: [2, 2], unlock: 8, cost: { coins: 1400 }, time: 30, happy: 12, xp: 40, desc: 'Ideal para picnics.' },
-  { id: 'arco_rosas', name: 'Arco de Rosas', cat: 'deco', size: [1, 1], unlock: 9, cost: { coins: 500 }, time: 0, happy: 5, xp: 12, desc: 'Rosas trepadoras.' },
-  { id: 'unicornio', name: 'Estatua del Unicornio', rank: 4, cat: 'deco', size: [2, 2], unlock: 12, cost: { gems: 15 }, time: 20, happy: 25, xp: 60, desc: 'Nadie sabe quién la encargó.' },
-  { id: 'lago', name: 'Laguna de los Patos', rank: 4, cat: 'deco', size: [3, 3], unlock: 14, cost: { coins: 4000 }, time: 60, happy: 22, xp: 80, desc: 'Patos que nadan en círculos.' },
+  { id: 'arbol', name: 'Árbol', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 20 }, time: 0, happy: 1, xp: 2, eraArt: true, desc: 'Sombra y pájaros.' },
+  { id: 'arbusto', name: 'Arbusto con Flores', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 25 }, time: 0, happy: 1, xp: 2, eraArt: true, desc: 'Flores de estación.' },
+  { id: 'farol', name: 'Farol', cat: 'deco', size: [1, 1], unlock: 2, cost: { coins: 40 }, time: 0, happy: 1, xp: 3, eraArt: true, desc: 'Ilumina las noches.' },
+  { id: 'banco', name: 'Banco', cat: 'deco', size: [1, 1], unlock: 2, cost: { coins: 50 }, time: 0, happy: 2, xp: 3, eraArt: true, desc: 'Para sentarse a ver pasar a la gente.' },
+  { id: 'cerezo', name: 'Cerezo', cat: 'deco', size: [1, 1], unlock: 3, cost: { coins: 90 }, time: 0, happy: 2, xp: 5, eraArt: true, desc: 'Flores de cerezo todo el año.' },
+  { id: 'fuente', name: 'Fuente de la Plaza', cat: 'deco', size: [2, 2], unlock: 3, cost: { coins: 300 }, time: 10, happy: 6, xp: 15, eraArt: true, desc: 'Agua fresca en el medio de la plaza.' },
+  { id: 'macetas', name: 'Macetas de Tulipanes', cat: 'deco', size: [1, 1], unlock: 4, cost: { coins: 70 }, time: 0, happy: 2, xp: 4, eraArt: true, desc: 'Tulipanes de colores.' },
+  { id: 'estatua', name: 'Estatua del Fundador', cat: 'deco', size: [2, 2], unlock: 6, cost: { coins: 900 }, time: 20, happy: 10, xp: 30, eraArt: true, desc: 'Homenaje a quien fundó el pueblo. Sí, a vos.' },
+  { id: 'glorieta', name: 'Glorieta', rank: 3, cat: 'deco', size: [2, 2], unlock: 8, cost: { coins: 1400 }, time: 30, happy: 12, xp: 40, eraArt: true, desc: 'Ideal para picnics.' },
+  { id: 'arco_rosas', name: 'Arco de Rosas', cat: 'deco', size: [1, 1], unlock: 9, cost: { coins: 500 }, time: 0, happy: 5, xp: 12, eraArt: true, desc: 'Rosas trepadoras.' },
+  { id: 'unicornio', name: 'Estatua del Unicornio', rank: 4, cat: 'deco', size: [2, 2], unlock: 12, cost: { gems: 15 }, time: 20, happy: 25, xp: 60, eraArt: true, desc: 'Nadie sabe quién la encargó.' },
+  { id: 'lago', name: 'Laguna de los Patos', rank: 4, cat: 'deco', size: [3, 3], unlock: 14, cost: { coins: 4000 }, time: 60, happy: 22, xp: 80, eraArt: true, desc: 'Patos que nadan en círculos.' },
 
   // --- Caminos ---
-  { id: 'camino', name: 'Camino de Piedra', cat: 'camino', size: [1, 1], unlock: 1, cost: { coins: 5 }, time: 0, xp: 0, desc: 'Conectá tu ciudad.' },
-  { id: 'camino_rosa', name: 'Camino de Ladrillo', cat: 'camino', size: [1, 1], unlock: 3, cost: { coins: 12 }, time: 0, happy: 0, xp: 0, desc: 'Ladrillos rojizos, como los de antes.' },
-  { id: 'camino_dorado', name: 'Camino Dorado', rank: 3, cat: 'camino', size: [1, 1], unlock: 8, cost: { coins: 30 }, time: 0, happy: 0, xp: 0, desc: 'Adoquines dorados, para la avenida principal.' },
+  { id: 'camino', name: 'Camino de Piedra', cat: 'camino', size: [1, 1], unlock: 1, cost: { coins: 5 }, time: 0, xp: 0, eraArt: true, desc: 'Conectá tu ciudad.' },
+  { id: 'camino_rosa', name: 'Camino de Ladrillo', cat: 'camino', size: [1, 1], unlock: 3, cost: { coins: 12 }, time: 0, happy: 0, xp: 0, eraArt: true, desc: 'Ladrillos rojizos, como los de antes.' },
+  { id: 'camino_dorado', name: 'Camino Dorado', rank: 3, cat: 'camino', size: [1, 1], unlock: 8, cost: { coins: 30 }, time: 0, happy: 0, xp: 0, eraArt: true, desc: 'Adoquines dorados, para la avenida principal.' },
 ];
 
 // ---------------- MATERIALES Y MONUMENTOS ----------------
@@ -277,7 +277,7 @@ export const MONUMENT_IDS = Object.keys(MONUMENTS);
 // los monumentos también son edificios (cat 'monumento', uno de cada uno); construirlos = pagar la etapa 1
 for (const [id, mo] of Object.entries(MONUMENTS)) {
   BUILDINGS.push({ id, name: mo.name, cat: 'monumento', size: mo.size, unlock: 1, rank: mo.rank, cost: mo.stages[0].cost, time: mo.stages[0].time,
-    max: 1, happy: mo.happy, charm: mo.charm, xp: 60, desc: mo.desc });
+    max: 1, happy: mo.happy, charm: mo.charm, xp: 60, eraArt: true, desc: mo.desc });
 }
 
 export const BUILDING_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
