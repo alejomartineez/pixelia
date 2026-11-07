@@ -441,6 +441,14 @@ Cada turno:
 
 Resultado: `salvado = 100 × (enRiesgo − dañados) / enRiesgo`. Meta de diseño: con `prep ≥ 0,7` y juego razonable, ≥ 90%.
 
+**Fase 3 (calibrado con `tools/sim-threats.mjs`)**: con solo los focos iniciales una cuadrilla apagaba todo en el turno 1, así
+que la amenaza **sigue entrando por su borde**: cada turno aparecen `2 + floor(f / 2)` tiles nuevos en nivel 2 frente a lo que
+está en riesgo (una reserva puesta en el borde la frena ahí). Los focos y la entrada nunca caen sobre un lote en riesgo.
+Tormenta: los rayos del turno siguiente **se ven antes** (⚡ sobre la casilla) y una cuadrilla en esa casilla los frena.
+Una defensa con 0 en riesgo no se puede enfrentar (pasa sola). Resultado de la sim (bot con 25% de cuadrillas mal puestas):
+preparación media 83%, jugando 98% (≥ 90% en el 92–100% de las ciudades), automática 80%, 1,4 dañados en promedio; sin
+preparar, jugando 89% y automática 33%.
+
 ### 3.5 Resolución automática (si no estás)
 ```
 salvado = clamp(round(35 + 60 × prep − (f − 1)), 30, 95)          // jugarla es la única forma de llegar a 100
@@ -467,6 +475,7 @@ Al volver, un solo modal junta todo lo que pasó ("Mientras no estabas…"): "Pa
 | 100% | lo de 90–99%, plano garantizado y, la primera vez, el título "Sin un rasguño" |
 
 Chispas del Pase: `40 + round(0,6 × salvado)`. Superar una amenaza con ≥ 90% es uno de los pocos momentos con festejo grande.
+Una amenaza más chica (menos en riesgo que `3 + f`) da el premio proporcional; con nada en riesgo, solo 2 gemas (Fase 3).
 
 ### 3.8 Contrato del módulo `src/threats/`
 | Archivo | Qué es |
@@ -475,7 +484,7 @@ Chispas del Pase: `40 + round(0,6 × salvado)`. Superar una amenaza con ≥ 90% 
 | `threat-calendar.js` | puro: `schedule(seasonIndex, rank)`, `nextThreat(now, rank)`, `threatsBetween(a, b, rank)`, `phase(threat, now)` → `'lejos' \| 'aviso' \| 'señales' \| 'hoy' \| 'pasada'` |
 | `threat-rules.js` | puro (sin three.js/DOM/store): `atRisk(type, city, f)`, `prepInfo(type, city, reserves, f)`, `autoResolve(prep, f, enRiesgo, rand)`, `newDefense({...})`, `placeCrew(d, x, z)`, `useReserve(d, x, z)`, `endTurn(d)`, `defenseResult(d)` |
 | `threats.js` | integración: `initThreats()`, `threatStatus()`, `resolvePending()` (al cargar y en cada `tick`), `repair(uid)`, `repairAll()`, premios y bus |
-| `threat-scene.js` | capa sobre la ciudad: `attach(cityApi, threatId)` → `{ detach }` |
+| `threat-scene.js` | capa sobre la ciudad: `attach(cityApi, threatId)` → `{ detach, onTap, update }`; `createDecor` (cartel, señales, marcas de daño) y `createCoverage` (radio al colocar) |
 | `threat-ui.js` | panel de la amenaza (aviso, preparación, en riesgo), resultado y "Mientras no estabas" |
 
 `city` pasa a `threat-rules` una vista plana de la ciudad (`{ bounds, buildings:[{uid, id, x, z, w, d, era, height, cat}], roads }`),
@@ -488,13 +497,15 @@ nunca el estado vivo.
 **Estado**:
 ```js
 threats: {
-  seen: { [id]: true },                                   // avisos ya mostrados
+  seen: { [id]: { type, f, start, end, at } },            // avisos ya dados (fijan tipo y fuerza)
   results: { [id]: { pct, mode, at, damaged:[uid] } },    // se guardan las últimas 12
   report: [id],                                           // pendientes de mostrar en "Mientras no estabas"
   active: null | defensa,                                 // defensa en curso (se puede retomar el mismo día)
-  sim: null | { at, done },                               // simulacro del tutorial
+  sim: null | { at, start, end, done },                   // simulacro del tutorial
+  mended: [uid],                                          // arreglados por la vecindad, pendientes de contar
+  titles: { [nombre]: ms },                               // "Sin un rasguño"
 }
-// en cada edificio: b.damaged = ms | 0
+// en cada edificio: b.damaged = ms | 0 y b.damagedBy = tipo
 ```
 
 ---

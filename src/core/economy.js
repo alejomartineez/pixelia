@@ -6,7 +6,7 @@ import {
   BUILDING_BY_ID, MAP_SIZE, START_LAND, LAND_STEP, MAX_EXPANSIONS, MAX_BUILDING_LEVEL,
   CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS, MONUMENTS, MONUMENT_IDS, MATERIAL_BY_ID,
   eraOfRank, eraDef,
-  CYCLE, ROLE_BUILDING, PROV_CAP_BASE, PROV_CAP_PER_CASA, PROV_CAP_PER_GRANERO, EXPANSION_ZONES,
+  CYCLE, DEFENSES, ROLE_BUILDING, PROV_CAP_BASE, PROV_CAP_PER_CASA, PROV_CAP_PER_GRANERO, EXPANSION_ZONES,
 } from './data.js';
 import { monumentComplete, monumentsDone, monumentBonus } from './monuments.js';
 import { HOME_LEVELS, comfortInfo } from '../home/furniture.js';
@@ -199,6 +199,7 @@ export function canRenovate(b, state = S(), now = Date.now()) {
   const info = renovateInfo(b, state);
   if (!info) return { ok: false, reason: 'Ya está en la época actual' };
   if (isBusy(b, now)) return { ok: false, reason: 'Está en obra' };
+  if (b.damaged) return { ok: false, reason: 'Primero hay que repararlo', damaged: true };
   if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
   if (!store.hasMats(info.cost.mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
   if (!store.canAfford(info.cost)) return { ok: false, reason: 'No te alcanza', poor: true };
@@ -362,6 +363,9 @@ export function placeCost(id, state = S()) {
   const mult = (d.cat === 'casa' || d.cat === 'negocio') ? 1 + 0.15 * n : 1;
   const out = { coins: Math.round((d.cost.coins || 0) * mult), gems: d.cost.gems || 0 };
   if (d.cost.mats) out.mats = { ...d.cost.mats };
+  // planos: algunas defensas piden 1 (el Pararrayos, solo el primero: firstPlanos)
+  const planos = (d.cost.planos || 0) + (d.firstPlanos && n === 0 ? d.firstPlanos : 0);
+  if (planos) out.planos = planos;
   return out;
 }
 /**
@@ -378,6 +382,7 @@ export function canBuild(id, state = S(), now = Date.now()) {
   if (!free && d.popReq && population(state, now) < d.popReq) return { ok: false, reason: `Necesita ${d.popReq} habitantes`, locked: true };
   if (d.time > 0 && buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
   if (!free && !store.hasMats(placeCost(id, state).mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
+  if (!free && (placeCost(id, state).planos || 0) > (state.planos || 0)) return { ok: false, reason: 'Falta 1 plano', planos: true };
   if (!free && !store.canAfford(placeCost(id, state))) return { ok: false, reason: 'No te alcanza', poor: true };
   return free ? { ok: true, free: true } : { ok: true };
 }
@@ -440,6 +445,8 @@ export function producerStatus(b, now = Date.now(), state = S()) {
   const currency = d.prod.gems ? 'gems' : d.prod.prov ? 'prov' : 'coins';
   const cap = storageCap(d.id);
   if (isBusy(b, now)) return { producer: true, currency, paused: true, ready: false, amount: 0, progress: 0, full: false, cap };
+  // dañado por una amenaza: no produce hasta repararlo (src/threats/threats.js; al reparar se corre el reloj)
+  if (b.damaged) return { producer: true, currency, paused: true, damaged: true, ready: false, amount: 0, progress: 0, full: false, cap };
   const cycleMs = d.prod.cycle * 1000;
   const elapsed = Math.max(0, now - b.lastCollect);
   const cycles = Math.min(cap, Math.floor(elapsed / cycleMs));
@@ -510,7 +517,7 @@ export function collectAll(state = S()) {
 // ---------- Mejoras ----------
 export function canUpgradeType(b) {
   const d = def(b);
-  return d.id === 'castillo' || d.id === 'mi_casa' || d.cat === 'monumento' || d.cat === 'ciclo' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
+  return d.id === 'castillo' || d.id === 'mi_casa' || d.cat === 'monumento' || d.cat === 'ciclo' || d.cat === 'defensa' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
 }
 export function maxLevel(b) {
   const d = def(b);
@@ -543,9 +550,9 @@ export function upgradeInfo(b) {
     return { cost: { ...st.cost, mats: { ...st.cost.mats } }, time: stageTime(st.time), reqLevel: 1, stage: b.level + 1 };
   }
   const base = d.cost.coins || 200;
-  if (d.cat === 'ciclo') {
-    // edificios del ciclo: sin gemas; desde el nivel 3 piden materiales de región (y la Casa, planos en el 4 y el 5)
-    const up = CYCLE[d.id]?.up?.[b.level + 1] || {};
+  if (d.cat === 'ciclo' || d.cat === 'defensa') {
+    // edificios del ciclo y defensas: sin gemas; desde el nivel 3 piden materiales de región (y la Casa, planos en el 4 y el 5)
+    const up = (d.cat === 'defensa' ? DEFENSES : CYCLE)[d.id]?.up?.[b.level + 1] || {};
     const cost = { coins: Math.round(base * UPGRADE_COST_MULT[b.level]) };
     if (up.mats) cost.mats = { ...up.mats };
     if (up.planos) cost.planos = up.planos;
@@ -561,6 +568,7 @@ export function canUpgrade(b, state = S(), now = Date.now()) {
   const info = upgradeInfo(b);
   if (!info) return { ok: false, reason: 'Nivel máximo' };
   if (isBusy(b, now)) return { ok: false, reason: 'Está en obra' };
+  if (b.damaged) return { ok: false, reason: 'Primero hay que repararlo', damaged: true };
   if (state.player.level < info.reqLevel) return { ok: false, reason: `Nivel ${info.reqLevel}`, locked: true };
   if (info.rank && !rankStatus(state, now).allOk) return { ok: false, reason: 'Falta completar el expediente', locked: true, reqs: true };
   if (info.homeRank && townRank(state) < info.homeRank) return { ok: false, reason: `Rango ${rankName(info.homeRank)}`, locked: true, rank: info.homeRank };

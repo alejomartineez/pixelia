@@ -19,6 +19,7 @@ function absoluteValue(goal) {
     case 'castle': return castleLevel(s);
     case 'charm': return cityCharm(s);
     case 'expand': return s.city.expansions;
+    case 'threat': return s.stats.threats || 0;   // amenazas pasadas (simulacro incluido; src/threats/threats.js)
     case 'zone': {
       if (!goal.region) return zonesExplored(s);
       const r = s.expedition?.regions?.[goal.region];

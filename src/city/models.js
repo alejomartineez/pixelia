@@ -15,11 +15,12 @@ import { MONUMENT_BUILDERS } from './models-monuments.js';
 import { HOME_BUILDERS } from './models-home.js';
 import { TOWN_BUILDERS } from './models-town.js';
 import { CYCLE_BUILDERS } from './models-cycle.js';
+import { DEFENSE_BUILDERS } from './models-defense.js';
 import { DEFAULT_THEME, themeOf, mapColor, isGlass } from './themes.js';
 
 export const VOXELS_PER_TILE = 8;
 const S = 1 / VOXELS_PER_TILE;
-const BUILDERS = { ...SPECIAL_BUILDERS, ...TOWN_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS, ...HOME_BUILDERS, ...CYCLE_BUILDERS };
+const BUILDERS = { ...SPECIAL_BUILDERS, ...TOWN_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS, ...HOME_BUILDERS, ...CYCLE_BUILDERS, ...DEFENSE_BUILDERS };
 
 // ---------- Materiales ----------
 let _light = null, _ghost = null;

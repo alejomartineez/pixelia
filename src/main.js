@@ -20,6 +20,7 @@ import { chestIcon, packIcon } from './season/season-ui-common.js';
 import { net } from './online/net.js';
 import * as home from './home/furniture.js';
 import * as expedition from './expedition/expedition.js';
+import * as threats from './threats/threats.js';   // Amenazas (Fase 3)
 
 const SCENES = {
   city: () => import('./scenes/city.js'),
@@ -248,7 +249,7 @@ const openSeasonPass = lazyUi(() => season.openSeasonPass(ctx), 'No se pudo abri
 const openEvents = lazyUi(() => events.openEventsPanel(ctx), 'No se pudieron abrir los eventos');
 
 export const ctx = {
-  store, bus, ui, audio, data, economy, quests, router, hud, home, expedition,
+  store, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats,
   get state() { return store.state; },
   endGame, openPanel, gameStatus,
   // progresión y social
@@ -261,7 +262,7 @@ export const ctx = {
 // ---------- Llegada a la ciudad: bienvenida → premio diario → subidas de nivel ----------
 // .cx-placebar: colocando un edificio (pintando árboles, caminos…): un modal ahí taparía la barra y el próximo
 // toque en "Colocar" caería sobre él. Las subidas de nivel esperan a que termine (city:placing {active:false}).
-const OVERLAYS = '.chx-open, .alb-open, .cx-placebar';
+const OVERLAYS = '.chx-open, .alb-open, .cx-placebar, .th-bar';   // .th-bar: defensa de una amenaza en curso
 const cityReady = () => router.current === 'city' && !navigating && !router.visiting;
 const cityIdle = () => cityReady() && !hasModal() && !document.querySelector(OVERLAYS);
 /** Espera a que la ciudad esté libre (sin modales ni animaciones). false si se fue de la ciudad o pasó maxMs. */
@@ -281,6 +282,11 @@ async function arrivalSteps() {
   if (!(await waitIdle())) return false;
   if (season.welcomeBackStatus()) {
     await season.openWelcomeBack(ctx);
+    if (!(await waitIdle())) return false;
+  }
+  // amenazas que se resolvieron solas: un solo aviso "Mientras no estabas" (src/threats/threat-ui.js)
+  if (threats.reportStatus()) {
+    await import('./threats/threat-ui.js').then(m => m.openReport(ctx)).catch(e => console.warn('[threats] aviso', e));
     if (!(await waitIdle())) return false;
   }
   if (quests.loginStatus()) {
@@ -357,7 +363,7 @@ function applyDebugParams() {
 }
 
 function initProgression() {
-  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['quests', quests.initQuests],
+  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['threats', threats.initThreats], ['quests', quests.initQuests],
     ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })]];
   for (const [name, fn] of steps) { try { fn(); } catch (e) { console.error('[init] ' + name, e); } }
   // íconos pixel de cofres y sobres en los premios (costHtml)

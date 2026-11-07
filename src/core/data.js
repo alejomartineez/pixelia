@@ -95,6 +95,21 @@ export const BUILDINGS = [
   { id: 'conservera', name: 'Conservera', cat: 'ciclo', size: [3, 3], unlock: 8, rank: 5, cost: { coins: 9000, mats: { mineral: 6 } }, time: 240, max: 2,
     happy: 1, xp: 150, prod: { prov: 15, cycle: 7200, cap: 2 }, desc: 'Frascos y latas que aguantan cualquier viaje.' },
 
+  // --- Defensas contra las amenazas (DESIGN-CORE.md §3.3, §5.2; radio y efecto por nivel en DEFENSES, más abajo) ---
+  // Cubren los edificios con algún tile a distancia ≤ radio. firstPlanos: planos que pide solo la primera.
+  { id: 'dique', name: 'Dique', cat: 'defensa', size: [3, 1], unlock: 1, rank: 2, cost: { coins: 700, mats: { madera: 6 } }, time: 30, max: 4,
+    happy: 1, xp: 40, desc: 'Estacas y tierra apisonada contra el arroyo. Cubre de la crecida lo que tiene cerca.' },
+  { id: 'granero', name: 'Granero', cat: 'defensa', size: [2, 2], unlock: 1, rank: 2, cost: { coins: 800, mats: { madera: 3 } }, time: 40, max: 2,
+    happy: 1, xp: 45, desc: 'Agua y grano guardados para la sequía. Además agranda el depósito de provisiones.' },
+  { id: 'bomberos', name: 'Cuartel de Bomberos', cat: 'defensa', size: [2, 2], unlock: 1, rank: 3, cost: { coins: 2500, mats: { madera: 4 }, planos: 1 }, time: 90, max: 2,
+    happy: 2, xp: 80, desc: 'Campana, bomba de mano y gente que no duerme. Cubre del incendio a su alrededor.' },
+  { id: 'pararrayos', name: 'Pararrayos', cat: 'defensa', size: [1, 1], unlock: 1, rank: 3, cost: { coins: 600, mats: { mineral: 2 } }, firstPlanos: 1, time: 20, max: 6,
+    happy: 0, xp: 25, desc: 'Una punta de hierro bien alta. Los rayos de la tormenta van ahí y no al techo de al lado.' },
+  { id: 'refugio', name: 'Refugio', cat: 'defensa', size: [2, 2], unlock: 1, rank: 4, cost: { coins: 3500, mats: { madera: 6 } }, time: 120, max: 2,
+    happy: 2, xp: 100, desc: 'Estufa encendida, mantas y leña seca. Cubre de la helada a su alrededor.' },
+  { id: 'hospital', name: 'Hospital', cat: 'defensa', size: [3, 3], unlock: 1, rank: 5, cost: { coins: 12000, mats: { mineral: 6, hierbas: 4 }, planos: 1 }, time: 240, max: 1,
+    happy: 4, xp: 200, desc: 'Ayuda contra cualquier amenaza en su radio y suma una cuadrilla en la defensa.' },
+
   // --- Decoración ---
   { id: 'arbol', name: 'Árbol', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 20 }, time: 0, happy: 1, xp: 2, desc: 'Sombra y pájaros.' },
   { id: 'arbusto', name: 'Arbusto con Flores', cat: 'deco', size: [1, 1], unlock: 1, cost: { coins: 25 }, time: 0, happy: 1, xp: 2, desc: 'Flores de estación.' },
@@ -191,6 +206,18 @@ export const RESERVE_IDS = Object.keys(RESERVES);
 export const RESERVES_RANK = 2;
 // Terreno: la expansión n (1..7) pide estas zonas exploradas en total (§2.9).
 export const EXPANSION_ZONES = [1, 3, 5, 8, 11, 14, 18];
+// Defensas (DESIGN-CORE.md §3.3, §5.2): contra qué amenaza (hospital: todas), radio por nivel y costo extra de la mejora
+// (materiales desde el nivel 3). La eficacia por nivel (0,6 + 0,08 × nivel) y el resto de los números están en
+// src/threats/threat-data.js.
+export const DEFENSES = {
+  dique: { threat: 'crecida', radius: [4, 4, 5, 5, 6], up: { 3: { mats: { madera: 4, piedra: 2 } }, 4: { mats: { piedra: 5, madera: 3 } }, 5: { mats: { piedra: 7, mineral: 2 } } } },
+  granero: { threat: 'sequia', radius: [4, 4, 5, 5, 6], up: { 3: { mats: { madera: 4 } }, 4: { mats: { madera: 4, hierbas: 3 } }, 5: { mats: { madera: 5, piedra: 4 } } } },
+  bomberos: { threat: 'incendio', radius: [5, 5, 6, 6, 7], up: { 3: { mats: { madera: 4, mineral: 1 } }, 4: { mats: { mineral: 4, madera: 3 } }, 5: { mats: { mineral: 6, piedra: 3 } } } },
+  pararrayos: { threat: 'tormenta', radius: [3, 3, 4, 4, 5], up: { 3: { mats: { mineral: 2 } }, 4: { mats: { mineral: 3 } }, 5: { mats: { mineral: 4, piedra: 1 } } } },
+  refugio: { threat: 'helada', radius: [4, 4, 5, 5, 6], up: { 3: { mats: { madera: 5 } }, 4: { mats: { madera: 6, hierbas: 2 } }, 5: { mats: { madera: 8, piedra: 3 } } } },
+  hospital: { threat: '*', radius: [5, 5, 6, 6, 7], up: { 3: { mats: { hierbas: 4, mineral: 2 } }, 4: { mats: { hierbas: 6, mineral: 3 } }, 5: { mats: { hierbas: 8, mineral: 5 } } } },
+};
+export const DEFENSE_IDS = Object.keys(DEFENSES);
 
 const ST4 = ['Cimientos', 'Paredes', 'Detalles', '¡Inauguración!'];
 const ST5 = ['Cimientos', 'Estructura', 'Paredes', 'Detalles', '¡Inauguración!'];
@@ -255,6 +282,7 @@ export const BUILDING_BY_ID = Object.fromEntries(BUILDINGS.map(b => [b.id, b]));
 export const CATEGORIES = [
   { id: 'casa', name: 'Casas' },
   { id: 'ciclo', name: 'Expedición' },
+  { id: 'defensa', name: 'Defensas' },
   { id: 'negocio', name: 'Negocios' },
   { id: 'especial', name: 'Especiales' },
   { id: 'monumento', name: 'Monumentos' },
@@ -555,6 +583,7 @@ export const CUSTOM_CATALOG = {
 //  expStars              estrellas de expedición (suma) · expFar: casillas lejanas pisadas (suma)
 //  prov                  provisiones cobradas de los productores (suma)
 //  craft {id?}           cosas fabricadas en el Taller (suma)
+//  threat                amenazas pasadas, jugadas o automáticas, simulacro incluido (absoluto: stats.threats)
 // Las misiones se siguen por id (state.quests.done), así una fase puede sumar misiones en el medio de la cadena sin
 // correr las demás (t15–t17 son de la Fase 3, Amenazas). La cadena vieja de minijuegos (m1–m15) se reemplazó por el
 // tutorial del ciclo (DESIGN-CORE.md §6.1); lo ya cobrado no se repite (quests.js, OLD_MAIN).
@@ -573,6 +602,10 @@ export const MAIN_QUESTS = [
   { id: 't12', title: 'Más terreno', text: 'Ampliá la ciudad: el terreno se gana explorando.', goal: { type: 'expand', count: 1 }, reward: { gems: 5, xp: 60 } },
   { id: 't13', title: 'Animales de carga', text: 'Construí el Establo: más carga y alguien que conoce el camino.', goal: { type: 'build', id: 'establo', count: 1 }, reward: { coins: 300, xp: 60 } },
   { id: 't14', title: 'De Aldea a Caserío', text: 'Cumplí el expediente y subí la ciudad al rango Caserío.', goal: { type: 'castle', count: 2 }, reward: { gems: 8, xp: 80 } },
+  // Amenazas (Fase 3, DESIGN-CORE.md §3 y §6.1): al llegar a Caserío se avisa un simulacro de crecida para el día siguiente
+  { id: 't15', title: 'Se viene el agua', text: 'Construí un Dique cerca del arroyo: mañana llega un simulacro de crecida.', goal: { type: 'build', id: 'dique', count: 1 }, reward: { coins: 200, xp: 60, mats: { piedra: 4 } } },
+  { id: 't16', title: 'Bolsas de arena', text: 'Fabricá 2 bolsas de arena en el Taller.', goal: { type: 'craft', id: 'arena', count: 2 }, reward: { gems: 3, xp: 50 } },
+  { id: 't17', title: 'Primera prueba', text: 'Pasá el simulacro de crecida, jugándolo o dejando que se resuelva solo.', goal: { type: 'threat', count: 1 }, reward: { gems: 5, xp: 80, mats: { piedra: 2, madera: 2 } } },
   { id: 't18', title: 'Tres estrellas', text: 'Hacé una salida con las 3 estrellas.', goal: { type: 'expedition', minStars: 3, count: 1 }, reward: { gems: 5, xp: 80, chest: 'plata' } },
   { id: 't19', title: 'Hacia las sierras', text: 'Explorá una zona de las Sierras Bajas.', goal: { type: 'zone', region: 'sierras', count: 1 }, reward: { gems: 8, xp: 100 } },
   { id: 't20', title: 'Época de Piedra', text: 'Subí la ciudad al rango Pueblo.', goal: { type: 'castle', count: 3 }, reward: { gems: 10, xp: 150, chest: 'plata' } },
