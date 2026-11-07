@@ -549,7 +549,7 @@ export function openInfo(S, uid) {
         else {
           if (d.prod?.coins) fx.push(`Producción ${E.fmtNum(ps.perCycle || 0)} → ${E.fmtNum(Math.round((ps.perCycle || 0) * (1 + 0.5 * b.level) / (1 + 0.5 * (b.level - 1))))}`);
           if (d.pop) fx.push(`Vecinos ${E.buildingPop(b)} → ${Math.round(d.pop * (1 + 0.4 * b.level))}`);
-          // lo que cambia a la vista: estructura por nivel (arte por época) o el adorno del respaldo (upgradeDressing)
+          // lo que cambia a la vista: estructura por nivel (arte por época)
           const VERT = { madera: 'chimenea de piedra', piedra: 'torre de piedra', ladrillo: 'chimenea alta', hierro: 'tanque de agua', vidrio: 'antena' };
           const eraId = ERAS[E.buildingEra(b) - 1]?.id;
           const look = d.eraArt

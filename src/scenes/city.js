@@ -595,8 +595,8 @@ export default function create(ctx) {
       const big = b.id === 'castillo' || (E.def(b).cat === 'monumento' && level >= E.maxLevel(b));
       if (big) fx.confetti(c.x, e.height * 0.8, c.z);
       fx.sparkle(c.x, e.height * 0.6, c.z, [PALETTE.slate, '#ffffff', PALETTE.gold]);
-      // casas y negocios: el cartel cuenta qué adorno nuevo se sumó (ver upgradeDressing en models-kit.js)
-      const d = E.def(b), NEW = { 2: 'Flores', 3: 'Faroles', 4: 'Bandera', 5: 'Detalles dorados' };
+      // casas y negocios: el cartel cuenta qué cambia en la estructura (arte por época y nivel)
+      const d = E.def(b), NEW = { 2: 'Anexo nuevo', 3: 'Un piso más', 4: 'Más alto', 5: 'Remate y cerco' };
       const extra = (d.cat === 'casa' || d.cat === 'negocio') && d.prod && NEW[level] ? ` · ${NEW[level]}` : b.id === 'castillo' ? ` · ${E.rankName(level)}` : '';
       setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Nivel ${level}!${extra}`), 120);
       if (big) ui.confetti();

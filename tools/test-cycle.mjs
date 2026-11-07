@@ -68,10 +68,23 @@ async function waitFor(code, ms = 10000) {
 }
 const run = (body) => page.evaluate(new Function(`const { store, economy: E, quests: Q, ctx, bus } = window.__pixelia; ${body}`));
 async function tapXY(x, y) { if (VIEW.hasTouch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y); }
+// abre el panel de Expedición limpio: cierra lo que haya quedado abierto (con la máquina cargada un ✕ puede no
+// llegar a cerrar y el panel viejo queda con el equipo de antes) y reintenta el toque hasta que el panel aparece
+async function openExp(timeout = 12000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeout) {
+    await page.evaluate(() => document.querySelectorAll('.modal .modal-x').forEach(b => b.click()));
+    if (!(await waitFor(`!document.querySelector('.modal')`, 2500))) continue;
+    await waitFor(`!!document.querySelector('[data-act="expedition"]')`, 4000);
+    await tapSel('[data-act="expedition"]', null, 2000);
+    if (await waitFor(`!!document.querySelector('.modal.pnl-ex [data-ex-go]')`, 3000)) return true;
+  }
+  return false;
+}
 async function tapSel(sel, text = null, timeout = 5000) {
   const t0 = Date.now();
   while (Date.now() - t0 < timeout) {
-    const p = await page.evaluate((sel, text) => {
+    const where = () => page.evaluate((sel, text) => {
       const re = text ? new RegExp(text, 'i') : null;
       const e = [...document.querySelectorAll(sel)].find(e => { const b = e.getBoundingClientRect(); return b.width > 2 && b.height > 2 && !e.disabled && (!re || re.test(e.textContent)); });
       if (!e) return null;
@@ -79,7 +92,9 @@ async function tapSel(sel, text = null, timeout = 5000) {
       const b = e.getBoundingClientRect();
       return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
     }, sel, text);
-    if (p) { await sleep(250); await tapXY(p.x, p.y); return true; }
+    const p = await where();
+    // si el botón todavía se mueve (una tarjeta que entra animada) se espera a que quede quieto antes de tocarlo
+    if (p) { await sleep(250); const q = await where(); if (q && Math.abs(q.x - p.x) < 1 && Math.abs(q.y - p.y) < 1) { await tapXY(q.x, q.y); return true; } continue; }
     await sleep(150);
   }
   console.log(`    (no encontré ${sel}${text ? ' «' + text + '»' : ''})`);
@@ -244,7 +259,7 @@ try {
   const tall = await placeNow('taller');
   ok(tall.uid > 0, 'Taller construido');
   ok(await run(`return (store.state.materials.madera || 0) === ${(mats1.madera || 0) - 3}`), 'el Taller gastó 3 de madera');
-  await tapSel('[data-act="expedition"]');
+  await openExp();
   await waitFor(`!!document.querySelector('.modal.pnl-ex [data-role="ingenieria"]')`, 5000);
   const ing1 = await roleLine('ingenieria');
   ok(/Ingeniería 1/.test(ing1 || '') && /75%/.test(ing1 || ''), 'Ingeniería 1: cruzar un río 75%', ing1);
@@ -253,7 +268,7 @@ try {
   const up = await run(`const b = store.state.city.buildings.find(o => o.uid === ${tall.uid}); const r = E.startUpgrade(b.uid); if (r.error) return r; b.upgradeEnd = Date.now() - 1; E.tick(); return { level: b.level };`);
   ok(up.level === 2, 'Taller mejorado a nivel 2', up);
   ok(await run(`return ctx.expedition.cycleUpgradeLines(store.state.city.buildings.find(o => o.id === 'taller')).some(t => /80% → 85%/.test(t))`), 'la ficha anticipa el próximo nivel: 80% → 85%');
-  await tapSel('[data-act="expedition"]');
+  await openExp();
   await waitFor(`!!document.querySelector('.modal.pnl-ex [data-role="ingenieria"]')`, 5000);
   const ing2 = await roleLine('ingenieria');
   ok(/Ingeniería 2/.test(ing2 || '') && /80%/.test(ing2 || ''), 'Ingeniería 2: cruzar un río 80%', ing2);
@@ -273,7 +288,7 @@ try {
 
   // ===================================================================
   section('Salida normal: zona 1 explorada y terreno');
-  await tapSel('[data-act="expedition"]');
+  await openExp();
   await waitFor(`!!document.querySelector('.modal.pnl-ex [data-ex-go="normal"]')`, 5000);
   ok(await page.evaluate(() => !!document.querySelector('.modal.pnl-ex [data-equip="cuerda"].on')), 'la Cuerda viene elegida',
     await page.evaluate(() => ({ modals: [...document.querySelectorAll('.modal')].map(m => m.className), equip: window.__pixelia.store.state.equipment, btns: [...document.querySelectorAll('.modal.pnl-ex [data-equip]')].map(b => b.outerHTML.slice(0, 120)) })));
@@ -320,10 +335,10 @@ try {
   await run(`store.grant({ prov: 20 }, 'test'); return true;`);
   // después de ampliar el terreno el HUD vuelve cuando termina la animación (con la máquina cargada tarda)
   await waitFor(`!!document.querySelector('[data-act="expedition"]')`, 8000);
-  await tapSel('[data-act="expedition"]');
+  await openExp();
   await waitFor(`!!document.querySelector('.modal.pnl-ex [data-ex-go="normal"]:not(:disabled)')`, 5000);
   await tapSel('.modal.pnl-ex [data-ex-go="normal"]');
-  await waitFor(`!!document.querySelector('.scene-expedition')?.__exp?.view`, 25000);
+  await waitFor(`(() => { const e = document.querySelector('.scene-expedition')?.__exp; return !!e?.view && e.run?.steps === 0; })()`, 25000); // la salida nueva, no la escena anterior que se está yendo
   e = await exp();
   const mv = e.view.moves.find(m => m.ok);
   await page.evaluate((x, y) => document.querySelector('.scene-expedition').__exp.move(x, y), mv.x, mv.y);
@@ -336,7 +351,7 @@ try {
   await sleep(1500);
   await drain();
   await run(`ctx.hud.refreshBadges(); return true;`);
-  await tapSel('[data-act="expedition"]');
+  await openExp();
   ok(await waitFor(`!!document.querySelector('.modal.pnl-ex [data-ex-go="resume"]')`, 5000), 'el panel ofrece Retomar');
   ok(await page.evaluate(() => document.querySelector('.modal.pnl-ex [data-ex-go="normal"]')?.disabled), 'y no deja salir de nuevo');
   await shot('panel-retomar');

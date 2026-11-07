@@ -219,7 +219,7 @@ export function createPlacer(host) {
     const movingB = p.uid != null ? entries.get(p.uid)?.b : null;
     const isCon = !!movingB && E.isConstructing(movingB);
     const fp = E.footprint(p.id, 0);
-    const model = isCon ? safe(() => constructionModel(...fp, host.themeId()), fp) : safe(() => buildingModel(p.id, p.level, { ...host.modelOpts(), era: movingB ? movingB.era : E.cityEra() }), fp);
+    const model = isCon ? safe(() => constructionModel(...fp, host.themeId()), fp) : safe(() => buildingModel(p.id, p.level, { ...host.modelOpts(), era: movingB && E.hasEra(movingB) ? (movingB.era || 1) : E.cityEra() }), fp);
     const mats = makeGhost(model, 0.84);
     const root = new THREE.Group();
     root.add(model);
