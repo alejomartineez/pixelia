@@ -839,6 +839,10 @@ export default function create(ctx) {
         get card() { return !!card; },
         get modal() { return !!modal; },
         cellScreen(x, y) { return r ? screenOf(x, y, 0.3) : null; },
+        // para las pruebas (tools/test-cycle.mjs): los mismos caminos que el toque, el teclado y el botón Volver
+        move(x, y) { tryMove(x, y); },
+        choose(i) { card?.choose(i); },
+        home(force = false) { goHome(force); },
       };
     },
     unmount() {

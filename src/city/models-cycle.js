@@ -172,7 +172,8 @@ function taller(m, L) {
 function establo(m, L) {
   const v = m.v;
   lot(v, 24, 24, grass);
-  const s = shell(m, L, { x0: 2, x1: 15, z0: 2, z1: 12, fh: 6, doorU: 7, doorW: 4, wins: [3, 13], annex: 'px', annexW: 5 });
+  const barn = (x, y, z) => (y % 3 === 0 ? '#5f3a26' : (x + z) % 7 === 0 ? '#7a4a32' : '#8f5a3c');   // tablas de granero
+  const s = shell(m, L, { x0: 2, x1: 15, z0: 2, z1: 12, fh: 6, doorU: 7, doorW: 4, wins: [3, 13], annex: 'px', annexW: 5, wall: barn });
   // portón de granero con cruz
   fbox(v, 'pz', 12, 7, 2, 4, 5, 0, '#7a4a32');
   for (let i = 0; i < 4; i++) { v.set(7 + i, 2 + i, 13, W.cream); v.set(10 - i, 2 + i, 13, W.cream); }
