@@ -57,13 +57,17 @@ entrada continua por el borde, rayos anunciados, premio proporcional, campos nue
 Herramientas (no van al precache): `tools/test-threats.mjs` (en `npm test`), `tools/sim-threats.mjs` (`npm run sim:threats`).
 
 ## Pruebas
-- `node tools/test-threats.mjs` (68 chequeos): calendario y reglas en Node; en Chrome (iPhone): simulacro al llegar a
+- `node tools/test-threats.mjs` (69 chequeos): calendario y reglas en Node; en Chrome (iPhone): simulacro al llegar a
   Caserío con su aviso y cartel, t15–t17 en su lugar, panel, radio al colocar el Dique (con "cubierto" sobre las casas) y que
   se borre al cancelar, preparación que sube con Dique y bolsas, defensa jugada con un toque real (cuadrilla), turnos hasta
   el resultado, eventos, t17; resolución automática con recarga y "Mientras no estabas" una sola vez; dañado no produce ni
   mejora, marca en la ciudad, ficha con Reparar; arreglo a las 72 h; defensa a medias que se termina sola al pasar el día.
 - `node tools/sim-threats.mjs` (✔ en las 6 metas): ver el bloque "Fase 3" del §3.4 de DESIGN-CORE.md.
-- `npm test` completo: ver el resumen al final de este archivo.
+- `npm test` completo en verde (13 suites) con master mergeado (v19): e2e 85, stress, visitas, mock, social, rango 32,
+  obras 36, Mi Casa 43, expedición 30, ciclo 61, **amenazas 69** (nueva), telemetría 67 y SQL 153; 0 fallas, 0 errores de
+  página. La telemetría falló una vez en el interruptor de Ajustes (carga de otras sesiones) y pasó sola al reintentar.
+- Vista previa y capturas de iPhone (`smoke.mjs` y las de `test-threats.mjs`): cartel "Incendio · mañana", panel, radio del
+  Dique con "cubierto", defensa en curso con el arroyo crecido, resultado, "Mientras no estabas" y ficha dañada.
 
 ## Falta / para otras fases
 - **Arte por época** de las defensas (Fase 4): hoy usan el respaldo `eraRecolor`. Marcar `eraArt: true` al dibujarlas.

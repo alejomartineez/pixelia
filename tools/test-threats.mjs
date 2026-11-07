@@ -173,7 +173,7 @@ try {
   ok(await tapSel('.th-chip'), 'toqué el cartel');
   ok(await waitFor(`!!document.querySelector('.modal.th-modal')`, 4000), 'se abre el panel del simulacro');
   const panel = await page.evaluate(() => document.querySelector('.modal.th-modal')?.textContent || '');
-  ok(/Preparación \d+%/.test(panel) && /En riesgo/.test(panel), 'muestra preparación y en riesgo', panel.slice(0, 160));
+  ok(/Preparación/.test(panel) && /no hay nada expuesto/.test(panel) && !/En riesgo/.test(panel), 'sin nada expuesto lo dice (y no muestra un 100% engañoso)', panel.slice(0, 160));
   await shot('panel-amenaza');
   await page.keyboard.press('Escape'); await sleep(300); await drain();
 
@@ -185,6 +185,10 @@ try {
   ok(h1.uid && h2.uid && h3.uid, 'tres edificios junto al arroyo', [h1, h2, h3]);
   const risk0 = await run(`return T.threatStatus().info;`);
   ok(risk0.enRiesgo >= 3 && risk0.prep < 0.3, `sin defensas la preparación es baja (${risk0.pct}%)`, risk0.pct);
+  await tapSel('.th-chip'); await sleep(500);
+  const panel2 = await page.evaluate(() => document.querySelector('.modal.th-modal')?.textContent || '');
+  ok(/Preparación \d+%/.test(panel2) && /En riesgo \(3\)/.test(panel2) && /sin cubrir/.test(panel2), 'con casas junto al arroyo: preparación, en riesgo (3) y "sin cubrir"', panel2.slice(0, 200));
+  await page.keyboard.press('Escape'); await sleep(300); await drain();
 
   // ===================================================================
   section('Radio al colocar el Dique');
