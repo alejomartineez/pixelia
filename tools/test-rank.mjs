@@ -174,7 +174,9 @@ try {
   const ficha = await bea.evaluate(() => ({ txt: document.querySelector('.cx-info-modal')?.textContent || '', stars: document.querySelectorAll('.cx-info-modal .cx-ihead .cx-stars img').length, reqs: document.querySelectorAll('.cx-info-modal .cx-reqline').length }));
   ok(/Rango 2: Caserío/.test(ficha.txt), 'la ficha dice «Rango 2: Caserío»');
   ok(ficha.stars === 8, 'la Municipalidad muestra 8 estrellas', ficha.stars);
-  ok(ficha.reqs === 4, 'la ficha lista el expediente del próximo rango', ficha.reqs);
+  // pop, felicidad, Encanto, negocios y planos (los planos cuentan desde que la partida los maneja, Fase 2)
+  ok(ficha.reqs === 5, 'la ficha lista el expediente del próximo rango', ficha.reqs);
+  ok(/Planos/i.test(ficha.txt), 'el expediente pide planos');
   await shot(bea, 'ficha-municipalidad');
   await bea.evaluate(() => window.__pixelia.ctx.ui.closeAllModals());
   await sleep(300);
