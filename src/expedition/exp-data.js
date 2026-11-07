@@ -17,7 +17,7 @@ export const EXP = {
   botiquin: 3, atender: 2,
   vision: 1, visionExploracion: 2,
   mirador: 3, miradorExploracion3: 4,
-  probMin: 10, probMax: 95, roleStep: 3, zonePenalty: 3, tierPenalty: 2,
+  probMin: 10, probMax: 95, roleStep: 5, zonePenalty: 3, tierPenalty: 2,   // roleStep: +5 por nivel de rol sobre 1 (Fase 2)
   care: 10,                              // después de un fallo, la próxima decisión arriesgada: +10 "con cuidado" (a la vista)
   cargoBase: 6, cargoPerEstablo: 3, carreta: 4,
   ringAmount: [2, 2, 3],                 // materiales por casilla de recurso: cerca / medio / lejos

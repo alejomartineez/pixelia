@@ -17,6 +17,8 @@ import { createBatcher } from './city-batch.js';
 import { createVisit } from './city-visit.js';
 import { activeBoosts } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
+// ícono de lo que produce cada edificio (globito y cobro): monedas, gemas o provisiones (Huerta, Tambo…)
+const CUR_ICON = { coins: 'coin', gems: 'gem', prov: '🍞' };
 
 const TAP_PX = 8;
 
@@ -136,7 +138,7 @@ export default function create(ctx) {
   function ensureBubble(e, ps) {
     const cls = 'cx-bubble' + (ps.currency === 'gems' ? ' gem' : '') + (ps.full ? ' full' : '');
     if (e.bubble) { if (e.bubble.el.className !== cls) e.bubble.el.className = cls; return; }
-    const el = ui.h('div', { class: cls, html: `<div class="cx-bb">${icon(ps.currency === 'gems' ? 'gem' : 'coin', 24)}</div>` });
+    const el = ui.h('div', { class: cls, html: `<div class="cx-bb">${icon(CUR_ICON[ps.currency] || 'coin', 24)}</div>` });
     el.className = cls;
     e.bubble = ov.add(el, topPos(e, 0.2));
     e.bubble.uid = e.b.uid;
@@ -852,16 +854,17 @@ export default function create(ctx) {
       life.refreshGrid();
       syncStatus();
     }));
+    offs.push(bus.on('production:full', () => { ui.toast('El depósito de provisiones está lleno: salí de expedición', { icon: '🍞' }); }));
     offs.push(bus.on('production:collected', ({ b, amount, currency }) => {
       const e = entries.get(b.uid);
       if (!e) return;
       const s = screenOf(topPos(e, 0.5));
       const n = batchCollect ? 2 : clamp(Math.round(amount / 12) + 3, 3, 8);
       ui.flyCurrency(s.x, s.y, currency, currency === 'gems' ? Math.min(n, 4) : n);
-      ui.floatText(s.x, s.y - 18, `+${E.fmtNum(amount)} ${icon(currency === 'gems' ? 'gem' : 'coin', 22)}`);
+      ui.floatText(s.x, s.y - 18, `+${E.fmtNum(amount)} ${icon(CUR_ICON[currency] || 'coin', 22)}`);
       removeBubble(e, true);
       if (!e.anim) e.anim = { type: 'squish', t: 0 };
-      fx.sparkle(e.root.position.x, e.height + 0.2, e.root.position.z, currency === 'gems' ? ['#8fd3ff', '#ffffff', '#d4efff'] : ['#ffd166', '#ffffff', '#fff0c2']);
+      fx.sparkle(e.root.position.x, e.height + 0.2, e.root.position.z, currency === 'gems' ? ['#8fd3ff', '#ffffff', '#d4efff'] : currency === 'prov' ? ['#d9b46a', '#ffffff', '#9ccf7a'] : ['#ffd166', '#ffffff', '#fff0c2']);
       setFlag('collect');
       if (worldTip?.kind === 'collect') clearWorldTip();
     }));

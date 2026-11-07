@@ -3,7 +3,7 @@
 import { bus } from './bus.js';
 import {
   CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
-  LEGACY_TYPES, LEGACY_ITEMS, MATERIALS,
+  LEGACY_TYPES, LEGACY_ITEMS, MATERIALS, REGION_MATERIALS, PROV_START, RESERVE_CAP,
 } from './data.js';
 
 const BASE_KEY = 'pixelia.save.v1';
@@ -65,9 +65,19 @@ export function defaultState() {
       camera: null, // la escena de ciudad puede guardar acá su posición/zoom
     },
     builders: START_BUILDERS,
-    // materiales de los minijuegos para los monumentos: { cristal, ladrillo, tuerca, mapa }
-    materials: Object.fromEntries(MATERIALS.map(m => [m.id, 0])),
-    quests: { main: 0, mainProgress: 0, daily: null, achTier: {} },
+    // materiales: los de minijuego para los monumentos ({ cristal, ladrillo, tuerca, mapa }, hasta la Fase 5) y los de
+    // región que trae la expedición ({ madera, piedra, mineral, hierbas })
+    materials: Object.fromEntries([...MATERIALS, ...REGION_MATERIALS].map(m => [m.id, 0])),
+    // recursos del ciclo (DESIGN-CORE.md §5.1): provisiones en el depósito (tope en economy.provCap), planos,
+    // equipo de expedición { id: n }, reservas para las amenazas { id: n } y colonos (suman población)
+    prov: PROV_START,
+    planos: 0,
+    equipment: {},
+    reserves: {},
+    colonos: 0,
+    expedition: {},   // lo completa initExpedition (src/expedition/expedition.js)
+    // done: misiones principales cobradas por id; main: cuántas van (compatibilidad); chain: versión de la cadena
+    quests: { main: 0, mainProgress: 0, daily: null, achTier: {}, done: {}, chain: 0 },
     login: { last: null, streak: 0 },
     stats: {},
     games: {
@@ -204,15 +214,49 @@ export const store = {
     store.save();
   },
 
-  // ---------- Monedas / gemas ----------
+  // ---------- Monedas, gemas y recursos ----------
+  // cost/reward: { coins, gems, xp, mats: {id: n}, prov, planos, equip: {id: n}, reserves: {id: n}, colonos (solo premios) }
+  /** Tope del depósito de provisiones (lo pone economy.js; sin economía, sin tope). */
+  provCap: () => Infinity,
   canAfford(cost = {}) {
-    return (cost.coins || 0) <= state.coins && (cost.gems || 0) <= state.gems && store.hasMats(cost.mats);
+    return (cost.coins || 0) <= state.coins && (cost.gems || 0) <= state.gems && store.hasMats(cost.mats)
+      && (cost.prov || 0) <= (state.prov || 0) && (cost.planos || 0) <= (state.planos || 0)
+      && store.hasItems('equipment', cost.equip) && store.hasItems('reserves', cost.reserves);
   },
-  /** ¿Alcanzan los materiales? mats: { cristal: n, ... } (sin mats: sí). */
+  /** ¿Alcanzan los materiales? mats: { cristal: n, madera: n, ... } (sin mats: sí). */
   hasMats(mats) {
     if (!mats) return true;
     const have = state.materials || {};
     return Object.entries(mats).every(([id, n]) => (have[id] || 0) >= (n || 0));
+  },
+  /** ¿Alcanzan el equipo o las reservas? kind: 'equipment' | 'reserves'. */
+  hasItems(kind, items) {
+    if (!items) return true;
+    const have = state[kind] || {};
+    return Object.entries(items).every(([id, n]) => (have[id] || 0) >= (n || 0));
+  },
+  /** Suma (o resta) un recurso numérico del ciclo y avisa: resources:changed {key, value, delta, reason}. */
+  _res(key, delta, reason) {
+    if (!delta) return 0;
+    let v = (state[key] || 0) + delta;
+    if (key === 'prov' && delta > 0) v = Math.min(v, Math.max(state.prov || 0, store.provCap()));
+    const d = v - (state[key] || 0);
+    state[key] = Math.max(0, v);
+    if (d) bus.emit('resources:changed', { key, value: state[key], delta: d, reason });
+    return d;
+  },
+  _items(kind, items, sign, reason) {
+    if (!items) return;
+    state[kind] ||= {};
+    const delta = {};
+    for (const [id, n0] of Object.entries(items)) {
+      const n = Math.max(0, Math.round(n0 || 0));
+      if (!n) continue;
+      state[kind][id] = Math.max(0, (state[kind][id] || 0) + sign * n);
+      if (kind === 'reserves' && sign > 0) state[kind][id] = Math.min(RESERVE_CAP, state[kind][id]);
+      delta[id] = sign * n;
+    }
+    if (Object.keys(delta).length) bus.emit('resources:changed', { key: kind === 'equipment' ? 'equip' : 'reserves', value: { ...state[kind] }, delta, reason });
   },
   /** Descuenta si alcanza. Devuelve true/false. */
   spend(cost = {}, reason = '') {
@@ -224,18 +268,24 @@ export const store = {
       for (const [id, n] of Object.entries(cost.mats)) state.materials[id] = (state.materials[id] || 0) - (n || 0);
       bus.emit('materials:changed', { materials: state.materials, delta: Object.fromEntries(Object.entries(cost.mats).map(([id, n]) => [id, -n])), reason });
     }
+    if (cost.prov) store._res('prov', -cost.prov, reason);
+    if (cost.planos) store._res('planos', -cost.planos, reason);
+    store._items('equipment', cost.equip, -1, reason);
+    store._items('reserves', cost.reserves, -1, reason);
     dirty = true;
     bus.emit('currency:changed', { coins: state.coins, gems: state.gems, delta: { coins: -(cost.coins || 0), gems: -(cost.gems || 0) }, reason });
     return true;
   },
   /**
-   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats, furniture}. mats: { cristal: n, ... } → emite 'materials:changed'. source: 'collect'|'game'|'quest'|'levelup'|'login'|...
+   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats, furniture, prov, planos, equip, reserves, colonos}.
+   * mats: { cristal: n, madera: n, ... } → emite 'materials:changed'. prov/planos/colonos/equip/reserves → 'resources:changed'
+   * (las provisiones respetan el tope del depósito). source: 'collect'|'game'|'quest'|'levelup'|'login'|'expedition'|...
    *  - chest: 'madera'|'plata'|'oro'|'real' (o {type, n}); chests: cantidad (default 1) → emite 'reward:chest' {type, n, source}
    *  - stickers: n (o {n, minStars}) → emite 'reward:stickers' {n, minStars, source}; el álbum deja el resultado en payload.result
-   * Devuelve { stickers: [{id, stars, isNew, count}] } (vacío si no hubo figuritas).
+   * Devuelve { stickers: [{id, stars, isNew, count}], prov (lo que entró al depósito) }.
    */
   grant(reward = {}, source = '') {
-    const out = { stickers: [] };
+    const out = { stickers: [], prov: 0 };
     if (!reward || typeof reward !== 'object') return out;
     const coins = Math.max(0, Math.round(reward.coins || 0));
     const gems = Math.max(0, Math.round(reward.gems || 0));
@@ -254,6 +304,15 @@ export const store = {
       }
       if (Object.keys(delta).length) bus.emit('materials:changed', { materials: state.materials, delta, reason: source });
     }
+    for (const key of ['prov', 'planos', 'colonos']) {
+      const n = Math.max(0, Math.round(reward[key] || 0));
+      if (!n) continue;
+      const d = store._res(key, n, source);
+      if (key === 'prov') out.prov = d;
+      if (key === 'planos' && d) store.inc('planosEarned', d);
+    }
+    store._items('equipment', reward.equip, 1, source);
+    store._items('reserves', reward.reserves, 1, source);
     if (reward.furniture) {   // mueble para Mi Casa: { furniture: 'id' } (home/furniture.js lo suma al inventario)
       const id = typeof reward.furniture === 'object' ? reward.furniture.id : reward.furniture;
       if (id) bus.emit('reward:furniture', { id, n: (typeof reward.furniture === 'object' && reward.furniture.n) || 1, source });

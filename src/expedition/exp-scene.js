@@ -1,8 +1,10 @@
 // Escena `expedition` (DESIGN-CORE.md §2.10): diorama vóxel de la grilla con niebla, el grupo caminando y las decisiones.
-// Prototipo de la Fase 1: no toca la ciudad. Las provisiones y los roles son fijos (EXP.prototype) y el botín solo se
-// muestra. La salida en curso se guarda en state.expedition.active y se retoma al volver a entrar (o al recargar).
-//   ?scene=expedition                salida normal (Bosque del Arroyo, zona 1)
-//   ?scene=expedition&short=1        salida corta
+// Con la ciudad (Fase 2): la salida la arma expedition.js (startExpedition, desde el panel de Expedición) y al terminar
+// se acredita enseguida (finishExpedition). La salida en curso se guarda en state.expedition.active y se retoma al volver
+// a entrar (o al recargar). Sin Casa de Expediciones (o con &proto=1) queda la salida de práctica de la Fase 1: roles y
+// provisiones fijos (EXP.prototype) y el botín solo se muestra.
+//   router.go('expedition', { resume: true })        retoma la salida en curso (o arma una con region/kind si no hay)
+//   ?scene=expedition                práctica (o la salida en curso) · &short=1 salida corta
 //   &region=sierras&zone=2           otra región o zona · &new=1 descarta la salida guardada · &seed=123 semilla fija
 import * as THREE from 'three';
 import { createPixelRenderer, addLights, setIsoCamera, disposeObject, shade } from '../core/voxel.js';
@@ -12,6 +14,7 @@ import { avatarModel, randomLook } from '../avatar/avatar.js';
 import { EXP, REGIONS, MATERIALS, HAZARDS, CONTENT, ringOf } from './exp-data.js';
 import { hashSeed } from './exp-gen.js';
 import * as R from './exp-rules.js';
+import { hasBase, startExpedition, finishExpedition, expeditionStatus } from './expedition.js';
 import { injectStyle, buildDom, openDecision, openResult, openMenu, openConfirmFail, matsHtml, provTxt, ICONS } from './exp-ui.js';
 
 // ---------------------------------------------------------------- arte de las casillas
@@ -138,14 +141,26 @@ export default function create(ctx) {
     if (e.active === undefined) e.active = null;
     return e;
   }
+  /** Salida de la ciudad (no de práctica): se acredita en la ciudad. */
+  const cityRun = () => !!run?.city;
   function persist() {
     const e = expState();
+    // la salida de la ciudad se acredita apenas termina (aunque la app se cierre antes de ver el resultado)
+    if (run && run.ended && cityRun() && !run.city.summary) { try { finishExpedition(run); } catch (err) { console.error('[expedition] acreditar', err); } }
     e.active = run && !run.ended ? run : null;
     store.markDirty();
     try { store.save(); } catch {}
   }
   function newRun(p) {
     const e = expState();
+    // con la ciudad: si hay Casa de Expediciones y no se pidió práctica, la arma expedition.js
+    if (!p.proto && hasBase()) {
+      const kind = p.short === '1' || p.short === true || p.kind === 'corta' ? 'corta' : 'normal';
+      const res = startExpedition({ region: p.region, kind, party: p.party || null, equip: p.equip || null });
+      if (res.run) return res.run;
+      ui.toast(res.error || 'No se pudo salir', { icon: 'info' });
+      return null;
+    }
     const region = REGIONS[p.region] ? p.region : 'bosque';
     const zone = Math.max(1, Math.min(5, Number(p.zone) || 1));
     const kind = p.short === '1' || p.short === true || p.kind === 'corta' ? 'corta' : 'normal';
@@ -157,7 +172,7 @@ export default function create(ctx) {
       prov: kind === 'corta' ? EXP.kinds.corta.prov : P.prov,
       mods: { roleLevel: Object.fromEntries(P.party.map(id => [id, P.level])), cargoMax: P.cargoMax },
     });
-    bus.emit('expedition:started', { region, zone, kind, party: nr.party, equip: nr.equip, prov: nr.prov, prototype: true });
+    bus.emit('expedition:started', { region, zone, kind, party: nr.party, equip: nr.equip, prov: nr.prov, prototype: true });   // práctica
     return nr;
   }
 
@@ -560,7 +575,7 @@ export default function create(ctx) {
           const p = partyScreen();
           if (e.outcome === 'ok') { float(p.x, p.y - 20, e.p >= 100 ? (e.text || 'Listo') : 'Salió bien'); audio.sfx(e.p >= 100 ? 'tap' : 'select'); }
           else { float(p.x, p.y - 20, 'Salió mal'); audio.sfx('error'); if (e.text) dom.hint(ui.esc(e.text) + '.', 3500); }
-          bus.emit('expedition:decision', { region: run.region, hazard: e.hazard, option: e.option, p: e.p, outcome: e.outcome, prototype: true });
+          bus.emit('expedition:decision', { region: run.region, hazard: e.hazard, option: e.option, p: e.p, outcome: e.outcome, ...(cityRun() ? {} : { prototype: true }) });
           buildCell(run.pos[1] * run.w + run.pos[0]);
           await wait(350);
           break;
@@ -638,19 +653,30 @@ export default function create(ctx) {
   }
   function showResult() {
     if (modal) { modal.close(); modal = null; }
-    const res = R.result(run);
     const e = expState();
-    e.last = res; e.active = null; persist();
-    bus.emit('expedition:finished', { region: run.region, zone: run.zone, kind: run.kind, stars: res.starCount, loot: res.loot, reason: res.reason, steps: res.steps, objectiveDone: res.objectiveDone, prototype: true });
+    let res, info = { kind: run.kind, regionName: meta.regionName, zone: run.zone };
+    if (cityRun()) {
+      persist();
+      res = run.city.summary || finishExpedition(run);
+      const st = expeditionStatus();
+      info = { ...info, city: true, canShort: st.canShort, canNormal: st.canNormal };
+    } else {
+      res = R.result(run);
+      e.last = res; e.active = null; persist();
+      bus.emit('expedition:finished', { region: run.region, zone: run.zone, kind: run.kind, stars: res.starCount, loot: res.loot, reason: res.reason, steps: res.steps, objectiveDone: res.objectiveDone, prototype: true });
+    }
     dom.clearChips();
     dom.hint(null);
-    modal = openResult(root, res, { kind: run.kind, regionName: meta.regionName, zone: run.zone }, (a) => {
+    modal = openResult(root, res, info, (a) => {
       if (a === 'city') { audio.sfx('close'); ctx.router.go('city'); return; }
+      if (info.city && a === 'again') { audio.sfx('tap'); Promise.resolve(ctx.router.go('city')).then(() => ctx.openPanel('expedition')); return; }
       modal.close(); modal = null;
       audio.sfx('tap');
       start({ ...params, short: a === 'short' ? '1' : '', kind: a === 'short' ? 'corta' : 'normal', seed: null, new: '1' });
     });
     res.stars.forEach((on, i) => { if (on) setTimeout(() => alive && audio.sfx('star'), 300 + i * 250); });
+    // festejo grande: región explorada completa (Guía de tono)
+    if (res.regionDone) setTimeout(() => { if (alive) { ui.confetti?.(); audio.sfx('win'); } }, 600);
   }
   function openEscMenu() {
     if (modal || busy) return;
@@ -723,8 +749,9 @@ export default function create(ctx) {
   let params = {};
   function start(p) {
     const e = expState();
-    if (p.new === '1' || p.new === true) e.active = null;
+    if ((p.new === '1' || p.new === true) && !(e.active && e.active.city)) e.active = null;   // la de la ciudad no se descarta
     run = e.active && !e.active.ended && e.active.v === 1 ? e.active : newRun(p);
+    if (!run) { setTimeout(() => alive && ctx.router.go('city'), 0); return; }
     persist();
     const RG = REGIONS[run.region];
     meta = { regionName: RG.name, zone: run.zone, kind: run.kind };
@@ -772,7 +799,7 @@ export default function create(ctx) {
       alive = true;
       params = { ...(p || {}) };
       const qs = new URLSearchParams(location.search);
-      for (const k of ['short', 'region', 'zone', 'seed', 'new']) if (params[k] == null && qs.has(k)) params[k] = qs.get(k);
+      for (const k of ['short', 'region', 'zone', 'seed', 'new', 'proto']) if (params[k] == null && qs.has(k)) params[k] = qs.get(k);
       root = container;
       styleEl = injectStyle();
       dom = buildDom(root, { onHome: () => goHome(), onMenu: () => openEscMenu(), onItem: useItem, onChip: tryMove });
@@ -782,6 +809,7 @@ export default function create(ctx) {
       sun.position.set(6, 18, 10);
       r.scene.add(world);
       start(params);
+      if (!run) return;   // no se pudo salir: vuelve a la ciudad
       r.onFrame((dt, t) => {
         for (const a of [...anims]) {
           a.t += dt;

@@ -1,7 +1,7 @@
 // HUD de la ciudad.
 //  arriba:     perfil (nivel, nombre, xp; tocarlo abre Ajustes) + botón de Ajustes + monedas y gemas
 //  izquierda:  rango de la ciudad + Encanto (abre "Tu ciudad"), población / felicidad / constructoras, efectos activos con tiempo, misión actual
-//  derecha:    botones redondos con globito: Cofres, Pase, Álbum, Evento
+//  derecha:    botones redondos con globito: Expedición (con las provisiones del depósito), Cofres, Pase, Álbum, Evento
 //  abajo:      Juegos · Misiones · Construir · Vestidor · Amigos
 // Los globitos se refrescan con eventos del bus y cada 30 s; los números y los efectos, cada segundo.
 import { bus } from './bus.js';
@@ -17,6 +17,7 @@ import { albumBadge } from '../album/album.js';
 import { seasonBadge, seasonInfo, fmtLeft } from '../season/season.js';
 import { activeEvents, eventBannerInfo } from '../season/events.js';
 import { chestIcon } from '../season/season-ui-common.js';
+import { expeditionBadge, expState } from '../expedition/expedition.js';
 
 let root = null, ctxRef = null, timer = null, badgeTimer = null;
 const safe = (fn, def) => { try { return fn(); } catch (e) { console.error(e); return def; } };
@@ -57,6 +58,7 @@ function render() {
       <button class="hud-quest" data-act="quests"></button>
     </div>
     <div class="hud-rail">
+      <button class="rail-btn exp" data-act="expedition" data-hud="prov" aria-label="Expedición">${icon('🧭', 30)}<span>Expedición</span><em class="rail-tag" data-hud="provtag"></em><i class="badge" data-badge="expedition"></i></button>
       <button class="rail-btn" data-act="chests" aria-label="Cofres">${chestIcon('madera', 34)}<span>Cofres</span><i class="badge" data-badge="chests"></i></button>
       <button class="rail-btn pass" data-act="pass" aria-label="Pase de Temporada"><span class="rail-ic" data-hud="passic">${icon('sparkle', 30)}</span><span>Pase</span><em class="rail-tag" data-hud="passlv"></em><i class="badge" data-badge="pass"></i></button>
       <button class="rail-btn" data-act="album" aria-label="Álbum de figuritas">${icon('album', 30)}<span>Álbum</span><i class="badge" data-badge="album"></i></button>
@@ -70,7 +72,7 @@ function render() {
       <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>Vestidor</span></button>
       <button class="hud-btn" data-act="social">${icon('people', 30)}<span>Contactos</span><i class="badge" data-badge="social"></i></button>
     </nav>`;
-  lastFx = lastEv = lastPass = lastQuest = lastRank = null;
+  lastFx = lastEv = lastPass = lastQuest = lastRank = lastExp = null;
   refreshDynamic();
   refreshBadges();
 }
@@ -164,6 +166,7 @@ function refreshDynamic() {
   root.querySelector('[data-hud="happy"]')?.classList.toggle('boosted', !!hp.boosted);
   setText('builders', `${s.builders - buildersBusy()}/${s.builders}`);
   refreshWorks();
+  refreshExpedition();
   const xp = store.xpProgress();
   const lv = root.querySelector('[data-hud="level"]'); if (lv && lv.textContent !== String(xp.level)) lv.textContent = xp.level;
   const nm = root.querySelector('[data-hud="name"]'); if (nm && nm.textContent !== s.player.name) nm.textContent = s.player.name;
@@ -194,6 +197,7 @@ function refreshBadges() {
   setBadge('social', safe(() => ctxRef?.social?.socialBadge?.() || 0, 0));
   setBadge('quests', safe(() => claimableCount(), 0));
   setBadge('works', safe(() => worksBadge(), 0));
+  setBadge('expedition', safe(() => expeditionBadge(), 0));
 }
 /** Obras: el botón aparece desde el rango Pueblo (o si ya hay un monumento); el globito cuenta las etapas que se pueden empezar. */
 function worksBadge() {
@@ -207,6 +211,21 @@ function refreshWorks() {
   el.style.display = show ? '' : 'none';
 }
 
+/** Expedición: aparece con la Casa de Expediciones (t4) o con una salida en curso; el cartelito muestra las provisiones. */
+let lastExp = null;
+function refreshExpedition() {
+  const el = root.querySelector('[data-act="expedition"]');
+  if (!el) return;
+  const s = store.state;
+  const show = safe(() => s.city.buildings.some(b => b.id === 'casa_exp') || !!expState(s).active, false);
+  const key = show + '|' + (s.prov || 0);
+  if (key === lastExp) return;
+  lastExp = key;
+  el.style.display = show ? '' : 'none';
+  const t = root.querySelector('[data-hud="provtag"]');
+  t.textContent = fmtNum(s.prov || 0);
+  el.title = `Expedición · ${fmtNum(s.prov || 0)} provisiones en el depósito`;
+}
 function onAct(act) {
   const c = ctxRef;
   switch (act) {
@@ -218,14 +237,16 @@ function onAct(act) {
     case 'pass': c.openSeasonPass(); break;
     case 'events': c.openEvents(); break;
     case 'social': c.openSocial('amigas'); break;
+    case 'expedition': c.openPanel('expedition'); break;
     default: c.openPanel(act);
   }
 }
 
-const RAF_EVENTS = ['currency:changed', 'xp:changed', 'level:up', 'quests:changed', 'building:built', 'building:placed', 'building:upgraded',
+const RAF_EVENTS = ['resources:changed', 'currency:changed', 'xp:changed', 'level:up', 'quests:changed', 'building:built', 'building:placed', 'building:upgraded',
   'building:upgradeStarted', 'building:removed', 'builders:changed', 'boosts:changed', 'city:expanded', 'town:rankup', 'building:moved'];
 const BADGE_EVENTS = ['chests:changed', 'album:changed', 'album:seen', 'season:changed', 'events:changed', 'social:badge', 'online:inbox',
-  'quests:changed', 'level:up', 'reward:chest', 'materials:changed', 'building:upgraded', 'building:built', 'building:upgradeStarted', 'town:rankup'];
+  'quests:changed', 'level:up', 'reward:chest', 'materials:changed', 'building:upgraded', 'building:built', 'building:upgradeStarted', 'town:rankup',
+  'resources:changed', 'expedition:finished', 'expedition:started'];
 
 export const hud = {
   init(el, ctx) {
