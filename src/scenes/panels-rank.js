@@ -2,7 +2,7 @@
 // el próximo rango (checklist con barras), qué desbloquea y el botón para mejorar la Municipalidad.
 // Con params.celebrate (número de rango) abre en modo festejo: emblema con rayos, premio y lo que se desbloqueó.
 import { icon } from '../core/icons.js';
-import { BUILDINGS, TOWN_RANKS, RANK_REQ_LABELS, CASTLE_BONUS_PER_LEVEL } from '../core/data.js';
+import { BUILDINGS, TOWN_RANKS, RANK_REQ_LABELS, CASTLE_BONUS_PER_LEVEL, eraOfRank, eraDef } from '../core/data.js';
 import { openShell, burst, rewardHtml } from './panels-common.js';
 
 const CAT_ICON = { casa: 'home', negocio: 'shop', deco: 'flower', especial: 'castle', camino: 'map', monumento: 'monument' };
@@ -61,6 +61,7 @@ export function openRank(ctx, params = {}) {
     return grid;
   }
 
+  const eraChanged = (r) => r > 1 && eraOfRank(r) !== eraOfRank(r - 1);
   // ---------- modo festejo ----------
   function renderCelebrate() {
     const def = E.rankDef(celebrate);
@@ -69,6 +70,13 @@ export function openRank(ctx, params = {}) {
     wrap.append(h('h2.pnl-lv-title', {}, def.name));
     wrap.append(h('p.pnl-lv-sub', {}, `¡Tu ciudad subió al rango ${celebrate} de ${TOWN_RANKS.length}!`));
     if (def.reward) wrap.append(h('div.pnl-lv-reward', { html: `<small>Premio</small>${rewardHtml(def.reward, 24)}` }));
+    // cambio de época (DESIGN-CORE.md §4.1): uno de los festejos grandes
+    if (eraChanged(celebrate)) {
+      const ed = eraDef(eraOfRank(celebrate));
+      const old = E.outdatedBuildings ? E.outdatedBuildings().length : 0;
+      wrap.append(h('div.pnl-lv-reward.pnl-rk-era', { html: `<small>Época nueva</small><b>${esc(ed.name)}</b>
+        <span>Lo que construyas desde ahora sale en ${esc(ed.name.toLowerCase())}.${old ? ` Tenés ${old} ${old === 1 ? 'edificio' : 'edificios'} para renovar desde su ficha.` : ''}</span>` }));
+    }
     const items = rankUnlocks(celebrate);
     if (items.length) {
       wrap.append(h('h4.pnl-lv-h', { html: `${icon('lock', 18)} ¡Se desbloqueó!` }));
@@ -235,6 +243,10 @@ export function openRank(ctx, params = {}) {
     audio.sfx('star');
     sh.later(250, () => burst(innerWidth / 2, innerHeight * 0.3, 120));
     sh.later(900, () => burst(innerWidth / 2, innerHeight * 0.3, 60));
+    if (eraChanged(celebrate)) {   // época nueva: fanfarria y confeti de más
+      sh.later(600, () => { audio.sfx('win'); if (!ui.reducedMotion?.()) ui.confetti?.(); });
+      sh.later(1500, () => burst(innerWidth / 2, innerHeight * 0.25, 140));
+    }
   }
   sh.keyHandler = (e) => {
     if (celebrate && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sh.close(); }

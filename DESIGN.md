@@ -156,7 +156,7 @@ export default function create(ctx) {
 - Mutar estado solo vía store/economy cuando exista función; si se toca a mano, llamar `store.markDirty()`.
 
 ## Eventos (bus)
-`currency:changed, coins:earned, gems:earned, xp:changed, level:up{level,reward}, building:placed{b}, building:built{b}, building:upgradeStarted{b}, building:upgraded{b,level}, building:moved{b}, building:removed{b}, production:collected{b,amount,currency}, city:expanded, builders:changed, minigame:finished{game,score,stars,won}, customize:changed, item:bought, quests:changed, scene:changed{id}, stats:changed, hud:build{focus?}, city:flag{color,hex}, town:rankup{rank,def}, city:focus{uid}, city:place{id}, city:placing{active}, materials:changed{materials,delta,reason}, reward:furniture{id,n,source}, home:changed, home:ready{b}, home:trophy{ids}` (`hud:build` lo emite el botón Construir del HUD; la ciudad abre el menú; `focus` = id de edificio a resaltar. `town:rankup` sale al terminar la mejora de la Municipalidad: la ciudad abre el panel `rank` en modo festejo. `city:focus` abre la ficha de un edificio desde otro panel; `city:place` arranca la colocación de un edificio (lo usa el panel de Obras); `city:placing {active:false}` sale al terminar de colocar: las subidas de nivel ganadas mientras tanto se muestran recién ahí, para no tapar la barra de Colocar).
+`currency:changed, coins:earned, gems:earned, xp:changed, level:up{level,reward}, building:placed{b}, building:built{b}, building:upgradeStarted{b}, building:upgraded{b,level}, building:moved{b}, building:removed{b}, production:collected{b,amount,currency}, city:expanded, builders:changed, minigame:finished{game,score,stars,won}, customize:changed, item:bought, quests:changed, scene:changed{id}, stats:changed, hud:build{focus?}, city:flag{color,hex}, town:rankup{rank,def,era,eraChanged}, era:changed{era,from}, building:renovated{b,era,from}, city:focus{uid}, city:place{id}, city:placing{active}, materials:changed{materials,delta,reason}, reward:furniture{id,n,source}, home:changed, home:ready{b}, home:trophy{ids}` (`hud:build` lo emite el botón Construir del HUD; la ciudad abre el menú; `focus` = id de edificio a resaltar. `town:rankup` sale al terminar la mejora de la Municipalidad: la ciudad abre el panel `rank` en modo festejo. `city:focus` abre la ficha de un edificio desde otro panel; `city:place` arranca la colocación de un edificio (lo usa el panel de Obras); `city:placing {active:false}` sale al terminar de colocar: las subidas de nivel ganadas mientras tanto se muestran recién ahí, para no tapar la barra de Colocar).
 
 ## API de modelos (contratos entre agentes)
 
@@ -174,6 +174,11 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
   que el techo · 5 borde dorado y estrella girando arriba. Los adornos solo van en columnas libres del lote.
   **Se reemplaza** por la capa de época: cada nivel cambia la estructura y cada época el material y la paleta
   (`b.era`, `eraWall/eraRoof/...`, `def.eraArt`; DESIGN-CORE.md §4). `upgradeDressing` queda como respaldo hasta la tanda 3.
+  Hecho (Fase 4): Municipalidad (`models-town.js`), las 5 casas (`eraHouse` en `models-houses.js`) y los 7 negocios de 2×2
+  (`shopBody`/`sidewalk` con época). Respaldo todavía: Cine, Baños, Rueda, Teatro, los especiales de minijuego y los
+  edificios del ciclo y defensas (Fases 2 y 3: les alcanza con `eraStyle`/`eraWall`/`eraRoof`… y `eraArt: true`).
+  `eraWall` arma volúmenes macizos (una cáscara hueca duplicaría los triángulos). El arte por época no pasa por
+  `calmColors`: sus juntas e hiladas son a propósito.
 - Municipalidad (id `castillo`): 8 niveles, uno por rango (`TOWN_RANKS[].look` dice qué estrena: pórtico, alas, fuentes, cúpula
   dorada, techo azul con torrecitas, mirador con alfombra roja, arco dorado con fuegos artificiales). `buildingModel` admite nivel 8 solo para ella.
 - Monumentos (`cat:'monumento'`, `models-monuments.js`): un modelo por etapa. Cada builder dibuja el monumento **terminado**;
@@ -190,7 +195,7 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
 export function constructionModel(w, d)    // andamio + cinta + cajas para obra/mejora, origen centro, base y=0
 export function natureModel(kind, seed)     // 'tree' | 'pine' | 'bush' | 'rock' | 'flowers' | 'mushroom' — decoración fuera del terreno
 export function cloudModel(seed)            // nube vóxel (sin sombra)
-export function thumbnail(id, level = 1)    // -> Promise<dataURL> ícono 96x96 del edificio (render offscreen, cacheado). Usado por el menú de construcción.
+export function thumbnail(id, level = 1, era = 1, theme) // -> Promise<dataURL> ícono del edificio (render offscreen, cacheado). También (id, level, theme, era).
 ```
 
 ### src/avatar/avatar.js (agente Avatar)

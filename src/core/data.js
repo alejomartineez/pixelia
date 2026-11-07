@@ -21,10 +21,11 @@ export { PALETTE } from './palette.js';
 // happy: felicidad que aporta. xp: experiencia al terminar de construir.
 // max: cantidad máxima (undefined = ilimitado). game: minijuego que abre al tocarlo.
 // rank: rango de ciudad mínimo para construirlo. charm: Encanto (si falta, sale de la categoría: ver economy.charmBase).
+// eraArt: el modelo tiene arte propio por época (models.js no le agrega adornos ni recoloreo; DESIGN-CORE.md §4.4).
 export const BUILDINGS = [
   // --- Especiales ---
   { id: 'castillo', name: 'Municipalidad', cat: 'especial', size: [4, 4], unlock: 1, cost: { coins: 0 }, time: 0, max: 1,
-    happy: 10, charm: 20, xp: 0, prod: { coins: 15, cycle: 60, cap: 8 }, desc: 'El corazón de la ciudad. Mejorala para dar bonus a toda la ciudad.' },
+    happy: 10, charm: 20, xp: 0, prod: { coins: 15, cycle: 60, cap: 8 }, eraArt: true, desc: 'El corazón de la ciudad. Mejorala para dar bonus a toda la ciudad.' },
   { id: 'joyeria', name: 'Joyería', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 150 }, time: 10, max: 1,
     happy: 3, xp: 15, game: 'match3', desc: 'Abre el minijuego Joyas Brillantes (combina 3).' },
   { id: 'torre_bloques', name: 'Torre de Bloques', cat: 'especial', size: [2, 2], unlock: 2, cost: { coins: 300 }, time: 20, max: 1,
@@ -41,31 +42,31 @@ export const BUILDINGS = [
 
   // --- Casas ---
   { id: 'casita', name: 'Casa', cat: 'casa', size: [2, 2], unlock: 1, cost: { coins: 100 }, time: 8,
-    pop: 5, prod: { coins: 4, cycle: 45, cap: 6 }, xp: 10, desc: 'Una casa sencilla para 5 habitantes.' },
+    pop: 5, prod: { coins: 4, cycle: 45, cap: 6 }, xp: 10, eraArt: true, desc: 'Una casa sencilla para 5 habitantes.' },
   { id: 'cabana', name: 'Cabaña', cat: 'casa', size: [2, 2], unlock: 2, cost: { coins: 260 }, time: 15,
-    pop: 8, prod: { coins: 7, cycle: 60, cap: 6 }, xp: 18, desc: 'Madera, chimenea y un jardín que alguien riega.' },
+    pop: 8, prod: { coins: 7, cycle: 60, cap: 6 }, xp: 18, eraArt: true, desc: 'Madera, chimenea y un jardín que alguien riega.' },
   { id: 'chalet', name: 'Chalet', cat: 'casa', size: [2, 2], unlock: 4, cost: { coins: 600 }, time: 30,
-    pop: 13, prod: { coins: 12, cycle: 75, cap: 6 }, xp: 30, desc: 'Dos pisos y balcón con vista a la plaza.' },
+    pop: 13, prod: { coins: 12, cycle: 75, cap: 6 }, xp: 30, eraArt: true, desc: 'Dos pisos y balcón con vista a la plaza.' },
   { id: 'torre_cristal', name: 'Torre de Cristal', rank: 2, cat: 'casa', size: [2, 2], unlock: 7, cost: { coins: 1500 }, time: 60,
-    pop: 22, prod: { coins: 22, cycle: 90, cap: 6 }, xp: 55, desc: 'Departamentos con vista para mucha gente.' },
+    pop: 22, prod: { coins: 22, cycle: 90, cap: 6 }, xp: 55, eraArt: true, desc: 'Departamentos con vista para mucha gente.' },
   { id: 'mansion', name: 'Casona', rank: 3, cat: 'casa', size: [3, 3], unlock: 10, cost: { coins: 3500, gems: 5 }, time: 120,
-    pop: 40, prod: { coins: 45, cycle: 120, cap: 6 }, xp: 100, desc: 'Patio con fuente, galería y un portón que rechina.' },
+    pop: 40, prod: { coins: 45, cycle: 120, cap: 6 }, xp: 100, eraArt: true, desc: 'Patio con fuente, galería y un portón que rechina.' },
 
   // --- Negocios ---
   { id: 'panaderia', name: 'Panadería', cat: 'negocio', size: [2, 2], unlock: 1, cost: { coins: 150 }, time: 10, popReq: 5,
-    prod: { coins: 20, cycle: 60, cap: 6 }, xp: 15, desc: 'Medialunas y pan del día. El de ayer, a mitad de precio.' },
+    prod: { coins: 20, cycle: 60, cap: 6 }, xp: 15, eraArt: true, desc: 'Medialunas y pan del día. El de ayer, a mitad de precio.' },
   { id: 'heladeria', name: 'Heladería', cat: 'negocio', size: [2, 2], unlock: 2, cost: { coins: 350 }, time: 20, popReq: 12,
-    prod: { coins: 35, cycle: 90, cap: 6 }, xp: 25, desc: 'Dulce de leche, chocolate y algún sabor raro que nadie pide.' },
+    prod: { coins: 35, cycle: 90, cap: 6 }, xp: 25, eraArt: true, desc: 'Dulce de leche, chocolate y algún sabor raro que nadie pide.' },
   { id: 'floreria', name: 'Florería', cat: 'negocio', size: [2, 2], unlock: 3, cost: { coins: 550 }, time: 30, popReq: 20,
-    prod: { coins: 50, cycle: 120, cap: 6 }, happy: 2, xp: 35, desc: 'Ramos para cada ocasión.' },
+    prod: { coins: 50, cycle: 120, cap: 6 }, happy: 2, xp: 35, eraArt: true, desc: 'Ramos para cada ocasión.' },
   { id: 'cafeteria', name: 'Café de la Esquina', cat: 'negocio', size: [2, 2], unlock: 4, cost: { coins: 800 }, time: 40, popReq: 30,
-    prod: { coins: 70, cycle: 150, cap: 6 }, xp: 45, desc: 'Café, tostados y un gato que se cree el dueño.' },
+    prod: { coins: 70, cycle: 150, cap: 6 }, xp: 45, eraArt: true, desc: 'Café, tostados y un gato que se cree el dueño.' },
   { id: 'salon', name: 'Peluquería', cat: 'negocio', size: [2, 2], unlock: 5, cost: { coins: 1100 }, time: 60, popReq: 40,
-    prod: { coins: 95, cycle: 180, cap: 6 }, xp: 55, desc: 'Cortes, tinturas y las novedades del barrio.' },
+    prod: { coins: 95, cycle: 180, cap: 6 }, xp: 55, eraArt: true, desc: 'Cortes, tinturas y las novedades del barrio.' },
   { id: 'pasteleria', name: 'Pastelería', cat: 'negocio', size: [2, 2], unlock: 6, cost: { coins: 1500 }, time: 75, popReq: 50,
-    prod: { coins: 120, cycle: 200, cap: 6 }, xp: 65, desc: 'Tortas por encargo, con una semana de anticipación.' },
+    prod: { coins: 120, cycle: 200, cap: 6 }, xp: 65, eraArt: true, desc: 'Tortas por encargo, con una semana de anticipación.' },
   { id: 'boutique', name: 'Tienda de Ropa', cat: 'negocio', size: [2, 2], unlock: 7, cost: { coins: 2000 }, time: 90, popReq: 65,
-    prod: { coins: 160, cycle: 240, cap: 6 }, xp: 80, desc: 'Ropa, bolsos y zapatos. Probadores al fondo.' },
+    prod: { coins: 160, cycle: 240, cap: 6 }, xp: 80, eraArt: true, desc: 'Ropa, bolsos y zapatos. Probadores al fondo.' },
   { id: 'cine', name: 'Cine', rank: 3, cat: 'negocio', size: [3, 3], unlock: 9, cost: { coins: 3200 }, time: 120, popReq: 85,
     prod: { coins: 260, cycle: 300, cap: 6 }, happy: 4, xp: 110, desc: 'Estrenos, clásicos y pochoclo.' },
   { id: 'spa', name: 'Baños Termales', rank: 4, cat: 'negocio', size: [3, 3], unlock: 11, cost: { coins: 5000, gems: 5 }, time: 180, popReq: 110,
@@ -182,28 +183,47 @@ export const CATEGORIES = [
 // El nivel de la Municipalidad (id 'castillo') ES el rango de la ciudad. Para subir de rango hay que cumplir un
 // "expediente" (req) además de pagar la obra. Cada rango suma +8% de producción global y puede dar constructoras,
 // más terreno (land = expansiones permitidas), edificios nuevos (BUILDINGS[].rank) y un premio al llegar.
-// req: pop (población), happy (% de felicidad), charm (Encanto), shops (tipos de negocio distintos), monuments (terminados).
+// req: pop (población), happy (% de felicidad), charm (Encanto), shops (tipos de negocio distintos), monuments (terminados),
+// planos (se gastan al empezar la obra; solo cuentan si la partida ya tiene state.planos: ver economy.rankStatus).
 export const TOWN_RANKS = [
   { rank: 1, name: 'Aldea', emoji: '🏕️', land: 1 },
-  { rank: 2, name: 'Caserío', emoji: '🏡', look: 'pórtico con columnas', land: 2, cost: { coins: 800, gems: 2 }, time: 60, reqLevel: 3,
+  { rank: 2, name: 'Caserío', emoji: '🏡', look: 'galería de troncos y campanario', land: 2, cost: { coins: 800, gems: 2 }, time: 60, reqLevel: 3,
     req: { pop: 12, happy: 30, charm: 40, shops: 1 }, reward: { gems: 5, chest: 'madera' } },
-  { rank: 3, name: 'Pueblo', emoji: '🏘️', look: 'alas a los costados', land: 3, builders: 1, cost: { coins: 2500, gems: 5 }, time: 180, reqLevel: 7,
-    req: { pop: 45, happy: 40, charm: 140, shops: 3 }, reward: { gems: 10, chest: 'plata' } },
-  { rank: 4, name: 'Villa', emoji: '⛲', look: 'fuentes en la plaza', land: 4, cost: { coins: 6000, gems: 10 }, time: 420, reqLevel: 12,
+  { rank: 3, name: 'Pueblo', emoji: '🏘️', look: 'muros de piedra y torre del reloj', land: 3, builders: 1, cost: { coins: 2500, gems: 5 }, time: 180, reqLevel: 7,
+    req: { pop: 45, happy: 40, charm: 140, shops: 3, planos: 3 }, reward: { gems: 10, chest: 'plata' } },
+  { rank: 4, name: 'Villa', emoji: '⛲', look: 'soportales y fuentes en la plaza', land: 4, cost: { coins: 6000, gems: 10 }, time: 420, reqLevel: 12,
     req: { pop: 90, happy: 45, charm: 300, shops: 5, monuments: 1 }, reward: { gems: 15, chest: 'oro' } },
-  { rank: 5, name: 'Ciudad', emoji: '🏙️', look: 'cúpula dorada y banderines', land: 5, cost: { coins: 14000, gems: 20 }, time: 900, reqLevel: 20,
-    req: { pop: 150, happy: 50, charm: 520, shops: 7, monuments: 2 }, reward: { gems: 25, chest: 'oro' } },
-  { rank: 6, name: 'Gran Ciudad', emoji: '🌆', look: 'techo azul y torres doradas', land: 7, builders: 1, cost: { coins: 30000, gems: 30 }, time: 1800, reqLevel: 26,
-    req: { pop: 220, happy: 55, charm: 800, shops: 9, monuments: 3 }, reward: { gems: 35, chest: 'oro' } },
-  { rank: 7, name: 'Metrópolis', emoji: '🌃', look: 'mirador, alfombra roja y banderas gigantes', land: 7, cost: { coins: 60000, gems: 45 }, time: 3600, reqLevel: 31,
+  { rank: 5, name: 'Ciudad', emoji: '🏙️', look: 'ladrillo, balcones y cúpula de tejas', land: 5, cost: { coins: 14000, gems: 20 }, time: 900, reqLevel: 20,
+    req: { pop: 150, happy: 50, charm: 520, shops: 7, monuments: 2, planos: 6 }, reward: { gems: 25, chest: 'oro' } },
+  { rank: 6, name: 'Gran Ciudad', emoji: '🌆', look: 'cúpula de hierro y faroles a gas', land: 7, builders: 1, cost: { coins: 30000, gems: 30 }, time: 1800, reqLevel: 26,
+    req: { pop: 220, happy: 55, charm: 800, shops: 9, monuments: 3, planos: 10 }, reward: { gems: 35, chest: 'oro' } },
+  { rank: 7, name: 'Metrópolis', emoji: '🌃', look: 'torre de hierro y banderas', land: 7, cost: { coins: 60000, gems: 45 }, time: 3600, reqLevel: 31,
     req: { pop: 300, happy: 60, charm: 1150, shops: 10, monuments: 5 }, reward: { gems: 50, chest: 'real' } },
-  { rank: 8, name: 'Capital', emoji: '🏛️', look: 'arco dorado y fuegos artificiales', land: 7, cost: { coins: 120000, gems: 60 }, time: 7200, reqLevel: 36,
-    req: { pop: 400, happy: 65, charm: 1600, shops: 11, monuments: 6 }, reward: { gems: 80, chest: 'real' } },
+  { rank: 8, name: 'Capital', emoji: '🏛️', look: 'torre de vidrio con terrazas verdes', land: 7, cost: { coins: 120000, gems: 60 }, time: 7200, reqLevel: 36,
+    req: { pop: 400, happy: 65, charm: 1600, shops: 11, monuments: 6, planos: 15 }, reward: { gems: 80, chest: 'real' } },
 ];
 export const RANK_REQ_LABELS = {
   pop: ['Población', 'people'], happy: ['Felicidad', 'smile'], charm: ['Encanto', 'sparkle'],
-  shops: ['Tipos de negocio', 'shop'], monuments: ['Monumentos terminados', 'monument'],
+  shops: ['Tipos de negocio', 'shop'], monuments: ['Monumentos terminados', 'monument'], planos: ['Planos', '📜'],
 };
+
+// ---------------- ÉPOCAS (DESIGN-CORE.md §4) ----------------
+// La ciudad cambia de época con el rango; cada edificio guarda la suya (b.era, 1 si falta) y se renueva a la actual.
+// mats: material de región por tile del lote para renovar (economy.renovateInfo).
+export const ERAS = [
+  { era: 1, id: 'madera', name: 'Madera', ranks: [1, 2], planos: 0, mats: {} },
+  { era: 2, id: 'piedra', name: 'Piedra', ranks: [3, 4], planos: 3, mats: { piedra: 1 } },
+  { era: 3, id: 'ladrillo', name: 'Ladrillo', ranks: [5], planos: 6, mats: { piedra: 1, madera: 1 } },
+  { era: 4, id: 'hierro', name: 'Hierro', ranks: [6, 7], planos: 10, mats: { mineral: 1, madera: 1 } },
+  { era: 5, id: 'vidrio', name: 'Vidrio y acero', ranks: [8], planos: 15, mats: { mineral: 2 } },
+];
+export const ERA_BY_ID = Object.fromEntries(ERAS.map(e => [e.id, e]));
+/** Época (1..5) de un rango de ciudad. */
+export function eraOfRank(rank) {
+  const r = Math.max(1, Math.min(TOWN_RANKS.length, Math.round(rank) || 1));
+  return (ERAS.find(e => e.ranks.includes(r)) || ERAS[0]).era;
+}
+export const eraDef = (era) => ERAS[Math.max(1, Math.min(ERAS.length, Math.round(era) || 1)) - 1];
 // Compatibilidad: mejoras de la Municipalidad en el formato viejo (level = rango)
 export const CASTLE_LEVELS = TOWN_RANKS.slice(1).map(r => ({ level: r.rank, cost: r.cost, time: r.time, reqLevel: r.reqLevel }));
 export const CASTLE_BONUS_PER_LEVEL = 0.08; // +8% producción global por nivel extra de castillo

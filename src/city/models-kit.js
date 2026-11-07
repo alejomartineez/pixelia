@@ -453,3 +453,444 @@ export function upgradeDressing(m, L, seed = 1) {
     m.height = Math.max(m.height ?? 0, top + 9);
   }
 }
+
+// =====================================================================
+// Capa de época (DESIGN-CORE.md §4.4)
+// =====================================================================
+// Cada edificio se dibuja con "ranuras" de material (muro, techo, base, abertura, cerco, elemento vertical) y la
+// época las resuelve: el mismo builder sirve para Madera, Piedra, Ladrillo, Hierro y Vidrio y acero.
+//   eraStyle(era)                                    paleta + formas de la época
+//   eraWall(m, x, y, z, w, h, d, era, o)             volumen con el patrón del material
+//   eraRoof(m, x0, x1, z0, z1, y, era, o)            techo (o.kind: paja | dos_aguas | alto | cuatro_aguas | plano | mansarda | diente | terraza)
+//   eraOpening(m, face, plane, u, y, era, kind, o)   puerta | ventana | vidriera
+//   eraVertical(m, x, y, z, era, o)                  chimenea de piedra / torre / chimenea alta / tanque / antena
+//   eraCrown(m, cx, y, cz, era, o)                   remate del nivel 5
+//   eraFence(m, era, o) · eraGround(m, era, o)       cerco del lote (nivel 5) y piso del lote
+//   eraRecolor(m, era)                               respaldo para builders sin arte por época
+import { ERA_PALETTES as EP } from '../core/palette.js';
+
+export const ERA_COUNT = 5;
+export const clampEra = (e) => Math.max(1, Math.min(ERA_COUNT, Math.round(Number(e)) || 1));
+const hash2 = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+
+export const ERA_STYLE = {
+  1: { id: 'madera', name: 'Madera',
+    wall: EP.madera.plank, wallD: EP.madera.plankD, joint: EP.madera.joint, trim: EP.madera.post, roof: EP.madera.thatch,
+    roofD: EP.madera.thatchD, roof2: EP.madera.shingle, base: EP.madera.stone, baseD: EP.madera.stoneD,
+    frame: EP.madera.post, accent: EP.madera.moss, door: EP.madera.joint, fence: EP.madera.post, light: EP.madera.light,
+    ground: P.grass, groundD: P.grassD, path: '#c9a878', roofKind: 'paja', roofKind3: 'alto', floors: 1, FH: 7 },
+  2: { id: 'piedra', name: 'Piedra',
+    wall: EP.piedra.stone, wallD: EP.piedra.stoneD, joint: EP.piedra.joint, trim: EP.piedra.stoneL, roof: EP.piedra.slate,
+    roofD: EP.piedra.slateD, roof2: EP.piedra.slate, base: EP.piedra.stoneD, baseD: EP.piedra.joint,
+    frame: EP.piedra.beam, accent: EP.piedra.beam, door: EP.piedra.beam, fence: EP.piedra.stoneD, light: EP.piedra.light,
+    ground: P.grass, groundD: P.grassD, path: EP.piedra.stoneL, roofKind: 'dos_aguas', roofKind3: 'alto', floors: 1, FH: 7 },
+  3: { id: 'ladrillo', name: 'Ladrillo',
+    wall: EP.ladrillo.brick, wallD: EP.ladrillo.brickD, joint: EP.ladrillo.joint, trim: EP.ladrillo.cream, roof: EP.ladrillo.tile,
+    roofD: EP.ladrillo.tileD, roof2: EP.ladrillo.tile, base: EP.ladrillo.creamD, baseD: EP.ladrillo.creamD,
+    frame: EP.ladrillo.frame, accent: EP.ladrillo.iron, door: EP.ladrillo.frame, fence: EP.ladrillo.iron, light: EP.ladrillo.cream,
+    ground: '#dccbab', groundD: '#c4b69d', path: '#e8d9bb', roofKind: 'cuatro_aguas', roofKind3: 'mansarda', floors: 2, FH: 6 },
+  4: { id: 'hierro', name: 'Hierro',
+    wall: EP.hierro.brick, wallD: '#734536', sheet: EP.hierro.sheet, sheetD: EP.hierro.sheetD, joint: EP.hierro.ironD, trim: EP.hierro.iron, roof: EP.hierro.sheet,
+    roofD: EP.hierro.sheetD, roof2: EP.hierro.rust, base: EP.hierro.black, baseD: EP.hierro.black,
+    frame: EP.hierro.ironD, accent: EP.hierro.rust, door: EP.hierro.black, fence: EP.hierro.iron, light: EP.hierro.lamp,
+    brick: EP.hierro.brick, ground: '#8e8a84', groundD: '#76726c', path: '#a8a39b', roofKind: 'plano', roofKind3: 'diente', floors: 2, FH: 6 },
+  5: { id: 'vidrio', name: 'Vidrio y acero',
+    wall: EP.vidrio.glass, wallD: EP.vidrio.glassD, joint: EP.vidrio.steelD, trim: EP.vidrio.steel, roof: EP.vidrio.white,
+    roofD: EP.vidrio.steelD, roof2: EP.vidrio.terrace, base: EP.vidrio.white, baseD: EP.vidrio.steelD,
+    frame: EP.vidrio.steel, accent: EP.vidrio.terrace, door: EP.vidrio.glassD, fence: EP.vidrio.steel, light: EP.vidrio.white,
+    panel: EP.vidrio.panel, ground: '#dedbd3', groundD: '#c9c5bb', path: '#f2f0ea', roofKind: 'plano', roofKind3: 'terraza', floors: 3, FH: 5 },
+};
+export const eraStyle = (era) => ERA_STYLE[clampEra(era)];
+
+/**
+ * Color del muro de la época en un vóxel de superficie. u = coordenada a lo largo de la cara; k = alto desde la base del muro.
+ * corner = esquina del volumen. o.tint reemplaza el material principal (fachada pintada) y conserva la estructura.
+ */
+export function eraWallColor(era, u, k, corner, o = {}) {
+  const s = eraStyle(era), e = s.id, FH = o.FH || s.FH;
+  const main = o.tint || s.wall, mainD = o.tint ? shade(o.tint, -0.16) : s.wallD;
+  if (k === 0 && !o.noBase) {
+    if (e === 'madera' || e === 'piedra') return Math.floor(u / 2) % 2 ? s.base : s.baseD;
+    return s.base;
+  }
+  switch (e) {
+    case 'madera':
+      if (corner) return s.trim;
+      return k % 3 === 0 ? mainD : main;                                  // tablas con junta oscura cada 3
+    case 'piedra': {
+      if (corner) return Math.floor(k / 2) % 2 ? s.trim : s.wall;           // sillares en las esquinas
+      const c = Math.floor(k / 2), st = Math.floor((u + (c % 2) * 2) / 4);
+      const h = hash2(st * 7 + (o.seed || 0), c);
+      return h < 0.28 ? mainD : h > 0.86 ? s.trim : main;                   // hiladas irregulares
+    }
+    case 'ladrillo': {
+      if (o.floorLines !== false && k > 1 && (k - 1) % FH === 0) return s.trim; // cornisa crema entre pisos
+      if (corner) return mainD;
+      if (k % 4 === 2) return s.joint;                                     // junta clara
+      const off = (Math.floor(k / 4) % 2) * 2;
+      return hash2(Math.floor((u + off) / 4) + (o.seed || 0), Math.floor(k / 4)) < 0.22 ? mainD : main;
+    }
+    case 'hierro': {
+      if (corner || u % 5 === 0) return s.trim;                            // pilares remachados
+      if (o.floorLines !== false && k > 1 && (k - 1) % FH === 0) return s.trim; // viga entre pisos
+      if (o.sheet) return u % 5 === 3 ? s.sheetD : s.sheet;               // galpón de chapa acanalada
+      return k % 3 === 0 ? mainD : main;                                   // paño de ladrillo industrial
+    }
+    default: {                                                              // vidrio y acero: muro cortina
+      if (corner) return s.trim;
+      if ((k - 1) % FH === 0) return s.light;                               // losa blanca de cada piso
+      if (u % 3 === 0) return s.trim;                                      // montantes
+      return (k - 1) % FH === FH - 1 ? s.wall : s.wallD;
+    }
+  }
+}
+
+/**
+ * Volumen macizo [x..x+w)×[y..y+h)×[z..z+d) con el patrón del material de la época en las caras. Es macizo a propósito:
+ * una cáscara hueca le haría emitir al mallado también las caras de adentro (el doble de triángulos).
+ */
+export function eraWall(m, x, y, z, w, h, d, era, o = {}) {
+  const v = m.v || m;
+  const inner = eraStyle(era).wallD;
+  for (let i = 0; i < w; i++) for (let k = 0; k < d; k++) {
+    const onX = i === 0 || i === w - 1, onZ = k === 0 || k === d - 1;
+    if (!onX && !onZ) { for (let j = 0; j < h; j++) v.set(x + i, y + j, z + k, inner); continue; }
+    const corner = onX && onZ;
+    const u = onZ ? x + i : z + k;
+    for (let j = 0; j < h; j++) v.set(x + i, y + j, z + k, eraWallColor(era, u, j + (o.k0 || 0), corner, o));
+  }
+  // tapa (si no le va techo encima, que no quede hueco)
+  if (o.cap !== false) for (let i = 1; i < w - 1; i++) for (let k = 1; k < d - 1; k++) v.set(x + i, y + h - 1, z + k, o.capColor || eraStyle(era).wallD);
+  return y + h;
+}
+
+/** Losa/cornisa saliente alrededor de un rectángulo (borde del techo plano, balcón corrido). */
+export function eraSlab(m, x0, x1, z0, z1, y, c, oh = 1) {
+  const v = m.v || m;
+  for (let x = x0 - oh; x <= x1 + oh; x++) for (let z = z0 - oh; z <= z1 + oh; z++) v.set(x, y, z, c);
+}
+
+/** Techo de la época. o: kind, axis ('x' | 'z'), oh, color, wall (color del hastial). Devuelve la y del tope. */
+export function eraRoof(m, x0, x1, z0, z1, y, era, o = {}) {
+  const v = m.v, s = eraStyle(era);
+  const kind = o.kind || s.roofKind;
+  const axis = o.axis || 'z';
+  const roofC = o.color || (kind === 'alto' ? s.roof2 : s.roof);
+  const wall = o.wall || (s.id === 'madera' ? s.wallD : s.id === 'ladrillo' ? s.wall : s.trim);
+  switch (kind) {
+    case 'paja':        // paja gruesa con alero y cumbrera oscura
+      return gable(v, axis, x0, x1, z0, z1, y, roofC, { wall, oh: o.oh ?? 1, trim: s.roofD, ridge: s.roof2 });
+    case 'dos_aguas':
+      return gable(v, axis, x0, x1, z0, z1, y, roofC, { wall, oh: o.oh ?? 1, trim: s.id === 'piedra' ? s.frame : s.roofD, ridge: s.roofD });
+    case 'alto':        // más pendiente: sube 2 por escalón
+      return gable(v, axis, x0, x1, z0, z1, y, roofC, { wall, oh: o.oh ?? 1, rise: 2, trim: s.roofD, ridge: s.id === 'madera' ? s.joint : s.roofD });
+    case 'cuatro_aguas':
+      return hip(v, x0, x1, z0, z1, y, roofC, { oh: o.oh ?? 1, trim: s.trim });
+    case 'mansarda': {  // faldón empinado + tapa con cresta de hierro y buhardillas al frente
+      const oh = o.oh ?? 1;
+      for (let x = x0 - oh; x <= x1 + oh; x++) for (let z = z0 - oh; z <= z1 + oh; z++) v.set(x, y, z, s.trim);
+      let top = y;
+      for (let st = 0; st < 2; st++) for (let r = 0; r < 2; r++) {
+        const yy = y + 1 + st * 2 + r;
+        v.box(x0 + st, yy, z0 + st, x1 - x0 + 1 - st * 2, 1, z1 - z0 + 1 - st * 2, r === 0 ? s.roofD : roofC);
+        top = yy;
+      }
+      if (x1 - x0 >= 12) for (let x = x0 + 2; x <= x1 - 2; x++) for (const z of [z0 + 2, z1 - 2]) v.set(x, top + 1, z, s.trim);  // cresta
+      if (o.dormers !== false) for (let u = x0 + 2; u + 1 <= x1 - 2; u += 5) {
+        v.box(u, y + 1, z1 + 1, 2, 2, 1, s.trim); v.set(u, y + 1, z1 + 1, C.glass); v.set(u + 1, y + 1, z1 + 1, C.glassD);
+        v.box(u, y + 3, z1 + 1, 2, 1, 1, s.roofD);
+      }
+      return top + 1;
+    }
+    case 'diente': {    // galpón en diente de sierra: pendiente de chapa y cara vidriada
+      const oh = o.oh ?? 0, T = 4;
+      for (let x = x0 - oh; x <= x1 + oh; x++) for (let z = z0 - oh; z <= z1 + oh; z++) v.set(x, y, z, s.trim);
+      for (let z = z0; z <= z1; z++) {
+        const p = (z1 - z) % T;                  // 0 = punta baja de cada diente (hacia el frente)
+        const hh = 1 + p;
+        for (let x = x0; x <= x1; x++) {
+          for (let j = 1; j <= hh; j++) v.set(x, y + j, z, j === hh ? (x % 2 ? roofC : s.roofD) : s.trim);
+          if (p === T - 1) for (let j = 1; j <= hh; j++) v.set(x, y + j, z - 1 >= z0 ? z : z, j === hh ? s.roofD : (x % 3 === 0 ? s.frame : C.glassD));
+        }
+      }
+      return y + T;
+    }
+    case 'terraza': {   // techo plano con terraza verde, baranda fina y alero
+      eraSlab(m, x0, x1, z0, z1, y, s.light, o.oh ?? 1);
+      for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+        const edge = x === x0 || x === x1 || z === z0 || z === z1;
+        v.set(x, y + 1, z, edge ? s.trim : ((x * 3 + z) % 7 === 0 ? EP.vidrio.terraceD : s.roof2));
+      }
+      // baranda de vidrio corrida (nada de almenas)
+      for (let x = x0; x <= x1; x++) for (const z of [z0, z1]) v.set(x, y + 2, z, C.glassD);
+      for (let z = z0; z <= z1; z++) for (const x of [x0, x1]) v.set(x, y + 2, z, C.glassD);
+      return y + 2;
+    }
+    default: {          // plano con parapeto de la época
+      const oh = o.oh ?? (s.id === 'vidrio' ? 1 : 0);
+      eraSlab(m, x0, x1, z0, z1, y, s.id === 'vidrio' ? s.light : s.id === 'hierro' ? s.sheet : s.trim, oh);
+      for (let x = x0 - oh; x <= x1 + oh; x++) for (let z = z0 - oh; z <= z1 + oh; z++) {
+        const edge = x === x0 - oh || x === x1 + oh || z === z0 - oh || z === z1 + oh;
+        if (!edge) continue;
+        v.set(x, y + 1, z, s.id === 'madera' ? s.wallD : s.trim);           // parapeto corrido (sin almenas)
+      }
+      return y + 1;
+    }
+  }
+}
+
+/**
+ * Abertura de la época en una cara. kind: 'puerta' | 'ventana' | 'vidriera'. o.big = aberturas del nivel 4 (más grandes).
+ * y = base de la abertura. Devuelve el ancho usado.
+ */
+export function eraOpening(m, face, plane, u, y, era, kind = 'ventana', o = {}) {
+  const v = m.v || m, s = eraStyle(era), e = s.id;
+  if (kind === 'puerta') {
+    const w = o.w || (e === 'piedra' || e === 'hierro' || e === 'vidrio' || o.big ? 3 : 2), h = o.h || 4;
+    if (e === 'vidrio') {
+      fbox(v, face, plane, u, y, w, h, 0, (i, j) => (i === 0 || i === w - 1 || j === h - 1 ? s.trim : j === h - 2 ? C.glass : C.glassD));
+      fbox(v, face, plane, u - 1, y + h, w + 2, 1, 1, s.trim);
+    } else {
+      door(v, face, plane, u, y, w, h, o.color || s.door, { frame: s.trim, glass: e !== 'madera', knob: e === 'hierro' ? s.light : P.goldD });
+      if (e === 'piedra') { fset(v, face, plane, u - 1, y + h + 1, 0, s.trim); fbox(v, face, plane, u, y + h + 1, w, 1, 0, s.trim); fset(v, face, plane, u + w, y + h + 1, 0, s.trim); }
+      if (e === 'ladrillo') fbox(v, face, plane, u - 1, y + h + 1, w + 2, 1, 0, s.trim);          // dintel crema
+      if (e === 'hierro') fbox(v, face, plane, u - 1, y + h + 1, w + 2, 1, 1, s.trim);            // marquesina de hierro
+    }
+    return w;
+  }
+  if (kind === 'vidriera') {
+    const w = o.w || 6, h = o.h || 4;
+    for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) {
+      let c = j === h - 1 ? C.glass : C.glassD;
+      if (e === 'hierro' && (i % 3 === 0 || j === Math.floor(h / 2))) c = s.frame;
+      if (e === 'piedra' && (i === 0 || i === w - 1)) c = s.trim;
+      fset(v, face, plane, u + i, y + j, 0, c);
+    }
+    fbox(v, face, plane, u - 1, y - 1, w + 2, 1, 1, s.trim);                                      // mostrador
+    if (e !== 'vidrio') fbox(v, face, plane, u - 1, y + h, w + 2, 1, 0, e === 'ladrillo' ? s.trim : s.frame);
+    return w;
+  }
+  // ventana
+  const big = !!o.big;
+  switch (e) {
+    case 'madera': {
+      const w = big ? 3 : 2, h = 2;
+      win(v, face, plane, u, y, w, h, { shutters: s.trim, sill: s.wallD, cross: big ? s.trim : null, box: o.box, flowers: o.flowers });
+      return w;
+    }
+    case 'piedra': {
+      const w = big ? 3 : 2, h = 3;
+      win(v, face, plane, u, y, w, h, { arch: s.trim, archTop: s.trim, sill: s.trim, cross: big ? s.frame : null, box: o.box, flowers: o.flowers });
+      return w;
+    }
+    case 'ladrillo': {
+      const w = big ? 3 : 2, h = big ? 4 : 3;
+      win(v, face, plane, u, y, w, h, { sill: s.trim, shutters: big ? null : s.frame, cross: big ? s.frame : null, box: o.box, flowers: o.flowers });
+      fbox(v, face, plane, u - 1, y + h, w + 2, 1, 0, s.trim);                                  // dintel
+      return w;
+    }
+    case 'hierro': {
+      const w = big ? 4 : 3, h = big ? 4 : 3;
+      for (let i = 0; i < w; i++) for (let j = 0; j < h; j++) fset(v, face, plane, u + i, y + j, 0, (i === Math.floor(w / 2) && w > 3) || j === Math.floor(h / 2) ? s.frame : j === h - 1 ? C.glass : C.glassD);
+      fbox(v, face, plane, u, y - 1, w, 1, 1, s.trim);
+      return w;
+    }
+    default: {
+      const w = big ? 5 : 4, h = 3;
+      fbox(v, face, plane, u, y, w, h, 0, (i, j) => (j === h - 1 ? C.glass : C.glassD));
+      return w;
+    }
+  }
+}
+
+/**
+ * Elemento vertical de la época (nivel 4). (x, z) = esquina; y = base. o.h = alto; o.w = ancho (torre y tanque).
+ * madera: chimenea de piedra · piedra: torre cuadrada con techo de pizarra · ladrillo: chimenea alta ·
+ * hierro: tanque de agua sobre patas · vidrio: antena con luz. Devuelve la y del tope.
+ */
+export function eraVertical(m, x, y, z, era, o = {}) {
+  const v = m.v, s = eraStyle(era);
+  switch (s.id) {
+    case 'madera': {
+      const h = o.h || 9;
+      v.box(x, y, z, 2, h, 2, (xx, yy, zz) => (hash2(xx * 5 + zz, yy) < 0.3 ? s.baseD : s.base));
+      v.box(x, y + h, z, 2, 1, 2, s.baseD);
+      addSmoke(m, x, y + h + 1, z);
+      return y + h + 1;
+    }
+    case 'piedra': {
+      const w = o.w || 4, h = o.h || 10;
+      eraWall(m, x, y, z, w, h, w, era, { noBase: true });
+      for (const [fc, pl] of [['pz', z + w - 1], ['px', x + w - 1]]) {
+        const uu = fc === 'pz' ? x + 1 : z + 1;
+        fbox(v, fc, pl, uu, y + h - 4, w - 2, 2, 0, P.ink);                                        // campanario
+        fbox(v, fc, pl, uu, y + h - 2, w - 2, 1, 0, s.trim);
+      }
+      const top = hip(v, x, x + w - 1, z, z + w - 1, y + h, s.roof, { oh: 1, trim: s.frame });
+      v.set(x + Math.floor(w / 2), top + 1, z + Math.floor(w / 2), s.frame);
+      return top + 2;
+    }
+    case 'ladrillo': {
+      const h = o.h || 14;
+      v.box(x, y, z, 2, h, 2, (xx, yy) => (yy === y + h - 3 ? s.trim : (yy % 4 === 2 ? s.joint : s.wall)));
+      v.box(x, y + h, z, 2, 1, 2, s.accent);
+      addSmoke(m, x, y + h + 1, z, '#ece6dc');
+      return y + h + 1;
+    }
+    case 'hierro': {
+      const w = o.w || 4, legs = o.h || 5;
+      for (const [a, b] of [[0, 0], [w - 1, 0], [0, w - 1], [w - 1, w - 1]]) v.box(x + a, y, z + b, 1, legs, 1, s.trim);
+      for (let a = 0; a < w; a++) { v.set(x + a, y + 2, z, s.joint); v.set(x + a, y + 2, z + w - 1, s.joint); }
+      const cx = x + (w - 1) / 2, cz = z + (w - 1) / 2;
+      v.cylinder(cx, y + legs, cz, w / 2 + 0.3, 5, (xx, yy) => (yy === y + legs + 1 || yy === y + legs + 3 ? s.trim : s.accent));
+      cone(v, cx, y + legs + 5, cz, w / 2 + 0.6, 3, s.sheetD || s.trim);
+      return y + legs + 8;
+    }
+    default: {
+      const h = o.h || 10;
+      v.box(x, y, z, 1, h, 1, s.trim);
+      for (let j = 3; j < h; j += 3) { v.set(x - 1, y + j, z, s.trim); v.set(x + 1, y + j, z, s.trim); }
+      m.light.set(x, y + h, z, '#ff6a5a');
+      v.box(x + 1, y, z + 1, 2, 1, 2, s.trim); v.set(x + 2, y + 1, z + 2, s.light); v.set(x + 1, y + 2, z + 2, s.light); // parabólica
+      return y + h + 1;
+    }
+  }
+}
+
+/** Piso del lote según la época (y = 0). o.path = [x0, x1] del caminito hasta la puerta (desde o.pathZ hasta el frente). */
+export function eraGround(m, era, o = {}) {
+  const v = m.v, s = eraStyle(era), W = m.W, D = m.D;
+  for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) {
+    let c;
+    if (s.id === 'madera' || s.id === 'piedra') c = (x * 3 + z * 5) % 11 === 0 ? s.groundD : s.ground;
+    else if (s.id === 'ladrillo') c = (Math.floor(x / 2) + Math.floor(z / 2)) % 2 ? s.ground : s.groundD;
+    else if (s.id === 'hierro') c = ((z % 2 ? x + 1 : x) >> 1) % 2 ? s.ground : s.groundD;    // adoquines
+    else c = (x % 4 === 0 || z % 4 === 0) ? s.groundD : s.ground;                             // baldosones
+    v.set(x, 0, z, c);
+  }
+  if (o.path) for (let x = o.path[0]; x <= o.path[1]; x++) for (let z = o.pathZ ?? D - 5; z < D; z++) v.set(x, 0, z, s.id === 'madera' ? ((x + z) % 3 ? s.path : shade(s.path, -0.12)) : s.path);
+}
+
+/** Cerco o vereda de la época alrededor del lote (nivel 5). o.gaps = columnas x libres en el frente (la entrada). */
+export function eraFence(m, era, o = {}) {
+  const v = m.v, s = eraStyle(era), W = m.W, D = m.D, gaps = o.gaps || [];
+  const ring = [];
+  for (let x = 0; x < W; x++) { ring.push([x, D - 1, 'f']); ring.push([x, 0, 'b']); }
+  for (let z = 1; z < D - 1; z++) { ring.push([0, z, 'l']); ring.push([W - 1, z, 'r']); }
+  for (const [x, z, side] of ring) {
+    if (side === 'f' && gaps.includes(x)) continue;
+    if (v.has(x, 1, z)) continue;
+    const a = side === 'f' || side === 'b' ? x : z;
+    switch (s.id) {
+      case 'madera':   // palo a pique con travesaño
+        if (a % 3 === 0) { v.box(x, 1, z, 1, 3, 1, s.fence); v.set(x, 4, z, s.wallD); } else v.set(x, 2, z, s.wall);
+        break;
+      case 'piedra':   // pirca baja
+        v.set(x, 1, z, hash2(x, z) < 0.4 ? s.wallD : s.wall); if (a % 2 === 0) v.set(x, 2, z, s.trim);
+        break;
+      case 'ladrillo': // murito de ladrillo con reja de hierro arriba
+        v.set(x, 1, z, s.wall); v.set(x, 2, z, s.trim); if (a % 2 === 0) v.set(x, 3, z, s.accent);
+        if (a % 6 === 0) { v.box(x, 1, z, 1, 4, 1, s.wall); v.set(x, 5, z, s.trim); }
+        break;
+      case 'hierro':   // reja negra con puntas
+        if (a % 2 === 0) { v.box(x, 1, z, 1, 3, 1, s.fence); if (a % 4 === 0) v.set(x, 4, z, s.trim); } else v.set(x, 3, z, s.fence);
+        break;
+      default:         // vereda moderna: canteros bajos con pasto y luces al ras
+        v.set(x, 1, z, a % 5 === 0 ? s.trim : s.accent);
+        if (a % 5 === 0) m.light.set(x, 2, z, '#fff3cf');
+    }
+  }
+  if (s.id === 'hierro') for (const [x, z] of [[0, D - 1], [W - 1, D - 1]]) if (!gaps.includes(x)) {
+    v.box(x, 1, z, 1, 6, 1, s.fence); m.light.set(x, 7, z, s.light); v.set(x, 8, z, s.fence);      // faroles a gas
+  }
+}
+
+/** Remate del nivel 5 sobre un techo en (cx, y, cz): mirador, espadaña, cúpula, letrero iluminado o pérgola verde. */
+export function eraCrown(m, cx, y, cz, era, o = {}) {
+  const v = m.v, s = eraStyle(era);
+  switch (s.id) {
+    case 'madera': {   // mirador de troncos con techito de paja y banderín
+      for (const [a, b] of [[0, 0], [2, 0], [0, 2], [2, 2]]) v.box(cx - 1 + a, y, cz - 1 + b, 1, 3, 1, s.trim);
+      v.box(cx - 1, y, cz - 1, 3, 1, 3, s.wallD);
+      const t = hip(v, cx - 1, cx + 1, cz - 1, cz + 1, y + 3, s.roof, { oh: 1 });
+      v.box(cx, t + 1, cz, 1, 3, 1, s.trim);
+      wavingFlag(m, cx, t + 2, cz, 3, 2, o.flag || P.clay);
+      return t + 4;
+    }
+    case 'piedra': {   // espadaña con campana
+      v.box(cx - 2, y, cz, 5, 5, 1, s.trim);
+      v.box(cx - 1, y + 1, cz, 3, 3, 1, P.ink); v.box(cx, y + 2, cz, 1, 2, 1, P.goldD);
+      v.box(cx - 1, y + 5, cz, 3, 1, 1, s.trim); v.set(cx, y + 6, cz, s.trim); v.set(cx, y + 7, cz, s.frame);
+      return y + 8;
+    }
+    case 'ladrillo': { // cúpula de tejas con linterna
+      v.cylinder(cx + 0.5, y, cz + 0.5, 2.6, 2, s.trim);
+      for (let j = 0; j < 4; j++) v.cylinder(cx + 0.5, y + 2 + j, cz + 0.5, 2.6 - j * 0.6, 1, j % 2 ? s.roofD : s.roof);
+      v.box(cx, y + 6, cz, 2, 2, 2, s.trim); v.set(cx, y + 8, cz, s.accent);
+      return y + 9;
+    }
+    case 'hierro': {   // letrero iluminado sobre estructura de hierro
+      const w = o.w || 9, x0 = cx - Math.floor(w / 2);
+      for (const a of [x0, x0 + w - 1]) v.box(a, y, cz, 1, 3, 1, s.trim);
+      for (let i = 0; i < w; i++) for (let j = 0; j < 3; j++) {
+        const edge = i === 0 || i === w - 1 || j === 0 || j === 2;
+        if (edge) m.light.set(x0 + i, y + 3 + j, cz, (i + j) % 2 ? s.light : '#fff3cf');
+        else v.set(x0 + i, y + 3 + j, cz, o.sign || s.accent);
+      }
+      return y + 6;
+    }
+    default: {         // pérgola sobre la terraza verde
+      for (const [a, b] of [[0, 0], [4, 0], [0, 4], [4, 4]]) v.box(cx - 2 + a, y, cz - 2 + b, 1, 3, 1, s.trim);
+      for (let i = 0; i < 5; i++) { v.set(cx - 2 + i, y + 3, cz - 2, s.trim); v.set(cx - 2 + i, y + 3, cz + 2, s.trim); v.set(cx - 2 + i, y + 3, cz, s.trim); }
+      bush(v, cx + 0.5, y, cz + 0.5, 1.3, P.leaf, [P.clay], cx);
+      return y + 4;
+    }
+  }
+}
+
+// ---------- Respaldo: recoloreo de época ----------
+/**
+ * Para los builders que todavía no tienen arte por época: lleva los muros, techos y maderas del modelo hacia la
+ * paleta de la época (vidrios, plantas, agua y luces quedan). Época 1 = sin cambios.
+ */
+export function eraRecolor(m, era) {
+  era = clampEra(era);
+  if (era === 1) return;
+  const s = eraStyle(era);
+  const hx = (c) => (typeof c === 'number' ? c : parseInt(c.slice(1), 16));
+  const tgt = { wallL: hx(s.id === 'ladrillo' || s.id === 'piedra' ? s.trim : s.light), wall: hx(s.wall), wallD: hx(s.wallD), roof: hx(s.id === 'vidrio' ? s.trim : s.roof), roofD: hx(s.roofD), wood: hx(s.frame) };
+  const mix = (a, b, k) => {
+    const r = (a >> 16) & 255, g = (a >> 8) & 255, bl = a & 255;
+    return (Math.round(r + (((b >> 16) & 255) - r) * k) << 16) | (Math.round(g + (((b >> 8) & 255) - g) * k) << 8) | Math.round(bl + ((b & 255) - bl) * k);
+  };
+  const glass = new Set([C.glass, C.glassD, C.glassHi].map(hx));
+  const waterSet = new Set([C.water, C.waterD, C.waterL, P.water].map(hx));
+  const yOf = (k) => +k.slice(k.indexOf(',') + 1, k.lastIndexOf(','));
+  let maxY = 1;
+  for (const k of m.v.map.keys()) { const y = yOf(k); if (y > maxY) maxY = y; }
+  const cache = new Map();
+  for (const [k, c] of m.v.map) {
+    const y = yOf(k);
+    if (y === 0) continue;                                 // el piso del lote queda (lo maneja el tema)
+    const hi = y > maxY * 0.55;
+    const key = c * 2 + (hi ? 1 : 0);
+    let out = cache.get(key);
+    if (out === undefined) {
+      out = c;
+      if (!glass.has(c)) {
+        const r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 510, sat = mx ? (mx - mn) / mx : 0;
+        const plant = g > r + 10 && g >= b;                 // plantas
+        const water = waterSet.has(c) || (b > r + 60 && g > r + 30 && sat > 0.4);   // agua (cian), no muros azul pizarra
+        if (!plant && !water) {
+          if (l > 0.82) out = mix(c, tgt.wallL, 0.55);
+          else if (sat > 0.35 && hi) out = mix(c, l > 0.5 ? tgt.roof : tgt.roofD, 0.7);
+          else if (l > 0.55) out = mix(c, tgt.wall, 0.6);
+          else out = mix(c, l > 0.35 ? tgt.wallD : tgt.wood, 0.55);
+        }
+      }
+      cache.set(key, out);
+    }
+    if (out !== c) m.v.map.set(k, out);
+  }
+}

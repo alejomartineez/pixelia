@@ -29,6 +29,9 @@ const level = Number(q.get('level') || 1);
 const levels = q.get('levels') ? q.get('levels').split(',').map(Number) : null;
 let ids = q.get('ids') ? q.get('ids').split(',') : BUILDINGS.filter(b => !q.get('cat') || b.cat === q.get('cat')).map(b => b.id);
 const extra = q.get('extra'); // 'nature' | 'cons' | 'cloud'
+// épocas: ?era=3 (una) o ?eras=1,2,3,4,5 (grilla id × época × nivel); ?theme=bosque
+const era = Number(q.get('era') || 1), theme = q.get('theme') || undefined;
+const eras = q.get('eras') ? q.get('eras').split(',').map(Number) : null;
 window.__ready = false;
 window.__M = M; window.__BUILDINGS = BUILDINGS;
 
@@ -54,8 +57,9 @@ if (q.get('thumbs')) {
     const list = q.get('furn') === '1' ? FURNITURE : FURNITURE.filter(f => q.get('furn').split(',').includes(f.id));
     for (const f of list) items.push({ obj: FM.furnitureModel(f.id), size: f.size, label: f.id });
   }
-  else if (levels) for (const id of ids) for (const l of levels) items.push({ obj: M.buildingModel(id, l), size: BUILDING_BY_ID[id].size, label: id + ' L' + l });
-  else for (const id of ids) items.push({ obj: M.buildingModel(id, level), size: BUILDING_BY_ID[id].size, label: id });
+  else if (levels && eras) for (const id of ids) for (const e of eras) for (const l of levels) items.push({ obj: M.buildingModel(id, l, { era: e, theme }), size: BUILDING_BY_ID[id].size, label: id + ' E' + e + ' L' + l });
+  else if (levels) for (const id of ids) for (const l of levels) items.push({ obj: M.buildingModel(id, l, { era, theme }), size: BUILDING_BY_ID[id].size, label: id + ' L' + l });
+  else for (const id of ids) items.push({ obj: M.buildingModel(id, level, { era, theme }), size: BUILDING_BY_ID[id].size, label: id });
   if (q.get('road')) { // grilla de caminos 3x3 para ver el patrón
     for (const id of ['camino', 'camino_rosa', 'camino_dorado']) items.push({ grid: id, size: [3, 3], label: id + ' 3x3' });
   }
