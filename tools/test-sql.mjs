@@ -312,5 +312,41 @@ ok((await rows('ana', 'my_inbox')).length === 0 && (await rpc('ana', 'claim_all_
 section('anon');
 ok((await (async () => { try { await db.query(`select set_config('request.jwt.claim.sub', '', false)`); await db.exec('set role anon'); await db.query('select public.friends_view()'); return false; } catch (e) { return e.message.includes('permission denied'); } finally { await db.exec('reset role'); } })()), 'anon no puede llamar RPCs');
 
+// ---------------------------------------------------------------------
+section('Métricas anónimas (events)');
+/** Corre una consulta con el rol anon (sin sesión). */
+async function asAnon(sql, params = []) {
+  try {
+    await db.query(`select set_config('request.jwt.claim.sub', '', false)`);
+    await db.exec('set role anon');
+    const r = await db.query(sql, params);
+    return { rows: r.rows, affected: r.affectedRows };
+  } catch (e) { return { error: e.message }; } finally { await db.exec('reset role'); }
+}
+const EV = `insert into public.events (anon_id, session_id, name, props, version) values ($1, $2, $3, $4, $5)`;
+const A1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', S1 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ok(!(await asAnon(EV, [A1, S1, 'session_start', { days: 0 }, '1.0.0'])).error, 'anon puede insertar un evento');
+ok(!(await as('ana', EV, [A1, S1, 'level:up', { level: 3 }, '1.0.0'])).error, 'con sesión también puede insertar');
+ok(!(await asAnon(`insert into public.events (anon_id, session_id, name) values ($1, $2, 'x'), ($1, $2, 'y')`, [A1, S1])).error, 'se insertan tandas de varias filas');
+ok((await su('select count(*)::int n from public.events')).rows[0].n === 4, 'las filas quedan guardadas');
+const sel = await asAnon('select * from public.events');
+ok(sel.error?.includes('permission denied'), 'anon NO puede leer events', sel);
+ok((await as('ana', 'select * from public.events')).error?.includes('permission denied'), 'con sesión tampoco puede leer events');
+ok((await asAnon(`update public.events set name = 'hack'`)).error?.includes('permission denied'), 'anon NO puede actualizar events');
+ok((await as('ana', `update public.events set name = 'hack'`)).error?.includes('permission denied'), 'con sesión tampoco puede actualizar');
+ok((await asAnon('delete from public.events')).error?.includes('permission denied'), 'anon NO puede borrar events');
+ok((await as('bea', 'delete from public.events')).error?.includes('permission denied'), 'con sesión tampoco puede borrar');
+ok((await su('select count(*)::int n from public.events')).rows[0].n === 4, 'nada se borró ni cambió');
+ok((await asAnon(`insert into public.events (anon_id, session_id, name, created_at) values ($1, $2, 'x', now() - interval '1 year')`, [A1, S1])).error?.includes('permission denied'), 'no se puede elegir created_at (la hora la pone el servidor)');
+ok((await asAnon(`insert into public.events (id, anon_id, session_id, name) values (999999, $1, $2, 'x')`, [A1, S1])).error?.includes('permission denied'), 'no se puede elegir el id');
+ok((await asAnon(EV, [A1, S1, 'x'.repeat(40), {}, null])).error?.includes('check'), 'nombre de 40 caracteres o más → rechazado');
+ok(!(await asAnon(EV, [A1, S1, 'x'.repeat(39), {}, null])).error, 'nombre de 39 caracteres → ok');
+ok((await asAnon(EV, [A1, S1, 'Hola mundo', {}, null])).error?.includes('check'), 'nombre con espacios o mayúsculas → rechazado');
+ok((await asAnon(EV, [A1, S1, 'big', { s: 'x'.repeat(2100) }, null])).error?.includes('check'), 'props de 2 KB o más → rechazado');
+ok(!(await asAnon(EV, [A1, S1, 'mid', { s: 'x'.repeat(1900) }, null])).error, 'props de casi 2 KB → ok');
+ok((await asAnon(EV, [A1, S1, 'arr', [1, 2], null])).error?.includes('check'), 'props tiene que ser un objeto');
+ok((await asAnon(EV, [A1, S1, 'ver', {}, 'v'.repeat(41)])).error?.includes('check'), 'versión larguísima → rechazada');
+ok((await asAnon(EV, ['no-es-uuid', S1, 'x', {}, null])).error, 'anon_id tiene que ser un uuid');
+
 console.log(`\n${fail ? '✘' : '✔'} ${pass} OK, ${fail} fallas`);
 process.exit(fail ? 1 : 0);

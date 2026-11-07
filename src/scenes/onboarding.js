@@ -230,6 +230,7 @@ export default function create(ctx) {
     const foot = root.querySelector('.ob-foot');
     const t = avatarType(look.type);
     renderDots();
+    ctx.bus.emit('onboarding:step', { step });
     if (step === 0) {
       setTitle('¡Te damos la bienvenida!', 'Elegí tu personaje. Lo cambiás gratis en el Vestidor.');
       let html = `<div class="ob-step"><h2 class="ob-h">${icon('sparkle', 20)} ¿Quién vas a ser?</h2>`;
@@ -351,6 +352,7 @@ export default function create(ctx) {
     // directo al estado (sin customize:changed: elegir el primer personaje no cuenta como misión de vestidor)
     s.avatar = { ...look };
     s.onboarded = true;
+    ctx.bus.emit('onboarding:done', {});
     store.markDirty();
     store.save();
     audio.sfx('win');

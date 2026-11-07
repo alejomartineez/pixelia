@@ -448,7 +448,8 @@ export const PANEL_CSS = `
 @media (max-width: 420px) {
   .pnl-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
 }
+/* html:not(.motion-full): con Ajustes → Reducir movimiento "No" vuelven aunque el sistema pida menos movimiento */
 @media (prefers-reduced-motion: reduce) {
-  .pnl-bob, .pnl-glow, .pnl-shake, .pnl-rays.spin, .pnl-day.today, .pnl-lv-star .pi { animation: none !important; }
+  html:not(.motion-full) :is(.pnl-bob, .pnl-glow, .pnl-shake, .pnl-rays.spin, .pnl-day.today, .pnl-lv-star .pi) { animation: none !important; }
 }
 `;

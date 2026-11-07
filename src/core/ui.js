@@ -171,6 +171,32 @@ export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, sta
   });
 }
 
+// ---------- Accesibilidad (Ajustes → Accesibilidad) ----------
+// Tamaño de texto: clase text-l / text-xl en <html> y la variable --text-scale (ver el bloque al final de styles.css).
+// Reducir movimiento: 'auto' sigue al sistema (prefers-reduced-motion), 'on' siempre, 'off' nunca. La clase
+// reduce-motion en <html> apaga las animaciones CSS; la JS que sacude la pantalla o tira confeti consulta reducedMotion().
+export const TEXT_SIZES = { normal: 1, large: 1.15, xlarge: 1.3 };
+const MOTION_PREFS = ['auto', 'on', 'off'];
+let motionPref = 'auto';
+let a11ySettings = null;
+const motionMq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+/** ¿Hay que evitar movimientos grandes (sacudones, confeti, cosas volando)? */
+export function reducedMotion() { return motionPref === 'on' || (motionPref === 'auto' && !!motionMq?.matches); }
+/** Aplica state.settings.textSize y .motion a <html>. Se llama al arrancar y cada vez que cambian en Ajustes. */
+export function applyA11y(settings = {}) {
+  a11ySettings = settings;
+  const size = TEXT_SIZES[settings.textSize] ? settings.textSize : 'normal';
+  motionPref = MOTION_PREFS.includes(settings.motion) ? settings.motion : 'auto';
+  const de = typeof document !== 'undefined' ? document.documentElement : null;
+  if (!de) return;
+  de.classList.toggle('text-l', size === 'large');
+  de.classList.toggle('text-xl', size === 'xlarge');
+  de.style.setProperty('--text-scale', String(TEXT_SIZES[size]));
+  de.classList.toggle('reduce-motion', reducedMotion());
+  de.classList.toggle('motion-full', motionPref === 'off');
+}
+motionMq?.addEventListener?.('change', () => applyA11y(a11ySettings || {}));
+
 // ---------- Efectos ----------
 /** Texto flotante en coordenadas de pantalla (px). */
 export function floatText(x, y, html, cls = '') {
@@ -184,6 +210,12 @@ export function flyCurrency(x, y, kind = 'coins', count = 6) {
   const r = target?.getBoundingClientRect();
   const tx = r ? r.left + 14 : innerWidth / 2, ty = r ? r.top + r.height / 2 : 20;
   const name = kind === 'gems' ? 'gem' : kind === 'xp' ? 'xp' : 'coin';
+  if (reducedMotion()) {
+    // sin íconos volando: solo el sonido y el saltito del contador
+    audio.sfx(kind === 'gems' ? 'gem' : 'coin');
+    target?.classList.remove('bump'); void target?.offsetWidth; target?.classList.add('bump');
+    return;
+  }
   count = Math.min(10, Math.max(1, count));
   for (let i = 0; i < count; i++) {
     const el = h('div.fly', { html: icon(name, 24), style: { left: x + 'px', top: y + 'px' } });
@@ -203,6 +235,7 @@ export function flyCurrency(x, y, kind = 'coins', count = 6) {
 }
 /** Confeti pixelado sobre toda la pantalla. */
 export function confetti(n = 70) {
+  if (reducedMotion()) return;
   const cv = h('canvas.confetti');
   $('#fx-root').append(cv);
   const scale = 4;
@@ -231,4 +264,4 @@ export function progressHtml(pct, cls = '') {
   return `<div class="progress ${cls}"><i style="width:${Math.max(0, Math.min(100, pct * 100)).toFixed(1)}%"></i></div>`;
 }
 
-export const ui = { h, esc, icon, costHtml, toast, modal, confirm, rewardModal, floatText, flyCurrency, confetti, sheet, progressHtml, closeAllModals, hasModal };
+export const ui = { h, esc, icon, costHtml, toast, modal, confirm, rewardModal, floatText, flyCurrency, confetti, sheet, progressHtml, closeAllModals, hasModal, reducedMotion, applyA11y };

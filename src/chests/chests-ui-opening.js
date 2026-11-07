@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
-import { h, esc } from '../core/ui.js';
+import { h, esc, reducedMotion } from '../core/ui.js';
 import { CHESTS, RARITIES } from './chests.js';
 import { chestModel } from './chest-model.js';
 import { injectStyle, rarityVars, chestVars, bestRarity, dropAmountHtml, dropNote, dropKindLabel, mix } from './chests-ui-common.js';
@@ -398,6 +398,7 @@ export function playChestOpening(ctx, type, drops = []) {
 
     // ---------- Efectos de pantalla ----------
     function shakeScreen() {
+      if (reducedMotion()) return;   // Ajustes → Reducir movimiento (o el sistema)
       root.classList.remove('quake'); void root.offsetWidth; root.classList.add('quake');
       later(600, () => root.classList.remove('quake'));
       try { navigator.vibrate?.([70, 40, 110]); } catch {}
@@ -406,6 +407,7 @@ export function playChestOpening(ctx, type, drops = []) {
     const confettiParts = [];
     let confCv = null, confG = null;
     function confetti(fromEl, n = 100) {
+      if (reducedMotion()) return;
       const scale = 4;
       if (!confCv) {
         confCv = h('canvas.chx-confetti');

@@ -249,7 +249,7 @@ export const CHX_CSS = `
 @keyframes chx-cardout { to { transform: translate(var(--tox, 0), var(--toy, -40vh)) scale(.15) rotate(10deg); opacity: 0; } }
 @keyframes chx-wiggle { 0%,100% { transform: rotateY(180deg) rotate(-3deg) scale(1.02); } 50% { transform: rotateY(180deg) rotate(3deg) scale(1.05); } }
 @media (prefers-reduced-motion: reduce) {
-  .chx-rays, .chx-icwrap::before { animation: none; }
-  .chx-open.quake .chx-shake { animation: none; }
+  html:not(.motion-full) .chx-rays, html:not(.motion-full) .chx-icwrap::before { animation: none; }
+  html:not(.motion-full) .chx-open.quake .chx-shake { animation: none; }
 }
 `;

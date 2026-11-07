@@ -5,7 +5,7 @@
   "scripts": {
     "serve": "node serve.mjs",
     "serve:lan": "node serve.mjs --lan",
-    "test": "node test-e2e.mjs && node test-stress.mjs && node test-visit.mjs && node test-mock.mjs && node test-social.mjs && node test-rank.mjs --no-shots && node test-works.mjs --no-shots && node test-home.mjs --no-shots && node test-sql.mjs",
+    "test": "node test-e2e.mjs && node test-stress.mjs && node test-visit.mjs && node test-mock.mjs && node test-social.mjs && node test-rank.mjs --no-shots && node test-works.mjs --no-shots && node test-home.mjs --no-shots && node test-telemetry.mjs && node test-sql.mjs",
     "test:live": "node test-live.mjs",
     "bump": "node gen-sw-core.mjs --bump",
     "check": "node gen-sw-core.mjs --check"
