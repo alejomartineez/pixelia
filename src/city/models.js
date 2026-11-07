@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { voxelMaterial, glowMaterial, addLights, setIsoCamera, Voxels, shade, outlineCanvas } from '../core/voxel.js';
 import { BUILDING_BY_ID, OUTFIT_COLORS, MONUMENTS, eraOfRank } from '../core/data.js';
-import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS, upgradeDressing, eraRecolor, clampEra } from './models-kit.js';
+import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS, eraRecolor, clampEra } from './models-kit.js';
 import { SPECIAL_BUILDERS } from './models-special.js';
 import { HOUSE_BUILDERS } from './models-houses.js';
 import { SHOP_BUILDERS } from './models-shops.js';
@@ -197,14 +197,15 @@ function flagHex(c) {
   return OUTFIT_COLORS.find(o => o.id === c)?.hex || P.clay;
 }
 
+/** Plantas y adornos que se ven igual en cualquier época (comparten la caché). */
+const ERA_FREE = new Set(['arbol', 'arbusto', 'cerezo', 'unicornio']);
 /**
- * Época con la que se dibuja un edificio. La Municipalidad sigue al rango (su nivel); monumentos, deco, caminos y
- * Mi Casa todavía no cambian con la época (tanda 3): valen 1 y comparten la caché.
+ * Época con la que se dibuja un edificio. La Municipalidad sigue al rango (su nivel). Deco, caminos, Mi Casa y
+ * monumentos no se renuevan: la escena les pasa la época de la ciudad (city.js drawEra).
  */
 export function modelEra(id, level, era) {
   if (id === 'castillo') return eraOfRank(level);
-  const def = BUILDING_BY_ID[id];
-  if (!def || id === 'mi_casa' || def.cat === 'deco' || def.cat === 'camino' || def.cat === 'monumento') return 1;
+  if (!BUILDING_BY_ID[id] || ERA_FREE.has(id)) return 1;
   return clampEra(era);
 }
 
@@ -218,8 +219,7 @@ function buildTemplate(id, level, opts, themeId) {
   if (eraArt) fn(m, level, { era, flag: opts.flag });
   else if (fn) {
     fn(m, level, opts);
-    // respaldo: casas y negocios sin arte por época conservan los adornos por nivel; todos se recolorean con la época
-    if (def && (def.cat === 'casa' || def.cat === 'negocio') && def.prod) upgradeDressing(m, level, [...id].reduce((a, c) => a + c.charCodeAt(0), 0));
+    // respaldo para un builder sin arte por época: recoloreo hacia la paleta de la época
     if (era > 1) eraRecolor(m, era);
   } else { // id desconocido: cajita neutra (no debería pasar)
     m.v.box(1, 0, 1, W - 2, 6, D - 2, P.clayL);

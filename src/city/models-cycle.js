@@ -443,3 +443,6 @@ function conservera(m, L, o = {}) {
 }
 
 export const CYCLE_BUILDERS = { casa_exp, huerta, taller, establo, dispensario, tambo, molino, conservera };
+
+// las defensas (models-defense.js) usan la misma regla de niveles y la misma torre
+export { body as cycleBody, tower as eraTower };

@@ -1,8 +1,26 @@
-// Decoración y caminos.
+// Decoración y caminos. Las plantas se ven igual siempre; el mobiliario, las fuentes, los pedestales, la glorieta, las
+// orillas y los caminos cambian de material con la época de la ciudad (DESIGN-CORE.md §4, tanda 3): el builder recibe
+// (m, nivel, { era }) y toma los materiales de DS[era].
 import {
   P, C, shade, lot, path, fbox, fset, pattern, HEART3, HEART5, STAR5, bush, smallTree, tulip, flower, flowerBed,
-  sparkle, spinStar, crown, cone, rng, pick, uid, FLOWER_COLORS,
+  sparkle, spinStar, crown, cone, rng, pick, uid, FLOWER_COLORS, clampEra,
 } from './models-kit.js';
+import { ERA_PALETTES as EP } from '../core/palette.js';
+
+/** Materiales de la deco por época: madera, piedra, metal, piso de plaza, techo y luz. */
+const DS = {
+  1: { wood: EP.madera.plank, woodD: EP.madera.plankD, post: EP.madera.post, stone: EP.madera.stone, stoneD: EP.madera.stoneD, cap: '#b8afa2',
+    metal: EP.madera.post, metalD: EP.madera.joint, floor: '#d3b78a', floorD: '#bf9f70', roof: EP.madera.thatch, roofD: EP.madera.thatchD, lamp: '#ffd27a', band: EP.madera.post },
+  2: { wood: EP.madera.plankD, woodD: EP.piedra.beam, post: EP.piedra.stoneD, stone: EP.piedra.stone, stoneD: EP.piedra.stoneD, cap: EP.piedra.stoneL,
+    metal: '#3b3634', metalD: '#2a2625', floor: EP.piedra.stoneL, floorD: '#b3aa98', roof: EP.piedra.slate, roofD: EP.piedra.slateD, lamp: '#ffe08a', band: EP.piedra.joint },
+  3: { wood: '#9a6a40', woodD: '#7a5030', post: EP.ladrillo.frame, stone: EP.ladrillo.brick, stoneD: EP.ladrillo.brickD, cap: EP.ladrillo.cream,
+    metal: EP.ladrillo.frame, metalD: '#2e4637', floor: '#ecdcbc', floorD: '#d9c6a3', roof: EP.ladrillo.tile, roofD: EP.ladrillo.tileD, lamp: '#fff0a8', band: EP.ladrillo.creamD },
+  4: { wood: '#8a6440', woodD: '#6b4b2e', post: EP.hierro.black, stone: '#8e8a84', stoneD: '#76726c', cap: EP.hierro.iron,
+    metal: EP.hierro.black, metalD: '#1f1c1b', floor: '#aaa59d', floorD: '#918c85', roof: EP.hierro.sheet, roofD: EP.hierro.sheetD, lamp: EP.hierro.lamp, band: P.goldD },
+  5: { wood: '#b88a5e', woodD: '#9a7048', post: EP.vidrio.steel, stone: EP.vidrio.white, stoneD: '#dcd8cf', cap: EP.vidrio.steel,
+    metal: EP.vidrio.steel, metalD: EP.vidrio.steelD, floor: '#ebe8e1', floorD: '#d8d4cb', roof: EP.vidrio.glass, roofD: EP.vidrio.glassD, lamp: '#ffffff', band: EP.vidrio.steelD },
+};
+const ds = (o) => DS[clampEra(o?.era)];
 
 const S = 1 / 8;
 
@@ -64,10 +82,13 @@ function cerezo(m) {
     };
   });
 }
-function macetas(m) {
-  const v = m.v;
-  // jardinera rosa baja, repleta de tulipanes de colores
-  v.box(0, 0, 2, 8, 2, 4, (x, y, z) => (y === 1 && (z === 2 || z === 5 || x === 0 || x === 7) ? '#ffffff' : (x + y) % 4 === 0 ? P.clayL : '#fde8d5'));
+function macetas(m, L, o) {
+  const v = m.v, d = ds(o), e = clampEra(o?.era);
+  // jardinera baja de la época (tablas, piedra, terracota, granito, hormigón), repleta de tulipanes
+  const mat = e === 1 ? ((x, top) => (top ? d.post : x % 3 ? d.wood : d.woodD))
+    : e === 3 ? ((x, top) => (top ? d.cap : x % 4 === 0 ? '#b86a48' : '#c97b55'))
+    : ((x, top) => (top ? d.cap : x % 4 === 0 ? d.stoneD : d.stone));
+  v.box(0, 0, 2, 8, 2, 4, (x, y, z) => mat(x, y === 1 && (z === 2 || z === 5 || x === 0 || x === 7)));
   v.box(1, 1, 3, 6, 1, 2, '#8a5a3a');
   const cols = [C.red, P.clay, C.yellow, P.slate, '#ffffff', P.peach, P.clay];
   let k = 0;
@@ -81,61 +102,102 @@ function macetas(m) {
   // hojas que asoman por los costados
   v.set(0, 2, 3, C.leaf); v.set(7, 2, 4, C.leaf);
   // regadera menta
-  v.box(5, 0, 6, 2, 2, 1, P.mint); v.set(7, 1, 6, P.mintD); v.set(4, 2, 6, P.mintD);
+  v.box(5, 0, 6, 2, 2, 1, e >= 4 ? d.metal : P.mint); v.set(7, 1, 6, e >= 4 ? d.metalD : P.mintD); v.set(4, 2, 6, e >= 4 ? d.metalD : P.mintD);
 }
 
 // ---------- mobiliario ----------
-function farol(m) {
-  const v = m.v;
-  v.box(2, 0, 2, 4, 1, 4, C.stoneL);
-  v.box(3, 1, 3, 2, 1, 2, '#6076aa');
-  v.box(3, 2, 3, 2, 7, 2, (x, y) => (y % 3 === 0 ? P.gold : '#6076aa'));
-  // linterna
-  v.box(2, 9, 2, 4, 1, 4, P.goldD);
-  for (const [x, z] of [[2, 2], [5, 2], [2, 5], [5, 5]]) v.box(x, 10, z, 1, 3, 1, P.gold);
-  v.box(2, 13, 2, 4, 1, 4, '#6076aa'); v.box(3, 14, 3, 2, 1, 2, '#6076aa'); v.set(3, 15, 3, P.gold); v.set(4, 15, 4, P.gold);
+function farol(m, L, o) {
+  const v = m.v, d = ds(o), e = clampEra(o?.era);
   const lamp = m.part('lamp', [4, 11.5, 4], { mat: 'light', cast: false });
-  lamp.box(3, 10, 3, 2, 3, 2, '#fff2a8');
-  lamp.box(3, 10, 2, 2, 3, 1, '#ffe066'); lamp.box(3, 10, 5, 2, 3, 1, '#ffe066'); lamp.box(2, 10, 3, 1, 3, 2, '#ffe066'); lamp.box(5, 10, 3, 1, 3, 2, '#ffe066');
-  // canasta de flores colgando
-  v.box(5, 8, 3, 2, 1, 1, P.gold); v.box(6, 6, 3, 1, 2, 1, P.goldD);
-  v.box(6, 5, 2, 2, 1, 2, P.wood); v.set(6, 6, 2, P.clay); v.set(7, 6, 3, C.leaf); v.set(7, 6, 2, '#ffffff');
-  m.animate((parts, ph) => { const o = parts.lamp[0]; return (dt, t) => { o.scale.setScalar(1 + Math.sin((t + ph) * 3) * 0.04); }; });
+  if (e === 1) {          // poste de madera con farol de aceite colgado de un brazo
+    v.box(2, 0, 2, 4, 1, 4, d.stone);
+    v.box(3, 1, 3, 2, 12, 2, (x, y) => (y % 4 === 0 ? d.woodD : d.post));
+    v.box(3, 13, 3, 4, 1, 2, d.post); v.box(6, 12, 3, 1, 1, 2, d.post);
+    v.box(5, 9, 3, 3, 1, 2, d.metalD); v.box(5, 12, 3, 1, 1, 2, d.metalD);
+    lamp.box(5, 10, 3, 3, 2, 2, d.lamp);
+  } else if (e === 2) {   // base de piedra, columna de hierro y linterna
+    v.box(1, 0, 1, 6, 1, 6, d.stoneD); v.box(2, 1, 2, 4, 2, 4, d.stone); v.box(2, 3, 2, 4, 1, 4, d.cap);
+    v.box(3, 4, 3, 2, 6, 2, d.metal);
+    v.box(2, 10, 2, 4, 1, 4, d.metalD);
+    for (const [x, z] of [[2, 2], [5, 2], [2, 5], [5, 5]]) v.box(x, 11, z, 1, 3, 1, d.metal);
+    v.box(2, 14, 2, 4, 1, 4, d.metal); v.box(3, 15, 3, 2, 1, 2, d.metalD);
+    lamp.box(3, 11, 3, 2, 3, 2, d.lamp);
+  } else if (e === 3) {   // farola de hierro forjado verde con canasta de flores
+    v.box(2, 0, 2, 4, 1, 4, d.cap);
+    v.box(3, 1, 3, 2, 1, 2, d.metal);
+    v.box(3, 2, 3, 2, 7, 2, (x, y) => (y % 3 === 0 ? P.goldD : d.metal));
+    v.box(2, 9, 2, 4, 1, 4, d.metalD);
+    for (const [x, z] of [[2, 2], [5, 2], [2, 5], [5, 5]]) v.box(x, 10, z, 1, 3, 1, d.metal);
+    v.box(2, 13, 2, 4, 1, 4, d.metal); v.box(3, 14, 3, 2, 1, 2, d.metal); v.set(3, 15, 3, P.goldD);
+    lamp.box(3, 10, 3, 2, 3, 2, d.lamp);
+    v.box(5, 8, 3, 2, 1, 1, d.metal); v.box(6, 6, 3, 1, 2, 1, d.metalD);
+    v.box(6, 5, 2, 2, 1, 2, '#c97b55'); v.set(6, 6, 2, P.clay); v.set(7, 6, 3, C.leaf); v.set(7, 6, 2, '#ffffff');
+  } else if (e === 4) {   // farol a gas de dos brazos
+    v.box(2, 0, 2, 4, 1, 4, d.stone); v.box(3, 1, 3, 2, 2, 2, d.metalD);
+    v.box(3, 3, 3, 2, 10, 2, d.metal);
+    v.box(0, 12, 3, 8, 1, 2, d.metal);
+    for (const x of [0, 6]) { v.box(x, 13, 3, 2, 1, 2, d.metalD); lamp.box(x, 10, 3, 2, 2, 2, d.lamp); v.box(x, 9, 3, 2, 1, 2, d.metalD); }
+    v.set(3, 13, 3, P.goldD); v.set(4, 14, 4, d.metal);
+  } else {                // columna fina de acero con cabezal de luz
+    v.box(3, 0, 3, 2, 1, 2, d.stoneD);
+    v.box(3, 1, 3, 2, 12, 2, (x, y) => (y === 3 ? d.metal : d.metalD));
+    v.box(3, 13, 1, 2, 1, 6, d.metalD);
+    lamp.box(3, 12, 1, 2, 1, 2, d.lamp); lamp.box(3, 12, 5, 2, 1, 2, d.lamp);
+  }
+  m.animate((parts, ph) => { const p = parts.lamp[0]; return (dt, t) => { p.scale.setScalar(1 + Math.sin((t + ph) * 3) * 0.04); }; });
 }
-function banco(m) {
-  const v = m.v;
-  // patas y respaldo
-  for (const x of [1, 6]) { v.box(x, 0, 3, 1, 3, 1, P.inkL); v.box(x, 0, 5, 1, 2, 1, P.inkL); v.box(x, 3, 3, 1, 3, 1, P.inkL); v.box(x, 2, 3, 1, 1, 3, P.inkL); }
-  v.box(0, 2, 3, 8, 1, 3, (x, y, z) => (z % 2 ? P.clay : P.clayL)); // asiento
-  v.box(0, 4, 3, 8, 1, 1, P.clay); v.box(0, 5, 3, 8, 1, 1, P.clayL); // respaldo
-  v.set(0, 6, 3, P.gold); v.set(7, 6, 3, P.gold);
-  // almohadón y florcitas
-  v.box(2, 3, 4, 2, 1, 1, P.slateL); v.set(2, 3, 3, P.slate);
+function banco(m, L, o) {
+  const v = m.v, d = ds(o), e = clampEra(o?.era);
+  if (e === 1) {          // medio tronco sobre dos tocones
+    for (const x of [1, 5]) v.box(x, 0, 3, 2, 2, 2, (xx, y) => (y === 1 ? '#d8b98a' : d.woodD));
+    v.box(0, 2, 3, 8, 1, 3, (x, y, z) => (z === 4 ? d.wood : d.woodD));
+    v.box(0, 3, 4, 8, 1, 1, '#d8b98a');
+    return;
+  }
+  if (e === 2) {          // losa de piedra sobre dos bloques
+    for (const x of [1, 5]) v.box(x, 0, 3, 2, 2, 3, d.stoneD);
+    v.box(0, 2, 3, 8, 1, 3, d.cap);
+    v.box(0, 3, 3, 8, 2, 1, d.stone);
+    return;
+  }
+  if (e === 5) {          // banco de hormigón con listones de madera
+    v.box(0, 0, 3, 8, 2, 3, (x, y) => (y === 0 ? d.stoneD : d.stone));
+    v.box(0, 2, 3, 8, 1, 3, (x) => (x % 2 ? d.wood : d.woodD));
+    return;
+  }
+  // Ladrillo y Hierro: listones de madera con estructura de hierro (verde o negra)
+  for (const x of [1, 6]) { v.box(x, 0, 3, 1, 3, 1, d.metal); v.box(x, 0, 5, 1, 2, 1, d.metal); v.box(x, 3, 3, 1, 3, 1, d.metal); v.box(x, 2, 3, 1, 1, 3, d.metal); }
+  v.box(0, 2, 3, 8, 1, 3, (x, y, z) => (z % 2 ? d.wood : d.woodD));
+  v.box(0, 4, 3, 8, 1, 1, d.wood); v.box(0, 5, 3, 8, 1, 1, d.woodD);
+  if (e === 4) { v.set(0, 6, 3, P.goldD); v.set(7, 6, 3, P.goldD); }
 }
 
 // ---------- fuente de corazones ----------
-function fuente(m) {
-  const v = m.v;
+function fuente(m, L, o) {
+  const v = m.v, d = ds(o), e = clampEra(o?.era);
   const cx = 7.5, cz = 7.5;
-  // piso de piedra
+  // piso de la plaza
   for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) {
-    const d = Math.hypot(x - cx, z - cz);
-    if (d <= 7.9) v.set(x, 0, z, (x + z) % 2 ? '#fbf7f0' : '#f4ede2');
+    const r = Math.hypot(x - cx, z - cz);
+    if (r <= 7.9) v.set(x, 0, z, (x + z) % 2 ? d.floor : d.floorD);
   }
   // pileta con borde
-  v.cylinder(cx, 1, cz, 6.6, 2, (x, y, z) => (Math.hypot(x - cx, z - cz) > 5.4 ? (y === 2 ? '#ffffff' : C.stoneL) : C.waterD));
+  v.cylinder(cx, 1, cz, 6.6, 2, (x, y, z) => (Math.hypot(x - cx, z - cz) > 5.4 ? (y === 2 ? d.cap : d.stone) : C.waterD));
   for (const [k] of [...v.map]) { const [x, y, z] = k.split(',').map(Number); if (y === 2 && Math.hypot(x - cx, z - cz) <= 5.4) v.remove(x, y, z); }
   // agua (superficie animada)
   const water = m.part('water', [8, 2.5, 8], { cast: false });
   water.cylinder(cx, 2, cz, 5.4, 1, (x, y, z) => ((x * 3 + z) % 7 === 0 ? C.waterL : (x + z) % 2 ? C.water : '#9fe6ff'));
   // columna y plato superior
-  v.cylinder(cx, 1, cz, 1.2, 6, (x, y) => (y % 2 ? '#ffffff' : P.clayL));
-  v.cylinder(cx, 6, cz, 2.8, 1, '#ffffff');
-  v.cylinder(cx, 7, cz, 2.8, 1, (x, y, z) => (Math.hypot(x - cx, z - cz) > 1.8 ? '#ffffff' : C.water));
-  // corazón rosa arriba de todo
-  const heart = m.part('heart', [7.5, 10, 8], { mat: 'glow' });
-  for (const z of [7, 8]) pattern(heart, 'pz', z, 5, 8, HEART5, P.clay);
-  pattern(heart, 'pz', 8, 6, 11, ['X'], '#ffffff');
+  v.cylinder(cx, 1, cz, 1.2, 6, (x, y) => (y % 2 ? d.cap : d.stoneD));
+  v.cylinder(cx, 6, cz, 2.8, 1, d.cap);
+  v.cylinder(cx, 7, cz, 2.8, 1, (x, y, z) => (Math.hypot(x - cx, z - cz) > 1.8 ? d.cap : C.water));
+  // remate de la época: piña de madera, bola de piedra, jarrón con flores, pájaro de bronce, esfera de vidrio
+  const heart = m.part('heart', [7.5, 10, 8], { mat: e === 5 ? 'glow' : 'std' });
+  if (e === 1) { heart.box(7, 8, 7, 2, 3, 2, d.woodD); heart.box(6, 9, 6, 4, 1, 4, d.wood); heart.set(7, 11, 7, d.post); }
+  else if (e === 2) heart.sphere(7.5, 9.5, 7.5, 1.6, 1.6, 1.6, d.cap);
+  else if (e === 3) { heart.box(7, 8, 7, 2, 1, 2, d.cap); heart.box(6, 9, 6, 4, 2, 4, d.stone); heart.box(6, 11, 6, 4, 1, 4, d.cap); heart.set(7, 12, 7, C.leaf); heart.set(8, 12, 8, P.clay); }
+  else if (e === 4) { heart.box(7, 8, 7, 2, 2, 2, P.goldD); heart.box(6, 10, 7, 4, 1, 2, P.gold); heart.box(7, 11, 7, 1, 1, 1, P.goldD); }
+  else heart.sphere(7.5, 9.5, 7.5, 1.8, 1.8, 1.8, C.glass);
   // chorritos de agua
   for (let i = 0; i < 4; i++) {
     const a = i * Math.PI / 2 + Math.PI / 4;
@@ -144,7 +206,7 @@ function fuente(m) {
     d.set(x, 7, z, C.waterL); d.set(x, 8, z, '#ffffff');
   }
   // corazoncitos en el borde
-  for (const [x, z] of [[1, 7], [14, 8], [7, 1], [8, 14]]) v.set(x, 3, z, P.clay);
+  for (const [x, z] of [[1, 7], [14, 8], [7, 1], [8, 14]]) v.set(x, 3, z, e >= 4 ? d.metal : d.band);
   // flores alrededor
   for (const [x, z] of [[0, 3], [15, 3], [0, 12], [15, 12], [3, 0], [12, 15]]) flower(v, x, 0, z, pick(rng(x * 7 + z), [P.clay, '#ffffff', C.yellow]), 1);
   m.animate((parts, ph) => {
@@ -168,20 +230,21 @@ function fuente(m) {
 }
 
 // ---------- estatua real ----------
-function estatua(m) {
-  const v = m.v;
+function estatua(m, L, o) {
+  const v = m.v, d = ds(o), e = clampEra(o?.era);
   const marble = '#fcf9f5', marbleD = '#f2e9dc';
   // plaza circular con canteros
   for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) {
-    const d = Math.hypot(x - 7.5, z - 7.5);
-    if (d <= 7.9) v.set(x, 0, z, d > 6.2 ? P.grassL : (x + z) % 2 ? '#fdf6e3' : '#f6e7d6');
+    const r = Math.hypot(x - 7.5, z - 7.5);
+    if (r <= 7.9) v.set(x, 0, z, r > 6.2 ? P.grassL : (x + z) % 2 ? d.floor : d.floorD);
   }
   for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; flower(v, Math.round(7.5 + Math.cos(a) * 6.8), 1, Math.round(7.5 + Math.sin(a) * 6.8), FLOWER_COLORS[i % 5], 0); }
   // pedestal escalonado
-  v.box(3, 1, 3, 10, 1, 10, C.stoneL);
-  v.box(4, 2, 4, 8, 3, 8, marbleD);
-  v.box(4, 5, 4, 8, 1, 8, P.gold);
-  fbox(v, 'pz', 11, 6, 3, 4, 2, 1, P.gold); // placa
+  // pedestal de la época: tronco labrado, piedra, ladrillo con cornisa, granito con bronce, cubo blanco
+  v.box(3, 1, 3, 10, 1, 10, e === 1 ? d.stone : d.cap);
+  v.box(4, 2, 4, 8, 3, 8, e === 1 ? ((x, y) => (y === 3 ? d.woodD : d.wood)) : e === 3 ? ((x, y) => (y === 3 ? EP.ladrillo.joint : d.stone)) : e === 4 ? d.stoneD : d.stone);
+  v.box(4, 5, 4, 8, 1, 8, e === 4 ? P.gold : d.cap);
+  fbox(v, 'pz', 11, 6, 3, 4, 2, 1, e === 1 ? d.post : P.gold); // placa
   fbox(v, 'pz', 12, 7, 3, 2, 1, 0, P.goldD);
   // fundador/a del pueblo en mármol: levanta el brazo saludando y lleva el plano de la ciudad
   const y0 = 6;
@@ -203,18 +266,19 @@ function estatua(m) {
 }
 
 // ---------- glorieta ----------
-function glorieta(m) {
-  const v = m.v;
+function glorieta(m, L, o) {
+  const v = m.v, d = ds(o), e = clampEra(o?.era);
+  const post = e === 3 ? '#ffffff' : e === 2 ? d.cap : d.post;
   const cx = 7.5, cz = 7.5;
   // piso octogonal elevado con escalón
-  v.cylinder(cx, 0, cz, 7.4, 1, (x, y, z) => ((x + z) % 2 ? '#ffffff' : '#faf5ee'));
-  v.cylinder(cx, 1, cz, 6.4, 1, (x, y, z) => (Math.hypot(x - cx, z - cz) > 5.4 ? '#ffffff' : (x + z) % 2 ? '#f8f0e4' : '#fbf6ee'));
-  for (let x = 6; x <= 9; x++) v.set(x, 1, 14, '#ffffff');
+  v.cylinder(cx, 0, cz, 7.4, 1, (x, y, z) => ((x + z) % 2 ? d.cap : d.floorD));
+  v.cylinder(cx, 1, cz, 6.4, 1, (x, y, z) => (Math.hypot(x - cx, z - cz) > 5.4 ? d.cap : (x + z) % 2 ? d.floor : d.floorD));
+  for (let x = 6; x <= 9; x++) v.set(x, 1, 14, d.cap);
   // postes con enredaderas
   const posts = [];
   for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6; posts.push([Math.round(cx + Math.cos(a) * 5.2), Math.round(cz + Math.sin(a) * 5.2)]); }
   for (const [x, z] of posts) {
-    v.box(x, 2, z, 1, 8, 1, '#ffffff');
+    v.box(x, 2, z, 1, 8, 1, post);
     for (let y = 2; y < 10; y += 2) v.set(x + (y % 4 ? 1 : 0), y, z + (y % 4 ? 0 : 1), C.leaf);
     v.set(x, 5, z + 1, P.clay); v.set(x + 1, 7, z, '#ffffff'); v.set(x, 3, z + 1, C.red);
   }
@@ -222,27 +286,28 @@ function glorieta(m) {
   for (let i = 0; i < 6; i++) {
     const [ax, az] = posts[i], [bx, bz] = posts[(i + 1) % 6];
     if ((az + bz) / 2 > 11) continue; // frente abierto
-    for (let k = 1; k < 6; k++) { const x = Math.round(ax + (bx - ax) * k / 6), z = Math.round(az + (bz - az) * k / 6); v.set(x, 4, z, '#ffffff'); if (k % 2) v.set(x, 3, z, '#ffffff'); }
+    for (let k = 1; k < 6; k++) { const x = Math.round(ax + (bx - ax) * k / 6), z = Math.round(az + (bz - az) * k / 6); v.set(x, 4, z, post); if (k % 2) v.set(x, 3, z, post); }
   }
   // techo cebolla lila con borde blanco
-  v.cylinder(cx, 10, cz, 6.8, 1, '#ffffff');
-  for (let j = 0; j < 7; j++) v.cylinder(cx, 11 + j, cz, Math.max(0.6, 6.2 - j * 0.85 - (j > 4 ? 0.6 : 0)), 1, j % 2 ? P.slate : P.slateL);
-  v.box(7, 18, 7, 2, 2, 2, P.gold); v.set(7, 20, 7, P.clay);
+  // techo de la época: paja, pizarra, tejas, chapa (kiosco de hierro) o vidrio
+  v.cylinder(cx, 10, cz, 6.8, 1, e === 3 ? '#ffffff' : d.cap);
+  for (let j = 0; j < 7; j++) v.cylinder(cx, 11 + j, cz, Math.max(0.6, 6.2 - j * 0.85 - (j > 4 ? 0.6 : 0)), 1, j % 2 ? d.roofD : d.roof);
+  v.box(7, 18, 7, 2, 2, 2, e === 1 ? d.post : e === 5 ? d.metal : P.gold); v.set(7, 20, 7, e === 1 ? d.roofD : e >= 4 ? d.metal : P.clay);
   // banco interior y farolito colgante
-  v.box(4, 2, 4, 8, 1, 2, P.wood); v.box(4, 3, 4, 8, 2, 1, P.clayL);
+  v.box(4, 2, 4, 8, 1, 2, d.wood); v.box(4, 3, 4, 8, 2, 1, d.woodD);
   v.box(7, 9, 7, 1, 1, 1, P.gold); m.light.set(7, 8, 7, C.yellow);
   for (const [x, z] of [[1, 14], [14, 14]]) bush(v, x, 1, z, 1.2, C.leaf, [P.clay, '#ffffff'], x);
   m.height = 21;
 }
 
 // ---------- arco de rosas ----------
-function arcoRosas(m) {
-  const v = m.v;
-  for (let z = 0; z < 8; z++) for (let x = 2; x <= 5; x++) v.set(x, 0, z, (x + z) % 3 === 0 ? '#e9d9c4' : '#f3e7d6');
+function arcoRosas(m, L, o) {
+  const v = m.v, d = ds(o);
+  for (let z = 0; z < 8; z++) for (let x = 2; x <= 5; x++) v.set(x, 0, z, (x + z) % 3 === 0 ? d.floorD : d.floor);
   const r = rng(13);
   const rose = () => (r() < 0.45 ? P.clay : r() < 0.5 ? C.red : '#ffffff');
   for (const x of [0, 7]) {
-    v.box(x, 0, 3, 1, 1, 2, P.wood);
+    v.box(x, 0, 3, 1, 1, 2, d.post);
     for (let y = 1; y <= 8; y++) for (let z = 3; z <= 4; z++) v.set(x, y, z, r() < 0.35 ? rose() : (r() < 0.5 ? C.leaf : C.leafD));
   }
   for (let x = 0; x <= 7; x++) {
@@ -250,7 +315,7 @@ function arcoRosas(m) {
     for (let z = 3; z <= 4; z++) { v.set(x, y, z, r() < 0.4 ? rose() : C.leaf); if (x >= 1 && x <= 6) v.set(x, y - 1, z, r() < 0.3 ? rose() : C.leafD); }
   }
   v.set(3, 11, 3, P.clay); v.set(4, 11, 4, C.red);
-  v.box(2, 8, 3, 4, 1, 2, '#ffffff');
+  v.box(2, 8, 3, 4, 1, 2, d.cap);
   pattern(v, 'pz', 5, 3, 7, ['XX'], P.clay);
   m.height = 12;
 }
@@ -289,14 +354,14 @@ function unicornio(m) {
 }
 
 // ---------- lago de patitos ----------
-function lago(m) {
-  const v = m.v;
+function lago(m, L, o) {
+  const v = m.v, d = ds(o), e = clampEra(o?.era);
   const cx = 11.5, cz = 11.5;
   const shape = (x, z) => { const a = Math.atan2(z - cz, x - cx); const rr = 9.4 + Math.sin(a * 3) * 0.9 + Math.cos(a * 2) * 0.6; return Math.hypot(x - cx, z - cz) / rr; };
   for (let x = 0; x < 24; x++) for (let z = 0; z < 24; z++) {
-    const d = shape(x, z);
-    if (d < 0.86) v.set(x, 0, z, d < 0.55 ? C.waterD : C.water);
-    else if (d < 1) { v.set(x, 0, z, P.sand || '#f3e2c0'); v.set(x, 1, z, (x + z) % 3 === 0 ? '#ddd5c8' : '#a2e589'); }
+    const r = shape(x, z);
+    if (r < 0.86) v.set(x, 0, z, r < 0.55 ? C.waterD : C.water);
+    else if (r < 1) { v.set(x, 0, z, P.sand || '#f3e2c0'); v.set(x, 1, z, e === 1 ? ((x + z) % 3 === 0 ? '#ddd5c8' : '#a2e589') : (x + z) % 3 === 0 ? d.stoneD : d.cap); }
     else v.set(x, 0, z, (x + z) % 2 ? '#a2e589' : '#99e07f');
   }
   // reflejos del agua (superficie animada)
@@ -307,8 +372,8 @@ function lago(m) {
   // juncos
   for (const [x, z] of [[3, 15], [4, 16], [20, 6], [19, 5], [21, 8]]) { v.box(x, 1, z, 1, 3, 1, C.leafD); v.set(x, 4, z, P.woodD); }
   // muellecito de madera
-  v.box(17, 1, 17, 4, 1, 6, (x, y, z) => (z % 2 ? P.wood : '#c98f62'));
-  for (const [x, z] of [[17, 17], [20, 17]]) v.box(x, 0, z, 1, 2, 1, P.woodD);
+  v.box(17, 1, 17, 4, 1, 6, (x, y, z) => (e === 5 ? (z % 2 ? d.stone : d.stoneD) : z % 2 ? d.wood : d.woodD));
+  for (const [x, z] of [[17, 17], [20, 17]]) v.box(x, 0, z, 1, 2, 1, e >= 4 ? d.metal : d.post);
   // piedras y flores en la orilla
   for (const [x, z] of [[2, 6], [10, 2], [21, 12], [8, 21]]) { v.set(x, 2, z, '#efe7dc'); v.set(x + 1, 2, z, '#ddd5c8'); }
   flowerBed(v, 0, 1, 0, 3, 3, 4); flowerBed(v, 21, 1, 21, 3, 3, 8);
@@ -343,41 +408,65 @@ function lago(m) {
 }
 
 // ---------- caminos (1 vóxel, cubren el tile) ----------
-function camino(m) {
-  const v = m.v;
-  // losas de piedra clara de 4x4 con junta, filas desplazadas
-  const tones = ['#f5f1ea', '#efe9e0', '#f8f4ef', '#f2ede5'];
+// Camino de Piedra: tierra con lajas (Madera) · lajas irregulares (Piedra) · adoquín parejo (Ladrillo) ·
+// adoquín de granito con cordón (Hierro) · baldosones de hormigón (Vidrio y acero).
+const hashT = (x, z, s = 1) => (((x * 73856093) ^ (z * 19349663) ^ (s * 83492791)) >>> 0) % 97 / 97;
+function camino(m, L, o) {
+  const v = m.v, e = clampEra(o?.era);
   for (let x = 0; x < 8; x++) for (let z = 0; z < 8; z++) {
-    const row = Math.floor(z / 4), off = row % 2 ? 2 : 0;
-    const bx = (x + off) % 4, bz = z % 4;
-    const id = (Math.floor((x + off) / 4) + row * 3) % 4;
-    let c = bx === 3 || bz === 3 ? '#e1d9cc' : tones[id];
-    if (bx === 0 && bz === 0) c = '#fbf9f5';
+    let c;
+    if (e === 1) {
+      const slab = (Math.floor(x / 3) + Math.floor(z / 3) * 2) % 3 === 0 && x % 3 !== 2 && z % 3 !== 2;
+      c = slab ? (hashT(x, z) < 0.5 ? '#b8afa2' : '#a89f92') : hashT(x, z) < 0.2 ? '#a88a62' : '#c2a477';
+    } else if (e === 2) {
+      const row = Math.floor(z / 3), off = row % 2 ? 1 : 0;
+      const edge = (x + off) % 4 === 3 || z % 3 === 2;
+      c = edge ? '#8c8375' : ['#c4bba9', '#b8af9d', '#cfc6b4'][Math.floor((x + off) / 4 + row) % 3];
+    } else if (e === 3) {
+      const off = Math.floor(z / 2) % 2 ? 1 : 0;
+      c = z % 2 === 1 || (x + off) % 3 === 2 ? '#c9b99c' : (Math.floor((x + off) / 3) + z) % 3 ? '#e4d6bb' : '#d9caae';
+    } else if (e === 4) {
+      const off = z % 2 ? 1 : 0;
+      c = (x + off) % 2 ? '#7d7a76' : hashT(x, z) < 0.3 ? '#6a6763' : '#8e8a84';
+    } else {
+      c = x % 4 === 3 || z % 4 === 3 ? '#cfcbc2' : (Math.floor(x / 4) + Math.floor(z / 4)) % 2 ? '#ebe8e1' : '#e2ded6';
+    }
     v.set(x, 0, z, c);
   }
 }
-function caminoRosa(m) {
-  const v = m.v;
+// Camino de Ladrillo: ladrillo tosco a soga (Madera, Piedra) · espina de pez (Ladrillo) · ladrillo oscuro industrial
+// (Hierro) · adoquín rojo de hormigón (Vidrio y acero).
+function caminoRosa(m, L, o) {
+  const v = m.v, e = clampEra(o?.era);
+  const B = e === 4 ? ['#8f5a44', '#7a4a38', '#5e3a2c'] : e === 5 ? ['#c06a52', '#b05f48', '#e3d9cc'] : e === 3 ? ['#c4704d', '#b5603f', '#e8d6b8'] : ['#c27a55', '#ad6a48', '#d8c3a5'];
   for (let x = 0; x < 8; x++) for (let z = 0; z < 8; z++) {
-    const ex = x % 4 === 3, ez = z % 4 === 3;
-    const tile = (Math.floor(x / 4) + Math.floor(z / 4)) % 2;
-    let c = ex || ez ? '#eea183' : tile ? '#ffd8c4' : '#fde9d8';
-    if (!ex && !ez && x % 4 === 0 && z % 4 === 0) c = '#faf4eb';
+    let c;
+    if (e === 3) {                                          // espina de pez
+      const k = (x + z) % 4, joint = (x - z + 16) % 4 === 0;
+      c = joint ? B[2] : k < 2 ? B[0] : B[1];
+    } else if (e === 5) {
+      c = x % 4 === 3 || z % 2 === 1 && x % 4 === 1 ? B[2] : (Math.floor(x / 4) + z) % 2 ? B[0] : B[1];
+    } else {                                                // a soga
+      const off = Math.floor(z / 2) % 2 ? 2 : 0;
+      c = z % 2 === 1 || (x + off) % 4 === 3 ? B[2] : (Math.floor((x + off) / 4) + Math.floor(z / 2)) % 2 ? B[0] : B[1];
+    }
     v.set(x, 0, z, c);
   }
-  // corazoncitos en las baldosas
-  v.set(1, 0, 1, P.clay); v.set(5, 0, 5, P.clay);
 }
-function caminoDorado(m) {
-  const v = m.v;
+// Camino Dorado: siempre dorado; cambian las juntas (madera, piedra, crema, bronce, acero) y en Hierro y Vidrio y acero
+// lleva luces al ras.
+function caminoDorado(m, L, o) {
+  const v = m.v, e = clampEra(o?.era);
+  const J = [EP.madera.plankD, EP.piedra.joint, EP.ladrillo.cream, P.goldD, EP.vidrio.steel][e - 1];
   for (let x = 0; x < 8; x++) for (let z = 0; z < 8; z++) {
     const ex = x % 4 === 3, ez = z % 4 === 3;
     const tile = (Math.floor(x / 4) + Math.floor(z / 4)) % 2;
-    let c = ex || ez ? P.goldD : tile ? P.gold : '#ffdb85';
+    let c = ex || ez ? J : tile ? P.gold : '#ffdb85';
     if (!ex && !ez && x % 4 === 0 && z % 4 === 0) c = P.goldL;
     v.set(x, 0, z, c);
   }
-  m.light.set(1, 0, 5, '#fff6d0'); m.light.set(5, 0, 1, '#fff6d0');
+  if (e >= 4) { m.light.set(3, 0, 3, '#fff6d0'); m.light.set(7, 0, 7, '#fff6d0'); }
+  else { m.light.set(1, 0, 5, '#fff6d0'); m.light.set(5, 0, 1, '#fff6d0'); }
 }
 
 export const DECO_BUILDERS = {
