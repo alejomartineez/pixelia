@@ -195,7 +195,7 @@ async function closeTop() {
     await sleep(350);
   }
 }
-/** Construye con la interfaz: Construir → pestaña → tarjeta → Colocar (n veces si se pinta) → Listo. */
+/** Construye con la interfaz: Construir → pestaña → tarjeta → ✓ junto al edificio (n veces si se pinta) → Listo. */
 async function buildUI(id, n = 1) {
   await drainOverlays();
   const info = await run(`const d = E.def('${id}'); const cat = ctx.data.CATEGORIES?.find(c => c.id === d.cat); return { name: d.name, cat: cat?.name || d.cat };`);
@@ -205,12 +205,12 @@ async function buildUI(id, n = 1) {
   if (!(await ev((name) => [...document.querySelectorAll('.cx-build .cx-card .nm')].some(e => e.textContent === name), info.name))) await tap('.cx-build .cx-tabs .tab', info.cat);
   await sleep(250);
   if (!(await tap('.cx-build .cx-card .nm', '^' + info.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))) { await shot('fallo-construir-' + id); await closeTop(); return false; }
-  if (!(await waitFor(`!!document.querySelector('.cx-pb-btns')`, 3000))) { await shot('fallo-colocar-' + id); await closeTop(); return false; }
+  if (!(await waitFor(`!!document.querySelector('.cx-pc .cx-pc-ok')`, 3000))) { await shot('fallo-colocar-' + id); await closeTop(); return false; }
   const before = await run(`return E.countOf('${id}')`);
   // cada toque en Colocar espera a que el edificio aparezca (con la máquina cargada la ciudad tarda en reubicar la pieza)
   const diag = [];
   const snap = () => ev((id) => {
-    const b = document.querySelector('.cx-pb-btns .btn.mint');
+    const b = document.querySelector('.cx-pc .cx-pc-ok');
     const r = b?.getBoundingClientRect();
     const hit = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
     const E = window.__pixelia.economy;
@@ -223,13 +223,13 @@ async function buildUI(id, n = 1) {
   }, id);
   for (let i = 0; i < n; i++) {
     diag.push(await snap());
-    await tap('.cx-pb-btns .btn.mint');
+    await tap('.cx-pc .cx-pc-ok');
     await waitFor(`window.__pixelia.economy.countOf('${id}') >= ${before + i + 1}`, 2500);
     await sleep(200);
   }
   diag.push(await snap());
   if (diag.at(-1).n < before + n) { console.log('    diag buildUI ' + id + ':\n      ' + diag.map(d => JSON.stringify(d)).join('\n      ')); await shot('fallo-pintar-' + id); }
-  if (await ev(() => !!document.querySelector('.cx-pb-btns'))) { await tap('.cx-pb-btns .btn:first-child'); await sleep(300); }
+  if (await ev(() => !!document.querySelector('.cx-placebar'))) { await tap(await ev(() => document.querySelector('.cx-pb-done')?.offsetParent ? '.cx-pb-done' : '.cx-pc .cx-pc-x')); await sleep(300); }
   // una subida de nivel ganada mientras se colocaba sale recién al terminar de colocar
   await drainOverlays();
   return (await run(`return E.countOf('${id}')`)) - before;

@@ -98,6 +98,15 @@ export function createCameraCtl(r, saved, { onChange, limit } = {}) {
     if (p && pinch.anchor) { st.x += pinch.anchor.x - p.x; st.z += pinch.anchor.z - p.z; apply(); }
   }
   function endPinch() { pinch = null; }
+  /** Corre la vista dx,dy píxeles de pantalla (paneo automático al arrastrar un edificio contra el borde). */
+  function panScreen(dx, dy) {
+    const { w, h } = size();
+    const a = pick(w / 2, h / 2), b = pick(w / 2 + dx, h / 2 + dy);
+    if (!a || !b) return;
+    fly = null;
+    st.x += b.x - a.x; st.z += b.z - a.z;
+    apply();
+  }
 
   function rotate(dir = 1) {
     st.rot = ((st.rot + dir) % 4 + 4) % 4;
@@ -154,7 +163,7 @@ export function createCameraCtl(r, saved, { onChange, limit } = {}) {
   apply();
   return {
     st, target, apply, applyProj, update, save,
-    beginGrab, moveGrab, endGrab, zoomAt, beginPinch, movePinch, endPinch, rotate, flyTo,
+    beginGrab, moveGrab, endGrab, zoomAt, beginPinch, movePinch, endPinch, rotate, flyTo, panScreen,
     get angle() { return st.angle; },
     get dragging() { return !!grab || !!pinch; },
     key(name, down) { if (down) keys.add(name); else keys.delete(name); },
