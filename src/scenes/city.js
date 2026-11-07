@@ -5,12 +5,13 @@ import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { buildingModel, constructionModel } from '../city/models.js';
 import { icon } from '../core/icons.js';
 import { PALETTE } from '../core/palette.js';
-import { MAP, HALF, ROAD_H, footCenter, clamp, easeOutElastic, makeGhost, greeting } from './city-common.js';
+import { HALF, footCenter, clamp, easeOutElastic, greeting } from './city-common.js';
 import { createWorld } from './city-world.js';
 import { createCameraCtl } from './city-camera.js';
 import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
-import { STYLE, openBuildMenu, openInfo, openExpand, makePlaceBar, questBuildIds, setThumbTheme } from './city-ui.js';
+import { STYLE, openBuildMenu, openInfo, openExpand, questBuildIds, setThumbTheme } from './city-ui.js';
+import { createPlacer, PLACE_STYLE, LONG_PRESS_MS } from './city-place.js';
 import { currentThemeId, themeOf } from '../city/themes.js';
 import { openThemePicker } from '../city/themes-ui.js';
 import { createBatcher } from './city-batch.js';
@@ -44,15 +45,14 @@ function easeOutBounce(t) {
 
 export default function create(ctx) {
   const { store, bus, ui, audio, economy: E } = ctx;
-  let container, r, cam, world, life, fx, ov, styleEl, bGroup, batch, placeBar, sideEl, collectBtn, tipEl, ro, lights, themeId;
+  let container, r, cam, world, life, fx, ov, styleEl, bGroup, batch, sideEl, collectBtn, tipEl, ro, lights, themeId;
   const entries = new Map();
   const offs = [];
   const myModals = new Set();
-  let placing = null;
+  let placer = null;
   let visit = null;
   let defense = null, decor = null, TA = null;   // amenazas: defensa en curso, decoración y API para su capa
   let syncAcc = 0, disposed = false, batchCollect = false;
-  let okMat, badMat, tileGeo, tileTex;
   const raycaster = new THREE.Raycaster();
   raycaster.layers.enableAll(); // las mallas de edificios quietos están en otra capa (se dibujan instanciadas)
   const tmpV = new THREE.Vector3();
@@ -163,7 +163,7 @@ export default function create(ctx) {
       if (refreshEntry(e)) life.refreshGrid();
       const b = e.b;
       const busy = E.isBusy(b, now);
-      const hidden = !!placing;
+      const hidden = !!placer?.active;
       if (busy && !hidden) {
         const t = ensureTimer(e);
         const total = (E.isConstructing(b, now) ? E.def(b).time : (E.upgradeInfo(b)?.time || 1)) * 1000;
@@ -184,9 +184,9 @@ export default function create(ctx) {
     if (popSfx) { popSfx = false; audio.sfx('pop'); }
     decor?.sync();
     quietPops = false;
-    for (const it of signItems) it.hidden = !!placing;
+    for (const it of signItems) it.hidden = !!placer?.active;
     if (collectBtn) {
-      collectBtn.style.display = ready >= 3 && !placing ? '' : 'none';
+      collectBtn.style.display = ready >= 3 && !placer?.active ? '' : 'none';
       const bd = collectBtn.querySelector('.badge');
       if (bd && bd.textContent !== String(ready)) bd.textContent = ready;
     }
@@ -223,272 +223,26 @@ export default function create(ctx) {
   }
 
   // =====================================================================
-  // Colocación / mover
+  // Colocación / mover (lógica en city-place.js)
   // =====================================================================
-  const paintable = (id) => { const d = E.def(id); return (d.cat === 'camino' || d.cat === 'deco') && d.size[0] === 1 && d.size[1] === 1; };
-
-  function landClampCorner(id, x, z, rot) {
-    const [w, d] = E.footprint(id, rot);
-    const L = E.landBounds();
-    return [clamp(x, L.min, L.max - w), clamp(z, L.min, L.max - d)];
-  }
-  function cornerFromWorld(id, rot, wx, wz) {
-    const [w, d] = E.footprint(id, rot);
-    return landClampCorner(id, Math.round(wx + HALF - w / 2), Math.round(wz + HALF - d / 2), rot);
-  }
   function chainVisible(o) { for (; o; o = o.parent) if (!o.visible) return false; return true; }
-  /** ¿Hay un edificio tapando este punto del piso desde la cámara? */
-  function occluded(wx, wz) {
-    tmpV.set(wx, 0.05, wz);
-    const from = tmpV.clone();
-    const dir = new THREE.Vector3();
-    r.camera.getWorldDirection(dir);
-    raycaster.set(from.addScaledVector(dir, -80), dir);
-    const hits = raycaster.intersectObjects(bGroup.children, true);
-    const dGround = 80;
-    return hits.some(h => h.distance < dGround - 0.3 && chainVisible(h.object));
-  }
-  function findFreeSpot(id, rot, ignoreUid = null) {
-    const W = r.canvas.clientWidth || innerWidth, H = r.canvas.clientHeight || innerHeight;
-    const tx = W / 2, ty = H * 0.56;
-    const p = r.pickGround(tx, ty) || new THREE.Vector3();
-    const [cx, cz] = cornerFromWorld(id, rot, p.x, p.z);
-    const [w, d] = E.footprint(id, rot);
-    let best = null, bestScore = Infinity;
-    const L = E.landBounds();
-    for (let x = L.min; x <= L.max - w; x++) for (let z = L.min; z <= L.max - d; z++) {
-      if (Math.abs(x - cx) > 12 || Math.abs(z - cz) > 12) continue;
-      if (!E.canPlace(id, x, z, rot, ignoreUid).ok) continue;
-      const fc = footCenter(id, x, z, rot);
-      const sp = ov.project(tmpV.set(fc.x, 0, fc.z), {});
-      const score = Math.hypot(sp.x - tx, sp.y - ty);
-      if (score < bestScore + 160) {
-        const occ = occluded(fc.x, fc.z) || occluded(fc.x - w / 2 + 0.5, fc.z - d / 2 + 0.5) || occluded(fc.x + w / 2 - 0.5, fc.z - d / 2 + 0.5);
-        const sc = score + (occ ? 160 : 0);
-        if (sc < bestScore) { bestScore = sc; best = [x, z]; }
-      }
-    }
-    return best;
-  }
-  function startPlacement(id) {
-    endPlacement(true);
-    const can = E.canBuild(id);
-    if (!can.ok) { audio.sfx('error'); ui.toast(can.reason, { icon: 'info' }); return; }
-    const spot = findFreeSpot(id, 0);
-    if (!spot) { audio.sfx('error'); ui.toast('No queda lugar libre. Expandí tu terreno', { icon: 'map' }); return; }
-    beginPlacing({ mode: 'new', id, rot: 0, x: spot[0], z: spot[1], level: 1, uid: null });
-  }
-  function startMove(uid) {
-    endPlacement(true);
-    const e = entries.get(uid);
-    if (!e) return;
-    const b = e.b;
-    e.root.visible = false;
-    if (e.timer) { ov.remove(e.timer); e.timer = null; }
-    beginPlacing({ mode: 'move', id: b.id, rot: b.rot, x: b.x, z: b.z, level: E.isConstructing(b) ? 1 : b.level, uid });
-  }
-  function beginPlacing(p) {
-    const movingB = p.uid != null ? entries.get(p.uid)?.b : null;
-    const isCon = !!movingB && E.isConstructing(movingB);
-    const fp = E.footprint(p.id, 0);
-    const model = isCon ? safe(() => constructionModel(...fp, themeId), fp) : safe(() => buildingModel(p.id, p.level, { ...modelOpts(), era: movingB ? movingB.era : E.cityEra() }), fp);
-    const mats = makeGhost(model, 0.62);
-    const root = new THREE.Group();
-    root.add(model);
-    r.scene.add(root);
-    placing = { ...p, ghost: root, model, mats, tiles: [], valid: false, reason: '', paint: false, count: 0, lastPaint: null, t: 0, isConstructionGhost: isCon, hoverAt: performance.now(), settled: null };
-    if (E.def(p.id).cat === 'defensa') placing.cov = createCoverage(TA);   // radio de la defensa en el piso
+  function startPlacement(id) { placer?.start(id); }
+  function startMove(uid) { placer?.startMove(uid); }
+  function rotateBuilding(uid) { placer?.rotateBuilding(uid); }
+  function endPlacement(silent = false) { placer?.end(silent); }
+  /** La escena se aparta mientras se coloca: sin HUD, botones laterales, globitos ni carteles. */
+  function placingStart() {
+    cam.clearKeys(); // las flechas pasan a mover el fantasma: que no quede una tecla de cámara "apretada"
     world.showGrid(true);
     ctx.hud.hide();
     sideEl.classList.add('hide');
-    placing.pin = ov.add(ui.h('div.cx-pin', { html: icon('👇', 36) }), new THREE.Vector3());
-    placeBar = makePlaceBar(S, { onCancel: () => endPlacement(), onRotate: rotatePlacing, onConfirm: confirmPlacement });
-    placeBar.el.addEventListener('pointerenter', onBarEnter);
-    container.append(placeBar.el);
-    updateGhost();
     syncStatus();
-    if (!T().place) setTimeout(() => setFlag('place'), 4000);
   }
-  function endPlacement(silent = false) {
-    if (!placing) return;
-    const p = placing;
-    placing = null;
-    r.scene.remove(p.ghost);
-    for (const m of p.mats) m.dispose();
-    for (const t of p.tiles) r.scene.remove(t);
-    p.cov?.dispose();
-    ov.remove(p.pin);
-    if (p.uid != null) { const e = entries.get(p.uid); if (e) { e.root.visible = true; } }
+  function placingEnd() {
     world.showGrid(false);
-    placeBar?.el.remove(); placeBar = null;
     ctx.hud.show();
     sideEl.classList.remove('hide');
-    if (!silent) audio.sfx('close');
     syncStatus();
-    bus.emit('city:placing', { active: false });
-  }
-  function rotatePlacing() {
-    if (!placing) return;
-    audio.sfx('swoosh');
-    placing.rot = (placing.rot + 1) % 4;
-    const [x, z] = landClampCorner(placing.id, placing.x, placing.z, placing.rot);
-    placing.x = x; placing.z = z;
-    placing.t = 0;
-    updateGhost();
-  }
-  function moveGhostTo(x, z) {
-    if (!placing) return;
-    [x, z] = landClampCorner(placing.id, x, z, placing.rot);
-    if (x === placing.x && z === placing.z) return false;
-    placing.x = x; placing.z = z;
-    audio.sfx('tap');
-    updateGhost();
-    return true;
-  }
-  function updateGhost() {
-    const p = placing;
-    if (!p) return;
-    const [w, d] = E.footprint(p.id, p.rot);
-    const c = footCenter(p.id, p.x, p.z, p.rot);
-    p.ghost.position.set(c.x, 0, c.z);
-    p.model.rotation.y = p.rot * Math.PI / 2;
-    if (p.pin) { p.pin.pos.set(c.x, (p.model.userData.height || 0.6) + 0.35, c.z); p.pin.el.classList.toggle('bad', false); }
-    let res = E.canPlace(p.id, p.x, p.z, p.rot, p.uid);
-    if (res.ok && p.mode === 'new') { const cb = E.canBuild(p.id); if (!cb.ok) res = cb; }
-    p.valid = res.ok; p.reason = res.reason || '';
-    // baldosas del footprint
-    while (p.tiles.length < w * d) { const m = new THREE.Mesh(tileGeo, okMat); m.rotation.x = -Math.PI / 2; m.renderOrder = 6; r.scene.add(m); p.tiles.push(m); }
-    while (p.tiles.length > w * d) r.scene.remove(p.tiles.pop());
-    const L = E.landBounds();
-    let i = 0;
-    for (let dx = 0; dx < w; dx++) for (let dz = 0; dz < d; dz++) {
-      const x = p.x + dx, z = p.z + dz;
-      const other = ctx.state.city.buildings.find(b => b.uid !== p.uid && (() => { const [bw, bd] = E.footprint(b.id, b.rot); return x >= b.x && x < b.x + bw && z >= b.z && z < b.z + bd; })());
-      const free = !other && x >= L.min && x < L.max && z >= L.min && z < L.max;
-      const m = p.tiles[i++];
-      m.material = free && p.valid ? okMat : free && !p.valid && p.reason !== 'Hay algo ahí' && p.reason !== 'Fuera del terreno' ? badMat : free ? okMat : badMat;
-      m.position.set(x + 0.5 - HALF, other && E.def(other).cat === 'camino' ? ROAD_H + 0.02 : 0.03, z + 0.5 - HALF);
-    }
-    if (p.pin) p.pin.el.classList.toggle('bad', !p.valid);
-    p.cov?.update(p.id, p.x, p.z, p.rot, p.level);
-    placeBar?.update(p);
-  }
-  function confirmPlacement() {
-    const p = placing;
-    if (!p) return;
-    if (!p.valid) { audio.sfx('error'); shakeGhost(); ui.toast(p.reason || 'No se puede ahí', { icon: 'info' }); return; }
-    if (p.mode === 'new') {
-      const res = E.placeBuilding(p.id, p.x, p.z, p.rot);
-      if (res.error) { audio.sfx('error'); ui.toast(res.error, { icon: 'info' }); updateGhost(); return; }
-      audio.sfx('place');
-      if (E.def(p.id).time > 0) setTimeout(() => audio.sfx('build'), 160);
-      setFlag('place');
-      if (paintable(p.id)) {
-        p.paint = true; p.count++;
-        const cb = E.canBuild(p.id);
-        if (!cb.ok) { ui.toast(cb.poor ? 'No alcanzan las monedas para más' : cb.reason, { icon: 'coin' }); endPlacement(true); return; }
-        // al tocar (no al pintar arrastrando) el fantasma salta al lugar libre más cercano para seguir poniendo
-        if (gesture !== 'ghost') {
-          const nx = nearestFreeTile(p.id, p.x, p.z, p.rot, p.lastDir);
-          if (nx) { p.lastDir = [Math.sign(nx[0] - p.x), Math.sign(nx[1] - p.z)]; p.x = nx[0]; p.z = nx[1]; }
-        }
-        updateGhost();
-      } else endPlacement(true);
-    } else {
-      const e = entries.get(p.uid);
-      const res = E.moveBuilding(p.uid, p.x, p.z, p.rot);
-      if (res.error) { audio.sfx('error'); ui.toast(res.error, { icon: 'info' }); return; }
-      audio.sfx('place');
-      endPlacement(true);
-      if (e) e.anim = { type: 'drop', t: 0 };
-    }
-  }
-  /** Tile libre más cercano en espiral alrededor de (x,z); prefiere seguir en la misma dirección. */
-  function nearestFreeTile(id, x0, z0, rot, dir = null) {
-    const L = E.landBounds();
-    for (let rr = 1; rr <= 10; rr++) {
-      let best = null, bestScore = Infinity;
-      for (let dx = -rr; dx <= rr; dx++) for (let dz = -rr; dz <= rr; dz++) {
-        if (Math.max(Math.abs(dx), Math.abs(dz)) !== rr) continue;
-        const x = x0 + dx, z = z0 + dz;
-        if (x < L.min || z < L.min || x >= L.max || z >= L.max) continue;
-        if (!E.canPlace(id, x, z, rot).ok) continue;
-        let sc = Math.hypot(dx, dz);
-        if (dir && (dir[0] || dir[1])) sc -= 0.35 * (dx * dir[0] + dz * dir[1]) / Math.max(1, Math.hypot(dx, dz));
-        if (sc < bestScore) { bestScore = sc; best = [x, z]; }
-      }
-      if (best) return best;
-    }
-    return null;
-  }
-  function shakeGhost() { if (placing) placing.shake = 0.35; }
-  function pointerOnGhost(cx, cy) {
-    if (!placing) return false;
-    const p = r.pickGround(cx, cy);
-    if (p) {
-      const [w, d] = E.footprint(placing.id, placing.rot);
-      const x = p.x + HALF, z = p.z + HALF, m = w * d === 1 ? 0.6 : 0.25;
-      if (x >= placing.x - m && x <= placing.x + w + m && z >= placing.z - m && z <= placing.z + d + m) return true;
-    }
-    raycaster.setFromCamera(r.toNDC(cx, cy), r.camera);
-    return raycaster.intersectObject(placing.ghost, true).length > 0;
-  }
-  let ghostDrag = null;
-  function beginGhostDrag(cx, cy) {
-    const p = r.pickGround(cx, cy);
-    if (!p || !placing) return;
-    const c = footCenter(placing.id, placing.x, placing.z, placing.rot);
-    ghostDrag = { ox: c.x - p.x, oz: c.z - p.z };
-    if (placing.paint) paintAtScreen(cx, cy, true);
-  }
-  function moveGhostDrag(cx, cy) {
-    if (!placing || !ghostDrag) return;
-    if (placing.paint) { paintAtScreen(cx, cy); return; }
-    const p = r.pickGround(cx, cy);
-    if (!p) return;
-    const [x, z] = cornerFromWorld(placing.id, placing.rot, p.x + ghostDrag.ox, p.z + ghostDrag.oz);
-    moveGhostTo(x, z);
-  }
-  function paintAtScreen(cx, cy, first = false) {
-    const p = r.pickGround(cx, cy);
-    if (!p || !placing) return;
-    const x = Math.floor(p.x + HALF), z = Math.floor(p.z + HALF);
-    const key = x + ',' + z;
-    if (!first && placing.lastPaint === key) return;
-    placing.lastPaint = key;
-    moveGhostTo(x, z);
-    if (placing.valid) confirmPlacement();
-  }
-  function hoverGhost(cx, cy) {
-    const p = r.pickGround(cx, cy);
-    if (!p || !placing) return;
-    const [x, z] = placing.paint ? landClampCorner(placing.id, Math.floor(p.x + HALF), Math.floor(p.z + HALF), placing.rot) : cornerFromWorld(placing.id, placing.rot, p.x, p.z);
-    if (x === placing.x && z === placing.z) return;
-    // recordar dónde estuvo quieto el fantasma: al ir con el mouse a la barra lo cruzamos por la ciudad
-    const now = performance.now();
-    if (now - placing.hoverAt > 280) placing.settled = { x: placing.x, z: placing.z, rot: placing.rot, left: now };
-    placing.hoverAt = now;
-    moveGhostTo(x, z);
-  }
-  /** El mouse llegó a la barra (Rotar/Colocar): el fantasma vuelve a donde estaba quieto antes de cruzar. */
-  function onBarEnter(ev) {
-    const p = placing;
-    if (!p || ev.pointerType !== 'mouse' || p.paint || !p.settled) return;
-    const st = p.settled;
-    p.settled = null;
-    if (performance.now() - st.left > 2500 || st.rot !== p.rot || (st.x === p.x && st.z === p.z)) return;
-    p.x = st.x; p.z = st.z;
-    p.hoverAt = performance.now();
-    updateGhost();
-  }
-
-  function rotateBuilding(uid) {
-    const e = entries.get(uid);
-    if (!e) return;
-    const b = e.b;
-    const res = E.moveBuilding(uid, b.x, b.z, (b.rot + 1) % 4);
-    if (res.error) { audio.sfx('error'); ui.toast('No hay lugar para rotarlo ahí', { icon: 'info' }); return; }
-    audio.sfx('swoosh');
   }
 
   function doExpand() {
@@ -546,19 +300,7 @@ export default function create(ctx) {
   }
   function onTap(x, y, type) {
     if (defense) { defense.onTap(x, y); return; }   // en la defensa, tocar el piso manda cuadrillas
-    if (placing) {
-      if (type === 'mouse') {
-        hoverGhost(x, y);
-        confirmPlacement();
-      } else if (placing.paint) {
-        const p = r.pickGround(x, y);
-        if (p) { moveGhostTo(Math.floor(p.x + HALF), Math.floor(p.z + HALF)); if (placing.valid) confirmPlacement(); }
-      } else {
-        const p = r.pickGround(x, y);
-        if (p) { const [cx, cz] = cornerFromWorld(placing.id, placing.rot, p.x, p.z); moveGhostTo(cx, cz); }
-      }
-      return;
-    }
+    if (placer.active) { placer.tap(x, y, type); return; }
     const be = hitBubble(x, y);
     if (be) { E.collect(be.b.uid); return; }
     if (hitSign(x, y)) { audio.sfx('tap'); openExpand(S); return; }
@@ -591,33 +333,46 @@ export default function create(ctx) {
   }
 
   // ----- Pointer events -----
+  // Un dedo: tocar · arrastrar (paneo, o el fantasma si se agarra de él) · toque largo sobre un edificio = levantarlo
+  // para moverlo. Dos dedos: pellizco. Lo de colocar lo resuelve city-place.js.
   const pointers = new Map();
-  let gesture = null, down = null;
+  let gesture = null, down = null, pressTimer = 0;
+  function clearPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = 0; } }
   function onDown(ev) {
-    if (ev.button !== undefined && ev.button > 0 && ev.pointerType === 'mouse') { if (ev.button === 2 && placing) endPlacement(); return; }
+    if (ev.button !== undefined && ev.button > 0 && ev.pointerType === 'mouse') { if (ev.button === 2 && placer.active) endPlacement(); return; }
     S.lastPointer = ev.pointerType === 'mouse' ? 'mouse' : 'touch';
     try { r.canvas.setPointerCapture(ev.pointerId); } catch {}
     pointers.set(ev.pointerId, { x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY });
+    clearPress();
     if (pointers.size === 1) {
       gesture = 'pending';
-      // con mouse el fantasma ya sigue al puntero: arrastrar mueve la cámara (salvo al pintar caminos/deco)
-      const grabGhost = ev.pointerType !== 'mouse' || !!placing?.paint;
-      down = { x: ev.clientX, y: ev.clientY, onGhost: grabGhost && pointerOnGhost(ev.clientX, ev.clientY), type: ev.pointerType };
+      down = { x: ev.clientX, y: ev.clientY, onGhost: placer.hitGhost(ev.clientX, ev.clientY, ev.pointerType), type: ev.pointerType };
       cam.stop();
+      if (!placer.active) pressTimer = setTimeout(() => longPress(ev.pointerId), LONG_PRESS_MS);
     } else if (pointers.size === 2) {
       if (gesture === 'pan') cam.endGrab();
-      ghostDrag = null;
+      if (gesture === 'ghost') placer.cancelDrag();
       const [a, b] = [...pointers.values()];
       gesture = 'pinch';
       cam.beginPinch(a, b);
     }
+  }
+  /** Toque largo quieto sobre un edificio: se levanta y sigue al dedo; al soltarlo en un lugar libre queda ahí. */
+  function longPress(id) {
+    pressTimer = 0;
+    const p = pointers.get(id);
+    if (disposed || !p || gesture !== 'pending' || pointers.size !== 1 || placer.active || ui.hasModal() || myModals.size) return;
+    if (hitBubble(p.sx, p.sy)) return;
+    const uid = raycastBuilding(p.sx, p.sy);
+    if (uid == null) return;
+    if (placer.startMove(uid, { x: p.x, y: p.y, type: down?.type || 'touch' })) gesture = 'ghost';
   }
   function onMove(ev) {
     const p = pointers.get(ev.pointerId);
     if (!p) {
       if (ev.pointerType === 'mouse') {
         S.lastPointer = 'mouse';
-        if (placing) hoverGhost(ev.clientX, ev.clientY);
+        if (placer.active) r.canvas.style.cursor = placer.hitGhost(ev.clientX, ev.clientY, 'mouse') ? 'grab' : '';
         else { hoverPos = { x: ev.clientX, y: ev.clientY }; hoverDirty = true; }
       }
       return;
@@ -627,16 +382,18 @@ export default function create(ctx) {
       if (pointers.size >= 2) { const [a, b] = [...pointers.values()]; cam.movePinch(a, b); }
     } else if (gesture === 'pending') {
       if (Math.hypot(p.x - p.sx, p.y - p.sy) > TAP_PX) {
-        if (down?.onGhost) { gesture = 'ghost'; beginGhostDrag(p.sx, p.sy); moveGhostDrag(p.x, p.y); }
+        clearPress();
+        if (down?.onGhost && placer.active) { gesture = 'ghost'; placer.dragStart(p.sx, p.sy, down.type); placer.dragMove(p.x, p.y); r.canvas.style.cursor = 'grabbing'; }
         else { gesture = 'pan'; cam.beginGrab(p.sx, p.sy); cam.moveGrab(p.x, p.y); r.canvas.style.cursor = 'grabbing'; }
       }
     } else if (gesture === 'pan') cam.moveGrab(p.x, p.y);
-    else if (gesture === 'ghost') moveGhostDrag(p.x, p.y);
+    else if (gesture === 'ghost') placer.dragMove(p.x, p.y);
   }
   function onUp(ev) {
     const p = pointers.get(ev.pointerId);
     if (!p) return;
     pointers.delete(ev.pointerId);
+    clearPress();
     try { r.canvas.releasePointerCapture(ev.pointerId); } catch {}
     if (gesture === 'pinch') {
       cam.endPinch();
@@ -646,7 +403,7 @@ export default function create(ctx) {
     }
     if (gesture === 'pending' && ev.type === 'pointerup') onTap(ev.clientX, ev.clientY, ev.pointerType);
     else if (gesture === 'pan') cam.endGrab();
-    else if (gesture === 'ghost') ghostDrag = null;
+    else if (gesture === 'ghost') { if (ev.type === 'pointerup') placer.dragEnd(); else placer.cancelDrag(); }
     if (!pointers.size) { gesture = null; r.canvas.style.cursor = ''; }
   }
   function onWheel(ev) {
@@ -672,16 +429,14 @@ export default function create(ctx) {
       const top = topModalBox();
       const mine = top && [...myModals].find(m => m.el === top);
       if (mine) { mine.close(); ev.preventDefault(); return; }
-      if (placing && !ui.hasModal()) { endPlacement(); ev.preventDefault(); return; }
+      if (placer.active && !ui.hasModal()) { endPlacement(); ev.preventDefault(); return; }
     }
     if (ui.hasModal()) { cam.clearKeys(); return; }
+    // colocando: R gira, Enter/Espacio coloca, flechas corren el edificio una casilla · Ctrl+Z deshace el último movimiento
+    if (placer.key(ev)) { ev.preventDefault(); return; }
     if (keyMap[ev.code]) { cam.key(keyMap[ev.code], isDown); ev.preventDefault(); return; }
     if (!isDown || ev.repeat) return;
-    if (placing) {
-      if (ev.code === 'KeyR') rotatePlacing();
-      else if (ev.code === 'Enter' || ev.code === 'Space') confirmPlacement();
-      return;
-    }
+    if (placer.active) return;
     if (ev.code === 'KeyQ') { cam.rotate(-1); audio.sfx('swoosh'); }
     else if (ev.code === 'KeyE') { cam.rotate(1); audio.sfx('swoosh'); }
     else if (ev.code === 'KeyB') { audio.sfx('tap'); openBuildMenu(S); }
@@ -764,7 +519,7 @@ export default function create(ctx) {
   }
   function clearWorldTip() { if (worldTip) { ov.remove(worldTip.item); worldTip = null; } }
   function updateTutorial() {
-    const blocked = placing || myModals.size || ui.hasModal();
+    const blocked = placer?.active || myModals.size || ui.hasModal();
     // flecha al botón Construir
     let tipText = null;
     if (!T().cityIntro && ctx.state.city.buildings.length <= 1) tipText = `${icon('hammer', 20)}Tocá <b>Construir</b> para empezar`;
@@ -794,7 +549,7 @@ export default function create(ctx) {
     ui.floatText(s.x, s.y, html, cls);
   }
   function bindEvents() {
-    offs.push(bus.on('hud:build', (p) => { if (placing) endPlacement(true); setFlag('cityIntro'); const q = ctx.quests.mainQuest(); if (q) setFlag('q_' + q.id); openBuildMenu(S, p?.focus || null); }));
+    offs.push(bus.on('hud:build', (p) => { if (placer.active) endPlacement(true); setFlag('cityIntro'); const q = ctx.quests.mainQuest(); if (q) setFlag('q_' + q.id); openBuildMenu(S, p?.focus || null); }));
     offs.push(bus.on('building:placed', ({ b }) => {
       const e = createEntry(b, 'drop');
       e.placedAt = performance.now();
@@ -883,7 +638,7 @@ export default function create(ctx) {
       audio.sfx('clear');
       setTimeout(() => !disposed && audio.sfx('done'), 500);
       cam.flyTo(0.5, 1, Math.max(cam.st.u, Math.min(26, bounds.side * 0.95)));
-      if (placing) updateGhost();
+      if (placer.active) placer.update();
     }));
     offs.push(bus.on('level:up', () => { rebuildSignLabels(); }));
     // nuevo rango: carteles de terreno al día y festejo con el panel "Tu ciudad"
@@ -937,7 +692,7 @@ export default function create(ctx) {
     const next = themeOf(id).id;
     if (next === themeId) return;
     themeId = next;
-    if (placing) endPlacement(true);
+    if (placer.active) endPlacement(true);
     world.dispose();
     world = makeWorld();
     world.setCamAngle(cam.angle);
@@ -960,7 +715,7 @@ export default function create(ctx) {
       const el = ui.h('div.cx-sign' + (lvOk ? '' : '.locked'), { html: lvOk ? `${icon('plus', 16)}Expandir` : `${icon('lock', 14)}${ui.esc(ex.short)}` });
       const it = ov.add(el, s.pos);
       it.label = true;
-      it.hidden = !!placing;
+      it.hidden = !!placer?.active;
       signItems.push(it);
     }
   }
@@ -985,18 +740,9 @@ export default function create(ctx) {
     life.update(dt, t);
     fx.update(dt);
     decor?.update(dt); defense?.update(dt);
-    if (placing) {
-      const p = placing;
-      p.t += dt;
-      let y = 0.08 + Math.sin(p.t * 5) * 0.05;
-      p.ghost.position.y = y;
-      if (p.shake > 0) { p.shake -= dt; p.model.position.x = Math.sin(p.shake * 60) * 0.08 * (p.shake / 0.35); } else p.model.position.x = 0;
-      const pulse = 0.62 + Math.sin(p.t * 6) * 0.14;
-      okMat.opacity = pulse + 0.1; badMat.opacity = pulse + 0.15;
-      p.model.userData.update?.(dt, t);
-    }
+    placer.frame(dt, t);
     hoverT += dt;
-    if (hoverDirty && hoverT > 0.08 && !placing && !cam.dragging) {
+    if (hoverDirty && hoverT > 0.08 && !placer.active && !cam.dragging) {
       hoverDirty = false; hoverT = 0; // el raycast contra toda la ciudad es caro: ~12 veces por segundo alcanza
       const hv = hoverPos && (hitBubble(hoverPos.x, hoverPos.y) || hitSign(hoverPos.x, hoverPos.y) || hitWalker(life.player, hoverPos.x, hoverPos.y, 30) || raycastBuilding(hoverPos.x, hoverPos.y) != null);
       r.canvas.style.cursor = hv ? 'pointer' : '';
@@ -1040,7 +786,7 @@ export default function create(ctx) {
       try { on = !!activeBoosts().prod || eventMult('production') > 1; } catch { on = false; }
       boostOn = on;
     }
-    if (!boostOn || placing || document.hidden) return;
+    if (!boostOn || placer?.active || document.hidden) return;
     boostAcc += dt;
     if (boostAcc < 0.32) return;
     boostAcc = 0;
@@ -1061,7 +807,7 @@ export default function create(ctx) {
   // =====================================================================
   function startDefense(id) {
     if (defense || disposed) return;
-    if (placing) endPlacement(true);
+    if (placer?.active) endPlacement(true);
     for (const m of [...myModals]) m.close();
     const d = attachDefense(TA, id);
     if (!d) return;
@@ -1097,7 +843,7 @@ export default function create(ctx) {
       container = el;
       styleEl = document.createElement('style');
       styleEl.id = 'city-style';
-      styleEl.textContent = STYLE;
+      styleEl.textContent = STYLE + PLACE_STYLE;
       document.head.append(styleEl);
       const lowQ = !!ctx.state.settings?.lowQuality;
       // contorno tinta alrededor de las siluetas (voxel.js): separa edificios, árboles y vecinas del pasto
@@ -1121,23 +867,12 @@ export default function create(ctx) {
       for (const b of ctx.state.city.buildings) createEntry(b);
       life = createLife(r, ctx);
 
-      // materiales de baldosas del fantasma
-      const tcv = document.createElement('canvas');
-      tcv.width = tcv.height = 16;
-      const tg = tcv.getContext('2d');
-      tg.fillStyle = 'rgba(255,255,255,0.28)'; tg.fillRect(0, 0, 16, 16);
-      tg.fillStyle = '#ffffff'; tg.fillRect(0, 0, 16, 2); tg.fillRect(0, 14, 16, 2); tg.fillRect(0, 0, 2, 16); tg.fillRect(14, 0, 2, 16);
-      tg.fillStyle = 'rgba(255,255,255,0.6)'; tg.fillRect(2, 2, 12, 1); tg.fillRect(2, 2, 1, 12);
-      tileTex = new THREE.CanvasTexture(tcv);
-      tileTex.magFilter = THREE.NearestFilter; tileTex.minFilter = THREE.NearestFilter; tileTex.colorSpace = THREE.SRGBColorSpace;
-      okMat = new THREE.MeshBasicMaterial({ map: tileTex, color: 0x6fe3c1, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false });
-      badMat = new THREE.MeshBasicMaterial({ map: tileTex, color: 0xff6f6f, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false });
-      tileGeo = new THREE.PlaneGeometry(0.96, 0.96);
-
       cam = createCameraCtl(r, ctx.state.city.camera, { onChange: (c) => { ctx.state.city.camera = c; store.markDirty(); }, limit: () => E.landBounds().side / 2 + 2.5 });
       ov = createOverlays(container, r);
       ro = new ResizeObserver(() => { cam.applyProj(); ov.resize(); });
       ro.observe(container);
+      placer = createPlacer({ ctx, r, ov, cam, container, entries, S, safe, modelOpts, themeId: () => themeId, onStart: placingStart, onEnd: placingEnd });
+      S.place = placer;
 
       // botones flotantes
       sideEl = ui.h('div.cx-side');
@@ -1171,6 +906,16 @@ export default function create(ctx) {
       TA = { ctx, r, ov, entries, fx, cam, container, sideEl, HALF, get world() { return world; }, topPos: (e, extra) => topPos(e, extra),
         startDefense, onDefenseEnd: endDefense, highlight: highlightBuilding, hidden: false };
       decor = createDecor(TA);
+      // radio de cobertura al colocar o mover una defensa (Fase 3 sobre el gancho de city-place.js)
+      let cov = null;
+      const dropCov = () => { cov?.dispose(); cov = null; };
+      offs.push(placer.onGhostMove((info) => {
+        if (!info || E.def(info.id)?.cat !== 'defensa') return dropCov();
+        cov ??= createCoverage(TA);
+        const level = info.uid != null ? (entries.get(info.uid)?.b.level || 1) : 1;
+        cov.update(info.id, info.x, info.z, info.rot, level);
+      }));
+      offs.push(dropCov);
       offs.push(bus.on('threat:defend', ({ id } = {}) => { if (id) startDefense(id); }));
       offs.push(bus.on('threat:panel', () => openThreatPanel(TA)));
       bindEvents();
@@ -1180,7 +925,7 @@ export default function create(ctx) {
       r.onFrame(frame);
       r.start();
       // gancho de depuración para pruebas headless (tools/smoke.mjs)
-      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placing; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; } };
+      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placer?.state || null; }, get placer() { return placer; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; }, get coverage() { return cov; } };
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },
     unmount() {
@@ -1196,7 +941,9 @@ export default function create(ctx) {
       document.removeEventListener('visibilitychange', onVisibility);
       ro?.disconnect();
       for (const m of [...myModals]) m.close();
-      if (placing) { const p = placing; placing = null; for (const m of p.mats) m.dispose(); p.cov?.dispose(); ctx.hud.show(); }
+      if (placer?.active) ctx.hud.show();
+      clearPress();
+      placer?.dispose();
       if (cam) { ctx.state.city.camera = cam.save(); store.markDirty(); }
       ov?.dispose();
       tipEl?.remove();
@@ -1206,7 +953,6 @@ export default function create(ctx) {
       fx?.dispose();
       batch?.dispose();
       entries.clear();
-      okMat?.dispose(); badMat?.dispose(); tileGeo?.dispose(); tileTex?.dispose();
       r?.dispose();
       styleEl?.remove();
     },

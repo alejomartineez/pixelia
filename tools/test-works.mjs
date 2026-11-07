@@ -185,11 +185,11 @@ try {
   ok(pw.mats.length === 4, 'muestra los 4 materiales', pw.mats);
   await shot(cleo, 'panel-obras');
   ok(await tap(cleo, '.pnl-works .pnl-wk-card .btn.primary', 'Construir'), 'toca «Construir» en el Faro');
-  ok(await waitFor(cleo, `!!document.querySelector('.cx-pb-btns')`, 5000), 'arranca la colocación en la ciudad');
+  ok(await waitFor(cleo, `!!document.querySelector('.cx-pc .cx-pc-ok')`, 5000), 'arranca la colocación en la ciudad');
   await sleep(600);
   await shot(cleo, 'colocar-faro');
   const m0 = await run(cleo, `return { ...store.state.materials }`);
-  await tap(cleo, '.cx-pb-btns .btn.mint', 'Colocar');
+  await tap(cleo, '.cx-pc .cx-pc-ok');
   ok(await waitFor(cleo, `window.__pixelia.economy.countOf('faro') === 1`, 5000), 'Faro colocado');
   const m1 = await run(cleo, `return { ...store.state.materials }`);
   ok(m0.ladrillo - m1.ladrillo === 6 && m0.cristal - m1.cristal === 4, 'la etapa 1 gastó 6 ladrillos y 4 cristales', { m0, m1 });

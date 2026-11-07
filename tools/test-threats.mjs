@@ -194,16 +194,16 @@ try {
   section('Radio al colocar el Dique');
   await run(`store.grant({ mats: { madera: 20, piedra: 20 } }, 'test'); return true;`);
   await run(`window.__pixelia.city.S.startPlacement('dique'); return true;`);
-  ok(await waitFor(`!!window.__pixelia.city.placing?.cov`, 3000), 'colocando un Dique se dibuja su radio');
+  ok(await waitFor(`!!window.__pixelia.city.coverage`, 3000), 'colocando un Dique se dibuja su radio');
   const cov = await run(`const p = window.__pixelia.city.placing; return { n: T.coverageTiles('dique', p.x, p.z, p.rot).length, ghost: [p.x, p.z] };`);
   ok(cov.n > 10, `el radio cubre ${cov.n} casillas`);
   // llevar el fantasma junto a las casas: aparecen los escudos "cubierto"
-  await run(`const p = window.__pixelia.city.placing; p.x = ${L.max} - 3; p.z = ${L.min} + 3; window.__pixelia.city.S.ctx; return true;`);
+  await run(`window.__pixelia.city.placer.moveTo(${L.max} - 3, ${L.min} + 3); return true;`);
   await page.keyboard.press('KeyR'); await page.keyboard.press('KeyR'); await page.keyboard.press('KeyR'); await page.keyboard.press('KeyR');
   ok(await waitFor(`document.querySelectorAll('.th-badge.cov').length > 0`, 3000), 'marca qué edificios en riesgo cubre');
   await shot('radio-dique');
   await page.keyboard.press('Escape'); await sleep(300);
-  ok(await run(`return !window.__pixelia.city.placing && document.querySelectorAll('.th-badge.cov').length === 0`), 'al cancelar se borra el radio');
+  ok(await run(`return !window.__pixelia.city.placing && !window.__pixelia.city.coverage && document.querySelectorAll('.th-badge.cov').length === 0`), 'al cancelar se borra el radio');
   const dq = await placeAt('dique', L.max - 4, L.min + 3);
   ok(dq.uid, 'Dique construido', dq);
   await run(`store.state.reserves.arena = 2; return true;`);

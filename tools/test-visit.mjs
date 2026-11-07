@@ -140,7 +140,7 @@ try {
   await use(B); await ev(B, `ctx.ui.closeAllModals(); return true;`);
   const uid = await ev(B, `
     const city = P.city; city.S.startPlacement('casita'); await new Promise(r => setTimeout(r, 500));
-    document.querySelector('.cx-pb-btns .btn.mint')?.click(); await new Promise(r => setTimeout(r, 500));
+    window.__pixelia.city.placer.confirm(); await new Promise(r => setTimeout(r, 500));
     const b = store.state.city.buildings.filter(b => b.id === 'casita').at(-1);
     if (!b) return null;
     b.buildEnd = Date.now() + 3 * 3600e3; store.markDirty(); E.tick();

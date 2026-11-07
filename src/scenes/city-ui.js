@@ -96,20 +96,6 @@ export const STYLE = `
 @keyframes cx-tipbob { 50% { margin-top: -8px; } }
 .cx-tip.fade { opacity: 0; transition: opacity .3s; }
 
-.cx-placebar { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 10px); z-index: 30; width: min(520px, calc(100% - 16px));
-  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 12px 30px rgba(61,47,42,.25); padding: 8px 10px 10px;
-  display: flex; flex-direction: column; gap: 6px; animation: cx-slideup .25s cubic-bezier(.3,1.5,.6,1); }
-@keyframes cx-slideup { from { transform: translate(-50%, 40px); opacity: 0; } }
-.cx-pb-top { display: flex; align-items: center; gap: 8px; min-height: 28px; }
-.cx-pb-top b { font-size: 17px; }
-.cx-pb-top .cost { font-size: 15px; }
-.cx-pb-top .grow { flex: 1; }
-.cx-pb-hint { font-size: 13px; color: var(--ink-l); line-height: 1.2; }
-.cx-pb-hint.bad { color: var(--coral); font-weight: 700; }
-.cx-pb-btns { display: flex; gap: 8px; }
-.cx-pb-btns .btn { flex: 1; padding: 6px 8px; font-size: 17px; }
-.cx-pb-btns .btn.cx-rot { flex: .8; }
-
 /* ---------- Modales (fuera de .scene-city) ---------- */
 .cx-modal .modal-body { padding: 12px 14px 16px; }
 .cx-build .modal-body { padding-top: 0; }
@@ -740,49 +726,4 @@ export function openExpand(S) {
     actions: [{ label: 'Ahora no', cls: 'ghost' }, { html: `${icon('plus', 20)}Expandir`, label: 'Expandir', cls: 'mint', disabled: !lvOk, onClick: () => S.doExpand() ? undefined : false }] });
   S.trackModal(m);
   return m;
-}
-
-// ======================================================================
-// Barra de colocación
-// ======================================================================
-export function makePlaceBar(S, { onCancel, onRotate, onConfirm }) {
-  const { ctx } = S;
-  const { ui } = ctx;
-  const el = ui.h('div.cx-placebar');
-  const top = ui.h('div.cx-pb-top');
-  const hint = ui.h('div.cx-pb-hint');
-  const btns = ui.h('div.cx-pb-btns');
-  const bCancel = ui.h('button.btn.ghost', { html: icon('close', 20) + 'Cancelar', onclick: () => { ctx.audio.sfx('tap'); onCancel(); } });
-  const bRot = ui.h('button.btn.second.cx-rot', { html: icon('rotate', 20) + 'Rotar', onclick: () => { onRotate(); } });
-  const bOk = ui.h('button.btn.mint', { html: icon('check', 20) + 'Colocar', onclick: () => { onConfirm(); } });
-  btns.append(bCancel, bRot, bOk);
-  el.append(top, hint, btns);
-  let lastKey = '';
-  return {
-    el,
-    update(p) {
-      const E = ctx.economy;
-      const d = E.def(p.id);
-      const cost = p.mode === 'new' ? E.placeCost(p.id) : null;
-      const nFree = p.mode === 'new' ? freeCount(p.id) : 0;
-      const key = [p.id, p.mode, p.valid, p.reason, p.paint, p.count, cost?.coins, cost?.gems, cost?.free, nFree, S.lastPointer].join('|');
-      if (key === lastKey) return;
-      lastKey = key;
-      top.innerHTML = '';
-      top.append(ui.h('b', {}, (p.mode === 'move' ? 'Mover: ' : '') + d.name), ui.h('span.grow'));
-      if (cost && (nFree > 0 || cost.free)) top.append(ui.h('span.chip.primary', { html: `${icon('🎁', 14)}Gratis${nFree > 1 ? ' x' + nFree : ''}` }));
-      else if (cost) top.append(ui.h('span', { html: ui.costHtml(cost, 18) }));
-      if (p.count) top.append(ui.h('span.chip.mint', { html: `${icon('check', 12)}${p.count}` }));
-      const touch = S.lastPointer === 'touch' || (S.lastPointer !== 'mouse' && matchMedia('(pointer: coarse)').matches);
-      let txt;
-      if (!p.valid) txt = (p.reason === 'Fuera del terreno' ? 'Fuera de tu terreno' : p.reason === 'Hay algo ahí' ? 'Ese lugar está ocupado' : p.reason) + ' · elegí un lugar verde';
-      else if (p.paint) txt = touch ? 'Tocá el pasto para poner más · arrastrá desde la pieza para pintar' : 'Clic para poner más · arrastrá para pintar · Esc termina';
-      else txt = touch ? 'Arrastrá el edificio o tocá donde lo querés' : 'Hacé clic donde lo querés · arrastrá para mover la vista · R rota · Esc cancela';
-      hint.textContent = txt;
-      hint.classList.toggle('bad', !p.valid);
-      bOk.disabled = !p.valid;
-      bCancel.innerHTML = icon(p.paint ? 'check' : 'close', 20) + (p.paint ? 'Listo' : 'Cancelar');
-      bCancel.className = 'btn ' + (p.paint ? 'gold' : 'ghost');
-    },
-  };
 }
