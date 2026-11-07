@@ -114,7 +114,7 @@ export function openExpedition(ctx, params = {}) {
   function regionsCard(st) {
     const el = h('div.card.pnl-ex-sec');
     const mapOpen = ctx.quests.mainDone?.('t11') || st.zones > 0;
-    el.append(h('h4.pnl-ex-h', { html: `${icon('map', 20)}<span>${mapOpen ? 'Regiones' : 'Bosque del Arroyo'}</span><small>${st.zones} ${st.zones === 1 ? 'zona explorada' : 'zonas exploradas'}</small>` }));
+    el.append(h('h4.pnl-ex-h', { html: `${icon('map', 20)}<span>${mapOpen ? 'Regiones' : 'Zonas'}</span><small>${st.zones} ${st.zones === 1 ? 'zona explorada' : 'zonas exploradas'}</small>` }));
     const list = h('div.pnl-ex-regs');
     for (const r of st.regions) {
       if (!mapOpen && r.id !== 'bosque') continue;
