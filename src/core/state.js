@@ -77,7 +77,9 @@ export function defaultState() {
       driving: { best: 0 },
     },
     tutorial: {},   // flags libres para tips mostrados una vez: tutorial[key] = true
-    settings: { music: true, sfx: true, lowQuality: false },
+    // telemetry: métricas anónimas (online/telemetry.js) · textSize: 'normal'|'large'|'xlarge' · motion: 'auto'|'on'|'off'
+    // (reducir movimiento: automático según el sistema, sí o no). Los saves viejos los reciben por deepFill.
+    settings: { music: true, sfx: true, lowQuality: false, telemetry: true, textSize: 'normal', motion: 'auto' },
     // módulos de progresión (cada uno completa sus propios campos al iniciar: initChests/initAlbum/initSeason/initEvents)
     chests: {},
     album: {},

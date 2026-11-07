@@ -129,6 +129,19 @@ create table if not exists public.coop (
   primary key (user_id, week)
 );
 
+-- Métricas anónimas de uso (src/online/telemetry.js). Sin email, nombre ni user_id: anon_id es un uuid
+-- aleatorio que genera el dispositivo. Desde el cliente solo se INSERTA (nunca se lee, cambia ni borra);
+-- se consulta desde el panel de Supabase.
+create table if not exists public.events (
+  id          bigserial primary key,
+  anon_id     uuid not null,
+  session_id  uuid not null,
+  name        text not null check (char_length(name) between 1 and 39 and name ~ '^[a-z0-9_:.-]+$'),
+  props       jsonb not null default '{}'::jsonb check (jsonb_typeof(props) = 'object' and octet_length(props::text) < 2048),
+  version     text check (version is null or char_length(version) <= 40),
+  created_at  timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------------
 -- Índices
 -- ---------------------------------------------------------------------
@@ -143,6 +156,8 @@ create index if not exists visits_host_idx          on public.visits (host, upda
 create index if not exists requests_from_idx        on public.requests (from_id, created_at desc);
 create index if not exists requests_open_idx        on public.requests (expires_at) where filled_by is null;
 create index if not exists coop_week_idx            on public.coop (week);
+create index if not exists events_name_idx          on public.events (name, created_at);
+create index if not exists events_anon_idx          on public.events (anon_id, created_at);
 
 -- ---------------------------------------------------------------------
 -- Funciones auxiliares (internas)
@@ -880,6 +895,7 @@ alter table public.trades      enable row level security;
 alter table public.visits      enable row level security;
 alter table public.requests    enable row level security;
 alter table public.coop        enable row level security;
+alter table public.events      enable row level security;
 
 -- Nadie escribe directo salvo su propia partida; todo lo demás va por RPC.
 revoke all on table public.profiles, public.saves, public.friendships, public.gifts,
@@ -919,6 +935,14 @@ create policy requests_read on public.requests for select to authenticated
 drop policy if exists coop_read on public.coop;
 create policy coop_read on public.coop for select to authenticated
   using (user_id = auth.uid() or public.is_friend(auth.uid(), user_id));
+
+-- Métricas: cualquiera (con o sin sesión) puede SUMAR filas, nadie puede leerlas, cambiarlas ni borrarlas.
+-- El grant por columna deja afuera id y created_at: la hora la pone el servidor.
+revoke all on table public.events from public, anon, authenticated;
+grant insert (anon_id, session_id, name, props, version) on table public.events to anon, authenticated;
+grant usage on sequence public.events_id_seq to anon, authenticated;
+drop policy if exists events_insert on public.events;
+create policy events_insert on public.events for insert to anon, authenticated with check (true);
 
 -- Funciones internas: nadie de afuera las puede llamar.
 revoke execute on function public.pair_lock(uuid, uuid)                 from public, anon, authenticated;

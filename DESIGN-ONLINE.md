@@ -113,3 +113,24 @@ Estado local `state.social`: `giftDay` (regalito enviado hoy por amiga, día UTC
 - **Ranking**: semana ISO, categorías nivel/estrellas/juegos, podio pixel, "¡Mejor marca personal!" (supera tus semanas anteriores), premio de participación para todas (domingo; la semana anterior queda cobrable).
 - **Obra en Equipo**: puntos por bus (ganar minijuego 30, obra terminada 20, mejora 40, pedido cumplido 50, regalito/ayuda 10), se suben con `addCoopPoints` cada 30 s; meta = 1000 × amigas con puntos (sin conexión: meta personal de 1000); 5 escalones cobrables una vez por semana (los no cobrados pasan a "semanas anteriores", no se pierden).
 - **Cuenta**: crear cuenta / entrar / "Jugar sin cuenta"; con sesión: estado de sincronización, "Guardar ahora", cerrar sesión. Sin servidor (`net.mode === 'off'`) explica que el online llega cuando se configure y ofrece el modo simulado (`?mock=1&mockuser=…`).
+
+## Métricas anónimas (`public.events` + `src/online/telemetry.js`)
+
+Para saber D1/D7 y dónde se va la gente, sin cuenta y sin datos personales.
+
+- **Tabla** `events (id, anon_id uuid, session_id uuid, name ≤ 39 [a-z0-9_:.-], props jsonb objeto < 2 KB, version ≤ 40, created_at)`.
+  RLS: `anon` y `authenticated` solo pueden **insertar**, y solo las columnas `anon_id, session_id, name, props, version`
+  (`id` y `created_at` los pone el servidor). Nadie lee, cambia ni borra desde el cliente: se consulta desde el panel de Supabase.
+- **anon_id**: uuid al azar del dispositivo en `localStorage['pixelia.anon.v1']`, aparte de la partida (no viaja con la nube
+  ni con el código de respaldo). Nunca se mandan email, nombre, ciudad ni user_id. Errores: solo el mensaje recortado y archivo:línea.
+- **Cliente**: cola en memoria + `localStorage['pixelia.events.queue.v1']` (tope 300), tandas de 50 cada 30 s, al pasar a segundo
+  plano (`fetch keepalive`) y al volver la conexión. 2xx = enviado; 5xx/408/429/sin red = se reintenta; otro 4xx = se descarta.
+  Un evento que sale tarde lleva `props.late` (segundos). Sin `config.js` no se junta nada; con `?mock=1` o en localhost/LAN
+  las tandas quedan en `localStorage['pixelia.mock.events']` (`?telemetry=live` fuerza el envío real, para probar).
+- **Interruptor**: Ajustes → "Enviar estadísticas anónimas de uso" (`state.settings.telemetry`, prendido por defecto). Apagado
+  vacía la cola y no registra nada.
+- **Eventos**: `session_start {days, level, standalone, touch}`, `session_end {dur, scene}` (se manda cada vez que la app pasa a
+  segundo plano con la duración acumulada: tomar la mayor por `session_id`; más de 30 min afuera = sesión nueva), `scene:changed {id, visit}`,
+  `onboarding:step {step}`, `onboarding:done`, `level:up {level}`, `town:rankup {rank}`, `minigame:finished {game, stars, won, score}`,
+  `building:built {id}`, `panel_open {panel}`, `error {msg, where}`, `install_prompt_shown/accepted/dismissed`.
+  Los del bus salen de `TRACKED_EVENTS`; `expedition:*` y `threat:*` ya se registran solos (valores simples del payload).

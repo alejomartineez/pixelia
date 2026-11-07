@@ -8,7 +8,7 @@ import { store } from './core/state.js';
 import * as data from './core/data.js';
 import * as economy from './core/economy.js';
 import * as quests from './core/quests.js';
-import { ui, h, esc, toast, rewardModal, closeAllModals, hasModal, rewardArt } from './core/ui.js';
+import { ui, h, esc, toast, rewardModal, closeAllModals, hasModal, rewardArt, applyA11y } from './core/ui.js';
 import { icon } from './core/icons.js';
 import { audio } from './core/audio.js';
 import { hud } from './core/hud.js';
@@ -371,9 +371,12 @@ async function boot() {
   bootUi?.started();
   store.load();
   applyDebugParams();
+  applyA11y(store.state.settings);
   audio.configure(store.state.settings);
   initProgression();
   hud.init(document.getElementById('hud'), ctx);
+  import('./online/telemetry.js').then(m => m.initTelemetry(ctx)).catch(e => console.warn('[telemetry]', e));
+  import('./scenes/install-card.js').then(m => m.initInstallCard(ctx)).catch(e => console.warn('[install]', e));
   economy.tick();
   setInterval(() => economy.tick(), 1000);
 
@@ -386,9 +389,11 @@ async function boot() {
     if (cityReady()) runArrival();
   });
 
-  // Evitar zoom con doble toque/pinch del navegador en iOS
-  document.addEventListener('gesturestart', e => e.preventDefault());
-  document.addEventListener('gesturechange', e => e.preventDefault());
+  // Zoom con pellizco: se puede en el HUD, los menús y los avisos (accesibilidad), pero no sobre la escena,
+  // donde el pellizco es de la cámara de la ciudad o del minijuego (#scene tiene touch-action:none; en iOS además gesture*)
+  const inScene = (e) => !!e.target?.closest?.('#scene');
+  document.addEventListener('gesturestart', e => { if (inScene(e)) e.preventDefault(); });
+  document.addEventListener('gesturechange', e => { if (inScene(e)) e.preventDefault(); });
   document.addEventListener('dblclick', e => e.preventDefault(), { passive: false });
 
   // online: sync primero y después social; sin servidor, social igual se carga (Obra en Equipo personal, buzón vacío)

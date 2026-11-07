@@ -2,7 +2,7 @@
 <html lang="es-AR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Pixelia · Tu ciudad, tu estilo</title>
   <meta name="description" content="Armá tu ciudad en 3D pixel art: elegí tu personaje y tu estilo, construí casitas y negocios y jugá minijuegos. Gratis, en el navegador o como app.">
   <link rel="canonical" href="https://alejomartineez.github.io/pixelia/">
@@ -82,7 +82,7 @@
     @media (min-width: 720px) and (min-height: 720px) { .boot-word { width: 430px; height: 130px; } .boot-crown { width: 140px; height: 100px; } .splash-sub { font-size: 30px; } }
     @media (max-width: 380px) { .boot-word { width: 258px; height: 78px; } .boot-crown { width: 98px; height: 70px; } }
     @media (max-height: 520px) { .boot-crown { width: 84px; height: 60px; } .boot-load, .splash-tap { margin-top: 20px; } }
-    @media (prefers-reduced-motion: reduce) { .splash-sky, .boot-crown, .boot-bar i { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { html:not(.motion-full) :is(.splash-sky, .boot-crown, .boot-bar i) { animation: none; } }
     @keyframes boot-twinkle { 50% { opacity: .4; } }
     @keyframes boot-bob { 50% { transform: translateY(-8px); } }
     @keyframes boot-blink { 50% { opacity: .25; } }

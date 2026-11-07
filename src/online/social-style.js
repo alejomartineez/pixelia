@@ -273,6 +273,7 @@ export const SOCIAL_CSS = `
 .soc-cf dd { margin: 0; font-weight: 700; text-align: left; }
 .soc-cf .btn { width: 100%; white-space: normal; padding: 6px 8px; }
 @media (prefers-reduced-motion: reduce) {
-  .soc-dots i, .soc-pod .soc-crown, .soc-pb, .soc-step.claimable .soc-node, .soc-off-art .pi, .soc-busy::after { animation: none !important; }
+  html:not(.motion-full) :is(.soc-dots i, .soc-pod .soc-crown, .soc-pb, .soc-step.claimable .soc-node, .soc-off-art .pi) { animation: none !important; }
+  html:not(.motion-full) .soc-busy::after { animation: none !important; }
 }
 `;

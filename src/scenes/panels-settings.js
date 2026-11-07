@@ -2,6 +2,7 @@
 import { icon } from '../core/icons.js';
 import { OUTFIT_COLORS } from '../core/data.js';
 import { openShell, askConfirm, art, flagArt, chestArt } from './panels-common.js';
+import { applyA11y } from '../core/ui.js';
 
 const isStandalone = () => !!(navigator.standalone || matchMedia?.('(display-mode: standalone)').matches);
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -37,6 +38,37 @@ export function openSettings(ctx) {
     return btn;
   }
   root.append(section(icon('music', 24), 'Sonido', h('div.pnl-toggles', {}, toggle('music', 'Música', 'music'), toggle('sfx', 'Sonidos', 'sound'))));
+
+  // ---------- Accesibilidad ----------
+  /** Una opción de a una (botones tipo radio). Guarda en settings[key] y reaplica tamaño de texto y movimiento. */
+  function choice(key, label, options, def) {
+    const seg = h('div.a11y-seg', { role: 'radiogroup', 'aria-label': label, 'data-key': key });
+    const paint = () => {
+      const cur = options.some(([v]) => v === s().settings[key]) ? s().settings[key] : def;
+      for (const b of seg.children) {
+        const on = b.dataset.v === cur;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+      }
+    };
+    for (const [v, txt] of options) {
+      seg.append(h('button.a11y-opt', { role: 'radio', 'data-v': v, html: txt, onclick: () => {
+        if (s().settings[key] === v) return;
+        s().settings[key] = v;
+        store.markDirty();
+        applyA11y(s().settings);
+        audio.sfx('select');
+        paint();
+      } }));
+    }
+    paint();
+    return h('div.a11y-row', {}, h('b.a11y-lbl', {}, label), seg);
+  }
+  root.append(section(icon('smile', 24), 'Accesibilidad',
+    choice('textSize', 'Tamaño de texto', [['normal', 'Normal'], ['large', 'Grande'], ['xlarge', 'Muy grande']], 'normal'),
+    choice('motion', 'Reducir movimiento', [['auto', 'Automático'], ['on', 'Sí'], ['off', 'No']], 'auto'),
+    h('p.small.muted.a11y-hint', {}, 'Automático hace lo que elegiste en tu celu o compu. Con “Sí” no hay sacudones, confeti ni cosas volando. Y en los menús podés agrandar con dos dedos.'),
+  ));
 
   // ---------- Nombres ----------
   function nameField(label, ic, get, set, fallback, max) {
@@ -123,6 +155,27 @@ export function openSettings(ctx) {
     }
   }
   root.append(section(icon('home', 24), isIOS() || isStandalone() ? 'Instalar en el iPhone' : 'Instalar como app', install));
+
+  // ---------- Estadísticas anónimas (online/telemetry.js) ----------
+  const statsBtn = h('button.pnl-toggle.a11y-stats', { role: 'switch' });
+  const paintStats = () => {
+    const on = s().settings.telemetry !== false;
+    statsBtn.setAttribute('aria-checked', on ? 'true' : 'false');
+    statsBtn.classList.toggle('on', on);
+    statsBtn.innerHTML = `<span class="pnl-toggle-lbl">${icon(on ? 'check' : 'close', 24)}<b>Enviar estadísticas anónimas de uso</b></span><span class="pnl-switch"><i></i></span>`;
+  };
+  statsBtn.onclick = () => {
+    const on = s().settings.telemetry === false;
+    s().settings.telemetry = on;
+    store.markDirty();
+    import('../online/telemetry.js').then(m => m.setEnabled(on)).catch(() => {});
+    audio.sfx('select');
+    paintStats();
+  };
+  paintStats();
+  root.append(section(icon('heart', 24), 'Ayudanos a mejorar', statsBtn,
+    h('p.small.muted.a11y-hint', {}, 'Mandamos qué partes del juego usás (niveles, minijuegos, menús), cuánto dura cada sesión y los errores, con un código al azar de este dispositivo. Nunca tu nombre, tu email ni tu ciudad.'),
+  ));
 
   // ---------- Copia de seguridad ----------
   const exportBox = h('div.col.hidden');
