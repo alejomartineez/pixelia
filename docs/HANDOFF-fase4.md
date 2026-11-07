@@ -54,4 +54,6 @@ Rama `claude/silly-shtern-b6b733`. Contratos: DESIGN-CORE.md §4 y §10.
   llena (89 edificios + caminos y deco), triángulos por modelo y fps headless.
   Medido: 564 mil triángulos con épocas mezcladas contra 554 mil de `master` con la misma ciudad (+2 %); el modelo más
   pesado es la Municipalidad de Capital (13,4 mil; antes la de nivel 8 tenía 16 mil).
-- `npm test` completo: ver el resumen de la sesión.
+- Ciudad llena por época (rango, época, nivel): 2/1/1 = 425 mil, 5/3/3 = 517 mil, 8/5/5 = 581 mil triángulos.
+- `npm test` completo en verde (11 suites: e2e 73, stress, visitas, mock, social, rango, obras, Mi Casa, expedición,
+  telemetría y SQL 153; 0 fallas, 0 errores de página).
