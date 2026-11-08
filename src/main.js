@@ -24,7 +24,8 @@ import * as home from './home/furniture.js';
 import * as expedition from './expedition/expedition.js';
 import * as threats from './threats/threats.js';   // Amenazas (Fase 3)
 import * as unlocks from './core/unlocks.js';      // apertura escalonada (Fase 5b)
-import { isDesktop, initDesktop } from './core/desktop.js';   // juego de PC (Tauri)
+import { isDesktop, initDesktop } from './core/desktop.js';
+import { initSettings } from './core/settings.js';   // juego de PC (Tauri)
 
 const SCENES = {
   city: () => import('./scenes/city.js'),
@@ -324,8 +325,7 @@ async function boot() {
   bootUi?.started();
   store.load();
   applyDebugParams();
-  applyA11y(store.state.settings);
-  audio.configure(store.state.settings);
+  initSettings(ctx);   // gráficos, sonido, texto, escala de la interfaz y atajos (src/core/settings.js)
   initProgression();
   hud.init(document.getElementById('hud'), ctx);
   import('./online/telemetry.js').then(m => m.initTelemetry(ctx)).catch(e => console.warn('[telemetry]', e));

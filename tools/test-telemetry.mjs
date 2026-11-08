@@ -139,7 +139,7 @@ try {
   section('Interruptor de Ajustes');
   await T(P, () => window.__pixelia.ctx.ui.closeAllModals());
   await sleep(400);
-  await T(P, () => { window.__pixelia.ctx.openPanel('settings'); });
+  await T(P, () => { window.__pixelia.ctx.openPanel('settings', { tab: 'save' }); });
   await P.waitForSelector('.a11y-stats');
   ok((await T(P, () => document.querySelector('.a11y-stats').getAttribute('aria-checked'))) === 'true', 'el interruptor arranca prendido');
   await T(P, () => window.__pixeliaTelemetry.track('antes_de_apagar'));
@@ -259,7 +259,7 @@ try {
   ok(ta.body === 'manipulation' && ta.scene === 'none' && ta.canvas === 'none', 'pellizco permitido en menús/HUD y bloqueado sobre la escena', ta);
   await T(P, () => { const { store, ctx } = window.__pixelia; store.state.settings.textSize = 'xlarge'; store.state.settings.motion = 'on'; ctx.ui.applyA11y(store.state.settings); ctx.ui.closeAllModals(); });
   await sleep(300);
-  await T(P, () => { window.__pixelia.ctx.openPanel('settings'); });
+  await T(P, () => { window.__pixelia.ctx.openPanel('settings', { tab: 'a11y' }); });
   await P.waitForSelector('.a11y-seg');
   const a1 = await T(P, () => ({
     cls: document.documentElement.className, scale: getComputedStyle(document.documentElement).getPropertyValue('--text-scale').trim(),

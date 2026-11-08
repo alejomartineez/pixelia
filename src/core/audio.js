@@ -2,8 +2,31 @@
 // audio.sfx('coin') | audio.music('city') | audio.music(null)
 // En iPhone el audio se habilita con el primer toque (unlock en main.js).
 
-let ctx = null, master = null, sfxGain = null, musicGain = null;
-let settings = { music: true, sfx: true };
+let ctx = null, master = null, sfxGain = null, musicGain = null, ambGain = null, uiGain = null, curOut = null;
+// sonidos de interfaz (clics, menús): van por su propio bus (Ajustes → Interfaz)
+const UI_SFX = new Set(['tap', 'open', 'close', 'select', 'swoosh']);
+// volúmenes 0..1 de Ajustes (src/core/settings.js); music/sfx son el sí/no de siempre
+let settings = { music: true, sfx: true, volMaster: 0.8, volMusic: 0.7, volSfx: 0.8, volAmb: 0.6 };
+let bgMuted = false;
+const BASE = { master: 0.875, sfx: 0.55 / 0.8, music: 0.22 / 0.7, amb: 0.5 };   // con los valores por defecto suena como antes
+const vol = (k, d = 1) => (typeof settings[k] === 'number' ? settings[k] : d);
+function gains() {
+  return {
+    master: bgMuted ? 0 : BASE.master * vol('volMaster', 0.8),
+    sfx: settings.sfx ? BASE.sfx * vol('volSfx', 0.8) : 0,
+    music: settings.music ? BASE.music * vol('volMusic', 0.7) : 0,
+    amb: BASE.amb * vol('volAmb', 0.6),
+    ui: settings.sfx ? BASE.sfx * vol('volUi', 0.8) : 0,
+  };
+}
+function setGains() {
+  if (!ctx) return;
+  const g = gains(), t = ctx.currentTime;
+  for (const [node, v] of [[master, g.master], [sfxGain, g.sfx], [musicGain, g.music], [ambGain, g.amb], [uiGain, g.ui]]) {
+    node.gain.cancelScheduledValues(t);
+    node.gain.setTargetAtTime(v, t, 0.03);
+  }
+}
 let currentSong = null, songTimer = null, songStep = 0, nextTime = 0, unlocking = null;
 
 function ensure() {
@@ -11,9 +34,12 @@ function ensure() {
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return null;
   ctx = new AC();
-  master = ctx.createGain(); master.gain.value = 0.7; master.connect(ctx.destination);
-  sfxGain = ctx.createGain(); sfxGain.gain.value = settings.sfx ? 0.55 : 0; sfxGain.connect(master);
-  musicGain = ctx.createGain(); musicGain.gain.value = settings.music ? 0.22 : 0; musicGain.connect(master);
+  const g = gains();
+  master = ctx.createGain(); master.gain.value = g.master; master.connect(ctx.destination);
+  sfxGain = ctx.createGain(); sfxGain.gain.value = g.sfx; sfxGain.connect(master);
+  musicGain = ctx.createGain(); musicGain.gain.value = g.music; musicGain.connect(master);
+  ambGain = ctx.createGain(); ambGain.gain.value = g.amb; ambGain.connect(master);
+  uiGain = ctx.createGain(); uiGain.gain.value = g.ui; uiGain.connect(master);
   return ctx;
 }
 
@@ -26,7 +52,7 @@ function tone({ f = 440, f2, t = 0, d = 0.12, type = 'square', v = 0.3, out, att
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(v, t0 + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
-  o.connect(g); g.connect(out || sfxGain);
+  o.connect(g); g.connect(out || curOut || sfxGain);
   o.start(t0); o.stop(t0 + d + 0.02);
 }
 function noise({ t = 0, d = 0.15, v = 0.2, hp = 800, out }) {
@@ -39,7 +65,7 @@ function noise({ t = 0, d = 0.15, v = 0.2, hp = 800, out }) {
   const src = ctx.createBufferSource(); src.buffer = buf;
   const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp;
   const g = ctx.createGain(); g.gain.value = v;
-  src.connect(f); f.connect(g); g.connect(out || sfxGain);
+  src.connect(f); f.connect(g); g.connect(out || curOut || sfxGain);
   src.start(t0);
 }
 const N = (semi) => 440 * Math.pow(2, (semi - 9) / 12); // semitonos desde C4=0
@@ -169,7 +195,8 @@ function scheduleSong() {
 export const audio = {
   unlock() {
     if (!ensure()) return;
-    const startSong = () => { if (currentSong && !songTimer && ctx.state === 'running') audio.music(currentSong, true); };
+    userUnlocked = true;
+    const startSong = () => { if (currentSong && !songTimer && ctx.state === 'running') audio.music(currentSong, true); else syncAmbient(); };
     // resume() es asíncrono: la música recién puede arrancar cuando el contexto pasa a 'running'
     // (en iOS el estado también puede ser 'interrupted' tras una llamada o al volver de segundo plano)
     if (ctx.state !== 'running') {
@@ -182,15 +209,29 @@ export const audio = {
   },
   configure(s) {
     settings = { ...settings, ...s };
-    if (ctx) {
-      sfxGain.gain.value = settings.sfx ? 0.55 : 0;
-      musicGain.gain.value = settings.music ? 0.22 : 0;
-    }
+    setGains();
+    if (ctx) syncAmbient();
   },
+  /**
+   * Ventana en segundo plano (Ajustes → Silenciar en segundo plano). muted baja el volumen general;
+   * suspend además frena el contexto de audio (pestaña oculta) para no gastar.
+   */
+  setBackground(muted, suspend = muted) {
+    bgMuted = !!muted;
+    setGains();
+    if (!ctx) return;
+    if (suspend && ctx.state === 'running') ctx.suspend();
+    else if (!suspend && ctx.state === 'suspended' && userUnlocked) ctx.resume().then(() => audio.unlock()).catch(() => {});
+  },
+  /** Volumen efectivo (0..1, sin el silencio de segundo plano) de un canal: 'music' | 'sfx' | 'amb' | 'ui' | 'master'. */
+  level(ch) { const g = gains(); return ch === 'master' ? BASE.master * vol('volMaster', 0.8) : g[ch] ?? 0; },
   sfx(name, arg) {
-    if (!settings.sfx) return;
+    const isUi = UI_SFX.has(name);
+    if (!settings.sfx || !(vol(isUi ? 'volUi' : 'volSfx', 0.8) > 0)) return;
     if (!ensure() || ctx.state !== 'running') return;
+    curOut = isUi ? uiGain : sfxGain;
     try { SFX[name]?.(arg); } catch {}
+    curOut = null;
   },
   /** Cambia la música: 'city' | 'calm' | 'game' | 'drive' | 'expedition' | 'threat' | null (nombre desconocido = silencio) */
   music(name, force = false) {
@@ -198,6 +239,7 @@ export const audio = {
     if (name === currentSong && !force && songTimer) return;
     currentSong = name;
     clearInterval(songTimer); songTimer = null;
+    syncAmbient();
     if (!name || !ensure() || ctx.state !== 'running') return;
     songStep = 0; nextTime = ctx.currentTime + 0.05;
     songTimer = setInterval(scheduleSong, 90);
@@ -205,7 +247,51 @@ export const audio = {
   get songs() { return Object.keys(SONGS); },
 };
 
+// ---------- Ambiente (canal propio, Ajustes → Ambiente) ----------
+// Sigue a la música: en la ciudad, brisa suave y algún pájaro; en la expedición, viento; en la amenaza, viento
+// más tenso. Todo sintetizado: un ruido filtrado en loop con el volumen que respira, y piares sueltos.
+const AMBIENTS = { city: { wind: 0.05, cut: 500, birds: true }, expedition: { wind: 0.09, cut: 380 }, threat: { wind: 0.13, cut: 300 } };
+let amb = null, ambName = null, birdTimer = 0, userUnlocked = false;
+function stopAmbient() {
+  clearTimeout(birdTimer); birdTimer = 0;
+  if (amb) { const a = amb; amb = null; try { a.g.gain.setTargetAtTime(0, ctx.currentTime, 0.4); setTimeout(() => { try { a.src.stop(); a.lfo.stop(); } catch {} }, 1500); } catch {} }
+  ambName = null;
+}
+function syncAmbient() {
+  const want = currentSong && AMBIENTS[currentSong] && vol('volAmb', 0.6) > 0 ? currentSong : null;
+  if (want === ambName) return;
+  stopAmbient();
+  if (!want || !ctx || ctx.state !== 'running') return;
+  const def = AMBIENTS[want];
+  ambName = want;
+  const len = ctx.sampleRate * 4;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate), d = buf.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < len; i++) { last = (last + (Math.random() * 2 - 1) * 0.08) * 0.985; d[i] = last * 3; }   // ruido marrón
+  const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = def.cut;
+  const g = ctx.createGain(); g.gain.value = 0;
+  const lfo = ctx.createOscillator(), lg = ctx.createGain();
+  lfo.frequency.value = 0.09; lg.gain.value = def.wind * 0.45;
+  lfo.connect(lg); lg.connect(g.gain);
+  src.connect(f); f.connect(g); g.connect(ambGain);
+  g.gain.setTargetAtTime(def.wind, ctx.currentTime, 1.2);
+  src.start(); lfo.start();
+  amb = { src, lfo, g };
+  if (def.birds) {
+    const chirp = () => {
+      if (ambName !== want || !ctx) return;
+      const b = 2200 + Math.random() * 1400, n = 2 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < n; i++) tone({ f: b, f2: b * (1.15 + Math.random() * 0.2), t: i * 0.11, d: 0.07, v: 0.05, type: 'sine', out: ambGain });
+      birdTimer = setTimeout(chirp, 5000 + Math.random() * 9000);
+    };
+    birdTimer = setTimeout(chirp, 2500);
+  }
+}
+
 document.addEventListener('visibilitychange', () => {
   if (!ctx) return;
-  if (document.hidden) ctx.suspend(); else ctx.resume();
+  // con "Silenciar en segundo plano" apagado la música sigue aunque la ventana quede atrás
+  if (document.hidden) { if (settings.muteBg !== false) ctx.suspend(); }
+  else ctx.resume().catch(() => {});
 });

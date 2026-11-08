@@ -6,6 +6,7 @@
 //   router.go('expedition', { resume: true })        retoma la salida en curso (o arma una con region/kind si no hay)
 //   ?scene=expedition                práctica (o la salida en curso) · &short=1 salida corta
 //   &region=sierras&zone=2           otra región o zona · &new=1 descarta la salida guardada · &seed=123 semilla fija
+import { actionFor } from '../core/keys.js';
 import * as THREE from 'three';
 import { createPixelRenderer, addLights, setIsoCamera, disposeObject, shade } from '../core/voxel.js';
 import { iconUrl } from '../core/icons.js';
@@ -728,7 +729,9 @@ export default function create(ctx) {
   function onKey(e) {
     if (!alive || !run) return;
     const k = e.key;
-    const arrow = { ArrowUp: [0, -1], w: [0, -1], W: [0, -1], ArrowDown: [0, 1], s: [0, 1], S: [0, 1], ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0], ArrowRight: [1, 0], d: [1, 0], D: [1, 0] }[k];
+    // flechas fijas; WASD (o lo que se reasignó en Ajustes → Controles) por code
+    const mv = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[k] || (e.ctrlKey || e.metaKey ? null : actionFor(e.code, ['up', 'down', 'left', 'right']));
+    const arrow = mv ? { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[mv] : null;
     if (busy) { if (arrow && !card && !modal) { queued = arrow; e.preventDefault(); } return; }   // la flecha espera a que termine el paso
     if (k === 'Escape') {
       e.preventDefault();
@@ -742,7 +745,7 @@ export default function create(ctx) {
     if (modal) { if (k === 'Enter') { modal.el.querySelector('.btn.primary, .btn.mint')?.click(); e.preventDefault(); } return; }
     const dir = arrow;
     if (dir && run && !card) { e.preventDefault(); tryMove(run.pos[0] + dir[0], run.pos[1] + dir[1]); return; }
-    if ((k === 'v' || k === 'V' || k === 'Backspace') && !card) { e.preventDefault(); goHome(); }
+    if ((actionFor(e.code, ['back']) || k === 'Backspace') && !card) { e.preventDefault(); goHome(); }
   }
 
   // ---------- armado ----------

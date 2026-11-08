@@ -451,6 +451,58 @@ export const PANEL_CSS = `
 @media (max-width: 420px) {
   .pnl-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; }
 }
+/* ---------- Ajustes por pestañas (panels-settings.js) ----------
+   Solo tokens de :root (styles.css): el paso 2d (interfaz oscura) los cambia ahí y el panel sigue solo. */
+.modal.set-panel { width: min(940px, 100%); height: min(88vh, 760px); height: min(88dvh, 760px); }
+.modal.set-panel .modal-body { padding: 0; display: flex; overflow: hidden; }
+.set-wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr); }
+.set-tabs { display: flex; flex-direction: column; gap: 4px; padding: 12px 8px; border-right: 2px dashed var(--rule); overflow-y: auto; background: var(--surface-2); }
+.set-tab { display: flex; align-items: center; gap: 8px; padding: 8px 10px; min-height: 44px; border: var(--line) solid transparent; border-radius: 12px; background: transparent;
+  font: inherit; font-size: 18px; color: var(--ink-l); text-align: left; cursor: pointer; white-space: nowrap; }
+.set-tab:hover { background: var(--surface-hover); color: var(--ink); }
+.set-tab.on { background: var(--surface); border-color: var(--ink); color: var(--ink); box-shadow: 0 3px 0 var(--ink); }
+.set-tab:focus-visible { outline: 3px solid var(--second); outline-offset: 1px; }
+.set-pane { min-height: 0; overflow-y: auto; padding: 14px 16px 18px; overscroll-behavior: contain; }
+.set-col { max-width: 640px; }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 8px 16px; align-items: center; }
+.set-lbl { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.set-lbl b { font-size: 17px; }
+.set-lbl small, .set-switch small { font-size: 14px; line-height: 1.2; color: var(--ink-l); font-weight: 400; }
+.set-switch .pnl-toggle-lbl { flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
+.set-seg .a11y-opt { min-height: 40px; font-size: 15px; }
+.set-seg .a11y-opt:disabled { opacity: .55; cursor: default; }
+.set-seg .a11y-opt:disabled:not(.on) { display: none; }
+.set-seg .a11y-opt:hover:not(.on):not(:disabled) { background: var(--surface-hover); }
+.set-slider { display: flex; align-items: center; gap: 10px; }
+.set-range { flex: 1; min-width: 0; height: 26px; margin: 0; appearance: none; -webkit-appearance: none; background: transparent; cursor: pointer; }
+.set-range::-webkit-slider-runnable-track { height: 12px; border: 2px solid var(--ink); border-radius: 8px;
+  background: linear-gradient(90deg, var(--mint) var(--p, 50%), var(--track) var(--p, 50%)); }
+.set-range::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; margin-top: -7px; background: var(--surface); border: 3px solid var(--ink); border-radius: 6px; box-shadow: 0 2px 0 var(--ink); }
+.set-range:focus-visible { outline: 3px solid var(--second); outline-offset: 2px; border-radius: 8px; }
+.set-val { min-width: 62px; text-align: right; font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
+.set-hint { margin: 0; }
+.set-hint kbd, .set-lbl kbd, .set-fixed kbd, .set-key kbd { font-family: inherit; font-size: 14px; font-weight: 700; padding: 1px 7px; background: var(--surface); border: 2px solid var(--ink); border-radius: 6px; box-shadow: 0 2px 0 var(--ink); }
+.set-kgroup { margin: 10px 0 2px; font-size: 15px; color: var(--ink-l); text-transform: uppercase; letter-spacing: .04em; }
+.set-kgroup:first-child { margin-top: 0; }
+.set-krow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px dashed var(--rule); }
+.set-key { min-width: 110px; min-height: 38px; padding: 2px 8px; background: transparent; border: 0; cursor: pointer; font: inherit; }
+.set-key kbd { display: inline-block; min-width: 34px; text-align: center; font-size: 16px; }
+.set-key:hover kbd { background: var(--surface-hover); }
+.set-key.wait kbd { background: var(--gold-l); animation: pnlBob 1s steps(2) infinite; }
+.set-fixed { display: grid; gap: 6px; }
+.set-fixed div { display: flex; align-items: center; gap: 10px; }
+.set-fixed kbd { min-width: 96px; text-align: center; }
+.set-file { display: none; }
+.set-more summary { cursor: pointer; font-weight: 700; color: var(--ink-l); padding: 4px 0; }
+.set-more[open] summary { margin-bottom: 8px; }
+.set-credits { gap: 6px; background: linear-gradient(var(--surface), var(--accent-l)); }
+.set-dz svg { display: block; border: var(--line) solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); }
+@media (max-width: 720px) {
+  .set-wrap { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .set-tabs { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 2px dashed var(--rule); padding: 8px; }
+  .set-tab { font-size: 16px; }
+  .set-row { grid-template-columns: minmax(0, 1fr); }
+}
 /* html:not(.motion-full): con Ajustes → Reducir movimiento "No" vuelven aunque el sistema pida menos movimiento */
 @media (prefers-reduced-motion: reduce) {
   html:not(.motion-full) :is(.pnl-bob, .pnl-glow, .pnl-shake, .pnl-rays.spin, .pnl-day.today, .pnl-lv-star .pi) { animation: none !important; }

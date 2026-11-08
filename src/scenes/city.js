@@ -8,6 +8,7 @@ import { PALETTE } from '../core/palette.js';
 import { HALF, footCenter, clamp, easeOutElastic, greeting } from './city-common.js';
 import { createWorld } from './city-world.js';
 import { createCameraCtl } from './city-camera.js';
+import { codeFor, actionFor, keyLabel } from '../core/keys.js';
 import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
 import { STYLE, openBuildMenu, openInfo, openExpand, questBuildIds, setThumbTheme } from './city-ui.js';
@@ -413,7 +414,10 @@ export default function create(ctx) {
     const dy = ev.deltaMode === 1 ? ev.deltaY * 30 : ev.deltaY;
     cam.zoomAt(ev.clientX, ev.clientY, Math.exp(clamp(dy, -200, 200) * 0.0018));
   }
-  const keyMap = { ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Equal: 'in', NumpadAdd: 'in', Minus: 'out', NumpadSubtract: 'out' };
+  // flechas fijas; el resto sale de Ajustes → Controles (src/core/keys.js)
+  const FIXED_KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', NumpadAdd: 'in', NumpadSubtract: 'out' };
+  const CAM_ACTS = { up: 'up', down: 'down', left: 'left', right: 'right', zoomIn: 'in', zoomOut: 'out' };
+  const camKey = (code) => FIXED_KEYS[code] || CAM_ACTS[actionFor(code, Object.keys(CAM_ACTS))] || null;
   /** Caja del modal que está arriba de todo (o null). */
   function topModalBox() {
     const root = document.getElementById('modal-root');
@@ -436,16 +440,41 @@ export default function create(ctx) {
     if (ui.hasModal()) { cam.clearKeys(); return; }
     // colocando: R gira, Enter/Espacio coloca, flechas corren el edificio una casilla · Ctrl+Z deshace el último movimiento
     if (placer.key(ev)) { ev.preventDefault(); return; }
-    if (keyMap[ev.code]) { cam.key(keyMap[ev.code], isDown); ev.preventDefault(); return; }
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    const ck = camKey(ev.code);
+    if (ck) { cam.key(ck, isDown); ev.preventDefault(); return; }
     if (!isDown || ev.repeat) return;
     if (placer.active) return;
-    if (ev.code === 'KeyQ') { cam.rotate(-1); audio.sfx('swoosh'); }
-    else if (ev.code === 'KeyE') { cam.rotate(1); audio.sfx('swoosh'); }
-    else if (ev.code === 'KeyB') { audio.sfx('tap'); openBuildMenu(S); }
-    else if (ev.code === 'KeyC') collectAll();
-    else if (ev.code === 'KeyH' || ev.code === 'Home') focusCastle();
-    else if (ev.code === 'KeyT') { audio.sfx('tap'); openThemes(); }
+    const act = ev.code === 'Home' ? 'home' : actionFor(ev.code, ['rotL', 'rotR', 'build', 'collect', 'home', 'themes', 'expedition', 'settings']);
+    if (act === 'rotL') { cam.rotate(-1); audio.sfx('swoosh'); }
+    else if (act === 'rotR') { cam.rotate(1); audio.sfx('swoosh'); }
+    else if (act === 'build') { audio.sfx('tap'); openBuildMenu(S); }
+    else if (act === 'collect') collectAll();
+    else if (act === 'home') focusCastle();
+    else if (act === 'themes') { audio.sfx('tap'); openThemes(); }
+    else if (act === 'expedition') { audio.sfx('tap'); ctx.openPanel('expedition'); }
+    else if (act === 'settings') { audio.sfx('tap'); ctx.openPanel('settings'); }
   }
+  // desplazar la cámara con el mouse en los bordes de la ventana (Ajustes → Juego)
+  let edgePos = null;
+  function onEdgeMove(ev) { edgePos = ev.pointerType === 'mouse' ? { x: ev.clientX, y: ev.clientY } : null; }
+  function onEdgeOut(ev) { if (!ev.relatedTarget) edgePos = null; }
+  function edgeScroll() {
+    const st = ctx.state.settings;
+    if (!st.edgeScroll || !edgePos || placer?.active || ui.hasModal() || cam.dragging || !document.hasFocus()) { cam.setEdge(0, 0); return; }
+    const M = 14, w = innerWidth, h = innerHeight;
+    const right = edgePos.x <= M ? -1 : edgePos.x >= w - M ? 1 : 0;
+    const fwd = edgePos.y <= M ? 1 : edgePos.y >= h - M ? -1 : 0;
+    cam.setEdge(fwd, right);
+  }
+  function applySettings() {
+    const st = ctx.state.settings;
+    cam?.setSpeed(st.camSpeed || 1);
+    if (homeBtnEl) homeBtnEl.title = `Ir a la municipalidad (${keyLabel(codeFor('home'))})`;
+    if (rotBtnEl) rotBtnEl.title = `Girar la vista (${keyLabel(codeFor('rotL'))} / ${keyLabel(codeFor('rotR'))})`;
+    if (themeBtnEl) themeBtnEl.title = `Estilo de la ciudad (${keyLabel(codeFor('themes'))})`;
+  }
+  let homeBtnEl = null, rotBtnEl = null, themeBtnEl = null;
   function onBlur() { cam?.clearKeys(); }
   function onVisibility() { if (document.hidden) r.stop(); else r.start(); }
 
@@ -528,7 +557,7 @@ export default function create(ctx) {
     else {
       const q = ctx.quests.mainQuest();
       const ids = questBuildIds(ctx).filter(id => E.canBuild(id).ok);
-      if (q && ids.length && !T()['q_' + q.id] && !(q.goal.type === 'pop' || q.goal.type === 'happy')) tipText = `${icon('quest', 20)}Misión: construí <b>${ui.esc(E.def(ids[0]).name)}</b>`;
+      if (ctx.state.settings.hints !== false && q && ids.length && !T()['q_' + q.id] && !(q.goal.type === 'pop' || q.goal.type === 'happy')) tipText = `${icon('quest', 20)}Misión: construí <b>${ui.esc(E.def(ids[0]).name)}</b>`;
     }
     const btn = document.querySelector('#hud:not(.hidden) .hud-btn.big');
     if (tipText && !blocked && btn) {
@@ -726,6 +755,7 @@ export default function create(ctx) {
   // Loop
   // =====================================================================
   function frame(dt, t) {
+    edgeScroll();
     cam.update(dt);
     world.setCamAngle(cam.angle);
     world.update(dt, t);
@@ -888,6 +918,9 @@ export default function create(ctx) {
       const themeBtn = ui.h('button.cx-fab', { html: icon('palette', 30), 'aria-label': 'Estilo de la ciudad', title: 'Estilo de la ciudad (T)' });
       themeBtn.addEventListener('click', () => { audio.sfx('tap'); openThemes(); });
       sideEl.append(collectBtn, homeBtn, rotBtn, themeBtn);
+      homeBtnEl = homeBtn; rotBtnEl = rotBtn; themeBtnEl = themeBtn;
+      applySettings();
+      offs.push(bus.on('settings:changed', applySettings));
       container.append(sideEl);
 
       // entrada
@@ -903,6 +936,8 @@ export default function create(ctx) {
       addEventListener('keydown', onKey);
       addEventListener('keyup', onKey);
       addEventListener('blur', onBlur);
+      addEventListener('pointermove', onEdgeMove, { passive: true });
+      document.addEventListener('pointerout', onEdgeOut);
       document.addEventListener('visibilitychange', onVisibility);
 
       TA = { ctx, r, ov, entries, fx, cam, container, sideEl, HALF, get world() { return world; }, topPos: (e, extra) => topPos(e, extra),
@@ -940,6 +975,8 @@ export default function create(ctx) {
       removeEventListener('keydown', onKey);
       removeEventListener('keyup', onKey);
       removeEventListener('blur', onBlur);
+      removeEventListener('pointermove', onEdgeMove);
+      document.removeEventListener('pointerout', onEdgeOut);
       document.removeEventListener('visibilitychange', onVisibility);
       ro?.disconnect();
       for (const m of [...myModals]) m.close();

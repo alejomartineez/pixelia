@@ -1,6 +1,7 @@
 // Efectos de la ciudad: partículas vóxel (confeti, polvo, brillitos) y capa de overlays DOM
 // anclados a posiciones del mundo (timers, burbujas de producción, carteles).
 import * as THREE from 'three';
+import { graphics } from '../core/voxel.js';
 
 export function createParticles(scene) {
   const MAX = 320;
@@ -30,6 +31,7 @@ export function createParticles(scene) {
   }
   /** Ráfaga de partículas en (x,y,z). */
   function burst(x, y, z, { n = 20, colors = ['#ee8a5c', '#7f9ee8', '#6fe3c1', '#8fd3ff', '#ffd166', '#ffffff'], speed = 2, up = 3, gravity = 7, size = 0.09, life = 1.1, spread = 0.3, drag = 0.6 } = {}) {
+    n = Math.max(1, Math.round(n * (graphics().particles ?? 1)));   // Ajustes → Partículas
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, s = speed * (0.4 + Math.random() * 0.8);
       emit({

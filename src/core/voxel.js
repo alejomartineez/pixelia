@@ -196,10 +196,25 @@ if (typeof addEventListener === 'function') {
   const mark = () => { lastInput = performance.now(); };
   for (const ev of ['pointerdown', 'pointermove', 'wheel', 'keydown', 'touchstart']) addEventListener(ev, mark, { passive: true, capture: true });
 }
-/** Escalas internas (pixeles de render por px CSS) que prueba el ajuste automático si los cuadros vienen lentos. */
-const SCALES = [2, 1.5, 1.2];
+/** Factores sobre la escala elegida que prueba el ajuste automático si los cuadros vienen lentos (2 → 1,5 → 1,2). */
+const SCALES = [1, 0.75, 0.6];
 /** Máximo de pixeles de render (en monitores enormes la escala baja para no ahogar la GPU). */
 const MAX_BUFFER_PX = 4.6e6;
+
+// ---------- Ajustes de gráficos (src/core/settings.js) ----------
+// Valen para todos los renderers: los montados se actualizan en vivo con setGraphics y los nuevos arrancan así.
+//   scale: pixeles de render por px CSS (0,5–2) · aa: MSAA · shadows · outline: contorno tinta · particles: multiplicador
+//   maxFps (0 = sin tope) · bgFps: tope con la ventana sin foco · autoRes: bajar la resolución sola si va lento
+//   uiZoom: zoom de la interfaz del juego de PC (el WebView agranda los px CSS; se compensa para no perder nitidez)
+let GFX = { scale: 2, aa: true, shadows: true, outline: true, particles: 1, maxFps: 60, bgFps: 30, autoRes: true, uiZoom: 1 };
+const live = new Set();
+/** Cuadros dibujados en total por todos los renderers (lo usa el contador de FPS de Ajustes). */
+export const frameStats = { frames: 0 };
+export function setGraphics(cfg) {
+  GFX = { ...GFX, ...cfg };
+  for (const r of live) { try { r(); } catch (e) { console.warn('[voxel] ajustes', e); } }
+}
+export function graphics() { return GFX; }
 /**
  * Crea renderer + escena + cámara.
  * container: elemento donde se agrega el canvas (ocupa 100%).
@@ -221,17 +236,27 @@ export function createPixelRenderer(container, opts = {}) {
   let scale = 2, dpr = 1, level = 0;
   // ?outline=1 / ?outline=0 en la URL lo fuerza en todas las escenas (para comparar)
   const forced = typeof location !== 'undefined' && /[?&]outline=([01])/.exec(location.search);
-  const outlineOpt = forced ? forced[1] === '1' : opts.outline;
-  // Con contorno la escena se dibuja (con MSAA) en el target del contorno y al canvas solo va un cuadro
-  // plano: antialias en el canvas sería resolver 4 muestras por pixel en cada cuadro para nada.
-  const renderer = new THREE.WebGLRenderer({ antialias: !low && !outlineOpt, alpha: background == null, powerPreference: 'high-performance' });
+  let sceneOutline = opts.outline;   // lo que pidió la escena (los Ajustes lo pueden apagar)
+  // La escena se dibuja (con MSAA) en el target del contorno y al canvas solo va un cuadro plano. El mismo pase
+  // sirve de antialias sin contorno (líneas apagadas): así el antialias y el contorno se cambian en vivo.
+  const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: background == null, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = shadows;
+  renderer.shadowMap.enabled = shadows && GFX.shadows;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const canvas = renderer.domElement;
   canvas.className = 'pixel-canvas voxel-canvas';
-  const samples = () => (low || !renderer.capabilities.isWebGL2) ? 0 : 4;
-  let outline = outlineOpt ? createOutlinePass(renderer, outlineOpt, samples()) : null;
+  const samples = () => (low || !GFX.aa || !renderer.capabilities.isWebGL2) ? 0 : 4;
+  const wantOutline = () => (forced ? forced[1] === '1' : !!sceneOutline && GFX.outline);
+  let outline = null, outlineKey = '';
+  function buildOutline() {
+    const lines = wantOutline(), n = samples();
+    const key = lines || n ? `${lines}|${n}|${JSON.stringify(sceneOutline ?? null)}` : '';
+    if (key === outlineKey) return false;
+    outline?.dispose(); outline = null; outlineKey = key;
+    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines);
+    return true;
+  }
+  buildOutline();
   container.append(canvas);
 
   const scene = new THREE.Scene();
@@ -252,9 +277,10 @@ export function createPixelRenderer(container, opts = {}) {
     dpr = screenDpr();
     // 2 pixeles de render por px CSS: en celular (dpr 2-3) es casi la resolución nativa y en PC (dpr 1)
     // es supersampleo 2×2 que el navegador promedia al achicar = bordes suaves también en el contorno.
-    scale = low ? Math.min(dpr, 1.5) : SCALES[level];
+    const base = (low ? Math.min(dpr, 1.5) : GFX.scale) * (GFX.uiZoom || 1);
+    scale = base * (GFX.autoRes ? SCALES[level] : 1);
     scale = Math.min(scale, Math.sqrt(MAX_BUFFER_PX / Math.max(1, w * h)));
-    scale = Math.max(1, scale);
+    scale = Math.max(Math.min(1, base), scale);
     const bw = Math.max(1, Math.round(w * scale)), bh = Math.max(1, Math.round(h * scale));
     renderer.setPixelRatio(1);
     renderer.setSize(bw, bh, false);
@@ -283,7 +309,7 @@ export function createPixelRenderer(container, opts = {}) {
   // de resolución interna. Solo baja (nunca sube) para no oscilar; se saltean los primeros cuadros (carga).
   let warm = 0, batch = 0, slow = 0;
   function watchPerf(ms) {
-    if (low || qParam === 'high' || level >= SCALES.length - 1 || document.hidden) return;
+    if (low || !GFX.autoRes || qParam === 'high' || level >= SCALES.length - 1 || document.hidden) return;
     if (++warm < 60 || ms <= 0 || ms > 250) return;
     batch++; if (ms > 24) slow++;
     if (batch < 90) return;
@@ -293,11 +319,11 @@ export function createPixelRenderer(container, opts = {}) {
   // Tope de cuadros: sin esto se dibuja a la frecuencia del monitor (144/165 Hz en PC) y la GPU queda
   // al máximo aunque la escena apenas se mueva. 60 alcanza para todo el juego; con la ventana sin foco
   // (otra app adelante) bastan 30, y opts.idleFps baja más cuando nadie toca nada hace IDLE_MS.
-  let maxFps = FPS_PARAM ?? opts.maxFps ?? 60;
+  let maxFps = null;   // null = lo de los Ajustes (setMaxFps lo fija para esta escena)
   let idleFps = opts.idleFps ?? 0;
   function targetFps() {
-    let f = maxFps || Infinity;
-    if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) f = Math.min(f, 30);
+    let f = (FPS_PARAM ?? maxFps ?? opts.maxFps ?? GFX.maxFps) || Infinity;
+    if (typeof document !== 'undefined' && document.hasFocus && !document.hasFocus()) f = Math.min(f, GFX.bgFps || 30);
     if (idleFps && performance.now() - lastInput > IDLE_MS) f = Math.min(f, idleFps);
     return f;
   }
@@ -312,11 +338,29 @@ export function createPixelRenderer(container, opts = {}) {
     const dt = Math.min(0.05, (t - (last || t)) / 1000); last = t;
     for (const fn of loops) fn(dt, t / 1000);
     draw();
+    frameStats.frames++;
   }
   function draw() {
     if (outline) outline.render(scene, camera);
     else renderer.render(scene, camera);
   }
+
+  // ajustes en vivo: contorno/antialias, sombras (los materiales se recompilan), resolución y tope de cuadros
+  let shadowsOn = renderer.shadowMap.enabled;
+  function applyGfx() {
+    if (level && !GFX.autoRes) level = 0;
+    buildOutline();
+    const sh = shadows && GFX.shadows;
+    if (sh !== shadowsOn) {
+      shadowsOn = renderer.shadowMap.enabled = sh;
+      scene.traverse(o => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; for (const m of ms) m.needsUpdate = true; });
+      if (_mat) _mat.needsUpdate = true;
+      if (_matEmissive) _matEmissive.needsUpdate = true;
+    }
+    resize();
+    gate.reset();
+  }
+  live.add(applyGfx);
 
   return {
     THREE, renderer, scene, camera, canvas,
@@ -335,13 +379,14 @@ export function createPixelRenderer(container, opts = {}) {
     start() { if (running) return; running = true; last = 0; gate.reset(); raf = requestAnimationFrame(frame); },
     stop() { running = false; cancelAnimationFrame(raf); },
     render: draw,
-    /** Prende/apaga el contorno tinta (true | {strength, threshold, width} | false). */
-    setOutline(o) {
-      outline?.dispose(); outline = null;
-      if (o) { outline = createOutlinePass(renderer, o, samples()); resize(); }
-    },
-    get outline() { return !!outline; },
-    /** Tope de cuadros por segundo (0 = sin tope) y tope cuando nadie toca nada hace un rato. */
+    /** Prende/apaga el contorno tinta de esta escena (true | {strength, threshold, width} | false). */
+    setOutline(o) { sceneOutline = o; if (buildOutline()) resize(); },
+    /** ¿Se dibuja el contorno tinta? */
+    get outline() { return !!outline && wantOutline(); },
+    /** Muestras de antialias (0 = sin antialias). */
+    get samples() { return outline ? samples() : 0; },
+    get shadows() { return renderer.shadowMap.enabled; },
+    /** Tope de cuadros por segundo para esta escena (0 = sin tope, null = el de Ajustes) y tope sin tocar nada. */
     setMaxFps(fps, idle = idleFps) { maxFps = fps; idleFps = idle; },
     get fps() { return targetFps(); },
     /** Convierte coordenadas de pantalla (clientX/Y) a NDC */
@@ -363,7 +408,7 @@ export function createPixelRenderer(container, opts = {}) {
       return { x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - p.y) / 2 * r.height, visible: p.z < 1 };
     },
     dispose() {
-      this.stop(); ro.disconnect(); loops.clear();
+      this.stop(); ro.disconnect(); loops.clear(); live.delete(applyGfx);
       mq?.removeEventListener?.('change', onDpr);
       outline?.dispose();
       disposeObject(scene);
@@ -381,7 +426,7 @@ export function createPixelRenderer(container, opts = {}) {
  * mide ≈1 px CSS a cualquier resolución y no hace escalones duros.
  * En perspectiva el umbral crece con la distancia para no rayar el piso lejano en ángulo rasante.
  */
-function createOutlinePass(renderer, o, samples = 0) {
+function createOutlinePass(renderer, o, samples = 0, lines = true) {
   const cfg = typeof o === 'object' ? o : {};
   // RGBA8 en sRGB (no float16): la mitad de memoria y ancho de banda con MSAA, ~25% menos de GPU por
   // cuadro, y la imagen sale igual (la GPU guarda en sRGB y lee de vuelta en lineal, sin bandas).
@@ -395,13 +440,13 @@ function createOutlinePass(renderer, o, samples = 0) {
     uniforms: {
       tColor: { value: rt.texture }, tDepth: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) },
       near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3d2f2a) }, lineW: { value: 2 },
-      strength: { value: cfg.strength ?? 0.85 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
+      strength: { value: cfg.strength ?? 0.85 }, lines: { value: lines ? 1 : 0 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: `
       #include <packing>
       uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel; uniform float lineW;
-      uniform float near; uniform float far; uniform vec3 ink; uniform float strength;
+      uniform float near; uniform float far; uniform vec3 ink; uniform float strength; uniform float lines;
       uniform float thrAbs; uniform float thrLin; uniform float thrSq;
       varying vec2 vUv;
       float dist(vec2 uv) {
@@ -427,7 +472,7 @@ function createOutlinePass(renderer, o, samples = 0) {
         if (dc - nearest(vUv, 1.0) > thr) k = 1.0;
         else if (lineW > 1.5 && dc - nearest(vUv, lineW) > thr) k = 1.0;
         else if (dc - nearest(vUv, lineW + 1.0) > thr) k = 0.4;
-        k *= c.a > 0.99 ? strength : 1.0;
+        k *= (c.a > 0.99 ? strength : 1.0) * lines;
         // c viene premultiplicado (fondo transparente): tinta encima y de vuelta a sRGB sin premultiplicar
         vec4 o = vec4(mix(c.rgb, ink, k), mix(c.a, 1.0, k));
         vec3 rgb = o.a > 0.0 ? o.rgb / o.a : vec3(0.0);

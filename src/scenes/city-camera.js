@@ -27,6 +27,7 @@ export function createCameraCtl(r, saved, { onChange, limit } = {}) {
   let pinch = null;
   let fly = null;
   const keys = new Set();
+  let speedK = 1, edgeF = 0, edgeR = 0;   // Ajustes: velocidad de la cámara y desplazamiento con los bordes
   let changed = false, changeTimer = 0;
 
   function applyProj() {
@@ -137,15 +138,16 @@ export function createCameraCtl(r, saved, { onChange, limit } = {}) {
       if (Math.abs(fly.x - st.x) + Math.abs(fly.z - st.z) + Math.abs(fly.u - st.u) < 0.01) fly = null;
       moved = true;
     }
-    if (keys.size) {
-      let fwd = 0, right = 0, zoom = 0;
+    if (keys.size || edgeF || edgeR) {
+      let fwd = edgeF, right = edgeR, zoom = 0;
       if (keys.has('up')) fwd += 1;
       if (keys.has('down')) fwd -= 1;
       if (keys.has('left')) right -= 1;
       if (keys.has('right')) right += 1;
       if (keys.has('in')) zoom -= 1;
       if (keys.has('out')) zoom += 1;
-      const a = st.angle, sp = st.u * 0.9 * dt;
+      fwd = clamp(fwd, -1, 1); right = clamp(right, -1, 1);
+      const a = st.angle, sp = st.u * 0.9 * dt * speedK;
       // adelante en pantalla = (-sin a, -cos a) sobre el piso; derecha = (cos a, -sin a)
       st.x += (-Math.sin(a) * fwd + Math.cos(a) * right) * sp;
       st.z += (-Math.cos(a) * fwd - Math.sin(a) * right) * sp;
@@ -168,6 +170,8 @@ export function createCameraCtl(r, saved, { onChange, limit } = {}) {
     get dragging() { return !!grab || !!pinch; },
     key(name, down) { if (down) keys.add(name); else keys.delete(name); },
     clearKeys() { keys.clear(); },
+    setSpeed(k) { speedK = k > 0 ? k : 1; },
+    setEdge(f, r) { edgeF = f; edgeR = r; },
     stop() { vel.x = vel.z = 0; fly = null; },
   };
 }

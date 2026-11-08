@@ -244,8 +244,12 @@ export function flyCurrency(x, y, kind = 'coins', count = 6) {
   }
 }
 /** Confeti pixelado sobre toda la pantalla. */
+/** Multiplicador de partículas de Ajustes (pocas 0,4 · normales 1 · muchas 1,8). */
+let particleMul = 1;
+export function setParticles(m) { particleMul = m > 0 ? m : 1; }
 export function confetti(n = 70) {
   if (reducedMotion()) return;
+  n = Math.max(8, Math.round(n * particleMul));
   const cv = h('canvas.confetti');
   $('#fx-root').append(cv);
   const scale = 4;

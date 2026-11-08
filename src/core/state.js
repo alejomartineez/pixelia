@@ -12,6 +12,27 @@ const BASE_KEY = 'pixelia.save.v1';
 // 3: sin minijuegos (materiales de región, edificios del ciclo, equipo, épocas; DESIGN-CORE.md §7.2)
 export const VERSION = 3;
 
+/** Ajustes por defecto (src/core/settings.js los aplica y valida; los saves viejos los reciben por deepFill). */
+export const SETTINGS_DEFAULTS = {
+  // sonido: music/sfx siguen siendo el sí/no (los lee el logo de index.html); los volúmenes van de 0 a 1
+  music: true, sfx: true, volMaster: 0.8, volMusic: 0.7, volSfx: 0.8, volAmb: 0.6, volUi: 0.8, volVoice: 1, muteBg: true,
+  // volVoice queda para el bus de voz del mezclador nuevo (plan §K, paso 3c); volUi: clics, menús y avisos
+  // gráficos: gfxPreset 'auto' = se mide la compu en el primer rato y se elige uno (después queda fijo)
+  gfxPreset: 'auto', renderScale: 200, aa: true, shadows: true, outline: true, particles: 'normal',
+  maxFps: 60, bgFps: 30, showFps: false,
+  lowQuality: false,   // del sistema viejo: si estaba en true, el preset arranca en Baja
+  // pantalla (en el navegador solo cuenta uiScale)
+  winMode: 'window', winRes: 'auto', uiScale: 100,
+  // juego
+  textSpeed: 'normal', skipSeen: false, combatSpeed: 1, confirmEnd: true, hints: true, camSpeed: 1, edgeScroll: false,
+  // controles: solo lo que se reasignó (acción → KeyboardEvent.code)
+  keys: {},
+  // accesibilidad
+  textSize: 'normal', motion: 'auto', subtitles: true, hiContrast: false,
+  telemetry: true,
+};
+
+
 /**
  * Clave de guardado. En modo online simulado (?mock=1&mockuser=ana) cada jugadora simulada tiene su
  * propia partida ('pixelia.save.v1.mock.ana'), así dos pestañas no comparten el mismo localStorage.
@@ -87,7 +108,8 @@ export function defaultState() {
     tutorial: {},   // flags libres para tips mostrados una vez: tutorial[key] = true
     // telemetry: métricas anónimas (online/telemetry.js) · textSize: 'normal'|'large'|'xlarge' · motion: 'auto'|'on'|'off'
     // (reducir movimiento: automático según el sistema, sí o no). Los saves viejos los reciben por deepFill.
-    settings: { music: true, sfx: true, lowQuality: false, telemetry: true, textSize: 'normal', motion: 'auto' },
+    // el resto de los ajustes (gráficos, pantalla, volúmenes, juego, controles): SETTINGS_DEFAULTS, más abajo
+    settings: JSON.parse(JSON.stringify(SETTINGS_DEFAULTS)),
     // módulos de progresión (cada uno completa sus propios campos al iniciar: initChests/initAlbum/initSeason/initEvents)
     chests: {},
     album: {},

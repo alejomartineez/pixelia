@@ -30,4 +30,21 @@ await page.screenshot({ path: out + '-after.png' });
 console.log('scene', await page.evaluate(() => document.querySelector('.scene-root')?.className));
 // online: ¿llega Supabase desde este origen?
 console.log('net', await page.evaluate(async () => { try { const m = await import('./src/online/config.js'); const url = m.SUPABASE_URL; const r = await fetch(url + '/auth/v1/health', { headers: { apikey: m.SUPABASE_ANON_KEY } }); return r.status + ' ' + url; } catch (e) { return 'ERR ' + e; } }));
+// Ajustes → Pantalla (paso 2c): la ventana entra en el monitor; sin bordes, pantalla completa y ventana; zoom de la interfaz
+console.log('ventana', await page.evaluate(async () => {
+  const D = await import('./src/core/desktop.js'), S = await import('./src/core/settings.js');
+  const w = window.__TAURI__.window.getCurrentWindow();
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+  const size = async () => { const s = await w.outerSize(), f = await w.scaleFactor(); return [Math.round(s.width / f), Math.round(s.height / f)]; };
+  const m = await D.monitorInfo();
+  const r = { monitor: m && [m.w, m.h, 'útil', m.aw, m.ah], inicio: await size() };
+  r.entra = !!m && r.inicio[0] <= m.aw && r.inicio[1] <= m.ah;
+  S.setSetting({ winMode: 'borderless' }); await wait(1500); r.sinBordes = [await size(), 'deco', await w.isDecorated()];
+  S.setSetting({ winMode: 'fullscreen' }); await wait(1800); r.completa = await w.isFullscreen();
+  S.setSetting({ winMode: 'window', winRes: '1280x720' }); await wait(1800); r.ventana = [await size(), 'fs', await w.isFullscreen(), 'deco', await w.isDecorated()];
+  S.setSetting({ uiScale: 125 }); await wait(700); r.zoom125 = devicePixelRatio;
+  S.setSetting({ uiScale: 100, winRes: 'auto' }); await wait(700); r.zoom100 = devicePixelRatio;
+  return JSON.stringify(r);
+}));
+await page.screenshot({ path: out + '-ventana.png' });
 browser.disconnect(); child.kill();

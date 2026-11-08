@@ -11,6 +11,9 @@
   --coral: #e2766c; --cream: #fbf5e6;
   --ink: #3d2f2a; --ink-l: #6e5a4f; --ink-ll: #a2917f;
   --panel: #fffaf1; --panel-2: #fbefdc;
+  /* superficies compartidas (Ajustes y lo nuevo): el paso 2d (interfaz oscura) cambia solo estos valores */
+  --surface: #fff; --surface-2: #fbefdc; --surface-hover: #fff8ec; --rule: #ecdcc6; --track: #eee7dc; --accent: #3d55b8; --accent-l: #e6eaf8;
+  --hud-ink: #fff; --hud-glass: rgba(22, 18, 31, .72);
   --line: 3px;
   --radius: 10px;
   --shadow: 0 4px 0 var(--ink);
@@ -427,3 +430,10 @@ body { touch-action: manipulation; }
   /* en la compu, abajo a la izquierda (al centro está la barra de abajo y el globito de la misión) */
   .inst-card { left: calc(var(--safe-l) + 12px); bottom: 16px; }
 }
+
+/* ---------- Ajustes (src/core/settings.js) ---------- */
+/* contador de FPS (Gráficos → Mostrar contador de FPS) */
+#fps-meter { position: fixed; left: calc(8px + env(safe-area-inset-left, 0px)); top: calc(6px + var(--safe-t)); z-index: 9000; pointer-events: none;
+  padding: 1px 7px; font: 700 15px/1.3 'Jersey', monospace; color: var(--hud-ink); background: var(--hud-glass); border-radius: 6px; font-variant-numeric: tabular-nums; }
+/* escala de la interfaz en el navegador (en el juego de PC la hace el WebView con su zoom) */
+html.ui-scaled #hud, html.ui-scaled #modal-root > .modal-back > .modal, html.ui-scaled #toast-root { zoom: var(--ui-scale, 1); }
