@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Pixelia",
+  "version": "0.25.0",
+  "identifier": "com.dezings.pixelia",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeDevCommand": { "script": "node serve.mjs", "cwd": "../tools", "wait": false },
+    "beforeBuildCommand": "node stage.mjs"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "Pixelia",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "center": true,
+        "resizable": true,
+        "dragDropEnabled": false,
+        "backgroundColor": "#16121f",
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required"
+      }
+    ],
+    "security": { "csp": null }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "dmg", "app"],
+    "createUpdaterArtifacts": true,
+    "publisher": "Dezings",
+    "copyright": "© Dezings",
+    "category": "SimulationGame",
+    "shortDescription": "Pixelia, un juego de Dezings",
+    "longDescription": "Reconstruí tu isla flotante, salí de expedición y descubrí qué pasó con el mundo.",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "windows": { "nsis": { "installMode": "currentUser", "languages": ["Spanish"] } },
+    "macOS": { "minimumSystemVersion": "11.0" }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlBMTE2MjJFOUVCODUwODMKUldTRFVMaWVMbUlSbXJSd0t2N0R4S2pObEl4Y2s1ODEvcDYzWTFneGgxbDYwY3A1MHhpWFp1VzQK",
+      "endpoints": ["https://github.com/alejomartineez/pixelia/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Lo que el juego puede pedirle a la cáscara: ventana (pantalla completa, tamaño), actualizar y reiniciar.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-set-size",
+    "core:window:allow-set-decorations",
+    "core:window:allow-center",
+    "core:window:allow-set-title",
+    "updater:default",
+    "process:allow-restart"
+  ]
+}

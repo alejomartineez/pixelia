@@ -24,6 +24,7 @@ import * as home from './home/furniture.js';
 import * as expedition from './expedition/expedition.js';
 import * as threats from './threats/threats.js';   // Amenazas (Fase 3)
 import * as unlocks from './core/unlocks.js';      // apertura escalonada (Fase 5b)
+import { isDesktop, initDesktop } from './core/desktop.js';   // juego de PC (Tauri)
 
 const SCENES = {
   city: () => import('./scenes/city.js'),
@@ -135,6 +136,7 @@ const openEvents = lazyUi(() => events.openEventsPanel(ctx), 'No se pudieron abr
 export const ctx = {
   store, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats,
   get state() { return store.state; },
+  desktop: isDesktop,
   openPanel,
   // progresión y social
   chests, album, season, events, net,
@@ -327,7 +329,9 @@ async function boot() {
   initProgression();
   hud.init(document.getElementById('hud'), ctx);
   import('./online/telemetry.js').then(m => m.initTelemetry(ctx)).catch(e => console.warn('[telemetry]', e));
-  import('./scenes/install-card.js').then(m => m.initInstallCard(ctx)).catch(e => console.warn('[install]', e));
+  // en el juego de PC no hay nada que instalar: ni tarjeta de instalación ni service worker
+  if (isDesktop) initDesktop(ctx);
+  else import('./scenes/install-card.js').then(m => m.initInstallCard(ctx)).catch(e => console.warn('[install]', e));
   economy.tick();
   setInterval(() => economy.tick(), 1000);
   // pasó la medianoche con la app abierta: el premio del día y lo que se abre salen en un aviso liviano
@@ -397,7 +401,7 @@ async function boot() {
     });
   }
 
-  if ('serviceWorker' in navigator && location.protocol !== 'file:' && !params.has('nosw') && !['localhost', '127.0.0.1'].includes(location.hostname)) {
+  if (!isDesktop && 'serviceWorker' in navigator && location.protocol !== 'file:' && !params.has('nosw') && !['localhost', '127.0.0.1'].includes(location.hostname)) {
     navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW', e));
   }
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__pixeliaInstallPrompt = e; });

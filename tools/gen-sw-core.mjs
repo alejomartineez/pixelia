@@ -62,4 +62,23 @@ if (args.includes('--bump')) {
   out = out.replace(/const VERSION = 'pixelia-v(\d+)';/, (_, n) => { console.log(`VERSION pixelia-v${n} → pixelia-v${+n + 1}`); return `const VERSION = 'pixelia-v${+n + 1}';`; });
 }
 if (out !== sw) { writeFileSync(join(ROOT, 'sw.js'), out); console.log('sw.js actualizado'); } else console.log('sw.js ya estaba al día');
+// el juego de PC (desktop/) lleva la misma versión: pixelia-vN → 0.N.0 (semver, la compara el actualizador)
+syncDesktop(Number((out.match(/const VERSION = 'pixelia-v(\d+)';/) || [])[1]));
 process.exit(broken.length ? 1 : 0);
+
+function syncDesktop(n) {
+  if (!n) return;
+  const ver = `0.${n}.0`;
+  const targets = [
+    ['desktop/package.json', /("version":\s*")[^"]+(")/],
+    ['desktop/src-tauri/tauri.conf.json', /("version":\s*")[^"]+(")/],
+    ['desktop/src-tauri/Cargo.toml', /^(version = ")[^"]+(")/m],
+  ];
+  for (const [f, re] of targets) {
+    const p = join(ROOT, f);
+    if (!existsSync(p)) continue;
+    const txt = readFileSync(p, 'utf8');
+    const next = txt.replace(re, `$1${ver}$2`);
+    if (next !== txt) { writeFileSync(p, next); console.log(`${f} → ${ver}`); }
+  }
+}

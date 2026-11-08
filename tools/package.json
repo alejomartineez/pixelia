@@ -11,7 +11,10 @@
     "sim:threats": "node sim-threats.mjs",
     "sim:economy": "node sim-economy.mjs",
     "bump": "node gen-sw-core.mjs --bump",
-    "check": "node gen-sw-core.mjs --check"
+    "check": "node gen-sw-core.mjs --check",
+    "desktop:dev": "npm --prefix ../desktop run dev",
+    "desktop:build": "npm --prefix ../desktop run build -- --bundles nsis",
+    "release": "node release.mjs"
   },
   "license": "ISC",
   "type": "commonjs",
