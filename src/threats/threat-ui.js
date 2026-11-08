@@ -155,6 +155,23 @@ export function openResult(ctx, res, name) {
     buttons: [{ label: 'Volver a la ciudad', value: 'ok' }] });
 }
 /** "Mientras no estabas…": todo lo que se resolvió solo, en un solo aviso. */
+/** Líneas y premio sumado de lo que se resolvió solo (para el modal único "Mientras no estabas…" de main.js). Lo da por visto. */
+export function reportParts(ctx) {
+  const rep = T.reportStatus();
+  if (!rep) return null;
+  const lines = [];
+  const total = { coins: 0, gems: 0, mats: {}, planos: 0 };
+  for (const it of rep.items) {
+    const past = it.id === 'sim' ? 'Pasó el simulacro' : THREAT_TYPES[it.type]?.past || 'Pasó la amenaza';
+    lines.push(`${icon(THREAT_TYPES[it.type]?.icon || '🌊', 18)} ${past}: salvaste el <b>${it.pct}%</b>. ${damagedLine(it.damaged?.length || 0)}`);
+    const r = it.reward || {};
+    total.coins += r.coins || 0; total.gems += r.gems || 0; total.planos += r.planos || 0;
+    for (const [k, v] of Object.entries(r.mats || {})) total.mats[k] = (total.mats[k] || 0) + v;
+  }
+  if (rep.mended.length) lines.push(`${icon('🔧', 18)} Lo arreglaron entre todos: ${rep.mended.map(b => ctx.ui.esc(bName(b))).join(', ')}.`);
+  T.ackReport();
+  return { lines, reward: rep.items.length ? total : {} };
+}
 export async function openReport(ctx) {
   ensureStyle();
   const rep = T.reportStatus();

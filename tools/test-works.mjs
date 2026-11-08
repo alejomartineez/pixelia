@@ -157,7 +157,8 @@ try {
   await sleep(600);
 
   section('Panel Obras y construir el Faro');
-  await run(cleo, `store.grant({ mats: { mineral: 60, piedra: 60 }, coins: 30000 }, 'test'); return true;`);
+  // lo que piden las 4 etapas del Faro (los números los calibra tools/sim-economy.mjs) y un poco más
+  await run(cleo, `store.grant({ mats: { mineral: 120, piedra: 140 }, coins: 60000 }, 'test'); return true;`);
   ok(await tap(cleo, '#hud [data-act="works"]'), 'toca «Obras»');
   ok(await waitFor(cleo, `!!document.querySelector('.modal.pnl-works .pnl-wk-card')`, 5000), 'se abre el panel de Obras');
   await sleep(1500);
@@ -179,7 +180,8 @@ try {
   await tap(cleo, '.cx-pc .cx-pc-ok');
   ok(await waitFor(cleo, `window.__pixelia.economy.countOf('faro') === 1`, 5000), 'Faro colocado');
   const m1 = await run(cleo, `return { ...store.state.materials }`);
-  ok(m0.piedra - m1.piedra === 6 && m0.mineral - m1.mineral === 4, 'la etapa 1 gastó 6 de piedra y 4 de mineral', { m0, m1 });
+  const c1 = await run(cleo, `return E.def('faro').cost.mats`);
+  ok(m0.piedra - m1.piedra === c1.piedra && m0.mineral - m1.mineral === c1.mineral, `la etapa 1 gastó ${c1.piedra} de piedra y ${c1.mineral} de mineral`, { m0, m1, c1 });
   ok(await run(cleo, finishFn('faro')) === 1, 'terminan los cimientos (etapa 1)');
   await cityShot(cleo, 'faro', 'faro-etapa-1');
 
@@ -193,7 +195,6 @@ try {
   const charm2 = await run(cleo, `return E.cityCharm()`);
   ok(charm2 > charm1, 'cada etapa suma Encanto', { charm1, charm2 });
   await cityShot(cleo, 'faro', 'faro-etapa-2');
-  const prod0 = await run(cleo, `const b = store.state.city.buildings.find(b => b.id === 'panaderia'); return E.producerStatus(b).perCycle`);
   await run(cleo, `const b = store.state.city.buildings.find(b => b.id === 'faro'); E.startUpgrade(b.uid); return true;`);
   ok(await run(cleo, finishFn('faro')) === 3, 'etapa 3 terminada');
   await cityShot(cleo, 'faro', 'faro-etapa-3');
@@ -203,9 +204,9 @@ try {
   await cityShot(cleo, 'faro', 'faro-terminado');
 
   section('Bonus y expediente');
-  const fin = await run(cleo, `const b = store.state.city.buildings.find(b => b.id === 'panaderia'); return { done: E.monumentsDone(), bonus: E.monumentBonus('shopCoins'), prod: E.producerStatus(b).perCycle, up: E.upgradeInfo(store.state.city.buildings.find(b => b.id === 'faro')) }`);
-  ok(fin.done === 1 && Math.abs(fin.bonus - 0.1) < 1e-9, 'un monumento terminado con +10% de monedas de negocios', fin);
-  ok(fin.prod > prod0, 'la Panadería produce más con el Faro', { antes: prod0, ahora: fin.prod });
+  // Faro (DESIGN-CORE.md §5.4): +1 de visión en las expediciones (ya no suma monedas de negocios)
+  const fin = await run(cleo, `const ex = await import('/src/expedition/expedition.js'); return { done: E.monumentsDone(), bonus: E.monumentBonus('vision'), shop: E.monumentBonus('shopCoins'), up: E.upgradeInfo(store.state.city.buildings.find(b => b.id === 'faro')) }`);
+  ok(fin.done === 1 && fin.bonus === 1 && fin.shop === 0, 'un monumento terminado con +1 de visión en las expediciones', fin);
   ok(fin.up === null, 'el Faro terminado no tiene más etapas');
   const rk = await run(cleo, `return E.rankStatus().reqs.find(r => r.key === 'monuments')`);
   ok(rk && rk.need === 1 && rk.ok, 'el expediente del rango Villa cuenta el monumento', rk);

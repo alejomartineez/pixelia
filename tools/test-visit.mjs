@@ -157,7 +157,7 @@ try {
   ok(await waitFor(A, `window.__pixelia.ctx.router.visiting && !!document.querySelector('.cv-top')`, 15000), 'modo visita: cartel "Ciudad de Bea"');
   await sleep(2500);
   ok(await A.evaluate(() => /Bea/.test(document.querySelector('.cv-top')?.textContent || '') && document.getElementById('hud')?.classList.contains('hidden')), 'el HUD propio está oculto y el cartel dice Bea');
-  ok(await A.evaluate(() => !document.querySelector('.modal.pnl-login, .modal.pnl-levelup')), 'no aparecen premio diario ni subida de nivel encima de la visita');
+  ok(await A.evaluate(() => !document.querySelector('.modal.pnl-login, .modal.arrival-modal, .modal.pnl-levelup')), 'no aparecen premio diario ni subida de nivel encima de la visita');
   const helpN = await A.evaluate(() => document.querySelectorAll('.cv-help').length);
   ok(helpN >= 1, `burbuja "Ayudar" sobre la obra (${helpN})`);
   await shot(A, 'visit-03-ana-visita');
@@ -186,7 +186,8 @@ try {
   ok(/Qué linda tu casita/.test(txt), 'bea ve la visita de ana con la notita en el Buzón');
   ok(/Ana/.test(txt), 'bea ve que fue Ana');
   await shot(B, 'visit-07-bea-buzon');
-  const badge = await B.evaluate(() => { const e = document.querySelector('[data-badge="social"]'); return e && e.style.display !== 'none' ? +e.textContent : 0; });
+  // el HUD muestra como mucho 4 globitos por prioridad (Fase 5b): se mira la cuenta de Contactos, se vea o no
+  const badge = await B.evaluate(() => { const h = window.__pixelia.ctx.hud; h.refreshBadges(); return h.badgeState().want.social || 0; });
   ok(badge >= 2, `globito de Amigas en el HUD de bea (${badge})`);
   await tap(B, '.soc .btn.gold', 'Cobrar todo');
   await sleep(2500);

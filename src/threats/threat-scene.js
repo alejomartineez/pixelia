@@ -10,7 +10,7 @@ import { BUILDING_BY_ID, DEFENSES } from '../core/data.js';
 import * as T from './threats.js';
 import { THREAT_TYPES } from './threat-data.js';
 import { tileXZ, tileIndex } from './threat-rules.js';
-import { ensureStyle, makeChip, openThreatPanel, openResult } from './threat-ui.js';
+import { ensureStyle, openThreatPanel, openResult } from './threat-ui.js';
 
 const COLORS = {
   crecida: ['#9fd3ea', '#5aa9d6', '#3d86b8'], sequia: ['#ecd9a0', '#d9b46a', '#b8904a'], incendio: ['#ffc07a', '#ff8a3d', '#e0542a'],
@@ -69,8 +69,7 @@ export function createCoverage(api) {
 export function createDecor(api) {
   ensureStyle();
   const { ctx, ov, entries, fx, container, sideEl, HALF } = api;
-  const chip = makeChip(() => { ctx.audio.sfx('tap'); openPanel(api); });
-  sideEl.prepend(chip.el);
+  // el cartel de la amenaza vive en el HUD (capa Hoy, hud.js con chipText); tocarlo emite 'threat:panel'
   const tint = Object.assign(document.createElement('div'), { className: 'th-tint' });
   const flash = Object.assign(document.createElement('div'), { className: 'th-flash' });
   container.prepend(tint); container.append(flash);
@@ -80,7 +79,7 @@ export function createDecor(api) {
     ctx.bus.on('threat:announced', ({ id, type } = {}) => {
       lastSt = -1e9;
       const name = id === 'sim' ? 'un simulacro de crecida' : (THREAT_TYPES[type]?.name || 'una amenaza').toLowerCase();
-      setTimeout(() => { const s = T.threatStatus(); ctx.ui.toast(`Se viene ${name}: ${s?.when || 'pronto'}. Mirá el cartel para prepararte.`, { icon: THREAT_TYPES[type]?.icon || 'info' }); }, 600);
+      setTimeout(() => { const s = T.threatStatus(); ctx.ui.toast(`Se viene ${name}: ${s?.when || 'pronto'}. Tocá el aviso de arriba para prepararte.`, { icon: THREAT_TYPES[type]?.icon || 'info' }); }, 600);
     }),
     ...['threat:resolved', 'threat:started', 'building:damaged', 'building:repaired', 'craft:done', 'building:built'].map(ev => ctx.bus.on(ev, () => { lastSt = -1e9; })),
   ];
@@ -88,7 +87,6 @@ export function createDecor(api) {
     const now = performance.now();
     // el estado de la amenaza (preparación de toda la ciudad) se recalcula cada 1,5 s o cuando algo cambia
     if (now - lastSt > 1500) { lastSt = now; try { st = T.threatStatus(); } catch (e) { console.warn('[threats] estado', e); st = null; } }
-    chip.update(api.hidden ? null : st);
     const signs = st && (st.phase === 'señales' || st.phase === 'hoy');
     tint.style.background = signs ? TINT[st.type] : 'transparent';
     api.world?.setStream?.(signs && st.type === 'crecida' ? 1 : st?.type === 'sequia' && signs ? -1 : 0);
@@ -130,8 +128,8 @@ export function createDecor(api) {
     else if (type === 'sequia') fx.burst(rx(), 0.2, rx(), { n: 3, colors: ['#e3cf98', '#d9b46a'], speed: 0.8, up: 0.4, gravity: 0.3, size: 0.06, life: 1.2, spread: 0.6, drag: 1.5 });
   }
   return {
-    sync, update, chip,
-    dispose() { offs.forEach(f => f()); chip.el.remove(); tint.remove(); flash.remove(); for (const it of marks.values()) ov.remove(it); marks.clear(); },
+    sync, update,
+    dispose() { offs.forEach(f => f()); tint.remove(); flash.remove(); for (const it of marks.values()) ov.remove(it); marks.clear(); },
   };
 }
 

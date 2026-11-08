@@ -160,7 +160,7 @@ try {
   const sim = await run(`const s = store.state.threats; return { sim: s.sim, seen: s.seen.sim, ev: window.__thEv.filter(e => e.name === 'threat:announced').map(e => e.id) };`);
   ok(sim.sim && !sim.sim.done && sim.seen?.type === 'crecida', 'al llegar a Caserío se avisa el simulacro de crecida', sim);
   ok(sim.ev.includes('sim'), 'evento threat:announced {id: "sim"}');
-  ok(await waitFor(`(() => { const c = document.querySelector('.th-chip'); return c && c.style.display !== 'none' && /Simulacro/.test(c.textContent); })()`, 4000), 'el cartel de la ciudad dice "Simulacro · …"');
+  ok(await waitFor(`(() => { const c = document.querySelector('#hud [data-act="threat"]'); return c && c.style.display !== 'none' && /Simulacro/.test(c.textContent); })()`, 4000), 'el aviso del HUD (capa Hoy) dice "Simulacro · …"');
   await shot('cartel-simulacro');
   // misiones t15–t17 entre t14 y t18
   const qs = await run(`const ids = ctx.data.MAIN_QUESTS.map(q => q.id); return { order: ids.slice(ids.indexOf('t14'), ids.indexOf('t18') + 1) };`);
@@ -170,7 +170,7 @@ try {
 
   // ===================================================================
   section('Panel de la amenaza');
-  ok(await tapSel('.th-chip'), 'toqué el cartel');
+  ok(await tapSel('#hud [data-act="threat"]'), 'toqué el aviso de la amenaza');
   ok(await waitFor(`!!document.querySelector('.modal.th-modal')`, 4000), 'se abre el panel del simulacro');
   const panel = await page.evaluate(() => document.querySelector('.modal.th-modal')?.textContent || '');
   ok(/Preparación/.test(panel) && /no hay nada expuesto/.test(panel) && !/En riesgo/.test(panel), 'sin nada expuesto lo dice (y no muestra un 100% engañoso)', panel.slice(0, 160));
@@ -185,7 +185,7 @@ try {
   ok(h1.uid && h2.uid && h3.uid, 'tres edificios junto al arroyo', [h1, h2, h3]);
   const risk0 = await run(`return T.threatStatus().info;`);
   ok(risk0.enRiesgo >= 3 && risk0.prep < 0.3, `sin defensas la preparación es baja (${risk0.pct}%)`, risk0.pct);
-  await tapSel('.th-chip'); await sleep(500);
+  await tapSel('#hud [data-act="threat"]'); await sleep(500);
   const panel2 = await page.evaluate(() => document.querySelector('.modal.th-modal')?.textContent || '');
   ok(/Preparación \d+%/.test(panel2) && /En riesgo \(3\)/.test(panel2) && /sin cubrir/.test(panel2), 'con casas junto al arroyo: preparación, en riesgo (3) y "sin cubrir"', panel2.slice(0, 200));
   await page.keyboard.press('Escape'); await sleep(300); await drain();
@@ -215,8 +215,8 @@ try {
   section('Defensa jugada (simulacro)');
   const shift = await run(`const s = store.state.threats.sim; const ms = s.start - T.nowMs() + 60e3; T._debugShift(ms); return T.threatStatus().phase;`);
   ok(shift === 'hoy', 'llegó el día del simulacro', shift);
-  ok(await waitFor(`/hoy/.test(document.querySelector('.th-chip')?.textContent || '')`, 4000), 'el cartel dice "hoy"');
-  await tapSel('.th-chip'); await sleep(500);
+  ok(await waitFor(`/hoy/.test(document.querySelector('#hud [data-act="threat"]')?.textContent || '')`, 4000), 'el aviso dice "hoy"');
+  await tapSel('#hud [data-act="threat"]'); await sleep(500);
   ok(await tapSel('.modal.th-modal .btn', 'Enfrentar'), 'toqué Enfrentar');
   ok(await waitFor(`!!window.__pixelia.city.defense && !!document.querySelector('.th-bar')`, 4000), 'se monta la capa de defensa sobre la ciudad');
   ok(await page.evaluate(() => document.querySelector('#hud')?.classList.contains('hidden') || getComputedStyle(document.querySelector('#hud')).display === 'none' || true), 'HUD oculto en la defensa');
@@ -283,10 +283,14 @@ try {
   await run(`bus.emit('city:focus', { uid: ${dmgUid} }); return true;`);
   ok(await waitFor(`!!document.querySelector('.cx-info-modal .th-dmgbox')`, 3000), 'la ficha muestra "Dañado por la crecida"');
   await shot('ficha-danada');
+  // diaria "Repará un edificio" (Fase 5b): solo con algo dañado, y en ese caso sale siempre
+  const dl = await run(`store.state.quests.daily.date = null; return Q.dailyQuests().map(q => q.id);`);
+  ok(dl.includes('d_repair'), 'con un edificio dañado sale la diaria «Repará un edificio»', dl);
   await run(`store.grant({ coins: 5000, mats: { piedra: 10 } }, 'test'); return true;`);
   await sleep(400);
   ok(await tapSel('.cx-info-modal .th-dmgbox .btn', 'Reparar'), 'toqué Reparar');
   await sleep(500);
+  ok(await run(`return Q.dailyQuests().find(q => q.id === 'd_repair')?.done === true`), 'reparar cumple la diaria');
   ok(await run(`return !store.state.city.buildings.find(o => o.uid === ${dmgUid}).damaged && window.__thEv.some(e => e.name === 'building:repaired')`), 'reparado al instante (building:repaired)');
   // la vecindad arregla sola a las 72 h
   const other = await run(`const b = store.state.city.buildings.find(o => o.damaged) || store.state.city.buildings.find(o => o.id === 'casita'); b.damaged = Date.now() - 73 * 3600e3; b.damagedBy = 'crecida'; T.tick(); return { uid: b.uid, damaged: b.damaged, mended: store.state.threats.mended.slice() };`);

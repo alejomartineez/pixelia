@@ -72,10 +72,10 @@ await page.evaluate((theme, cam) => {
   put('rueda', 17, 21); put('cine', 20, 21, 0, 2);
   put('casita', 9, 17, 3); put('cabana', 7, 17, 3, 2); put('chalet', 5, 17, 3);
   put('mansion', 9, 19, 0, 2); put('torre_cristal', 6, 19); put('casita', 4, 21); put('banco', 12, 21);
-  put('joyeria', 11, 19); put('boutique_real', 11, 21, 0); put('glorieta', 14, 20); put('unicornio', 14, 22);
+  put('taller', 11, 19); put('boutique_real', 11, 21, 0); put('glorieta', 14, 20); put('unicornio', 14, 22);
   // costado derecho y fondo
-  put('panaderia', 17, 14, 1); put('torre_bloques', 17, 11, 1); put('garaje', 19, 10); put('teatro', 20, 14, 1);
-  put('spa', 17, 6); put('lago', 20, 6); put('pista', 14, 5); put('estatua', 14, 9);
+  put('panaderia', 17, 14, 1); put('dispensario', 17, 11, 1); put('establo', 19, 10); put('teatro', 20, 14, 1);
+  put('spa', 17, 6); put('lago', 20, 6); put('casa_exp', 14, 5); put('estatua', 14, 9);
   put('cabana', 9, 11, 1); put('chalet', 9, 14, 1); put('casita', 6, 14, 1); put('cabana', 6, 11, 1); put('lago', 5, 5);
   put('mansion', 9, 5); put('casita', 9, 8); put('chalet', 6, 8); put('torre_cristal', 4, 8);
   put('arco_rosas', 13, 17); put('macetas', 23, 19); put('banco', 16, 21);

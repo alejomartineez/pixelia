@@ -15,7 +15,8 @@ const WEEK = 7 * 864e5;
 const MIN_LEVEL = 3;
 const MIN_OPENS = 3;
 const MAX_SHOWS = 2;
-const OVERLAYS = '.chx-open, .alb-open, .cx-placebar, #splash';
+// .cx-placebar (colocando algo) y .th-bar (defensa de una amenaza): la tarjeta los taparía en iPhone, así que espera
+const OVERLAYS = '.chx-open, .alb-open, .cx-placebar, .th-bar, #splash';
 
 const load = () => { try { return { opens: 0, shows: 0, lastShown: 0, dismissed: 0, accepted: false, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { opens: 0, shows: 0, lastShown: 0, dismissed: 0, accepted: false }; } };
 const save = (st) => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch {} };
@@ -72,10 +73,20 @@ function hide() {
   setTimeout(() => el.remove(), 250);
 }
 
+/** La esconde sin contarla como vista (se tapó con la colocación o la defensa): puede volver a salir en esta apertura. */
+let prevShown = 0;
+function retract() {
+  if (!card) return;
+  hide();
+  shownNow = false;
+  st.shows = Math.max(0, st.shows - 1); st.lastShown = prevShown; save(st);
+}
+
 function show() {
   const kind = platform();
   if (!kind || card) return;
   shownNow = true;
+  prevShown = st.lastShown;
   st.shows++; st.lastShown = Date.now(); save(st);
   track('install_prompt_shown', { platform: kind, shows: st.shows, level: ctx?.state?.player?.level || 1, opens: st.opens });
 
@@ -139,6 +150,13 @@ export function initInstallCard(gameCtx) {
     if (id === 'city' && !params?.visit) maybeShow();
     else hide();
   });
+  // al empezar a colocar algo o a defender la ciudad se esconde; al terminar, vuelve a esperar su momento
+  ctx.bus.on('city:placing', ({ active } = {}) => {
+    if (active) retract();
+    else if (ctx.router.current === 'city') maybeShow(2500);
+  });
+  ctx.bus.on('threat:started', retract);
+  ctx.bus.on('threat:resolved', () => { if (ctx.router.current === 'city') maybeShow(6000); });
   // llegó a nivel 3 en esta sesión: después de la ventana de subida de nivel
   ctx.bus.on('level:up', () => { if (ctx.router.current === 'city') maybeShow(6000); });
   // en PC el aviso del navegador puede llegar después de entrar a la ciudad

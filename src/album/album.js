@@ -196,7 +196,8 @@ export function albumBadge() { return claimableSets().length + unseenCount(); }
 
 /**
  * Premio de un set. Se escala con la suma de estrellas del set (22 en todos) y con cuántos sets ya
- * reclamaste (cada set nuevo da +12%), las monedas además con el nivel. Los primeros 6 dan Cofre de Plata; después, de Oro.
+ * reclamaste (cada set nuevo da +12%), las monedas además con el nivel. Los primeros 6 dan Cofre de Plata; después, sin
+ * cofre (Fase 5b: §8, ≤ 1,5 cofres por día; el álbum completo sigue dando los suyos).
  */
 export function setReward(setId) {
   const set = SET_BY_ID[setId];
@@ -206,9 +207,9 @@ export function setReward(setId) {
   const m = 1 + k * 0.12;
   const lvl = store.state?.player?.level || 1;
   return {
-    gems: Math.round(set.starSum * 0.5 * m),
+    gems: Math.round(set.starSum * 0.15 * m),   // Fase 5b: era × 0,5 (§8: 15–25 gemas por día)
     coins: Math.round(set.starSum * 25 * m * rewardScale(lvl) / 10) * 10,
-    chest: k < 6 ? 'plata' : 'oro',
+    chest: k < 6 ? 'plata' : null,
   };
 }
 
@@ -318,7 +319,7 @@ export function claimSet(setId) {
   const rew = setReward(setId);
   a.claimedSets.push(setId);
   store.grant({ coins: rew.coins, gems: rew.gems }, 'album');
-  bus.emit('reward:chest', { type: rew.chest, n: 1, source: 'album' });
+  if (rew.chest) bus.emit('reward:chest', { type: rew.chest, n: 1, source: 'album' });
   store.inc('albumSets');
   const result = { setId, ...rew };
   if (a.claimedSets.length >= STICKER_SETS.length && !a.albumDone) {

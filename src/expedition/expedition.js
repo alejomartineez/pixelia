@@ -143,6 +143,7 @@ function cityMods(party, equip, state = S()) {
     roleLevel: Object.fromEntries(party.map(id => [id, Math.max(1, E.roleLevel(id, state))])),
     cargoMax: cargoMax(equip, state),
     encantoStars: stars,
+    vision: (() => { try { return E.monumentBonus('vision', state); } catch { return 0; } })(),   // Faro (+1)
   };
 }
 /**
@@ -221,7 +222,7 @@ export function finishExpedition(run, state = S()) {
   const reward = { mats, planos: L.planos || 0, colonos: L.colonos || 0, gems: res.gems || 0 };
   if (res.chest || (res.starCount === 3 && mult('chestDrop') > 1 && Math.random() < EXP.chestAt3 * (mult('chestDrop') - 1))) reward.chest = 'madera';
   let xpBonus = 0;
-  try { xpBonus = E.monumentBonus('gameXp', state) + (comfortInfo().xpBonus || 0); } catch {}
+  try { xpBonus = comfortInfo().xpBonus || 0; } catch {}
   reward.xp = run.prototype ? 0 : Math.round((EXP_XP.base + EXP_XP.perStar * res.starCount) * (1 + xpBonus));
   if (run.kind === 'normal' && res.reason === 'volvio' && res.provLeft > 0) reward.prov = res.provLeft;
   const got = store.grant(reward, 'expedition');

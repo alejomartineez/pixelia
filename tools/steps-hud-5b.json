@@ -1,0 +1,7 @@
+[
+  {"eval": "(() => { const { store, ctx, economy: E, data } = window.__pixelia; ctx.ui.closeAllModals(); const put = (id) => { const { min, max } = E.landBounds(); for (let z = min; z < max; z++) for (let x = min; x < max; x++) if (E.canPlace(id, x, z, 0).ok) { const b = E.placeBuilding(id, x, z, 0); if (b.error) return b.error; b.buildEnd = 0; return b.uid; } return 'sin lugar'; }; const out = ['casa_exp', 'huerta', 'casita', 'casita', 'panaderia', 'taller'].map(put); for (const q of data.MAIN_QUESTS) { if (q.id === 't10') break; store.state.quests.done[q.id] = 1; } store.state.prov = 42; const c = store.state.city.buildings.find(b => b.id === 'castillo'); c.level = 3; E.tick(); ctx.bus.emit('town:rankup', { rank: 3 }); ctx.threats?.tick?.(); ctx.bus.emit('quests:changed'); return out; })()"},
+  {"wait": 2500},
+  {"eval": "(() => { window.__pixelia.ctx.ui.closeAllModals(); return true; })()"},
+  {"wait": 1500},
+  {"eval": "(() => { const h = window.__pixelia.ctx.hud; window.__pixelia.ctx.ui.closeAllModals(); return { controls: h.controls(), n: h.controls().length, badges: h.badgeState().shown }; })()"}
+]

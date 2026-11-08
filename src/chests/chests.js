@@ -26,9 +26,10 @@ export const CHESTS = {
   real: { id: 'real', name: 'Cofre de Diamante', slots: 6, odds: { comun: 0, rara: 45, epica: 38, legendaria: 17 }, guarantee: 'legendaria', price: { gems: 120 }, color: '#5aa6e0', trim: '#ffd166' },
 };
 export const CHEST_LIST = Object.values(CHESTS);
-// Cofres recortados con la salida de los minijuegos (DESIGN-CORE.md §7.1 y §8: ≤ 1,5 por día): uno gratis por día, sin
-// acumular; el resto sale del rango, cada 5 niveles, el Pase, las amenazas y las salidas de 3★.
-export const FREE_CHEST_EVERY_MS = 24 * 3600 * 1000;
+// Cofres recortados con la salida de los minijuegos (DESIGN-CORE.md §7.1 y §8: ≤ 1,5 por día): uno gratis cada 3 días
+// (Fase 5b, tools/sim-economy.mjs; era uno por día), sin acumular; el resto sale del rango, cada 5 niveles, el Pase, las
+// amenazas, las salidas de 3★, los sets de Hallazgos y algunas misiones.
+export const FREE_CHEST_EVERY_MS = 72 * 3600 * 1000;
 export const FREE_CHEST_MAX = 1;
 export const PITY_LEGENDARY = 20;         // a lo sumo 20 cofres sin legendaria
 
@@ -47,13 +48,13 @@ export const ITEMS = {
   hammer: { name: 'Martillo Mágico', rarity: 'comun', kind: 'item', use: 'city', icon: '🔨', desc: 'Termina una obra o mejora al instante.' },
 
   coins_m: { name: 'Caja de monedas', rarity: 'rara', kind: 'coins', amount: [400, 650], icon: 'coin' },
-  gems_s: { name: 'Puñado de gemas', rarity: 'rara', kind: 'gems', amount: [3, 6], icon: 'gem' },
+  gems_s: { name: 'Puñado de gemas', rarity: 'rara', kind: 'gems', amount: [1, 2], icon: 'gem' },
   hourglass: { name: 'Reloj de Arena', rarity: 'rara', kind: 'item', use: 'city', icon: '⏳', desc: 'Adelanta 1 hora todas las obras y mejoras en curso.' },
   potion_prod: { name: 'Poción Dorada', rarity: 'rara', kind: 'item', use: 'city', icon: '🧪', desc: 'Producción x2 en toda la ciudad durante 30 minutos.', boost: { type: 'prod', mult: 2, minutes: 30 } },
   mats_bag: { name: 'Bolsa de materiales', rarity: 'rara', kind: 'material', amount: [4, 8], icon: 'monument', desc: 'Madera, piedra, mineral o hierbas para tus obras.' },
   equip: { name: 'Equipo de expedición', rarity: 'rara', kind: 'equip', pool: ['cuerda', 'pala', 'lona', 'farol', 'botiquin'], icon: '🎒', desc: 'Una pieza de equipo para la próxima salida.' },
 
-  gems_m: { name: 'Bolsa de gemas', rarity: 'epica', kind: 'gems', amount: [10, 16], icon: 'gem' },
+  gems_m: { name: 'Bolsa de gemas', rarity: 'epica', kind: 'gems', amount: [3, 5], icon: 'gem' },
   potion_happy: { name: 'Perfume de Alegría', rarity: 'epica', kind: 'item', use: 'city', icon: '🌸', desc: 'Felicidad al máximo (+50% producción) durante 1 hora.', boost: { type: 'happy', minutes: 60 } },
   furniture: { name: 'Mueble sorpresa', rarity: 'epica', kind: 'furniture', icon: 'home', desc: 'Un mueble especial para tu casa.' },
   cosmetic_coins: { name: 'Prenda sorpresa', rarity: 'epica', kind: 'cosmetic', pool: 'coins', icon: '🎀', desc: 'Una prenda o parte de auto nueva, gratis.' },
@@ -260,7 +261,7 @@ export function buyChest(type) {
   return true;
 }
 
-// Cofre gratis cada 4 h (se acumulan hasta FREE_CHEST_MAX)
+// Cofre gratis cada FREE_CHEST_EVERY_MS (no se acumulan: FREE_CHEST_MAX)
 export function freeChestStatus(now = Date.now()) {
   const c = cs();
   const ready = Math.min(FREE_CHEST_MAX, Math.floor((now - c.freeBase) / FREE_CHEST_EVERY_MS));

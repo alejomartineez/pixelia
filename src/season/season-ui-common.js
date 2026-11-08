@@ -36,7 +36,7 @@ export function partIcon(p, size = 40) {
     case 'chest': return chestIcon(p.type, size);
     case 'stickers': return packIcon(size);
     case 'item': case 'equip': return icon(p.icon || 'gift', size);
-    case 'mats': return icon(p.icon || 'gift', size);
+    case 'mats': case 'planos': return icon(p.icon || 'gift', size);
     case 'furniture': return icon('home', size);
     case 'cosmetic': return icon(COSMETIC_IC[p.target] || 'ribbon', size);
     default: return icon('gift', size);
@@ -51,6 +51,7 @@ export function partLabel(p) {
     case 'stickers': return `${p.n} hallazgo${p.n > 1 ? 's' : ''}${p.minStars > 1 ? ` (${p.minStars}★+)` : ''}`;
     case 'item': case 'equip': return (p.n > 1 ? `${p.n}× ` : '') + p.name;
     case 'mats': return `${p.n} ${(p.name || '').toLowerCase()}`;
+    case 'planos': return p.n === 1 ? '1 plano' : `${p.n} planos`;
     case 'furniture': return p.name || 'Mueble';
     case 'cosmetic': return COSMETIC_NAME[p.target] ? COSMETIC_NAME[p.target](p.name, p.id) : p.name;
     default: return 'Regalo';
@@ -95,6 +96,12 @@ const CSS = `
 .ssn-pi { image-rendering: pixelated; }
 
 /* héroe */
+.ssn-evbar { --ec: var(--second); --ecd: var(--second-d); width: 100%; margin-top: 10px; display: flex; align-items: center; gap: 10px; padding: 8px 12px; text-align: left;
+  background: #fff; border: var(--line) solid var(--ink); border-radius: 14px; box-shadow: var(--shadow); font: inherit; color: var(--ink); cursor: pointer; }
+.ssn-evbar.live { background: color-mix(in srgb, var(--ec) 22%, #fff); }
+.ssn-evbar > span { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ssn-evbar b { font-size: 15px; } .ssn-evbar small { font-size: 12px; color: var(--ink-l); }
+.ssn-evbar:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
 .ssn-hero { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border: var(--line) solid var(--ink); border-radius: 14px;
   background: linear-gradient(160deg, var(--s1), var(--s2)); box-shadow: 0 4px 0 var(--ink); overflow: hidden; }
 .ssn-hero::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .55;

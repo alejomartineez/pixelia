@@ -236,7 +236,7 @@ export async function openChestsPanel(ctx, params = {}) {
       list.append(card);
     }
     pane.append(list);
-    pane.append(h('p.chx-tip', { html: `${icon('star', 14)} Ganás cofres en las expediciones de 3★, las amenazas, el Pase, cada 5 niveles y con el cofre gratis del día.` }));
+    pane.append(h('p.chx-tip', { html: `${icon('star', 14)} Ganás cofres en las expediciones de 3★, las amenazas, el Pase, cada 5 niveles y con el cofre gratis, que sale cada 3 días.` }));
   }
 
   function renderMochila() {

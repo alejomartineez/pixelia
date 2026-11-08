@@ -8,6 +8,8 @@ import {
   seasonInfo, claimTier, claimAllTiers, claimSeasonBonus, ackSeasonEnd, welcomeBackStatus, claimWelcomeBack, toMs, MAX_TIER,
 } from './season.js';
 import { POINT_SOURCES, THEMES, BONUS_EVERY } from './season-data.js';
+import { eventBannerInfo } from './events.js';
+import { isOpen } from '../core/unlocks.js';
 import { useStyle, setTheme, partIcon, partLabel, partChip, chestIcon } from './season-ui-common.js';
 
 const fly = (el, parts) => {
@@ -48,6 +50,13 @@ export function openSeasonPass(ctx, now) {
         <h3>${esc(t.name)}</h3><p>${esc(t.phrase)}</p>
         <div class="ssn-hero-row"><span class="ssn-clock">${icon('clock', 18)} Termina en <b data-clock>${info.endsIn}</b></span>
         <button class="ssn-howbtn" data-how>${icon('sparkle', 16)} ¿Cómo gano chispas?</button></div></div></div>`;
+  }
+  // Temporada = Pase + eventos en un solo botón del HUD (Fase 5b): los eventos de la semana se abren desde acá
+  function eventsHtml() {
+    if (!ctx?.openEvents || !isOpen('eventos')) return '';
+    const ev = eventBannerInfo(T());
+    const txt = ev ? `<b>${esc(ev.title)}</b><small>Termina en ${esc(ev.endsIn)}${ev.count > 1 ? ` · y ${ev.count - 1} más` : ''}</small>` : '<b>Eventos de la semana</b><small>Mirá qué trae la semana</small>';
+    return `<button class="ssn-evbar${ev ? ' live' : ''}" data-act="events"${ev ? ` style="--ec:${ev.color};--ecd:${ev.dark}"` : ''}>${icon(ev ? ev.emoji : 'calendar', 30)}<span>${txt}</span>${icon('play', 18)}</button>`;
   }
   function statusHtml() {
     const maxed = info.level >= MAX_TIER;
@@ -120,7 +129,7 @@ export function openSeasonPass(ctx, now) {
     info = seasonInfo(T());
     setTheme(m.el, info.theme);
     const st = m.body.scrollTop;
-    wrap.innerHTML = heroHtml() + statusHtml() + endHtml()
+    wrap.innerHTML = heroHtml() + eventsHtml() + statusHtml() + endHtml()
       + `<div class="ssn-track">${info.rewards.map(rowHtml).join('')}</div>` + bonusHtml() + howHtml();
     m.body.scrollTop = st;
   }
@@ -161,6 +170,7 @@ export function openSeasonPass(ctx, now) {
     }
     else if ('bonus' in b.dataset) { const n = claimSeasonBonus(T()); if (n) { audio.sfx('buy'); toast(`¡${n} Cofre${n > 1 ? 's' : ''} de Madera a tus cofres!`, { icon: 'gift', type: 'good' }); render(); } }
     else if ('ack' in b.dataset) { audio.sfx('tap'); ackSeasonEnd(); render(); }
+    else if (b.dataset.act === 'events') { audio.sfx('tap'); ctx.openEvents(); }
   });
 
   render();

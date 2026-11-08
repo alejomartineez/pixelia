@@ -39,7 +39,8 @@ function ts(state = S()) {
   return t;
 }
 const rank = (state = S()) => E.townRank(state);
-const calOpts = (state = S()) => ({ observatory: (() => { try { return E.monumentComplete('observatorio', state); } catch { return false; } })() });
+// Observatorio terminado (bonus threatWarn, DESIGN-CORE.md §5.4): el aviso sale 2 días antes (WARN_DAYS_OBSERVATORY)
+const calOpts = (state = S()) => ({ observatory: (() => { try { return E.monumentBonus('threatWarn', state) > 0; } catch { return false; } })() });
 
 // ---------- Vista plana de la ciudad (lo único que ven las reglas) ----------
 const TREES = new Set(['arbol', 'cerezo']);
@@ -184,6 +185,20 @@ function resolveAuto(t, state = S(), now = nowMs()) {
   return applyResult({ id: t.id, type: t.type, f: t.f, pct: a.pct, mode: 'auto', damaged: R.pickDamaged(info, a.damaged), enRiesgo: info.enRiesgo }, state, now);
 }
 /** Al cargar y en cada tick: avisos, simulacro, resolución de lo que ya pasó y arreglos de la vecindad. */
+/** Registro de rangos ({r, at}) para saber qué amenazas te tocaban en cada momento. Sin registro, el rango actual. */
+function logRank(state, now) {
+  const st = ts(state);
+  if (!Array.isArray(st.rankLog)) st.rankLog = [];
+  const r = rank(state);
+  const last = st.rankLog[st.rankLog.length - 1];
+  if (!last || last.r !== r) { st.rankLog.push({ r, at: last ? now : 0 }); if (st.rankLog.length > 12) st.rankLog.splice(1, 1); store.markDirty(); }
+}
+function rankAt(state, at) {
+  const log = ts(state).rankLog || [];
+  let r = null;
+  for (const e of log) if (e.at <= at) r = e.r;
+  return r ?? rank(state);
+}
 export function resolvePending(now = nowMs(), state = S()) {
   const st = ts(state);
   ensureSim(state, now);
@@ -195,9 +210,13 @@ export function resolvePending(now = nowMs(), state = S()) {
     resolveAuto({ id, type: s.type, f: s.f, start: s.start, end: s.end }, state, now);
   }
   // las que terminaron hace poco sin que se viera el aviso (la app estuvo cerrada toda la semana)
+  logRank(state, now);
   if (rank(state) >= MIN_RANK) {
     for (const t of Cal.threatsBetween(now - LATE_DAYS * 24 * H, now, rank(state), calOpts(state))) {
       if (st.results[t.id] || st.seen[t.id]) continue;
+      // solo si ya te tocaba cuando se avisó: subir de rango agrega días de amenaza, y uno que ya pasó no se cobra
+      const rAt = rankAt(state, t.announce);
+      if (rAt < MIN_RANK || !Cal.threatsBetween(t.start - H, t.end + H, rAt, calOpts(state)).some(x => x.id === t.id)) continue;
       const ft = fixed(t, state);
       announce(ft, state, now);
       resolveAuto(ft, state, now);

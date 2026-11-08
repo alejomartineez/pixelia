@@ -112,6 +112,7 @@ function cosmeticPlan(index, claimed) {
  * Partes: {kind:'coins'|'gems', amount} | {kind:'chest', type, n} | {kind:'stickers', n, minStars}
  *       | {kind:'item', id, n, name, icon} | {kind:'cosmetic', target, id, name} (o gemas si ya tiene todo)
  *       | {kind:'mats', id, n, name, icon} (materiales de región) | {kind:'equip', id, n, name, icon} (equipo de expedición)
+ *       | {kind:'planos', n, name, icon} (planos de época)
  */
 function resolveTier(n, index, plan) {
   const t = TIERS[n - 1];
@@ -128,6 +129,7 @@ function resolveTier(n, index, plan) {
   if (t.stickers) parts.push({ kind: 'stickers', n: t.stickers.n, minStars: t.stickers.minStars || 1 });
   for (const [id, k] of Object.entries(t.items || {})) parts.push({ kind: 'item', id, n: k, name: ITEMS[id]?.name || id, icon: ITEMS[id]?.icon || 'gift' });
   for (const [id, k] of Object.entries(t.equip || {})) parts.push({ kind: 'equip', id, n: k, name: EQUIP_LOOK[id]?.name || id, icon: EQUIP_LOOK[id]?.icon || '🎒' });
+  if (t.planos) parts.push({ kind: 'planos', n: t.planos, name: t.planos === 1 ? 'Plano' : 'Planos', icon: '📜' });
   if (t.furniture) parts.push({ kind: 'furniture', id: t.furniture, n: 1, name: FURNITURE_BY_ID[t.furniture]?.name || 'Mueble', icon: 'home' });
   for (const [id, k] of Object.entries(t.mats || {})) parts.push({ kind: 'mats', id, n: k, name: MATERIAL_BY_ID[id]?.name || id, icon: MATERIAL_BY_ID[id]?.icon || 'gift' });
   return parts;
@@ -152,6 +154,7 @@ function grantParts(parts, source = 'season') {
     else if (p.kind === 'item') addBackpackItem(p.id, p.n);
     else if (p.kind === 'mats') store.grant({ mats: { [p.id]: p.n } }, source);
     else if (p.kind === 'equip') store.grant({ equip: { [p.id]: p.n } }, source);
+    else if (p.kind === 'planos') store.grant({ planos: p.n }, source);
     else if (p.kind === 'furniture') giveFurniture(p.id, p.n || 1, source);
     else if (p.kind === 'cosmetic') {
       const owned = S().owned;
@@ -171,7 +174,7 @@ function mergeParts(list) {
   for (const p of list) {
     const same = out.find(o => o.kind === p.kind && (p.kind === 'coins' || p.kind === 'gems' ||
       (p.kind === 'chest' && o.type === p.type) || ((p.kind === 'item' || p.kind === 'mats') && o.id === p.id) ||
-      (p.kind === 'stickers' && o.minStars === p.minStars)));
+      (p.kind === 'stickers' && o.minStars === p.minStars) || p.kind === 'planos'));
     if (!same || p.kind === 'cosmetic') { out.push({ ...p }); continue; }
     if ('amount' in p) same.amount += p.amount; else same.n += p.n;
   }
@@ -449,6 +452,9 @@ export function initSeason(now) {
     addSeasonPoints(POINTS.built, 'built');
   });
   bus.on('building:upgraded', () => addSeasonPoints(POINTS.upgraded, 'upgraded'));
+  bus.on('building:renovated', () => addSeasonPoints(POINTS.renovated, 'renovated'));
+  // reparar pagando (lo que arregla la vecindad sola a las 72 h no suma)
+  bus.on('building:repaired', (p) => { if (p?.paid) addSeasonPoints(POINTS.repaired, 'repaired'); });
   bus.on('quests:changed', onQuestsChanged);
   bus.on('album:changed', (p) => { const k = countNewStickers(p); if (k) addSeasonPoints(POINTS.newSticker * k, 'sticker'); });
   bus.on('social:helped', () => addSeasonPoints(POINTS.helped, 'helped'));
