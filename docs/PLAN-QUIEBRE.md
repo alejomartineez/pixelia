@@ -1,0 +1,460 @@
+# Pixelia para PC: "El Quiebre" (historia épica), combate táctico, tutorial guiado y logo Dezings
+
+## Contexto
+- **Historia.** Pixelia tiene el esqueleto de una aventura (regiones que se abren en orden, aldeas, niebla, lugares con
+  nombre, Hallazgos), pero no tiene canon, personajes ni conflicto.
+- **Jugador nuevo.** Se pierde:
+  - `goalAction` en `src/scenes/panels-common.js:358` solo cubre construir.
+  - `hintFor` en `src/scenes/panels-quests.js:139` dice "Sin apuro.".
+  - La flecha solo señala Construir.
+  - La cadena se frena hasta que cobrás a mano.
+  - Nadie explica de qué va el juego.
+- **Lo que pidió el usuario:**
+  - Historia con momentos épicos.
+  - Elementos de la tierra que mejoran la isla y el personaje.
+  - Monstruos, reyes de otras islas, mafias, traidores y piratas del cielo.
+  - Un Bajo Mundo bajo las islas flotantes (volcanes, cavernas, aldeas).
+  - Una animación inicial del colapso: la avaricia de los poderosos y la persistencia de los pobres en robar.
+  - Combate táctico por turnos.
+  - Un logo de estudio, **Dezings**.
+  - Un juego de PC instalable.
+- **La ciudad ya es una isla flotante con islotes** (`src/scenes/city-world.js:1`). El canon calza con lo que ya se ve.
+
+**Decisiones:**
+- La historia va dentro de Pixelia.
+- La intro es una cinemática 3D en vóxel.
+- La ciudad sigue cozy y la historia se permite ser épica.
+- **Esta tanda es la Base + el Acto 1.** Los actos 2 a 4 quedan diseñados en el documento.
+- **Plataforma:**
+  - Juego de PC para **Windows y macOS**, empaquetado con **Tauri**. Rust es solo la cáscara; el juego sigue en JS y
+    corre en WebView2 en Windows y en WKWebView en Mac. El juego ya soporta Safari 16.4 o más nuevo, así que el motor de
+    Mac no trae sorpresas.
+  - Los instaladores se compilan en **GitHub Actions**, porque el usuario no tiene Mac.
+  - Por ahora **sin firma**: el README explica el aviso de SmartScreen y el "clic derecho → Abrir" de Mac.
+  - Ya no se apunta a iPhone. La web de GitHub Pages queda publicada sin mantenimiento.
+  - Se distribuye por GitHub Releases con actualización automática.
+  - Lo online (Supabase) sigue igual.
+
+## Canon (borrador, va a `DESIGN-STORY.md`; el usuario lo ajusta)
+**El mundo de antes.** Un continente vivía de cuatro elementos que corrían en vetas:
+- **Raíz** (tierra);
+- **Marea** (agua);
+- **Brasa** (fuego);
+- **Céfiro** (aire).
+
+**El Quiebre.**
+- Las Casas poderosas, que después serían los reinos, cavaron sin medida para acumular.
+- Los de abajo siguieron robando lo que quedaba para sobrevivir.
+- Nadie paró. La tierra se vació por dentro y se partió.
+- Los pedazos con Céfiro se elevaron y son las islas flotantes.
+- Lo demás quedó como el **Bajo Mundo**: volcanes de Brasa suelta, cavernas y aldeas de quienes no subieron.
+- No hay buenos puros.
+
+**Hoy.**
+- Los elementos andan sueltos. Las **Amenazas** que ya existen son el elemento que se desborda. Quedan atadas al canon
+  sin cambiar el sistema.
+- Llegás a un fragmento en ruinas.
+
+**Facciones (actos posteriores):**
+- **Piratas del cielo**: saquean desde dirigibles.
+- **Los reinos**: islas grandes con sus reyes.
+- **La Cofradía de la Veta**: la mafia que trafica elementos entre los reinos y el Bajo Mundo.
+- **Un traidor cercano**, que se revela en el Acto 4.
+
+**Elementos descubiertos.** Cada uno da dos cosas:
+- **A la isla**: un efecto permanente, por ejemplo Raíz suma resistencia a sequía y helada y un edificio nuevo.
+- **Al personaje**: una habilidad de líder en la expedición y en combate. Resuelve el pendiente de DESIGN-CORE §9.
+
+**Actos:**
+- **Acto 1, "Tu fragmento"** (esta tanda). Usa las 5 regiones actuales.
+  1. Prólogo: la cinemática y la cartógrafa, la única que se quedó.
+  2. Bosque: primer combate, de tutorial.
+  3. Cerro del Hierro: en la mina vieja descubrís el **Núcleo de Raíz**.
+  4. Bañado: jefe monstruo despertado por la Marea suelta.
+  5. Costa de los Faros: reencendés el faro y te volvés visible.
+  6. Cierre: primer abordaje de **piratas del cielo**, jefe del acto. Queda el gancho al Acto 2.
+- **Acto 2**: islas vecinas, muelle de dirigibles y la amenaza nueva "abordaje".
+- **Acto 3**: el Bajo Mundo, con Brasa y Marea.
+- **Acto 4**: los reyes, la Cofradía, la traición, Céfiro y el final.
+
+**Coleccionable.** Las Páginas del diario del último intendente.
+
+## Tono
+- **Guía de tono** (DESIGN.md). Se agrega "Registro épico". La ciudad sigue cálida y sobria. La intro, los jefes y las
+  revelaciones pueden ser épicos, sin grandilocuencia, en rioplatense y sin diminutivos.
+- **Diálogos**: de 1 a 4 líneas por escena, se pueden saltear y nunca bloquean.
+- **Textos para PC**: "Tocá…" pasa a "Hacé clic…" (o a verbos neutros como "Elegí…"), en una pasada por todo el juego.
+
+## Implementación
+
+### 0. Juego de PC con Tauri (`desktop/`)
+- **Estructura.** `desktop/src-tauri/` lleva `tauri.conf.json`, `Cargo.toml` y un `main.rs` mínimo, con Tauri v2.
+  - `frontendDist` apunta a la raíz del repo y excluye `tools/`, `docs/`, `shots/` y `supabase/`.
+  - El juego no cambia de estructura. CLAUDE.md aclara que "sin build" sigue valiendo para el juego y que el
+    empaquetado vive aparte.
+- **Ajustes para escritorio:**
+  - **Detección.** `window.__TAURI__` (o `?desktop`) prende un flag `ctx.desktop`.
+  - **Service worker.** No se registra en el `.exe`: los archivos ya son locales. `sw.js` queda para la web.
+  - **Ventana:**
+    - 1280×720 como mínimo, redimensionable;
+    - pantalla completa con F11;
+    - ícono desde `tools/make-icons.mjs`;
+    - título "Pixelia".
+  - **Audio.**
+    - En Windows se habilita sin gesto con `additionalBrowserArgs: --autoplay-policy=no-user-gesture-required`.
+    - En Mac, WKWebView puede seguir pidiendo un gesto. Si pasa, el golpe del logo se omite ahí y la música arranca con
+      el primer clic, como hoy.
+  - **Teclas por plataforma.** Pantalla completa con F11 en Windows y con Ctrl+Cmd+F o el botón verde en Mac. Los atajos
+    con modificador usan Cmd en Mac.
+  - **Origen.** El juego corre en `http://tauri.localhost` en Windows y en `tauri://localhost` en Mac. Supabase y el
+    guardado se verifican en los dos.
+  - **Guardado.** `localStorage` persiste en la carpeta de datos de WebView2. Hay que verificar que sobreviva a las
+    actualizaciones.
+  - **Pasar la partida de la web al juego de PC.**
+    - Si hay cuenta online, usar la nube si existe un guardado en la nube.
+    - Si no, sumar "Exportar / Importar partida" en Ajustes, con un archivo `.json`.
+  - **Supabase.** Verificar CORS y el login desde el origen `http://tauri.localhost`. Las URLs de redirección del Auth
+    se ajustan en el panel solo si hacen falta.
+- **Actualización.** Con `tauri-plugin-updater`, contra un `latest.json` en GitHub Releases, y con clave de firma propia.
+  La clave privada nunca va al repo.
+- **Scripts en `tools/`:**
+  - `npm run desktop:dev`: ventana con el juego en vivo.
+  - `npm run desktop:build`: genera el instalador `.exe` local.
+  - `npm run release`: bump, tag `vN` y push del tag, solo con el OK del usuario.
+- **GitHub Actions** (`.github/workflows/desktop.yml`, con `tauri-apps/tauri-action`). Con cada tag `v*` compila:
+  - en `windows-latest`, el `.exe` NSIS;
+  - en `macos-latest`, el `.dmg` universal para Intel y Apple Silicon.
+
+  Después arma un borrador de release con los instaladores y el `latest.json` del actualizador. La clave de firma del
+  actualizador va en los secrets del repo; el usuario la carga.
+
+  El workflow también tiene un modo manual (`workflow_dispatch`) que compila y abre la app en macOS, saca una captura y
+  la sube como artefacto. Así se prueba Mac sin tener una.
+- **Requisitos que instala el usuario** (se piden permiso antes):
+  - Rust con `rustup`;
+  - Visual Studio Build Tools (C++);
+  - WebView2, que en Windows 11 ya viene.
+- **Escritorio primero en lo nuevo:**
+  - Atajos de teclado (combate: 1 a 4 para habilidades, Espacio para fin de turno, Esc para menú).
+  - Mouse con hover para ver alcances y daño.
+  - Calidad alta por defecto, con la opción de calidad en Ajustes.
+  - Lo viejo no se desarma.
+
+### A. Logo Dezings
+- **Dónde va.** Una capa `#studio` en `index.html`, por encima de `#splash`, con CSS y SVG en línea.
+- **Diseño:**
+  - Fondo oscuro.
+  - Un ícono vóxel propio: un cubo isométrico que forma una "D".
+  - La palabra **DEZINGS** en pixel art, con letras que caen y encajan y un brillo final.
+  - En el `.exe` suena un golpe corto sintetizado en `src/core/audio.js`.
+- **Generación.** `tools/make-logo.mjs --studio` arma el SVG y lo inyecta entre `<!--logo-studio-->`.
+- **Tiempos:**
+  - Cerca de 1,6 s la primera vez y cerca de 0,9 s después.
+  - Corre mientras cargan los módulos.
+  - Un clic o una tecla lo saltean.
+  - Con `prefers-reduced-motion` es solo un fundido.
+  - `?nosplash` y `?scene=` lo saltean.
+- **Créditos.** "Un juego de Dezings" en el splash y en Ajustes.
+- **Elección.** Capturas de 2 o 3 variantes.
+
+### B. Cinemática "El Quiebre" (escena `intro`)
+- **Archivo y uso.**
+  - `src/scenes/intro.js` se registra en `SCENES` (`src/main.js:28`).
+  - Sigue el contrato `{hud:false, music, mount, unmount}` y usa `createPixelRenderer` (`src/core/voxel.js:218`).
+  - Es la primera escena de una partida nueva (`src/main.js:364`, `!state.introSeen`).
+  - Se puede volver a ver desde la Bitácora.
+- **Planos** (6, de 7 a 10 s cada uno, con un subtítulo por plano):
+  1. El continente con las vetas latiendo.
+  2. Las torres de las Casas extrayendo.
+  3. De noche, figuras que roban cristales perseguidas por guardias.
+  4. La tierra se agrieta.
+  5. Los pedazos suben entre nubes y abajo quedan la oscuridad y la lava.
+  6. Tu fragmento en ruinas y un bote que llega.
+- **Construcción.** `Voxels`, `addLights`, `setIsoCamera` y `avatarModel`. Se reusan los acantilados y los islotes de
+  `city-world.js`.
+- **Calidad.** Alta en PC, y se respeta `?quality=low`.
+- **Controles.** "Saltar" (Esc) siempre visible.
+- **Música.** Pistas nuevas `epic` y `battle` en el secuenciador de `src/core/audio.js`.
+
+### C. Combate táctico por turnos (`src/combat/`, con la misma división que `src/expedition/`)
+- **`combat-data.js`.** Unidades, enemigos, habilidades y encuentros del Acto 1: lobos, bichos de veta, la bestia del
+  Bañado, grumetes piratas y la capitana.
+- **`combat-rules.js`.** Motor puro testeable en node, con la API `newBattle`, `view`, `move`, `act`, `endTurn`,
+  `enemyTurn` y `result`. Devuelve eventos, igual que `src/expedition/exp-rules.js`.
+- **El campo:**
+  - Grilla de 8×8 (en PC entra cómoda) con obstáculos según el terreno.
+  - El grupo es el líder más hasta 3 integrantes de la expedición. El rol define el kit:
+
+    | Rol | Kit |
+    |---|---|
+    | exploración | a distancia |
+    | ingeniería | barreras y trampas |
+    | sanidad | curar |
+    | recolección | robar o romper |
+    | guía | movimiento y empujar |
+
+  - Cada unidad tiene vida, movimiento, ataque básico y 1 o 2 habilidades con recarga.
+  - El elemento suma una habilidad al líder.
+  - Lo fabricado en el Taller (`EQUIPMENT` en `src/expedition/exp-data.js:138`) se usa como consumible.
+- **Lectura táctica.** Los enemigos **marcan antes** las casillas que van a atacar. La IA sigue reglas simples por tipo,
+  y los jefes tienen patrones por fase.
+- **Duración y guardado.** De 3 a 6 min por pelea. Se guarda cada turno en `state.expedition.active`. Se puede retirar,
+  y las peleas comunes ya ganadas se pueden **resolver rápido**.
+- **Dónde aparece:**
+  - Una casilla nueva `enemigo` en las bandas media y lejana (`CONTENT` en `exp-data.js:67`, `exp-gen.js`).
+  - Los jefes, en lugares de la historia.
+  - `exp-scene` le pasa el control a `combat-scene` y después vuelve.
+- **Resultados.** Ganar da botín, páginas e historia. Perder cuesta ánimo y te devuelve a la casilla anterior; los
+  jefes se pueden reintentar.
+- **`combat-scene.js` y `combat-ui.js`.**
+  - Cámara ortográfica, como `exp-scene.js:796`.
+  - El grupo usa `avatarModel`. Los enemigos son modelos vóxel en `combat/enemy-models.js`.
+  - Barra de acciones con atajos, fichas, orden de turnos, previsualización al pasar el mouse y casillas marcadas.
+
+### D. Motor de historia y Bitácora (`src/story/`)
+- **`story-data.js`.** Personajes con retrato de 16×16, escenas `{id, trigger, who, lines[], once}`, capítulos, páginas
+  y elementos.
+- **`story.js`:**
+  - Arma `state.story = {seen:[], pages:{}, elements:[], act, chapter}` y `state.introSeen`, con `deepFill` y sin subir
+    la versión del guardado.
+  - `initStory()` va en `initProgression` (`src/main.js:308`).
+  - Escucha el bus (`onboarding:done`, cobro de misión, `expedition:zone`, `expedition:region`, `town:rankup`, amenaza
+    pasada, `combat:won` y `combat:lost`).
+  - Encola escenas cuando la escena está quieta, como `runArrival`.
+- **`story-ui.js`.** Hoja de diálogo con retrato en canvas de baja resolución sin suavizado y botón "Saltar". Las
+  escenas épicas van a pantalla completa.
+- **Efectos de los elementos:**
+  - Para la isla: modificadores en `src/core/economy.js` y en la preparación de `src/threats/`, más un edificio nuevo en
+    `src/core/data.js`.
+  - Para el personaje: la habilidad de líder en `exp-rules` y en `combat-rules`.
+  - Se acreditan con `store.grant` (tipos nuevos `page` y `element`, en `src/core/state.js:364`).
+- **Bitácora** (`src/scenes/panels-story.js`).
+  - Muestra el acto y el capítulo, las escenas, las páginas, los elementos, "Volver a ver la intro" y un **"Qué sigue"**
+    con la misión actual y su `goalAction`.
+  - Tiene botón en el riel del HUD (`src/core/hud.js:78`) y atajo J.
+
+### E. Tutorial
+1. **`goalAction`.** Cubrir los casos que faltan:
+   - `prov` y `craft`: `city:focus` sobre la Huerta o el Taller.
+   - `expedition`, `zone` y `expStars`: `openPanel('expedition')`.
+   - `expand`: la cámara va al cartel.
+   - `threat`: `threat:panel`.
+   - Tipos nuevos `combat` y `story`.
+2. **`hintFor`.** Pistas reales para todos los tipos y fuera los textos de los minijuegos.
+3. **Flecha guiada** (`updateTutorial` en `src/scenes/city.js:523`). Señala según la misión: Construir, Expedición,
+   la Huerta o el Taller, el cartel o la Bitácora.
+4. **Cobro automático de t1–t20** (`claimMain` en `src/core/quests.js:119`), con toast y la línea de la cartógrafa.
+5. **Pasos nuevos en la cadena** (`src/core/data.js:572`, seguida por id): primer combate después de t5, "encontrá el
+   Núcleo de Raíz" y el jefe del Bañado.
+6. **Primera expedición guiada** (`TUTORIAL_SEED`), con pistas de un solo uso. El primer combate también va guiado.
+7. **Orden de entrada:**
+   1. Logo.
+   2. Splash.
+   3. Cinemática.
+   4. Personaje.
+   5. Nombre.
+   6. Prólogo.
+   7. Estilo.
+
+   El modal de llegada no se apila en la primera sesión (`src/scenes/arrival.js`).
+8. **Textos viejos:**
+   - "minijuegos" en `manifest.webmanifest` y en los meta de `index.html`.
+   - Los diminutivos de los consejos de carga (`index.html:99`).
+   - El lema del splash.
+   - "Tocá" pasa a "Hacé clic".
+
+### G. Ajustes completos (`src/scenes/panels-settings.js`)
+Hoy hay música y sonidos con un sí/no, tamaño de texto, movimiento y telemetría. La calidad y el contorno existen solo
+como atajos de URL (`?quality`, `?outline`). Se arma un panel por pestañas, guardado en `state.settings` y aplicado en
+vivo. Los valores nuevos los completa `deepFill`.
+
+- **Gráficos.** Se aplican con la API que ya tiene `createPixelRenderer` (`setMaxFps`, `setOutline`, `lowQuality`,
+  `resize`); lo que falte se expone ahí.
+  - Preset: Baja / Media / Alta / Personalizada.
+  - Escala de resolución: 50 a 200 %, con 2× por defecto en Alta.
+  - Antialias.
+  - Sombras.
+  - Oclusión ambiental.
+  - Contorno tinta.
+  - Partículas: pocas / normales / muchas.
+  - Distancia de detalle de la ciudad.
+  - Limitador de FPS: 30 / 60 / 120 / 144 / sin límite.
+  - FPS en segundo plano.
+  - VSync.
+  - Contador de FPS en pantalla.
+- **Pantalla.** Se aplica con la API de ventana de Tauri y se recuerda al reabrir.
+  - Ventana / pantalla completa / sin bordes.
+  - Resolución de ventana.
+  - Escala de la interfaz: 80 a 150 %.
+- **Sonido.**
+  - Volumen general, música, efectos y ambiente, con deslizadores en vez de sí/no (`src/core/audio.js` ya tiene ganancias
+    separadas).
+  - Silenciar en segundo plano.
+- **Juego.**
+  - Velocidad de los diálogos.
+  - Saltear las cinemáticas ya vistas.
+  - Velocidad de la animación del combate: x1 / x2 / x3.
+  - Confirmar fin de turno.
+  - Pistas de la guía: sí / no.
+  - Velocidad de la cámara y de desplazamiento con los bordes.
+- **Controles.** Lista de atajos (combate, Bitácora J, Construir B, Expedición E, cámara WASD) con reasignación
+  simple.
+- **Accesibilidad.** Lo de hoy (texto, movimiento), más subtítulos siempre activos y un modo de alto contraste para las
+  casillas marcadas del combate.
+- **Partida.** Exportar / importar partida, borrar partida, "Volver a ver la intro" y los créditos de Dezings.
+- **Primer arranque.** Se elige un preset según los FPS medidos durante el logo y la intro, y se puede cambiar.
+
+### H. Guías del juego (lo esencial, sin guiar todo)
+- **Regla.** Se guía cada sistema central **la primera vez que aparece**, con una sola pantalla corta. Lo demás se
+  descubre jugando y queda en el manual.
+- **Primeros contactos.** Siete, con un aviso de 2 o 3 líneas y una ilustración vóxel o pixel, dichos por la cartógrafa:
+  1. la ciudad (producir y cobrar);
+  2. la expedición (provisiones, ánimo, niebla y volver);
+  3. el combate (turnos, casillas marcadas y habilidades);
+  4. las amenazas (aviso y preparación);
+  5. los elementos;
+  6. el rango y las Épocas;
+  7. el Taller y el equipo.
+
+  Se disparan por bus cuando el sistema se abre (`unlocks.js` ya sabe cuándo).
+- **Manual.** Una pestaña de la Bitácora que reemplaza el "Cómo jugar" actual (`openHelp` en
+  `src/scenes/panels-settings.js:391`).
+  - El texto actual está viejo: tiene diminutivos ("burbujita", "animalito", "ratito") y hablá de tocar.
+  - Va por capítulos, que se desbloquean al llegar a cada sistema, con buscador.
+- **Pistas contextuales.** Al pasar el mouse sobre recursos, barras de la expedición, habilidades e íconos de efecto,
+  aparece un tooltip con lo que hace y de dónde se saca.
+- **"Qué sigue".** Vive en la Bitácora y en la tarjeta del HUD. Siempre hay un próximo paso claro, con su botón.
+
+### I. Diseño de mecánicas: creativas, enganchantes y balanceadas
+**Principios** (van a DESIGN-COMBAT y DESIGN-STORY):
+- Cada decisión tiene un costo visible.
+- Hay pocas reglas, pero se combinan.
+- Ningún camino único gana siempre.
+- Perder enseña: se ve por qué perdiste.
+- Una partida corta siempre deja un avance.
+
+**Combate:**
+- **El terreno es un recurso.** Los elementos cambian el campo:
+  - Raíz levanta una pared o enreda.
+  - Marea empuja y apaga el fuego (actos posteriores).
+  - Las cuerdas y las trampas de ingeniería crean caminos o cierres.
+- **Combos entre roles.** Por ejemplo, la guía empuja a un enemigo a la trampa de ingeniería, o la exploración marca y el
+  siguiente golpe hace más daño. Los combos se descubren y se anotan en el manual.
+- **Intenciones a la vista.** El enemigo marca lo que va a hacer, y el jugador piensa como en un rompecabezas en vez de
+  tirar dados.
+- **Jefes con fases** y una mecánica propia cada uno:
+  - La bestia del Bañado inunda casillas por turnos y hay que pelear en alto.
+  - La capitana pirata llama refuerzos por la pasarela del dirigible, que se puede cortar.
+- **Objetivos alternativos.** Algunas peleas se ganan sobreviviendo N turnos o rescatando a alguien, no solo matando.
+- **Desafíos opcionales.** Ganar sin perder a nadie o en pocos turnos da un extra (sinergia con las 3 estrellas actuales).
+
+**Meta y enganche:**
+- **El ciclo se cierra.** La historia pide explorar, explorar da elementos y materiales, eso mejora la isla, y la isla
+  aguanta las amenazas y desbloquea más historia.
+- **Avance visible.** El elemento cambia algo **que se ve** en la isla (raíces brillantes, una construcción nueva) y
+  algo **que se siente** en el personaje (una habilidad nueva).
+- **Ganchos de curiosidad.** Las páginas del diario dejan preguntas abiertas, el final del acto se anuncia, y las zonas
+  muestran siluetas de lo que hay más adelante.
+- **Rachas y sorpresa moderadas.** Encuentros raros en la niebla (un mercader del Bajo Mundo, un pirata desertor que
+  se suma) con chance baja y una vez por día.
+
+**Balance:**
+- **Simulador de combate.** `tools/sim-combat.mjs` corre miles de peleas con una IA de jugador razonable sobre el motor
+  puro. Las metas van en DESIGN-COMBAT:
+
+  | Pelea | Meta |
+  |---|---|
+  | común con el equipo esperado | 85–95 % ganadas |
+  | jefe, primer intento | 45–65 % |
+  | jefe, tercer intento | 85 % o más |
+  | duración | según la meta de turnos |
+  | rol | ninguno aporta más del 35 % del daño o de las victorias |
+
+- **Economía.** `npm run sim:economy` sigue cumpliendo DESIGN-CORE §8 con los efectos de los elementos y con el botín de
+  combate.
+- **Telemetría.** Ya existe (`src/online/telemetry.js`). Se suman eventos de combate (victoria, derrota, turnos,
+  retirada) para ajustar con datos reales.
+
+### F. Documentación
+- `DESIGN-STORY.md` nuevo: canon, actos 1 a 4, facciones, elementos, jefes y reglas de escritura.
+- `DESIGN-COMBAT.md` nuevo: reglas, fórmulas, IA y duración.
+- Actualizar en DESIGN-CORE: §1, §6, §9 y §10.
+- Agregar en DESIGN.md: el "Registro épico" y la plataforma PC.
+- Actualizar en CLAUDE.md:
+  - la descripción, que pasa a "juego de PC con Tauri; la web queda sin mantenimiento";
+  - los comandos `desktop:*` y `release`;
+  - los atajos `?scene=intro` y `?scene=combat`;
+  - el paso de publicar, que pasa a ser un release en GitHub (la web se sigue publicando con push, como hasta ahora).
+- `README.md`: cómo instalar y compilar.
+
+## Manejo de contexto entre sesiones (pedido del usuario)
+- **Memoria.** Al arrancar se guarda en la memoria del proyecto, como `feedback`: "si el chat supera el 40–45 % de
+  contexto, seguir en una sesión nueva *fresh* (no un fork) con la misma tarea".
+- **Copia del plan en el repo.** Este plan se copia a `docs/PLAN-QUIEBRE.md`. Cada sesión nueva lo lee y no depende del
+  historial de esta.
+- **Estado.** `docs/HANDOFF-QUIEBRE.md`, siguiendo el patrón de los `docs/HANDOFF-*.md` que ya existen, se actualiza al
+  cerrar cada paso. Registra:
+  - qué paso está hecho y en qué commit;
+  - qué decisiones se tomaron (por ejemplo, la variante de logo elegida);
+  - qué quedó pendiente o frágil;
+  - cuál es el siguiente paso.
+- **Corte de sesión:**
+  - Se mide el contexto con `get_usage` en cada límite de paso. También se corta antes si un paso viene largo.
+  - Al pasar el 40–45 %, se termina la unidad en curso, se hace commit y se actualiza el HANDOFF.
+  - Después se abre una sesión nueva (`start_session`, contexto `fresh`) con un brief corto: leer `docs/PLAN-QUIEBRE.md`
+    y `docs/HANDOFF-QUIEBRE.md`, seguir desde el paso N y aplicar la misma regla de corte. La sesión de origen termina ahí.
+- **Partición esperada.** Más o menos una sesión por paso del orden de trabajo. El combate (paso 5) y el Acto 1
+  (paso 6) probablemente lleven dos sesiones cada uno.
+
+## Orden de trabajo (un commit por paso)
+**Autonomía.** El usuario autorizó hacer todo sin pedir permiso. Eso incluye:
+- instalar Rust y las Build Tools;
+- commit y push a `master`;
+- crear los tags y releases;
+- generar la clave del actualizador y cargarla como secret con `gh`.
+
+Sigue en pie la regla de CLAUDE.md: no tocar el otro proyecto de Supabase ni usar la clave `service_role`.
+1. **0**: cáscara Tauri, `desktop:dev` andando, el juego actual corriendo en ventana, guardado y online verificados,
+   instalador `.exe` de prueba y workflow de GitHub Actions compilando Windows y Mac, con captura de Mac.
+2. **A + E8 + G**: logo, textos, pasada de "Tocá" a "Hacé clic" y Ajustes completos. Del logo se elige una variante
+   y se dejan las otras en `shots/` para que el usuario las vea.
+3. **D + E1–E4 + E7 + H**: motor de historia, Bitácora con el Manual, prólogo, tutorial y los primeros contactos.
+4. **B**: cinemática.
+5. **C**: combate. Primero el motor con sus tests, después la escena y la interfaz, después la casilla `enemigo`.
+6. **Acto 1 completo**: escenas, Núcleo de Raíz, jefes, faro, abordaje pirata y E5–E6.
+7. **Balance y primer release**: `sim-combat` y `sim:economy` dentro de sus metas, telemetría de combate y después
+   `npm run release`.
+
+Antes de cada commit: `npm run bump`. La web se sigue regenerando igual, aunque no se pruebe en celular.
+
+## Verificación
+- **`npm test` completo** desde `tools/`. Sigue en Chrome headless: es el mismo motor que WebView2. Atención a e2e,
+  migración, ciclo y expedición.
+- **Tests nuevos:**
+  - `test-combat.mjs`:
+    - motor con semillas fijas;
+    - cada encuentro del Acto 1 se puede ganar con el grupo del tutorial;
+    - el jefe dura de 6 a 12 turnos;
+    - guardar y retomar a mitad de una pelea.
+  - `test-story.mjs`:
+    - intro → prólogo → t1 → t5 guiado → primer combate → Bitácora;
+    - las escenas no se repiten;
+    - Saltar funciona;
+    - una partida vieja recibe `state.story` sin perder nada.
+- **`npm run sim:economy`** con el efecto de Raíz, y **`node sim-combat.mjs`** dentro de las metas de la sección I.
+- **`test-settings.mjs`** (nuevo): cada ajuste se guarda, se aplica en vivo (FPS medidos con el limitador, escala de
+  resolución, volúmenes) y sobrevive al reabrir.
+- **Guías:** cada uno de los 7 primeros contactos aparece una sola vez y en su momento. El Manual desbloquea los capítulos
+  en orden.
+- **Escritorio:**
+  - `npm run desktop:dev` a 1280×720 y 1920×1080: recorrido completo como jugador nuevo, FPS de la cinemática y del combate.
+  - Cerrar y reabrir mantiene la partida.
+  - El login online funciona.
+  - El instalador `.exe` instala, abre y se actualiza contra un release de prueba.
+- **Mac, sin tener una Mac:**
+  - El workflow manual compila el `.dmg`, abre la app en el runner de macOS y saca capturas (logo, intro, ciudad,
+    combate).
+  - Una prueba con WebKit (motor de Safari) en headless corre las escenas principales. Se suma solo como herramienta de
+    desarrollo en `tools/`.
+  - Una prueba real en una Mac de alguien conocido antes del primer release público.
+- **Capturas** de: logo, planos de la intro, prólogo, flecha sobre Expedición, combate con casillas marcadas y Bitácora.
