@@ -24,8 +24,9 @@ cada paso.
   - vigilar con `nvidia-smi --query-gpu=temperature.gpu,power.draw,utilization.gpu --format=csv` y cortar si el
     núcleo pasa ~70 °C o el consumo ~100 W (el hotspot no se ve: pedirle al usuario que lo mire en HWMonitor);
   - no instalar herramientas de monitoreo sin preguntar.
-  `npm test` y `smoke.mjs` usan SwiftShader (CPU) y no cargan la GPU. En el juego, 60 es el tope por defecto y elegir
-  120, 144 o sin límite muestra un aviso de que calienta la placa.
+  `npm test` y `smoke.mjs` usan SwiftShader (CPU) y no cargan la GPU. Estas reglas son **solo para probar
+  en la PC del usuario** (pasa a 240 FPS por su monitor de 240 Hz y la pasta gastada): el juego no avisa nada a los
+  jugadores. En Ajustes el tope por defecto es 60, y hay opciones de 30, 120, 144, 240 o sin límite.
 
 ## Estado
 | Paso | Qué | Estado | Commit |

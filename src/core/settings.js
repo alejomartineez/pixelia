@@ -19,7 +19,7 @@ export const PRESETS = {
 };
 export const PRESET_KEYS = Object.keys(PRESETS.high);
 export const PARTICLES = { few: 0.4, normal: 1, many: 1.8 };
-export const FPS_CAPS = [30, 60, 120, 144, 0];
+export const FPS_CAPS = [30, 60, 120, 144, 240, 0];
 export const WIN_RES = [[1280, 720], [1600, 900], [1920, 1080], [2560, 1440]];
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));

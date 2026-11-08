@@ -106,11 +106,8 @@ export function openSettings(ctx, p = {}) {
           row('Partículas', seg('particles', [['few', 'Pocas'], ['normal', 'Normales'], ['many', 'Muchas']], { onPick: v => { set({ particles: v }); show('gfx'); } }), 'Confeti, polvo y brillos.'),
         ),
         section('clock', 'Cuadros por segundo',
-          row('Límite de FPS', seg('maxFps', [[30, '30'], [60, '60'], [120, '120'], [144, '144'], [0, 'Sin límite']], { onPick: v => {
-            set({ maxFps: v });
-            // más de 60 no se nota en este juego y calienta la placa de video
-            if (v === 0 || v > 60) ui.toast(v ? `A ${v} FPS la placa de video trabaja más, calienta y consume más. Con 60 el juego ya va fluido.` : 'Sin límite la placa de video trabaja al máximo: calienta y consume mucho más. Con 60 el juego ya va fluido.', { icon: 'info' });
-          } }), 'El juego va cómodo a 60. Más alto calienta la placa de video y consume más.'),
+          row('Límite de FPS', seg('maxFps', [[30, '30'], [60, '60'], [120, '120'], [144, '144'], [240, '240'], [0, 'Sin límite']], { onPick: v => set({ maxFps: v }) }),
+            'Con un monitor rápido, más FPS se ve más suave. Con 30 la compu trabaja menos.'),
           row('Con la ventana atrás', seg('bgFps', [[10, '10'], [15, '15'], [30, '30'], [60, '60']]), 'Tope de FPS cuando estás en otra ventana.'),
           sw('showFps', 'Mostrar contador de FPS', 'Un número discreto arriba a la izquierda.'),
           hint('La sincronización vertical la maneja siempre el sistema, así que nunca vas a ver cortes en la imagen.'),
