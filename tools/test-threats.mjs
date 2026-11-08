@@ -309,6 +309,41 @@ try {
   ok(fin.res?.mode === 'jugada' && !fin.active, 'al pasar el día se termina sola con lo jugado', fin.res);
   await run(`T._debugReset(); return true;`);
 
+  // ===================================================================
+  section('Cuadrilla que llega después de la resolución automática');
+  // una amenaza ya resuelta sola (con 2 dañados); la cuadrilla salió antes de que se resolviera → cuenta igual
+  const late = await run(`const st = store.state.threats; const bs = store.state.city.buildings.filter(o => !o.damaged && o.id === 'casita').slice(0, 2);
+    const at = T.nowMs(); for (const b of bs) { b.damaged = at; b.damagedBy = 'crecida'; }
+    st.results['x-late'] = { pct: 72, mode: 'auto', at, damaged: bs.map(b => b.uid), type: 'crecida', f: 2, reward: { gems: 4, coins: 200 }, help: [] };
+    const g0 = store.state.gems, c0 = store.state.coins;
+    const n = T.addHelp([{ threat: 'x-late', id: 'u-ana', name: 'Ana', at: at - 5 * 60e3 }]);
+    const r = st.results['x-late'];
+    const n2 = T.addHelp([{ threat: 'x-late', id: 'u-bea', name: 'Bea', at: at + 3600e3 }]);
+    const rep = T.reportStatus();
+    return { n, n2, pct: r.pct, help: r.help, dg: store.state.gems - g0, dc: store.state.coins - c0, fixed: bs.filter(b => !b.damaged).length,
+      lines: rep?.helpFixed?.map(x => [x.name, x.from, x.to, !!x.b]) };`);
+  ok(late.n === 1 && late.pct === 77 && late.help.includes('Ana'), 'salió a tiempo: el resultado pasa de 72% a 77%', late);
+  ok(late.dg === 2 && late.dc === 100, 'y da la diferencia del premio (77% ya es el escalón de 75%)', late);
+  ok(late.n2 === 1 && late.pct === 77 && late.fixed === 2, 'la que salió después solo arregla un edificio (cada una arregla uno)', late);
+  ok(late.lines?.length === 2 && late.lines[0][2] === 77 && late.lines[1][2] == null, '"Mientras no estabas…" cuenta las dos', late.lines);
+  const lateTxt = await run(`const U = await import('/src/threats/threat-ui.js'); const p = U.reportParts(ctx); return (p?.lines || []).join(' | ');`);
+  ok(/de 72% a 77%/.test(lateTxt) && /Bea arregló/.test(lateTxt), 'el texto lo dice', lateTxt);
+  await run(`T.ackReport(); delete store.state.threats.results['x-late']; return true;`);
+
+  // ===================================================================
+  section('Con la app abierta: aviso liviano en vez de "Mientras no estabas…"');
+  // como al pasar la medianoche: queda el premio del día y una amenaza resuelta sola, sin haber salido de la app
+  await run(`ctx.ui.closeAllModals(); for (const t of document.querySelectorAll('#toast-root .toast')) t.remove();
+    const st = store.state.threats; const at = T.nowMs();
+    st.results['x-open'] = { pct: 81, mode: 'auto', at, damaged: [], type: 'crecida', f: 2, reward: { gems: 6 }, help: [] }; st.report.push('x-open');
+    store.state.login.last = '2000-01-01'; store.markDirty(); bus.emit('social:crews', { n: 0 }); return true;`);
+  ok(await waitFor(`[...document.querySelectorAll('#toast-root .toast')].some(t => /Empezó un día nuevo/.test(t.textContent))`, 12000), 'sale el aviso "Empezó un día nuevo"');
+  const light = await run(`return { modal: !!document.querySelector('.modal.arrival-modal'), txt: [...document.querySelectorAll('#toast-root .toast')].map(t => t.textContent).join(' | '),
+    login: Q.loginStatus(), report: store.state.threats.report.length };`);
+  ok(!light.modal && !/Mientras no estabas/.test(light.txt), 'sin el modal ni el título "Mientras no estabas…"', light);
+  ok(/salvaste el 81%/.test(light.txt) && !light.login && light.report === 0, 'la amenaza va en un aviso y el premio del día queda cobrado', light);
+  await run(`delete store.state.threats.results['x-open']; return true;`);
+
   section('Consola');
   ok(errors.length === 0, 'sin errores en la consola', errors.slice(0, 5));
 } catch (err) {

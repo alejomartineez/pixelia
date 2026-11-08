@@ -79,6 +79,25 @@ export function openWorks(ctx, params = {}) {
     return box;
   }
 
+  // comercio con las aldeas: lo que falta de la etapa, por monedas y hasta lo que tengan en el día
+  function tradeBox(mats) {
+    const q = E.tradeQuote(mats);
+    const box = h('div.pnl-wk-trade');
+    const what = q.full ? 'lo que falta' : `${fmt(q.units)} de ${fmt(q.missing)}`;
+    const btn = h('button.btn.second.block' + (q.ok ? '' : '.off'), { 'data-act': 'trade', html: `${icon('bag', 18)} Comprar ${what} a las aldeas · ${ui.costHtml({ coins: q.coins }, 16)}` });
+    btn.onclick = () => {
+      const res = E.buyMissing(mats);
+      if (res.error) { audio.sfx('error'); ui.toast(res.error, { icon: 'info' }); return; }
+      audio.sfx('coin');
+      ui.toast(`Las aldeas te vendieron ${fmt(res.units)} materiales`, { icon: 'bag', type: 'good' });
+      render();
+    };
+    box.append(btn);
+    const left = q.left ? `Hoy les quedan ${fmt(q.left)}` : 'Hoy ya no tienen más: mañana vuelven a tener';
+    box.append(h('small.pnl-wk-trade-tip', { html: `${esc(left)} · ${fmt(q.price)} monedas cada uno` }));
+    return box;
+  }
+
   function card(id) {
     const now = Date.now();
     const st = E.monumentStatus(id, ctx.state, now);
@@ -112,6 +131,7 @@ export function openWorks(ctx, params = {}) {
     let msg = '';
     if (!can.ok) msg = can.mats ? 'Te faltan materiales' : can.poor ? 'Te faltan monedas' : can.reason;
     if (msg) el.append(h('div.req.pnl-rk-msg', { html: `${icon(can.poor ? 'coin' : 'lock', 14)}${esc(msg)}` }));
+    if (can.mats) el.append(tradeBox(next.cost.mats));
     const label = st.b ? `Avanzar a la etapa ${st.nextIdx + 1}` : 'Construir';
     const btn = h('button.btn.block' + (can.ok ? '.primary.pnl-glow' : '.ghost'), { html: `${icon(st.b ? 'up' : 'hammer', 20)} ${label}` });
     btn.onclick = () => {

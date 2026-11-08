@@ -360,6 +360,9 @@ export const PANEL_CSS = `
 .pnl-wk-cost { display: flex; flex-direction: column; gap: 6px; }
 .pnl-wk-get { flex: none; min-height: 34px; padding: 3px 10px; font-size: 14px; gap: 4px; }
 .pnl-wk-coins { display: flex; justify-content: flex-end; font-size: 17px; }
+.pnl-wk-trade { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 2px; }
+.pnl-wk-trade .btn { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.pnl-wk-trade-tip { text-align: center; opacity: .75; font-size: 12px; }
 .pnl-wk-lock { font-weight: 700; }
 .pnl-wk-okmsg { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 14px; }
 .pnl-wk-card .btn.block { min-height: 46px; font-size: 17px; }

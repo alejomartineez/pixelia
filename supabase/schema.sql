@@ -451,7 +451,7 @@ begin
   if char_length(c) <> 6 then raise exception 'El código tiene 6 letras y números'; end if;
   select * into o from public.profiles where code = c;
   if not found then raise exception 'No encontramos a nadie con el código %', c; end if;
-  if o.id = me then raise exception 'Ese es tu propio código 😄'; end if;
+  if o.id = me then raise exception 'Ese es tu propio código'; end if;
 
   select * into f from public.friendships
    where a = least(me, o.id) and b = greatest(me, o.id) for update;
@@ -539,7 +539,7 @@ language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid(); pl jsonb; pts int; gid bigint;
 begin
   if p_kind not in ('gift', 'help', 'sticker') then raise exception 'Ese tipo de regalo no existe'; end if;
-  if p_to = me then raise exception 'No te podés mandar regalos a vos misma 😄'; end if;
+  if p_to = me then raise exception 'No te podés mandar regalos a vos misma'; end if;
   perform public.pair_lock(me, p_to);
   pl := public.check_payload(p_payload);
 
@@ -734,7 +734,7 @@ create or replace function public.visit(p_host uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid(); is_first boolean;
 begin
-  if p_host = me then raise exception 'Esa es tu ciudad 😄'; end if;
+  if p_host = me then raise exception 'Esa es tu ciudad'; end if;
   perform public.pair_lock(me, p_host);
   insert into public.visits (host, visitor, day) values (p_host, me, current_date) on conflict do nothing;
   update public.visits set visited = true, updated_at = now()
@@ -748,7 +748,7 @@ create or replace function public.give_like(p_host uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid();
 begin
-  if p_host = me then raise exception 'No te podés dar corazón a vos misma 😄'; end if;
+  if p_host = me then raise exception 'No te podés dar corazón a vos misma'; end if;
   perform public.pair_lock(me, p_host);
   insert into public.visits (host, visitor, day) values (p_host, me, current_date) on conflict do nothing;
   update public.visits set liked = true, updated_at = now()
@@ -763,7 +763,7 @@ create or replace function public.leave_note(p_host uuid, p_text text) returns j
 language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid(); t text := trim(coalesce(p_text, ''));
 begin
-  if p_host = me then raise exception 'Esa es tu ciudad 😄'; end if;
+  if p_host = me then raise exception 'Esa es tu ciudad'; end if;
   if char_length(t) = 0 then raise exception 'Escribí algo cortito'; end if;
   if char_length(t) > 80 then raise exception 'La nota puede tener hasta 80 letras'; end if;
   perform public.pair_lock(me, p_host);
@@ -962,7 +962,7 @@ create or replace function public.send_crew(p_host uuid, p_threat text) returns 
 language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid(); hp public.profiles; th jsonb; n int; cid bigint;
 begin
-  if p_host = me then raise exception 'Esa es tu ciudad 😄'; end if;
+  if p_host = me then raise exception 'Esa es tu ciudad'; end if;
   perform public.pair_lock(me, p_host);
   if p_threat is null or p_threat !~ '^[0-9]{1,4}-[0-3]$' then raise exception 'Esa amenaza no existe'; end if;
   select * into hp from public.profiles where id = p_host;

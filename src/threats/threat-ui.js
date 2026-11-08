@@ -168,7 +168,11 @@ function helpParts(rep, esc) {
     const name = THREAT_TYPES[g.type]?.name || 'una amenaza';
     out.push(`${icon('people', 18)} ${who} ${g.names.length > 1 ? 'mandaron cuadrillas' : 'mandó una cuadrilla'} para lo que viene (${esc(name)}): +${g.names.length * 5}% de preparación.`);
   }
-  for (const x of rep.helpFixed || []) out.push(`${icon('🔧', 18)} La cuadrilla de ${esc(x.name)} arregló ${esc(bName(x.b))}.`);
+  for (const x of rep.helpFixed || []) {
+    const sum = x.to != null ? `llegó después de que se resolviera sola, pero salió a tiempo: el resultado pasa de ${x.from}% a ${x.to}%` : '';
+    const fix = x.b ? `arregló ${esc(bName(x.b))}` : '';
+    out.push(`${icon('🔧', 18)} La cuadrilla de ${esc(x.name)} ${[sum, fix].filter(Boolean).join(' y ')}.`);
+  }
   return out;
 }
 const joinNames = (n) => (n.length > 1 ? `${n.slice(0, -1).join(', ')} y ${n[n.length - 1]}` : n[0] || '');

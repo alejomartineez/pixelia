@@ -195,6 +195,26 @@ try {
   const charm2 = await run(cleo, `return E.cityCharm()`);
   ok(charm2 > charm1, 'cada etapa suma Encanto', { charm1, charm2 });
   await cityShot(cleo, 'faro', 'faro-etapa-2');
+
+  section('Comercio con las aldeas');
+  // a la etapa 3 le faltan 5 de piedra y 3 de mineral: se compran a las aldeas desde Obras
+  const tr0 = await run(cleo, `const need = E.monumentStatus('faro').next.cost.mats; store.state.materials.piedra = need.piedra - 5; store.state.materials.mineral = need.mineral - 3;
+    store.state.coins = Math.max(store.state.coins, 20000); delete store.state.trade; store.markDirty(); ctx.ui.closeAllModals(); ctx.openPanel('works');
+    const q = E.tradeQuote(need); return { q, coins: store.state.coins, stock: E.tradeStock() };`);
+  ok(tr0.q.ok && tr0.q.units === 8 && tr0.q.full && tr0.q.coins === 8 * tr0.stock.price, 'cotiza los 8 que faltan a precio de época', tr0);
+  ok(await waitFor(cleo, `!!document.querySelector('.pnl-works [data-act="trade"]')`, 5000), 'Obras ofrece «Comprar lo que falta a las aldeas»');
+  await sleep(400);
+  await shot(cleo, 'obras-comercio');
+  ok(await tap(cleo, '.pnl-works [data-act="trade"]'), 'toca «Comprar»');
+  await sleep(500);
+  const tr1 = await run(cleo, `return { coins: store.state.coins, can: E.monumentStatus('faro').can.ok, stock: E.tradeStock(), btn: !!document.querySelector('.pnl-works [data-act="trade"]') };`);
+  ok(tr0.coins - tr1.coins === tr0.q.coins && tr1.can && !tr1.btn, 'gastó las monedas, ya se puede avanzar y el botón se va', tr1);
+  ok(tr1.stock.left === tr0.stock.perDay - 8, `a las aldeas les quedan ${tr1.stock.left} por hoy`, tr1.stock);
+  const tr2 = await run(cleo, `const big = { piedra: (store.state.materials.piedra || 0) + 500 }; const q = E.tradeQuote(big); return { units: q.units, full: q.full, left: q.left };`);
+  ok(tr2.units === tr2.left && !tr2.full, 'si falta más de lo que tienen, ofrece lo que queda del día', tr2);
+  await cleo.evaluate(() => window.__pixelia.ctx.ui.closeAllModals());
+  // lo de la etapa 4 (lo que sobraba del grant se usó arriba para armar el faltante)
+  await run(cleo, `const m = ctx.data.MONUMENTS.faro.stages[3].cost.mats; store.grant({ mats: m }, 'test'); return true;`);
   await run(cleo, `const b = store.state.city.buildings.find(b => b.id === 'faro'); E.startUpgrade(b.uid); return true;`);
   ok(await run(cleo, finishFn('faro')) === 3, 'etapa 3 terminada');
   await cityShot(cleo, 'faro', 'faro-etapa-3');

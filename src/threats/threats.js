@@ -66,9 +66,14 @@ export function addHelp(list = [], state = S(), now = nowMs()) {
     const res = st.results[c.threat];
     const type = res?.type || st.seen[c.threat]?.type || null;
     if (res) {
-      // llegó tarde: arregla un edificio que esa amenaza dañó (si queda alguno)
+      // llegó tarde (la amenaza se resolvió sola antes de que el juego se enterara). Si salió antes de que se resolviera,
+      // cuenta como si hubiera llegado a tiempo: suma su preparación al resultado (y el premio de la diferencia).
+      // Además arregla un edificio que esa amenaza dañó (si queda alguno).
+      const late = { name: c.name, uid: null, from: null, to: null };
+      if (res.mode === 'auto' && (c.at || now) <= res.at + 60e3 && arr.length <= HELP.max && res.pct < 100) lateBonus(res, late);
       const b = state.city.buildings.find(o => o.damaged && (res.damaged || []).includes(o.uid));
-      if (b) { clearDamage(b, now); st.helpFixed.push({ name: c.name, uid: b.uid }); bus.emit('building:repaired', { b, paid: null, help: c.name }); }
+      if (b) { clearDamage(b, now); late.uid = b.uid; bus.emit('building:repaired', { b, paid: null, help: c.name }); }
+      if (late.uid != null || late.to != null) st.helpFixed.push(late);
     } else if (arr.length <= HELP.max) st.helpNew.push({ threat: c.threat, name: c.name, type });
   }
   const keys = Object.keys(st.help);
@@ -76,6 +81,25 @@ export function addHelp(list = [], state = S(), now = nowMs()) {
   if (added) store.markDirty();
   return added;
 }
+/** Cuadrilla tardía que salió a tiempo: +HELP.prep al % de la resolución automática y el premio de la diferencia. */
+function lateBonus(res, late) {
+  const from = res.pct, to = Math.min(100, from + Math.round(HELP.prep * 100));
+  const f = Math.max(1, res.f || 1), a = rewardFor(from, f), b = rewardFor(to, f);
+  const extra = {};
+  if (b.gems > a.gems) extra.gems = b.gems - a.gems;
+  if ((b.coins || 0) > (a.coins || 0)) extra.coins = b.coins - (a.coins || 0);
+  if ((b.mats || 0) > (a.mats || 0)) extra.mats = pickMats(res.type, b.mats - (a.mats || 0));
+  res.pct = to;
+  (res.help ||= []).push(late.name);
+  if (Object.keys(extra).length) { store.grant(extra, 'threat'); res.reward = mergeReward(res.reward, extra); }
+  late.from = from; late.to = to;
+}
+const mergeReward = (r = {}, x = {}) => {
+  const out = { ...r };
+  for (const k of ['gems', 'coins']) if (x[k]) out[k] = (out[k] || 0) + x[k];
+  if (x.mats) { out.mats = { ...(out.mats || {}) }; for (const [k, n] of Object.entries(x.mats)) out.mats[k] = (out.mats[k] || 0) + n; }
+  return out;
+};
 /** La amenaza que se publica en el perfil para que los contactos manden cuadrillas: avisada, sin resolver, no simulacro. */
 export function publicThreat(state = S(), now = nowMs()) {
   try {
@@ -382,7 +406,8 @@ export function reportStatus(state = S()) {
   return {
     items, mended: st.mended.map(uid => state.city.buildings.find(b => b.uid === uid)).filter(Boolean),
     helpNew: st.helpNew.slice(),
-    helpFixed: st.helpFixed.map(x => ({ name: x.name, b: state.city.buildings.find(b => b.uid === x.uid) })).filter(x => x.b),
+    helpFixed: st.helpFixed.map(x => ({ name: x.name, b: x.uid != null ? state.city.buildings.find(b => b.uid === x.uid) || null : null, from: x.from ?? null, to: x.to ?? null }))
+      .filter(x => x.b || x.to != null),
   };
 }
 export function ackReport(state = S()) { const st = ts(state); st.report = []; st.mended = []; st.helpNew = []; st.helpFixed = []; store.markDirty(); }
