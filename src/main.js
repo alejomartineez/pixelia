@@ -232,6 +232,8 @@ bus.on('city:placing', ({ active } = {}) => {
 });
 // bienvenida que aparece al volver a la app después de días en segundo plano (iPhone deja la PWA abierta)
 bus.on('season:welcome', () => { if (cityReady()) runArrival(); });
+// cuadrillas de contactos que llegaron para tu amenaza (Fase 7b): se cuentan en "Mientras no estabas…"
+bus.on('social:crews', () => { if (cityReady()) runArrival(); });
 
 // ---------- Migración v3: los minijuegos se retiraron (DESIGN-CORE.md §7.2.3) ----------
 const v3Pending = () => { const v = store.state.v3; return !!v && !v.shown; };

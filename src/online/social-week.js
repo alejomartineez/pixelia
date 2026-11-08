@@ -9,8 +9,9 @@ import { chestIcon } from '../season/season-ui-common.js';
 import { net } from './net.js';
 import {
   socialCache as cache, refreshSocial, flushCoop, coopInfo, claimCoopTier, rankInfo, claimRankPrize,
-  RANK_CATS, RANK_BEST_GEMS, COOP_POINTS, myName, openAccount,
+  RANK_CATS, RANK_BEST_GEMS, COOP_POINTS, myName, openAccount, dailyStatus,
 } from './social.js';
+import { DAILY_PRIZE } from '../expedition/expedition.js';
 import { avatarHtml, fmtLeft, loadingHtml, busy, payloadChips, flyFrom } from './social-common.js';
 
 const lookOf = (id) => (cache.friends?.find(f => f.id === id)?.look) || null;
@@ -36,7 +37,7 @@ export async function renderRanking(api, tok) {
   if (net.user && !board) pane.innerHTML = loadingHtml('Armando el podio…');
   else draw();
   if (net.user) {
-    const [lb] = await Promise.all([net.leaderboard(), cache.friends ? null : refreshSocial(['friends'])]);
+    const [lb] = await Promise.all([net.leaderboard(), cache.friends ? null : refreshSocial(['friends']), refreshSocial(['daily'])]);
     if (!lb?.error) board = lb;
   } else board = null;
   if (api.live(tok)) draw();
@@ -48,10 +49,12 @@ export async function renderRanking(api, tok) {
     const me = { id: 'me', name: myName(), level: store.state.player.level, week: { ...info.mine, charm }, me: true, look: store.state.avatar };
     let rows = net.user && board ? board.map(r => (r.me ? { ...me, id: r.id } : { ...r, look: lookOf(r.id) })) : [me];
     const val = r => (cat === 'level' ? r.level || 1 : r.week?.[cat] || 0);
+    if (!RANK_CATS.some(k => k.id === cat)) cat = RANK_CATS[0].id;
     rows = rows.map(r => ({ ...r, v: val(r) })).sort((a, b) => b.v - a.v || (b.me ? 1 : 0) - (a.me ? 1 : 0) || String(a.name).localeCompare(String(b.name)));
     const c = RANK_CATS.find(x => x.id === cat);
-    const fmtV = (v) => (cat === 'level' ? `Nv ${v}` : fmtNum(v));
+    const fmtV = (v) => (cat === 'level' ? `Nv ${v}` : `${fmtNum(v)}${c?.unit || ''}`);
     const nodes = [];
+    nodes.push(dailyCard(api));
 
     nodes.push(h('div.soc-row', { html: `<b style="font-size:18px">${icon('trophy', 24)} ${weekLabel(info.week)}</b><span class="soc-muted" style="margin-left:auto">${icon('clock', 16)} termina en ${fmtLeft(info.endsInMs)}</span>` }));
     const cats = h('div.soc-cats');
@@ -118,6 +121,31 @@ export async function renderRanking(api, tok) {
     nodes.push(h('p.soc-muted', { style: { textAlign: 'center', fontSize: '13px' }, html: 'Acá no pierde nadie: el ranking es para divertirse y el premio es para quienes jugaron.' }));
     pane.replaceChildren(...nodes);
   }
+}
+
+// ---------- Expedición del día (Fase 7b) ----------
+function dailyCard(api) {
+  const { info, rows, pending } = dailyStatus();
+  const card = h('div.soc-card.sky.soc-daily');
+  const mine = info.last;
+  const gems = DAILY_PRIZE.gems || 0;
+  const sub = mine
+    ? `Tu botín de hoy: <b>${fmtNum(mine.score)}</b>${pending ? ' (se manda cuando haya conexión)' : ''}. Mañana hay otra.`
+    : info.done ? 'Tu grupo está en camino.' : `La misma salida para todo el mundo, sin gastar provisiones. Por participar: ${icon('gem', 14)} ${gems}.`;
+  card.innerHTML = `${icon('trophy', 40)}<div><b style="font-size:17px">Expedición del día · ${esc(info.regionName || '')}</b><div class="soc-muted">${sub}</div></div>`;
+  if (!info.done) {
+    const b = h('button.btn.gold', { html: `${icon('map', 20)} Preparar la Expedición del día` });
+    b.onclick = () => { audio.sfx('tap'); api.close(); api.ctx.openPanel?.('expedition'); };
+    card.append(b);
+  }
+  if (net.user && rows?.length) {
+    const list = h('div.soc-dlist');
+    rows.slice(0, 6).forEach((r, i) => list.append(h('div.soc-drow' + (r.me ? '.me' : ''), {
+      html: `<span class="soc-pos">${i + 1}</span><span class="soc-ellip">${esc(r.me ? 'Vos' : r.name)}</span><b class="v">${icon('trophy', 16)}${fmtNum(r.score)}</b>`,
+    })));
+    card.append(list);
+  } else if (net.user && mine) card.append(h('p.soc-muted', { style: { gridColumn: '1 / -1', margin: 0 }, html: 'Todavía ningún contacto la hizo hoy.' }));
+  return card;
 }
 
 // ---------- Obra en Equipo ----------

@@ -124,7 +124,7 @@ let fv = await rows('bea', 'friends_view');
 ok(fv.length === 1 && fv[0].incoming === true && fv[0].status === 'pending' && fv[0].name === 'Ana', 'bea ve la solicitud entrante');
 ok((await rows('ana', 'friends_view'))[0].incoming === false, 'ana la ve como saliente');
 ok((await rpc('ana', 'respond_friend', [U.bea, true])).error, 'quien pidió no puede aceptarse a sí misma');
-ok((await rpc('bea', 'send_gift', [U.ana, 'gift', { coins: 50 }])).error?.includes('amigos'), 'antes de aceptar no se pueden mandar regalos');
+ok((await rpc('bea', 'send_gift', [U.ana, 'gift', { coins: 50 }])).error?.includes('contactos'), 'antes de aceptar no se pueden mandar regalos');
 ok((await rpc('bea', 'respond_friend', [U.ana, true])).status === 'accepted', 'bea acepta');
 ok((await rpc('cami', 'request_friend', [pa.code])).status === 'pending', 'cami pide amistad a ana');
 ok((await rpc('ana', 'request_friend', [pc.code])).status === 'accepted', 'si las dos se piden, se acepta sola');
@@ -164,7 +164,7 @@ ok((await rpc('cami', 'claim_gift', [ainbox[0].id])) === null, 'otra usuaria no 
 // día siguiente: se puede regalar de nuevo
 await su(`update gifts set day = day - 1`);
 ok((await rpc('ana', 'send_gift', [U.bea, 'gift', { coins: 50 }])).ok, 'al día siguiente se puede regalar otra vez');
-ok((await rpc('ana', 'send_gift', [U.bea, 'sticker', { stickers: { s1: 1 } }])).ok, 'regalo de figurita');
+ok((await rpc('ana', 'send_gift', [U.bea, 'sticker', { stickers: { s1: 1 } }])).ok, 'regalo de hallazgo');
 
 // ---------------------------------------------------------------------
 section('Intercambios');
@@ -199,11 +199,11 @@ for (const p of pend) await rpc('ana', 'cancel_trade', [p.id]);
 ok((await as('bea', 'select * from trades where to_id = $1', [U.cami])).rows.length === 0, 'RLS trades: bea no ve intercambios ajenos');
 
 // ---------------------------------------------------------------------
-section('Figuritas');
+section('Hallazgos');
 const S = (id, stars) => ({ stickers: { [id]: 1 }, stars });
-ok((await rpc('ana', 'propose_trade', [U.bea, { ...S('a', 3), coins: 5 }, S('b', 3)])).error?.includes('solo van figuritas'), 'no se mezcla con monedas');
-ok((await rpc('ana', 'propose_trade', [U.bea, S('a', 3), { coins: 5 }])).error, 'figurita por monedas rechazado');
-ok((await rpc('ana', 'propose_trade', [U.bea, { stickers: { a: 2 }, stars: 3 }, S('b', 3)])).error?.includes('de a una'), 'solo 1 figurita por lado');
+ok((await rpc('ana', 'propose_trade', [U.bea, { ...S('a', 3), coins: 5 }, S('b', 3)])).error?.includes('solo van hallazgos'), 'no se mezcla con monedas');
+ok((await rpc('ana', 'propose_trade', [U.bea, S('a', 3), { coins: 5 }])).error, 'hallazgo por monedas rechazado');
+ok((await rpc('ana', 'propose_trade', [U.bea, { stickers: { a: 2 }, stars: 3 }, S('b', 3)])).error?.includes('de a un hallazgo'), 'solo 1 hallazgo por lado');
 ok((await rpc('ana', 'propose_trade', [U.bea, S('a', 2), S('b', 4)])).error?.includes('parecidas'), 'estrellas fuera de ±1 rechazado');
 ok((await rpc('ana', 'propose_trade', [U.bea, S('a', 5), S('b', 4)])).error?.includes('14 días'), '5 estrellas exige 14 días de amistad');
 { const g = await rpc('ana', 'propose_trade', [U.bea, { ...S('g', 5), golden: true }, S('h', 5)]);
@@ -212,16 +212,16 @@ ok((await rpc('ana', 'propose_trade', [U.bea, S('a', 5), S('b', 4)])).error?.inc
 await su(`update friendships set days = 14 where a = least($1::uuid, $2::uuid) and b = greatest($1::uuid, $2::uuid)`, [U.ana, U.bea]);
 const st1 = await rpc('ana', 'propose_trade', [U.bea, S('a', 5), S('b', 4)]);
 ok(st1.ok, 'con 14 días sí se puede 5★');
-ok((await rpc('bea', 'respond_trade', [st1.id, true])).status === 'accepted', 'bea acepta figurita');
+ok((await rpc('bea', 'respond_trade', [st1.id, true])).status === 'accepted', 'bea acepta el hallazgo');
 for (let i = 0; i < 4; i++) { const t = await rpc('ana', 'propose_trade', [U.bea, S('x' + i, 2), S('y' + i, 2)]); if (t.ok) await rpc('ana', 'cancel_trade', [t.id]); }
-ok((await rpc('ana', 'propose_trade', [U.bea, S('z', 2), S('w', 2)])).error?.includes('5 intercambios de figuritas'), 'límite 5 intercambios de figuritas por día');
+ok((await rpc('ana', 'propose_trade', [U.bea, S('z', 2), S('w', 2)])).error?.includes('5 intercambios de hallazgos'), 'límite 5 intercambios de hallazgos por día');
 
 // ---------------------------------------------------------------------
 section('Visitas, likes y notas');
 let v = await rpc('cami', 'visit', [U.ana]);
 ok(v.first === true, 'primera visita del día → first');
 ok((await rpc('cami', 'visit', [U.ana])).first === false, 'segunda visita → no first');
-ok((await rpc('bea', 'visit', [U.cami])).error?.includes('amigos'), 'no se puede visitar a una no amiga');
+ok((await rpc('bea', 'visit', [U.cami])).error?.includes('contactos'), 'no se puede visitar a una no amiga');
 ok((await rpc('cami', 'give_like', [U.ana])).ok, 'like');
 ok((await rpc('cami', 'give_like', [U.ana])).error?.includes('Ya le diste'), 'segundo like del día falla');
 ok((await rpc('cami', 'leave_note', [U.ana, 'x'.repeat(81)])).error?.includes('80'), 'nota de más de 80 letras rechazada');
@@ -258,7 +258,7 @@ ok(frq.length === 3 && frq[0].from_name === 'Bea', 'ana ve los 3 pedidos de bea'
 ok((await rows('cami', 'list_friend_requests')).length === 0, 'cami (no amiga de bea) no los ve');
 ok((await as('cami', 'select * from requests')).rows.length === 0, 'RLS requests: cami no lee pedidos de no amigas');
 ok((await rpc('bea', 'fill_request', [rq.id])).error?.includes('propio'), 'no podés llenar tu propio pedido');
-ok((await rpc('cami', 'fill_request', [rq.id])).error?.includes('amigos'), 'una no amiga no puede llenarlo');
+ok((await rpc('cami', 'fill_request', [rq.id])).error?.includes('contactos'), 'una no amiga no puede llenarlo');
 const fl = await rpc('ana', 'fill_request', [rq.id]);
 ok(fl.ok && fl.payload.items.hammer === 1, 'ana completa el pedido');
 ok((await rpc('ana', 'fill_request', [rq.id])).error?.includes('ya completó'), 'no se puede completar dos veces');
@@ -294,12 +294,73 @@ ok(lb.every(x => x.week === null), 'semana distinta → week null');
 ok((await rows('bea', 'friends_leaderboard', [null])).length === 2, 'bea ve solo a sus amigas');
 
 // ---------------------------------------------------------------------
+section('Expedición del día');
+{
+  const { d: today, y: yest, o: old } = (await su(`select current_date::text d, (current_date - 1)::text y, (current_date - 2)::text o`)).rows[0];
+  const loot = { mats: { madera: 4, piedra: 2 }, planos: 1, finds: 1 };
+  ok((await rpc('ana', 'submit_daily', [today, 'bosque', 42, 2, loot])).ok, 'ana manda su botín de hoy');
+  ok((await rpc('ana', 'submit_daily', [today, 'bosque', 99, 3, {}])).error?.includes('Ya mandaste'), 'una sola vez por día (la primera manda)');
+  ok((await rpc('ana', 'submit_daily', [old, 'bosque', 10, 1, {}])).error?.includes('ya cerró'), 'de anteayer → ya cerró');
+  ok((await rpc('bea', 'submit_daily', [yest, 'sierras', 30, 1, {}])).ok, 'la de ayer todavía se acepta (terminó después de medianoche)');
+  ok((await rpc('bea', 'submit_daily', [today, 'bosque', 5000, 1, {}])).error?.includes('no es válido'), 'botín fuera de rango rechazado');
+  ok((await rpc('bea', 'submit_daily', [today, 'Bosque!', 5, 1, {}])).error?.includes('región'), 'región inválida rechazada');
+  ok((await rpc('bea', 'submit_daily', [today, 'bosque', 5, 4, {}])).error?.includes('estrellas'), 'estrellas fuera de 0..3 rechazadas');
+  ok((await rpc('bea', 'submit_daily', [today, 'bosque', 50, 3, { coins: -1 }])).error, 'loot con números negativos rechazado');
+  ok((await rpc('bea', 'submit_daily', [today, 'bosque', 50, 3, {}])).ok, 'bea manda el suyo');
+  ok((await rpc('cami', 'submit_daily', [today, 'bosque', 10, 0, {}])).ok, 'cami manda el suyo');
+  let db = await rows('ana', 'daily_board', [null]);
+  ok(db.length === 3 && db[0].name === 'Bea' && db[1].me && db[1].score === 42 && db[1].loot.planos === 1, 'ana ve el ranking de hoy ordenado por botín (ella + sus contactos)', db.map(r => [r.name, r.score]));
+  db = await rows('bea', 'daily_board', [null]);
+  ok(db.length === 2 && !db.some(r => r.name === 'Cami'), 'bea no ve a cami (no es su contacto)');
+  db = await rows('ana', 'daily_board', [yest]);
+  ok(db.length === 1 && db[0].score === 30 && db[0].region === 'sierras', 'ranking de ayer');
+  ok((await as('bea', 'select * from daily_runs where user_id = $1', [U.cami])).rows.length === 0, 'RLS daily_runs: bea no ve las filas de cami');
+  ok((await as('ana', `insert into daily_runs (user_id, day, region, score) values ($1, current_date + 1, 'bosque', 1)`, [U.ana])).error?.includes('permission denied'), 'nadie inserta directo en daily_runs');
+}
+
+// ---------------------------------------------------------------------
+section('Cuadrillas para la amenaza de un contacto');
+{
+  const soon = Date.now() + 2 * 864e5;
+  await rpc('bea', 'publish_profile', [{ level: 3, stats: { week: { id: '2026-W45', stars: 4 }, threat: { id: '3-1', type: 'crecida', end: soon } } }]);
+  const pts = async () => (await su('select points from friendships where a = least($1::uuid, $2::uuid) and b = greatest($1::uuid, $2::uuid)', [U.ana, U.bea])).rows[0].points;
+  const p0 = await pts();
+  const c1 = await rpc('ana', 'send_crew', [U.bea, '3-1']);
+  ok(c1.ok && c1.n === 1, 'ana manda una cuadrilla a la crecida de bea');
+  ok((await pts()) === p0 + 3, 'la cuadrilla suma 3 puntos de amistad');
+  ok((await rpc('ana', 'send_crew', [U.bea, '3-1'])).error?.includes('Ya mandaste una cuadrilla'), 'una por contacto y amenaza');
+  ok((await rpc('ana', 'send_crew', [U.bea, '3-2'])).error?.includes('ya pasó o todavía no'), 'solo para la amenaza que publica el contacto');
+  ok((await rpc('ana', 'send_crew', [U.bea, 'hola'])).error?.includes('no existe'), 'id de amenaza inválido');
+  ok((await rpc('ana', 'send_crew', [U.ana, '3-1'])).error?.includes('tu ciudad'), 'no a la propia ciudad');
+  ok((await rpc('cami', 'send_crew', [U.bea, '3-1'])).error?.includes('contactos'), 'solo entre contactos');
+  await rpc('cami', 'publish_profile', [{ level: 2, stats: { threat: { id: '3-1', type: 'incendio', end: Date.now() - 1000 } } }]);
+  ok((await rpc('ana', 'send_crew', [U.cami, '3-1'])).error?.includes('ya pasó'), 'amenaza terminada → ya pasó');
+  // tope para quien recibe: 3 por amenaza (dos cuadrillas más de otras personas, cargadas directo)
+  const X1 = '44444444-4444-4444-8444-444444444444', X2 = '55555555-5555-4555-8555-555555555555';
+  await su(`insert into auth.users (id, email) values ($1, 'dani@test.com'), ($2, 'eli@test.com')`, [X1, X2]);
+  await su(`insert into crews (helper, host, threat) values ($1, $3, '3-1'), ($2, $3, '3-1')`, [X1, X2, U.bea]);
+  await su(`insert into friendships (a, b, status, requested_by) values (least($1::uuid, $2::uuid), greatest($1::uuid, $2::uuid), 'accepted', $1)`, [U.cami, U.bea]);
+  ok((await rpc('cami', 'send_crew', [U.bea, '3-1'])).error?.includes('todas las cuadrillas'), 'quien recibe junta como mucho 3 por amenaza');
+  // tope para quien ayuda: 3 por día
+  await su(`insert into crews (helper, host, threat) values ($1, $2, '9-0'), ($1, $3, '9-1')`, [U.ana, X1, X2]);
+  await rpc('cami', 'publish_profile', [{ level: 2, stats: { threat: { id: '3-2', type: 'incendio', end: soon } } }]);
+  ok((await rpc('ana', 'send_crew', [U.cami, '3-2'])).error?.includes('3 cuadrillas hoy'), 'quien ayuda manda como mucho 3 por día');
+  await su(`delete from friendships where a = least($1::uuid, $2::uuid) and b = greatest($1::uuid, $2::uuid)`, [U.cami, U.bea]);
+  const mc = await rows('bea', 'my_crews', [null]);
+  ok(mc.length === 3 && mc.some(c => c.helper_name === 'Ana' && c.threat === '3-1'), 'bea ve las cuadrillas que le mandaron', mc);
+  ok((await rows('ana', 'my_crews', [null])).length === 0, 'ana no recibió ninguna');
+  ok((await as('cami', 'select * from crews where host = $1', [U.bea])).rows.length === 0, 'RLS crews: cami no ve las de bea');
+  ok((await as('bea', 'select * from crews where host = $1', [U.bea])).rows.length === 3, 'RLS crews: bea ve las suyas');
+  ok((await as('ana', `insert into crews (helper, host, threat) values ($1, $2, '1-0')`, [U.ana, U.bea])).error?.includes('permission denied'), 'nadie inserta directo en crews');
+}
+
+// ---------------------------------------------------------------------
 section('Fin de amistad');
 const tpend = await rpc('ana', 'propose_trade', [U.cami, { gems: 3 }, { coins: 1 }]);
 ok((await rpc('cami', 'remove_friend', [U.ana])).ok, 'cami borra a ana');
 ok((await su('select status from trades where id = $1', [tpend.id])).rows[0].status === 'cancelled', 'intercambios pendientes se cancelan');
 ok((await rows('ana', 'my_inbox')).some(g => g.ref === tpend.id && g.payload.gems === 3), '…con devolución a quien ofreció');
-ok((await rpc('ana', 'send_gift', [U.cami, 'gift', {}])).error?.includes('amigos'), 'ya no se pueden mandar regalos');
+ok((await rpc('ana', 'send_gift', [U.cami, 'gift', {}])).error?.includes('contactos'), 'ya no se pueden mandar regalos');
 ok((await rows('ana', 'get_profiles', [[U.cami]]))[0].city === null, 'ya no se ve su ciudad');
 
 // ---------------------------------------------------------------------

@@ -308,8 +308,101 @@ try {
   await click(A, '.soc-prize .btn.gold');
   await sleep(600);
   ok((await ev(A, `return P.store.state.coins`)) > rc0 && (await ev(A, `return S.rankPrizeWeeks().length`)) === pw0 - 1, 'cobrar el premio de participación (una vez)');
-  await click(A, '.soc-cat:nth-child(3)');
+  await click(A, '.soc-cat:nth-child(5)');
   await shot(A, 'iphone-ranking-encanto');
+
+  // ---------------------------------------------------------------
+  section('Expedición del día');
+  const dailyRun = (page) => ev(page, `
+    const E = await import('/src/core/economy.js');
+    const X = await import('/src/expedition/expedition.js');
+    if (!P.store.state.city.buildings.some(b => b.id === 'casa_exp')) {
+      const { min, max } = E.landBounds();
+      outer: for (let z = min; z < max; z++) for (let x = min; x < max; x++) if (E.canPlace('casa_exp', x, z, 0).ok) {
+        const b = E.placeBuilding('casa_exp', x, z, 0); if (b.buildEnd) { b.buildEnd = Date.now() - 1; E.tick(); } break outer;
+      }
+    }
+    const e = X.expState();
+    if (e.active) { X.finishExpedition(e.active); }
+    const before = { prov: P.store.state.prov, free: e.freeDay, gems: P.store.state.gems, att: JSON.stringify(e.attempts) };
+    const st = X.expeditionStatus();
+    const r = X.startExpedition({ daily: true });
+    if (r.error) return { error: r.error, st: { hasBase: st.hasBase, reasonDaily: st.reasonDaily } };
+    const run = r.run;
+    const sum = X.finishExpedition(run);
+    const again = X.startExpedition({ daily: true });
+    const after = { prov: P.store.state.prov, free: e.freeDay, gems: P.store.state.gems, att: JSON.stringify(e.attempts) };
+    await new Promise(res => setTimeout(res, 400));
+    return { seed: run.seed, region: run.region, zone: run.zone, kind: run.kind, info: X.dailyInfo(), daily: sum.daily, before, after, again: again.error || null };`);
+  const da = await dailyRun(A), dbb = await dailyRun(B);
+  ok(!da.error && !dbb.error, 'ana y bea salen a la Expedición del día', [da.error, dbb.error, da.st]);
+  ok(da.seed === dbb.seed && da.region === dbb.region && da.seed === da.info.seed && da.zone === 2 && da.kind === 'corta', `misma semilla para las dos (${da.seed}, ${da.region}, zona ${da.zone})`, [da.seed, dbb.seed]);
+  ok(da.before.prov === da.after.prov && da.before.free === da.after.free && da.before.att === da.after.att, 'no gasta provisiones, ni la salida corta, ni intentos de zona', [da.before, da.after]);
+  ok(da.after.gems === da.before.gems + 3 && da.daily?.prize?.gems === 3, 'premio chico por participar (3 gemas)', [da.before.gems, da.after.gems]);
+  ok(/ya se hizo/.test(da.again || ''), 'una por día: la segunda dice que mañana hay otra', da.again);
+  ok(typeof da.daily?.score === 'number' && da.daily.day === da.info.day, `botín en puntos (${da.daily?.score}) del día ${da.info.day}`);
+  const dRows = await ev(A, `await S.refreshSocial(['daily']); return S.dailyStatus().rows`);
+  ok(dRows?.length === 2 && dRows.some(r => r.me) && dRows.some(r => r.name === 'Bea'), 'ranking del día con ana y bea (se mandó solo al volver)', dRows);
+  ok((await ev(A, `return S.rankInfo().mine.exps`)) >= 1, 'la salida cuenta en "Salidas" del ranking semanal');
+  await tab(A, 'ranking');
+  ok(await A.$eval('.soc-daily', el => el.textContent.includes('Expedición del día') && el.querySelectorAll('.soc-drow').length === 2), 'el ranking muestra la Expedición del día con el podio de contactos');
+  await shot(A, 'iphone-ranking-diaria');
+  const cats = await A.$$eval('.soc-cat', b => b.map(x => x.textContent.trim()));
+  ok(cats.join() === 'Estrellas,Salidas,Botín,Defensa,Encanto', 'categorías del ciclo: Estrellas, Salidas, Botín, Defensa, Encanto', cats);
+
+  // ---------------------------------------------------------------
+  section('Cuadrilla para la amenaza de un contacto');
+  const thB = await ev(B, `
+    const T = await import('/src/threats/threats.js');
+    const E = await import('/src/core/economy.js');
+    // rango Caserío (Municipalidad nivel 2) y simulacro ya hecho: así le toca la próxima del calendario
+    const c = P.store.state.city.buildings.find(b => b.id === 'castillo'); if (c && (c.level || 1) < 2) c.level = 2;
+    P.store.state.threats ||= {}; P.store.state.threats.sim = { at: 0, start: 0, end: 0, done: true }; T.tick();
+    let t = T.currentThreat();
+    if (!t) return { error: 'sin amenaza (rango ' + E.townRank() + ')' };
+    if (T.nowMs() < t.announce) T._debugShift(t.announce - T.nowMs() + 60e3);
+    const pt = T.publicThreat();
+    await sync.publishProfileNow(true);
+    return { id: t.id, pt };`);
+  ok(!!thB.pt && thB.pt.id === thB.id && thB.pt.end > Date.now(), `bea publica su amenaza avisada (${thB.id})`, thB);
+  const beaId = await ev(A, `return S.socialCache.friends.find(x => x.name === 'Bea').id`);
+  await ev(A, `await S.friendProfiles(true)`);   // los perfiles se cachean 2 min
+  await tab(A, 'amigas');
+  await A.waitForSelector('.soc-friend .soc-crew', { timeout: 8000, polling: 150 }).catch(() => {});
+  ok(await A.$eval('.soc-friend', el => !!el.querySelector('.soc-crew') && !!el.querySelector('.soc-threat')), 'ana ve la amenaza de bea y el botón "Mandar una cuadrilla"');
+  await shot(A, 'iphone-amigas-cuadrilla');
+  const cw0 = await ev(A, `return { coins: P.store.state.coins, pts: S.coopInfo().total, chispas: P.store.state.season?.points || 0 }`);
+  await click(A, '.soc-friend .soc-crew');
+  await A.waitForFunction(() => document.querySelector('.soc-crew')?.classList.contains('done'), { timeout: 8000, polling: 150 }).catch(() => {});
+  const cw1 = await ev(A, `return { coins: P.store.state.coins, pts: S.coopInfo().total, chispas: P.store.state.season?.points || 0, sent: S.crewSent('${beaId}', '${thB.id}') }`);
+  ok(cw1.sent && cw1.coins > cw0.coins && cw1.pts >= cw0.pts + 30, 'ana manda la cuadrilla: premio en monedas y puntos de equipo', [cw0, cw1]);
+  await shot(A, 'iphone-amigas-cuadrilla-enviada');
+  ok((await ev(A, `return (await S.sendCrew(S.socialCache.friends.find(x => x.name === 'Bea'))).error || ''`)).includes('Ya mandaste'), 'la segunda para la misma amenaza → error amable');
+  const hb = await ev(B, `
+    const T = await import('/src/threats/threats.js');
+    await S.refreshSocial(['crews']);
+    const h = T.helpFor('${thB.id}');
+    const st = T.threatStatus();
+    const rep = T.reportStatus();
+    return { n: h.n, bonus: h.bonus, names: h.names, stHelp: st?.help?.n, newN: rep?.helpNew?.length || 0 };`);
+  ok(hb.n === 1 && hb.names[0] === 'Ana' && hb.bonus > 0 && hb.stHelp === 1, 'bea recibe la cuadrilla de ana: suma preparación a su amenaza', hb);
+  ok(hb.newN === 1, 'queda para contarla en "Mientras no estabas…"');
+  // 'social:crews' abre "Mientras no estabas…" si la ciudad está libre; si no, se ve en la próxima llegada
+  await use(B); await sleep(2500);
+  const arr = await ev(B, `
+    const txt = [...document.querySelectorAll('.modal')].map(m => m.textContent).join(' ');
+    if (/cuadrilla/.test(txt)) { ctx.ui.closeAllModals(); return { modal: true, txt }; }
+    const m = await import('/src/threats/threat-ui.js');
+    return { modal: false, txt: (m.reportParts(ctx)?.lines || []).join(' ') };`);
+  ok(/Ana/.test(arr.txt) && /cuadrilla/.test(arr.txt), `"Mientras no estabas…" cuenta que Ana mandó una cuadrilla${arr.modal ? ' (se abrió solo)' : ''}`, arr);
+  const res = await ev(B, `
+    const T = await import('/src/threats/threats.js');
+    const t = T.currentThreat();
+    T._debugShift(t.end - T.nowMs() + 60e3);
+    const r = P.store.state.threats.results['${thB.id}'];
+    T._debugReset();
+    return r ? { help: r.help, pct: r.pct, mode: r.mode } : null;`);
+  ok(res?.mode === 'auto' && res.help?.includes('Ana'), 'al resolverse sola, la amenaza recuerda la ayuda de Ana', res);
 
   // ---------------------------------------------------------------
   section('Badge y álbum');

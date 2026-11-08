@@ -156,7 +156,7 @@ export default function create(ctx) {
     // con la ciudad: si hay Casa de Expediciones y no se pidió práctica, la arma expedition.js
     if (!p.proto && hasBase()) {
       const kind = p.short === '1' || p.short === true || p.kind === 'corta' ? 'corta' : 'normal';
-      const res = startExpedition({ region: p.region, kind, party: p.party || null, equip: p.equip || null });
+      const res = startExpedition({ region: p.region, kind, party: p.party || null, equip: p.equip || null, daily: p.daily === '1' || p.daily === true });
       if (res.run) return res.run;
       ui.toast(res.error || 'No se pudo salir', { icon: 'info' });
       return null;
@@ -754,7 +754,7 @@ export default function create(ctx) {
     if (!run) { setTimeout(() => alive && ctx.router.go('city'), 0); return; }
     persist();
     const RG = REGIONS[run.region];
-    meta = { regionName: RG.name, zone: run.zone, kind: run.kind };
+    meta = { regionName: RG.name, zone: run.zone, kind: run.kind, daily: run.city?.daily || null };
     // limpiar el diorama anterior
     for (const o of cellObjs) if (o) { clearCellObj(o); }
     cellObjs.length = 0;

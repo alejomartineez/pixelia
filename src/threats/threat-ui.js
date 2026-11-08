@@ -112,7 +112,8 @@ export function openThreatPanel(ctx, hooks = {}) {
   const resName = RESERVES[st.reserve]?.name || 'Reservas';
   prep.append(ui.h('div.line', { html: `<span>Defensas que cubren</span><b>${pct(info.c)}</b>` }));
   prep.append(ui.h('div.line', { html: `<span>${icon(RESERVES[st.reserve]?.icon || '📦', 16)} ${ui.esc(resName)}</span><b>${info.have}/${info.need}</b>` }));
-  const auto = autoResolve(info.prep, st.f, info.enRiesgo);
+  if (st.help?.n) prep.append(ui.h('div.line.th-help', { html: `<span>${icon('people', 16)} Cuadrillas de ${ui.esc(joinNames(st.help.names))}</span><b>+${Math.round(st.help.bonus * 100)}%</b>` }));
+  const auto = autoResolve(Math.min(1, info.prep + (st.help?.bonus || 0)), st.f, info.enRiesgo);
   prep.append(ui.h('div.line', { html: `<span class="muted">Si no estás, se resuelve sola: salvarías cerca del ${auto.pct}%</span>` }));
   }
   body.append(prep);
@@ -156,6 +157,21 @@ export function openResult(ctx, res, name) {
 }
 /** "Mientras no estabas…": todo lo que se resolvió solo, en un solo aviso. */
 /** Líneas y premio sumado de lo que se resolvió solo (para el modal único "Mientras no estabas…" de main.js). Lo da por visto. */
+
+/** Líneas de las cuadrillas de contactos para "Mientras no estabas…" (Fase 7b). */
+function helpParts(rep, esc) {
+  const out = [];
+  const by = {};
+  for (const x of rep.helpNew || []) (by[x.threat] ||= { type: x.type, names: [] }).names.push(x.name);
+  for (const g of Object.values(by)) {
+    const who = joinNames(g.names.map(esc));
+    const name = THREAT_TYPES[g.type]?.name || 'una amenaza';
+    out.push(`${icon('people', 18)} ${who} ${g.names.length > 1 ? 'mandaron cuadrillas' : 'mandó una cuadrilla'} para lo que viene (${esc(name)}): +${g.names.length * 5}% de preparación.`);
+  }
+  for (const x of rep.helpFixed || []) out.push(`${icon('🔧', 18)} La cuadrilla de ${esc(x.name)} arregló ${esc(bName(x.b))}.`);
+  return out;
+}
+const joinNames = (n) => (n.length > 1 ? `${n.slice(0, -1).join(', ')} y ${n[n.length - 1]}` : n[0] || '');
 export function reportParts(ctx) {
   const rep = T.reportStatus();
   if (!rep) return null;
@@ -163,12 +179,14 @@ export function reportParts(ctx) {
   const total = { coins: 0, gems: 0, mats: {}, planos: 0 };
   for (const it of rep.items) {
     const past = it.id === 'sim' ? 'Pasó el simulacro' : THREAT_TYPES[it.type]?.past || 'Pasó la amenaza';
-    lines.push(`${icon(THREAT_TYPES[it.type]?.icon || '🌊', 18)} ${past}: salvaste el <b>${it.pct}%</b>. ${damagedLine(it.damaged?.length || 0)}`);
+    const withHelp = it.help?.length ? ` Con la ayuda de ${ctx.ui.esc(joinNames(it.help))}.` : '';
+    lines.push(`${icon(THREAT_TYPES[it.type]?.icon || '🌊', 18)} ${past}: salvaste el <b>${it.pct}%</b>.${withHelp} ${damagedLine(it.damaged?.length || 0)}`);
     const r = it.reward || {};
     total.coins += r.coins || 0; total.gems += r.gems || 0; total.planos += r.planos || 0;
     for (const [k, v] of Object.entries(r.mats || {})) total.mats[k] = (total.mats[k] || 0) + v;
   }
   if (rep.mended.length) lines.push(`${icon('🔧', 18)} Lo arreglaron entre todos: ${rep.mended.map(b => ctx.ui.esc(bName(b))).join(', ')}.`);
+  lines.push(...helpParts(rep, ctx.ui.esc));
   T.ackReport();
   return { lines, reward: rep.items.length ? total : {} };
 }

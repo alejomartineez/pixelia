@@ -4,7 +4,7 @@
 //   node tools/test-mock.mjs
 //
 // Cubre: modo off, perfiles, amistad, regalos con límite diario, ayuda, buzón y claim único,
-// intercambios (aceptar/rechazar/cancelar, no aceptar dos veces), figuritas, visitas/likes/notas,
+// intercambios (aceptar/rechazar/cancelar, no aceptar dos veces), hallazgos, Expedición del día, cuadrillas, visitas/likes/notas,
 // pedidos de ayuda, Obra en Equipo, ranking, días de amistad y sync.js (push/pull + applyGiftPayload).
 import http from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
@@ -137,15 +137,15 @@ try {
   const ainbox = await run(A, `return await net.inbox()`);
   ok(ainbox.some(g => g.ref === t1.id && g.payload.gems === 2) && ainbox.some(g => g.ref === t2.id && g.payload.gems === 3) && ainbox.some(g => g.ref === t3.id && g.payload.coins === 9), 'entregas y devoluciones en el buzón de ana');
 
-  section('Figuritas');
+  section('Hallazgos');
   const S = (id, s) => `{ stickers: { ${id}: 1 }, stars: ${s} }`;
   { const g = await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, { stickers: { g: 1 }, stars: 5, golden: true }, ${S('h', 5)})`);
     ok(g.ok === true, '5★ con golden (Semana Dorada) no exige 14 días');
     if (g.ok) await run(A, `return await net.cancelTrade(${g.id})`); }
   ok((await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, ${S('a', 2)}, ${S('b', 4)})`)).error?.includes('parecidas'), 'estrellas ±1');
   ok((await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, ${S('a', 5)}, ${S('b', 5)})`)).error?.includes('14 días'), '5★ requiere 14 días');
-  ok((await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, { stickers: { a: 1 }, stars: 3, coins: 1 }, ${S('b', 3)})`)).error?.includes('solo van figuritas'), 'no mezclar');
-  ok((await run(A, `return (await net.proposeTrade(${JSON.stringify(b.user.id)}, ${S('a', 3)}, ${S('b', 4)})).ok`)) === true, 'figurita 3★ por 4★ OK');
+  ok((await run(A, `return await net.proposeTrade(${JSON.stringify(b.user.id)}, { stickers: { a: 1 }, stars: 3, coins: 1 }, ${S('b', 3)})`)).error?.includes('solo van hallazgos'), 'no mezclar');
+  ok((await run(A, `return (await net.proposeTrade(${JSON.stringify(b.user.id)}, ${S('a', 3)}, ${S('b', 4)})).ok`)) === true, 'hallazgo 3★ por 4★ OK');
 
   section('Visitas, likes y notas');
   ok((await run(B, `return (await net.visit(${JSON.stringify(a.user.id)})).first`)) === true, 'primera visita → first');
@@ -178,6 +178,46 @@ try {
   await run(B, `return await net.publishProfile({ level: 4, stats: { week: { id: m.isoWeek(), stars: 7 } } })`);
   const lb = await run(A, `return await net.leaderboard()`);
   ok(lb.length === 3 && lb.find(x => x.name === 'Bea').week.stars === 7, 'leaderboard con stats.week');
+
+  section('Expedición del día (espejo de schema.sql)');
+  {
+    const day = (o = 0) => `new Date(Date.now() + (net._adapter.debug.dump().dayOffset + ${o}) * 864e5).toISOString().slice(0, 10)`;
+    ok((await run(A, `return (await net.submitDaily(${day()}, 'bosque', 42, 2, { mats: { madera: 4 }, planos: 1 })).ok`)) === true, 'ana manda su botín de hoy');
+    ok((await run(A, `return await net.submitDaily(${day()}, 'bosque', 50, 3)`)).error?.includes('Ya mandaste'), 'una sola vez por día');
+    ok((await run(A, `return await net.submitDaily(${day(-2)}, 'bosque', 5)`)).error?.includes('ya cerró'), 'de anteayer → ya cerró');
+    ok((await run(B, `return (await net.submitDaily(${day(-1)}, 'sierras', 30, 1)).ok`)) === true, 'la de ayer se acepta');
+    ok((await run(B, `return await net.submitDaily(${day()}, 'bosque', 5000, 1)`)).error?.includes('no es válido'), 'botín fuera de rango');
+    ok((await run(B, `return await net.submitDaily(${day()}, 'bosque', 5, 4)`)).error?.includes('estrellas'), 'estrellas fuera de 0..3');
+    ok((await run(B, `return await net.submitDaily(${day()}, 'Bosque!', 5, 1)`)).error?.includes('región'), 'región inválida');
+    ok((await run(B, `return (await net.submitDaily(${day()}, 'bosque', 50, 3)).ok`)) === true, 'bea manda el suyo');
+    const db = await run(A, `return await net.dailyBoard()`);
+    ok(db.length === 2 && db[0].name === 'Bea' && db[1].me && db[1].score === 42 && db[1].loot.planos === 1, 'ranking del día ordenado por botín', db);
+    ok((await run(A, `return (await net.dailyBoard(${day(-1)})).map(r => r.score).join()`)) === '30', 'ranking de ayer');
+    ok((await run(C, `return (await net.dailyBoard()).every(r => r.name !== 'Bea')`)) === true, 'cami no ve a bea (no es su contacto)');
+  }
+
+  section('Cuadrillas (espejo de schema.sql)');
+  {
+    const soon = `Date.now() + (net._adapter.debug.dump().dayOffset + 2) * 864e5`;
+    await run(B, `return await net.publishProfile({ level: 4, stats: { week: { id: m.isoWeek(), stars: 7 }, threat: { id: '3-1', type: 'crecida', end: ${soon} } } })`);
+    const f0 = await run(A, `return (await net.listFriends()).find(f => f.name === 'Bea').points`);
+    const c1 = await run(A, `return await net.sendCrew(${JSON.stringify(b.user.id)}, '3-1')`);
+    ok(c1.ok && c1.n === 1, 'ana manda una cuadrilla a la crecida de bea', c1);
+    ok((await run(A, `return (await net.listFriends()).find(f => f.name === 'Bea').points`)) === f0 + 3, 'suma 3 puntos de amistad');
+    ok((await run(A, `return await net.sendCrew(${JSON.stringify(b.user.id)}, '3-1')`)).error?.includes('Ya mandaste una cuadrilla'), 'una por contacto y amenaza');
+    ok((await run(A, `return await net.sendCrew(${JSON.stringify(b.user.id)}, '3-2')`)).error?.includes('ya pasó o todavía no'), 'solo la amenaza publicada');
+    ok((await run(A, `return await net.sendCrew(${JSON.stringify(b.user.id)}, 'hola')`)).error?.includes('no existe'), 'id inválido');
+    ok((await run(A, `return await net.sendCrew(${JSON.stringify(a.user.id)}, '3-1')`)).error?.includes('tu ciudad'), 'no a la propia ciudad');
+    ok((await run(C, `return await net.sendCrew(${JSON.stringify(b.user.id)}, '3-1')`)).error?.includes('contactos'), 'solo entre contactos');
+    await run(B, `return await net.publishProfile({ level: 4, stats: { week: { id: m.isoWeek(), stars: 7 }, threat: { id: '3-1', type: 'crecida', end: Date.now() - 1000 } } })`);
+    ok((await run(A, `return await net.sendCrew(${JSON.stringify(b.user.id)}, '3-1')`)).error?.includes('ya pasó'), 'amenaza terminada → ya pasó (se mira antes que la repetida, como el servidor)');
+    await run(B, `return await net.publishProfile({ level: 4, stats: { week: { id: m.isoWeek(), stars: 7 }, threat: { id: '3-2', type: 'crecida', end: Date.now() - 1000 } } })`);
+    ok((await run(A, `return await net.sendCrew(${JSON.stringify(b.user.id)}, '3-2')`)).error?.includes('ya pasó'), 'amenaza terminada → ya pasó');
+    const mc = await run(B, `return await net.myCrews()`);
+    ok(mc.length === 1 && mc[0].helper_name === 'Ana' && mc[0].threat === '3-1', 'bea ve la cuadrilla de ana', mc);
+    ok((await run(A, `return (await net.myCrews()).length`)) === 0, 'ana no recibió ninguna');
+    await run(B, `return await net.publishProfile({ level: 4, stats: { week: { id: m.isoWeek(), stars: 7 } } })`);
+  }
 
   section('Días de amistad y "mañana"');
   let fa = await run(A, `return (await net.listFriends()).find(f => f.name === 'Bea')`);

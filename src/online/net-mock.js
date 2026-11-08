@@ -21,7 +21,7 @@ class RpcError extends Error { constructor(m) { super(m); this.code = 'P0001'; }
 const E = (m) => { throw new RpcError(m); };
 
 // ---------- Base ----------
-const fresh = () => ({ v: 1, seq: 1, dayOffset: 0, users: {}, profiles: {}, saves: {}, friendships: {}, gifts: [], trades: [], visits: {}, requests: [], coop: {} });
+const fresh = () => ({ v: 1, seq: 1, dayOffset: 0, users: {}, profiles: {}, saves: {}, friendships: {}, gifts: [], trades: [], visits: {}, requests: [], coop: {}, daily: {}, crews: [] });
 function load() {
   try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.v === 1) return d; } catch {}
   return fresh();
@@ -33,6 +33,8 @@ function persist(db) {
   db.trades = db.trades.filter(x => x.status === 'pending' || t - Date.parse(x.resolved_at) < 14 * DAY);
   db.requests = db.requests.filter(r => t - Date.parse(r.created_at) < 7 * DAY);
   for (const [k, v] of Object.entries(db.visits)) if (t - Date.parse(v.updated_at) > 21 * DAY) delete db.visits[k];
+  for (const [k, v] of Object.entries(db.daily || {})) if (t - Date.parse(v.created_at) > 7 * DAY) delete db.daily[k];
+  if (db.crews) db.crews = db.crews.filter(c => t - Date.parse(c.created_at) < 21 * DAY);
   localStorage.setItem(KEY, JSON.stringify(db));
 }
 /**
@@ -58,6 +60,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const nowMs = db => Date.now() + (db.dayOffset || 0) * DAY;
 const nowIso = db => new Date(nowMs(db)).toISOString();
 const today = db => nowIso(db).slice(0, 10);
+const yesterday = db => new Date(nowMs(db) - DAY).toISOString().slice(0, 10);
 
 // ---------- Utilidades ----------
 const uuid = () => globalThis.crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16));
@@ -251,7 +254,7 @@ const RPC = {
       v.helped++; v.updated_at = nowIso(db);
       pts = 1;
     } else {
-      if (db.gifts.filter(g => g.from_id === me && g.to_id === p_to && g.kind === 'sticker' && g.day === d).length >= 3) E('Ya le regalaste 3 figuritas hoy');
+      if (db.gifts.filter(g => g.from_id === me && g.to_id === p_to && g.kind === 'sticker' && g.day === d).length >= 3) E('Ya le regalaste 3 hallazgos hoy');
       pts = 2;
     }
     const g = addGift(db, me, p_to, p_kind, pl);
@@ -283,17 +286,17 @@ const RPC = {
     const st = 'stickers' in o || 'stickers' in r;
     if (st) {
       const onlySt = x => Object.keys(x).every(k => k === 'stickers' || k === 'stars' || k === 'golden');
-      if (!onlySt(o) || !onlySt(r)) E('En un intercambio de figuritas solo van figuritas (sin monedas ni objetos)');
-      if (!('stickers' in o && 'stickers' in r)) E('Hace falta una figurita de cada lado');
+      if (!onlySt(o) || !onlySt(r)) E('En un intercambio de hallazgos solo van hallazgos (sin monedas ni objetos)');
+      if (!('stickers' in o && 'stickers' in r)) E('Hace falta un hallazgo de cada lado');
       const one = x => Object.keys(x.stickers).length === 1 && Object.values(x.stickers).reduce((a, b) => a + b, 0) === 1;
-      if (!one(o) || !one(r)) E('Se intercambia de a una figurita por lado');
-      if (typeof o.stars !== 'number' || typeof r.stars !== 'number') E('Faltan las estrellas de las figuritas');
+      if (!one(o) || !one(r)) E('Se intercambia de a un hallazgo por lado');
+      if (typeof o.stars !== 'number' || typeof r.stars !== 'number') E('Faltan las estrellas de los hallazgos');
       const ok = s => s >= 1 && s <= 5 && s === Math.trunc(s);
       if (!ok(o.stars) || !ok(r.stars)) E('Las estrellas van de 1 a 5');
-      if (Math.abs(o.stars - r.stars) > 1) E('Las figuritas tienen que tener estrellas parecidas (como mucho 1 de diferencia)');
+      if (Math.abs(o.stars - r.stars) > 1) E('Los hallazgos tienen que tener estrellas parecidas (como mucho 1 de diferencia)');
       // golden: Semana Dorada (eventFlag('trade5'), calculado en el cliente) habilita 5★ sin los 14 días
-      if (Math.max(o.stars, r.stars) === 5 && f.days < 14 && o.golden !== true) E('Las figuritas de 5 estrellas se cambian con amistades de 14 días o más');
-      if (stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!');
+      if (Math.max(o.stars, r.stars) === 5 && f.days < 14 && o.golden !== true) E('Los hallazgos de 5 estrellas se cambian con amistades de 14 días o más');
+      if (stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de hallazgos hoy. Mañana podés hacer más');
     }
     const t = { id: nextId(db), from_id: me, to_id: p_to, offer: o, request: r, status: 'pending', is_sticker: st, day: today(db), created_at: nowIso(db), resolved_at: null };
     db.trades.push(t);
@@ -316,7 +319,7 @@ const RPC = {
     if (t.status !== 'pending') E(`Ese intercambio ya no está disponible (${t.status === 'accepted' ? 'ya fue aceptado' : t.status === 'declined' ? 'fue rechazado' : 'fue cancelado'})`);
     if (p_accept) {
       pairLock(db, me, t.from_id);
-      if (t.is_sticker && stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!');
+      if (t.is_sticker && stickerTradesToday(db, me) >= 5) E('Ya hiciste 5 intercambios de hallazgos hoy. Mañana podés hacer más');
       t.status = 'accepted'; t.resolved_at = nowIso(db);
       if (!isEmpty(t.offer)) addGift(db, t.from_id, t.to_id, 'trade', t.offer, t.id, 'Intercambio aceptado');
       if (!isEmpty(t.request)) addGift(db, t.to_id, t.from_id, 'trade', t.request, t.id, 'Intercambio aceptado');
@@ -422,6 +425,54 @@ const RPC = {
     const members = ids.map(id => ({ id, name: nameOf(db, id), points: db.coop[`${id}|${wk}`]?.points || 0, me: id === me }))
       .sort((a, b) => b.points - a.points || String(a.name).localeCompare(String(b.name)));
     return { week: wk, mine: db.coop[`${me}|${wk}`]?.points || 0, total: members.reduce((s, m) => s + m.points, 0), members };
+  },
+  // ----- Expedición del día (Fase 7b) -----
+  submit_daily(db, me, { p_day, p_region, p_score, p_stars = 0, p_loot = {} }) {
+    needProfile(db, me);
+    if (!p_day || (p_day !== today(db) && p_day !== yesterday(db))) E('Esa Expedición del día ya cerró');
+    if (typeof p_region !== 'string' || !/^[a-z]{2,16}$/.test(p_region)) E('Esa región no existe');
+    if (!Number.isInteger(p_score) || p_score < 0 || p_score > 1000) E('Ese botín no es válido');
+    const st = p_stars ?? 0;
+    if (!Number.isInteger(st) || st < 0 || st > 3) E('Las estrellas van de 0 a 3');
+    const lt = checkPayload(p_loot);
+    if (JSON.stringify(lt).length > 2048) E('Ese paquete es demasiado grande');
+    db.daily ||= {};
+    const k = `${me}|${p_day}`;
+    if (db.daily[k]) E('Ya mandaste tu Expedición del día');
+    db.daily[k] = { user_id: me, day: p_day, region: p_region, score: p_score, stars: st, loot: lt, created_at: nowIso(db) };
+    return { ok: true, day: p_day, score: p_score };
+  },
+  daily_board(db, me, { p_day }) {
+    const d = p_day || today(db);
+    const ids = new Set([me, ...friendIds(db, me)]);
+    return Object.values(db.daily || {}).filter(r => r.day === d && ids.has(r.user_id) && db.profiles[r.user_id])
+      .sort((a, b) => b.score - a.score || b.stars - a.stars || a.created_at.localeCompare(b.created_at)).slice(0, 101)
+      .map(r => ({ id: r.user_id, name: nameOf(db, r.user_id), level: db.profiles[r.user_id].level, region: r.region, score: r.score, stars: r.stars, loot: clone(r.loot), me: r.user_id === me, at: r.created_at }));
+  },
+
+  // ----- Cuadrillas para la amenaza de un contacto (Fase 7b) -----
+  send_crew(db, me, { p_host, p_threat }) {
+    if (p_host === me) E('Esa es tu ciudad 😄');
+    pairLock(db, me, p_host);
+    if (typeof p_threat !== 'string' || !/^\d{1,4}-[0-3]$/.test(p_threat)) E('Esa amenaza no existe');
+    const hp = db.profiles[p_host];
+    const th = hp?.stats?.threat;
+    if (!th || th.id !== p_threat) E('Esa amenaza ya pasó o todavía no se avisó');
+    if (typeof th.end !== 'number' || th.end <= nowMs(db)) E('Esa amenaza ya pasó');
+    db.crews ||= [];
+    if (db.crews.some(c => c.helper === me && c.host === p_host && c.threat === p_threat)) E('Ya mandaste una cuadrilla para esta amenaza');
+    if (db.crews.filter(c => c.helper === me && c.day === today(db)).length >= 3) E('Ya mandaste 3 cuadrillas hoy. Mañana podés mandar más');
+    const n = db.crews.filter(c => c.host === p_host && c.threat === p_threat).length;
+    if (n >= 3) E(`${hp.name} ya tiene todas las cuadrillas que puede recibir`);
+    const c = { id: nextId(db), helper: me, host: p_host, threat: p_threat, day: today(db), created_at: nowIso(db) };
+    db.crews.push(c);
+    bump(db, me, p_host, 3);
+    return { ok: true, id: c.id, n: n + 1 };
+  },
+  my_crews(db, me, { p_since }) {
+    const since = p_since ? Date.parse(p_since) : nowMs(db) - 14 * DAY;
+    return (db.crews || []).filter(c => c.host === me && Date.parse(c.created_at) >= since).slice(0, 100)
+      .map(c => ({ id: c.id, threat: c.threat, helper_id: c.helper, helper_name: nameOf(db, c.helper), created_at: c.created_at }));
   },
   friends_leaderboard(db, me, { p_week }) {
     return [me, ...friendIds(db, me)].map(id => db.profiles[id]).filter(Boolean).map(p => {

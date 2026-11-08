@@ -85,9 +85,9 @@ export function openExpedition(ctx, params = {}) {
 
   function go(kind) {
     const st = X.expeditionStatus();
-    const why = kind === 'corta' ? st.reasonShort : st.reason;
+    const why = kind === 'daily' ? st.reasonDaily : kind === 'corta' ? st.reasonShort : st.reason;
     if (why) { audio.sfx('error'); ui.toast(why, { icon: 'info' }); return; }
-    const res = X.startExpedition({ region, kind, party, equip });
+    const res = kind === 'daily' ? X.startExpedition({ daily: true, party, equip }) : X.startExpedition({ region, kind, party, equip });
     if (res.error) { audio.sfx('error'); ui.toast(res.error, { icon: 'info' }); render(); return; }
     ctx.state.expedition.lastRegion = region;
     audio.sfx('tap');
@@ -243,6 +243,14 @@ export function openExpedition(ctx, params = {}) {
     cb.onclick = () => go('corta');
     goRow.append(nb, cb);
     body.append(goRow);
+    // Expedición del día (Fase 7b): misma salida para todo el mundo, sin gastar provisiones; el botín va al ranking
+    const d = st.daily;
+    if (d && st.hasBase) {
+      const db = h('button.btn.gold.pnl-ex-daily', { 'data-ex-go': 'daily', disabled: !st.canDaily, style: { width: '100%', marginTop: '8px' },
+        html: `<span>${icon('trophy', 18)} Expedición del día</span><small>${esc(d.regionName || '')} · ${d.done ? (d.last ? `hecha: ${d.last.score} de botín` : 'en curso') : 'la misma para todo el mundo · sin provisiones'}</small>` });
+      db.onclick = () => go('daily');
+      body.append(db);
+    }
     body.append(h('p.pnl-ex-why', {}, st.active ? 'Primero terminá la salida en curso.' : (st.reason || '')));
   }
 
