@@ -1,4 +1,4 @@
-// Vestidor + Taller: elegí tu personaje (chica, chico o animalito), probá peinados,
+// Equipaje + Taller: elegí tu personaje (chica, chico o animalito), probá peinados,
 // ropa, cosas para la cabeza, accesorios y tuneá tu auto.
 // Arriba (o a la izquierda en PC) un escenario 3D giratorio; abajo (o a la derecha) el panel con categorías.
 // Tocar una pieza la prueba al instante; si no es tuya aparece "Comprar". Los colores y el tipo de personaje son gratis.
@@ -51,41 +51,41 @@ const FOCUS = {
 };
 
 const WD_CSS = `
-.scene-wardrobe .wd { position:absolute; inset:0; display:flex; flex-direction:column; background:linear-gradient(#fdebdb,#f9f1e6); }
+.scene-wardrobe .wd { position:absolute; inset:0; display:flex; flex-direction:column; background:linear-gradient(var(--surface-2),var(--surface-2)); }
 .scene-wardrobe .wd-stage { position:relative; flex:0 0 46%; min-height:0; min-width:0; overflow:hidden; touch-action:none; cursor:grab; }
 .scene-wardrobe .wd-stage.drag { cursor:grabbing; }
 .scene-wardrobe .wd-stage canvas { position:absolute; inset:0; }
 .scene-wardrobe .wd-top { position:absolute; z-index:3; top:calc(var(--safe-t) + 8px); left:calc(var(--safe-l) + 8px); right:8px; display:flex; align-items:flex-start; gap:8px; pointer-events:none; }
 .scene-wardrobe .wd-top > * { pointer-events:auto; }
-.scene-wardrobe .wd-namebox { flex:1 1 auto; max-width:250px; min-width:0; display:flex; align-items:center; gap:6px; height:42px; padding:0 10px 0 8px; background:#fff;
-  border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); cursor:text; }
+.scene-wardrobe .wd-namebox { flex:1 1 auto; max-width:250px; min-width:0; display:flex; align-items:center; gap:6px; height:42px; padding:0 10px 0 8px; background:var(--surface);
+  border:var(--line) solid var(--edge); border-radius:12px; box-shadow:0 3px 0 var(--shade); cursor:text; }
 .scene-wardrobe .wd-namebox input[type=text] { flex:1; min-width:0; width:100%; border:0; padding:0; margin:0; background:transparent; font-size:18px; font-weight:700; color:var(--ink); box-shadow:none; }
 .scene-wardrobe .wd-namebox:focus-within { border-color:var(--primary-d); }
 .scene-wardrobe .wd-res { margin-left:auto; display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
 .scene-wardrobe .wd-res .pill { min-width:86px; font-size:16px; padding:2px 10px 2px 5px; }
 .scene-wardrobe .wd-stagebar { position:absolute; z-index:2; left:calc(var(--safe-l) + 10px); right:10px; bottom:26px; display:flex; align-items:flex-end; justify-content:space-between; gap:8px; pointer-events:none; }
 .scene-wardrobe .wd-stagebar > button { pointer-events:auto; }
-.scene-wardrobe .wd-hint { font-size:13px; font-weight:700; padding:3px 10px; border-radius:99px; background:rgba(255,255,255,.88); border:2px solid var(--ink); transition:opacity .6s; white-space:nowrap; }
+.scene-wardrobe .wd-hint { font-size:13px; font-weight:700; padding:3px 10px; border-radius:99px; background:rgba(38, 33, 29, .88); border:2px solid var(--edge); transition:opacity .6s; white-space:nowrap; }
 .scene-wardrobe .wd-hint.gone { opacity:0; }
 .scene-wardrobe .wd-panel { position:relative; z-index:4; flex:1 1 auto; min-height:0; min-width:0; display:flex; flex-direction:column; margin-top:-16px; padding:12px 12px 0;
-  background:var(--panel); border-top:var(--line) solid var(--ink); border-radius:20px 20px 0 0; box-shadow:0 -4px 0 rgba(61,47,42,.12); }
+  background:var(--panel); border-top:var(--line) solid var(--edge); border-radius:20px 20px 0 0; box-shadow:0 -4px 0 rgba(8, 6, 5,.12); }
 .scene-wardrobe .wd-seg { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:4px; }
-.scene-wardrobe .wd-segbtn { display:flex; align-items:center; justify-content:center; gap:6px; min-height:44px; border:var(--line) solid var(--ink); border-radius:12px; background:#fff;
-  font-size:17px; font-weight:700; box-shadow:inset 0 -4px 0 #f0e8dc, 0 3px 0 var(--ink); }
-.scene-wardrobe .wd-segbtn:active { transform:translateY(2px); box-shadow:inset 0 -2px 0 #f0e8dc, 0 1px 0 var(--ink); }
-.scene-wardrobe .wd-segbtn.active { background:var(--second); color:#fff; text-shadow:0 2px 0 rgba(61,47,42,.35); box-shadow:inset 0 -4px 0 var(--second-d), 0 3px 0 var(--ink); }
-.scene-wardrobe .wd-segbtn.locked { background:#f3efe9; color:var(--ink-l); }
+.scene-wardrobe .wd-segbtn { display:flex; align-items:center; justify-content:center; gap:6px; min-height:44px; border:var(--line) solid var(--edge); border-radius:12px; background:var(--surface);
+  font-size:17px; font-weight:700; box-shadow:inset 0 -4px 0 var(--surface-2), 0 3px 0 var(--shade); }
+.scene-wardrobe .wd-segbtn:active { transform:translateY(2px); box-shadow:inset 0 -2px 0 var(--surface-2), 0 1px 0 var(--shade); }
+.scene-wardrobe .wd-segbtn.active { background:var(--second); color:#fff; text-shadow:0 2px 0 rgba(8, 6, 5,.35); box-shadow:inset 0 -4px 0 var(--second-d), 0 3px 0 var(--shade); }
+.scene-wardrobe .wd-segbtn.locked { background:var(--surface-2); color:var(--ink-l); }
 .scene-wardrobe .wd-cats { min-width:0; flex:none; margin:0 -12px; padding:6px 12px 10px; }
 .scene-wardrobe .wd-cats .tab { min-height:38px; }
 .scene-wardrobe .wd-list { flex:1 1 auto; min-height:0; margin:0 -12px; padding:4px 12px 16px; }
 .scene-wardrobe .wd-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(100px, 1fr)); gap:12px 10px; }
-.scene-wardrobe .wd-card { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px 7px; min-width:0; background:#fff; color:var(--ink);
-  border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); font-family:inherit; }
-.scene-wardrobe .wd-card:active { transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
+.scene-wardrobe .wd-card { position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px 7px; min-width:0; background:var(--surface); color:var(--ink);
+  border:var(--line) solid var(--edge); border-radius:12px; box-shadow:0 3px 0 var(--shade); font-family:inherit; }
+.scene-wardrobe .wd-card:active { transform:translateY(2px); box-shadow:0 1px 0 var(--shade); }
 .scene-wardrobe .wd-card.on { background:var(--gold-l); }
-.scene-wardrobe .wd-card.trying { background:#fbefdc; outline:3px dashed var(--primary-d); outline-offset:-8px; }
-.scene-wardrobe .wd-thumb { position:relative; width:72px; height:72px; border-radius:10px; display:grid; place-items:center; background:radial-gradient(circle at 50% 42%, #fff 0 38%, #f9f3e9 72%); }
-.scene-wardrobe .wd-card.on .wd-thumb { background:radial-gradient(circle at 50% 42%, #fff 0 38%, #ffe4a3 72%); }
+.scene-wardrobe .wd-card.trying { background:var(--surface-2); outline:3px dashed var(--primary-d); outline-offset:-8px; }
+.scene-wardrobe .wd-thumb { position:relative; width:72px; height:72px; border-radius:10px; display:grid; place-items:center; background:radial-gradient(circle at 50% 42%, var(--surface) 0 38%, var(--surface-2) 72%); }
+.scene-wardrobe .wd-card.on .wd-thumb { background:radial-gradient(circle at 50% 42%, var(--surface) 0 38%, #4d4021 72%); }
 .scene-wardrobe .wd-thumb img.th { width:64px; height:64px; opacity:0; transition:opacity .2s; }
 .scene-wardrobe .wd-thumb img.th.ok { opacity:1; }
 .scene-wardrobe .wd-card.locked .wd-thumb img.th { filter:saturate(.55) brightness(.97); }
@@ -95,27 +95,27 @@ const WD_CSS = `
 .scene-wardrobe .wd-mini i { width:6px; }
 .scene-wardrobe .wd-foot { font-size:13px; min-height:20px; display:flex; align-items:center; justify-content:center; }
 .scene-wardrobe .wd-foot .chip { font-size:12px; padding:1px 7px; }
-.scene-wardrobe .wd-check { position:absolute; top:-9px; right:-7px; width:26px; height:26px; display:grid; place-items:center; border-radius:50%; background:var(--mint); border:var(--line) solid var(--ink); }
+.scene-wardrobe .wd-check { position:absolute; top:-9px; right:-7px; width:26px; height:26px; display:grid; place-items:center; border-radius:50%; background:var(--mint); border:var(--line) solid var(--edge); color: var(--ink-dark); }
 .scene-wardrobe .wd-swatches { display:grid; grid-template-columns:repeat(auto-fill, minmax(68px, 1fr)); gap:10px 6px; }
 .scene-wardrobe .wd-sw { display:flex; flex-direction:column; align-items:center; gap:5px; padding:4px 0; border:0; background:none; font-size:12px; font-weight:700; color:var(--ink); }
-.scene-wardrobe .wd-sw i { position:relative; display:block; width:50px; height:50px; border:var(--line) solid var(--ink); border-radius:12px;
-  box-shadow:inset -6px -6px 0 rgba(61,47,42,.16), inset 5px 5px 0 rgba(255,255,255,.5), 0 3px 0 var(--ink); transition:transform .12s; }
+.scene-wardrobe .wd-sw i { position:relative; display:block; width:50px; height:50px; border:var(--line) solid var(--edge); border-radius:12px;
+  box-shadow:inset -6px -6px 0 rgba(8, 6, 5,.16), inset 5px 5px 0 rgba(255,255,255,.5), 0 3px 0 var(--shade); transition:transform .12s; }
 .scene-wardrobe .wd-sw:active i { transform:translateY(2px) scale(.96); }
 .scene-wardrobe .wd-sw.on i { transform:translateY(-3px); outline:3px solid var(--gold-d); outline-offset:3px; }
 .scene-wardrobe .wd-sw i img { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
 .scene-wardrobe .wd-note { margin:12px 2px 0; font-size:13px; color:var(--ink-l); text-align:center; }
 .scene-wardrobe .wd-fam { margin:14px 2px 8px; font-size:14px; font-weight:700; color:var(--ink-l); display:flex; align-items:center; gap:6px; }
 .scene-wardrobe .wd-fam:first-child { margin-top:2px; }
-.scene-wardrobe .wd-typeinfo { margin:0 0 10px; padding:8px 12px; background:#fff; border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); font-size:14px; line-height:1.25; }
+.scene-wardrobe .wd-typeinfo { margin:0 0 10px; padding:8px 12px; background:var(--surface); border:var(--line) solid var(--edge); border-radius:12px; box-shadow:0 3px 0 var(--shade); font-size:14px; line-height:1.25; }
 .scene-wardrobe .wd-typeinfo b { font-size:16px; }
-.scene-wardrobe .wd-stats { display:flex; gap:12px; padding:8px 12px; margin:0 0 12px; background:#fff; border:var(--line) solid var(--ink); border-radius:12px; box-shadow:0 3px 0 var(--ink); }
+.scene-wardrobe .wd-stats { display:flex; gap:12px; padding:8px 12px; margin:0 0 12px; background:var(--surface); border:var(--line) solid var(--edge); border-radius:12px; box-shadow:0 3px 0 var(--shade); }
 .scene-wardrobe .wd-stat { flex:1; display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:700; }
 .scene-wardrobe .wd-stat span { display:flex; align-items:center; gap:4px; }
 .scene-wardrobe .wd-pips { display:flex; gap:3px; }
-.scene-wardrobe .wd-pips i { flex:1; height:12px; border:2px solid var(--ink); border-radius:3px; background:#f2ece3; transition:background .2s; }
+.scene-wardrobe .wd-pips i { flex:1; height:12px; border:2px solid var(--edge); border-radius:3px; background:var(--surface-2); transition:background .2s; }
 .scene-wardrobe .wd-pips.sp i.on { background:var(--primary); }
 .scene-wardrobe .wd-pips.hd i.on { background:var(--mint); }
-.scene-wardrobe .wd-buy { display:flex; align-items:center; gap:8px; margin:0 -12px; padding:10px 12px calc(var(--safe-b) + 10px); background:var(--gold-l); border-top:var(--line) solid var(--ink);
+.scene-wardrobe .wd-buy { display:flex; align-items:center; gap:8px; margin:0 -12px; padding:10px 12px calc(var(--safe-b) + 10px); background:var(--gold-l); border-top:var(--line) solid var(--edge);
   animation:wdUp .25s cubic-bezier(.3,1.5,.6,1); }
 .scene-wardrobe .wd-buy[hidden] { display:none; }
 .scene-wardrobe .wd-buy-info { flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.15; }
@@ -132,8 +132,8 @@ const WD_CSS = `
   .scene-wardrobe .wd-stage { flex:1 1 auto; }
   .scene-wardrobe .wd-top { right:12px; }
   .scene-wardrobe .wd-stagebar { bottom:calc(var(--safe-b) + 14px); }
-  .scene-wardrobe .wd-panel { flex:0 0 min(500px, 44%); margin:0; padding:calc(var(--safe-t) + 12px) calc(var(--safe-r) + 14px) 0 14px; border-top:0; border-left:var(--line) solid var(--ink);
-    border-radius:20px 0 0 20px; box-shadow:-4px 0 0 rgba(61,47,42,.12); }
+  .scene-wardrobe .wd-panel { flex:0 0 min(500px, 44%); margin:0; padding:calc(var(--safe-t) + 12px) calc(var(--safe-r) + 14px) 0 14px; border-top:0; border-left:var(--line) solid var(--edge);
+    border-radius:20px 0 0 20px; box-shadow:-4px 0 0 rgba(8, 6, 5,.12); }
   .scene-wardrobe .wd-cats, .scene-wardrobe .wd-list { margin:0 -14px; padding-left:14px; padding-right:14px; }
   .scene-wardrobe .wd-buy { margin:0 calc(-14px - var(--safe-r)) 0 -14px; padding-left:14px; padding-right:calc(var(--safe-r) + 14px); }
   .scene-wardrobe .wd-grid { grid-template-columns:repeat(auto-fill, minmax(108px, 1fr)); }
@@ -524,7 +524,7 @@ export default function create(ctx) {
   function goBack() {
     root?.querySelector('.wd-namebox input')?.blur();
     // lo probado sin comprar no se queda puesto: avisarlo para que no parezca un error
-    if (pending.length) ui.toast('Lo que probaste sin comprar quedó en el vestidor', { icon: 'dress' });
+    if (pending.length) ui.toast('Lo que probaste sin comprar quedó en la Sastrería', { icon: 'dress' });
     store.save();
     ctx.router.go(params.back && params.back !== 'wardrobe' ? params.back : 'city');
   }
@@ -533,13 +533,13 @@ export default function create(ctx) {
   function buildStage(stageEl) {
     // mismo render nítido y contorno tinta que la ciudad
     const lowQ = !!S().settings?.lowQuality;
-    r = createPixelRenderer(stageEl, { ortho: false, fov: 30, background: 0xf9f3e9, lowQuality: lowQ, outline: true, idleFps: 30 });
+    r = createPixelRenderer(stageEl, { ortho: false, fov: 30, background: 0x1d1916, lowQuality: lowQ, outline: true, idleFps: 30 });
     const { sun } = addLights(r.scene, { shadowSize: 9, shadowRes: 1024 });
     sun.position.set(5, 12, 9);
     const fill = new THREE.DirectionalLight(0xfde9d8, 0.7);
     fill.position.set(-4, 3, 6);
     r.scene.add(fill);
-    r.scene.fog = new THREE.Fog(0xf9f3e9, 9, 16);
+    r.scene.fog = new THREE.Fog(0x1d1916, 9, 16);
 
     boutique = buildBoutique();
     garage = buildGarage();

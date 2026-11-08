@@ -7,14 +7,14 @@ import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 
 // size: [ancho, fondo] en tiles. comfort: Confort que suma. price: {coins|gems}. rank: rango de ciudad para comprarlo.
-// sit: se puede sentar · bed: cama · wardrobe: abre el Vestidor · rug: alfombra (no ocupa lugar, va abajo de todo)
+// sit: se puede sentar · bed: cama · wardrobe: abre el Equipaje · rug: alfombra (no ocupa lugar, va abajo de todo)
 // wall: va colgado en una pared (cuadros, estantes, ventanas) · shop: false = no se vende (sale de cofres, Pase o trofeos)
 export const FURNITURE = [
   // --- básicos ---
   { id: 'cama', name: 'Cama', size: [1, 2], comfort: 12, price: { coins: 300 }, bed: true, desc: 'Ocho horas, si te dejan.' },
   { id: 'mesa', name: 'Mesa de madera', size: [2, 1], comfort: 6, price: { coins: 200 } },
   { id: 'silla', name: 'Silla', size: [1, 1], comfort: 3, price: { coins: 80 }, sit: true },
-  { id: 'ropero', name: 'Ropero', size: [2, 1], comfort: 6, price: { coins: 400 }, wardrobe: true, desc: 'Hacé clic para abrir el Vestidor.' },
+  { id: 'ropero', name: 'Ropero', size: [2, 1], comfort: 6, price: { coins: 400 }, wardrobe: true, desc: 'Hacé clic para abrir el Equipaje.' },
   { id: 'lampara', name: 'Lámpara de pie', size: [1, 1], comfort: 5, price: { coins: 150 }, light: true },
   { id: 'planta', name: 'Planta', size: [1, 1], comfort: 5, price: { coins: 120 } },
   { id: 'alfombra', name: 'Alfombra redonda', size: [2, 2], comfort: 6, price: { coins: 180 }, rug: true },

@@ -121,7 +121,7 @@ function unlocksAt(level, state) {
   const landOk = (TOWN_RANKS[rank - 1]?.land ?? 1) > n;
   if (Number.isInteger(n) && n >= 0 && n < MAX_EXPANSIONS && landOk && (state?.city?.expansions ?? 0) <= n) list.push({ kind: 'Terreno', name: 'Más lugar para construir', ic: icon('map', 40) });
   for (const [kind, items] of Object.entries(CUSTOM_CATALOG)) {
-    // del personaje, solo lo que le sirve a su tipo (lo demás no aparece en su Vestidor)
+    // del personaje, solo lo que le sirve a su tipo (lo demás no aparece en su Equipaje)
     const avatarPiece = ['hair', 'dress', 'crown', 'acc'].includes(kind);
     for (const it of items.filter(i => !i.free && i.unlock === level && (!avatarPiece || fitsType(i, state?.avatar?.type)))) {
       const label = kind === 'hair' && avatarType(state?.avatar?.type).animal ? 'Pelaje' : KIND[kind]?.[0] || 'Ropa';

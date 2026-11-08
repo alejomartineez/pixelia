@@ -96,7 +96,7 @@ const pickWeighted = (weights) => {
 const randInt = (a, b) => a + Math.floor(rand() * (b - a + 1));
 
 // Qué prendas se pueden sortear (que no tengas): del personaje, solo las que le sirven a su tipo
-// (las demás no aparecen en su Vestidor); además, partes del auto
+// (las demás no aparecen en su Equipaje); además, partes del auto
 const AVATAR_KINDS = new Set(['hair', 'dress', 'crown', 'acc']);
 function cosmeticPool(pool) {
   const s = S(), out = [];

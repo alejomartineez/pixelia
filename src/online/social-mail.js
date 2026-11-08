@@ -238,7 +238,7 @@ export function sidesEl(offer, request, labels = ['Te da', 'Te pide']) {
     const st = Object.keys(p?.stickers || {})[0];
     if (st) {
       s.append(stickerCard(st, { owned: true }));
-      s.append(h('small', { html: stickerCount(st) ? `Tenés ${stickerCount(st)}` : '<b style="color:var(--mint-d)">¡Te falta!</b>' }));
+      s.append(h('small', { html: stickerCount(st) ? `Tenés ${stickerCount(st)}` : '<b style="color:var(--mint-t)">¡Te falta!</b>' }));
     }
     else s.append(h('div.soc-chips', { html: payloadChips(p, 20) || '<span class="soc-muted">Nada</span>' }));
     return s;

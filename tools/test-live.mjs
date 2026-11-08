@@ -30,7 +30,7 @@ if (net.mode !== 'supabase') { console.log('config.js no tiene URL/clave de Supa
 
 await step('A crea cuenta', net.signUp(A.email, pw, A.name));
 await wait(800);
-await step('A publica perfil', net.publishProfile({ name: A.name, city: 'Villa A', level: 3, look: { type: 'osito' }, theme: 'bosque', buildings: [] }));
+await step('A publica perfil', net.publishProfile({ name: A.name, city: 'Villa A', level: 3, look: { type: 'chica' }, theme: 'musgo', buildings: [] }));
 const meA = await step('A lee su perfil', net.getMyProfile());
 const code = meA?.code, aId = meA?.id;
 show(!!code, 'A tiene código de amistad', code || '');
@@ -41,7 +41,7 @@ await net.signOut();
 
 await step('B crea cuenta', net.signUp(B.email, pw, B.name));
 await wait(800);
-await step('B publica perfil', net.publishProfile({ name: B.name, city: 'Villa B', level: 2, look: { type: 'chico' }, theme: 'playa', buildings: [] }));
+await step('B publica perfil', net.publishProfile({ name: B.name, city: 'Villa B', level: 2, look: { type: 'chico' }, theme: 'bruma', buildings: [] }));
 const found = await step('B busca a A por código', net.findByCode(code));
 show(!!aId && found?.id === aId, 'el código lleva a A');
 await step('B pide amistad', net.requestFriend(code));

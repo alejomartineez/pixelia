@@ -292,17 +292,17 @@ try {
   ok(await run(`return store.state.onboarded === false`), 'todavía no figura como onboarded');
   await sleep(900);
   await shot('onboarding-personaje');
-  // personaje no-princesa, al fondo de la lista (obliga a scrollear): Osito
-  const OB_TYPE = 'osito', OB_NAME = 'Tofi', OB_CITY = 'Villa Prueba', OB_THEME = 'bosque';
+  // personaje distinto del de arranque (chica): Chico; tema nuevo del mundo (v4): Ocaso
+  const OB_TYPE = 'chico', OB_NAME = 'Bruno', OB_CITY = 'Villa Prueba', OB_THEME = 'ocaso';
   ok(await tap('.scene-onboarding .ob-type[data-type="' + OB_TYPE + '"]'), `toqué el personaje ${OB_TYPE}`);
   await sleep(600);
   ok(await ev((t) => !!document.querySelector(`.scene-onboarding .ob-type.on[data-type="${t}"]`), OB_TYPE), 'la tarjeta del personaje queda marcada');
-  ok(await ev(() => /pelaje/i.test(document.querySelector('.scene-onboarding .ob-body')?.textContent || '')), 'con animalito ofrece "Color de pelaje"');
+  ok(await ev(() => /Color de pelo/i.test(document.querySelector('.scene-onboarding .ob-body')?.textContent || '') && !/pelaje|animal/i.test(document.querySelector('.scene-onboarding .ob-body')?.textContent || '')), 'solo personas: ofrece "Color de pelo" y nada de animales');
   // color de ropa: el primer swatch que no está elegido
   const dressId = await ev(() => document.querySelector('.scene-onboarding .ob-sw[data-key="dressColor"] button:not(.on)')?.dataset.id || null);
   ok(!!dressId && await tap(`.scene-onboarding .ob-sw[data-key="dressColor"] button[data-id="${dressId}"]`), `toqué el color de ropa ${dressId}`);
   await sleep(500);
-  await shot('onboarding-osito');
+  await shot('onboarding-chico');
   await tap('.scene-onboarding .ob-next');
   ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso 2: nombre del personaje y de la ciudad');
   await sleep(500);
@@ -607,7 +607,7 @@ try {
   await tapXY(VIEW.width / 2, VIEW.height * 0.7);
   ok(await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 9000), 'entra directo a la ciudad (sin repetir el onboarding)');
   const again = await run(`return { type: store.state.avatar.type, name: store.state.player.name, city: store.state.player.cityName, theme: store.state.city.theme, onboarded: store.state.onboarded }`);
-  ok(again.onboarded && again.type === 'osito' && again.name === 'Tofi' && again.city === 'Villa Prueba' && again.theme === 'bosque', 'tras recargar: Osito «Tofi», «Villa Prueba», tema bosque', again);
+  ok(again.onboarded && again.type === 'chico' && again.name === 'Bruno' && again.city === 'Villa Prueba' && again.theme === 'ocaso', 'tras recargar: Chico «Bruno», «Villa Prueba», tema ocaso', again);
   await sleep(800);
   await drainOverlays();
   await shot('recarga-ciudad');} catch (e) {

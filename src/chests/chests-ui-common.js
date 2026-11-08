@@ -26,12 +26,12 @@ export function mix(a, b, t) {
 /** Variables CSS de una rareza: --rc (color), --rcd (oscuro), --rcl (claro) */
 export function rarityVars(rid) {
   const r = RARITIES[rid] || RARITIES.comun;
-  return `--rc:${r.color};--rcd:${r.dark};--rcl:${mix(r.color, '#ffffff', 0.72)};`;
+  return `--rc:${r.color};--rcd:${r.dark};--rcl:${mix(r.color, '#211c19', 0.74)};`;
 }
 /** Variables CSS de un tipo de cofre: --cc, --ccd, --ccl */
 export function chestVars(type) {
   const c = CHESTS[type] || CHESTS.madera;
-  return `--cc:${c.color};--ccd:${mix(c.color, '#3d2f2a', 0.35)};--ccl:${mix(c.color, '#ffffff', 0.7)};--ct:${c.trim};`;
+  return `--cc:${c.color};--ccd:${mix(c.color, '#3d2f2a', 0.35)};--ccl:${mix(c.color, '#211c19', 0.72)};--ct:${c.trim};`;
 }
 export function bestRarity(drops) {
   let best = 'comun';
@@ -58,7 +58,7 @@ export function dropNote(d) {
     case 'xp': return 'Experiencia para subir de nivel';
     case 'item': return 'Guardado en tu mochila';
     case 'equip': return 'Equipo para tus expediciones · se elige al salir';
-    case 'cosmetic': return CAR_KINDS.has(d.cosmeticKind) ? 'Pieza nueva · estrenala en el Vestidor' : 'Prenda nueva · estrenala en el Vestidor';
+    case 'cosmetic': return CAR_KINDS.has(d.cosmeticKind) ? 'Pieza nueva · estrenala en el Equipaje' : 'Prenda nueva · estrenala en el Equipaje';
     case 'build': return 'Construcción gratis · colocala desde Construir';
     case 'material': return 'Material de región · para tus obras y el Taller';
     case 'furniture': return 'Para tu casa · ponelo desde Decorar';

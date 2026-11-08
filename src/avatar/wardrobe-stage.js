@@ -1,14 +1,31 @@
-// Escenarios 3D del vestidor (boutique rosa y taller) + miniaturas offscreen de prendas/autos.
+// Escenarios 3D del Equipaje (la Sastrería y el taller) + miniaturas offscreen de prendas/autos.
+// Los modelos están pintados con la paleta clara de antes: al armarlos se re-mapean a madera oscura, cuero y bronce
+// (tailor, interfaz oscura y fuera lo tierno: PLAN-QUIEBRE §J6/J7). Las lucecitas (glowMaterial) no se tocan.
 // Lo usa src/scenes/wardrobe.js. Todo lo que crea acá se libera con disposeObject / dispose().
 import * as THREE from 'three';
 import { Voxels, voxelMaterial, glowMaterial, shade, addLights, outlineCanvas } from '../core/voxel.js';
 import { avatarModel } from './avatar.js';
+import { toHsl, fromHsl } from '../city/themes.js';
 import { carModel } from './car.js';
 
 const E = 1 / 8;   // vóxeles grandes (piso, paredes)
 const F = 1 / 16;  // vóxeles finos (muebles, tarima)
 
+/** Color de la Sastrería: lo dorado pasa a bronce, los azules a pizarra, lo claro a madera oscura, rosas a cuero. */
+function tailor(c) {
+  const [h, s, l, d] = toHsl(c);
+  if (d > 0.2 && h >= 34 && h < 62) return fromHsl(36, s * 0.7, l * 0.72);
+  if (d > 0.12 && h >= 185 && h < 255) return fromHsl(212, s * 0.35, l * 0.5);
+  if (l > 0.74) return fromHsl(26, 0.26 + d * 0.3, 0.2 + (l - 0.74) * 0.36);
+  if (d > 0.2 && (h < 34 || h >= 320)) return fromHsl(356, s * 0.5, l * 0.48);
+  if (d > 0.2 && h >= 62 && h < 185) return fromHsl(150, s * 0.4, l * 0.56);
+  return fromHsl(h, s * 0.6, l * 0.62);
+}
+let remap = null;
+const withTailor = (build) => (...args) => { remap = tailor; try { return build(...args); } finally { remap = null; } };
+
 function mesh(v, scale, { shadow = true, receive = true, material } = {}) {
+  if (remap && !material) for (const [k, c] of v.map) v.map.set(k, remap(c));
   const m = new THREE.Mesh(v.toGeometry({ scale, jitter: 0.03 }), material || voxelMaterial());
   m.castShadow = shadow; m.receiveShadow = receive;
   return m;
@@ -18,7 +35,7 @@ function mesh(v, scale, { shadow = true, receive = true, material } = {}) {
 //                         TARIMA / PLATAFORMA GIRATORIA
 // =====================================================================
 /** Tarima redonda con lucecitas que titilan. kind: 'boutique' | 'garage'. Alto: userData.top */
-export function buildPlatform(kind = 'boutique') {
+export const buildPlatform = withTailor(function buildPlatform(kind = 'boutique') {
   const g = new THREE.Group();
   const R = kind === 'garage' ? 12.5 : 10.5;
   const v = new Voxels();
@@ -56,7 +73,7 @@ export function buildPlatform(kind = 'boutique') {
   };
   bm[1].visible = false;
   return g;
-}
+});
 
 // =====================================================================
 //                                BOUTIQUE
@@ -75,7 +92,7 @@ function miniDress(v, x0, y0, z, c) {
     for (let x = x0 - w; x <= x0 + w; x++) for (let dz = 0; dz <= 1; dz++) v.set(x, y0 + y, z + dz, y === 0 ? l : y === 4 ? 0xffffff : ((x + y) & 1 ? c : d));
   }
 }
-export function buildBoutique() {
+export const buildBoutique = withTailor(function buildBoutique() {
   const g = new THREE.Group();
   // piso + pasarela
   const fv = new Voxels();
@@ -153,12 +170,12 @@ export function buildBoutique() {
 
   g.userData.update = () => {};
   return g;
-}
+});
 
 // =====================================================================
 //                                 TALLER
 // =====================================================================
-export function buildGarage() {
+export const buildGarage = withTailor(function buildGarage() {
   const g = new THREE.Group();
   const fv = new Voxels();
   floor(fv, -32, 31, -24, 20, (x, z) => {
@@ -227,7 +244,7 @@ export function buildGarage() {
   g.add(mesh(m, F));
   g.userData.update = () => {};
   return g;
-}
+});
 
 // =====================================================================
 //                   MINIATURAS OFFSCREEN (cacheadas como dataURL)

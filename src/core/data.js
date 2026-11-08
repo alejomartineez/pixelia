@@ -19,7 +19,7 @@ export { PALETTE } from './palette.js';
 // pop: residentes que aporta (casas). popReq: población mínima para poder construirlo.
 // prod: {coins|gems: cantidad por ciclo, cycle: segundos, cap: ciclos acumulables}
 // happy: felicidad que aporta. xp: experiencia al terminar de construir.
-// max: cantidad máxima (undefined = ilimitado). game: escena que abre al tocarlo (hoy solo el Vestidor).
+// max: cantidad máxima (undefined = ilimitado). game: escena que abre al tocarlo (hoy solo el Equipaje).
 // rank: rango de ciudad mínimo para construirlo. charm: Encanto (si falta, sale de la categoría: ver economy.charmBase).
 // eraArt: el modelo tiene arte propio por época (models.js no le agrega adornos ni recoloreo; DESIGN-CORE.md §4.4).
 export const BUILDINGS = [
@@ -30,7 +30,7 @@ export const BUILDINGS = [
   { id: 'mi_casa', name: 'Mi Casa', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 0 }, time: 0, max: 1, auto: true, eraArt: true,
     happy: 2, charm: 10, xp: 0, desc: 'Tu casa: entrá, decorala con muebles y ampliala.' },
   { id: 'boutique_real', name: 'Sastrería', cat: 'especial', size: [2, 2], unlock: 2, cost: { coins: 250 }, time: 15, max: 1,
-    happy: 4, xp: 20, game: 'wardrobe', desc: 'Tu vestidor: ropa, peinados y sombreros.' },
+    happy: 4, xp: 20, game: 'wardrobe', desc: 'Ropa, peinados y sombreros: acá se arma tu Equipaje.' },
 
   // --- Casas ---
   { id: 'casita', name: 'Casa', cat: 'casa', size: [2, 2], unlock: 1, cost: { coins: 100 }, time: 8,
@@ -347,13 +347,12 @@ export function levelUpReward(newLevel) {
 }
 
 // ---------------- PERSONALIZACIÓN DEL PERSONAJE ----------------
-// Cada jugador elige su tipo de personaje (gratis y cambiable en el Vestidor). Cada pieza dice para qué
+// Cada jugador elige su tipo de personaje (gratis y cambiable en el Equipaje). Cada pieza dice para qué
 // tipos sirve (types). price: {coins|gems}, unlock: nivel. Los marcados free:true se tienen desde el inicio
 // (cada tipo tiene al menos 2 piezas gratis por categoría, además de "Nada").
-// En los animalitos: hair = diseño del pelaje, hairColor = color del pelaje (la piel no se usa).
+// Solo personas (El Quiebre, plan §J7): los animales se fueron en el guardado v4 (ver RETIRED_ITEMS y LEGACY_TYPES).
 export const AVATAR_FAMILIES = [
   { id: 'casual', name: 'Gente', emoji: '🧢' },
-  { id: 'animal', name: 'Animales', emoji: '🐾' },
 ];
 // look: look inicial al elegir el tipo (todo gratis)
 export const AVATAR_TYPES = [
@@ -361,18 +360,9 @@ export const AVATAR_TYPES = [
     look: { skin: 2, hair: 'coleta', hairColor: 'pelirrojo', dress: 'buzo', dressColor: 'verde', crown: 'ninguna', acc: 'mochila' } },
   { id: 'chico', name: 'Chico', family: 'casual', emoji: '👦', desc: 'Remeras, camisas, jeans, gorras y mochila.',
     look: { skin: 3, hair: 'despeinado', hairColor: 'negro', dress: 'remera', dressColor: 'celeste', crown: 'gorra', acc: 'ninguno' } },
-  { id: 'gatito', name: 'Gato', family: 'animal', emoji: '🐱', animal: true, desc: 'Orejas en punta, bigotes y cola.',
-    look: { skin: 0, hair: 'pancita', hairColor: 'rubio', dress: 'pelito', dressColor: 'rosa', crown: 'ninguna', acc: 'ninguno' } },
-  { id: 'zorrito', name: 'Zorro', family: 'animal', emoji: '🦊', animal: true, desc: 'Hocico fino y cola esponjosa.',
-    look: { skin: 0, hair: 'pancita', hairColor: 'pelirrojo', dress: 'remerita', dressColor: 'celeste', crown: 'ninguna', acc: 'ninguno' } },
-  { id: 'conejito', name: 'Conejo', family: 'animal', emoji: '🐰', animal: true, desc: 'Orejas largas y cola de pompón.',
-    look: { skin: 0, hair: 'pancita', hairColor: 'blanco', dress: 'remerita', dressColor: 'rosa', crown: 'ninguna', acc: 'ninguno' } },
-  { id: 'osito', name: 'Oso', family: 'animal', emoji: '🐻', animal: true, desc: 'Orejas redondas y panza clara.',
-    look: { skin: 0, hair: 'pancita', hairColor: 'castano', dress: 'remerita', dressColor: 'rojo', crown: 'ninguna', acc: 'ninguno' } },
 ];
 export const AVATAR_TYPE_BY_ID = Object.fromEntries(AVATAR_TYPES.map(t => [t.id, t]));
 const HUMANS = ['chica', 'chico'];
-const ANIMALS = ['gatito', 'zorrito', 'conejito', 'osito'];
 const CASUAL = ['chica', 'chico'];
 
 export const SKIN_TONES = ['#ffe0cc', '#f5c7a9', '#e8b08a', '#c98e66', '#a06c4a', '#6e4630'];
@@ -402,20 +392,13 @@ export const HAIR_STYLES = [
   { id: 'rizos', name: 'Rulos', price: { coins: 800 }, unlock: 5, types: HUMANS },
   { id: 'colitas', name: 'Dos colas', price: { coins: 1200 }, unlock: 7, types: HUMANS },
   { id: 'ondas', name: 'Ondas largas', price: { gems: 15 }, unlock: 9, types: HUMANS },
-  // pelajes de animalitos
-  { id: 'pancita', name: 'Panza clara', free: true, types: ANIMALS },
-  { id: 'liso', name: 'Liso', free: true, types: ANIMALS },
-  { id: 'medias', name: 'Patas blancas', price: { coins: 250 }, unlock: 1, types: ANIMALS },
-  { id: 'manchas', name: 'Manchas', price: { coins: 400 }, unlock: 2, types: ANIMALS },
-  { id: 'rayas', name: 'Rayas', price: { coins: 600 }, unlock: 4, types: ANIMALS },
-  { id: 'brillitos', name: 'Pelaje con destellos', price: { gems: 12 }, unlock: 7, types: ANIMALS },
 ];
 export const DRESS_STYLES = [
   // vestidos
   { id: 'clasico', name: 'Vestido clásico', free: true, types: ['chica'] },
   { id: 'corto', name: 'Vestido corto', free: true, types: CASUAL },
   { id: 'gala', name: 'Vestido de noche', price: { coins: 600 }, unlock: 2, types: ['chica'] },
-  { id: 'overol', name: 'Overol', price: { coins: 400 }, unlock: 3, types: [...CASUAL, ...ANIMALS] },
+  { id: 'overol', name: 'Overol', price: { coins: 400 }, unlock: 3, types: CASUAL },
   { id: 'sirena', name: 'Vestido largo', price: { coins: 1000 }, unlock: 5, types: CASUAL },
   { id: 'deportivo', name: 'Deportivo', price: { coins: 700 }, unlock: 4, types: ['chica'] },
   { id: 'capa', name: 'Vestido con capa', price: { gems: 20 }, unlock: 8, types: ['chica'] },
@@ -427,7 +410,7 @@ export const DRESS_STYLES = [
   { id: 'caballero', name: 'Armadura de caballero', price: { coins: 1000 }, unlock: 5, types: ['chico'] },
   { id: 'estrellas_p', name: 'Traje de estrellas', price: { gems: 30 }, unlock: 12, types: CASUAL },
   // casual
-  { id: 'buzo', name: 'Buzo y jeans', free: true, types: [...CASUAL, ...ANIMALS] },
+  { id: 'buzo', name: 'Buzo y jeans', free: true, types: CASUAL },
   { id: 'remera', name: 'Remera y jeans', free: true, types: CASUAL },
   { id: 'pollera', name: 'Remera y pollera', price: { coins: 300 }, unlock: 1, types: ['chica'] },
   { id: 'camisa', name: 'Camisa a cuadros', price: { coins: 450 }, unlock: 2, types: CASUAL },
@@ -436,7 +419,6 @@ export const DRESS_STYLES = [
   // disfraz de hada
   { id: 'petalos', name: 'Vestido de pétalos', free: true, types: CASUAL },
   { id: 'hojas', name: 'Vestido de hojas', free: true, types: CASUAL },
-  { id: 'tutu', name: 'Tutú de danza', price: { coins: 600 }, unlock: 3, types: CASUAL },
   { id: 'mariposa', name: 'Vestido mariposa', price: { coins: 900 }, unlock: 5, types: CASUAL },
   // disfraz de mago
   { id: 'tunica', name: 'Túnica de mago', free: true, types: CASUAL },
@@ -444,62 +426,49 @@ export const DRESS_STYLES = [
   { id: 'tunica_capa', name: 'Túnica con capa', price: { coins: 700 }, unlock: 3, types: CASUAL },
   { id: 'lunar', name: 'Túnica lunar', price: { coins: 1000 }, unlock: 5, types: CASUAL },
   { id: 'archimago', name: 'Manto de archimago', price: { gems: 25 }, unlock: 9, types: CASUAL },
-  // animalitos
-  { id: 'pelito', name: 'Sin ropa', free: true, types: ANIMALS },
-  { id: 'remerita', name: 'Remera', free: true, types: ANIMALS },
-  { id: 'panuelo', name: 'Pañuelo', price: { coins: 200 }, unlock: 1, types: ANIMALS },
-  { id: 'vestidito', name: 'Vestido', price: { coins: 450 }, unlock: 2, types: ANIMALS },
-  { id: 'capita', name: 'Capa de héroe', price: { coins: 700 }, unlock: 4, types: ANIMALS },
-  { id: 'frac', name: 'Chaleco y moño', price: { gems: 15 }, unlock: 6, types: ANIMALS },
 ];
 // "Cabeza": gorras, gorros, sombreros y vinchas (el id de la categoría sigue siendo crown por compatibilidad)
 export const CROWNS = [
-  { id: 'ninguna', name: 'Nada', free: true, types: [...CASUAL, ...ANIMALS] },
-  { id: 'flores', name: 'Guirnalda de flores', price: { coins: 400 }, unlock: 3, types: [...CASUAL, ...ANIMALS] },
+  { id: 'ninguna', name: 'Nada', free: true, types: CASUAL },
+  { id: 'flores', name: 'Guirnalda de flores', price: { coins: 400 }, unlock: 3, types: CASUAL },
   { id: 'moño', name: 'Moño', price: { coins: 300 }, unlock: 1, types: ['chica'] },
   { id: 'vincha', name: 'Vincha', free: true, types: ['chica'] },
-  { id: 'orejitas', name: 'Orejas de gato', price: { coins: 900 }, unlock: 5, types: CASUAL },
   // aventura
   { id: 'laurel', name: 'Laurel dorado', free: true, types: CASUAL },
   { id: 'casco', name: 'Casco de caballero', price: { coins: 600 }, unlock: 3, types: ['chico'] },
   // casual
-  { id: 'gorra', name: 'Gorra', free: true, types: [...CASUAL, ...ANIMALS] },
-  { id: 'gorro', name: 'Gorro de lana', free: true, types: [...CASUAL, ...ANIMALS] },
+  { id: 'gorra', name: 'Gorra', free: true, types: CASUAL },
+  { id: 'gorro', name: 'Gorro de lana', free: true, types: CASUAL },
   { id: 'auris', name: 'Auriculares', price: { coins: 500 }, unlock: 2, types: CASUAL },
   { id: 'piluso', name: 'Piluso', price: { coins: 400 }, unlock: 3, types: CASUAL },
   // disfraces
   { id: 'diadema', name: 'Diadema de hojas', free: true, types: CASUAL },
-  { id: 'antenitas', name: 'Antenas', free: true, types: CASUAL },
   { id: 'sombrero_mago', name: 'Sombrero de mago', free: true, types: CASUAL },
   { id: 'capucha', name: 'Capucha', free: true, types: CASUAL },
   { id: 'sombrero_luna', name: 'Sombrero lunar', price: { coins: 700 }, unlock: 4, types: CASUAL },
   { id: 'sombrero_estrellas', name: 'Sombrero de estrellas', price: { gems: 15 }, unlock: 8, types: CASUAL },
-  // animalitos
-  { id: 'lacito', name: 'Lazo', free: true, types: ANIMALS },
-  { id: 'gorrito', name: 'Gorro de fiesta', free: true, types: ANIMALS },
-  { id: 'galera', name: 'Galera', price: { coins: 700 }, unlock: 5, types: [...CASUAL, ...ANIMALS] },
+  { id: 'galera', name: 'Galera', price: { coins: 700 }, unlock: 5, types: CASUAL },
 ];
 export const ACCESSORIES = [
-  { id: 'ninguno', name: 'Nada', free: true, types: [...CASUAL, ...ANIMALS] },
+  { id: 'ninguno', name: 'Nada', free: true, types: CASUAL },
   // lindos
   { id: 'collar', name: 'Collar de perlas', free: true, types: CASUAL },
   { id: 'ramo', name: 'Ramo de flores', free: true, types: CASUAL },
-  { id: 'bolso', name: 'Cartera', price: { coins: 450 }, unlock: 2, types: ['chica', ...ANIMALS] },
-  { id: 'anteojos', name: 'Anteojos de sol', price: { coins: 600 }, unlock: 4, types: [...CASUAL, ...ANIMALS] },
+  { id: 'bolso', name: 'Cartera', price: { coins: 450 }, unlock: 2, types: ['chica'] },
+  { id: 'anteojos', name: 'Anteojos de sol', price: { coins: 600 }, unlock: 4, types: CASUAL },
   { id: 'alas', name: 'Alas de tela', price: { gems: 20 }, unlock: 6, types: CASUAL },
   { id: 'gatito', name: 'Gato en brazos', price: { gems: 25 }, unlock: 8, types: HUMANS },
   // aventura
   { id: 'espada', name: 'Espada de madera', free: true, types: ['chico'] },
   { id: 'escudo', name: 'Escudo de madera', free: true, types: ['chico'] },
   // casual
-  { id: 'mochila', name: 'Mochila', free: true, types: [...CASUAL, ...ANIMALS] },
-  { id: 'pelota', name: 'Pelota', free: true, types: [...CASUAL, ...ANIMALS] },
-  { id: 'globo', name: 'Globo', price: { coins: 350 }, unlock: 2, types: [...CASUAL, ...ANIMALS] },
-  { id: 'patineta', name: 'Patineta', price: { coins: 700 }, unlock: 4, types: [...CASUAL, ...ANIMALS] },
+  { id: 'mochila', name: 'Mochila', free: true, types: CASUAL },
+  { id: 'pelota', name: 'Pelota', free: true, types: CASUAL },
+  { id: 'globo', name: 'Globo', price: { coins: 350 }, unlock: 2, types: CASUAL },
+  { id: 'patineta', name: 'Patineta', price: { coins: 700 }, unlock: 4, types: CASUAL },
   // disfraces
-  { id: 'alas_hada', name: 'Alas de hada', free: true, types: CASUAL },
-  { id: 'farolito', name: 'Frasco de luciérnagas', price: { coins: 500 }, unlock: 3, types: [...CASUAL, ...ANIMALS] },
-  { id: 'alas_mariposa', name: 'Alas de mariposa', price: { coins: 900 }, unlock: 5, types: [...CASUAL, ...ANIMALS] },
+  { id: 'farolito', name: 'Frasco de luciérnagas', price: { coins: 500 }, unlock: 3, types: CASUAL },
+  { id: 'alas_mariposa', name: 'Alas de mariposa', price: { coins: 900 }, unlock: 5, types: CASUAL },
   { id: 'baston', name: 'Bastón de mago', free: true, types: CASUAL },
   { id: 'libro', name: 'Libro de hechizos', free: true, types: CASUAL },
   { id: 'orbe', name: 'Bola de cristal', price: { coins: 600 }, unlock: 3, types: CASUAL },
@@ -511,15 +480,23 @@ export function avatarType(id) { return AVATAR_TYPE_BY_ID[id] || AVATAR_TYPES[0]
 export function fitsType(item, type) { return !!item && (item.types ? item.types.includes(type) : HUMANS.includes(type)); }
 
 // Tipos y piezas que ya no existen (la realeza se fue): saves viejos y perfiles de amistades se traducen así.
-export const LEGACY_TYPES = { princesa: 'chica', principe: 'chico', hada: 'chica', mago: 'chico' };
+export const LEGACY_TYPES = { princesa: 'chica', principe: 'chico', hada: 'chica', mago: 'chico', gatito: 'chica', conejito: 'chica', zorrito: 'chico', osito: 'chico' };
 export const LEGACY_ITEMS = {
   crown: { tiara: 'vincha', corona: 'galera', estrella: 'auris', corona_p: 'gorra', corona_rey: 'galera', corona_cristal: 'sombrero_estrellas' },
   acc: { varita: 'globo', cetro: 'patineta', varita_flor: 'ramo' },
   topper: { corona: 'corazon' },
 };
+// v3 → v4 (plan §J7, fuera lo tierno): piezas que se retiraron con su precio. migrateV4 (state.js) devuelve lo que
+// costaba lo que tenías comprado (monedas o gemas, lo mismo que pagaste); lo gratis solo se va.
+export const RETIRED_ITEMS = {
+  hair: { pancita: null, liso: null, medias: { coins: 250 }, manchas: { coins: 400 }, rayas: { coins: 600 }, brillitos: { gems: 12 } },
+  dress: { pelito: null, remerita: null, panuelo: { coins: 200 }, vestidito: { coins: 450 }, capita: { coins: 700 }, frac: { gems: 15 }, tutu: { coins: 600 } },
+  crown: { orejitas: { coins: 900 }, antenitas: null, lacito: null, gorrito: null },
+  acc: { alas_hada: null },
+};
 
 // ---------------- PERSONALIZACIÓN AUTO ----------------
-// stats: speed / handling 1..5 (de cuando el auto se manejaba en los minijuegos; hoy solo se muestran en el Vestidor)
+// stats: speed / handling 1..5 (de cuando el auto se manejaba en los minijuegos; hoy solo se muestran en el Equipaje)
 export const CAR_BODIES = [
   { id: 'convertible', name: 'Convertible', free: true, speed: 3, handling: 3 },
   { id: 'mini', name: 'Mini', price: { coins: 600 }, unlock: 3, speed: 2, handling: 5 },
@@ -552,8 +529,8 @@ export const CUSTOM_CATALOG = {
 //  upgrade {id?}         terminar una mejora
 //  collect               monedas recolectadas de edificios (suma)
 //  earn                  monedas ganadas de cualquier fuente (suma)
-//  customize             cambios en el Vestidor (personaje o auto)
-//  buy                   compras en el Vestidor
+//  customize             cambios en el Equipaje (personaje o auto)
+//  buy                   compras en el Equipaje
 //  level                 llegar a nivel count (absoluto)
 //  pop                   población >= count (absoluto)
 //  happy                 felicidad total >= count (absoluto)

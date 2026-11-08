@@ -1,5 +1,5 @@
 // Mi Casa por dentro: cuarto vóxel con tus muebles, tu personaje que pasea y se sienta, y el modo Decorar
-// (poner, mover arrastrando, rotar, guardar; tienda de muebles; paredes y pisos). El ropero abre el Vestidor.
+// (poner, mover arrastrando, rotar, guardar; tienda de muebles; paredes y pisos). El ropero abre el Equipaje.
 // "Ampliar" agranda la casa (mejora del edificio mi_casa, con constructora y materiales).
 // Con params.visit (id de una amistad) muestra su casa en modo solo mirar (datos de su perfil: city.home).
 import * as THREE from 'three';
@@ -16,48 +16,48 @@ import { furnitureModel } from '../home/furniture-models.js';
 const SEAT_Y = { silla: 0.5, sillon: 0.55, puff: 0.5, trono: 0.55, cama: 0.55 };
 
 const HM_CSS = `
-.scene-home { position:absolute; inset:0; overflow:hidden; background:#f6eee2; }
+.scene-home { position:absolute; inset:0; overflow:hidden; background:var(--surface-2); }
 .scene-home .hm-stage { position:absolute; inset:0; touch-action:none; }
 .scene-home .hm-top { position:absolute; z-index:3; top:calc(var(--safe-t) + 8px); left:calc(var(--safe-l) + 8px); right:calc(var(--safe-r) + 8px);
   display:flex; align-items:flex-start; gap:8px; pointer-events:none; }
 .scene-home .hm-top > * { pointer-events:auto; }
-.scene-home .hm-title { display:flex; flex-direction:column; gap:2px; padding:6px 12px; background:var(--panel, #fffaf1); border:var(--line, 3px) solid var(--ink);
-  border-radius:16px; box-shadow:0 3px 0 var(--ink); min-width:0; }
+.scene-home .hm-title { display:flex; flex-direction:column; gap:2px; padding:6px 12px; background:var(--panel, var(--surface)); border:var(--line, 3px) solid var(--edge);
+  border-radius:16px; box-shadow:0 3px 0 var(--shade); min-width:0; }
 .scene-home .hm-title b { font-size:18px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .scene-home .hm-title small { display:flex; align-items:center; gap:4px; font-size:13px; color:var(--ink-l); font-weight:700; flex-wrap:wrap; }
 .scene-home .hm-grow { flex:1; }
 .scene-home .hm-btns { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
 .scene-home .hm-btns .btn { min-height:44px; padding:6px 12px; font-size:16px; gap:4px; }
 .scene-home .hm-hint { position:absolute; z-index:2; left:50%; transform:translateX(-50%); bottom:calc(var(--safe-b) + 16px); padding:6px 14px; font-size:14px; font-weight:700;
-  background:var(--panel, #fffaf1); border:2px solid var(--ink); border-radius:99px; box-shadow:0 2px 0 var(--ink); white-space:nowrap; transition:opacity .4s; pointer-events:none; }
+  background:var(--panel, var(--surface)); border:2px solid var(--edge); border-radius:99px; box-shadow:0 2px 0 var(--shade); white-space:nowrap; transition:opacity .4s; pointer-events:none; }
 .scene-home .hm-hint.gone { opacity:0; }
 .scene-home .hm-deco { position:absolute; z-index:4; left:0; right:0; bottom:0; padding:8px calc(var(--safe-r) + 8px) calc(var(--safe-b) + 8px) calc(var(--safe-l) + 8px);
-  background:var(--panel, #fffaf1); border-top:var(--line, 3px) solid var(--ink); border-radius:20px 20px 0 0; box-shadow:0 -4px 0 rgba(61,47,42,.15);
+  background:var(--panel, var(--surface)); border-top:var(--line, 3px) solid var(--edge); border-radius:20px 20px 0 0; box-shadow:0 -4px 0 rgba(8, 6, 5,.15);
   display:flex; flex-direction:column; gap:8px; max-height:44vh; transform:translateY(110%); transition:transform .28s cubic-bezier(.3,1.2,.6,1); }
 .scene-home.editing .hm-deco { transform:none; }
 .scene-home .hm-tabs { display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; }
 .scene-home .hm-tabs .tab { flex:none; }
 .scene-home .hm-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(92px, 1fr)); gap:8px; overflow-y:auto; padding:2px 2px 6px; min-height:120px; }
-.scene-home .hm-card { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px; background:#fff; border:2px solid var(--ink);
-  border-radius:14px; box-shadow:0 3px 0 var(--ink); font:inherit; color:inherit; cursor:pointer; min-width:0; }
-.scene-home .hm-card:active { transform:translateY(2px); box-shadow:0 1px 0 var(--ink); }
+.scene-home .hm-card { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 4px; background:var(--surface); border:2px solid var(--edge);
+  border-radius:14px; box-shadow:0 3px 0 var(--shade); font:inherit; color:inherit; cursor:pointer; min-width:0; }
+.scene-home .hm-card:active { transform:translateY(2px); box-shadow:0 1px 0 var(--shade); }
 .scene-home .hm-card.locked { opacity:.55; }
 .scene-home .hm-card .th { width:64px; height:64px; display:grid; place-items:center; }
 .scene-home .hm-card .th img { width:64px; height:64px; image-rendering:pixelated; }
 .scene-home .hm-card .nm { font-size:12px; font-weight:700; text-align:center; line-height:1.1; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .scene-home .hm-card .pr { font-size:12px; display:flex; align-items:center; gap:2px; }
 .scene-home .hm-card .ct { position:absolute; top:-6px; right:-6px; min-width:22px; height:22px; padding:0 5px; display:grid; place-items:center; font-size:12px; font-weight:700;
-  color:#fff; background:var(--primary, #ee8a5c); border:2px solid var(--ink); border-radius:11px; }
-.scene-home .hm-sw { width:64px; height:64px; border-radius:12px; border:2px solid var(--ink); }
+  color:#fff; background:var(--primary, #ee8a5c); border:2px solid var(--edge); border-radius:11px; }
+.scene-home .hm-sw { width:64px; height:64px; border-radius:12px; border:2px solid var(--edge); }
 .scene-home .hm-card.on { outline:3px solid var(--gold, #ffd166); outline-offset:2px; }
 .scene-home .hm-empty { grid-column:1 / -1; text-align:center; font-size:14px; color:var(--ink-l); padding:12px; }
 .scene-home .hm-sel { position:absolute; z-index:5; left:50%; transform:translateX(-50%); bottom:calc(44vh + 12px); display:none; align-items:center; gap:6px; padding:6px;
-  background:var(--panel, #fffaf1); border:var(--line, 3px) solid var(--ink); border-radius:16px; box-shadow:0 3px 0 var(--ink); }
+  background:var(--panel, var(--surface)); border:var(--line, 3px) solid var(--edge); border-radius:16px; box-shadow:0 3px 0 var(--shade); }
 .scene-home.selecting .hm-sel { display:flex; }
 .scene-home .hm-sel b { padding:0 6px; font-size:15px; white-space:nowrap; }
 .scene-home .hm-sel .btn { min-height:40px; padding:4px 10px; font-size:15px; gap:3px; }
 @media (min-width: 900px) {
-  .scene-home .hm-deco { left:auto; right:calc(var(--safe-r) + 12px); bottom:calc(var(--safe-b) + 12px); width:420px; max-height:70vh; border:var(--line, 3px) solid var(--ink); border-radius:20px; transform:translateX(120%); }
+  .scene-home .hm-deco { left:auto; right:calc(var(--safe-r) + 12px); bottom:calc(var(--safe-b) + 12px); width:420px; max-height:70vh; border:var(--line, 3px) solid var(--edge); border-radius:20px; transform:translateX(120%); }
   .scene-home.editing .hm-deco { transform:none; }
   .scene-home .hm-sel { bottom:calc(var(--safe-b) + 16px); left:calc(50% - 210px); }
 }

@@ -14,64 +14,64 @@ export { renderStickerCard, renderPack } from './album-art.js';
 const RAW = [
   // (el id 'princesas' queda por compatibilidad con álbumes e intercambios viejos)
   ['princesas', 'Vecinos', '🏘️', '#ee8a5c', '#c8673d', '#fde9d8', [
-    ['🥱', 'Siestita en la Hamaca'], ['🪞', 'Espejito Chusma'], ['🧹', 'Vecina que Barre'],
-    ['💌', 'Cartita de Amor'], ['🫖', 'Té con Masitas'],
+    ['🥱', 'Siesta en la Hamaca'], ['🪞', 'Espejo de la Abuela'], ['🧹', 'Vecina que Barre'],
+    ['💌', 'Carta sin Firmar'], ['🫖', 'Té con Masitas'],
     ['📮', 'Cartero Puntual'], ['🥖', 'Panadero Madrugador'],
     ['💃', 'Bailarina de la Plaza'], ['🏘️', 'Los Vecinos de Pixelia']]],
-  ['vestidos', 'Ropa y Estilo', '👕', '#7f9ee8', '#5a78c4', '#f8f0e4', [
-    ['🧦', 'Medias Desparejas'], ['🧤', 'Guantes de Gala'], ['👒', 'Capelina Playera'],
-    ['🎀', 'Moño Gigante'], ['👛', 'Carterita Mini'],
-    ['👗', 'Vestido con Volados'], ['🧥', 'Tapado de Abuela Chic'],
-    ['👟', 'Zapatillas Flúo'], ['🛍️', 'El Placard Soñado']]],
-  ['autitos', 'Autitos', '🚗', '#8fd3ff', '#4fa8e0', '#daf2ff', [
+  ['vestidos', 'Ropa de Viaje', '🧥', '#7f9ee8', '#5a78c4', '#f8f0e4', [
+    ['🧦', 'Medias Desparejas'], ['🧤', 'Guantes de Cuero'], ['👒', 'Capelina de Verano'],
+    ['🧣', 'Bufanda Tejida'], ['👛', 'Monedero Gastado'],
+    ['👗', 'Vestido de Domingo'], ['🧥', 'Tapado Heredado'],
+    ['🥾', 'Botas de Caminata'], ['🧳', 'La Valija Completa']]],
+  ['autitos', 'Vehículos', '🚗', '#8fd3ff', '#4fa8e0', '#daf2ff', [
     ['🚲', 'Bici con Canasto'], ['🛴', 'Monopatín Veloz'], ['🚕', 'Taxi Apurado'],
-    ['🚙', 'Camioneta Familiera'], ['🛵', 'Motito Delivery'],
-    ['🚐', 'Combi Hippie'], ['🏎️', 'Auto de Carrera'],
-    ['🚂', 'Trencito de la Costa'], ['🚗', 'Descapotable Clásico']]],
+    ['🚙', 'Camioneta Familiar'], ['🛵', 'Moto de Reparto'],
+    ['🚐', 'Combi Vieja'], ['🏎️', 'Auto de Carrera'],
+    ['🚂', 'Tren de la Costa'], ['🚗', 'Descapotable Clásico']]],
   ['postres', 'Postres', '🍰', '#ffab7a', '#e07d4a', '#ffe3d1', [
-    ['🍪', 'Galletita Robada'], ['🍬', 'Caramelo Pegote'], ['🍩', 'Dona Glaseada'],
-    ['🧁', 'Cupcake Coqueto'], ['🍮', 'Flan con Dulce de Leche'],
+    ['🍪', 'Galleta Robada'], ['🍯', 'Caramelo de Miel'], ['🍩', 'Dona Glaseada'],
+    ['🥧', 'Tarta de Manzana'], ['🍮', 'Flan con Dulce de Leche'],
     ['🍦', 'Helado de Tres Gustos'], ['🥐', 'Medialuna de Manteca'],
-    ['🍫', 'Chocolate Sorpresa'], ['🎂', 'Torta de Cumple Gigante']]],
-  ['mascotas', 'Mascotas', '🐱', '#6fe3c1', '#3cbf9a', '#d4f7ec', [
-    ['🐹', 'Hámster Cachetón'], ['🐟', 'Pececito Olvidadizo'], ['🐢', 'Tortuga sin Apuro'],
-    ['🐰', 'Conejita Saltarina'], ['🐥', 'Pollito Pío'],
-    ['🐱', 'Michi Dormilón'], ['🐶', 'Perrito Chocolate'],
-    ['🦊', 'Zorrito Pícaro'], ['🦄', 'Unicornia Mimosa']]],
+    ['🍫', 'Chocolate Amargo'], ['🎂', 'Torta de Cumpleaños']]],
+  ['mascotas', 'Fauna de la Isla', '🦊', '#6fe3c1', '#3cbf9a', '#d4f7ec', [
+    ['🦔', 'Erizo del Monte'], ['🐟', 'Pez del Arroyo'], ['🐢', 'Tortuga sin Apuro'],
+    ['🐇', 'Liebre Veloz'], ['🦆', 'Pato del Bañado'],
+    ['🐈', 'Gato de Granero'], ['🐕', 'Perro Pastor'],
+    ['🦊', 'Zorro Gris'], ['🦌', 'Ciervo Blanco']]],
   ['flores', 'Flores', '🌸', '#9ee06a', '#6bb83c', '#e3f7d2', [
-    ['🌼', 'Margarita Me Quiere'], ['🌱', 'Brotecito Valiente'], ['🍀', 'Trébol (de Tres, Igual)'],
+    ['🌼', 'Margarita Me Quiere'], ['🌱', 'Brote Valiente'], ['🍀', 'Trébol (de Tres, Igual)'],
     ['🌷', 'Tulipán Tímido'], ['🌻', 'Girasol Chusma'],
     ['🌹', 'Rosa con Carácter'], ['🌺', 'Hibisco Fiestero'],
     ['🌸', 'Cerezo en Flor'], ['💐', 'Ramo para Vos']]],
   ['castillos', 'Edificios', '🏛️', '#9aa6f0', '#6a76c8', '#f9f1e6', [
-    ['🧱', 'Ladrillo con Onda'], ['🗝️', 'Llave Perdida'], ['🕯️', 'Velita Tembleque'],
+    ['🧱', 'Ladrillo con Onda'], ['🗝️', 'Llave Perdida'], ['🕯️', 'Vela Tembleque'],
     ['🚪', 'Puerta que Rechina'], ['🪟', 'Ventana con Macetas'],
-    ['🏠', 'Casita del Árbol'], ['🗼', 'Torre Altísima'],
+    ['🏠', 'Casa del Árbol'], ['🗼', 'Torre del Vigía'],
     ['🏟️', 'Estadio Lleno'], ['🏛️', 'La Municipalidad de Pixelia']]],
   ['joyas', 'Tesoros', '💎', '#5fd4e0', '#2fa6b5', '#d2f4f7', [
-    ['📿', 'Collar de Fideos'], ['🧿', 'Ojito Protector'], ['⌚', 'Reloj de la Abuela'],
-    ['💍', 'Anillito de Cumple'], ['🔔', 'Campanita de Oro'],
+    ['📿', 'Collar de Cuentas'], ['🧿', 'Ojo Protector'], ['⌚', 'Reloj de la Abuela'],
+    ['💍', 'Anillo de Compromiso'], ['🔔', 'Campana de Bronce'],
     ['🔮', 'Bola de Cristal Chusma'], ['💠', 'Cristal Celeste'],
     ['🏆', 'Copa de Oro'], ['💎', 'Diamante Legendario']]],
   ['musica', 'Música', '🎵', '#f09774', '#c96943', '#f8f0e4', [
-    ['🥁', 'Tambor Ruidoso'], ['📻', 'Radio de la Tía'], ['🎧', 'Auris Enredados'],
+    ['🥁', 'Tambor Ruidoso'], ['📻', 'Radio de la Tía'], ['🎧', 'Auriculares Enredados'],
     ['🎸', 'Guitarra Fogonera'], ['🎹', 'Piano Paciente'],
     ['🎻', 'Violín Dramático'], ['🎺', 'Trompeta Mañanera'],
     ['🪗', 'Bandoneón Tanguero'], ['🎤', 'Micrófono de Estrella']]],
-  ['playa', 'Playa', '🏖️', '#efc99a', '#c99a62', '#fff1de', [
+  ['playa', 'Costa', '🏖️', '#efc99a', '#c99a62', '#fff1de', [
     ['🐚', 'Caracol Chismoso'], ['🦀', 'Cangrejo de Costado'], ['🩴', 'Ojotas Perdidas'],
-    ['🏐', 'Pelota de Vóley'], ['🍉', 'Sandía Fresquita'],
-    ['🐬', 'Delfín Sonriente'], ['🏄', 'Surfista Valiente'],
-    ['🐙', 'Pulpo Abrazador'], ['🏝️', 'Isla Secreta']]],
+    ['⚓', 'Ancla Oxidada'], ['🍉', 'Sandía Fresca'],
+    ['🐬', 'Delfín de la Bahía'], ['🏄', 'Surfista Valiente'],
+    ['🐙', 'Pulpo de las Rocas'], ['🏝️', 'Isla Secreta']]],
   ['noche', 'Noche Estrellada', '🌙', '#5e83d9', '#3b5ba5', '#dfe7f8', [
-    ['🦉', 'Búho Desvelado'], ['🧸', 'Osito de Dormir'], ['🌙', 'Luna Mimosa'],
+    ['🦉', 'Búho Desvelado'], ['🏮', 'Farol de Papel'], ['🌙', 'Luna Menguante'],
     ['🔭', 'Telescopio Curioso'], ['🪐', 'Saturno con Pollera'],
     ['☄️', 'Cometa Apurado'], ['🌌', 'Vía Láctea'],
     ['🌠', 'Deseo Fugaz'], ['🌕', 'Luna Llena de Pixelia']]],
   ['fiesta', 'Fiesta', '🎉', '#ff6f6f', '#d94848', '#ffdada', [
     ['🎈', 'Globo Escapista'], ['🎉', 'Cotillón Ruidoso'], ['🥤', 'Gaseosa sin Gas'],
     ['🎁', 'Regalo Misterioso'], ['🍕', 'Pizza de Muzza'],
-    ['🪅', 'Piñata Llenita'], ['🎊', 'Lluvia de Papelitos'],
+    ['🪅', 'Piñata Llena'], ['🎊', 'Lluvia de Papel Picado'],
     ['🎆', 'Fuegos Artificiales'], ['🥳', 'El Alma de la Fiesta']]],
 ];
 // Reparto de los sets por región, en orden (DESIGN-CORE.md §7.2.4)

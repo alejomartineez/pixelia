@@ -428,23 +428,20 @@ function rng(seed) {
   };
 }
 
-const FUR_NATURAL = ['castano', 'negro', 'rubio', 'pelirrojo', 'blanco', 'chocolate', 'gris'];
-const FUR_FOX = ['pelirrojo', 'pelirrojo', 'rubio', 'blanco', 'gris'];
 const HAIR_NATURAL = ['castano', 'negro', 'rubio', 'pelirrojo', 'chocolate'];
 // ropa de la gente que pasea: colores sobrios casi siempre (los vivos quedan para quien los elige)
 const CLOTHES_SOBER = ['azul', 'verde', 'celeste', 'durazno', 'blanco', 'negro', 'dorado', 'rojo', 'violeta'];
-/** Look aleatorio válido y determinista (misma semilla = mismo look). Casi siempre gente; a veces un animal. */
+/** Look aleatorio válido y determinista (misma semilla = mismo look). Solo personas (plan §J7). */
 export function randomLook(seed = 0) {
   const r = rng(Math.floor(seed * 7919) + 17);
   const pick = (list) => list[Math.floor(r() * list.length) % list.length];
-  const people = AVATAR_TYPES.filter(x => !x.animal), animals = AVATAR_TYPES.filter(x => x.animal);
-  const t = r() < 0.75 ? pick(people) : pick(animals);
+  r(); // la tirada que antes elegía entre gente y animales: se conserva para que los vecinos sigan iguales
+  const t = pick(AVATAR_TYPES.filter(x => !x.animal));
   const fit = (list) => list.filter(i => fitsType(i, t.id));
   const skin = Math.floor(r() * SKIN_TONES.length) % SKIN_TONES.length;
   const hair = pick(fit(HAIR_STYLES)).id;
   let hairColor = pick(HAIR_COLORS).id;
-  if (!t.animal && (hairColor === 'gris' || r() < 0.8)) hairColor = pick(HAIR_NATURAL); // canas solo si las elige el jugador
-  if (t.animal && r() < 0.8) hairColor = pick(t.id === 'zorrito' ? FUR_FOX : FUR_NATURAL);
+  if (hairColor === 'gris' || r() < 0.8) hairColor = pick(HAIR_NATURAL); // canas solo si las elige el jugador
   const dress = pick(fit(DRESS_STYLES)).id;
   const dressColor = r() < 0.85 ? pick(CLOTHES_SOBER) : pick(OUTFIT_COLORS).id;
   const crowns = fit(CROWNS).filter(i => i.id !== 'ninguna');

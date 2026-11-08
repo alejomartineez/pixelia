@@ -567,7 +567,7 @@ export default function create(ctx) {
     // cobrar
     const firstBubble = !T().collect && !blocked ? pickTipBubble() : null;
     if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}Hacé clic para cobrar`);
-    else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('dress', 18)}Hacé clic para abrir el Vestidor`);
+    else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('dress', 18)}Hacé clic para abrir el Equipaje`);
     else clearWorldTip();
     if (gameTip && performance.now() > gameTip.until) gameTip = null;
   }

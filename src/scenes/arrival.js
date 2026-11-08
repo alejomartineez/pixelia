@@ -9,10 +9,10 @@ import { LOGIN_REWARDS } from '../core/data.js';
 const STYLE = `
 .arrival-modal .arr-sec { margin: 0 0 4px; font-size: 13px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--ink-l); }
 .arrival-modal .arr-days { display: flex; gap: 4px; justify-content: center; margin: 2px 0 6px; }
-.arrival-modal .arr-day { width: 26px; height: 26px; display: grid; place-items: center; border: 2px solid var(--ink); border-radius: 8px; background: #fff; font-size: 12px; font-weight: 700; }
+.arrival-modal .arr-day { width: 26px; height: 26px; display: grid; place-items: center; border: 2px solid var(--edge); border-radius: 8px; background: var(--surface); font-size: 12px; font-weight: 700; }
 .arrival-modal .arr-day.past { background: var(--mint-l); }
-.arrival-modal .arr-day.today { background: var(--gold); transform: translateY(-2px); box-shadow: 0 2px 0 var(--ink); }
-.arrival-modal .arr-open { padding: 6px 10px; border: 2px solid var(--ink); border-radius: 12px; background: var(--gold-l); }
+.arrival-modal .arr-day.today { background: var(--gold); transform: translateY(-2px); box-shadow: 0 2px 0 var(--shade); }
+.arrival-modal .arr-open { padding: 6px 10px; border: 2px solid var(--edge); border-radius: 12px; background: var(--gold-l); }
 .arrival-modal .arr-next { color: var(--ink-l); font-size: 14px; }
 `;
 let styled = false;
@@ -30,7 +30,7 @@ const addTo = (total, r = {}) => {
 const CHEST_NAME = { madera: 'Cofre de Madera', plata: 'Cofre de Plata', oro: 'Cofre de Oro', diamante: 'Cofre de Diamante' };
 
 /**
- * parts: { welcome, v3Lines, v3Gems, threats: {lines, reward}, login, unlock, next, firstDay, light }
+ * parts: { welcome, v3Lines, v3Gems, v4Lines, v4Reward, threats: {lines, reward}, login, unlock, next, firstDay, light }
  * light: la app siguió abierta (pasó la medianoche, volviste de una expedición): avisos cortos en vez del modal.
  * hooks: { claimWelcome(), claimLogin() } — se llaman al tocar el botón.
  */
@@ -40,7 +40,7 @@ export async function openArrival(ctx, parts, hooks = {}) {
   const lines = [];
   const total = {};
   const sec = (txt) => lines.push(`<span class="arr-sec">${txt}</span>`);
-  const { welcome, v3Lines, threats, login, unlock, next } = parts;
+  const { welcome, v3Lines, v4Lines, threats, login, unlock, next } = parts;
 
   if (welcome) {
     sec('Bienvenida de vuelta');
@@ -53,6 +53,12 @@ export async function openArrival(ctx, parts, hooks = {}) {
     lines.push('Pixelia ahora gira alrededor de las expediciones: salir, traer lo que hace falta y volver a la ciudad.');
     lines.push(...v3Lines);
     if (parts.v3Gems) addTo(total, { gems: parts.v3Gems });
+  }
+  if (v4Lines?.length) {
+    sec('La isla cambió');
+    lines.push('Pixelia se pone más seria: la isla tiene una historia por contar y la ciudad se prepara para eso.');
+    lines.push(...v4Lines);
+    if (parts.v4Reward) addTo(total, parts.v4Reward);
   }
   if (threats?.lines?.length) {
     sec('En la ciudad');
@@ -78,7 +84,7 @@ export async function openArrival(ctx, parts, hooks = {}) {
     lines,
     reward: total,
     buttons: [{ label: anyReward ? 'Cobrar' : 'Ver la ciudad', value: 'ok', cls: anyReward ? 'gold' : 'primary' }],
-    className: 'arrival-modal' + (v3Lines?.length ? ' v3-notice' : ''),
+    className: 'arrival-modal' + (v3Lines?.length || v4Lines?.length ? ' v3-notice' : ''),
   });
   try { if (welcome) hooks.claimWelcome?.(); } catch (e) { console.error(e); }
   try { if (login) hooks.claimLogin?.(); } catch (e) { console.error(e); }

@@ -2,7 +2,7 @@
 // con el logo pixel y el lema encima. Usa Chrome headless como tools/smoke.mjs.
 //
 //   node tools/make-og.mjs                      (escribe og.jpg en la raíz)
-//   node tools/make-og.mjs --theme bosque       (otro estilo de ciudad: pueblo, pastel, moderna, bosque, playa, invierno, noche)
+//   node tools/make-og.mjs --theme musgo       (otro estilo de ciudad: pueblo, otono, musgo, ceniza, bruma, ocaso, escarcha, noche)
 //   node tools/make-og.mjs --cam -3,2,15,0      (cámara x,z,zoom,rotación) --raw shots/og-raw.png (guarda la captura sin logo)
 //   node tools/make-og.mjs --out shots/og.png   (si la salida termina en .png sale en PNG)
 //

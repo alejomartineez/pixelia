@@ -616,7 +616,7 @@ export function openHelp(ctx) {
     ['castle', 'Tu ciudad', [
       ['coin', 'Cobrá', 'Cuando aparece una burbujita arriba de un edificio, hacé clic para juntar monedas. Si se llena, deja de producir: ¡volvé seguido!'],
       ['hammer', 'Construí', 'Hacé clic en <b>Construir</b>, elegí algo y ubicalo en el pasto. Podés rotarlo y moverlo cuando quieras.'],
-      ['dress', 'Tu personaje', 'Elegí quién sos (persona o animalito) y vestilo en el <b>Vestidor</b>. Cambiar de personaje es gratis y lo que compraste queda guardado.'],
+      ['dress', 'Tu personaje', 'Elegí quién sos y vestite en el <b>Equipaje</b>. Cambiar de personaje es gratis y lo que compraste queda guardado.'],
       ['palette', 'Estilo de la ciudad', 'Con el botón de la <b>paleta</b> en la ciudad (o en Ajustes) elegís cómo se ve: pastel, moderna, bosque, playa, invierno o noche. Es gratis.'],
       ['people', 'Población', 'Las casas traen vecinos. Muchos negocios piden un mínimo de vecinos para abrir.'],
       ['smile', 'Felicidad', 'Árboles, flores y deco hacen feliz a tu ciudad: ¡todo produce hasta un 50% más!'],

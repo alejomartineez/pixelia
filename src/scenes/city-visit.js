@@ -23,7 +23,7 @@ const NOTE_MAX = 80;
 
 const VSTYLE = `
 .cv-top { position: absolute; top: calc(var(--safe-t) + 10px); left: 50%; transform: translateX(-50%); z-index: 25; max-width: calc(100% - 24px);
-  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 10px 24px rgba(61,47,42,.2);
+  background: var(--panel); border: 3px solid var(--edge); border-radius: 16px; box-shadow: 0 5px 0 var(--shade), 0 10px 24px rgba(8, 6, 5,.2);
   padding: 6px 16px 8px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; animation: cv-drop .35s cubic-bezier(.3,1.5,.6,1); }
 @keyframes cv-drop { from { transform: translate(-50%, -30px); opacity: 0; } }
 .cv-top h2 { margin: 0; font-size: 20px; line-height: 1.1; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
@@ -31,7 +31,7 @@ const VSTYLE = `
 .cv-top .cv-sub { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; font-size: 13px; }
 .cv-top .cv-sub .chip { font-size: 12px; padding: 1px 7px 1px 3px; gap: 2px; border-width: 2px; }
 .cv-bar { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 10px); z-index: 30; width: min(560px, calc(100% - 16px));
-  background: var(--panel); border: 3px solid var(--ink); border-radius: 16px; box-shadow: 0 5px 0 var(--ink), 0 12px 30px rgba(61,47,42,.25);
+  background: var(--panel); border: 3px solid var(--edge); border-radius: 16px; box-shadow: 0 5px 0 var(--shade), 0 12px 30px rgba(8, 6, 5,.25);
   padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 7px; animation: cx-slideup .3s cubic-bezier(.3,1.5,.6,1); }
 .cv-hint { font-size: 13px; color: var(--ink-l); line-height: 1.2; text-align: center; display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 18px; }
 .cv-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
@@ -40,20 +40,20 @@ const VSTYLE = `
 .cv-btns .btn.done { filter: saturate(.6); }
 @media (max-width: 380px) { .cv-btns .btn { font-size: 13px; } }
 .cv-help { position: relative; padding-bottom: 9px; animation: cx-bob 1.1s steps(4) infinite; }
-.cv-help .cv-hb { display: flex; align-items: center; gap: 3px; padding: 3px 9px 3px 5px; background: var(--mint); border: 3px solid var(--ink); border-radius: 12px;
-  box-shadow: inset 0 -4px 0 var(--mint-d), 0 3px 0 rgba(61,47,42,.3); font-weight: 700; font-size: 14px; white-space: nowrap; color: var(--ink); }
+.cv-help .cv-hb { display: flex; align-items: center; gap: 3px; padding: 3px 9px 3px 5px; background: var(--mint); border: 3px solid var(--edge); border-radius: 12px;
+  box-shadow: inset 0 -4px 0 var(--mint-d), 0 3px 0 rgba(8, 6, 5,.3); font-weight: 700; font-size: 14px; white-space: nowrap; color: var(--ink-dark); }
 .cv-help .cv-hb small { font-size: 11px; font-weight: 700; opacity: .75; margin-left: 2px; }
-.cv-help::after { content: ''; position: absolute; left: 50%; bottom: 1px; width: 10px; height: 10px; background: var(--mint); border: 3px solid var(--ink);
+.cv-help::after { content: ''; position: absolute; left: 50%; bottom: 1px; width: 10px; height: 10px; background: var(--mint); border: 3px solid var(--edge);
   border-top: 0; border-left: 0; transform: translateX(-50%) rotate(45deg); }
 .cv-help.busy { opacity: .6; }
-.cv-help.done .cv-hb { background: #fff; box-shadow: inset 0 -4px 0 #f0e8dc, 0 3px 0 rgba(61,47,42,.3); }
-.cv-help.done::after { background: #fff; }
+.cv-help.done .cv-hb { background: var(--surface); box-shadow: inset 0 -4px 0 var(--surface-2), 0 3px 0 rgba(8, 6, 5,.3); }
+.cv-help.done::after { background: var(--surface); }
 .cv-help.pop { animation: cx-bpop .25s ease-in forwards; }
 .cv-name { padding-bottom: 6px; }
-.cv-name > span { display: flex; align-items: center; gap: 4px; padding: 2px 9px 2px 5px; background: var(--primary); color: #fff; border: 3px solid var(--ink); border-radius: 10px;
-  box-shadow: inset 0 -4px 0 var(--primary-d), 0 3px 0 var(--ink); font-weight: 700; font-size: 13px; white-space: nowrap; text-shadow: 0 2px 0 rgba(61,47,42,.35); }
+.cv-name > span { display: flex; align-items: center; gap: 4px; padding: 2px 9px 2px 5px; background: var(--primary); color: #fff; border: 3px solid var(--edge); border-radius: 10px;
+  box-shadow: inset 0 -4px 0 var(--primary-d), 0 3px 0 var(--shade); font-weight: 700; font-size: 13px; white-space: nowrap; text-shadow: 0 2px 0 rgba(8, 6, 5,.35); }
 .cv-load { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; pointer-events: none; }
-.cv-load > div { pointer-events: auto; background: var(--panel); border: 3px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink); padding: 18px 22px;
+.cv-load > div { pointer-events: auto; background: var(--panel); border: 3px solid var(--edge); border-radius: 18px; box-shadow: 0 5px 0 var(--shade); padding: 18px 22px;
   display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: min(320px, calc(100% - 32px)); text-align: center; }
 .cv-load b { font-size: 18px; }
 .cv-load .cv-car { animation: cv-drive 1s steps(4) infinite; }
@@ -61,12 +61,12 @@ const VSTYLE = `
 .cv-heart { position: absolute; z-index: 45; pointer-events: none; animation: cv-rise var(--d, 1.6s) cubic-bezier(.2,.7,.4,1) forwards; }
 @keyframes cv-rise { 0% { transform: translate(-50%, 0) scale(.4); opacity: 0; } 15% { opacity: 1; transform: translate(-50%, -20px) scale(1.15); }
   100% { transform: translate(calc(-50% + var(--dx, 0px)), var(--dy, -320px)) scale(.9); opacity: 0; } }
-.cv-note textarea { width: 100%; min-height: 84px; resize: none; font-family: var(--font); font-size: 17px; color: var(--ink); background: #fff; border: 3px solid var(--ink);
+.cv-note textarea { width: 100%; min-height: 84px; resize: none; font-family: var(--font); font-size: 17px; color: var(--ink); background: var(--surface); border: 3px solid var(--edge);
   border-radius: 12px; padding: 8px 10px; box-sizing: border-box; }
 .cv-note .cv-count { text-align: right; font-size: 13px; color: var(--ink-l); margin-top: 4px; }
 .cv-note .cv-count.max { color: var(--coral); font-weight: 700; }
 .cv-note .cv-ideas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.cv-note .cv-ideas button { font-family: var(--font); font-size: 13px; background: #fff; border: 2px solid var(--ink); border-radius: 10px; padding: 3px 8px; color: var(--ink); cursor: pointer; }
+.cv-note .cv-ideas button { font-family: var(--font); font-size: 13px; background: var(--surface); border: 2px solid var(--edge); border-radius: 10px; padding: 3px 8px; color: var(--ink); cursor: pointer; }
 `;
 
 const NOTE_IDEAS = ['Linda ciudad. Me quedo a vivir.', 'Pasé a saludar.', 'Te copio la plaza, avisame si molesta.', 'Buen ritmo de obras.'];

@@ -8,29 +8,29 @@ import { THEMES, themeOf, currentThemeId } from './themes.js';
 import { buildingModel, natureModel } from './models.js';
 
 const STYLE = `
-.modal-back:has(.tp-modal) { background: rgba(61,47,42,.22); }
+.modal-back:has(.tp-modal) { background: rgba(8, 6, 5,.22); }
 @media (max-width: 640px) { .modal-back:has(.tp-modal) { align-items: end; } .tp-modal { max-height: 72%; } }
 .tp-modal { width: min(560px, 100%); }
 .tp-greet { margin: 0 0 6px; font-size: 16px; font-weight: 700; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px; }
 .tp-sub { margin: 0 0 10px; font-size: 14px; color: var(--ink-l); text-align: center; }
 .tp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .tp-card { position: relative; display: flex; flex-direction: column; padding: 0; overflow: hidden; text-align: left; font: inherit; color: var(--ink);
-  background: #fff; border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink); cursor: pointer; transition: transform .12s; }
-.tp-card:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--ink); }
+  background: var(--surface); border: 3px solid var(--edge); border-radius: 14px; box-shadow: 0 4px 0 var(--shade); cursor: pointer; transition: transform .12s; }
+.tp-card:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--shade); }
 .tp-card.on { outline: 4px solid var(--gold); outline-offset: 1px; }
-.tp-pic { position: relative; aspect-ratio: 4 / 3; border-bottom: 3px solid var(--ink); overflow: hidden; }
+.tp-pic { position: relative; aspect-ratio: 4 / 3; border-bottom: 3px solid var(--edge); overflow: hidden; }
 .tp-pic img { position: absolute; inset: 0; width: 100%; height: 100%; }
 .tp-pic .ph { position: absolute; inset: 0; display: grid; place-items: center; opacity: .6; }
 .tp-pic.stars::before { content: ''; position: absolute; inset: 0; pointer-events: none;
-  background-image: radial-gradient(circle at 14% 16%, #fff 0 1.5px, transparent 2px), radial-gradient(circle at 78% 10%, #fff 0 1.5px, transparent 2px),
+  background-image: radial-gradient(circle at 14% 16%, var(--surface) 0 1.5px, transparent 2px), radial-gradient(circle at 78% 10%, var(--surface) 0 1.5px, transparent 2px),
   radial-gradient(circle at 46% 26%, #fff 0 1px, transparent 1.5px), radial-gradient(circle at 90% 34%, #fff 0 1px, transparent 1.5px); }
 .tp-txt { padding: 6px 8px 8px; display: flex; flex-direction: column; gap: 3px; }
 .tp-txt b { font-size: 15px; line-height: 1.1; display: flex; align-items: center; gap: 4px; }
 .tp-txt small { font-size: 12px; line-height: 1.2; color: var(--ink-l); }
 .tp-sw { display: flex; gap: 3px; margin-top: 2px; }
-.tp-sw i { width: 14px; height: 14px; border: 2px solid var(--ink); border-radius: 4px; }
+.tp-sw i { width: 14px; height: 14px; border: 2px solid var(--edge); border-radius: 4px; }
 .tp-ok { position: absolute; top: 6px; right: 6px; z-index: 2; display: none; align-items: center; gap: 2px; padding: 1px 7px 1px 3px; font-size: 12px; font-weight: 700;
-  background: var(--gold); border: 2px solid var(--ink); border-radius: 99px; box-shadow: 0 2px 0 var(--ink); }
+  background: var(--gold); border: 2px solid var(--edge); border-radius: 99px; box-shadow: 0 2px 0 var(--shade); color: var(--ink-dark); }
 .tp-card.on .tp-ok { display: flex; }
 `;
 

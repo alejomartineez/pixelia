@@ -54,8 +54,8 @@ function guaranteeChip(def) {
 }
 const slotsChip = (def) => {
   const st = stickerDropsForChest(def.id);
-  return `<span class="chx-rchip" style="--rcl:#fff">${icon('gift', 14)}${def.slots} premios</span>`
-    + (st.n ? `<span class="chx-rchip" style="--rcl:#fbf6ef">${packIcon(16)}+${st.n} hallazgos</span>` : '');
+  return `<span class="chx-rchip" style="--rcl:var(--surface)">${icon('gift', 14)}${def.slots} premios</span>`
+    + (st.n ? `<span class="chx-rchip" style="--rcl:var(--surface-2)">${packIcon(16)}+${st.n} hallazgos</span>` : '');
 };
 
 // ---------- "¿Qué puede salir?" ----------

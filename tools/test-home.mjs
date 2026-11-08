@@ -1,6 +1,6 @@
 // Mi Casa (Fase 4), con la interfaz real y el modo online de prueba:
 // la casa aparece en la ciudad → Entrar → Decorar: comprar y poner un mueble, arrastrarlo, rotarlo, guardarlo, uno de pared,
-// paredes y piso → el ropero abre el Vestidor → volver → recarga conserva todo → ampliar niveles 2 a 5 → visita a la casa de una amistad.
+// paredes y piso → el ropero abre el Equipaje → volver → recarga conserva todo → ampliar niveles 2 a 5 → visita a la casa de una amistad.
 // Toma capturas de cada nivel de la casa para revisarlas a ojo.
 //
 //   node tools/test-home.mjs [--device iphone|desktop] [--out carpeta] [--no-shots]
@@ -212,14 +212,14 @@ try {
   await sleep(900);
   await shot(dani, 'casa-decorada');
 
-  section('El ropero abre el Vestidor');
+  section('El ropero abre el Equipaje');
   const wr = (await homeItems(dani)).find(i => i.id === 'ropero');
   const wp = await itemScreen(dani, wr.uid);
   await tapXY(dani, wp.x, wp.y - 10);
-  ok(await waitFor(dani, `window.__pixelia.ctx.router.current === 'wardrobe'`, 8000), 'tocar el ropero abre el Vestidor');
+  ok(await waitFor(dani, `window.__pixelia.ctx.router.current === 'wardrobe'`, 8000), 'tocar el ropero abre el Equipaje');
   await sleep(1200);
   await tap(dani, '.wd-back');
-  ok(await waitFor(dani, `window.__pixelia.ctx.router.current === 'home'`, 8000), 'volver del Vestidor vuelve a la casa');
+  ok(await waitFor(dani, `window.__pixelia.ctx.router.current === 'home'`, 8000), 'volver del Equipaje vuelve a la casa');
   await sleep(1000);
   await tap(dani, '.scene-home .hm-back');
   ok(await waitFor(dani, `window.__pixelia.ctx.router.current === 'city'`, 8000), 'volver lleva a la ciudad');

@@ -36,8 +36,8 @@ cada paso.
 | 2a | A: logo Dezings | hecho | (commit v26) |
 | 2b | E8: textos viejos, "Tocá" → "Hacé clic", pistas de misiones (`hintFor`, que adelanta E2) | hecho | (commit v26) |
 | 2c | G: Ajustes completos, más el ajuste de la ventana al monitor | hecho | (commit v27) |
-| 2d | J6 interfaz oscura + J7 fuera lo tierno (solo personas, estilos nuevos, guardado v4) | **siguiente** | |
-| 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | pendiente | |
+| 2d | J6 interfaz oscura + J7 fuera lo tierno (solo personas, estilos nuevos, guardado v4) | hecho | (commit v29) |
+| 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | **siguiente** | |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | pendiente | |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | pendiente | |
 | 4 | B: cinemática "El Quiebre" | pendiente | |
@@ -162,7 +162,48 @@ cada paso.
   los sonidos `tap/open/close/select/swoosh` van por `ui`). `volVoice` está guardado (1 por defecto) sin deslizador:
   el mezclador nuevo lo usa y suma la fila "Voces" en la pestaña Sonido (`panels-settings.js`, `PANES.sound`).
 
+**Paso 2d: interfaz oscura y fuera lo tierno**
+- **Tokens** (`styles.css`, `:root`; la tabla está en DESIGN.md → "Interfaz oscura"): `--ink` ahora es texto **claro**;
+  los bordes usan `--edge` (casi negro) y las sombras `--shade`. Nuevos: `--ink-dark` (texto sobre dorado, menta y cielo),
+  `--metal`/`--metal-l` (marco de los modales), `--wood`/`--wood-d` (cabecera de los modales, título en `--gold-t`),
+  `--page`, `--coral-l` y un `-t` por acento (texto sobre oscuro). `--second` pasó a ser el azul Dezings.
+  `color-scheme: dark`. **Regla para lo nuevo**: texto con `--ink*`, bordes con `--edge`, sombras con `--shade`, nunca hex.
+- **Cómo se convirtió lo viejo**: un script mapeó los colores claros fijos de `styles.css` y del CSS dentro de los JS
+  (fondos → `--surface*`/`--rule` o un tono oscuro del mismo matiz; `var(--ink)` en bordes → `--edge`, en sombras →
+  `--shade`; `color: var(--X-d)` → `var(--X-t)`). Después, a mano: rellenos claros con texto (`--ink-dark`), contornos de
+  texto de cofres (`OUT2`/`OUT3`), colores de datos con `color-mix` (temporada `setTheme`, rarezas y cofres en
+  `chests-ui-common.js`, sets de Hallazgos en `album-ui.js`), splash inline de `index.html` (cielo de noche) y la
+  cabecera de la temporada. **No se tocaron**: las láminas de Hallazgos (`album-art.js`, son ilustración) y el 3D de la
+  ciudad (eso es el 3b).
+- **Escenarios 3D de interfaz**: Equipaje y onboarding con fondo `0x1d1916`. La "boutique rosa" ahora es la Sastrería:
+  `withTailor()` en `wardrobe-stage.js` re-mapea los colores al armar tarima, Sastrería y taller (`tailor()`, con
+  `toHsl`/`fromHsl` exportados de `themes.js`); las lucecitas no se tocan.
+- **Solo personas**: fuera gato, zorro, conejo y oso de `AVATAR_TYPES` y la familia "Animales". `LEGACY_TYPES` los traduce
+  (gato y conejo → chica, zorro y oso → chico): perfiles de contactos viejos se ven como personas. `randomLook` ya no
+  saca animales (conserva la tirada para que los vecinos no cambien). El código de pelajes de `avatar*.js` quedó sin uso.
+- **Piezas retiradas** (`RETIRED_ITEMS` en `data.js`, con su precio): todo lo de animales más orejas de gato, antenas,
+  tutú y alas de hada.
+- **Estilos de ciudad**: pueblo, otoño, **musgo** (era bosque), **ceniza** (era moderna), **bruma** (era playa), **ocaso**
+  (nuevo), **escarcha** (era invierno, sin muñeco de nieve) y noche. `THEME_ALIASES` cubre los ids viejos (visitas).
+- **Renombres**: Vestidor → **Equipaje** en todo el juego; la Boutique ya se llamaba Sastrería. 49 nombres de Hallazgos
+  sin diminutivos ni ternura (ids iguales: no afecta álbumes ni intercambios).
+- **Guardado v4** (`migrateV4` en `state.js`, `VERSION = 4`): animal → persona con el mismo color de pelo y de ropa,
+  looks guardados de animales afuera, piezas retiradas devueltas en la moneda en que se pagaron, estilo viejo → nuevo.
+  Queda `s.v4 { from, theme, coins, gems, shown }`; el aviso "La isla cambió" va en "Mientras no estabas…" (`v4Lines` de
+  `main.js`, `arrival.js`). Partidas nuevas o sin cambios no lo ven.
+- **Tests**: `test-migration.mjs` suma la sección v3 → v4 (16 chequeos: oso → chico, devolución de 1.850 monedas y
+  27 gemas, playa → bruma, aviso único, segunda carga sin cambios, perfil de contacto viejo). `test-e2e.mjs` usa Chico y
+  Ocaso en el onboarding.
+
 ## Pendiente o frágil
+- **J7 a medias en el arte de los personajes**: siguen siendo chibi (ojos grandes, cachetes). El plan pide cuerpos,
+  peinados y ropa de viajero "con el mundo": es trabajo de modelos en `avatar*.js` (también borrar el código de pelajes).
+  Lo mismo para algunas piezas de disfraz que quedaron (hada, mago, Calabaza rodante del auto). Conviene hacerlo con el
+  acto 1 (paso 6) o antes si molesta.
+- **Interfaz oscura**: se revisó por captura la ciudad con HUD, Misiones, Ajustes, Cofres, Contactos, Hallazgos, Estilos,
+  Temporada, Equipaje y onboarding. No se miraron una por una: Mi Casa por dentro, visitas, colocación, expedición,
+  amenazas y Obras; si algo quedó claro o sin contraste, es un color fijo que el script no agarró (buscar `#f`/`#e` en
+  `background` del archivo de esa pantalla).
 - **Ajustes que todavía no se usan**: diálogos, cinemáticas vistas, combate, subtítulos y alto contraste se guardan
   pero los usan los pasos 3 a 5 (leer `ctx.state.settings`). "Volver a ver la intro" va en Partida o en la Bitácora
   cuando exista la intro (paso 4).

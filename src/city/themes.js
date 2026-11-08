@@ -14,7 +14,7 @@
 export const DEFAULT_THEME = 'pueblo';
 
 // ---------- HSL ----------
-function toHsl(n) {
+export function toHsl(n) {
   const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
   const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
   let h = 0, s = 0;
@@ -25,7 +25,7 @@ function toHsl(n) {
   }
   return [h, Math.min(1, s), l, d];
 }
-function fromHsl(h, s, l) {
+export function fromHsl(h, s, l) {
   h = ((h % 360) + 360) % 360; s = Math.max(0, Math.min(1, s)); l = Math.max(0, Math.min(1, l));
   const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
   const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
@@ -106,34 +106,10 @@ export const THEMES = [
     },
   },
   {
-    id: 'moderna', name: 'Ciudad Moderna', emoji: '🏙️', desc: 'Vidrio, grises cálidos y toques turquesa.',
-    swatch: ['#d9d2c8', '#5c6b7a', '#2ec4b6', '#9fd8e8'],
-    sky: 'linear-gradient(180deg, #cfe6f2 0%, #e4eef2 40%, #f2ece4 75%, #e9e2d8 100%)', stars: 0,
-    lights: { sky: 0xffffff, ground: 0xc9c2b8, hemi: 1.11, sun: 0xfff6ea, sunI: 2.56 },
-    ground: { inA: '#a8d49a', inB: '#9ecb90', outA: '#8eb39a', outB: '#87ac93', tuftIn: '#8fc283', tuftOut: '#76998a',
-      lightIn: '#bfe2b0', lightOut: '#a3c4ac', rim: '#e8e2d8', shadowOut: '#6f8f80', lip: '#d8d1c6',
-      flowers: ['#ffffff', '#2ec4b6', '#f2c14e', '#e8e2d8', '#ffffff'] },
-    cliff: { top: '#86b88e', grass: '#7aa982', dirt: '#cfc6b8',
-      bands: [['#cfc6b8', '#c4bbac'], ['#b8afa2', '#ada496'], ['#9e9890', '#948e86'], ['#86848a', '#7d7b82'], ['#6e6f78', '#666770']],
-      gems: ['#2ec4b6', '#9fd8e8'], isletTop: '#a2cf96' },
-    cloud: ['#ffffff', '#f4f6f8', '#e2e7ec'],
-    nature: [['roundtree', 0.34], ['hedge', 0.24], ['bush', 0.14], ['flowers', 0.12], ['rock', 0.1], ['pine', 0.06]],
-    fam: {
-      pink: (h, s, l) => (l > 0.72 ? [32, 0.14, Math.min(0.9, l * 1.04)] : l > 0.64 ? [210, 0.12, l * 0.5] : [176, 0.62, l * 0.82]),
-      red: (h, s, l) => [176, 0.55, l * 0.8],
-      lilac: (h, s, l) => [212, s * 0.2, l * 0.62],
-      mint: (h, s, l) => [176, Math.min(1, s * 1.05), l * 0.9],
-      sky: (h, s, l) => [196, s * 0.75, l],
-      gold: (h, s, l) => [42, s * 0.75, l * 0.96],
-      orange: (h, s, l) => [26, s * 0.45, l * 0.78],
-      green: (h, s, l) => [128, s * 0.62, l * 0.9],
-      neutral: (h, s, l) => (l > 0.9 ? [36, 0.18, l * 0.97] : l > 0.3 ? [30, 0.07, l * 0.96] : [220, 0.18, l]),
-    },
-  },
-  {
-    id: 'bosque', name: 'Bosque', emoji: '🍄', desc: 'Maderas, verdes profundos, hongos y faroles cálidos.',
+    // Reemplaza a "Bosque" (alias bosque → musgo).
+    id: 'musgo', name: 'Musgo', emoji: '🌿', desc: 'Piedra con musgo, maderas viejas y faroles cálidos.',
     swatch: ['#8a5a3a', '#2f6b45', '#c8423a', '#ffc861'],
-    sky: 'linear-gradient(180deg, #8fb7a5 0%, #b9d4b5 38%, #e6dfb8 72%, #f2d7a6 100%)', stars: 0.35,
+    sky: 'linear-gradient(180deg, #7f9c92 0%, #a3b8a6 38%, #cfcaa8 72%, #dcc49a 100%)', stars: 0.35,
     lights: { sky: 0xfff3d6, ground: 0x6f8f5a, hemi: 1.04, sun: 0xffe2b0, sunI: 2.32 },
     ground: { inA: '#6fae5c', inB: '#67a556', outA: '#4f8a52', outB: '#4a824d', tuftIn: '#5b9a4c', tuftOut: '#3d6f42',
       lightIn: '#86c26e', lightOut: '#5f9a5c', rim: '#a5cf86', shadowOut: '#355f3b', lip: '#6d9a5e',
@@ -157,34 +133,88 @@ export const THEMES = [
     },
   },
   {
-    id: 'playa', name: 'Playa Tropical', emoji: '🏝️', desc: 'Arena, mar turquesa y palmeras.',
-    swatch: ['#f3dca4', '#22c2c9', '#ff8a6b', '#3fb55a'],
-    sky: 'linear-gradient(180deg, #7fd6f5 0%, #aee6f6 40%, #dff6f2 72%, #fff1cf 100%)', stars: 0,
-    lights: { sky: 0xffffff, ground: 0xe8d6a8, hemi: 1.18, sun: 0xfff1d6, sunI: 2.62 },
-    ground: { inA: '#f2dda6', inB: '#ecd59c', outA: '#8fd17a', outB: '#86c872', tuftIn: '#e3c98c', tuftOut: '#6fb563',
-      lightIn: '#fbecc4', lightOut: '#a8e08e', rim: '#fff6dc', shadowOut: '#d9bf86', lip: '#ffffff',
-      flowers: ['#ffffff', '#ff8a6b', '#ffd34d', '#22c2c9', '#ff6fa0'] },
-    cliff: { top: '#f2dda6', grass: '#e8cf92', dirt: '#e0c084',
-      bands: [['#5fd6d6', '#48cccf'], ['#e6c88e', '#dcbd83'], ['#d2b07a', '#c8a672'], ['#b99a6e', '#ae9068'], ['#9c8466', '#927b60']],
-      gems: ['#ff8a6b', '#ffffff'], isletTop: '#f2dda6' },
-    cloud: ['#ffffff', '#f8fcff', '#e6f4fa'],
-    nature: [['palm', 0.42], ['bush', 0.18], ['flowers', 0.14], ['rock', 0.14], ['tree', 0.12]],
+    // Reemplaza a "Ciudad Moderna" (alias moderna → ceniza): piedra volcánica, pizarra y brasas en las ventanas.
+    id: 'ceniza', name: 'Ceniza', emoji: '🌋', desc: 'Piedra volcánica, techos de pizarra y brasas en las ventanas.',
+    swatch: ['#5d5a58', '#8a8580', '#d9653b', '#9a9a7a'],
+    sky: 'linear-gradient(180deg, #7e8088 0%, #9d9b9a 40%, #c2b2a0 76%, #d39c76 100%)', stars: 0.25,
+    lights: { sky: 0xf2ebe4, ground: 0x8a7f74, hemi: 1.0, sun: 0xffd6b0, sunI: 2.2 },
+    ground: { inA: '#8c9670', inB: '#848e69', outA: '#717860', outB: '#6b7259', tuftIn: '#7d8763', tuftOut: '#5b6150',
+      lightIn: '#a1aa84', lightOut: '#838a70', rim: '#b6b49c', shadowOut: '#505447', lip: '#9a9785',
+      flowers: ['#d9d2c4', '#d9653b', '#c9a24e', '#8a8580', '#e3ddd0'] },
+    cliff: { top: '#7b8463', grass: '#6c7458', dirt: '#7d746c',
+      bands: [['#6e6a66', '#66625e'], ['#5c5856', '#55524f'], ['#4b4846', '#454240'], ['#3c3a39', '#373534'], ['#2f2e2e', '#2a2929']],
+      gems: ['#d9653b', '#ffb36b'], isletTop: '#858e69' },
+    cloud: ['#d9d6d2', '#c7c3bf', '#aaa5a1'],
+    nature: [['pine', 0.26], ['rock', 0.24], ['tree', 0.2], ['bush', 0.16], ['lamp', 0.08], ['flowers', 0.06]],
+    litWindows: '#ffb36b',
+    exact: { '#bfe8ff': '#ffc58a', '#93d0f2': '#f0954f' },
     fam: {
-      pink: (h, s, l) => (l > 0.8 ? [42, 0.62, Math.max(l, 0.82)] : l > 0.7 ? [14, 0.92, 0.76] : [8, 0.8, l * 0.95]),
-      red: (h, s, l) => [8, Math.min(1, s), l],
-      lilac: (h, s, l) => [183, s * 0.85, l * 0.92],
-      mint: (h, s, l) => [174, Math.min(1, s * 1.05), l],
-      sky: (h, s, l) => [186, Math.min(1, s * 1.1), l],
-      gold: (h, s, l) => [47, s, l],
-      orange: (h, s, l) => [32, s * 0.7, Math.min(0.8, l * 1.12)],
-      green: (h, s, l) => [108, s, l * 0.95],
-      neutral: (h, s, l) => (l > 0.9 ? [42, s * 0.6, l] : l > 0.3 ? [38, 0.3, l] : [200, 0.3, l]),
+      pink: (h, s, l) => (l > 0.8 ? [30, 0.08, l * 0.86] : [215, 0.07, l * 0.56]),   // techos: pizarra
+      lilac: (h, s, l) => [24, s * 0.12, l * 0.6],
+      red: (h, s, l) => [12, 0.72, l * 0.85],                                        // brasas
+      orange: (h, s, l) => [20, s * 0.45, l * 0.72],
+      gold: (h, s, l) => [36, s * 0.6, l * 0.86],
+      green: (h, s, l) => [78, s * 0.32, l * 0.76],
+      mint: (h, s, l) => [150, s * 0.15, l * 0.7],
+      sky: (h, s, l) => [205, s * 0.16, l * 0.76],
+      neutral: (h, s, l) => (l > 0.9 ? [30, 0.06, l * 0.84] : l > 0.3 ? [25, 0.05, l * 0.74] : [h, s, l]),
     },
   },
   {
-    id: 'invierno', name: 'Invierno Nevado', emoji: '⛄', desc: 'Nieve en los techos, azules helados y luces.',
+    // Reemplaza a "Playa Tropical" (alias playa → bruma): la costa de los faros.
+    id: 'bruma', name: 'Bruma', emoji: '⚓', desc: 'Costa gris, bruma baja y faroles en el muelle.',
+    swatch: ['#8fa3ab', '#4f6470', '#c9b98f', '#6f8f7e'],
+    sky: 'linear-gradient(180deg, #93a5ae 0%, #b3c1c5 40%, #ced6d4 72%, #ddd8cc 100%)', stars: 0.2,
+    lights: { sky: 0xeef3f4, ground: 0xa0a9a4, hemi: 1.06, sun: 0xf3efe6, sunI: 2.1 },
+    ground: { inA: '#93a994', inB: '#8ba18c', outA: '#7b8f84', outB: '#74887d', tuftIn: '#86998a', tuftOut: '#62756c',
+      lightIn: '#a9bca8', lightOut: '#8ea195', rim: '#c4cfc6', shadowOut: '#57695f', lip: '#b1bdb6',
+      flowers: ['#e6e8e2', '#c9b98f', '#8fa3ab', '#b77f6a', '#e6e8e2'] },
+    cliff: { top: '#7f9584', grass: '#718676', dirt: '#9a968a',
+      bands: [['#8c949a', '#848c92'], ['#767f87', '#6f777f'], ['#636b74', '#5c646c'], ['#525960', '#4b5259'], ['#41474e', '#3b4148']],
+      gems: ['#c9e4ec', '#ffd88a'], isletTop: '#8aa08c' },
+    cloud: ['#eef1f2', '#dde3e5', '#c4ccd0'],
+    nature: [['rock', 0.26], ['pine', 0.22], ['bush', 0.18], ['tree', 0.14], ['flowers', 0.1], ['lamp', 0.1]],
+    exact: { '#bfe8ff': '#ffe4a8', '#93d0f2': '#e9c27a' },
+    fam: {
+      pink: (h, s, l) => (l > 0.8 ? [40, 0.12, l * 0.9] : [200, 0.2, l * 0.66]),     // techos: pizarra azulada
+      red: (h, s, l) => [10, 0.42, l * 0.76],
+      lilac: (h, s, l) => [196, s * 0.3, l * 0.62],
+      mint: (h, s, l) => [176, s * 0.4, l * 0.84],
+      sky: (h, s, l) => [196, s * 0.42, l * 0.88],
+      gold: (h, s, l) => [42, s * 0.5, l * 0.9],
+      orange: (h, s, l) => [22, s * 0.4, l * 0.78],
+      green: (h, s, l) => [148, s * 0.36, l * 0.8],
+      neutral: (h, s, l) => (l > 0.9 ? [200, 0.08, l * 0.9] : l > 0.3 ? [200, 0.06, l * 0.88] : [210, 0.15, l]),
+    },
+  },
+  {
+    id: 'ocaso', name: 'Ocaso', emoji: '🌇', desc: 'Cielo de brasas, sombras largas y ventanas que se prenden.',
+    swatch: ['#3a2f4f', '#c4643f', '#f0a35a', '#6d5a4a'],
+    sky: 'linear-gradient(180deg, #2c2a48 0%, #5f4566 34%, #b8624a 70%, #eb9d58 100%)', stars: 0.6,
+    lights: { sky: 0xffd2b0, ground: 0x5d4250, hemi: 0.96, sun: 0xffa968, sunI: 2.05 },
+    ground: { inA: '#7f8a58', inB: '#788352', outA: '#636b4c', outB: '#5d6547', tuftIn: '#707a4f', tuftOut: '#4f5640',
+      lightIn: '#949d66', lightOut: '#757d58', rim: '#b0a774', shadowOut: '#454a3a', lip: '#8e8862',
+      flowers: ['#f4d9b0', '#d9653b', '#f0a35a', '#9a6aa0', '#f4d9b0'] },
+    cliff: { top: '#6f7a50', grass: '#626c47', dirt: '#8a6650',
+      bands: [['#7c5a4c', '#735346'], ['#664a42', '#5e443d'], ['#523d3b', '#4b3836'], ['#423235', '#3c2d30'], ['#33282d', '#2d2328']],
+      gems: ['#f0a35a', '#ffd27a'], isletTop: '#7a8553' },
+    cloud: ['#f0b48a', '#c98a78', '#8a6478'],
+    nature: [['tree', 0.3], ['pine', 0.24], ['bush', 0.16], ['rock', 0.14], ['lamp', 0.08], ['flowers', 0.08]],
+    litWindows: '#ffc46a',
+    exact: { '#bfe8ff': '#ffd08a', '#93d0f2': '#f6a95a' },
+    fam: {
+      gold: (h, s, l) => [h, s, l * 0.95],
+      pink: (h, s, l) => [towards(h, 10, 0.5), s * 0.72, l * 0.74],
+      green: (h, s, l) => [towards(h, 62, 0.35), s * 0.6, l * 0.74],
+      neutral: (h, s, l) => (l > 0.9 ? [30, 0.3, l * 0.86] : [towards(h, 18, 0.4), Math.max(s, 0.1), l * 0.8]),
+      _: (h, s, l) => [towards(h, 22, 0.25), s * 0.8, l * 0.8],
+    },
+  },
+  {
+    // Reemplaza a "Invierno Nevado" (alias invierno → escarcha).
+    id: 'escarcha', name: 'Escarcha', emoji: '❄️', desc: 'Escarcha en los techos, azules fríos y luces cálidas.',
     swatch: ['#f4f8ff', '#9cc6f0', '#3d5a8c', '#d8433f'],
-    sky: 'linear-gradient(180deg, #b8cdea 0%, #d6e3f4 40%, #eef3fb 75%, #ffffff 100%)', stars: 0.7,
+    sky: 'linear-gradient(180deg, #9fb1c9 0%, #bfcbdc 40%, #dbe2ea 75%, #eef0f2 100%)', stars: 0.7,
     lights: { sky: 0xf4f8ff, ground: 0xb9c8e6, hemi: 1.15, sun: 0xf2f6ff, sunI: 2.32 },
     ground: { inA: '#e4ecf8', inB: '#dae4f3', outA: '#cfdaeb', outB: '#c8d4e7', tuftIn: '#cbd8ec', tuftOut: '#b8c7de',
       lightIn: '#f7faff', lightOut: '#e2eaf6', rim: '#ffffff', shadowOut: '#a9bad4', lip: '#f4f8ff',
@@ -193,7 +223,7 @@ export const THEMES = [
       bands: [['#a9b8cf', '#9fafc8'], ['#8f9fbb', '#8697b4'], ['#7a87a6', '#727f9f'], ['#656f91', '#5e688a'], ['#525a7c', '#4b5375']],
       gems: ['#bfe8ff', '#ffffff'], isletTop: '#f4f8ff' },
     cloud: ['#ffffff', '#f2f6fc', '#dce5f2'],
-    nature: [['pine', 0.42], ['snowman', 0.1], ['tree', 0.16], ['bush', 0.12], ['rock', 0.14], ['flowers', 0.06]],
+    nature: [['pine', 0.44], ['tree', 0.16], ['rock', 0.2], ['bush', 0.12], ['lamp', 0.04], ['flowers', 0.04]],
     snow: ['#ffffff', '#eef4fc'], snowAmount: 0.78,
     exact: { '#bfe8ff': '#ffe7a3', '#93d0f2': '#f2c46a' },
     fam: {
@@ -236,7 +266,8 @@ export const THEMES = [
 ];
 
 /** Ids viejos que ya no están en la lista: los guardados (y las ciudades que se visitan) los siguen teniendo. */
-export const THEME_ALIASES = { pastel: 'otono' };
+// v4 (plan §J7): los estilos de antes pasan a los del mundo de El Quiebre (migrateV4 los cambia en el guardado).
+export const THEME_ALIASES = { pastel: 'otono', moderna: 'ceniza', playa: 'bruma', bosque: 'musgo', invierno: 'escarcha' };
 export const THEME_BY_ID = Object.fromEntries(THEMES.map(t => [t.id, t]));
 for (const [old, to] of Object.entries(THEME_ALIASES)) Object.defineProperty(THEME_BY_ID, old, { value: THEME_BY_ID[to], enumerable: false });
 export const themeOf = (id) => THEME_BY_ID[id] || THEME_BY_ID[DEFAULT_THEME];

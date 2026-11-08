@@ -46,7 +46,7 @@ function onPress(el, fn) {
 
 export const PLACE_STYLE = `
 .cx-placebar { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 10px); z-index: 30; width: min(460px, calc(100% - 16px));
-  background: var(--panel); border: 3px solid var(--ink); border-radius: 14px; box-shadow: 0 4px 0 var(--ink), 0 10px 24px rgba(61,47,42,.2); padding: 7px 10px 8px;
+  background: var(--panel); border: 3px solid var(--edge); border-radius: 14px; box-shadow: 0 4px 0 var(--shade), 0 10px 24px rgba(8, 6, 5,.2); padding: 7px 10px 8px;
   display: flex; align-items: center; gap: 10px; animation: cx-slideup .22s ease-out; }
 @keyframes cx-slideup { from { transform: translate(-50%, 30px); opacity: 0; } }
 .cx-pb-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -62,22 +62,22 @@ export const PLACE_STYLE = `
   transform: translate(-9999px, 0); transition: opacity .12s; will-change: transform; }
 .cx-pc.drag { opacity: 0; }
 .cx-pc.drag .cx-pc-b { pointer-events: none; }
-.cx-pc-why { background: #fff; border: 3px solid var(--ink); border-radius: 10px; box-shadow: 0 3px 0 var(--ink); padding: 2px 9px; font-weight: 700; font-size: 13px;
+.cx-pc-why { background: var(--surface); border: 3px solid var(--edge); border-radius: 10px; box-shadow: 0 3px 0 var(--shade); padding: 2px 9px; font-weight: 700; font-size: 13px;
   white-space: nowrap; color: var(--coral); max-width: 78vw; overflow: hidden; text-overflow: ellipsis; }
 .cx-pc-why:empty { display: none; }
 .cx-pc-row { display: flex; gap: 10px; }
-.cx-pc-b { pointer-events: auto; width: 46px; height: 46px; padding: 0; display: grid; place-items: center; border: 3px solid var(--ink); border-radius: 50%;
-  background: #fff; box-shadow: inset 0 -4px 0 #f0e8dc, 0 3px 0 var(--ink); cursor: pointer; }
-.cx-pc-b:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 -2px 0 #f0e8dc, 0 1px 0 var(--ink); }
-.cx-pc-b.cx-pc-ok { background: var(--mint); box-shadow: inset 0 -4px 0 var(--mint-d), 0 3px 0 var(--ink); width: 54px; height: 54px; margin-top: -4px; }
+.cx-pc-b { pointer-events: auto; width: 46px; height: 46px; padding: 0; display: grid; place-items: center; border: 3px solid var(--edge); border-radius: 50%;
+  background: var(--surface); box-shadow: inset 0 -4px 0 var(--surface-2), 0 3px 0 var(--shade); cursor: pointer; }
+.cx-pc-b:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 -2px 0 var(--surface-2), 0 1px 0 var(--shade); }
+.cx-pc-b.cx-pc-ok { background: var(--mint); box-shadow: inset 0 -4px 0 var(--mint-d), 0 3px 0 var(--shade); width: 54px; height: 54px; margin-top: -4px; color: var(--ink-dark); }
 .cx-pc-b:disabled { filter: grayscale(.8) opacity(.6); cursor: default; }
 .cx-pc-b img.pi { width: 24px; height: 24px; }
 .cx-pc-ok img.pi { width: 28px; height: 28px; }
 
-.cx-undo { pointer-events: auto; display: flex; align-items: center; gap: 5px; padding: 4px 11px 4px 7px; background: #fff; border: 3px solid var(--ink); border-radius: 12px;
-  box-shadow: 0 3px 0 var(--ink); font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); white-space: nowrap; margin-bottom: 6px; cursor: pointer;
+.cx-undo { pointer-events: auto; display: flex; align-items: center; gap: 5px; padding: 4px 11px 4px 7px; background: var(--surface); border: 3px solid var(--edge); border-radius: 12px;
+  box-shadow: 0 3px 0 var(--shade); font: inherit; font-weight: 700; font-size: 14px; color: var(--ink); white-space: nowrap; margin-bottom: 6px; cursor: pointer;
   animation: cx-undo-in .2s ease-out; }
-.cx-undo:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.cx-undo:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shade); }
 @keyframes cx-undo-in { from { opacity: 0; margin-bottom: 0; } }
 `;
 

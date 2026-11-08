@@ -10,8 +10,8 @@ const CSS = `
 .pnl-ws h4.pnl-ws-h { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 19px; }
 .pnl-ws h4.pnl-ws-h small { margin-left: auto; font-size: 14px; color: var(--ink-l); font-weight: 700; }
 .pnl-ws .pnl-ws-list { display: flex; flex-direction: column; gap: 6px; }
-.pnl-ws .pnl-ws-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2px 8px; padding: 6px 8px; background: #fff;
-  border: 2px solid var(--ink); border-radius: 12px; }
+.pnl-ws .pnl-ws-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 2px 8px; padding: 6px 8px; background: var(--surface);
+  border: 2px solid var(--edge); border-radius: 12px; }
 .pnl-ws .pnl-ws-item.lock { background: var(--panel-2); color: var(--ink-l); }
 .pnl-ws .pnl-ws-item .ic { grid-row: span 2; }
 .pnl-ws .pnl-ws-item b { font-size: 17px; }

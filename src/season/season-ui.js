@@ -21,7 +21,7 @@ function storageToast(parts) {
   const where = parts.filter(p => p.kind !== 'coins' && p.kind !== 'gems');
   if (!where.length) return;
   const p = where[0];
-  const dest = p.kind === 'chest' ? 'a tus cofres' : p.kind === 'item' ? 'a tu mochila' : p.kind === 'equip' ? 'para tus expediciones' : p.kind === 'stickers' ? 'para tus Hallazgos' : p.kind === 'mats' ? 'para tus obras' : p.kind === 'furniture' ? 'para tu casa' : 'a tu vestidor';
+  const dest = p.kind === 'chest' ? 'a tus cofres' : p.kind === 'item' ? 'a tu mochila' : p.kind === 'equip' ? 'para tus expediciones' : p.kind === 'stickers' ? 'para tus Hallazgos' : p.kind === 'mats' ? 'para tus obras' : p.kind === 'furniture' ? 'para tu casa' : 'a tu Equipaje';
   toast(`¡${partLabel(p)} ${dest}!`, { icon: p.kind === 'cosmetic' ? 'dress' : p.kind === 'stickers' ? '🃏' : 'gift', type: 'good' });
 }
 const partsLine = (parts, size = 22) => `<span class="ssn-parts">${parts.map(p => partChip(p, size)).join('')}</span>`;

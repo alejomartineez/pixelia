@@ -4,7 +4,7 @@
 //               misión actual · [hoy] chips: amenaza que viene, diarias y "N edificios para renovar"
 //  derecha:     [hoy] Expedición (con las provisiones), Cofres · [temporada] Pase y eventos en un botón ·
 //               [largo plazo] Obras (monumentos), Hallazgos
-//  abajo:       Vestidor · Construir (al centro) · Contactos
+//  abajo:       Equipaje · Construir (al centro) · Contactos
 // Metas: ≤ 14 controles y ≤ 4 globitos a la vez (los de más prioridad; ver BADGE_ORDER). Cada función aparece cuando se
 // abre (apertura escalonada, unlocks.js). Los globitos se refrescan con eventos del bus y cada 30 s; los números, cada segundo.
 import { bus } from './bus.js';
@@ -87,7 +87,7 @@ function render() {
       </div>
     </div>
     <nav class="hud-bottom">
-      <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>Vestidor</span></button>
+      <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>Equipaje</span></button>
       <button class="hud-btn big" data-act="build">${icon('hammer', 38)}<span>Construir</span></button>
       <button class="hud-btn" data-act="social" style="display:none">${icon('people', 30)}<span>Contactos</span><i class="badge" data-badge="social"></i></button>
     </nav>`;

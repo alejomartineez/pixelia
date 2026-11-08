@@ -18,25 +18,25 @@ const CSS = `
 .pnl-ex .pnl-ex-active { display: flex; align-items: center; gap: 10px; background: var(--gold-l); }
 .pnl-ex .pnl-ex-active span { flex: 1; min-width: 0; }
 .pnl-ex .pnl-ex-regs { display: flex; flex-direction: column; gap: 6px; }
-.pnl-ex .pnl-ex-reg { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; padding: 6px 8px; background: #fff;
-  border: 2px solid var(--ink); border-radius: 12px; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.pnl-ex .pnl-ex-reg { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; padding: 6px 8px; background: var(--surface);
+  border: 2px solid var(--edge); border-radius: 12px; text-align: left; font: inherit; color: inherit; cursor: pointer; }
 .pnl-ex .pnl-ex-reg.sel { background: var(--mint-l); box-shadow: inset 0 0 0 2px var(--mint-d); }
 .pnl-ex .pnl-ex-reg.lock { background: var(--panel-2); color: var(--ink-l); cursor: default; }
 .pnl-ex .pnl-ex-reg b { font-size: 17px; }
 .pnl-ex .pnl-ex-reg small { font-size: 13px; color: var(--ink-l); display: inline-flex; gap: 3px; align-items: center; }
 .pnl-ex .pnl-ex-zones { grid-column: 1 / -1; display: flex; align-items: center; gap: 0; }
 .pnl-ex .pnl-ex-zone { display: flex; flex-direction: column; align-items: center; min-width: 38px; font-size: 12px; line-height: 1; }
-.pnl-ex .pnl-ex-zone i { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ink); background: var(--panel-2); display: grid;
+.pnl-ex .pnl-ex-zone i { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--edge); background: var(--panel-2); display: grid;
   place-items: center; font-style: normal; font-size: 13px; font-weight: 700; }
 .pnl-ex .pnl-ex-zone.done i { background: var(--mint); }
 .pnl-ex .pnl-ex-zone.next i { background: var(--gold); box-shadow: 0 0 0 3px var(--gold-l); }
-.pnl-ex .pnl-ex-zone em { font-style: normal; color: var(--gold-d); letter-spacing: -1px; min-height: 12px; margin-top: 2px; }
+.pnl-ex .pnl-ex-zone em { font-style: normal; color: var(--gold-t); letter-spacing: -1px; min-height: 12px; margin-top: 2px; }
 .pnl-ex .pnl-ex-link { flex: 1; height: 3px; background: var(--ink-ll); margin: 0 -2px 14px; min-width: 6px; }
 .pnl-ex .pnl-ex-link.done { background: var(--mint-d); }
 .pnl-ex .pnl-ex-roles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 @media (max-width: 420px) { .pnl-ex .pnl-ex-roles { grid-template-columns: 1fr; } }
-.pnl-ex .pnl-ex-role { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 6px; padding: 6px 8px; background: #fff;
-  border: 2px solid var(--ink); border-radius: 12px; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.pnl-ex .pnl-ex-role { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 0 6px; padding: 6px 8px; background: var(--surface);
+  border: 2px solid var(--edge); border-radius: 12px; font: inherit; color: inherit; text-align: left; cursor: pointer; }
 .pnl-ex .pnl-ex-role.on { background: var(--mint-l); box-shadow: inset 0 0 0 2px var(--mint-d); }
 .pnl-ex .pnl-ex-role.off { background: var(--panel-2); color: var(--ink-l); cursor: default; }
 .pnl-ex .pnl-ex-role .ic { grid-row: span 2; }
@@ -44,8 +44,8 @@ const CSS = `
 .pnl-ex .pnl-ex-role small { font-size: 13px; color: var(--ink-l); }
 .pnl-ex .pnl-ex-role.lead { cursor: default; background: var(--sky-l); }
 .pnl-ex .pnl-ex-eq { display: flex; flex-wrap: wrap; gap: 6px; }
-.pnl-ex .pnl-ex-eq button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 2px solid var(--ink); border-radius: 10px;
-  background: #fff; font: inherit; font-size: 15px; color: inherit; cursor: pointer; }
+.pnl-ex .pnl-ex-eq button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 2px solid var(--edge); border-radius: 10px;
+  background: var(--surface); font: inherit; font-size: 15px; color: inherit; cursor: pointer; }
 .pnl-ex .pnl-ex-eq button.on { background: var(--mint-l); box-shadow: inset 0 0 0 2px var(--mint-d); }
 .pnl-ex .pnl-ex-sum { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 17px; justify-content: center; margin: 10px 0 4px; }
 .pnl-ex .pnl-ex-sum span { display: inline-flex; align-items: center; gap: 4px; }

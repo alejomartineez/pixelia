@@ -4,13 +4,15 @@ import { bus } from './bus.js';
 import {
   CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
   LEGACY_TYPES, LEGACY_ITEMS, REGION_MATERIALS, PROV_START, RESERVE_CAP, LEGACY_MATS, LEGACY_BUILDINGS, LEGACY_BOOSTERS,
-  TOWN_RANKS, eraOfRank,
+  TOWN_RANKS, eraOfRank, RETIRED_ITEMS,
 } from './data.js';
+import { THEME_ALIASES } from '../city/themes.js';
 
 const BASE_KEY = 'pixelia.save.v1';
 // 1: original · 2: sin realeza (tipos/piezas de princesa → gente) y tema por defecto "pueblo"
 // 3: sin minijuegos (materiales de región, edificios del ciclo, equipo, épocas; DESIGN-CORE.md §7.2)
-export const VERSION = 3;
+// 4: fuera lo tierno (El Quiebre, plan §J7): solo personas, piezas retiradas devueltas y estilos de ciudad nuevos
+export const VERSION = 4;
 
 /** Ajustes por defecto (src/core/settings.js los aplica y valida; los saves viejos los reciben por deepFill). */
 export const SETTINGS_DEFAULTS = {
@@ -133,6 +135,7 @@ function migrate(s) {
   delete s.princess;
   if ((s.v || 1) < 2) migrateNoRoyalty(s);
   if ((s.v || 1) < 3) migrateV3(s);
+  if ((s.v || 1) < 4) migrateV4(s);
   if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'chica';
   if (s.onboarded === undefined) s.onboarded = true;
   // el nombre por defecto viejo era 'Princesa': ahora el juego es neutro
@@ -250,6 +253,56 @@ function migrateV3(s) {
   // 8. diarias de nuevo (las de minijuego ya no existen)
   if (s.quests && typeof s.quests === 'object') s.quests.daily = null;
   s.v = 3;
+}
+/**
+ * v3 → v4 (plan §J7, fuera lo tierno). Corre antes de deepFill, una sola vez (s.v pasa a 4) y cada paso es seguro de
+ * repetir:
+ *  1. los personajes animales pasan a una persona (gato y conejo → chica, zorro y oso → chico) con el mismo color de
+ *     pelo (el del pelaje) y de ropa; lo que no le sirve a una persona vuelve a lo de arranque del tipo;
+ *  2. las piezas retiradas (RETIRED_ITEMS) se sacan de lo comprado y se devuelve lo que costaron;
+ *  3. los estilos de ciudad viejos pasan a los nuevos (THEME_ALIASES: moderna → ceniza, playa → bruma, bosque → musgo,
+ *     invierno → escarcha).
+ * Lo que cambió queda en s.v4 { from, theme, coins, gems, shown } para el aviso único (main.js).
+ */
+function migrateV4(s) {
+  if ((s.v || 1) >= 4) return;
+  const v4 = (s.v4 && typeof s.v4 === 'object') ? s.v4 : (s.v4 = {});
+  // 1. personajes
+  const person = (l) => {
+    if (!l || typeof l !== 'object' || !LEGACY_TYPES[l.type] || AVATAR_TYPE_BY_ID[l.type]) return l;
+    const to = LEGACY_TYPES[l.type];
+    const keep = (kind, id) => (CUSTOM_CATALOG[kind].some(i => i.id === id && fitsType(i, to)) ? id : avatarType(to).look[kind]);
+    return {
+      ...avatarType(to).look, type: to, hairColor: l.hairColor ?? avatarType(to).look.hairColor,
+      dressColor: l.dressColor ?? avatarType(to).look.dressColor, crown: keep('crown', l.crown), acc: keep('acc', l.acc),
+    };
+  };
+  if (s.avatar && LEGACY_TYPES[s.avatar.type] && !AVATAR_TYPE_BY_ID[s.avatar.type]) { v4.from = s.avatar.type; s.avatar = person(s.avatar); }
+  if (s.avatarLooks && typeof s.avatarLooks === 'object') {
+    for (const [t, l] of Object.entries(s.avatarLooks)) {
+      if (AVATAR_TYPE_BY_ID[t] || !LEGACY_TYPES[t]) continue;
+      const to = LEGACY_TYPES[t];
+      if (!s.avatarLooks[to]) s.avatarLooks[to] = person({ ...l, type: t });
+      delete s.avatarLooks[t];
+    }
+  }
+  // 2. piezas retiradas: se devuelven (una sola vez: después ya no están en owned)
+  let coins = 0, gems = 0;
+  if (s.owned && typeof s.owned === 'object') {
+    for (const [kind, map] of Object.entries(RETIRED_ITEMS)) {
+      const list = Array.isArray(s.owned[kind]) ? s.owned[kind] : null;
+      if (!list) continue;
+      for (const id of new Set(list)) { const p = map[id]; if (p) { coins += p.coins || 0; gems += p.gems || 0; } }
+      s.owned[kind] = list.filter(id => !(id in map));
+    }
+  }
+  if (coins) { s.coins = num(s.coins) + coins; v4.coins = num(v4.coins) + coins; }
+  if (gems) { s.gems = num(s.gems) + gems; v4.gems = num(v4.gems) + gems; }
+  // 3. estilos de ciudad
+  const th = s.city?.theme;
+  if (th && THEME_ALIASES[th]) { v4.theme = th; s.city.theme = THEME_ALIASES[th]; }
+  if (v4.shown == null) v4.shown = isFreshGame(s) || !(v4.from || v4.theme || v4.coins || v4.gems);
+  s.v = 4;
 }
 /** state.princess → state.avatar (no enumerable: no se guarda dos veces ni cambia el hash de sincronización). */
 function withAlias(s) {

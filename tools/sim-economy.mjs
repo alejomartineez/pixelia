@@ -407,7 +407,7 @@ function wishlist() {
     for (const b of all(defId)) if ((b.level || 1) < Math.min(5, 1 + Math.ceil(r / 2))) { const res = upgrade(b); if (res === 'done') return res; }
     return 'x';
   });
-  // 5. base del ciclo: Casa de Expediciones, Huerta, Taller, Establo, Dispensario (y el Vestidor del t-algo)
+  // 5. base del ciclo: Casa de Expediciones, Huerta, Taller, Establo, Dispensario (y el Equipaje del t-algo)
   for (const id of ['huerta', 'casa_exp', 'taller', 'establo', 'dispensario']) add(() => (all(id).length ? 'x' : build(id, { room: true })));
   // 6. monumento: la primera etapa pendiente del primero abierto sin terminar (se guardan materiales y, con ellos, monedas)
   add(() => {
@@ -473,7 +473,7 @@ function wishlist() {
     const pick = cands.find(c => c.gain >= deficit) || cands[cands.length - 1];
     return pick.go();
   });
-  // 9. mejoras del ciclo hasta un nivel acorde al rango; Vestidor y defensas abiertas (una de cada tipo)
+  // 9. mejoras del ciclo hasta un nivel acorde al rango; Equipaje y defensas abiertas (una de cada tipo)
   add(() => {
     const target = Math.min(5, Math.max(1, r));
     for (const id of ['casa_exp', 'establo', 'taller', 'dispensario']) { const b = one(id); if (b && (b.level || 1) < target) { const res = upgrade(b); if (res === 'done') return res; } }

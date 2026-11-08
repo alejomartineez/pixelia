@@ -12,6 +12,7 @@ import * as economy from './core/economy.js';
 import * as quests from './core/quests.js';
 import { ui, toast, rewardModal, closeAllModals, hasModal, rewardArt, applyA11y } from './core/ui.js';
 import { icon } from './core/icons.js';
+import { themeOf } from './city/themes.js';
 import { audio } from './core/audio.js';
 import { hud } from './core/hud.js';
 import * as chests from './chests/chests.js';
@@ -184,6 +185,7 @@ async function arrivalSteps() {
   const welcome = season.welcomeBackStatus();
   if (welcome) { parts.welcome = welcome; any = true; }
   if (v3Pending()) { const v = v3Lines(); parts.v3Lines = v.lines; parts.v3Gems = v.gems; any = true; }
+  if (v4Pending()) { const v = v4Lines(); parts.v4Lines = v.lines; parts.v4Reward = v.reward; any = true; }
   // amenazas que se resolvieron solas (src/threats/threat-ui.js)
   if (threats.reportStatus()) {
     parts.threats = await import('./threats/threat-ui.js').then(m => m.reportParts(ctx)).catch(e => { console.warn('[threats] aviso', e); return null; });
@@ -195,8 +197,8 @@ async function arrivalSteps() {
   if (unlock) { parts.unlock = unlock; any = true; }
   if (!any) return true;
   parts.next = unlocks.nextUnlock();
-  parts.firstDay = unlocks.playDay() === 1 && !welcome && !parts.v3Lines && !parts.threats;
-  parts.light = !fresh && !welcome && !parts.v3Lines && !parts.firstDay;
+  parts.firstDay = unlocks.playDay() === 1 && !welcome && !parts.v3Lines && !parts.v4Lines && !parts.threats;
+  parts.light = !fresh && !welcome && !parts.v3Lines && !parts.v4Lines && !parts.firstDay;
   const arrival = await import('./scenes/arrival.js');
   await arrival.openArrival(ctx, parts, {
     claimWelcome: () => season.claimWelcomeBack(),
@@ -279,6 +281,27 @@ function v3Lines() {
   lines.push(li('🎒', 'Los potenciadores que guardabas ahora son <b>equipo de expedición</b>.'));
   if (v.refund) lines.push(li('coin', `Tenías dos edificios que ahora serían el mismo: te devolvimos ${v.refund.toLocaleString('es-AR')} monedas.`));
   return { lines, gems: v.gems || 0 };
+}
+
+// ---------- Migración v4: fuera lo tierno (El Quiebre, plan §J7) ----------
+const v4Pending = () => { const v = store.state.v4; return !!v && !v.shown; };
+const V4_THEMES = { moderna: 'Ciudad Moderna', playa: 'Playa Tropical', bosque: 'Bosque', invierno: 'Invierno Nevado' };
+const V4_ANIMALS = { gatito: 'el gato', zorrito: 'el zorro', conejito: 'el conejo', osito: 'el oso' };
+/** Lo que cuenta el aviso "La isla cambió" (va dentro de "Mientras no estabas…"). Lo da por visto. */
+function v4Lines() {
+  const v = store.state.v4;
+  v.shown = 1;
+  store.save();
+  const li = (ic, html) => `${icon(ic, 22)} <span>${html}</span>`;
+  const lines = [];
+  if (v.from) lines.push(li('dress', `Los personajes ahora son solo personas: ${V4_ANIMALS[v.from] || 'tu personaje'} pasó a ser una persona con los mismos colores. Lo cambiás gratis en el <b>Equipaje</b> (el Vestidor de antes).`));
+  else lines.push(li('dress', 'El Vestidor ahora se llama <b>Equipaje</b>.'));
+  if (v.theme) lines.push(li('palette', `Tu ciudad pasó de ${V4_THEMES[v.theme] || 'su estilo'} a <b>${themeOf(store.state.city.theme).name}</b>. Hay estilos nuevos para elegir: Ceniza, Musgo, Bruma, Ocaso y Escarcha.`));
+  const reward = {};
+  if (v.coins) reward.coins = v.coins;
+  if (v.gems) reward.gems = v.gems;
+  if (v.coins || v.gems) lines.push(li('coin', 'Algunas prendas se retiraron (pelajes, ropa de animales y algún disfraz): te devolvimos lo que pagaste por ellas.'));
+  return { lines, reward };
 }
 
 // ---------- Online ----------

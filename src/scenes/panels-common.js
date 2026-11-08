@@ -55,7 +55,7 @@ export function flyTo(x, y, kind = 'coins', count = 6) {
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div');
     el.innerHTML = icon(name, 26);
-    Object.assign(el.style, { position: 'absolute', left: x + 'px', top: y + 'px', filter: 'drop-shadow(0 2px 0 rgba(61,47,42,.35))' });
+    Object.assign(el.style, { position: 'absolute', left: x + 'px', top: y + 'px', filter: 'drop-shadow(0 2px 0 rgba(8, 6, 5,.35))' });
     layer.append(el);
     const dx = (Math.random() - 0.5) * 110, dy = (Math.random() - 0.5) * 90 - 20;
     const anim = el.animate([
@@ -370,7 +370,7 @@ export function goalAction(ctx, goal, close) {
     case 'castle': case 'rank': return { label: 'Ver ciudad', ic: 'castle', run: () => { close(); setTimeout(() => ctx.openPanel('rank'), 260); } };
     case 'customize': case 'buy':
       if (!econ.hasBuilt('boutique_real') && !ctx.state.city.buildings.some(b => b.id === 'boutique_real')) return buildFocus('boutique_real');
-      return { label: 'Vestidor', ic: 'dress', run: () => { close(); ctx.router.go('wardrobe'); } };
+      return { label: 'Equipaje', ic: 'dress', run: () => { close(); ctx.router.go('wardrobe'); } };
     default: return null;
   }
 }

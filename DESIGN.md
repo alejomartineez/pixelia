@@ -3,7 +3,7 @@
 PWA (HTML + ES modules, **sin build**) para iPhone **y PC**. Juego de construir ciudad (estilo city-builder casual) donde la
 ciudad es la base para salir de **expedición** y aguantar las **amenazas** de cada temporada. Los minijuegos se retiraron en la
 Fase 5 (guardado v3); el ciclo nuevo (Expedición, Amenazas, Épocas, recursos, tutorial y migración) está en [DESIGN-CORE.md](DESIGN-CORE.md).
-Estética: **3D vóxel nítido** (modelos de vóxeles dibujados a alta resolución con antialias, oclusión ambiental y contorno tinta) + UI pixel art "pueblo acogedor" (terracota, verdes, cielo y crema; el rosa solo como acento) con bordes gruesos color tinta café.
+Estética: **3D vóxel nítido** (modelos de vóxeles dibujados a alta resolución con antialias, oclusión ambiental y contorno tinta) + **UI oscura** pixel art (pizarra y madera oscura, bordes de metal gastado, texto claro, acentos dorado y azul Dezings ; ver **Interfaz oscura**). Desde El Quiebre ([docs/PLAN-QUIEBRE.md](docs/PLAN-QUIEBRE.md) §J) el mundo es más oscuro y serio; la ciudad sigue siendo el refugio cálido.
 Público: **adultos que juegan ratos cortos, en el celu y en la PC** (2 a 10 minutos, varias veces por día), solos o con su gente.
 Neutro de género: cada quien elige su personaje y los textos no suponen quién juega. El tono es **cozy adulto**: cálido pero
 sobrio, más cerca de Townscaper o Dorfromantik que de un juego infantil (ver **Guía de tono**). Tiene que ser **claro,
@@ -30,7 +30,9 @@ barrio, sin hablarle a un chico?
   hacer, no venden.
 - **Ausencias sin culpa**: "Mientras no estabas pasó la tormenta: salvaste el 92%". Nunca "¡Te extrañamos!" ni "¡No nos
   abandones!".
-- **Nombres sobrios**: edificios por lo que son (Panadería, Taller, Dispensario), temas por estación o lugar (Otoño, Puerto).
+- **Nombres sobrios**: edificios por lo que son (Panadería, Taller, Dispensario), estilos por estación o lugar (Otoño, Bruma, Ceniza).
+- **Fuera lo tierno** (El Quiebre, §J7): personajes solo personas; nada de mascotas-avatar, tutús, orejitas ni "mimosos".
+  Los Hallazgos se nombran como cosas que se encuentran en la isla ("Ancla Oxidada", "Pato del Bañado"), no como peluches.
 
 Reemplazos de ejemplo:
 
@@ -46,7 +48,10 @@ Reemplazos de ejemplo:
 | Casita, Banquito, florcitas, pajaritos | Casa, Banco, flores, pájaros |
 | figuritas / Álbum | Hallazgos (cuando llegue la Fase 5) |
 | "¡Te extrañamos!" | "Mientras no estabas…" |
-| tipo de personaje por defecto Chica, "animalitos" | Gente; los animales quedan como opción ("Animales") |
+| tipo de personaje por defecto Chica, "animalitos" | Gente (desde la v4, solo personas: los animales se migran a una persona) |
+| Vestidor, "boutique rosa" | Equipaje, la Sastrería (madera oscura, cuero y bronce) |
+| Ciudad Moderna, Playa Tropical, Bosque, Invierno Nevado | Ceniza, Bruma, Musgo, Escarcha (más Ocaso) |
+| Pollito Pío, Unicornia Mimosa, Autitos, Mascotas | Pato del Bañado, Ciervo Blanco, Vehículos, Fauna de la Isla |
 
 ## Estructura
 
@@ -123,9 +128,27 @@ export default function create(ctx) {
 - Feedback claro: sonido (`audio.sfx`), partículas, `ui.floatText`, `ui.flyCurrency`, rebotes. Confeti y fanfarria solo en los
   momentos grandes de la Guía de tono (cambio de época, monumento, amenaza superada, región completa).
 
+## Interfaz oscura (El Quiebre, §J6)
+Todo color de la interfaz sale de los tokens de `:root` en `styles.css`; las pantallas nuevas no ponen colores fijos.
+- **Superficies**: `--page` (fondo), `--panel`/`--panel-2` (madera oscura), `--surface`/`--surface-2`/`--surface-hover`
+  (pizarra), `--rule` (divisores), `--track` (rieles y barras vacías), `--wood`/`--wood-d` (cabecera de los modales, con
+  el título en dorado).
+- **Bordes y sombras**: `--edge` (contorno casi negro, como el contorno tinta del 3D), `--metal`/`--metal-l` (marco de
+  metal gastado de los modales), `--shade` (sombra dura).
+- **Texto**: `--ink` (claro), `--ink-l`, `--ink-ll` (secundario, AA sobre `--surface-2`), `--ink-dark` (sobre rellenos
+  claros: dorado, menta, cielo).
+- **Acentos**: cada color tiene base (relleno de botón), `-d` (sombra del botón), `-l` (fondo teñido oscuro) y `-t`
+  (texto sobre oscuro). `--second` y `--accent` son el azul Dezings `#3d55b8`; `--gold` es el dorado.
+- Los colores claros que vienen de datos (temporadas, rarezas, sets de Hallazgos) se oscurecen al usarlos con
+  `color-mix(in srgb, <color> N%, #1d1916)`. Contraste mínimo AA (4,5:1 en texto chico, 3:1 en botones de 18 px en
+  negrita).
+- El 3D de las escenas de interfaz (Equipaje, onboarding) usa fondo `0x1d1916`; la Sastrería se re-mapea a madera, cuero
+  y bronce con `tailor()` de `wardrobe-stage.js`.
+- Las láminas de los Hallazgos (`album-art.js`) son ilustración y conservan sus colores.
+
 ## Personajes, temas y contorno
-- **Personajes** (`data.js` → `AVATAR_TYPES`): Chica, Chico y animalitos (Gatito, Zorrito, Conejito, Osito). La primera partida (`onboarding.js`, si `state.onboarded` es false) elige tipo (al azar al empezar), colores, nombre y ciudad; después se cambia en el Vestidor (pestaña Personaje) o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel. Textos neutros: nada de "princesa" salvo el nombre del tipo.
-- **Temas de ciudad** (`city/themes.js`): Pueblo Acogedor (por defecto, sin re-mapeo), Dulce Pastel, Ciudad Moderna, Bosque, Playa Tropical, Invierno Nevado, Luces de Noche (`dark: true`, aro claro bajo el personaje). No hay modelos por tema: los colores de vóxel se re-mapean (`mapColor`; las reglas usan "ranuras": `pink` = terracota principal, `lilac` = azul pizarra) y cambian terreno, cielo, luces y naturaleza. Se guarda en `state.city.theme`, se elige gratis con `openThemePicker(ctx)` (botón paleta en la ciudad, Ajustes y onboarding), emite `city:theme` y se ve en las visitas.
+- **Personajes** (`data.js` → `AVATAR_TYPES`): Chica y Chico, solo personas. Los animales (gato, zorro, conejo, oso) y sus piezas se retiraron en el guardado v4 (`migrateV4` de `state.js`: la persona conserva los colores, las piezas retiradas `RETIRED_ITEMS` se devuelven al precio pagado y hay un aviso único); `LEGACY_TYPES` traduce perfiles viejos de contactos. El código de pelajes de `avatar*.js` queda sin uso. La primera partida (`onboarding.js`, si `state.onboarded` es false) elige tipo (al azar al empezar), colores, nombre y ciudad; después se cambia en el Equipaje (pestaña Personaje) o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel. Textos neutros: nada de "princesa" salvo el nombre del tipo.
+- **Estilos de ciudad** (`city/themes.js`): Pueblo Acogedor (por defecto, sin re-mapeo), Otoño, Musgo, Ceniza (pizarra y brasas, ventanas encendidas), Bruma (la costa de los faros), Ocaso (ventanas encendidas), Escarcha y Luces de Noche (`dark: true`, aro claro bajo el personaje). Los ids viejos quedan como alias (`THEME_ALIASES`: pastel → otono, moderna → ceniza, playa → bruma, bosque → musgo, invierno → escarcha) y la v4 los cambia en el guardado. No hay modelos por tema: los colores de vóxel se re-mapean (`mapColor`; las reglas usan "ranuras": `pink` = terracota principal, `lilac` = azul pizarra) y cambian terreno, cielo, luces y naturaleza. Se guarda en `state.city.theme`, se elige gratis con `openThemePicker(ctx)` (botón paleta en la ciudad, Ajustes y onboarding), emite `city:theme` y se ve en las visitas.
 - **Vóxel nítido** (desde nov 2026; antes el 3D se dibujaba a ~480 px y se agrandaba pixelado, y los bordes diagonales hacían serrucho): el "pixel" del arte es el **vóxel**, no el pixel de pantalla. `createPixelRenderer` dibuja a **2 pixeles de render por px CSS** (en PC es supersampleo 2×2; en celu, casi nativo) con **MSAA 4×** y el canvas al 100% suavizado (`.voxel-canvas`, nunca `pixelated`). Tope de 4,6 M pixeles de render; si los cuadros vienen lentos (<42 fps) baja solo a 1,5× y 1,2×. `settings.lowQuality` (o `?quality=low`) arranca en ≤1,5× sin MSAA; `?quality=high` apaga el ajuste automático (capturas).
 - **Oclusión ambiental por vértice**: `Voxels.toGeometry` oscurece cada esquina según sus 3 vecinos (rincones, aleros, pie de las paredes) — es lo que da volumen y lectura. `{ ao: false }` la apaga. Pisos con variación en manchas de 2×2 y contraste bajo.
 - **Contorno tinta**: `createPixelRenderer({ outline: true })` pinta ≈1 px CSS de tinta `#3b2340` por fuera de las siluetas (saltos de profundidad), con borde suavizado (`?outline=0|1` lo fuerza para comparar). Las miniaturas offscreen (edificios, personajes, temas, cofres) se dibujan a **3×** con antialias y `outlineCanvas(canvas, ancho)` de `voxel.js`; se muestran achicadas sin `pixelated`.
@@ -239,7 +262,7 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
   monedas, materiales, obra con constructora y rango 3/4/5 para los últimos). Cada nivel estrena arquitectura adentro (`roomLayout`:
   ventanal, cocina con mesada, pileta y alacenas, tabique con arco, altillo con escalera y claraboya) que ocupa lugar; lo que queda tapado se reacomoda (`fitItems`).
   Escena `home` (`src/scenes/home.js`): cuarto vóxel con las paredes del fondo y de la izquierda, tu personaje pasea y se sienta en sillas,
-  sillones y la cama; el ropero abre el Vestidor (`{back: 'home'}`). **Decorar**: tocar un mueble lo elige, arrastrarlo lo mueve (marca
+  sillones y la cama; el ropero abre el Equipaje (`{back: 'home'}`). **Decorar**: tocar un mueble lo elige, arrastrarlo lo mueve (marca
   verde/roja), Rotar (los de pared cambian de pared), Guardar (vuelve al inventario); pestañas Mis muebles / Tienda / Paredes / Pisos.
   Muebles (`FURNITURE`): se compran en la Tienda, salen en cofres ("Mueble sorpresa", `CHEST_FURNITURE`), en el Pase (niveles 14 y 27) y
   como **trofeos** que llegan solos (rango Villa, primer monumento, 10 niveles de Joyas, 30 figuritas). `store.grant({furniture: id})` los da.
@@ -265,7 +288,7 @@ node tools/test-visit.mjs    ana y bea (mock): amistad por código, regalito, vi
 node tools/test-social.mjs   UI social completa (intercambios con escrow, ranking, Obra en Equipo, cuenta, conflicto)
 node tools/test-rank.mjs     rango y Encanto (mock + cheat): chip del HUD → panel con expediente → Mejorar → festejo, constructora de regalo, ficha, menú, perfil público visto por una amistad
 node tools/test-works.mjs    monumentos (mock + cheat): rango Pueblo → botón Obras → materiales de región con «Salir» a la expedición → panel Obras → Construir y colocar el Faro → etapas → bonus de negocios y expediente; capturas de cada etapa
-node tools/test-home.mjs     Mi Casa (mock + cheat): aparece en la ciudad → Entrar → comprar y poner un mueble, arrastrarlo, rotarlo, guardarlo, pared y piso → ropero abre el Vestidor → volver → recarga conserva todo → ampliar la casa → visita a la casa de una amistad
+node tools/test-home.mjs     Mi Casa (mock + cheat): aparece en la ciudad → Entrar → comprar y poner un mueble, arrastrarlo, rotarlo, guardarlo, pared y piso → ropero abre el Equipaje → volver → recarga conserva todo → ampliar la casa → visita a la casa de una amistad
 node tools/test-mock.mjs     API de net.js con dos pestañas     ·     node tools/test-sql.mjs   schema.sql en PGlite
 node tools/test-stress.mjs   recorre escenas + paneles N veces (--rounds 3) y mide fugas (WebGL, listeners, bus, intervalos)
 node tools/gen-sw-core.mjs   regenera CORE de sw.js con todos los .js reales (--bump sube VERSION, --check solo verifica)
