@@ -303,9 +303,11 @@ try {
   await shot(A, 'iphone-ranking');
   ok(await A.$eval('.soc-prize', el => el.textContent.includes('¡Premio de la semana!')), `premio de participación de la semana ${prev} disponible`);
   const rc0 = await ev(A, `return P.store.state.coins`);
+  // los domingos también se cobra la semana en curso: se cuenta que se fue una sola semana, no que no quede ninguna
+  const pw0 = await ev(A, `return S.rankPrizeWeeks().length`);
   await click(A, '.soc-prize .btn.gold');
   await sleep(600);
-  ok((await ev(A, `return P.store.state.coins`)) > rc0 && (await ev(A, `return S.rankPrizeWeeks().length`)) === 0, 'cobrar el premio de participación (una vez)');
+  ok((await ev(A, `return P.store.state.coins`)) > rc0 && (await ev(A, `return S.rankPrizeWeeks().length`)) === pw0 - 1, 'cobrar el premio de participación (una vez)');
   await click(A, '.soc-cat:nth-child(3)');
   await shot(A, 'iphone-ranking-encanto');
 

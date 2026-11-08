@@ -109,7 +109,9 @@ const snapshot = (page) => run(page, `
     have: S.album.have, brillitos: S.album.brillitos, claimedSets: S.album.claimedSets, planos: S.planos, v3: S.v3, games: S.games,
     avatar: S.avatar, avatarLooks: S.avatarLooks, car: S.car, owned: S.owned, theme: S.city.theme, flag: S.city.flagColor,
     home: S.home && { items: S.home.items, wall: S.home.wall, floor: S.home.floor }, social: S.social && { giftDay: S.social.giftDay, coop: S.social.coop },
-    login: S.login, settings: S.settings, expansions: S.city.expansions, level: S.player.level, name: S.player.name, city: S.player.cityName };`);
+    login: S.login, settings: S.settings, expansions: S.city.expansions, level: S.player.level, name: S.player.name, city: S.player.cityName,
+    // una amenaza del calendario que cae justo hoy se resuelve sola al cargar y paga gemas: se descuenta para que no dependa del día
+    threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) };`);
 const sumHave = (h) => Object.values(h || {}).reduce((a, b) => a + b, 0);
 
 try {
@@ -146,7 +148,7 @@ try {
 
   // 3. compensación
   const gems = Math.min(150, 2 * 22 + 3 * 10 + 5 + 12);
-  ok(s1.v3?.gems === gems && s1.gems === 40 + gems, `+${gems} gemas por los minijuegos (2×22 + 3×10 + 5 + 12)`, { v3: s1.v3, gems: s1.gems });
+  ok(s1.v3?.gems === gems && s1.gems === 40 + gems + s1.threatGems, `+${gems} gemas por los minijuegos (2×22 + 3×10 + 5 + 12)`, { v3: s1.v3, gems: s1.gems, threatGems: s1.threatGems });
   ok(s1.v3?.finds === 6 && s1.v3.findsGiven === 1 && s1.v3.got?.length === 6, '6 hallazgos de regalo (⌊32 niveles / 5⌋)', s1.v3);
   const gotStars = await run(page, `return S.v3.got.map(id => A.stickerDef(id)?.stars || 0)`);
   ok(gotStars.every(x => x >= 2), 'todos de 2★ o más', gotStars);
@@ -213,8 +215,8 @@ try {
   {
     const { page: p2, context } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
     const r = await run(p2, `const code = btoa(unescape(encodeURIComponent(JSON.stringify(args[0])))); P.store.importCode(code); E.tick(); const T = P.store.state;
-      return { v: T.v, mats: T.materials, ids: T.city.buildings.map(b => b.id), gems: T.gems, eq: T.equipment };`, V2);
-    ok(r.v === 3 && r.mats.mineral === 7 && r.ids.includes('casa_exp') && !r.ids.includes('pista') && r.gems === 40 + gems && r.eq.cuerda === 2, 'importCode migra igual que la carga local', r);
+      return { v: T.v, mats: T.materials, ids: T.city.buildings.map(b => b.id), gems: T.gems, eq: T.equipment, threatGems: Object.values(T.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) };`, V2);
+    ok(r.v === 3 && r.mats.mineral === 7 && r.ids.includes('casa_exp') && !r.ids.includes('pista') && r.gems === 40 + gems + r.threatGems && r.eq.cuerda === 2, 'importCode migra igual que la carga local', r);
     await context.close();
   }
 

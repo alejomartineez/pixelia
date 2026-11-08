@@ -107,7 +107,8 @@ async function tap(sel, text = null, { timeout = 5000 } = {}) {
         if (pos && Math.abs(pos.x - p.x) < 0.5 && Math.abs(pos.y - p.y) < 0.5 && p.hit) { pos = p; break; }
         pos = p;
       }
-      if (!pos) { await sleep(150); continue; }
+      // si algo lo tapa (las pestañas fijas mientras el panel todavía se desplaza solo) se vuelve a centrar y se reintenta
+      if (!pos || !pos.hit) { await sleep(150); continue; }
       const r2 = pos;
       if (VIEW.hasTouch) await page.touchscreen.tap(r2.x, r2.y); else await page.mouse.click(r2.x, r2.y);
       return true;
@@ -209,8 +210,15 @@ async function buildUI(id, n = 1) {
   await sleep(300);
   if (!(await ev((name) => [...document.querySelectorAll('.cx-build .cx-card .nm')].some(e => e.textContent === name), info.name))) await tap('.cx-build .cx-tabs .tab', info.cat);
   await sleep(250);
-  if (!(await tap('.cx-build .cx-card .nm', '^' + info.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))) { await shot('fallo-construir-' + id); await closeTop(); return false; }
-  if (!(await waitFor(`!!document.querySelector('.cx-pc .cx-pc-ok')`, 3000))) { await shot('fallo-colocar-' + id); await closeTop(); return false; }
+  const cardRe = '^' + info.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$';
+  if (!(await tap('.cx-build .cx-card .nm', cardRe))) { await shot('fallo-construir-' + id); await closeTop(); return false; }
+  let placing = await waitFor(`!!document.querySelector('.cx-pc .cx-pc-ok')`, 3000);
+  // con la máquina cargada el toque puede quedar en marcar la tarjeta sin arrancar la colocación: si el panel sigue, otro toque
+  if (!placing && await ev(() => !!document.querySelector('.cx-build .cx-grid'))) {
+    await tap('.cx-build .cx-card .nm', cardRe);
+    placing = await waitFor(`!!document.querySelector('.cx-pc .cx-pc-ok')`, 6000);
+  }
+  if (!placing) { await shot('fallo-colocar-' + id); await closeTop(); return false; }
   const before = await run(`return E.countOf('${id}')`);
   // cada toque en Colocar espera a que el edificio aparezca (con la máquina cargada la ciudad tarda en reubicar la pieza)
   const diag = [];
