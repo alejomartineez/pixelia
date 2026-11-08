@@ -21,10 +21,12 @@ import { rewardScale, BUILDING_BY_ID } from '../core/data.js';
 import { ITEMS, addChest } from '../chests/chests.js';
 import * as album from '../album/album.js';
 import { eventFlag } from '../season/events.js';
+import * as threats from '../threats/threats.js';
+import { dailyInfo } from '../expedition/expedition.js';
 
 // ---------- Balance ----------
 /** Puntos de Obra en Equipo por acción. */
-export const COOP_POINTS = { win: 30, built: 20, upgraded: 40, request: 50, gift: 10, help: 10 };
+export const COOP_POINTS = { win: 30, built: 20, upgraded: 40, request: 50, gift: 10, help: 10, crew: 30 };
 export const COOP_PER_MEMBER = 1000;
 /** 5 escalones (porcentaje de la meta). Las monedas se escalan con el nivel al cobrar. */
 export const COOP_TIERS = [
@@ -40,13 +42,18 @@ export const GIFT_ITEMS = ['hammer', 'hourglass'];
 /** Premio de participación del ranking semanal (para todas las que jugaron). */
 export const RANK_PRIZE = { coins: 250, chests: { madera: 1 } };
 export const RANK_BEST_GEMS = 5;
+// Categorías del ranking semanal (Fase 7b): todo sale del ciclo (expediciones y amenazas) y del Encanto. Viajan en
+// stats.week del perfil: {stars, exps, botin, def, charm, rank}.
 export const RANK_CATS = [
-  { id: 'level', name: 'Nivel', icon: 'crown', short: 'Nivel' },
-  { id: 'stars', name: 'Estrellas', icon: 'star', short: 'Estrellas' },
-  // Ciudad más linda: Encanto actual (viaja en stats.week.charm del perfil, así no hace falta tocar el SQL)
+  { id: 'stars', name: 'Estrellas de expedición', icon: 'star', short: 'Estrellas' },
+  { id: 'exps', name: 'Salidas de la semana', icon: 'map', short: 'Salidas' },
+  { id: 'botin', name: 'Botín de las Expediciones del día', icon: 'trophy', short: 'Botín' },
+  { id: 'def', name: 'Mejor defensa (% salvado)', icon: '🛡️', short: 'Defensa', unit: '%' },
   { id: 'charm', name: 'Ciudad con más Encanto', icon: 'sparkle', short: 'Encanto' },
 ];
-const WEEK_KEYS = ['stars'];   // estrellas de expedición de la semana (las de los minijuegos se retiraron)
+const WEEK_KEYS = ['stars', 'exps', 'botin', 'def'];   // los que cuentan para "mejor marca personal"
+/** Premio por mandar una cuadrilla a un contacto (monedas base, se escalan con el nivel). */
+export const CREW_PRIZE = { coins: 80 };
 /** Objetos de mochila que se pueden pedir / intercambiar. */
 export const TRADE_ITEMS = Object.values(ITEMS).filter(i => i.kind === 'item').map(i => i.id);
 
@@ -96,10 +103,10 @@ function rollWeek(z) {
 export const socialState = () => S();
 
 // ---------- Caché online ----------
-const cache = { friends: null, trades: null, coop: null, inbox: [], friendReqs: null, myReqs: null, visitors: null, profiles: {}, profilesAt: 0, user: null };
+const cache = { friends: null, trades: null, coop: null, inbox: [], friendReqs: null, myReqs: null, visitors: null, profiles: {}, profilesAt: 0, user: null, daily: null };
 export const socialCache = cache;
 function resetCache() {
-  Object.assign(cache, { friends: null, trades: null, coop: null, inbox: [], friendReqs: null, myReqs: null, visitors: null, profiles: {}, profilesAt: 0 });
+  Object.assign(cache, { friends: null, trades: null, coop: null, inbox: [], friendReqs: null, myReqs: null, visitors: null, profiles: {}, profilesAt: 0, daily: null });
 }
 
 // ---------- Badge ----------
@@ -152,6 +159,9 @@ export function refreshSocial(what = null) {
     if (want('inbox')) jobs.push(sync.refreshInbox());
     if (what?.includes('requests')) jobs.push(net.friendRequests().then(r => { if (!r?.error) cache.friendReqs = r; }), net.myRequests().then(r => { if (!r?.error) cache.myReqs = r; }));
     if (what?.includes('visitors')) jobs.push(net.visitorsToMe().then(r => { if (!r?.error) cache.visitors = r; }));
+    if (!what || what.includes('crews')) jobs.push(syncCrews());
+    if (what?.includes('daily')) jobs.push(flushDaily().then(() => net.dailyBoard()).then(r => { if (!r?.error) cache.daily = { day: dailyInfo().day, rows: r }; }));
+    else if (!what) jobs.push(flushDaily());
     await Promise.all(jobs);
     computeBadge();
     bus.emit('social:changed', { what });
@@ -268,12 +278,27 @@ export function claimCoopTier(n, carryIndex = null) {
 }
 
 // ---------- Ranking semanal ----------
-function recordWeek({ stars = 0 } = {}) {
+function weekHist() {
   const z = S();
-  if (!z) return;
-  const w = isoWeek();
-  const h = (z.rank.hist[w] ||= { stars: 0, played: 0 });
+  if (!z) return null;
+  const h = (z.rank.hist[isoWeek()] ||= { stars: 0, played: 0 });
+  h.exps ??= 0; h.botin ??= 0; h.def ??= 0;
+  return h;
+}
+function recordWeek({ stars = 0, daily = null } = {}) {
+  const h = weekHist();
+  if (!h) return;
   h.stars += Math.max(0, stars | 0);
+  h.played++;
+  h.exps++;
+  if (daily?.score) h.botin += Math.max(0, daily.score | 0);
+  store.markDirty();
+}
+function recordDefense({ id, pct = 0 } = {}) {
+  if (id === 'sim') return;
+  const h = weekHist();
+  if (!h) return;
+  h.def = Math.max(h.def || 0, Math.max(0, Math.min(100, pct | 0)));
   h.played++;
   store.markDirty();
 }
@@ -300,7 +325,7 @@ export function personalBest(cat, week = isoWeek()) {
 export function rankInfo() {
   const z = S();
   const week = isoWeek();
-  const mine = { ...(z?.rank.hist[week] || { stars: 0, played: 0 }) };
+  const mine = { stars: 0, played: 0, exps: 0, botin: 0, def: 0, ...(z?.rank.hist[week] || {}) };
   const best = Object.fromEntries(WEEK_KEYS.map(k => [k, personalBest(k, week)]));
   const d = new Date();
   const daysToSunday = (7 - d.getDay()) % 7;
@@ -326,7 +351,7 @@ export function giftPreview(friend) {
   const lv = friend?.friendship?.index ?? friendLevel(friend?.days || 0).index;
   return { coins: round5(GIFT_COINS[lv] * scale()), level: lv };
 }
-/** Manda el regalito del día. A veces suma un objeto común o una figurita repetida (1–2★) tuya. -> { ok, payload } | { error } */
+/** Manda el regalito del día. A veces suma un objeto común o un hallazgo repetido (1–2★) tuya. -> { ok, payload } | { error } */
 export async function sendDailyGift(friend) {
   const z = S();
   if (giftSentToday(friend.id)) return { error: 'Ya le mandaste el regalo de hoy. Volvé mañana.' };
@@ -353,13 +378,13 @@ export async function sendDailyGift(friend) {
 }
 
 // ---------- Intercambios ----------
-/** Reglas de figuritas con esta amiga: { fiveOk, golden } (golden = Semana Dorada habilita 5★ sin los 14 días). */
+/** Reglas del intercambio de hallazgos con este contacto: { fiveOk, golden } (golden = Semana Dorada habilita 5★ sin los 14 días). */
 export function stickerRules(friend) {
   const days = friend?.days || 0;
   const gold = eventFlag('trade5');
   return { fiveOk: days >= 14 || gold, golden: gold && days < 14, days };
 }
-/** ¿Es válido este par de figuritas? -> null | 'texto del problema' */
+/** ¿Es válido este par de hallazgos? -> null | 'texto del problema' */
 export function stickerPairProblem(offerId, askId, friend) {
   const a = album.stickerDef(offerId), b = album.stickerDef(askId);
   if (!a || !b) return 'Elegí un hallazgo de cada lado';
@@ -400,6 +425,90 @@ export async function cancelTrade(t) {
   const r = await net.cancelTrade(t.id);
   await refreshSocial(['trades', 'inbox']);
   return r;
+}
+
+// ---------- Expedición del día (Fase 7b) ----------
+/** Manda el botín de la Expedición del día al ranking; sin sesión queda pendiente (hoy o ayer, como acepta el servidor). */
+async function submitDaily(d) {
+  const z = S();
+  if (!z || !d?.day) return null;
+  z.dailyPending = { day: d.day, region: d.region, score: d.score | 0, stars: d.stars | 0, loot: d.loot || {} };
+  store.markDirty();
+  return flushDaily();
+}
+let flushingDaily = null;
+async function flushDaily() {
+  const z = S();
+  const p = z?.dailyPending;
+  if (!p || !net.user) return null;
+  const yest = utcDay(new Date(Date.now() - 864e5));
+  if (p.day < yest) { z.dailyPending = null; store.markDirty(); return null; }
+  if (flushingDaily) return flushingDaily;
+  flushingDaily = (async () => {
+    const r = await net.submitDaily(p.day, p.region, p.score, p.stars, p.loot);
+    if (!r?.error || /Ya mandaste|ya cerró/.test(r.error)) {
+      z.dailyPending = null; store.markDirty();
+      if (cache.daily?.day === p.day) cache.daily = null;
+      bus.emit('social:changed', { what: ['daily'] });
+    }
+    return r;
+  })().finally(() => { flushingDaily = null; });
+  return flushingDaily;
+}
+/** Lo del día para la UI: { info (dailyInfo), rows (ranking de contactos o null), pending } */
+export function dailyStatus() {
+  const info = dailyInfo();
+  return { info, rows: cache.daily?.day === info.day ? cache.daily.rows : null, pending: !!S()?.dailyPending };
+}
+
+// ---------- Cuadrillas para la amenaza de un contacto (Fase 7b) ----------
+/** Amenaza vigente que publica un contacto (o null). */
+export function friendThreat(id, now = Date.now()) {
+  const t = cache.profiles[id]?.stats?.threat;
+  if (!t?.id || typeof t.end !== 'number' || t.end <= now) return null;
+  return { ...t, name: threats.THREAT_TYPES[t.type]?.name || 'Amenaza', icon: threats.THREAT_TYPES[t.type]?.icon || '🌊' };
+}
+/** "hoy" / "mañana" / "en 3 días" hasta que llega. */
+export function threatWhen(t, now = Date.now()) {
+  if (!t) return '';
+  if (now >= (t.start || 0)) return 'hoy';
+  const days = Math.ceil((t.start - now) / 864e5);
+  return days <= 1 ? 'mañana' : `en ${days} días`;
+}
+const crewKey = (fid, tid) => `${fid}|${tid}`;
+export function crewSent(friendId, threatId) { return !!S()?.crews?.[crewKey(friendId, threatId)]; }
+export function crewPrize() { return scaledReward(CREW_PRIZE); }
+/** Manda una cuadrilla a la ciudad de un contacto. -> { ok, n, reward } | { error } */
+export async function sendCrew(friend) {
+  const z = S();
+  const t = friendThreat(friend?.id);
+  if (!t) return { error: 'Esa amenaza ya pasó' };
+  if (crewSent(friend.id, t.id)) return { error: 'Ya mandaste una cuadrilla para esta amenaza' };
+  const r = await net.sendCrew(friend.id, t.id);
+  const mark = () => {
+    z.crews ||= {};
+    z.crews[crewKey(friend.id, t.id)] = utcDay();
+    const keys = Object.keys(z.crews);
+    for (const k of keys.slice(0, Math.max(0, keys.length - 30))) delete z.crews[k];
+    store.markDirty();
+  };
+  if (r?.error) { if (/Ya mandaste una cuadrilla/.test(r.error)) mark(); return r; }
+  mark();
+  const reward = crewPrize();
+  store.grant(reward, 'online:crew');
+  store.save();
+  bus.emit('social:helped', { kind: 'crew', to: friend.id, threat: t.id });
+  refreshSocial(['friends']);
+  return { ok: true, n: r.n, reward };
+}
+/** Trae las cuadrillas que me mandaron y las pasa a las amenazas. Emite 'social:crews' si llegó alguna nueva. */
+async function syncCrews() {
+  if (!net.user || !store.state) return 0;
+  const r = await net.myCrews();
+  if (r?.error || !Array.isArray(r)) return 0;
+  const n = threats.addHelp(r.map(c => ({ threat: c.threat, id: c.helper_id, name: c.helper_name, at: Date.parse(c.created_at) })));
+  if (n) { store.save(); bus.emit('social:crews', { n }); }
+  return n;
 }
 
 // ---------- Pedidos de ayuda ----------
@@ -503,10 +612,17 @@ export function initSocial(ctx) {
   sync.setStickerAdder((id, n) => album.giveStickers({ [id]: n }, 'online'));
   sync.setStickerTaker((id, n) => album.takeStickers(id, n), (id, n) => album.stickerCount(id) - n >= 1);
 
-  bus.on('expedition:finished', (r) => { if (r?.prototype) return; recordWeek(r); if (r?.reason === 'volvio') addCoopPoints(COOP_POINTS.win, 'win'); computeBadge(); });
+  bus.on('expedition:finished', (r) => {
+    if (r?.prototype) return;
+    recordWeek(r);
+    if (r?.reason === 'volvio') addCoopPoints(COOP_POINTS.win, 'win');
+    if (r?.daily) submitDaily(r.daily);
+    computeBadge();
+  });
+  bus.on('threat:resolved', recordDefense);
   bus.on('building:built', ({ b } = {}) => { if (b && BUILDING_BY_ID[b.id]?.cat !== 'camino') addCoopPoints(COOP_POINTS.built, 'built'); });
   bus.on('building:upgraded', () => addCoopPoints(COOP_POINTS.upgraded, 'upgraded'));
-  bus.on('social:helped', (p) => addCoopPoints(p?.kind === 'request' ? COOP_POINTS.request : COOP_POINTS.help, 'helped'));
+  bus.on('social:helped', (p) => addCoopPoints(p?.kind === 'request' ? COOP_POINTS.request : p?.kind === 'crew' ? COOP_POINTS.crew : COOP_POINTS.help, 'helped'));
   bus.on('social:gift', (p) => { if (p && (p.sent || p.outgoing)) addCoopPoints(COOP_POINTS.gift, 'gift'); });
   bus.on('album:trade', onAlbumTrade);
   bus.on('online:inbox', ({ items } = {}) => { cache.inbox = Array.isArray(items) ? items : []; computeBadge(); });

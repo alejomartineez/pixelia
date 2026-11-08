@@ -25,6 +25,35 @@ const MIN = 60e3;
 export const TUTORIAL_SEED = 110;
 // Experiencia por salida terminada (la daban los minijuegos; Fase 5): base + por estrella, × Observatorio y Mi Casa.
 export const EXP_XP = { base: 10, perStar: 5 };
+
+// ---------- Expedición del día (Fase 7b) ----------
+// Una salida corta aparte, con la misma semilla para todo el mundo ese día (día UTC, igual que el servidor):
+// hashSeed(día, región). No gasta provisiones ni la salida corta. El botín va al ranking de contactos y da un premio
+// chico por participar (también sin conexión). La región rota entre las tres primeras y vale aunque no esté abierta.
+export const DAILY_REGIONS = ['bosque', 'sierras', 'banado'];
+export const DAILY_ZONE = 2;
+export const DAILY_PRIZE = { gems: 3 };
+/** Día de la Expedición del día: 'AAAA-MM-DD' en UTC. */
+export const dailyDay = (d = new Date()) => new Date(d).toISOString().slice(0, 10);
+export function dailyRegion(day = dailyDay()) {
+  const n = Math.floor(Date.parse(day + 'T00:00:00Z') / 864e5);
+  return DAILY_REGIONS[((n % DAILY_REGIONS.length) + DAILY_REGIONS.length) % DAILY_REGIONS.length];
+}
+export const dailySeed = (day = dailyDay()) => hashSeed(day, dailyRegion(day));
+/** Botín de la Expedición del día en puntos: materiales 1, planos 6, hallazgos 4, colonos 3, estrellas 5. Tope 1000. */
+export function dailyScore(loot = {}, stars = 0) {
+  const mats = Object.values(loot.mats || {}).reduce((a, n) => a + (n || 0), 0);
+  const finds = Array.isArray(loot.finds) ? loot.finds.length : loot.finds || 0;
+  const v = mats + 6 * (loot.planos || 0) + 4 * finds + 3 * (loot.colonos || 0) + 5 * (stars || 0);
+  return Math.max(0, Math.min(1000, Math.round(v)));
+}
+/** { day, region, regionName, zone, seed, done, last:{day, region, score, stars, loot, prize}|null } */
+export function dailyInfo(state = S(), now = Date.now()) {
+  const e = expState(state);
+  const day = dailyDay(now), region = dailyRegion(day);
+  const last = e.daily?.day === day ? e.daily : null;
+  return { day, region, regionName: REGIONS[region]?.name, zone: DAILY_ZONE, seed: dailySeed(day), done: !!last || e.dailyStarted === day, last };
+}
 // Orden en que se arma el grupo por defecto (si no hay uno elegido antes).
 const ROLE_PRIORITY = ['exploracion', 'ingenieria', 'guia', 'sanidad', 'recoleccion'];
 
@@ -115,14 +144,17 @@ export function expeditionStatus(state = S(), now = Date.now()) {
   else if (active) reason = reasonShort = 'Hay una salida en curso';
   if (!reason && prov < EXP.provMinNormal) reason = `Hacen falta ${EXP.provMinNormal} provisiones para salir (hay ${prov})`;
   if (!reasonShort && !freeShortToday(state)) reasonShort = 'La salida corta de hoy ya se hizo: mañana hay otra';
+  const daily = dailyInfo(state, now);
+  let reasonDaily = !base ? 'Primero construí la Casa de Expediciones' : active ? 'Hay una salida en curso' : '';
+  if (!reasonDaily && daily.done) reasonDaily = 'La Expedición del día ya se hizo: mañana hay otra';
   const ex = E.expansionStatus(state);
   return {
-    hasBase: base, canNormal: !reason, canShort: !reasonShort, reason, reasonShort,
+    hasBase: base, canNormal: !reason, canShort: !reasonShort, reason, reasonShort, canDaily: !reasonDaily, reasonDaily, daily,
     prov, provCap: E.provCap(state, now), provMax: pm, provTake: Math.min(pm, prov),
     partySlots: partySlots(state), cargoMax: cargoMax([], state), equipSlots: equipSlots(state),
     tired, roles, party: defaultParty(state, now), equip: defaultEquip(state),
     regions: REGION_IDS.map(id => regionInfo(id, state)), freeShort: base && freeShortToday(state) && !active,
-    active: active ? { region: active.region, zone: active.zone, kind: active.kind, steps: active.steps, name: REGIONS[active.region]?.name } : null,
+    active: active ? { region: active.region, zone: active.zone, kind: active.kind, steps: active.steps, name: REGIONS[active.region]?.name, daily: active.city?.daily || null } : null,
     zones: E.zonesExplored(state), expansion: ex ? { missingZones: ex.missingZones || 0, ok: ex.ok, reason: ex.reason } : null,
   };
 }
@@ -150,15 +182,18 @@ function cityMods(party, equip, state = S()) {
  * Arma la salida: descuenta provisiones (normal) o usa la vianda del día (corta), gasta el equipo y guarda el run en
  * state.expedition.active. Devuelve { run } o { error }.
  */
-export function startExpedition({ region = 'bosque', kind = 'normal', party = null, equip = null, seed = null } = {}, state = S()) {
+export function startExpedition({ region = 'bosque', kind = 'normal', party = null, equip = null, seed = null, daily = false } = {}, state = S()) {
   const e = expState(state);
   const now = Date.now();
+  const dInfo = daily ? dailyInfo(state, now) : null;
+  if (dInfo) { kind = 'corta'; region = dInfo.region; }
   kind = kind === 'corta' ? 'corta' : 'normal';
   if (!REGIONS[region]) region = 'bosque';
   if (!hasBase(state)) return { error: 'Primero construí la Casa de Expediciones' };
   if (e.active && !e.active.ended) return { error: 'Hay una salida en curso' };
-  if (!regionOpen(region, state)) return { error: `${REGIONS[region].name} se abre en el rango ${E.rankName(REGIONS[region].rank)}` };
-  if (kind === 'corta' && !freeShortToday(state)) return { error: 'La salida corta de hoy ya se hizo' };
+  if (dInfo && dInfo.done) return { error: 'La Expedición del día ya se hizo: mañana hay otra' };
+  if (!dInfo && !regionOpen(region, state)) return { error: `${REGIONS[region].name} se abre en el rango ${E.rankName(REGIONS[region].rank)}` };
+  if (kind === 'corta' && !dInfo && !freeShortToday(state)) return { error: 'La salida corta de hoy ya se hizo' };
   if (kind === 'normal' && (state.prov || 0) < EXP.provMinNormal) return { error: `Hacen falta ${EXP.provMinNormal} provisiones` };
   // grupo: un integrante por rol, que exista en la ciudad y no esté descansando, hasta los lugares de la Casa
   const avail = cityRoles(state, now).filter(r => !r.tiredMs).map(r => r.id);
@@ -168,26 +203,28 @@ export function startExpedition({ region = 'bosque', kind = 'normal', party = nu
   equip = [...new Set(equip || defaultEquip(state))].filter(id => EQUIPMENT[id] && (have[id] || 0) > 0).slice(0, equipSlots(state));
   const rs = e.regions[region];
   const recorrido = kind === 'normal' && rs.zone > 5;
-  const zone = Math.min(5, rs.zone);
-  const attempt = (e.attempts[region] = (e.attempts[region] || 0) + 1);
-  const tutorial = kind === 'corta' && region === 'bosque' && !(state.stats.expeditions > 0) && !e.tutorialShort;
-  if (seed == null) seed = tutorial ? TUTORIAL_SEED : hashSeed(region, zone, attempt, state.created || 0, kind);
+  const zone = dInfo ? DAILY_ZONE : Math.min(5, rs.zone);
+  const attempt = dInfo ? 0 : (e.attempts[region] = (e.attempts[region] || 0) + 1);
+  const tutorial = !dInfo && kind === 'corta' && region === 'bosque' && !(state.stats.expeditions > 0) && !e.tutorialShort;
+  if (dInfo) seed = dInfo.seed;
+  else if (seed == null) seed = tutorial ? TUTORIAL_SEED : hashSeed(region, zone, attempt, state.created || 0, kind);
   let prov;
   if (kind === 'normal') {
     prov = Math.min(provMax(state), state.prov || 0);
     store.spend({ prov }, 'expedition');
   } else {
     prov = EXP.kinds.corta.prov;
-    e.freeDay = todayStr();
+    if (dInfo) e.dailyStarted = dInfo.day;
+    else e.freeDay = todayStr();
     if (tutorial) e.tutorialShort = true;
   }
   if (equip.length) store.spend({ equip: Object.fromEntries(equip.map(id => [id, 1])) }, 'expedition');
   const run = R.newRun({ region, zone, kind, seed, party, equip, prov, mods: cityMods(party, equip, state) });
-  run.city = { recorrido, tutorial, at: now };
+  run.city = { recorrido: recorrido && !dInfo, tutorial, at: now, daily: dInfo ? dInfo.day : null };
   e.active = run;
   e.party = party.slice();
   store.markDirty();
-  bus.emit('expedition:started', { region, zone, kind, party: run.party.slice(), equip: run.equip.slice(), prov: run.prov });
+  bus.emit('expedition:started', { region, zone, kind, party: run.party.slice(), equip: run.equip.slice(), prov: run.prov, daily: run.city.daily });
   return { run };
 }
 /** Salida en curso guardada (para retomarla) o null. */
@@ -252,8 +289,18 @@ export function finishExpedition(run, state = S()) {
   store.inc('expeditions');
   if (res.starCount) store.inc('expStars', res.starCount);
   if (far) store.inc('expFar', far);
+  // Expedición del día: botín en puntos para el ranking y premio por participar (una vez por día)
+  let daily = null;
+  if (run.city.daily) {
+    const loot = { mats: { ...reward.mats }, planos: reward.planos || 0, finds: finds.length, colonos: reward.colonos || 0 };
+    store.grant(DAILY_PRIZE, 'expedition:daily');
+    const prize = { ...DAILY_PRIZE };
+    daily = { day: run.city.daily, region: run.region, score: dailyScore(loot, res.starCount), stars: res.starCount, loot, prize };
+    e.daily = daily;
+  }
   const ex = E.expansionStatus(state);
   const summary = {
+    daily,
     ...res, provBack: got.prov || 0, finds, zoneExplored, regionDone, recorrido: !!run.city.recorrido,
     regionName: REGIONS[run.region]?.name, zonesTotal: E.zonesExplored(state),
     missingZones: ex ? ex.missingZones || 0 : 0, canExpand: !!ex?.ok, far,
@@ -265,6 +312,7 @@ export function finishExpedition(run, state = S()) {
   bus.emit('expedition:finished', {
     region: run.region, zone: run.zone, kind: run.kind, stars: res.starCount, loot: L, reason: res.reason, steps: res.steps,
     objectiveDone: res.objectiveDone, party: run.party.slice(), equip: run.equip.slice(), far,
+    daily: daily ? { day: daily.day, region: daily.region, score: daily.score, stars: daily.stars, loot: daily.loot } : null,
   });
   if (zoneExplored) bus.emit('expedition:zone', { region: run.region, zone: run.zone, total: summary.zonesTotal });
   if (regionDone) bus.emit('expedition:region', { region: run.region });

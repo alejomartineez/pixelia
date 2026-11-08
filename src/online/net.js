@@ -277,8 +277,22 @@ export const net = {
   coopStatus(week = null) { return call('coop_status', { p_week: week || null }); },
 
   // ----- Ranking semanal -----
-  /** -> [{ id, name, level, week:{id, stars, exps, charm, rank}|null, me }] */
+  /** -> [{ id, name, level, week:{id, stars, exps, botin, def, charm, rank}|null, me }] */
   leaderboard(week = isoWeek()) { return call('friends_leaderboard', { p_week: week || null }, arr); },
+
+  // ----- Expedición del día (Fase 7b) -----
+  /** Manda el botín de la Expedición del día (una vez por día; se acepta hoy o ayer, UTC). -> { ok, day, score } */
+  submitDaily(day, region, score, stars = 0, loot = {}) {
+    return call('submit_daily', { p_day: day, p_region: region, p_score: Math.max(0, Math.round(score) || 0), p_stars: stars | 0, p_loot: loot || {} });
+  },
+  /** Ranking del día (por defecto hoy) -> [{ id, name, level, region, score, stars, loot, me, at }] ordenado por botín */
+  dailyBoard(day = null) { return call('daily_board', { p_day: day || null }, arr); },
+
+  // ----- Cuadrillas para la amenaza de un contacto (Fase 7b) -----
+  /** threatId = el que publica el contacto en stats.threat.id. -> { ok, id, n (cuadrillas que ya tiene) } */
+  sendCrew(hostId, threatId) { return call('send_crew', { p_host: hostId, p_threat: String(threatId || '') }); },
+  /** Cuadrillas que me mandaron (14 días) -> [{ id, threat, helper_id, helper_name, created_at }] */
+  myCrews(sinceIso = null) { return call('my_crews', { p_since: sinceIso || null }, arr); },
 };
 
 export default net;

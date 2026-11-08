@@ -16,6 +16,7 @@ import { bus } from '../core/bus.js';
 import { population, happiness, cityCharm, townRank } from '../core/economy.js';
 import { ITEMS, CHESTS, addChest, chestCount } from '../chests/chests.js';
 import { STICKERS } from '../album/album.js';
+import { publicThreat } from '../threats/threats.js';
 
 // { userId, rev, hash } de la última sincronización. En modo simulado va por jugadora (como el guardado).
 const META_KEY = (() => {
@@ -237,8 +238,14 @@ export async function pushNow(opts = {}) {
 // ---------- Perfil público ----------
 /** Arma el perfil público a partir del estado (puro). */
 export function buildPublicProfile(s = store.state, now = Date.now()) {
-  // semana: estrellas y salidas de expedición (las claves de los minijuegos retirados ya no se publican)
-  const week = s.online?.week?.id === isoWeek() ? { id: s.online.week.id, stars: s.online.week.stars || 0, exps: s.online.week.exps || 0 } : { id: isoWeek(), stars: 0, exps: 0 };
+  // semana (ranking, Fase 7b): estrellas y salidas de expedición, botín de las Expediciones del día y la mejor defensa (%)
+  const ow = s.online?.week;
+  const week = ow?.id === isoWeek()
+    ? { id: ow.id, stars: ow.stars || 0, exps: ow.exps || 0, botin: ow.botin || 0, def: ow.def || 0 }
+    : { id: isoWeek(), stars: 0, exps: 0, botin: 0, def: 0 };
+  // amenaza avisada y sin resolver: los contactos pueden mandar una cuadrilla (send_crew la valida contra esto)
+  let threat = null;
+  try { threat = publicThreat(s); } catch {}   // con el reloj de las amenazas (las pruebas lo corren)
   let pop = 0, happy = 0, charm = 0, rank = 1;
   try { pop = population(s, now); happy = happiness(s, now).pct; charm = cityCharm(s, now); rank = townRank(s); } catch {}
   return {
@@ -269,6 +276,7 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
       // rango y Encanto también van en week: friends_leaderboard solo devuelve stats.week (así no hay que tocar el SQL)
       week: { ...week, charm, rank },
       album: albumCode(s),
+      ...(threat ? { threat } : {}),
     },
   };
 }
@@ -303,17 +311,32 @@ export async function publishProfileNow(force = false) {
 
 // Estadísticas de la semana (para el ranking): se guardan en state.online.week
 function trackWeekStats() {
-  bus.on('expedition:finished', ({ stars = 0, prototype } = {}) => {
+  const week = () => {
     const s = store.state;
-    if (!s || prototype) return;
+    if (!s) return null;
     s.online ??= {};
     const id = isoWeek();
-    if (s.online.week?.id !== id) s.online.week = { id, stars: 0, exps: 0 };
-    const w = s.online.week;
+    if (s.online.week?.id !== id) s.online.week = { id, stars: 0, exps: 0, botin: 0, def: 0 };
+    return s.online.week;
+  };
+  bus.on('expedition:finished', ({ stars = 0, prototype, daily } = {}) => {
+    if (prototype) return;
+    const w = week();
+    if (!w) return;
     w.stars = (w.stars || 0) + Math.max(0, stars | 0);
     w.exps = (w.exps || 0) + 1;
+    if (daily?.score) w.botin = (w.botin || 0) + Math.max(0, daily.score | 0);
     store.markDirty();
   });
+  bus.on('threat:resolved', ({ id, pct = 0 } = {}) => {
+    if (id === 'sim') return;
+    const w = week();
+    if (!w) return;
+    w.def = Math.max(w.def || 0, Math.max(0, Math.min(100, pct | 0)));
+    store.markDirty();
+  });
+  // una amenaza recién avisada se publica enseguida para que los contactos puedan mandar cuadrillas
+  bus.on('threat:announced', ({ id } = {}) => { if (id !== 'sim') setTimeout(() => publishProfileNow(true), 1500); });
 }
 
 // ---------- Buzón ----------

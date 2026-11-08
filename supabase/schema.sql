@@ -30,7 +30,7 @@ create table if not exists public.profiles (
   look        jsonb not null default '{}'::jsonb,   -- personaje (type + piezas)
   car         jsonb not null default '{}'::jsonb,   -- auto
   city        jsonb not null default '{}'::jsonb,   -- {buildings:[{id,x,z,rot,level}], expansions, flagColor}
-  stats       jsonb not null default '{}'::jsonb,   -- {pop, happy, best:{...}, week:{id, match3, blocks, parking, driving, stars}}
+  stats       jsonb not null default '{}'::jsonb,   -- {pop, happy, rank, charm, album, threat:{id, type, end}, week:{id, stars, exps, botin, def, charm, rank}}
   updated_at  timestamptz not null default now(),
   last_seen   timestamptz not null default now()
 );
@@ -142,6 +142,31 @@ create table if not exists public.events (
   created_at  timestamptz not null default now()
 );
 
+-- Expedición del día (Fase 7b): misma semilla para todo el mundo ese día (la arma el cliente con el día UTC y la región);
+-- cada jugadora manda una vez su botín y se compara con sus contactos.
+create table if not exists public.daily_runs (
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  day         date not null,
+  region      text not null check (region ~ '^[a-z]{2,16}$'),
+  score       int not null check (score between 0 and 1000),
+  stars       int not null default 0 check (stars between 0 and 3),
+  loot        jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now(),
+  primary key (user_id, day)
+);
+
+-- Cuadrillas mandadas a la ciudad de un contacto cuando le llega una amenaza (Fase 7b). threat = id del calendario
+-- ('temporada-turno', el mismo para todo el mundo). Una por contacto y amenaza.
+create table if not exists public.crews (
+  id          bigserial primary key,
+  helper      uuid not null references auth.users(id) on delete cascade,
+  host        uuid not null references auth.users(id) on delete cascade,
+  threat      text not null check (threat ~ '^[0-9]{1,4}-[0-3]$'),
+  day         date not null default current_date,
+  created_at  timestamptz not null default now(),
+  unique (helper, host, threat)
+);
+
 -- ---------------------------------------------------------------------
 -- Índices
 -- ---------------------------------------------------------------------
@@ -158,6 +183,9 @@ create index if not exists requests_open_idx        on public.requests (expires_
 create index if not exists coop_week_idx            on public.coop (week);
 create index if not exists events_name_idx          on public.events (name, created_at);
 create index if not exists events_anon_idx          on public.events (anon_id, created_at);
+create index if not exists daily_runs_day_idx       on public.daily_runs (day);
+create index if not exists crews_host_idx           on public.crews (host, created_at desc);
+create index if not exists crews_helper_day_idx     on public.crews (helper, day);
 
 -- ---------------------------------------------------------------------
 -- Funciones auxiliares (internas)
@@ -207,7 +235,7 @@ begin
    where a = least(p_me, p_other) and b = greatest(p_me, p_other) and status = 'accepted'
    for update;
   if not found then
-    raise exception 'Solo podés hacer eso con tus amigos';
+    raise exception 'Solo podés hacer eso con tus contactos';
   end if;
   return f;
 end $$;
@@ -250,7 +278,7 @@ begin
   return p;
 end $$;
 
--- ¿Cuántos intercambios de figuritas hizo hoy esta jugadora? (propuestos + aceptados)
+-- ¿Cuántos intercambios de hallazgos hizo hoy esta jugadora? (propuestos + aceptados)
 create or replace function public.sticker_trades_today(p_user uuid) returns int
 language sql stable security definer set search_path = public as $$
   select count(*)::int from public.trades
@@ -428,7 +456,7 @@ begin
   select * into f from public.friendships
    where a = least(me, o.id) and b = greatest(me, o.id) for update;
   if found then
-    if f.status = 'accepted' then raise exception 'Ya son amigos con %', o.name; end if;
+    if f.status = 'accepted' then raise exception '% ya está entre tus contactos', o.name; end if;
     if f.requested_by = me then raise exception 'Ya le mandaste una solicitud a %, falta que acepte', o.name; end if;
     -- ella ya me había pedido amistad: se acepta directamente
     update public.friendships set status = 'accepted', accepted_at = now()
@@ -440,7 +468,7 @@ begin
     raise exception 'Tenés muchas solicitudes sin responder. Esperá que te acepten';
   end if;
   if (select count(*) from public.friendships where me in (a, b) and status = 'accepted') >= 100 then
-    raise exception 'Llegaste al máximo de 100 amigos';
+    raise exception 'Llegaste al máximo de 100 contactos';
   end if;
   insert into public.friendships (a, b, status, requested_by)
   values (least(me, o.id), greatest(me, o.id), 'pending', me)
@@ -471,7 +499,7 @@ language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid(); t public.trades;
 begin
   delete from public.friendships where a = least(me, p_other) and b = greatest(me, p_other);
-  if not found then raise exception 'No son amigos'; end if;
+  if not found then raise exception 'No está entre tus contactos'; end if;
   for t in
     update public.trades set status = 'cancelled', resolved_at = now()
      where status = 'pending'
@@ -505,7 +533,7 @@ $$;
 -- Regalos / buzón
 -- ---------------------------------------------------------------------
 -- kind: 'gift' (1 por amiga por día), 'help' (máx 3 por día por anfitriona),
---       'sticker' (máx 3 por amiga por día). Los demás tipos los crea el servidor.
+--       'sticker' (hallazgo, máx 3 por contacto por día). Los demás tipos los crea el servidor.
 create or replace function public.send_gift(p_to uuid, p_kind text, p_payload jsonb default '{}'::jsonb) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid(); pl jsonb; pts int; gid bigint;
@@ -528,7 +556,7 @@ begin
     pts := 1;
   else -- sticker
     if (select count(*) from public.gifts where from_id = me and to_id = p_to and kind = 'sticker' and day = current_date) >= 3 then
-      raise exception 'Ya le regalaste 3 figuritas hoy';
+      raise exception 'Ya le regalaste 3 hallazgos hoy';
     end if;
     pts := 2;
   end if;
@@ -597,37 +625,37 @@ begin
     raise exception 'Tenés 5 intercambios esperando respuesta. Esperá a que te contesten o cancelá alguno';
   end if;
 
-  -- Figuritas: 1 por lado, solo figuritas, estrellas parecidas.
+  -- Hallazgos (payload `stickers`, ids del álbum): 1 por lado, solo hallazgos, estrellas parecidas.
   st := (o ? 'stickers') or (r ? 'stickers');
   if st then
     if exists (select 1 from jsonb_object_keys(o) k where k not in ('stickers', 'stars', 'golden'))
        or exists (select 1 from jsonb_object_keys(r) k where k not in ('stickers', 'stars', 'golden')) then
-      raise exception 'En un intercambio de figuritas solo van figuritas (sin monedas ni objetos)';
+      raise exception 'En un intercambio de hallazgos solo van hallazgos (sin monedas ni objetos)';
     end if;
     if not (o ? 'stickers' and r ? 'stickers') then
-      raise exception 'Hace falta una figurita de cada lado';
+      raise exception 'Hace falta un hallazgo de cada lado';
     end if;
     if (select count(*) from jsonb_each(o->'stickers')) <> 1 or (select count(*) from jsonb_each(r->'stickers')) <> 1
        or (select sum((value #>> '{}')::numeric) from jsonb_each(o->'stickers')) <> 1
        or (select sum((value #>> '{}')::numeric) from jsonb_each(r->'stickers')) <> 1 then
-      raise exception 'Se intercambia de a una figurita por lado';
+      raise exception 'Se intercambia de a un hallazgo por lado';
     end if;
     if jsonb_typeof(o->'stars') is distinct from 'number' or jsonb_typeof(r->'stars') is distinct from 'number' then
-      raise exception 'Faltan las estrellas de las figuritas';
+      raise exception 'Faltan las estrellas de los hallazgos';
     end if;
     os := (o->>'stars')::numeric; rs := (r->>'stars')::numeric;
     if os not between 1 and 5 or rs not between 1 and 5 or os <> trunc(os) or rs <> trunc(rs) then
       raise exception 'Las estrellas van de 1 a 5';
     end if;
     if abs(os - rs) > 1 then
-      raise exception 'Las figuritas tienen que tener estrellas parecidas (como mucho 1 de diferencia)';
+      raise exception 'Los hallazgos tienen que tener estrellas parecidas (como mucho 1 de diferencia)';
     end if;
     -- golden: la Semana Dorada (evento calculado en el cliente) habilita 5★ sin los 14 días de amistad
     if greatest(os, rs) = 5 and f.days < 14 and (o->'golden') is distinct from 'true'::jsonb then
-      raise exception 'Las figuritas de 5 estrellas se cambian con amistades de 14 días o más';
+      raise exception 'Los hallazgos de 5 estrellas se cambian con amistades de 14 días o más';
     end if;
     if public.sticker_trades_today(me) >= 5 then
-      raise exception 'Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!';
+      raise exception 'Ya hiciste 5 intercambios de hallazgos hoy. Mañana podés hacer más';
     end if;
   end if;
 
@@ -667,7 +695,7 @@ begin
   if p_accept then
     perform public.pair_lock(me, t.from_id);
     if t.is_sticker and public.sticker_trades_today(me) >= 5 then
-      raise exception 'Ya hiciste 5 intercambios de figuritas hoy. ¡Mañana más!';
+      raise exception 'Ya hiciste 5 intercambios de hallazgos hoy. Mañana podés hacer más';
     end if;
     update public.trades set status = 'accepted', resolved_at = now() where id = t.id;
     if t.offer <> '{}'::jsonb then
@@ -885,6 +913,92 @@ language sql stable security definer set search_path = public as $$
 $$;
 
 -- ---------------------------------------------------------------------
+-- Expedición del día (Fase 7b)
+-- ---------------------------------------------------------------------
+-- Manda el botín de la Expedición del día. Se acepta el día de hoy o el de ayer (una salida que terminó después de
+-- medianoche o sin conexión). Una sola vez por día: la primera manda.
+create or replace function public.submit_daily(p_day date, p_region text, p_score int, p_stars int default 0, p_loot jsonb default '{}'::jsonb)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_uid(); lt jsonb;
+begin
+  if not exists (select 1 from public.profiles where id = me) then raise exception 'Primero creá tu perfil online'; end if;
+  if p_day is null or p_day not between current_date - 1 and current_date then
+    raise exception 'Esa Expedición del día ya cerró';
+  end if;
+  if p_region is null or p_region !~ '^[a-z]{2,16}$' then raise exception 'Esa región no existe'; end if;
+  if p_score is null or p_score not between 0 and 1000 then raise exception 'Ese botín no es válido'; end if;
+  if coalesce(p_stars, 0) not between 0 and 3 then raise exception 'Las estrellas van de 0 a 3'; end if;
+  lt := public.check_payload(p_loot, 2048);
+  insert into public.daily_runs (user_id, day, region, score, stars, loot)
+  values (me, p_day, p_region, p_score, coalesce(p_stars, 0), lt)
+  on conflict do nothing;
+  if not found then raise exception 'Ya mandaste tu Expedición del día'; end if;
+  return jsonb_build_object('ok', true, 'day', p_day, 'score', p_score);
+end $$;
+
+-- Ranking de la Expedición del día: yo y mis contactos que la hicieron ese día (por defecto, hoy).
+create or replace function public.daily_board(p_day date default null)
+returns table (id uuid, name text, level int, region text, score int, stars int, loot jsonb, me boolean, at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.name, p.level, d.region, d.score, d.stars, d.loot, p.id = auth.uid(), d.created_at
+    from public.daily_runs d
+    join public.profiles p on p.id = d.user_id
+   where auth.uid() is not null
+     and d.day = coalesce(p_day, current_date)
+     and (d.user_id = auth.uid()
+          or exists (select 1 from public.friendships f
+                      where f.status = 'accepted' and auth.uid() in (f.a, f.b) and d.user_id in (f.a, f.b)))
+   order by d.score desc, d.stars desc, d.created_at
+   limit 101;
+$$;
+
+-- ---------------------------------------------------------------------
+-- Cuadrillas para la amenaza de un contacto (Fase 7b)
+-- ---------------------------------------------------------------------
+-- La amenaza tiene que ser la que el contacto publica en su perfil (stats.threat {id, end}) y no haber terminado.
+-- Límites: 1 por contacto y amenaza, 3 por día para quien ayuda, 3 por amenaza para quien recibe.
+create or replace function public.send_crew(p_host uuid, p_threat text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public.require_uid(); hp public.profiles; th jsonb; n int; cid bigint;
+begin
+  if p_host = me then raise exception 'Esa es tu ciudad 😄'; end if;
+  perform public.pair_lock(me, p_host);
+  if p_threat is null or p_threat !~ '^[0-9]{1,4}-[0-3]$' then raise exception 'Esa amenaza no existe'; end if;
+  select * into hp from public.profiles where id = p_host;
+  th := hp.stats->'threat';
+  if th is null or th->>'id' is distinct from p_threat then
+    raise exception 'Esa amenaza ya pasó o todavía no se avisó';
+  end if;
+  if jsonb_typeof(th->'end') is distinct from 'number' or (th->>'end')::numeric <= extract(epoch from now()) * 1000 then
+    raise exception 'Esa amenaza ya pasó';
+  end if;
+  if exists (select 1 from public.crews where helper = me and host = p_host and threat = p_threat) then
+    raise exception 'Ya mandaste una cuadrilla para esta amenaza';
+  end if;
+  if (select count(*) from public.crews where helper = me and day = current_date) >= 3 then
+    raise exception 'Ya mandaste 3 cuadrillas hoy. Mañana podés mandar más';
+  end if;
+  select count(*) into n from public.crews where host = p_host and threat = p_threat;
+  if n >= 3 then raise exception '% ya tiene todas las cuadrillas que puede recibir', hp.name; end if;
+  insert into public.crews (helper, host, threat) values (me, p_host, p_threat) returning id into cid;
+  perform public.bump_friendship(me, p_host, 3);
+  return jsonb_build_object('ok', true, 'id', cid, 'n', n + 1);
+end $$;
+
+-- Cuadrillas que me mandaron (por defecto, últimos 14 días).
+create or replace function public.my_crews(p_since timestamptz default null)
+returns table (id bigint, threat text, helper_id uuid, helper_name text, created_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select c.id, c.threat, c.helper, p.name, c.created_at
+    from public.crews c
+    left join public.profiles p on p.id = c.helper
+   where c.host = auth.uid() and c.created_at >= coalesce(p_since, now() - interval '14 days')
+   order by c.created_at
+   limit 100;
+$$;
+
+-- ---------------------------------------------------------------------
 -- Seguridad: RLS y permisos
 -- ---------------------------------------------------------------------
 alter table public.profiles    enable row level security;
@@ -896,12 +1010,16 @@ alter table public.visits      enable row level security;
 alter table public.requests    enable row level security;
 alter table public.coop        enable row level security;
 alter table public.events      enable row level security;
+alter table public.daily_runs  enable row level security;
+alter table public.crews       enable row level security;
 
 -- Nadie escribe directo salvo su propia partida; todo lo demás va por RPC.
 revoke all on table public.profiles, public.saves, public.friendships, public.gifts,
-                    public.trades, public.visits, public.requests, public.coop from anon, authenticated;
+                    public.trades, public.visits, public.requests, public.coop,
+                    public.daily_runs, public.crews from anon, authenticated;
 grant select on table public.profiles, public.saves, public.friendships, public.gifts,
-                      public.trades, public.visits, public.requests, public.coop to authenticated;
+                      public.trades, public.visits, public.requests, public.coop,
+                      public.daily_runs, public.crews to authenticated;
 grant insert, update on table public.saves to authenticated;
 
 drop policy if exists profiles_read on public.profiles;
@@ -935,6 +1053,13 @@ create policy requests_read on public.requests for select to authenticated
 drop policy if exists coop_read on public.coop;
 create policy coop_read on public.coop for select to authenticated
   using (user_id = auth.uid() or public.is_friend(auth.uid(), user_id));
+
+drop policy if exists daily_runs_read on public.daily_runs;
+create policy daily_runs_read on public.daily_runs for select to authenticated
+  using (user_id = auth.uid() or public.is_friend(auth.uid(), user_id));
+
+drop policy if exists crews_read on public.crews;
+create policy crews_read on public.crews for select to authenticated using (auth.uid() in (helper, host));
 
 -- Métricas: cualquiera (con o sin sesión) puede SUMAR filas, nadie puede leerlas, cambiarlas ni borrarlas.
 -- El grant por columna deja afuera id y created_at: la hora la pone el servidor.
@@ -990,7 +1115,11 @@ begin
     'public.fill_request(bigint)',
     'public.add_coop_points(int)',
     'public.coop_status(text)',
-    'public.friends_leaderboard(text)'
+    'public.friends_leaderboard(text)',
+    'public.submit_daily(date, text, int, int, jsonb)',
+    'public.daily_board(date)',
+    'public.send_crew(uuid, text)',
+    'public.my_crews(timestamptz)'
   ] loop
     execute format('revoke execute on function %s from public, anon', fn);
     execute format('grant execute on function %s to authenticated', fn);

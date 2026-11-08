@@ -36,7 +36,53 @@ function ts(state = S()) {
   t.seen ||= {}; t.results ||= {}; t.report ||= []; t.mended ||= []; t.titles ||= {};
   if (t.active === undefined) t.active = null;
   if (t.sim === undefined) t.sim = null;
+  t.help ||= {}; t.helpNew ||= []; t.helpFixed ||= [];
   return t;
+}
+
+// ---------- Cuadrillas de contactos (Fase 7b) ----------
+// Un contacto puede mandar una cuadrilla a la amenaza que publicás (stats.threat): cada una suma HELP.prep a la
+// preparación de la resolución automática y una cuadrilla más en la defensa jugada (tope HELP.extraK). Si llega tarde
+// (la amenaza ya se resolvió sola antes de que el juego se enterara), arregla un edificio que esa amenaza dañó.
+export const HELP = { prep: 0.05, max: 3, extraK: 2 };
+/** -> { n, names, bonus } para una amenaza. */
+export function helpFor(id, state = S()) {
+  const list = (ts(state).help[id] || []).slice(0, HELP.max);
+  return { n: list.length, names: list.map(x => x.name), bonus: list.length * HELP.prep };
+}
+/**
+ * Registra cuadrillas que llegaron del servidor: [{ threat, id (de quien ayuda), name, at (ms) }]. Idempotente.
+ * Devuelve cuántas son nuevas.
+ */
+export function addHelp(list = [], state = S(), now = nowMs()) {
+  const st = ts(state);
+  let added = 0;
+  for (const c of list) {
+    if (!c?.threat || !c.id) continue;
+    const arr = (st.help[c.threat] ||= []);
+    if (arr.some(x => x.id === c.id)) continue;
+    arr.push({ id: c.id, name: String(c.name || 'Un contacto').slice(0, 24), at: c.at || now });
+    added++;
+    const res = st.results[c.threat];
+    const type = res?.type || st.seen[c.threat]?.type || null;
+    if (res) {
+      // llegó tarde: arregla un edificio que esa amenaza dañó (si queda alguno)
+      const b = state.city.buildings.find(o => o.damaged && (res.damaged || []).includes(o.uid));
+      if (b) { clearDamage(b, now); st.helpFixed.push({ name: c.name, uid: b.uid }); bus.emit('building:repaired', { b, paid: null, help: c.name }); }
+    } else if (arr.length <= HELP.max) st.helpNew.push({ threat: c.threat, name: c.name, type });
+  }
+  const keys = Object.keys(st.help);
+  for (const k of keys.slice(0, Math.max(0, keys.length - 12))) delete st.help[k];
+  if (added) store.markDirty();
+  return added;
+}
+/** La amenaza que se publica en el perfil para que los contactos manden cuadrillas: avisada, sin resolver, no simulacro. */
+export function publicThreat(state = S(), now = nowMs()) {
+  try {
+    const t = currentThreat(now, state);
+    if (!t || t.id === 'sim' || ts(state).results[t.id] || Cal.phase(t, now) === 'lejos') return null;
+    return { id: t.id, type: t.type, start: t.start, end: t.end, help: helpFor(t.id, state).n };
+  } catch { return null; }
 }
 const rank = (state = S()) => E.townRank(state);
 // Observatorio terminado (bonus threatWarn, DESIGN-CORE.md §5.4): el aviso sale 2 días antes (WARN_DAYS_OBSERVATORY)
@@ -105,7 +151,7 @@ export function threatStatus(now = nowMs(), state = S()) {
   return {
     t, phase, when: Cal.whenText(t, now), type: t.type, def: THREAT_TYPES[t.type], name: threatName(t), f: t.f, info,
     active: st.active && st.active.id === t.id ? st.active : null,
-    canFace: phase === 'hoy' && !st.results[t.id] && info.enRiesgo > 0, visible: phase !== 'lejos',
+    canFace: phase === 'hoy' && !st.results[t.id] && info.enRiesgo > 0, visible: phase !== 'lejos', help: helpFor(t.id, state),
     reserve: reserveFor(t.type), reserveName: RESERVES[reserveFor(t.type)]?.name,
   };
 }
@@ -161,7 +207,8 @@ function applyResult({ id, type, f, pct, mode, damaged, enRiesgo }, state = S(),
   store.inc('threats');
   if (mode === 'jugada') store.inc('threatsPlayed');
   store.setMax('threatBest', pct);
-  const res = { pct, mode, at: now, damaged: [...damaged], type, f, reward, sparks, title };
+  const help = helpFor(id, state).names;
+  const res = { pct, mode, at: now, damaged: [...damaged], type, f, reward, sparks, title, help };
   st.results[id] = res;
   // se guardan las últimas 12
   const ids = Object.keys(st.results).sort((a, b) => st.results[b].at - st.results[a].at);
@@ -179,7 +226,8 @@ function resolveAuto(t, state = S(), now = nowMs()) {
   const st = ts(state);
   if (st.active && st.active.id === t.id) return finishDefense(state, now, true);
   const info = R.prepInfo(t.type, cityView(state, now), state.reserves || {}, t.f);
-  const a = R.autoResolve(info.prep, t.f, info.enRiesgo, Math.random, info.have);
+  // las cuadrillas de contactos suman preparación (Fase 7b)
+  const a = R.autoResolve(Math.min(1, info.prep + helpFor(t.id, state).bonus), t.f, info.enRiesgo, Math.random, info.have);
   const resId = reserveFor(t.type);
   if (a.used && resId) store.spend({ reserves: { [resId]: a.used } }, 'threat');
   return applyResult({ id: t.id, type: t.type, f: t.f, pct: a.pct, mode: 'auto', damaged: R.pickDamaged(info, a.damaged), enRiesgo: info.enRiesgo }, state, now);
@@ -245,7 +293,7 @@ export function startDefense(id, state = S(), now = nowMs()) {
   if (!R.atRisk(t.type, cityView(state, now), t.f).length) return { error: 'Hoy no hay nada expuesto: pasa sola' };
   const resId = reserveFor(t.type);
   const d = R.newDefense({ id, type: t.type, f: t.f, city: cityView(state, now), reserves: state.reserves?.[resId] || 0,
-    K: crewsFor(state.colonos || 0, hasHospital(state)), seed: (now & 0x7fffffff) ^ 0x5bd1e995 });
+    K: crewsFor(state.colonos || 0, hasHospital(state)) + Math.min(HELP.extraK, helpFor(id, state).n), seed: (now & 0x7fffffff) ^ 0x5bd1e995 });
   st.active = d;
   store.markDirty();
   bus.emit('threat:started', { id });
@@ -330,10 +378,14 @@ export function repairAll(state = S()) {
 export function reportStatus(state = S()) {
   const st = ts(state);
   const items = st.report.map(id => ({ id, ...st.results[id], name: id === 'sim' ? SIM.name : THREAT_TYPES[st.results[id]?.type]?.name })).filter(x => x.type);
-  if (!items.length && !st.mended.length) return null;
-  return { items, mended: st.mended.map(uid => state.city.buildings.find(b => b.uid === uid)).filter(Boolean) };
+  if (!items.length && !st.mended.length && !st.helpNew.length && !st.helpFixed.length) return null;
+  return {
+    items, mended: st.mended.map(uid => state.city.buildings.find(b => b.uid === uid)).filter(Boolean),
+    helpNew: st.helpNew.slice(),
+    helpFixed: st.helpFixed.map(x => ({ name: x.name, b: state.city.buildings.find(b => b.uid === x.uid) })).filter(x => x.b),
+  };
 }
-export function ackReport(state = S()) { const st = ts(state); st.report = []; st.mended = []; store.markDirty(); }
+export function ackReport(state = S()) { const st = ts(state); st.report = []; st.mended = []; st.helpNew = []; st.helpFixed = []; store.markDirty(); }
 
 // ---------- Defensas: radio ----------
 export const isDefense = (id) => !!DEFENSES[typeof id === 'string' ? id : id?.id];

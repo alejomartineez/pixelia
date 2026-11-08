@@ -146,7 +146,7 @@ export const SOCIAL_CSS = `
 .soc-visit { display: flex; gap: 10px; align-items: flex-start; }
 
 /* ===== Ranking ===== */
-.soc-cats { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: none; touch-action: pan-x; }
+.soc-cats { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 2px 2px 6px; }
 .soc-cats::-webkit-scrollbar { display: none; }
 .soc-cat { flex: none; display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border: 2px solid var(--ink); border-radius: 99px; background: #fff; font-size: 15px; font-weight: 700; box-shadow: 0 2px 0 var(--ink); }
 .soc-cat.on { background: var(--gold); }
@@ -173,6 +173,15 @@ export const SOCIAL_CSS = `
 @keyframes socPb { 50% { background: var(--second); } }
 .soc-prize { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; }
 .soc-prize .btn { grid-column: 1 / -1; }
+/* Fase 7b: amenaza de un contacto (cuadrilla) y Expedición del día */
+.soc-threat { display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; padding: 1px 8px; border: 2px solid var(--ink); border-radius: 8px; background: var(--sky-l); font-size: 13px; font-weight: 700; }
+.soc-acts .soc-crew { grid-column: 1 / -1; }
+.soc-daily { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; }
+.soc-daily > .btn, .soc-daily > .soc-dlist { grid-column: 1 / -1; }
+.soc-dlist { display: grid; gap: 4px; }
+.soc-drow { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; align-items: center; padding: 4px 8px; border: 2px solid var(--ink); border-radius: 8px; background: #fff; font-size: 15px; }
+.soc-drow.me { background: var(--gold-l); }
+.soc-drow b.v { display: inline-flex; align-items: center; gap: 3px; }
 
 /* ===== Equipo ===== */
 .soc-coop-hero { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; background: linear-gradient(160deg, #ffe3c8, #fff7ee 70%); }

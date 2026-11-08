@@ -9,6 +9,7 @@ import { fmtNum, rankDef } from '../core/economy.js';
 import { net } from './net.js';
 import {
   socialCache as cache, refreshSocial, tabCounts, openAccount, giftSentToday, giftPreview, sendDailyGift, myName,
+  friendProfiles, friendThreat, threatWhen, crewSent, crewPrize, sendCrew,
 } from './social.js';
 import {
   useSocialStyle, avatarHtml, timeAgo, isOnlineNow, friendshipHtml, loadingHtml, emptyHtml, busy,
@@ -124,7 +125,8 @@ async function renderFriends(api, tok) {
   if (!net.user) { pane.replaceChildren(connectCard(api, 'amigas')); return; }
   if (!cache.friends || !myProfile || myProfile.id !== net.user.id) pane.innerHTML = loadingHtml('Buscando tus contactos…');
   else draw();
-  const [p] = await Promise.all([myProfile?.id === net.user.id ? myProfile : net.getMyProfile(), refreshSocial(['friends'])]);
+  // los perfiles traen la amenaza que publica cada contacto (para mandarle una cuadrilla)
+  const [p] = await Promise.all([myProfile?.id === net.user.id ? myProfile : net.getMyProfile(), refreshSocial(['friends']).then(() => friendProfiles())]);
   if (p && !p.error) myProfile = p;
   if (api.live(tok)) draw();
 
@@ -251,6 +253,7 @@ function outgoingCard(api, f) {
 
 function friendCard(api, f) {
   const on = isOnlineNow(f.last_seen);
+  const th = friendThreat(f.id);
   const card = h('div.soc-card.soc-friend', {
     'data-friend': f.id,
     html: `<span style="position:relative">${avatarHtml(f.look, f.name, 56)}${on ? '<i class="soc-on" title="En línea"></i>' : ''}</span>
@@ -258,6 +261,7 @@ function friendCard(api, f) {
         <div class="soc-name"><b>${esc(f.name)}</b><span class="soc-lv">${icon('star', 14)}${f.level}</span>${f.rank ? `<span class="soc-lv soc-rk" title="Rango de su ciudad${f.charm ? ` · ${fmtNum(f.charm)} de Encanto` : ''}">${icon(rankDef(f.rank).emoji, 14)}${esc(rankDef(f.rank).name)}</span>` : ''}</div>
         <div class="soc-seen${on ? ' on' : ''}">${on ? 'En línea' : `Se conectó ${timeAgo(f.last_seen)}`}${f.city_name ? ` · ${esc(f.city_name)}` : ''}</div>
         ${friendshipHtml(f)}
+        ${th ? `<div class="soc-threat">${icon(th.icon, 16)} ${esc(th.name)} · ${threatWhen(th)}</div>` : ''}
       </div>`,
   });
   const rm = h('button.soc-x', { 'aria-label': `Quitar a ${f.name} de tus contactos`, html: icon('close', 14) });
@@ -295,6 +299,25 @@ function friendCard(api, f) {
     'aria-label': `Intercambiar con ${f.name}`,
     onclick: () => { audio.sfx('tap'); import('./social-trade.js').then(mod => mod.openTradeEditor(api.ctx, { friend: f, onDone: () => api.rerender() })); },
   }));
+  // Fase 7b: le llega una amenaza → mandar una cuadrilla (suma preparación en su ciudad)
+  if (th) {
+    const sentCrew = crewSent(f.id, th.id);
+    const cb = h('button.btn.gold.small.soc-crew' + (sentCrew ? '.done' : ''), {
+      disabled: sentCrew,
+      html: sentCrew ? `${icon('check', 16)} Cuadrilla enviada` : `${icon('people', 18)} Mandar una cuadrilla · +${fmtNum(crewPrize().coins)} ${icon('coin', 14)}`,
+      title: `Suma preparación a la ciudad de ${f.name} para ${th.name}`,
+    });
+    cb.onclick = () => busy(cb, async () => {
+      const r = await sendCrew(f);
+      if (r?.error) { if (/Ya mandaste una cuadrilla/.test(r.error)) api.rerender(); return r; }
+      audio.sfx('swoosh');
+      toast(`Tu cuadrilla va para la ciudad de ${f.name}. Ganaste ${fmtNum(r.reward.coins)} monedas.`, { icon: 'people', type: 'good' });
+      cb.classList.add('done'); cb.innerHTML = `${icon('check', 16)} Cuadrilla enviada`;
+      setTimeout(() => { if (cb.isConnected) cb.disabled = true; }, 0);
+      return r;
+    });
+    acts.append(cb);
+  }
   card.append(acts);
   return card;
 }

@@ -175,7 +175,7 @@ export function buildDom(root, handlers) {
       const o = v.objective;
       const have = o.type === 'juntar' ? ` · ${v.cargo[o.mat] || 0}/${o.n}` : '';
       const extra = [v.planos ? `<span class="ex-mat">${I('plano', 18)}${v.planos}</span>` : '', v.finds.length ? `<span class="ex-mat">${I('find', 18)}${v.finds.length}</span>` : '', v.colonos ? `<span class="ex-mat">${I('colono', 18)}${v.colonos}</span>` : ''].join('');
-      g.innerHTML = `${o.done ? icon('check', 22) : I(o.type === 'juntar' ? o.mat : 'objetivo', 22)}<span class="t"><span>${esc(objectiveText(o))}${have}</span><small>${esc(meta.regionName)} · zona ${meta.zone} · ${meta.kind === 'corta' ? 'salida corta' : 'salida'}</small></span><span class="extra">${extra}</span>`;
+      g.innerHTML = `${o.done ? icon('check', 22) : I(o.type === 'juntar' ? o.mat : 'objetivo', 22)}<span class="t"><span>${esc(objectiveText(o))}${have}</span><small>${esc(meta.regionName)} · zona ${meta.zone} · ${meta.daily ? 'Expedición del día' : meta.kind === 'corta' ? 'salida corta' : 'salida'}</small></span><span class="extra">${extra}</span>`;
       g.classList.toggle('done', !!o.done);
       const hb = $('home');
       const atBase = v.pos[0] === v.base[0] && v.pos[1] === v.base[1];
@@ -343,6 +343,10 @@ function cityLines(res) {
   if (res.zoneExplored || res.canExpand) {
     if (res.canExpand) out.push(`${icon('map', 16)} Ya se puede ampliar el terreno (desde la Municipalidad).`);
     else if (res.missingZones > 0) out.push(`${icon('map', 16)} ${res.missingZones === 1 ? 'Falta 1 zona' : `Faltan ${res.missingZones} zonas`} para ampliar el terreno.`);
+  }
+  if (res.daily) {
+    const g = res.daily.prize?.gems || 0;
+    out.push(`${icon('trophy', 16)} Expedición del día: <b>${res.daily.score}</b> de botín para el ranking de tus contactos${g ? ` · premio por participar: ${icon('gem', 14)} ${g}` : ''}.`);
   }
   out.push('<span class="ex-note">Lo que trajeron ya está en la ciudad.</span>');
   return out.map(t => `<p>${t}</p>`).join('');

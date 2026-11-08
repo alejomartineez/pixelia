@@ -262,7 +262,7 @@ export function payloadChips(p = {}, size = 18) {
   if (p.minutes) out.push(`<span class="soc-chip">${icon('⏳', size)}-${p.minutes} min</span>`);
   return out.join('');
 }
-/** Carta de figurita en miniatura (owned por defecto). */
+/** Carta de hallazgo en miniatura (owned por defecto). */
 export function stickerCard(id, opts = {}) {
   const d = stickerDef(id);
   const el = renderStickerCard(d, { showCount: false, ...opts });

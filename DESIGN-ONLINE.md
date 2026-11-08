@@ -77,7 +77,7 @@ Todo lo de abajo está en `supabase/schema.sql`, en los dos adaptadores (`net-su
 
 **Amistad por días** — `friendships.days` y `last_day`. Toda interacción (regalo, ayuda, figurita, visita del día, like, nota, pedido completado, intercambio aceptado) llama a `bump_friendship(a,b,pts)` (interna, no expuesta): suma puntos y **como mucho 1 día por día calendario**. `listFriends()` devuelve `days` y `friendship = friendLevel(days)`. Niveles (`FRIEND_LEVELS` en net.js): Conocidas 0 · Amigas 3 · Compinches 14 · Íntimas 45 · Inseparables 100. Puntos: visita 1, ayuda 1, nota 1, like 2, regalo 2, figurita 2, intercambio 3, pedido 3.
 
-**Figuritas** — en `proposeTrade`, si `offer` o `request` tiene `stickers`: ambos lados deben ser solo `{stickers:{id:1}, stars:n}` (1 figurita por lado, sin mezclar con monedas/objetos), estrellas 1..5 con diferencia ≤ 1, figuritas de 5★ solo con amigas de ≥ 14 días, y máx **5 intercambios de figuritas por día** por jugadora (propuestos + aceptados). También `sendGift(to, 'sticker', {stickers:{id:1}})` (máx 3 por amiga por día).
+**Hallazgos (antes figuritas)** — en `proposeTrade`, si `offer` o `request` tiene `stickers`: ambos lados deben ser solo `{stickers:{id:1}, stars:n}` (1 hallazgo por lado, sin mezclar con monedas/objetos), estrellas 1..5 con diferencia ≤ 1, hallazgos de 5★ solo con amigas de ≥ 14 días, y máx **5 intercambios de hallazgos por día** por jugadora (propuestos + aceptados). También `sendGift(to, 'sticker', {stickers:{id:1}})` (máx 3 por amiga por día). El payload sigue siendo `stickers` (mismos ids del álbum); desde la Fase 7b los mensajes del servidor y del mock dicen "hallazgos" y "contactos".
 
 **Obra en Equipo** — tabla `coop(user_id, week 'YYYY-Www', points)`.
 - `net.addCoopPoints(n)` → `{week, mine, added, capped}`; tope **2000 puntos por día**.
@@ -85,7 +85,7 @@ Todo lo de abajo está en `supabase/schema.sql`, en los dos adaptadores (`net-su
 
 **Visitas** — `visits.note` (máx 80). `net.leaveNote(hostId, text)` 1 por día por ciudad. `net.visitorsToMe(sinceIso?)` → `[{id, name, day, visited, liked, helped, note, at}]` (por defecto últimos 7 días).
 
-**Ranking semanal** — `net.leaderboard(week = isoWeek())` → `[{id, name, level, week, me}]` de mí y mis amigas; `week` es `stats.week` (o `null` si es de otra semana). `sync.js` publica `stats.week = {id, match3, blocks, parking, driving, stars}` (mejor puntaje de la semana por juego + estrellas sumadas, guardado en `state.online.week` al escuchar `minigame:finished`).
+**Ranking semanal** — `net.leaderboard(week = isoWeek())` → `[{id, name, level, week, me}]` de mí y mis contactos; `week` es `stats.week` (o `null` si es de otra semana). Desde la Fase 7b `sync.js` publica `stats.week = {id, stars, exps, botin, def, charm, rank}`: estrellas y salidas de expedición, botín sumado de las Expediciones del día y la mejor defensa de la semana (% salvado). Categorías del ranking (`RANK_CATS`): Estrellas, Salidas, Botín, Defensa y Encanto.
 Además `stats.week` lleva `rank` y `charm` (rango de la ciudad y Encanto actuales) y `stats` los repite (`stats.rank`, `stats.charm`): así la categoría **Ciudad más linda** (`charm`) del ranking y el rango en la lista de amistades salen de `friends_leaderboard` sin cambiar el SQL (social.js pide `net.leaderboard(null)`, sin filtrar semana, junto con `listFriends` y los combina en `f.rank` / `f.charm`). La visita calcula rango y Encanto con el snapshot de la ciudad.
 
 **Extras de la API** (además de la lista de arriba): `net.claimAll()` (cobra todo atómico), `pushSave(data, rev, {force})` devuelve `{conflict:true}` si otro dispositivo guardó, helpers `friendLevel(days)`, `isoWeek()`, `friendlyError(e)`. El like va por la RPC `give_like` (`like` es palabra reservada en SQL). Regalos `help` llevan `{minutes, uid}` y al cobrarlos `applyGiftPayload` adelanta esa obra. El perfil público incluye `uid` y `busyUntil` de las obras en curso para que la visita sepa dónde ayudar.
@@ -113,6 +113,20 @@ Estado local `state.social`: `giftDay` (regalito enviado hoy por amiga, día UTC
 - **Ranking**: semana ISO, categorías nivel/estrellas/juegos, podio pixel, "¡Mejor marca personal!" (supera tus semanas anteriores), premio de participación para todas (domingo; la semana anterior queda cobrable).
 - **Obra en Equipo**: puntos por bus (ganar minijuego 30, obra terminada 20, mejora 40, pedido cumplido 50, regalito/ayuda 10), se suben con `addCoopPoints` cada 30 s; meta = 1000 × amigas con puntos (sin conexión: meta personal de 1000); 5 escalones cobrables una vez por semana (los no cobrados pasan a "semanas anteriores", no se pierden).
 - **Cuenta**: crear cuenta / entrar / "Jugar sin cuenta"; con sesión: estado de sincronización, "Guardar ahora", cerrar sesión. Sin servidor (`net.mode === 'off'`) explica que el online llega cuando se configure y ofrece el modo simulado (`?mock=1&mockuser=…`).
+
+## Fase 7b: lo social en el ciclo nuevo
+
+**Expedición del día** — tabla `daily_runs (user_id, day, region, score 0..1000, stars 0..3, loot)`, PK (user_id, day).
+- Cliente (`expedition.js`): `startExpedition({ daily: true })` arma una salida **corta** con zona 2 y semilla `hashSeed(díaUTC, región)` (`dailySeed`), igual para todo el mundo. La región rota entre Bosque, Sierras y Bañado (`dailyRegion`) y vale aunque no esté abierta. No gasta provisiones, ni la salida corta del día, ni intentos de zona. Una por día (UTC). Al volver: `dailyScore` (materiales 1, planos 6, hallazgos 4, colonos 3, estrellas 5), premio por participar `DAILY_PRIZE` (3 gemas, también sin conexión) y `expedition:finished {daily:{day, region, score, stars, loot}}`.
+- `net.submitDaily(day, region, score, stars, loot)` (RPC `submit_daily`): una vez por día, acepta hoy o ayer. `social.js` la manda al volver; sin sesión queda en `state.social.dailyPending` y sale en el próximo refresco. `net.dailyBoard(day?)` (RPC `daily_board`) → yo + contactos de ese día, ordenado por botín.
+- UI: tarjeta "Expedición del día" arriba del Ranking (podio del día y botón que abre el panel de expedición) y botón dorado en el panel de expedición.
+
+**Cuadrillas para la amenaza de un contacto** — tabla `crews (helper, host, threat, day)`, única por (helper, host, threat).
+- El perfil publica `stats.threat = {id, type, start, end, help}` mientras hay una amenaza avisada sin resolver (`threats.publicThreat`, no el simulacro); se republica enseguida al avisarse.
+- `net.sendCrew(hostId, threatId)` (RPC `send_crew`): solo contactos, la amenaza tiene que ser la publicada y no haber terminado; 1 por contacto y amenaza, **3 por día** para quien ayuda, **3 por amenaza** para quien recibe; suma 3 puntos de amistad. Quien ayuda gana `CREW_PRIZE` (80 monedas × escala), 30 puntos de Obra en Equipo y chispas del Pase (`social:helped {kind:'crew'}`).
+- `net.myCrews()` (RPC `my_crews`, 14 días): `social.js` las pasa a `threats.addHelp` en cada refresco. Cada cuadrilla suma **+5% de preparación** a la resolución automática (`HELP.prep`, tope 3) y una cuadrilla más en la defensa jugada (tope +2). Si llega cuando la amenaza ya se resolvió, arregla un edificio que esa amenaza dañó. El panel de la amenaza muestra "Cuadrillas de Ana +5%", y "Mientras no estabas…" cuenta quién mandó cuadrillas (`social:crews` vuelve a abrir la llegada si la ciudad está libre) y "con la ayuda de…" en el resultado.
+
+Correr `supabase/schema.sql` entero en el SQL Editor del proyecto Pixelia (tablas, índices, RLS y funciones nuevas; mensajes de intercambio pasados a "hallazgos").
 
 ## Métricas anónimas (`public.events` + `src/online/telemetry.js`)
 
