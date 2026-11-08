@@ -115,7 +115,7 @@ ok((await as(null, 'select * from saves')).rows.length === 0, 'sin sesión no se
 
 // ---------------------------------------------------------------------
 section('Amistad');
-ok((await rpc('ana', 'request_friend', [pa.code])).error?.includes('propio código'), 'no podés agregarte a vos misma');
+ok((await rpc('ana', 'request_friend', [pa.code])).error?.includes('propio código'), 'no podés agregar tu propio código');
 ok((await rpc('ana', 'request_friend', ['ZZZZZZ'])).error?.includes('No encontramos'), 'código inexistente → error amable');
 let rf = await rpc('ana', 'request_friend', [pb.code]);
 ok(rf.status === 'pending' && rf.name === 'Bea', 'ana pide amistad a bea (pendiente)');
@@ -149,7 +149,7 @@ ok((await rpc('ana', 'send_gift', [U.bea, 'gift', { coins: 50 }])).error?.includ
 ok((await rpc('ana', 'send_gift', [U.cami, 'gift', { coins: 50 }])).ok, 'pero a otra amiga sí');
 ok((await rpc('ana', 'send_gift', [U.bea, 'gift', { coins: -5 }])).error?.includes('no son válidos'), 'payload con montos negativos rechazado');
 ok((await rpc('ana', 'send_gift', [U.bea, 'trade', { coins: 5 }])).error?.includes('no existe'), 'no se pueden fabricar entregas de intercambio');
-ok((await rpc('ana', 'send_gift', [U.ana, 'gift', {}])).error, 'no te podés regalar a vos misma');
+ok((await rpc('ana', 'send_gift', [U.ana, 'gift', {}])).error, 'no se puede regalar a la propia cuenta');
 ok((await as('ana', `insert into gifts (from_id, to_id, kind) values ($1, $2, 'gift')`, [U.ana, U.bea])).error?.includes('permission denied'), 'no se puede insertar gifts directo');
 for (let i = 0; i < 3; i++) await rpc('bea', 'send_gift', [U.ana, 'help', { minutes: 15, uid: 1 + i }]);
 ok((await rpc('bea', 'send_gift', [U.ana, 'help', { minutes: 15 }])).error?.includes('3 veces'), 'ayuda: la 4ª del día falla');

@@ -240,7 +240,7 @@ const RPC = {
 
   send_gift(db, me, { p_to, p_kind, p_payload }) {
     if (!['gift', 'help', 'sticker'].includes(p_kind)) E('Ese tipo de regalo no existe');
-    if (p_to === me) E('No te podés mandar regalos a vos misma');
+    if (p_to === me) E('Los regalos son para tus contactos, no para tu propia ciudad');
     pairLock(db, me, p_to);
     const pl = checkPayload(p_payload);
     const d = today(db);
@@ -278,7 +278,7 @@ const RPC = {
   },
 
   propose_trade(db, me, { p_to, p_offer, p_request }) {
-    if (p_to === me) E('No podés intercambiar con vos misma');
+    if (p_to === me) E('Los intercambios son con tus contactos, no con tu propia cuenta');
     const f = pairLock(db, me, p_to);
     const o = checkPayload(p_offer), r = checkPayload(p_request);
     if (isEmpty(o) && isEmpty(r)) E('El intercambio está vacío');
@@ -347,7 +347,7 @@ const RPC = {
     return { first };
   },
   give_like(db, me, { p_host }) {
-    if (p_host === me) E('No te podés dar corazón a vos misma');
+    if (p_host === me) E('El corazón es para la ciudad de un contacto, no para la tuya');
     pairLock(db, me, p_host);
     const v = visitRow(db, p_host, me);
     if (v.liked) E('Ya le diste ❤️ hoy. ¡Mañana podés de nuevo!');

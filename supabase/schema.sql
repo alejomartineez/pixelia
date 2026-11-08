@@ -539,7 +539,7 @@ language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid(); pl jsonb; pts int; gid bigint;
 begin
   if p_kind not in ('gift', 'help', 'sticker') then raise exception 'Ese tipo de regalo no existe'; end if;
-  if p_to = me then raise exception 'No te podés mandar regalos a vos misma'; end if;
+  if p_to = me then raise exception 'Los regalos son para tus contactos, no para tu propia ciudad'; end if;
   perform public.pair_lock(me, p_to);
   pl := public.check_payload(p_payload);
 
@@ -616,7 +616,7 @@ declare
   st boolean; os numeric; rs numeric;
   tid bigint;
 begin
-  if p_to = me then raise exception 'No podés intercambiar con vos misma'; end if;
+  if p_to = me then raise exception 'Los intercambios son con tus contactos, no con tu propia cuenta'; end if;
   f := public.pair_lock(me, p_to);
   o := public.check_payload(p_offer);
   r := public.check_payload(p_request);
@@ -748,7 +748,7 @@ create or replace function public.give_like(p_host uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare me uuid := public.require_uid();
 begin
-  if p_host = me then raise exception 'No te podés dar corazón a vos misma'; end if;
+  if p_host = me then raise exception 'El corazón es para la ciudad de un contacto, no para la tuya'; end if;
   perform public.pair_lock(me, p_host);
   insert into public.visits (host, visitor, day) values (p_host, me, current_date) on conflict do nothing;
   update public.visits set liked = true, updated_at = now()
