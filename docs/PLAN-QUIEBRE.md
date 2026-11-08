@@ -451,6 +451,114 @@ del texto pixel. Las pantallas nuevas (Ajustes, Bitácora, combate) usan los mis
 - **Tests.** `test-migration.mjs` suma el caso.
 - **Guía de tono.** Se actualiza DESIGN.md (arte y tono).
 
+### K. Sonido y música: ambiente vivo y música adaptativa (pedido del usuario, 2026-11-08)
+**Decisiones:**
+- Música **híbrida**: instrumentos grabados reales y el juego compone con ellos en vivo, por capas.
+- Estilo **folk melancólico**: piano, cuerdas y flauta con silencios. Cálido en la ciudad, misterioso afuera. Crece a
+  orquesta y coro solo en los momentos épicos.
+- Sonidos de **fuentes gratis** y sin regalías.
+
+**Cómo lo hace la industria (investigado):**
+- **Técnicas de música adaptativa:**
+  - *Capas verticales*: se suman o se sacan instrumentos según la tensión. Es lo más común.
+  - *Resecuenciado horizontal*: se cambia de sección en el límite de compás.
+  - *Stingers*: frases cortas atadas a eventos, como un hallazgo o una victoria.
+- **Ambiente:**
+  - Una *cama* continua más *sonidos sueltos* con probabilidad y desfase al azar, así no se nota el loop.
+  - El *silencio* también es diseño.
+  - Los sonidos tienen dirección y distancia.
+- **Herramientas.** El estándar son FMOD y Wwise. FMOD es gratis para indies con presupuesto chico y tiene versión
+  HTML5/wasm, pero pesa, hay que integrarlo a mano y la licencia para web no es clara.
+- **Decisión: motor propio sobre Web Audio nativo**, que es lo que el juego ya usa. Hace lo mismo para nuestra escala, sin
+  dependencias en tiempo de ejecución (regla de CLAUDE.md) y sin licencias.
+  - Howler.js no suma nada esencial.
+  - Tone.js pesa y el secuenciador ya existe.
+
+**K1. Mezclador** (`src/audio/mixer.js`).
+- **Buses:** general / música / ambiente / efectos / interfaz / voz. Toman los volúmenes de Ajustes del paso 2c.
+- **Ducking:** la música baja sola en diálogos, stingers y momentos épicos.
+- **Reverb por lugar:** `ConvolverNode` con respuestas de impulso generadas en código (ruido que decae, sin archivos).
+  Hay perfiles de campo abierto, interior, cueva y mina.
+- **Filtro paso bajo** para lo amortiguado: adentro de Mi Casa, la tormenta vista desde adentro.
+- **Mezcla prolija:** fundidos siempre (nada de clics), límite de voces simultáneas (cerca de 32) y silencio en segundo
+  plano si así está en Ajustes.
+
+**K2. Sampler** (`src/audio/sampler.js`).
+- Instrumentos con una muestra cada pocos semitonos, afinados con `playbackRate`, con ADSR y round-robin.
+- Se cargan por escena, sin bloquear el arranque.
+- **Formato:** `.m4a` (AAC), que anda en WebView2 y en WKWebView (Mac), decodificado con `decodeAudioData`.
+- **Presupuesto:** cerca de 6 MB para los instrumentos y cerca de 10 MB para los ambientes.
+
+**K3. Compositor adaptativo** (`src/audio/composer.js`, reemplaza al secuenciador de `src/core/audio.js`).
+- Cada lugar define una *pieza*: modo y escala, tempo, progresiones, banco de motivos y capas (pad, bajo, melodía,
+  percusión, coro).
+- Un parámetro de **intensidad** de 0 a 1 suma o saca capas. Los cambios caen en el compás.
+- **Leitmotivs:** el tema de la isla, el de la cartógrafa y el de El Quiebre (nace en la cinemática y vuelve en las
+  revelaciones).
+- **Respiros:** silencios entre frases, sobre todo en la ciudad y al explorar.
+- **Modo épico** para la intro, los jefes y las revelaciones: más orquesta, coro y percusión grave.
+- **Stingers:**
+  - hallazgo y página del diario;
+  - elemento descubierto;
+  - subida de rango y de Época;
+  - aviso de amenaza;
+  - victoria y derrota en combate;
+  - nivel.
+- **Mapeo por lugar:**
+  - Ciudad: cálida, más rica a medida que la isla se ilumina (J2).
+  - Expedición: más escasa y misteriosa cuanto más lejos.
+  - Combate: pulso y percusión, que suben con el peligro.
+  - Bajo Mundo: grave y dissonante.
+  - La noche cambia la instrumentación.
+
+**K4. Paisaje sonoro** (`src/audio/soundscape.js`). Lo maneja el perfil de ambiente de J1.
+- **Camas con fundido:** viento, mar al borde de la isla, bosque, lluvia, zumbido de cueva, fuego, murmullo de la ciudad
+  (crece con la población).
+- **Emisores sueltos** con probabilidad, rango de intervalo y variación de tono y volumen. Ubicados en 3D (`PannerNode`)
+  donde corresponde: pájaros en los árboles, olas en el borde, martillo en el Taller, fuente, chimeneas.
+- **Día y noche:** pájaros de día; grillos, búhos y faroles que zumban de noche.
+- **Clima:**
+  - la lluvia tiene intensidad;
+  - el trueno llega después del relámpago, con retraso según la distancia;
+  - viento de tormenta.
+- **Amenazas:** el agua que sube, el fuego que crepita, la escarcha que cruje.
+- **Respuesta a las acciones (J5):**
+  - pasos según la superficie (pasto, piedra, madera, arena, agua) en la expedición, Mi Casa y el combate;
+  - construir, cosechar, reparar.
+- **Interfaz:** clics de madera y metal, acordes con la interfaz oscura (J6).
+
+**K5. Fuentes y licencias** (todas gratis, sin regalías, sin licencias NC ni ND):
+- **Ambiente y efectos:**
+  - bundles de Sonniss para la GDC (2015–2026, sin regalías ni atribución; no permiten entrenar IA);
+  - Freesound, filtrado **solo CC0**;
+  - packs de Kenney (CC0).
+- **Instrumentos:** bancos libres de muestras orquestales y de piano (por ejemplo VSCO 2 Community Edition).
+  Se verifica la licencia de cada uno: si pide atribución (CC-BY), va en créditos.
+- **Registro.** `assets/audio/LICENSES.md` anota origen, autor y licencia de cada archivo. Los créditos del juego (Ajustes
+  → Partida) lo muestran.
+- **Descarga.** Si un sitio no deja bajar en automático, se le pide al usuario solo esa descarga, con el enlace exacto.
+
+**K6. Preparación de los archivos** (`tools/audio/`, con ffmpeg instalado vía winget):
+- recortar;
+- puntos de loop sin clic;
+- normalizar loudness (música cerca de −16 LUFS, ambiente cerca de −20, efectos ajustados a oído);
+- mono para los sonidos sueltos;
+- AAC entre 96 y 128 kbps;
+- `assets/audio/manifest.json` con duración, loop y categoría.
+
+`assets/` entra en `desktop/stage.mjs` y en el precache de `sw.js` (`gen-sw-core.mjs`).
+
+**K7. Pruebas y escucha:**
+- `tools/test-audio.mjs` en `npm test`:
+  - el mezclador y los buses arrancan;
+  - el compositor programa notas en cada lugar sin errores;
+  - los emisores respetan el límite de voces;
+  - los volúmenes de Ajustes se aplican.
+- Render con `OfflineAudioContext` de 30 s por lugar: que no sea silencio y que el pico quede por debajo de 0 dBFS.
+- `tools/render-audio.mjs` exporta fragmentos `.wav` (ciudad de día y de noche, expedición cerca y lejos, combate, épico)
+  a `shots/audio/`, para que el usuario los escuche y opine.
+- `DESIGN-AUDIO.md` nuevo: arquitectura, mapeo por lugar, motivos, fuentes y reglas de mezcla.
+
 ### F. Documentación
 - `DESIGN-STORY.md` nuevo: canon, actos 1 a 4, facciones, elementos, jefes y reglas de escritura.
 - `DESIGN-COMBAT.md` nuevo: reglas, fórmulas, IA y duración.
@@ -498,7 +606,9 @@ Sigue en pie la regla de CLAUDE.md: no tocar el otro proyecto de Supabase ni usa
 3. **D + E1–E4 + E7 + H**: motor de historia, Bitácora con el Manual, prólogo, tutorial y los primeros contactos.
 3b. **J1–J5**: `ambience.js`, la luz como progreso, día y noche, clima y las respuestas del entorno en la ciudad y la
     expedición. El combate y el Bajo Mundo lo usan cuando existan.
-4. **B**: cinemática, que ya usa la paleta y el ambiente oscuro.
+3c. **K**: mezclador, sampler, compositor adaptativo, paisaje sonoro y la preparación de los archivos. Va después de 3b,
+    que define los lugares, el clima y el día y la noche. Reemplaza la música sintetizada actual.
+4. **B**: cinemática, que ya usa la paleta, el ambiente oscuro y el motivo de El Quiebre (K3) en modo épico.
 5. **C**: combate. Primero el motor con sus tests, después la escena y la interfaz, después la casilla `enemigo`.
 6. **Acto 1 completo**: escenas, Núcleo de Raíz, jefes, faro, abordaje pirata y E5–E6.
 7. **Balance y primer release**: `sim-combat` y `sim:economy` dentro de sus metas, telemetría de combate y después
