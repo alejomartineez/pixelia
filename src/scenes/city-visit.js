@@ -322,7 +322,7 @@ export function createVisit(ctx) {
     if (hintEl) {
       const busy = [...entries.values()].filter(e => canHelp(e, now)).length;
       const html = !busy ? `${icon('sparkle', 16)}Paseá por la ciudad de ${ui.esc(hostName)}`
-        : left > 0 ? `${icon('hammer', 16)}Tocá una obra para ayudar · te quedan <b>${left}</b> ayuda${left === 1 ? '' : 's'} hoy`
+        : left > 0 ? `${icon('hammer', 16)}Hacé clic en una obra para ayudar · te quedan <b>${left}</b> ayuda${left === 1 ? '' : 's'} hoy`
           : `${icon('check', 16)}Ya ayudaste ${HELPS_PER_DAY} veces hoy. Mañana más`;
       if (hintEl.innerHTML !== html) hintEl.innerHTML = html;
     }

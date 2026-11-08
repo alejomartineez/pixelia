@@ -659,7 +659,7 @@ export default function create(ctx) {
     if (b) b.innerHTML = editing ? `${icon('check', 20)}Listo` : `${icon('palette', 20)}Decorar`;
     if (!editing) select(null);
     else { tab = homeState().items.length && Object.values(homeState().owned).some(n => n > 0) ? 'mine' : tab; renderDeco(); }
-    hint(editing ? 'Tocá un mueble para elegirlo y arrastralo' : null);
+    hint(editing ? 'Hacé clic en un mueble para elegirlo y arrastralo' : null);
     setTimeout(() => { if (r) placeCamera(); }, 300);   // cuando el panel terminó de entrar o salir
   }
   let hintT = 0;
@@ -788,7 +788,7 @@ export default function create(ctx) {
           buildRoom(); buildItems(); settlePlayer(); fitView(); refreshTitle();
           ui.toast(`Tu casa creció: ahora es ${homeLevelDef(b.level).name}`, { icon: 'home', type: 'good' });
         }));
-        hint(params.decorate ? null : 'Tocá el ropero para vestirte · Decorar para mover muebles');
+        hint(params.decorate ? null : 'Hacé clic en el ropero para vestirte · Decorar para mover muebles');
         if (params.decorate) setEditing(true);
       } else hint('Estás de visita: se mira, no se toca.');
       ctx.state.tutorial && (ctx.state.tutorial.homeVisited = true);

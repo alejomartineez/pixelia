@@ -402,7 +402,7 @@ export function openAlbum(ctx, params = {}) {
     rew.append(h('div', { html: progressHtml(p.have / 9, p.complete ? 'gold' : 'primary') }));
     if (p.claimable) rew.append(h('button.btn.gold.block', { html: `${icon('gift', 20)} ¡Reclamar premio!`, onclick: () => doClaim(setId) }));
     else if (p.claimed) rew.append(h('div.row', { html: `${icon('check', 20)} <b>¡Set completo!</b>` }));
-    else rew.append(h('div.muted.small', {}, `Te ${9 - p.have === 1 ? 'falta 1 hallazgo' : `faltan ${9 - p.have} hallazgos`}. Tocá uno para pedírselo a tus contactos.`));
+    else rew.append(h('div.muted.small', {}, `Te ${9 - p.have === 1 ? 'falta 1 hallazgo' : `faltan ${9 - p.have} hallazgos`}. Hacé clic en uno para pedírselo a tus contactos.`));
     side.append(rew);
     const legend = h('div.alb-legend');
     for (let s = 1; s <= 5; s++) legend.append(h('span.chip' + (s >= 5 ? '.primary' : s >= 3 ? '.gold' : s === 2 ? '.sky' : ''), {}, `${starsTxt(s)} ${A.RARITY_NAMES[s]}`));
@@ -629,7 +629,7 @@ export function playPackOpening(ctx, stickers = [], opts = {}) {
     packWrap.append(renderPack(pack));
     const cards = h('div.alb-open-cards' + (stickers.length <= 3 ? '.few' : ''));
     const stage = h('div.alb-open-stage', {}, cards, packWrap);
-    const hint = h('div.alb-open-hint', {}, 'Tocá el sobre para abrirlo');
+    const hint = h('div.alb-open-hint', {}, 'Hacé clic en el sobre para abrirlo');
     const sum = h('div.alb-open-sum');
     const foot = h('div.alb-open-foot');
     root.append(h('div.alb-open-rays'), h('div.alb-open-title', {}, opts.title || pack.name), stage, hint, sum, foot);

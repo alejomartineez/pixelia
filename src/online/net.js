@@ -180,7 +180,7 @@ export const net = {
     try {
       const r = await withTimeout(adapter.signUp(email, password, name));
       net.online = true;
-      if (!r.user) return { user: null, needsConfirm: true, message: 'Te mandamos un email para confirmar la cuenta. Abrilo y después tocá "Ya tengo cuenta".' };
+      if (!r.user) return { user: null, needsConfirm: true, message: 'Te mandamos un email para confirmar la cuenta. Abrilo y después hacé clic en "Ya tengo cuenta".' };
       setUser(r.user);
       await ensureProfile(name);
       return { user: net.user };

@@ -1,7 +1,7 @@
 {
-  "name": "Pixelia · Tu ciudad, tu estilo",
+  "name": "Pixelia",
   "short_name": "Pixelia",
-  "description": "Armá tu ciudad en 3D pixel art: elegí tu personaje y tu estilo, construí y jugá minijuegos.",
+  "description": "Reconstruí tu isla flotante en 3D pixel art, salí de expedición y descubrí qué pasó con el mundo. Un juego de Dezings.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

@@ -572,7 +572,7 @@ export const CUSTOM_CATALOG = {
 export const MAIN_QUESTS = [
   { id: 't1', title: 'Primera casa', text: 'Construí una Casa para la primera gente del pueblo.', goal: { type: 'build', id: 'casita', count: 1 }, reward: { coins: 100, xp: 20 } },
   { id: 't2', title: 'Algo para comer', text: 'Construí una Huerta: da las provisiones para salir a explorar.', goal: { type: 'build', id: 'huerta', count: 1 }, reward: { coins: 80, xp: 20 } },
-  { id: 't3', title: 'Primera cosecha', text: 'Tocá la Huerta y juntá 4 provisiones.', goal: { type: 'prov', count: 4 }, reward: { coins: 60, xp: 15 } },
+  { id: 't3', title: 'Primera cosecha', text: 'Hacé clic en la Huerta y juntá 4 provisiones.', goal: { type: 'prov', count: 4 }, reward: { coins: 60, xp: 15 } },
   { id: 't4', title: 'Base de operaciones', text: 'Construí la Casa de Expediciones.', goal: { type: 'build', id: 'casa_exp', count: 1 }, reward: { gems: 2, xp: 30 } },
   { id: 't5', title: 'Primera salida', text: 'Hacé la salida corta al Bosque del Arroyo (botón Expedición).', goal: { type: 'expedition', kind: 'corta', region: 'bosque', count: 1 }, reward: { coins: 100, xp: 30, mats: { madera: 3 } } },
   { id: 't6', title: 'Con lo que trajiste', text: 'Construí el Taller: pide 3 de madera.', goal: { type: 'build', id: 'taller', count: 1 }, reward: { coins: 60, xp: 30, mats: { madera: 3 } } },

@@ -63,11 +63,11 @@ export function playChestOpening(ctx, type, drops = []) {
       h('h2', {}, def.name),
       h('div.chx-sub', { html: `${icon('gift', 20)}<span>${drops.length} premios</span>` }));
     const pips = h('div.chx-pips', {}, ...Array.from({ length: TAPS }, () => h('i')));
-    const hint = h('div.chx-hint', {}, h('span', {}, 'Tocá el cofre'), pips);
+    const hint = h('div.chx-hint', {}, h('span', {}, 'Hacé clic en el cofre'), pips);
     const got = h('div.chx-got');
     const deckNum = h('b', {}, String(drops.length));
     const deck = h('div.chx-deck', {}, h('div.chx-stack', {}, h('i'), h('i'), h('i')), h('div', {}, deckNum, h('small', {}, 'quedan')));
-    const tapNext = h('div.chx-tapnext', {}, 'Tocá para seguir ›');
+    const tapNext = h('div.chx-tapnext', {}, 'Hacé clic para seguir ›');
     const cardZone = h('div.chx-cardzone');
     const skipBtn = h('button.btn.ghost.small.chx-skip', { 'aria-label': 'Saltar al resumen', html: `Saltar ${icon('play', 16)}` });
     shake.append(h('div.chx-bg'), h('div.chx-stars'), h('div.chx-rays'), h('div.chx-halo'), stage, flash, head, got, cardZone, hint, deck, tapNext);
@@ -348,7 +348,7 @@ export function playChestOpening(ctx, type, drops = []) {
       clearTimeout(revealTimer);
       cardEl.classList.add('flip');
       root.classList.add('revealed');
-      tapNext.textContent = idx >= drops.length - 1 ? 'Tocá para ver todo ›' : 'Tocá para seguir ›';
+      tapNext.textContent = idx >= drops.length - 1 ? 'Hacé clic para ver todo ›' : 'Hacé clic para seguir ›';
       const d = drops[idx], r = RARITIES[d.rarity] || RARITIES.comun;
       if (d.kind === 'coins') sfx('coin'); else if (d.kind === 'gems') sfx('gem'); else if (d.kind === 'xp') sfx('star');
       else if (d.kind === 'stickers') { sfx('swoosh'); later(120, () => sfx('pop')); } else sfx('pop');

@@ -137,7 +137,7 @@ export function openSettings(ctx) {
       ['1', icon('🧭', 40), 'Abrí el juego en <b>Safari</b>'],
       ['2', art('share', 40), 'Tocá <b>Compartir</b> (abajo)'],
       ['3', art('addHome', 40), 'Elegí <b>Agregar a inicio</b>'],
-      ['4', `<img class="pi pnl-appicon" src="icons/icon-192.png" width="40" height="40" alt="">`, '¡Listo! Tocá el ícono'],
+      ['4', `<img class="pi pnl-appicon" src="icons/icon-192.png" width="40" height="40" alt="">`, '¡Listo! Hacé clic en el ícono'],
     ].map(([n, ic, t]) => `<div class="pnl-stepc"><i>${n}</i>${ic}<span>${t}</span></div>`).join('') }));
     const deferred = window.__pixeliaInstallPrompt;
     if (!isIOS() && deferred && typeof deferred.prompt === 'function') {
@@ -394,13 +394,13 @@ export function openHelp(ctx) {
   const { h } = ctx.ui;
   const groups = [
     ['castle', 'Tu ciudad', [
-      ['coin', 'Cobrá', 'Cuando aparece una burbujita arriba de un edificio, tocala para juntar monedas. Si se llena, deja de producir: ¡volvé seguido!'],
-      ['hammer', 'Construí', 'Tocá <b>Construir</b>, elegí algo y ubicalo en el pasto. Podés rotarlo y moverlo cuando quieras.'],
+      ['coin', 'Cobrá', 'Cuando aparece una burbujita arriba de un edificio, hacé clic para juntar monedas. Si se llena, deja de producir: ¡volvé seguido!'],
+      ['hammer', 'Construí', 'Hacé clic en <b>Construir</b>, elegí algo y ubicalo en el pasto. Podés rotarlo y moverlo cuando quieras.'],
       ['dress', 'Tu personaje', 'Elegí quién sos (persona o animalito) y vestilo en el <b>Vestidor</b>. Cambiar de personaje es gratis y lo que compraste queda guardado.'],
       ['palette', 'Estilo de la ciudad', 'Con el botón de la <b>paleta</b> en la ciudad (o en Ajustes) elegís cómo se ve: pastel, moderna, bosque, playa, invierno o noche. Es gratis.'],
       ['people', 'Población', 'Las casas traen vecinos. Muchos negocios piden un mínimo de vecinos para abrir.'],
       ['smile', 'Felicidad', 'Árboles, flores y deco hacen feliz a tu ciudad: ¡todo produce hasta un 50% más!'],
-      ['castle', 'Rango y Encanto', 'Mejorá la <b>Municipalidad</b> para subir de rango, de Aldea a Capital. Cada rango pide un expediente: vecinos, felicidad, tipos de negocio y <b>Encanto</b> (deco variada y edificios mejorados). Tocá el cartel de tu rango, arriba a la izquierda.'],
+      ['castle', 'Rango y Encanto', 'Mejorá la <b>Municipalidad</b> para subir de rango, de Aldea a Capital. Cada rango pide un expediente: vecinos, felicidad, tipos de negocio y <b>Encanto</b> (deco variada y edificios mejorados). Hacé clic en el cartel de tu rango, arriba a la izquierda.'],
       ['monument', 'Monumentos', 'Desde el rango Pueblo construís monumentos por etapas con los <b>materiales</b> que trae la expedición: madera, piedra, mineral y hierbas. Cada uno terminado da un bonus para siempre. Mirá <b>Obras</b>.'],
       ['👷', 'Constructoras', 'Cada obra ocupa una constructora un ratito. Si faltan menos de 5 segundos, terminala gratis.'],
       ['🧭', 'Expedición', 'Con la <b>Casa de Expediciones</b> salís a explorar la región: cada paso gasta provisiones y lo que traés (materiales, planos, hallazgos) sirve para crecer.'],

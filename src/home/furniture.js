@@ -14,7 +14,7 @@ export const FURNITURE = [
   { id: 'cama', name: 'Cama', size: [1, 2], comfort: 12, price: { coins: 300 }, bed: true, desc: 'Ocho horas, si te dejan.' },
   { id: 'mesa', name: 'Mesa de madera', size: [2, 1], comfort: 6, price: { coins: 200 } },
   { id: 'silla', name: 'Silla', size: [1, 1], comfort: 3, price: { coins: 80 }, sit: true },
-  { id: 'ropero', name: 'Ropero', size: [2, 1], comfort: 6, price: { coins: 400 }, wardrobe: true, desc: 'Tocalo para abrir el Vestidor.' },
+  { id: 'ropero', name: 'Ropero', size: [2, 1], comfort: 6, price: { coins: 400 }, wardrobe: true, desc: 'Hacé clic para abrir el Vestidor.' },
   { id: 'lampara', name: 'Lámpara de pie', size: [1, 1], comfort: 5, price: { coins: 150 }, light: true },
   { id: 'planta', name: 'Planta', size: [1, 1], comfort: 5, price: { coins: 120 } },
   { id: 'alfombra', name: 'Alfombra redonda', size: [2, 2], comfort: 6, price: { coins: 180 }, rug: true },

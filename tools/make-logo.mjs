@@ -1,8 +1,12 @@
-// Logo en pixel art como SVG (sin fuente ni imágenes): la casita de los íconos y la palabra "Pixelia".
+// Logo en pixel art como SVG (sin fuente ni imágenes): la casita de los íconos y la palabra "Pixelia", y el logo del
+// estudio, Dezings (cubo vóxel + DEZINGS letra por letra), que se ve antes del splash.
 // Lo usan el preloader de index.html (pegado inline, así se ve en el primer pintado) y tools/make-og.mjs.
 //
-//   node tools/make-logo.mjs            (imprime los dos <svg>)
-//   node tools/make-logo.mjs --inject   (los reescribe en index.html entre <!--logo-crown-->…<!--/logo-crown--> y <!--logo-word-->…)
+//   node tools/make-logo.mjs            (imprime los <svg>)
+//   node tools/make-logo.mjs --inject   (los reescribe en index.html entre <!--logo-crown-->…<!--/logo-crown-->,
+//                                        <!--logo-word-->… y <!--logo-studio-->…)
+// El logo del estudio pinta con variables CSS (--st-top, --st-left, --st-right, --st-ink, --st-face, --st-face2,
+// --st-shadow, --st-glow): los colores de cada variante están en el CSS de #studio en index.html.
 //
 // Cada color es un único <path> de rectángulos (shape-rendering crispEdges): queda nítido a cualquier tamaño.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -36,6 +40,14 @@ const GLYPHS = {
   e: X(['.#####.', '##...##', '##...##', '#######', '##.....', '##...##', '.#####.']),
   l: ['##.', '##.', '##.', '##.', '##.', '##.', '##.', '##.', '##.', '.##'],
   a: X(['.#####.', '.....##', '.######', '##...##', '##...##', '##..###', '.###.##']),
+  // mayúsculas del logo del estudio
+  D: ['######.', '#######', '##...##', '##...##', '##...##', '##...##', '##...##', '##...##', '#######', '######.'],
+  E: ['#######', '#######', '##.....', '##.....', '######.', '######.', '##.....', '##.....', '#######', '#######'],
+  Z: ['#######', '#######', '....###', '...###.', '..###..', '.###...', '###....', '##.....', '#######', '#######'],
+  I: ['######', '######', '..##..', '..##..', '..##..', '..##..', '..##..', '..##..', '######', '######'],
+  N: ['##...##', '###..##', '###..##', '####.##', '##.####', '##..###', '##..###', '##...##', '##...##', '##...##'],
+  G: ['.#####.', '#######', '##...##', '##.....', '##.....', '##.####', '##.####', '##...##', '#######', '.#####.'],
+  S: ['.######', '#######', '##.....', '##.....', '######.', '.######', '.....##', '.....##', '#######', '######.'],
 };
 
 /** Rectángulos horizontales por color → un path "M x y h n v1 h-n z" por color. */
@@ -85,8 +97,68 @@ export function wordSvg(text = 'Pixelia', attrs = '') {
     + `<path fill="${SHADE}" d="${pathOf(bottom)}"/></svg>`;
 }
 
+// ---------- Logo del estudio: Dezings ----------
+const cellsOf = (set) => [...set].map(k => k.split(',').map(Number));
+const vpath = (v, cells) => `<path style="fill:var(${v})" d="${pathOf(cells)}"/>`;
+
+/** Cubo vóxel isométrico (2:1) de 18×18: cara de arriba, izquierda y derecha, borde tinta y un filo de luz. */
+export function studioCubeSvg(attrs = '') {
+  const W = 18, side = 9, by = { top: [], left: [], right: [], rim: [] }, all = new Set();
+  for (let x = 0; x < W; x++) {
+    const dx = x < W / 2 ? W / 2 - 1 - x : x - W / 2;          // 0 en el centro, 8 en los bordes
+    const t0 = Math.floor(dx / 2), t1 = 8 - Math.floor(dx / 2);  // cara de arriba
+    for (let y = t0; y <= t1 + side; y++) {
+      all.add(`${x},${y}`);
+      if (y < t1) by.top.push([x, y]);
+      else if (y === t1) by.rim.push([x, y]);
+      else (x < W / 2 ? by.left : by.right).push([x, y]);
+    }
+  }
+  const ink = cellsOf(all).filter(([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => !all.has(`${x + a},${y + b}`)));
+  const inkSet = new Set(ink.map(c => c.join(',')));
+  const keep = (arr) => arr.filter(c => !inkSet.has(c.join(',')));
+  // arista vertical del frente (entre izquierda y derecha) un tono más oscuro
+  const edge = keep(by.left).filter(([x]) => x === W / 2 - 1);
+  const H = Math.max(...cellsOf(all).map(([, y]) => y)) + 1;
+  return `<svg ${attrs} viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges" aria-hidden="true">`
+    + vpath('--st-top', keep(by.top)) + vpath('--st-glow', keep(by.rim)) + vpath('--st-left', keep(by.left).filter(([x]) => x !== W / 2 - 1))
+    + vpath('--st-right', keep(by.right)) + vpath('--st-right', edge) + vpath('--st-ink', ink) + '</svg>';
+}
+
+/** Una letra del logo: cara clara (con media cara más oscura abajo), contorno tinta y sombra de 2 de alto. */
+export function studioLetterSvg(ch, attrs = '') {
+  const g = GLYPHS[ch], fill = new Set();
+  g.forEach((row, y) => [...row].forEach((c, x) => { if (c === '#') fill.add(`${x + 1},${y + 1}`); }));
+  const outline = new Set();
+  for (const k of fill) { const [x, y] = k.split(',').map(Number); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) outline.add(`${x + a},${y + b}`); }
+  const W = g[0].length + 2, H = 14;
+  // huecos encerrados (el ojo de la D, la G…): tinta, así no se ve el fondo ni la sombra a través
+  const outside = new Set(), stack = [[-1, -1]];
+  while (stack.length) {
+    const [x, y] = stack.pop(), k = `${x},${y}`;
+    if (x < -1 || y < -1 || x > W || y > H || outside.has(k) || outline.has(k)) continue;
+    outside.add(k);
+    stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+  }
+  for (let x = 0; x < W; x++) for (let y = 0; y < H; y++) { const k = `${x},${y}`; if (!outside.has(k) && !fill.has(k)) outline.add(k); }
+  // sombra: 2 filas debajo de lo más bajo de cada columna (nada se asoma por adentro de la letra)
+  const shadow = new Set(), low = {};
+  for (const k of outline) { const [x, y] = k.split(',').map(Number); low[x] = Math.max(low[x] ?? -1, y); }
+  for (const [x, y] of Object.entries(low)) { shadow.add(`${x},${y + 1}`); shadow.add(`${x},${y + 2}`); }
+  const f = cellsOf(fill);
+  return `<svg ${attrs} viewBox="0 0 ${W} ${H}" shape-rendering="crispEdges" aria-hidden="true">`
+    + vpath('--st-shadow', cellsOf(shadow)) + vpath('--st-ink', cellsOf(outline))
+    + vpath('--st-face', f.filter(([, y]) => y < 7)) + vpath('--st-face2', f.filter(([, y]) => y >= 7)) + '</svg>';
+}
+
+/** Lo que va entre <!--logo-studio--> y <!--/logo-studio--> en index.html. */
+export function studioHtml(word = 'DEZINGS') {
+  const letters = [...word].map((ch, i) => `<span class="st-l" style="--i:${i}">${studioLetterSvg(ch)}</span>`).join('');
+  return `<span class="st-cube">${studioCubeSvg()}</span><span class="st-word" role="img" aria-label="Dezings">${letters}</span>`;
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  const blocks = { crown: crownSvg('class="boot-crown" width="112" height="80"'), word: wordSvg('Pixelia', 'class="boot-word" width="301" height="91"') };
+  const blocks = { crown: crownSvg('class="boot-crown" width="112" height="80"'), word: wordSvg('Pixelia', 'class="boot-word" width="301" height="91"'), studio: studioHtml() };
   if (process.argv.includes('--inject')) {
     const file = join(dirname(fileURLToPath(import.meta.url)), '..', 'index.html');
     let html = readFileSync(file, 'utf8');
@@ -97,5 +169,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
     }
     writeFileSync(file, html);
     console.log('logo actualizado en index.html');
-  } else console.log(blocks.crown + '\n' + blocks.word);
+  } else console.log(Object.values(blocks).join('\n'));
 }

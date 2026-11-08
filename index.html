@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Pixelia · Tu ciudad, tu estilo</title>
-  <meta name="description" content="Armá tu ciudad en 3D pixel art: elegí tu personaje y tu estilo, construí casitas y negocios y jugá minijuegos. Gratis, en el navegador o como app.">
+  <title>Pixelia</title>
+  <meta name="description" content="Reconstruí tu isla flotante en 3D pixel art, salí de expedición y aguantá lo que trae el clima. Un juego de Dezings.">
   <link rel="canonical" href="https://alejomartineez.github.io/pixelia/">
   <meta name="theme-color" content="#a9daff">
   <meta name="color-scheme" content="light">
@@ -21,8 +21,8 @@
   <meta property="og:site_name" content="Pixelia">
   <meta property="og:locale" content="es_AR">
   <meta property="og:url" content="https://alejomartineez.github.io/pixelia/">
-  <meta property="og:title" content="Pixelia · Tu ciudad, tu estilo">
-  <meta property="og:description" content="Armá tu ciudad en 3D pixel art: elegí tu personaje y tu estilo, construí casitas y negocios y jugá minijuegos de joyas, bloques, estacionar y manejar.">
+  <meta property="og:title" content="Pixelia">
+  <meta property="og:description" content="Reconstruí tu isla flotante en 3D pixel art, salí de expedición y aguantá lo que trae el clima. Un juego de Dezings.">
   <meta property="og:image" content="https://alejomartineez.github.io/pixelia/og.jpg">
   <meta property="og:image:secure_url" content="https://alejomartineez.github.io/pixelia/og.jpg">
   <meta property="og:image:type" content="image/jpeg">
@@ -30,8 +30,8 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Una ciudad en 3D pixel art con casitas, negocios, árboles y una fuente, con el logo de Pixelia y el lema Tu ciudad, tu estilo.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Pixelia · Tu ciudad, tu estilo">
-  <meta name="twitter:description" content="Armá tu ciudad en 3D pixel art: elegí tu personaje y tu estilo, construí y jugá minijuegos.">
+  <meta name="twitter:title" content="Pixelia">
+  <meta name="twitter:description" content="Reconstruí tu isla flotante en 3D pixel art, salí de expedición y aguantá lo que trae el clima. Un juego de Dezings.">
   <meta name="twitter:image" content="https://alejomartineez.github.io/pixelia/og.jpg">
   <meta name="twitter:image:alt" content="Una ciudad en 3D pixel art con el logo de Pixelia y el lema Tu ciudad, tu estilo.">
 
@@ -83,6 +83,37 @@
     @media (max-width: 380px) { .boot-word { width: 258px; height: 78px; } .boot-crown { width: 98px; height: 70px; } }
     @media (max-height: 520px) { .boot-crown { width: 84px; height: 60px; } .boot-load, .splash-tap { margin-top: 20px; } }
     @media (prefers-reduced-motion: reduce) { html:not(.motion-full) :is(.splash-sky, .boot-crown, .boot-bar i) { animation: none; } }
+    /* Logo del estudio (Dezings): antes del splash, mientras bajan los módulos. Variantes de color: st-dez (la de
+       siempre: el azul y blanco de Dezings), st-brasa, st-cefiro, st-veta (?studio=veta para probar). .fast = segunda vez en adelante; .still = sin movimiento. */
+    #studio { --T: 1; position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 95; display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 50% 45%, var(--st-bg2), var(--st-bg) 70%); cursor: pointer; -webkit-user-select: none; user-select: none;
+      transition: opacity calc(.32s * var(--T)); }
+    #studio.fast { --T: .56; }
+    #studio.out { opacity: 0; pointer-events: none; }
+    .st-dez { --st-bg: #070b1c; --st-bg2: #16224d; --st-top: #7d93ec; --st-left: #3d55b8; --st-right: #253887; --st-glow: #dfe7ff;
+      --st-ink: #050816; --st-face: #ffffff; --st-face2: #dbe3ff; --st-shadow: #3d55b8; }
+    .st-brasa { --st-bg: #120d1a; --st-bg2: #241a33; --st-top: #ffb27a; --st-left: #ee7a4a; --st-right: #a8432f; --st-glow: #ffe1b8;
+      --st-ink: #0b0710; --st-face: #fff6ec; --st-face2: #ffd9bf; --st-shadow: #ee7a4a; }
+    .st-cefiro { --st-bg: #0b141b; --st-bg2: #14303a; --st-top: #a6f3e6; --st-left: #4fc9b8; --st-right: #23807f; --st-glow: #e3fffa;
+      --st-ink: #061015; --st-face: #f2fffc; --st-face2: #c4efe7; --st-shadow: #2fa79a; }
+    .st-veta { --st-bg: #0f0b1d; --st-bg2: #231a45; --st-top: #cdb2ff; --st-left: #9271ff; --st-right: #5638c4; --st-glow: #f0e6ff;
+      --st-ink: #08061a; --st-face: #fbf8ff; --st-face2: #ded2ff; --st-shadow: #7b55ff; }
+    .st-inner { display: flex; flex-direction: column; align-items: center; gap: 26px; }
+    .st-cube { display: block; width: 108px; height: 108px; animation: st-drop calc(.46s * var(--T)) cubic-bezier(.3, 1.5, .5, 1) both;
+      filter: drop-shadow(0 10px 0 rgba(0,0,0,.35)); }
+    .st-cube svg, .st-l svg { display: block; width: 100%; height: 100%; }
+    .st-word { display: flex; gap: 6px; }
+    .st-l { display: block; width: calc(var(--w, 9) * 6px); height: 84px; opacity: 0;
+      animation: st-fall calc(.4s * var(--T)) cubic-bezier(.25, 1.4, .5, 1) calc((.28s + var(--i) * .07s) * var(--T)) forwards,
+                 st-flash calc(.22s * var(--T)) ease-out calc((1.02s + var(--i) * .04s) * var(--T)); }
+    .st-l:nth-child(4) { --w: 8; }
+    @keyframes st-drop { from { transform: translateY(-55vh) rotate(-8deg); } to { transform: none; } }
+    @keyframes st-fall { from { opacity: 1; transform: translateY(-120px); } to { opacity: 1; transform: none; } }
+    @keyframes st-flash { 40% { filter: brightness(1.7) drop-shadow(0 0 10px var(--st-glow)); } }
+    #studio.still .st-cube, #studio.still .st-l { animation: none; opacity: 1; }
+    @media (min-width: 1100px) and (min-height: 700px) { .st-cube { width: 150px; height: 150px; } .st-l { width: calc(var(--w, 9) * 8px); height: 112px; } .st-word { gap: 8px; } .st-inner { gap: 34px; } }
+    @media (max-width: 520px) { .st-cube { width: 80px; height: 80px; } .st-l { width: calc(var(--w, 9) * 4.4px); height: 62px; } .st-word { gap: 4px; } }
+    .splash-by { position: absolute; left: 0; right: 0; bottom: 14px; margin: 0; font-size: 17px; color: #6e5a4f; opacity: .85; }
     @keyframes boot-twinkle { 50% { opacity: .4; } }
     @keyframes boot-bob { 50% { transform: translateY(-8px); } }
     @keyframes boot-blink { 50% { opacity: .25; } }
@@ -96,12 +127,12 @@
     de.className += ' js';
     // peso de cada parte en la barra (suma 100): estilos, fuente, módulos del arranque (main.js y core), three.js y la primera escena
     var WEIGHT = { css: 8, font: 7, mods: 25, three: 30, scene: 30 }, MODS = 18;
-    var TIPS = ['Plantando arbolitos…', 'Pintando techos…', 'Inflando globos…', 'Barriendo las veredas…', 'Regando las flores…',
-      'Encendiendo los faroles…', 'Horneando medialunas…', 'Dándole cuerda al reloj…', 'Estacionando autitos…', 'Colgando guirnaldas…',
-      'Despertando al barrio…', 'Afinando la calesita…', 'Acomodando la plaza…'];
+    var TIPS = ['Plantando árboles…', 'Pintando techos…', 'Aflojando las nubes…', 'Barriendo las veredas…', 'Regando las flores…',
+      'Encendiendo los faroles…', 'Horneando medialunas…', 'Dándole cuerda al reloj…', 'Revisando el mapa viejo…', 'Atando los botes…',
+      'Despertando al barrio…', 'Afinando la calesita…', 'Acomodando la plaza…', 'Mirando qué hay debajo de las islas…'];
     var MSG = {
-      slow: ['Esto está tardando un poquito…', 'Si tu conexión anda lenta, esperá un toque más o probá de nuevo.'],
-      fail: ['¡Uy! No pudimos abrir Pixelia', 'Revisá tu conexión a internet y probá de nuevo.'],
+      slow: ['Esto está tardando más de la cuenta…', 'Si tu conexión anda lenta, esperá un poco más o probá de nuevo.'],
+      fail: ['No pudimos abrir Pixelia', 'Revisá tu conexión a internet y probá de nuevo.'],
       old: ['Tu navegador no es compatible', 'Pixelia necesita un navegador actualizado: Safari 16.4 o más nuevo, o Chrome, Edge o Firefox recientes.']
     };
     var got = {}, nMods = 0, phase = 'load', started = false, slowShown = false, wasReady = false;
@@ -202,20 +233,69 @@
     <div id="modal-root"></div>
     <div id="toast-root"></div>
     <div id="fade"></div>
+    <div id="studio" class="st-dez" aria-label="Dezings">
+      <div class="st-inner"><!--logo-studio--><span class="st-cube"><svg  viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true"><path style="fill:var(--st-top)" d="M7 1h4v1h-4zM5 2h8v1h-8zM3 3h12v1h-12zM1 4h16v1h-16zM3 5h12v1h-12zM5 6h8v1h-8zM7 7h4v1h-4z"/><path style="fill:var(--st-glow)" d="M1 5h2v1h-2zM15 5h2v1h-2zM3 6h2v1h-2zM13 6h2v1h-2zM5 7h2v1h-2zM11 7h2v1h-2zM7 8h4v1h-4z"/><path style="fill:var(--st-left)" d="M1 6h2v1h-2zM1 7h4v1h-4zM1 8h6v1h-6zM1 9h7v1h-7zM1 10h7v1h-7zM1 11h7v1h-7zM1 12h7v1h-7zM1 13h7v1h-7zM3 14h5v1h-5zM5 15h3v1h-3zM7 16h1v1h-1z"/><path style="fill:var(--st-right)" d="M15 6h2v1h-2zM13 7h4v1h-4zM11 8h6v1h-6zM9 9h8v1h-8zM9 10h8v1h-8zM9 11h8v1h-8zM9 12h8v1h-8zM9 13h8v1h-8zM9 14h6v1h-6zM9 15h4v1h-4zM9 16h2v1h-2z"/><path style="fill:var(--st-right)" d="M8 9h1v1h-1zM8 10h1v1h-1zM8 11h1v1h-1zM8 12h1v1h-1zM8 13h1v1h-1zM8 14h1v1h-1zM8 15h1v1h-1zM8 16h1v1h-1z"/><path style="fill:var(--st-ink)" d="M7 0h4v1h-4zM5 1h2v1h-2zM11 1h2v1h-2zM3 2h2v1h-2zM13 2h2v1h-2zM1 3h2v1h-2zM15 3h2v1h-2zM0 4h1v1h-1zM17 4h1v1h-1zM0 5h1v1h-1zM17 5h1v1h-1zM0 6h1v1h-1zM17 6h1v1h-1zM0 7h1v1h-1zM17 7h1v1h-1zM0 8h1v1h-1zM17 8h1v1h-1zM0 9h1v1h-1zM17 9h1v1h-1zM0 10h1v1h-1zM17 10h1v1h-1zM0 11h1v1h-1zM17 11h1v1h-1zM0 12h1v1h-1zM17 12h1v1h-1zM0 13h1v1h-1zM17 13h1v1h-1zM1 14h2v1h-2zM15 14h2v1h-2zM3 15h2v1h-2zM13 15h2v1h-2zM5 16h2v1h-2zM11 16h2v1h-2zM7 17h4v1h-4z"/></svg></span><span class="st-word" role="img" aria-label="Dezings"><span class="st-l" style="--i:0"><svg  viewBox="0 0 9 14" shape-rendering="crispEdges" aria-hidden="true"><path style="fill:var(--st-shadow)" d="M8 11h1v1h-1zM0 12h9v1h-9zM0 13h8v1h-8z"/><path style="fill:var(--st-ink)" d="M0 0h8v1h-8zM0 1h9v1h-9zM0 2h9v1h-9zM0 3h9v1h-9zM0 4h9v1h-9zM0 5h9v1h-9zM0 6h9v1h-9zM0 7h9v1h-9zM0 8h9v1h-9zM0 9h9v1h-9zM0 10h9v1h-9zM0 11h8v1h-8z"/><path style="fill:var(--st-face)" d="M1 1h6v1h-6zM1 2h7v1h-7zM1 3h2v1h-2zM6 3h2v1h-2zM1 4h2v1h-2zM6 4h2v1h-2zM1 5h2v1h-2zM6 5h2v1h-2zM1 6h2v1h-2zM6 6h2v1h-2z"/><path style="fill:var(--st-face2)" d="M1 7h2v1h-2zM6 7h2v1h-2zM1 8h2v1h-2zM6 8h2v1h-2zM1 9h7v1h-7zM1 10h6v1h-6z"/></svg></span><span class="st-l" style="--i:1"><svg  viewBox="0 0 9 14" shape-rendering="crispEdges" aria-hidden="true"><path style="fill:var(--st-shadow)" d="M0 12h9v1h-9zM0 13h9v1h-9z"/><path style="fill:var(--st-ink)" d="M0 0h9v1h-9zM0 1h9v1h-9zM0 2h9v1h-9zM0 3h9v1h-9zM0 4h8v1h-8zM0 5h8v1h-8zM0 6h8v1h-8zM0 7h8v1h-8zM0 8h9v1h-9zM0 9h9v1h-9zM0 10h9v1h-9zM0 11h9v1h-9z"/><path style="fill:var(--st-face)" d="M1 1h7v1h-7zM1 2h7v1h-7zM1 3h2v1h-2zM1 4h2v1h-2zM1 5h6v1h-6zM1 6h6v1h-6z"/><path style="fill:var(--st-face2)" d="M1 7h2v1h-2zM1 8h2v1h-2zM1 9h7v1h-7zM1 10h7v1h-7z"/></svg></span><span class="st-l" style="--i:2"><svg  viewBox="0 0 9 14" shape-rendering="crispEdges" aria-hidden="true"><path style="fill:var(--st-shadow)" d="M0 12h9v1h-9zM0 13h9v1h-9z"/><path style="fill:var(--st-ink)" d="M0 0h9v1h-9zM0 1h9v1h-9zM0 2h9v1h-9zM0 3h9v1h-9zM2 4h7v1h-7zM1 5h7v1h-7zM0 6h7v1h-7zM0 7h6v1h-6zM0 8h9v1h-9zM0 9h9v1h-9zM0 10h9v1h-9zM0 11h9v1h-9z"/><path style="fill:var(--st-face)" d="M1 1h7v1h-7zM1 2h7v1h-7zM5 3h3v1h-3zM4 4h3v1h-3zM3 5h3v1h-3zM2 6h3v1h-3z"/><path style="fill:var(--st-face2)" d="M1 7h3v1h-3zM1 8h2v1h-2zM1 9h7v1h-7zM1 10h7v1h-7z"/></svg></span><span class="st-l" style="--i:3"><svg  viewBox="0 0 8 14" shape-rendering="crispEdges" aria-hidden="true"><path style="fill:var(--st-shadow)" d="M0 12h8v1h-8zM0 13h8v1h-8z"/><path style="fill:var(--st-ink)" d="M0 0h8v1h-8zM0 1h8v1h-8zM0 2h8v1h-8zM0 3h8v1h-8zM2 4h4v1h-4zM2 5h4v1h-4zM2 6h4v1h-4zM2 7h4v1h-4zM0 8h8v1h-8zM0 9h8v1h-8zM0 10h8v1h-8zM0 11h8v1h-8z"/><path style="fill:var(--st-face)" d="M1 1h6v1h-6zM1 2h6v1h-6zM3 3h2v1h-2zM3 4h2v1h-2zM3 5h2v1h-2zM3 6h2v1h-2z"/><path style="fill:var(--st-face2)" d="M3 7h2v1h-2zM3 8h2v1h-2zM1 9h6v1h-6zM1 10h6v1h-6z"/></svg></span><span class="st-l" style="--i:4"><svg  viewBox="0 0 9 14" shape-rendering="crispEdges" aria-hidden="true"><path style="fill:var(--st-shadow)" d="M4 9h1v1h-1zM4 10h1v1h-1zM0 12h4v1h-4zM5 12h4v1h-4zM0 13h4v1h-4zM5 13h4v1h-4z"/><path style="fill:var(--st-ink)" d="M0 0h4v1h-4zM5 0h4v1h-4zM0 1h9v1h-9zM0 2h9v1h-9zM0 3h9v1h-9zM0 4h9v1h-9zM0 5h9v1h-9zM0 6h9v1h-9zM0 7h9v1h-9zM0 8h9v1h-9zM0 9h4v1h-4zM5 9h4v1h-4zM0 10h4v1h-4zM5 10h4v1h-4zM0 11h4v1h-4zM5 11h4v1h-4z"/><path style="fill:var(--st-face)" d="M1 1h2v1h-2zM6 1h2v1h-2zM1 2h3v1h-3zM6 2h2v1h-2zM1 3h3v1h-3zM6 3h2v1h-2zM1 4h4v1h-4zM6 4h2v1h-2zM1 5h2v1h-2zM4 5h4v1h-4zM1 6h2v1h-2zM5 6h3v1h-3z"/><path style="fill:var(--st-face2)" d="M1 7h2v1h-2zM5 7h3v1h-3zM1 8h2v1h-2zM6 8h2v1h-2zM1 9h2v1h-2zM6 9h2v1h-2zM1 10h2v1h-2zM6 10h2v1h-2z"/></svg></span><span class="st-l" style="--i:5"><svg  viewBox="0 0 9 14" shape-rendering="crispEdges" aria-hidden="true"><path style="fill:var(--st-shadow)" d="M0 11h1v1h-1zM8 11h1v1h-1zM0 12h9v1h-9zM1 13h7v1h-7z"/><path style="fill:var(--st-ink)" d="M1 0h7v1h-7zM0 1h9v1h-9zM0 2h9v1h-9zM0 3h9v1h-9zM0 4h9v1h-9zM0 5h9v1h-9zM0 6h9v1h-9zM0 7h9v1h-9zM0 8h9v1h-9zM0 9h9v1h-9zM0 10h9v1h-9zM1 11h7v1h-7z"/><path style="fill:var(--st-face)" d="M2 1h5v1h-5zM1 2h7v1h-7zM1 3h2v1h-2zM6 3h2v1h-2zM1 4h2v1h-2zM1 5h2v1h-2zM1 6h2v1h-2zM4 6h4v1h-4z"/><path style="fill:var(--st-face2)" d="M1 7h2v1h-2zM4 7h4v1h-4zM1 8h2v1h-2zM6 8h2v1h-2zM1 9h7v1h-7zM2 10h5v1h-5z"/></svg></span><span class="st-l" style="--i:6"><svg  viewBox="0 0 9 14" shape-rendering="crispEdges" aria-hidden="true"><path style="fill:var(--st-shadow)" d="M8 11h1v1h-1zM0 12h9v1h-9zM0 13h8v1h-8z"/><path style="fill:var(--st-ink)" d="M1 0h8v1h-8zM0 1h9v1h-9zM0 2h9v1h-9zM0 3h9v1h-9zM0 4h8v1h-8zM0 5h9v1h-9zM0 6h9v1h-9zM1 7h8v1h-8zM0 8h9v1h-9zM0 9h9v1h-9zM0 10h9v1h-9zM0 11h8v1h-8z"/><path style="fill:var(--st-face)" d="M2 1h6v1h-6zM1 2h7v1h-7zM1 3h2v1h-2zM1 4h2v1h-2zM1 5h6v1h-6zM2 6h6v1h-6z"/><path style="fill:var(--st-face2)" d="M6 7h2v1h-2zM6 8h2v1h-2zM1 9h7v1h-7zM1 10h6v1h-6z"/></svg></span></span><!--/logo-studio--></div>
+    </div>
+    <script>
+    // Logo del estudio: dura ~1,5 s (la segunda vez ~0,9 s), se saltea con clic o tecla y no aparece con ?nosplash / ?scene=
+    // (pruebas). Suena solo donde el audio arranca sin gesto (el juego de PC); en el navegador queda en silencio.
+    (function () {
+      var d = document, s = d.getElementById('studio'), q = location.search;
+      if (!s) return;
+      function gone() { if (s.parentNode) s.parentNode.removeChild(s); }
+      if (/[?&](nosplash|scene)(=|&|$)/.test(q)) { gone(); return; }
+      var v = (q.match(/[?&]studio=(\w+)/) || [])[1];
+      if (v) s.className = 'st-' + v;
+      var seen = false, save = null;
+      try { seen = localStorage.getItem('pixelia.studio') === '1'; localStorage.setItem('pixelia.studio', '1'); save = JSON.parse(localStorage.getItem('pixelia.save.v1') || 'null'); } catch (e) {}
+      var still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+      if (seen) s.className += ' fast';
+      if (still) s.className += ' still';
+      var T = seen ? 0.56 : 1, done = false, hold = /[?&]studiohold/.test(q);
+      function end() {
+        if (done) return; done = true;
+        s.className += ' out';
+        removeEventListener('keydown', key, true);
+        setTimeout(gone, 340 * T);
+      }
+      function key(e) { e.stopImmediatePropagation(); e.preventDefault(); end(); }
+      s.addEventListener('pointerdown', end);
+      addEventListener('keydown', key, true);
+      if (!hold) setTimeout(end, (still ? 900 : 1500) * T);
+      // golpe al caer el cubo y un brillo corto con las letras
+      try {
+        var st = save && save.settings;
+        if (st && st.sfx === false) return;
+        var AC = window.AudioContext || window.webkitAudioContext, ac = AC && new AC();
+        if (!ac || ac.state !== 'running') { if (ac && ac.close) ac.close(); return; }
+        var vol = st && typeof st.volSfx === 'number' ? st.volSfx : 1;
+        var tone = function (f, t, dur, v, type) {
+          var o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime + t;
+          o.type = type; o.frequency.setValueAtTime(f, t0); o.frequency.exponentialRampToValueAtTime(f * (type === 'sine' ? 0.5 : 1.01), t0 + dur);
+          g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v * vol, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+          o.connect(g); g.connect(ac.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+        };
+        tone(140, 0.42 * T, 0.28, 0.5, 'sine'); tone(70, 0.42 * T, 0.32, 0.35, 'triangle');
+        [784, 988, 1175, 1568].forEach(function (f, i) { tone(f, (1.02 + i * 0.06) * T, 0.35, 0.09, 'square'); });
+        setTimeout(function () { ac.close && ac.close(); }, 2500);
+      } catch (e) {}
+    })();
+    </script>
     <div id="splash" role="dialog" aria-label="Pixelia">
       <div class="splash-sky"></div>
       <div class="splash-inner">
         <!--logo-crown--><svg class="boot-crown" width="112" height="80" viewBox="0 0 14 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3d2f2a" d="M6 0h2v1h-2zM5 1h1v1h-1zM8 1h1v1h-1zM4 2h1v1h-1zM9 2h1v1h-1zM3 3h1v1h-1zM10 3h1v1h-1zM2 4h1v1h-1zM11 4h1v1h-1zM1 5h12v1h-12zM2 6h1v1h-1zM11 6h1v1h-1zM2 7h1v1h-1zM11 7h1v1h-1zM2 8h1v1h-1zM11 8h1v1h-1zM2 9h10v1h-10z"/><path fill="#ee8a5c" d="M6 1h1v1h-1zM5 2h2v1h-2zM4 3h3v1h-3zM3 4h4v1h-4z"/><path fill="#c8673d" d="M7 1h1v1h-1zM7 2h2v1h-2zM7 3h3v1h-3zM7 4h4v1h-4z"/><path fill="#fdf6e3" d="M3 6h1v1h-1zM6 6h1v1h-1zM9 6h2v1h-2zM3 7h1v1h-1zM6 7h1v1h-1zM9 7h2v1h-2zM3 8h4v1h-4zM9 8h2v1h-2z"/><path fill="#8fd3ff" d="M4 6h2v1h-2zM4 7h2v1h-2z"/><path fill="#8a5a3a" d="M7 6h2v1h-2zM7 7h2v1h-2zM7 8h1v1h-1z"/><path fill="#ffd166" d="M8 8h1v1h-1z"/></svg><!--/logo-crown-->
         <h1 class="boot-title"><!--logo-word--><svg class="boot-word" width="301" height="91" viewBox="0 0 43 13" shape-rendering="crispEdges" role="img" aria-label="Pixelia"><path fill="#c8673d" d="M0 1h12v1h-12zM27 1h8v1h-8zM0 2h12v1h-12zM27 2h8v1h-8zM0 3h12v1h-12zM27 3h8v1h-8zM0 4h15v1h-15zM16 4h26v1h-26zM0 5h15v1h-15zM16 5h27v1h-27zM0 6h43v1h-43zM0 7h43v1h-43zM0 8h43v1h-43zM0 9h4v1h-4zM8 9h35v1h-35zM0 10h4v1h-4zM8 10h35v1h-35zM0 11h4v1h-4zM8 11h7v1h-7zM16 11h27v1h-27zM0 12h4v1h-4zM8 12h7v1h-7zM16 12h11v1h-11zM28 12h15v1h-15z"/><path fill="#3d2f2a" d="M0 0h12v1h-12zM27 0h8v1h-8zM0 1h12v1h-12zM27 1h8v1h-8zM0 2h12v1h-12zM27 2h8v1h-8zM0 3h15v1h-15zM16 3h26v1h-26zM0 4h15v1h-15zM16 4h27v1h-27zM0 5h43v1h-43zM0 6h43v1h-43zM0 7h43v1h-43zM0 8h4v1h-4zM8 8h35v1h-35zM0 9h4v1h-4zM8 9h35v1h-35zM0 10h4v1h-4zM8 10h7v1h-7zM16 10h27v1h-27zM0 11h4v1h-4zM8 11h7v1h-7zM16 11h11v1h-11zM28 11h15v1h-15z"/><path fill="#fff" d="M1 1h6v1h-6zM9 1h2v1h-2zM28 1h2v1h-2zM32 1h2v1h-2zM1 2h7v1h-7zM9 2h2v1h-2zM28 2h2v1h-2zM32 2h2v1h-2zM1 3h2v1h-2zM6 3h2v1h-2zM28 3h2v1h-2zM1 4h2v1h-2zM6 4h2v1h-2zM9 4h2v1h-2zM12 4h2v1h-2zM17 4h2v1h-2zM21 4h5v1h-5zM28 4h2v1h-2zM32 4h2v1h-2zM36 4h5v1h-5zM1 5h7v1h-7zM9 5h2v1h-2zM12 5h2v1h-2zM17 5h2v1h-2zM20 5h2v1h-2zM25 5h2v1h-2zM28 5h2v1h-2zM32 5h2v1h-2zM40 5h2v1h-2zM1 6h6v1h-6zM9 6h2v1h-2zM13 6h2v1h-2zM16 6h2v1h-2zM20 6h2v1h-2zM25 6h2v1h-2zM28 6h2v1h-2zM32 6h2v1h-2zM36 6h6v1h-6zM1 7h2v1h-2zM9 7h2v1h-2zM14 7h3v1h-3zM20 7h7v1h-7zM28 7h2v1h-2zM32 7h2v1h-2zM35 7h2v1h-2zM40 7h2v1h-2z"/><path fill="#f9f3e9" d="M1 8h2v1h-2zM9 8h2v1h-2zM13 8h2v1h-2zM16 8h2v1h-2zM20 8h2v1h-2zM28 8h2v1h-2zM32 8h2v1h-2zM35 8h2v1h-2zM40 8h2v1h-2zM1 9h2v1h-2zM9 9h2v1h-2zM12 9h2v1h-2zM17 9h2v1h-2zM20 9h2v1h-2zM25 9h2v1h-2zM28 9h2v1h-2zM32 9h2v1h-2zM35 9h2v1h-2zM39 9h3v1h-3zM1 10h2v1h-2zM9 10h2v1h-2zM12 10h2v1h-2zM17 10h2v1h-2zM21 10h5v1h-5zM29 10h2v1h-2zM32 10h2v1h-2zM36 10h3v1h-3zM40 10h2v1h-2z"/></svg><!--/logo-word--></h1>
-        <p class="splash-sub">Tu ciudad, tu estilo</p>
+        <p class="splash-sub">Reconstruí lo que quedó</p>
         <div class="boot-load">
           <div class="boot-bar" role="progressbar" aria-label="Cargando" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="boot-fill"></i></div>
-          <p class="boot-tip" id="boot-tip" aria-live="polite">Plantando arbolitos…</p>
+          <p class="boot-tip" id="boot-tip" aria-live="polite">Plantando árboles…</p>
         </div>
-        <p class="splash-tap">Tocá para jugar</p>
+        <p class="splash-tap">Hacé clic para jugar</p>
         <div class="boot-err" id="boot-err" role="alert" hidden><b></b><span></span><button type="button" onclick="event.stopPropagation();location.reload()">Reintentar</button></div>
         <noscript><p class="boot-noscript">Pixelia necesita JavaScript para funcionar.</p></noscript>
       </div>
+      <p class="splash-by">Un juego de Dezings</p>
     </div>
   </div>
   <script nomodule>__boot.fail('old');</script>

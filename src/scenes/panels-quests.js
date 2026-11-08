@@ -136,16 +136,28 @@ export function openQuests(ctx, params = {}) {
     wrap.append(path);
     return wrap;
   }
+  // Una pista para cada tipo de objetivo (data.js, MISIONES): qué hacer y dónde, en una línea
   function hintFor(goal) {
     switch (goal.type) {
-      case 'collect': return 'Tocá los edificios con monedas arriba para cobrar.';
-      case 'earn': return 'Cobrá edificios y jugá minijuegos.';
-      case 'upgrade': return 'Tocá una casa o negocio y elegí Mejorar.';
-      case 'castle': return 'Tocá la Municipalidad y elegí Mejorar.';
-      case 'expand': return 'Tocá el cartel de terreno en el borde de tu ciudad.';
-      case 'level': return 'Ganás experiencia construyendo, cobrando y jugando.';
-      case 'play': case 'stars': case 'score': return 'Primero construí el edificio del minijuego.';
-      default: return 'Sin apuro.';
+      case 'build': return 'Abrí Construir y buscalo en la lista. Si falta algo, el botón te dice qué.';
+      case 'upgrade': return 'Hacé clic en una casa o negocio y elegí Mejorar.';
+      case 'collect': return 'Hacé clic en los edificios con monedas arriba para cobrar.';
+      case 'earn': return 'Cobrá lo que producen tus edificios: también suma lo que ganes en misiones y cofres.';
+      case 'customize': case 'buy': return 'Entrá al Vestidor desde la Boutique o el ropero de Mi Casa.';
+      case 'level': return 'Ganás experiencia construyendo, cobrando y explorando.';
+      case 'pop': return 'Construí casas: cada una trae vecinos.';
+      case 'happy': return 'Árboles, flores y deco suben la felicidad.';
+      case 'charm': return 'Deco variada y edificios mejorados suman Encanto.';
+      case 'castle': case 'rank': return 'Abrí el expediente de tu rango (arriba a la izquierda) y completá lo que pide.';
+      case 'expand': return 'Hacé clic en el cartel de terreno en el borde de tu ciudad. El terreno se gana explorando.';
+      case 'prov': return 'Hacé clic en la Huerta cuando tenga provisiones listas.';
+      case 'craft': return 'Hacé clic en el Taller y elegí qué fabricar.';
+      case 'expedition': return 'Abrí Expedición, elegí la región y salí. Cada paso gasta provisiones: volvé antes de quedarte sin.';
+      case 'zone': return 'Salí de expedición a esa región y llegá al objetivo marcado en el mapa.';
+      case 'expStars': return 'Las 3 estrellas: cumplí el objetivo, volvé con la carga llena y con todo el grupo bien.';
+      case 'expFar': return 'En la expedición, internate más allá de la mitad del mapa.';
+      case 'threat': return 'Cuando llegue el aviso, preparate con defensas y reservas. Si no estás, se resuelve sola.';
+      default: return 'Avanza jugando.';
     }
   }
 

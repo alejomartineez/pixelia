@@ -502,7 +502,7 @@ export default function create(ctx) {
     if (v.ended || v.pending || busy) return;
     const unsafe = v.moves.some(m => m.ok && !m.safe);
     let t = null;
-    if (!shownTips.start && v.steps === 0) { t = 'Tocá una casilla vecina para avanzar. El número es lo que cuesta en provisiones.'; shownTips.start = true; }
+    if (!shownTips.start && v.steps === 0) { t = 'Hacé clic en una casilla vecina para avanzar. El número es lo que cuesta en provisiones.'; shownTips.start = true; }
     else if (unsafe && !shownTips.unsafe) { t = `En rojo: si das ese paso, no te alcanza para volver. ${'Volver'} siempre dice cuánto cuesta.`; shownTips.unsafe = true; }
     else if (!shownTips.far && run.cells[run.pos[1] * run.w + run.pos[0]].depth >= 7) { t = 'Lejos hay más para juntar, y también imprevistos.'; shownTips.far = true; }
     if (t) dom.hint(t, 6000);
@@ -766,7 +766,7 @@ export default function create(ctx) {
     fitCamera();
     refresh();
     if (run.pending) showPending();
-    if (run.steps === 0) dom.hint(`${ui.esc(meta.regionName)}: ${ui.esc(dom.$('goal').querySelector('.t span').textContent)}. Tocá una casilla vecina para avanzar.`, 7000);
+    if (run.steps === 0) dom.hint(`${ui.esc(meta.regionName)}: ${ui.esc(dom.$('goal').querySelector('.t span').textContent)}. Hacé clic en una casilla vecina para avanzar.`, 7000);
   }
   function buildGround() {
     // isla de tierra bajo la grilla y algo de monte alrededor (el diorama no flota en el vacío)

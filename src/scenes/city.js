@@ -524,7 +524,7 @@ export default function create(ctx) {
     const blocked = placer?.active || myModals.size || ui.hasModal();
     // flecha al botón Construir
     let tipText = null;
-    if (!T().cityIntro && ctx.state.city.buildings.length <= 1) tipText = `${icon('hammer', 20)}Tocá <b>Construir</b> para empezar`;
+    if (!T().cityIntro && ctx.state.city.buildings.length <= 1) tipText = `${icon('hammer', 20)}Hacé clic en <b>Construir</b> para empezar`;
     else {
       const q = ctx.quests.mainQuest();
       const ids = questBuildIds(ctx).filter(id => E.canBuild(id).ok);
@@ -537,8 +537,8 @@ export default function create(ctx) {
     } else hideTip();
     // cobrar
     const firstBubble = !T().collect && !blocked ? pickTipBubble() : null;
-    if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}Tocá para cobrar`);
-    else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('dress', 18)}Tocala para abrir el Vestidor`);
+    if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}Hacé clic para cobrar`);
+    else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('dress', 18)}Hacé clic para abrir el Vestidor`);
     else clearWorldTip();
     if (gameTip && performance.now() > gameTip.until) gameTip = null;
   }

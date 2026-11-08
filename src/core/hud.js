@@ -245,7 +245,7 @@ function refreshDynamic() {
     else {
       qEl.style.display = '';
       qEl.classList.toggle('done', q.done);
-      const html = `${icon(q.done ? 'gift' : 'quest', 24)}<span><b>${esc(q.title)}</b><small>${q.done ? '¡Tocá para cobrar!' : esc(q.text)}</small>${q.done ? '' : progressHtml(q.progress / q.goal.count)}</span><i class="badge" data-badge="quests"></i>`;
+      const html = `${icon(q.done ? 'gift' : 'quest', 24)}<span><b>${esc(q.title)}</b><small>${q.done ? '¡Hacé clic para cobrar!' : esc(q.text)}</small>${q.done ? '' : progressHtml(q.progress / q.goal.count)}</span><i class="badge" data-badge="quests"></i>`;
       if (html !== lastQuest) { lastQuest = html; qEl.innerHTML = html; applyBadges(); }
     }
   }

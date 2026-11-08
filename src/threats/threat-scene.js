@@ -79,7 +79,7 @@ export function createDecor(api) {
     ctx.bus.on('threat:announced', ({ id, type } = {}) => {
       lastSt = -1e9;
       const name = id === 'sim' ? 'un simulacro de crecida' : (THREAT_TYPES[type]?.name || 'una amenaza').toLowerCase();
-      setTimeout(() => { const s = T.threatStatus(); ctx.ui.toast(`Se viene ${name}: ${s?.when || 'pronto'}. Tocá el aviso de arriba para prepararte.`, { icon: THREAT_TYPES[type]?.icon || 'info' }); }, 600);
+      setTimeout(() => { const s = T.threatStatus(); ctx.ui.toast(`Se viene ${name}: ${s?.when || 'pronto'}. Hacé clic en el aviso de arriba para prepararte.`, { icon: THREAT_TYPES[type]?.icon || 'info' }); }, 600);
     }),
     ...['threat:resolved', 'threat:started', 'building:damaged', 'building:repaired', 'craft:done', 'building:built'].map(ev => ctx.bus.on(ev, () => { lastSt = -1e9; })),
   ];
@@ -246,9 +246,9 @@ export function attach(api, threatId) {
     bRes.innerHTML = icon({ crecida: '🧱', sequia: '🏺', incendio: '🪣', tormenta: '⛺', helada: '🪵' }[type], 18) + `${resName} ${d.reservesLeft}`;
     bCrew.classList.toggle('on', mode === 'crew'); bRes.classList.toggle('on', mode === 'res');
     if (!msg.dataset.lock) msg.textContent = mode === 'res'
-      ? 'Tocá una casilla para cerrarla hasta el final.'
+      ? 'Hacé clic en una casilla para cerrarla hasta el final.'
       : type === 'tormenta' ? 'Los rayos marcados caen al terminar el turno: una cuadrilla en esa casilla los frena.'
-        : d.turn === 1 ? 'Tocá una casilla: la cuadrilla baja la amenaza ahí y alrededor. Lo cubierto resiste solo.' : 'Mandá las cuadrillas y terminá el turno.';
+        : d.turn === 1 ? 'Hacé clic en una casilla: la cuadrilla baja la amenaza ahí y alrededor. Lo cubierto resiste solo.' : 'Mandá las cuadrillas y terminá el turno.';
   }
   function say(text, ms = 2200) { msg.textContent = text; msg.dataset.lock = '1'; clearTimeout(say.t); say.t = setTimeout(() => { delete msg.dataset.lock; syncBar(); }, ms); }
   // ----- cámara al grupo en riesgo -----
