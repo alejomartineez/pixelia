@@ -255,9 +255,21 @@ export function buildingHappy(b) {
   const d = def(b);
   return d.happy ? Math.round(d.happy * (1 + 0.25 * (b.level - 1))) : 0;
 }
-/** Población: solo cuenta casas terminadas. */
+// Colonos (los traen las aldeas de la expedición): viven en lo que sobra de las casas, así que cuentan para la población
+// hasta un 25% de lo que alojan las casas (DESIGN-CORE.md §9, "tope por vivienda libre"; Fase 5b: sin tope llegaban a
+// ~4 por día y la felicidad caía sola). Los que no entran esperan (siguen sumando cuadrillas en las amenazas).
+export const COLONOS_PER_HOUSING = 0.25;
+/** Población que alojan las casas terminadas (sin colonos). */
+export function housingPop(state = S(), now = Date.now()) {
+  return state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingPop(b)), 0);
+}
+/** Colonos que cuentan para la población (los que entran en las casas). */
+export function colonosHoused(state = S(), now = Date.now()) {
+  return Math.min(state.colonos || 0, Math.floor(COLONOS_PER_HOUSING * housingPop(state, now)));
+}
+/** Población: casas terminadas + los colonos que entran en ellas. */
 export function population(state = S(), now = Date.now()) {
-  return state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingPop(b)), 0) + (state.colonos || 0);
+  return housingPop(state, now) + colonosHoused(state, now);
 }
 export function happinessPoints(state = S(), now = Date.now()) {
   const pts = state.city.buildings.reduce((s, b) => s + (isConstructing(b, now) ? 0 : buildingHappy(b)), 0);
@@ -274,9 +286,27 @@ export function happiness(state = S(), now = Date.now()) {
 export function boostMultiplier(now = Date.now()) {
   return prodBoostMult(now) * eventMult('production');
 }
-/** Bonus de toda la ciudad: felicidad × castillo × pociones × eventos (la maestría es aparte, por edificio). */
+// Multiplicadores de producción de monedas (DESIGN-CORE.md §8): los permanentes se SUMAN con tope y los temporales
+// multiplican después, también con tope. Así no se disparan al juntarse (antes eran todos un producto).
+export const PROD_MULT_CAP = 2.5;    // 1 + felicidad + rango + maestría + monumentos
+export const BOOST_MULT_CAP = 2;     // pociones × eventos
+/**
+ * Multiplicador de monedas de un edificio (id) o de la ciudad (sin id, sin maestría).
+ * {happy, rank, mastery, monuments, base (≤ 2,5), boost (≤ 2), total}. La Municipalidad no se da felicidad ni rango a sí misma.
+ */
+export function productionMult(id = null, state = S(), now = Date.now()) {
+  const castle = id === 'castillo';
+  const happy = castle ? 0 : happiness(state, now).bonus;
+  const rank = castle ? 0 : CASTLE_BONUS_PER_LEVEL * (castleLevel(state) - 1);
+  const mastery = id ? masteryInfo(id, state).bonus : 0;
+  const monuments = monumentBonus('prodCoins', state, now);   // hoy ningún monumento da monedas (Fase 5b: Faro → visión)
+  const base = Math.min(PROD_MULT_CAP, 1 + happy + rank + mastery + monuments);
+  const boost = Math.min(BOOST_MULT_CAP, boostMultiplier(now));
+  return { happy, rank, mastery, monuments, base, boost, total: base * boost };
+}
+/** Bonus de toda la ciudad (felicidad + rango + monumentos, con tope) × pociones y eventos (con tope). Sin maestría. */
 export function globalMultiplier(state = S(), now = Date.now()) {
-  return (1 + happiness(state, now).bonus) * (1 + CASTLE_BONUS_PER_LEVEL * (castleLevel(state) - 1)) * boostMultiplier(now);
+  return productionMult(null, state, now).total;
 }
 
 // ---------- Ciclo de la expedición: niveles de rol y depósito de provisiones (DESIGN-CORE.md §2.3, §5) ----------
@@ -459,10 +489,8 @@ export function producerStatus(b, now = Date.now(), state = S()) {
   if (currency === 'gems') per = d.prod.gems;
   else if (currency === 'prov') per = cycleValue(d.id, 'prov', b.level || 1, d.prod.prov);   // sin multiplicadores
   else {
-    // el castillo no se da bonus a sí mismo (felicidad/castillo) pero sí recibe pociones y eventos
-    const city = d.id === 'castillo' ? boostMultiplier(now) : globalMultiplier(state, now);
-    per = d.prod.coins * (1 + 0.5 * (b.level - 1)) * city * masteryMult(d.id, state);
-    if (d.cat === 'negocio') per *= 1 + monumentBonus('shopCoins', state, now);   // Faro
+    // sumados con tope (productionMult); el castillo no se da felicidad ni rango a sí mismo
+    per = d.prod.coins * (1 + 0.5 * (b.level - 1)) * productionMult(d.id, state, now).total;
   }
   return {
     producer: true, currency, ready: cycles > 0, amount: Math.round(per * effective), cycles, cap, progress, full,
@@ -533,6 +561,11 @@ export function stageTime(sec, state = S(), now = Date.now()) {
 // costo de mejora = costo base × factor (nivel actual → siguiente). Se duplica en cada nivel: las mejoras son el
 // gran sumidero de monedas a mediano plazo (cada nivel da +50% de producción).
 const UPGRADE_COST_MULT = [0, 1.7, 3.4, 6.8, 13.6];
+// Duración de una mejora (seg): crece con el nivel para que las constructoras pesen y la plata no se gaste toda en un
+// rato (DESIGN-CORE.md §8, Fase 5b, tools/sim-economy.mjs): tiempo de obra del edificio × mult × (nivel siguiente)^pow,
+// entre base y max. Panadería: 8 → 27 min · Cine: 1 h 40 → 5 h 25 · Teatro: 4 h → 6 h (tope).
+export const UPGRADE_TIME = { base: 300, max: 6 * 3600, mult: 20, pow: 1.3 };
+const upgradeSec = (d, level) => Math.min(UPGRADE_TIME.max, Math.max(UPGRADE_TIME.base, Math.round((d.time || 10) * UPGRADE_TIME.mult * Math.pow(level + 1, UPGRADE_TIME.pow))));
 /** {cost, time(seg), reqLevel} de la próxima mejora o null si está al máximo. */
 export function upgradeInfo(b) {
   if (!canUpgradeType(b) || b.level >= maxLevel(b)) return null;
@@ -556,11 +589,11 @@ export function upgradeInfo(b) {
     const cost = { coins: Math.round(base * UPGRADE_COST_MULT[b.level]) };
     if (up.mats) cost.mats = { ...up.mats };
     if (up.planos) cost.planos = up.planos;
-    return { cost, time: stageTime(Math.max(15, Math.round((d.time || 10) * (b.level + 1)))), reqLevel: d.unlock + b.level, reqEra: up.era || 0 };
+    return { cost, time: stageTime(upgradeSec(d, b.level)), reqLevel: d.unlock + b.level, reqEra: up.era || 0 };
   }
   return {
     cost: { coins: Math.round(base * UPGRADE_COST_MULT[b.level]), gems: b.level >= 3 ? b.level - 2 : 0 },
-    time: stageTime(Math.max(15, Math.round((d.time || 10) * (b.level + 1)))),
+    time: stageTime(upgradeSec(d, b.level)),
     reqLevel: d.unlock + b.level * 2,
   };
 }

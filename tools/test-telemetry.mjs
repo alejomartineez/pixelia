@@ -143,7 +143,7 @@ try {
   await P.waitForSelector('.a11y-stats');
   ok((await T(P, () => document.querySelector('.a11y-stats').getAttribute('aria-checked'))) === 'true', 'el interruptor arranca prendido');
   await T(P, () => window.__pixeliaTelemetry.track('antes_de_apagar'));
-  await P.click('.a11y-stats');
+  await T(P, () => document.querySelector('.a11y-stats').scrollIntoView({ block: 'center' })); await sleep(250); await P.click('.a11y-stats');
   await sleep(300);
   ok((await T(P, () => window.__pixelia.store.state.settings.telemetry)) === false, 'tocarlo guarda settings.telemetry = false');
   ok((await T(P, () => window.__pixeliaTelemetry.queue.length)) === 0 && (await T(P, () => localStorage.getItem('pixelia.events.queue.v1'))) === null, 'apagarlo vacía la cola (memoria y localStorage)');
@@ -152,7 +152,7 @@ try {
   const before = (await T(P, () => JSON.parse(localStorage.getItem('pixelia.mock.events') || '[]'))).length;
   await T(P, () => window.__pixeliaTelemetry.flush());
   ok((await T(P, () => JSON.parse(localStorage.getItem('pixelia.mock.events') || '[]'))).length === before, 'apagado no se manda nada');
-  await P.click('.a11y-stats');
+  await T(P, () => document.querySelector('.a11y-stats').scrollIntoView({ block: 'center' })); await sleep(250); await P.click('.a11y-stats');
   await sleep(200);
   ok((await T(P, () => window.__pixelia.store.state.settings.telemetry)) === true && (await T(P, () => window.__pixeliaTelemetry.track('de_vuelta'))), 'al prenderlo vuelve a registrar');
   await P.close();

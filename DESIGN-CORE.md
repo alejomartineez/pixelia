@@ -681,6 +681,12 @@ Faro: +1 de visión en todas las expediciones · Jardín Botánico: +25% de feli
 2 días antes · Estadio: +25% de chispas del Pase en expediciones · Museo: +50% de chance de hallazgo en ruinas ·
 Torre del Reloj: obras 10% más rápidas (igual).
 
+**Resultado de la Fase 5b**: `bonus.type` nuevos en `MONUMENTS` (`data.js`): Faro `vision` (+1, lo suma `cityMods` de
+`expedition.js` a `run.mods.vision`; deja de dar +10% de monedas de negocios), Observatorio `threatWarn` (el calendario
+avisa con `WARN_DAYS_OBSERVATORY` = 6 días en vez de 4; deja de dar XP de expedición). Jardín, Estadio, Museo y Torre del
+Reloj quedan como estaban (ya atados al ciclo). Así ningún monumento suma monedas: el término "monumentos" del
+multiplicador de producción de §8 queda en 0.
+
 ---
 
 ## 6. Tutorial y apertura escalonada
@@ -723,7 +729,9 @@ Ciudad…, hasta Capital). Tipos de objetivo nuevos para `quests.js`: `expeditio
 
 Diarias nuevas (`DAILY_POOL`): "Hacé 2 salidas", "Juntá 20 provisiones", "Conseguí 4 estrellas en expediciones",
 "Fabricá 2 cosas en el Taller", "Construí 3 cosas", "Mejorá un edificio", "Explorá una casilla lejana", y "Repará un
-edificio" solo si hay alguno dañado.
+edificio" solo si hay alguno dañado. **Fase 5b**: `d_repair` usa `needs: 'damaged'` (`quests.js dailyNeedsOk`) y, si hay
+algún edificio dañado al sortear el día, sale siempre (objetivo `repair`: `building:repaired` pagado; lo que arregla la
+vecindad no cuenta).
 
 ### 6.2 Apertura escalonada
 Una función nueva por vez, como mucho **una por sesión al arrancar** ("Hoy se abre: el Pase de Temporada"), y el modal de
@@ -744,6 +752,19 @@ llegada adelanta la próxima ("Mañana se abre: Contactos").
 | Hallazgos | al encontrar el primero |
 | Cofres | al ganar el primero |
 | Mi Casa | nivel 2 (igual que hoy) |
+
+**Resultado de la Fase 5b** (`src/core/unlocks.js`, `state.unlocks.open {id: ms}`):
+- Dos clases. Las **de juego** (Expedición, Diarias, Amenazas, Obras, Hallazgos, Cofres) se abren apenas se cumple la
+  condición. Las **de día** (Pase: día 2 o rango Caserío; Contactos: día 2 y nivel 4; Eventos: día 3) se abren de a una por
+  sesión al arrancar, en el modal de llegada ("Hoy se abre: el Pase de Temporada"), que también adelanta la próxima
+  ("Mañana se abre: Contactos"). "Día de juego" = días de calendario desde `state.created` (día 1 = el de la partida).
+- Quien ya jugaba (nivel ≥ 3, rango ≥ 2, partida de hace 3 días o más, o migrada v3) arranca con todo lo que ya cumple abierto
+  y sin aviso. `?cheat` abre las de día (`_openAll`); las de juego siguen su condición.
+- Taller y Mapa de región no tienen botón propio en el HUD: se abren con su edificio y con la zona, como ya pasaba.
+- **Modal único de llegada** (`src/scenes/arrival.js`): junta regalo de bienvenida, "Los minijuegos se retiraron" (v3),
+  las amenazas resueltas solas (`threat-ui.reportParts`), el premio del día con la racha (los 7 días en una tira) y la
+  apertura del día. Título "Mientras no estabas…" ("Tu primer día" el día 1 si no hay nada más que contar). Lo de cobrar se
+  acredita al tocar "Cobrar". El panel `login` sigue existiendo pero ya no sale solo.
 
 ---
 
@@ -878,6 +899,14 @@ del nivel 1 al 5 (cruzar un río 75% → 95% con Ingeniería). En el agregado: E
 - Primer monumento terminado: días 10–14.
 - Planos: nunca son lo último que falta para un cambio de época en más del 30% de las corridas.
 
+
+**Resultado de la Fase 5b** (`node tools/sim-economy.mjs`, 2 ratos por día, 60 días): 18 ✔ · 1 ✘. Pase nivel 30 el día 25
+(día 18 con 4 ratos, `TIER_COST` 60/120/180 y después 440; planos en los niveles 10/20/30); rangos 2/3/5/8 los días
+1/4/19/77, el nivel es el último requisito en el 17% de las subidas; cofres 1,4 por día (cofre gratis cada 3 días); gemas
+20,9 por día; primer monumento el día 11; depósito al tope 0–14%. Multiplicadores sumados con tope ×2,5 y pociones ×
+eventos con tope ×2 (`economy.js`). Colonos: suman población hasta el 25% de lo que alojan las casas. **No se cumple**:
+saldo 1×–3× en el 41–59% de los ratos (bimodal: < 1× los primeros 10 días, > 3× esperando materiales de monumento); se
+acepta y queda para la próxima vuelta. Detalle de cada número en `docs/HANDOFF-fase5b.md`.
 ---
 
 ## 9. Abierto (lo deciden las fases con el juego en la mano)

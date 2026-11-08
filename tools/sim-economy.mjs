@@ -1,186 +1,815 @@
-// Simulación de economía: 7 días de juego con el código real de economy.js (sin navegador).
-//   node tools/sim-economy.mjs . new        (siesta actual)
-//   node tools/sim-economy.mjs . old        (almacén viejo de 6 tandas, para comparar)
-//   node tools/sim-economy.mjs . new 1 7,9,11,13,15,18,20,23 5 2   (k=escala de producción, horas de sesión, minutos, partidas)
-//   SIM_DAYS=90 node tools/sim-economy.mjs .   (más días: muestra una fila por semana y el día en que llega a cada rango)
-// Columnas: lvl nivel, rank rango de la ciudad, charm Encanto, coins saldo, prod monedas cobradas acumuladas, games/quests/lvlRw otras fuentes, n edificios,
-//   mon monumentos terminados, mats materiales guardados (cristal/ladrillo/tuerca/mapa).
-// Las partidas dan el material de su juego (como main.js finishGame); la jugadora juega lo que más le falta para sus obras.
-// Simulación de 7 días de juego casual: node sim.mjs <raizProyecto> [modo] [k]
-//  modo: old (topes viejos de 6 ciclos) | new (siesta 3-4 h)   k: escala de producción de monedas
-import { pathToFileURL } from 'node:url';
-const root = process.argv[2];
-const mode = process.argv[3] || 'new';
-const K = Number(process.argv[4] || 1);
-const SESS = (process.argv[5] || '8,13,19,23').split(',').map(Number);   // horas de sesión
-const SESSION_MIN = Number(process.argv[6] || 10);
-const GAMES_PER_SESSION = Number(process.argv[7] || 3);
-const DAYS = Number(process.env.SIM_DAYS || 7);
+// Simulación de la economía del ciclo nuevo (DESIGN-CORE.md §8, Fase 5b) con el código real del juego cargado en Node:
+// economy, state, data, misiones, Pase, eventos, cofres, Hallazgos, expedición (motor + bot "medio" de exp-bots.mjs)
+// y amenazas (calendario, preparación, defensa con el bot del motor, daño y reparación). Sin navegador ni DOM.
+//
+//   node tools/sim-economy.mjs                 60 días, 2 ratos por día (9:00 y 20:00, 10 min), tabla por día + metas
+//   node tools/sim-economy.mjs --days 90       más días (tabla por semana; con ≥ 70 días mide también el rango 8)
+//   node tools/sim-economy.mjs --sessions 4    4 ratos por día (8, 12, 17 y 21 h): chequeo del Pase (nivel 30 ≥ día 16)
+//   node tools/sim-economy.mjs --seed 7        otra suerte (expediciones, cofres, amenazas)
+//   node tools/sim-economy.mjs --runs 4        además corre 4 semillas más (en procesos aparte) para las metas "por corrida"
+//   node tools/sim-economy.mjs --quiet         sin la tabla (fuentes, subidas y metas) · --goals: solo las metas
+//   node tools/sim-economy.mjs --json          resumen en JSON (lo usan --runs y el chequeo de 4 ratos)
+//   node tools/sim-economy.mjs --greedy        sin guardar para lo próximo (gasta todo lo que puede, en orden)
+//   node tools/sim-economy.mjs --trace         una línea por rato con las monedas y el próximo gasto grande
+//   node tools/sim-economy.mjs --k 0.8         escala la producción de monedas (para explorar; 1 = los números del juego)
+//   node tools/sim-economy.mjs --no-check4     sin la corrida extra de 4 ratos (más rápido)
+//   (desde tools/: npm run sim:economy)
+//
+// Cómo juega (una persona razonable en ratos cortos): al entrar cobra todo (login, cofre gratis, cofres, Pase, misiones,
+// diarias, logros, sets de Hallazgos), repara, se prepara para la amenaza que se viene (reservas en el Taller y una defensa
+// de ese tipo donde cubre lo que está en riesgo), la enfrenta el día que llega (bot del motor con 25% de cuadrillas mal
+// puestas), sale de expedición (la corta gratis del día y normales cuando el depósito tiene ≥ 80% de lo que lleva la Casa),
+// y gasta en este orden: reparar → obra de rango → misión principal → amenaza → edificios base del ciclo → monumento →
+// expediente del próximo rango → provisiones → mejoras del ciclo → defensas → negocios y casas → renovaciones → terreno.
+// Guarda para lo próximo: las monedas del primer gasto grande que no pudo hacer y los materiales de la etapa de monumento
+// que persigue (lo de menor prioridad no los toca). Sin lugar, reacomoda la ciudad y guarda deco chica para lo importante
+// (expediente, monumento, base del ciclo, defensa); acomoda las defensas donde cubren lo que está en riesgo. Las
+// provisiones se dimensionan para 2 normales por día (3 desde el rango 5) con lo que de verdad gasta una salida.
+// Cada rato dura 10 minutos de reloj: lo que termina en el rato se vuelve a gastar; "cobrar todo" se toca al entrar, al
+// volver de cada salida y antes de irse.
+//
+// "Próximo gasto grande" (meta de monedas): la primera construcción, mejora, renovación, terreno u obra de rango de la
+// lista que quedó sin hacer, sin contar lo que espera solo materiales (salvo monumento y obra de rango).
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 
-let T = new Date(2026, 10, 2, 8, 0, 0).getTime();
-const realNow = Date.now;
-Date.now = () => T;
-const store_ = {};
-globalThis.localStorage = { getItem: k => store_[k] ?? null, setItem: (k, v) => { store_[k] = String(v); }, removeItem: k => { delete store_[k]; } };
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(HERE, '..');
+const args = process.argv.slice(2);
+const opt = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : d; };
+const DAYS = Number(opt('days', 60));
+const NSESS = Number(opt('sessions', 2));
+const SEED = Number(opt('seed', 1));
+const RUNS = Number(opt('runs', 0));
+const QUIET = args.includes('--quiet');
+const JSON_OUT = args.includes('--json');
+const TRACE = args.includes('--trace');   // una línea por rato: monedas y próximo gasto grande
+const CHECK4 = !args.includes('--no-check4') && !JSON_OUT && NSESS === 2;
+const SESSION_MIN = Number(opt('min', 10));
+const HOURS = NSESS >= 4 ? [8, 12, 17, 21] : NSESS === 3 ? [9, 14, 20] : NSESS === 1 ? [20] : [9, 20];
+const STEP_SEC = 12;                 // segundos por paso de expedición (≈ 3–6 min por salida normal)
+
+// ---------------------------------------------------------------- entorno: reloj controlado, localStorage y DOM mínimos
+let T = new Date(2026, 10, 2, HOURS[0], 0, 0).getTime();   // día 0 = lunes 2026-11-02 = inicio de la temporada 1
+// new Date() sin argumentos también tiene que dar la hora de la sim (todayStr, diarias, login)
+const RealDate = Date;
+class SimDate extends RealDate { constructor(...a) { if (a.length) super(...a); else super(T); } static now() { return T; } }
+globalThis.Date = SimDate;
+const ls = {};
+globalThis.localStorage = { getItem: k => ls[k] ?? null, setItem: (k, v) => { ls[k] = String(v); }, removeItem: k => { delete ls[k]; } };
 globalThis.addEventListener = () => {};
 globalThis.removeEventListener = () => {};
-globalThis.location = { search: '', hostname: 'x', protocol: 'http:' };
-globalThis.document = { visibilityState: 'visible', addEventListener() {}, querySelector() { return null; }, createElement() { return { getContext() { return null; }, style: {} }; } };
+globalThis.location = { search: '', hostname: 'sim', protocol: 'http:', href: 'http://sim/' };
+const fakeEl = () => ({ style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false }, append() {}, appendChild() {}, remove() {},
+  setAttribute() {}, addEventListener() {}, removeEventListener() {}, querySelector: () => null, querySelectorAll: () => [], getContext: () => null, children: [] });
+globalThis.document = { visibilityState: 'visible', addEventListener() {}, removeEventListener() {}, querySelector: () => null, querySelectorAll: () => [],
+  createElement: fakeEl, createTextNode: () => ({}), body: fakeEl(), documentElement: fakeEl() };
 globalThis.requestAnimationFrame = () => 0;
-const imp = (p) => import(pathToFileURL(root + '/' + p).href);
+globalThis.setInterval = () => 0;        // los módulos se refrescan solos con setInterval: acá los llama la sim
+globalThis.clearInterval = () => {};
+// suerte reproducible (cofres, hallazgos, amenazas, Museo)
+const mulberry = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+Math.random = mulberry(SEED * 7919 + 13);
+const silence = console.warn; console.warn = () => {};
+
+const imp = (p) => import(pathToFileURL(path.join(ROOT, p)).href);
 const { store } = await imp('src/core/state.js');
 const data = await imp('src/core/data.js');
 const E = await imp('src/core/economy.js');
 const { bus } = await imp('src/core/bus.js');
-
-if (mode === 'old') { E.STORAGE_HOURS.negocio = 1e-9; E.STORAGE_HOURS.casa = 1e-9; E.STORAGE_HOURS.especial = 1e-9; }
-for (const b of data.BUILDINGS) if (b.prod?.coins) b.prod.coins = Math.max(1, Math.round(b.prod.coins * K));
+const Q = await imp('src/core/quests.js');
+const SE = await imp('src/season/season.js');
+const SD = await imp('src/season/season-data.js');
+const EV = await imp('src/season/events.js');
+const CH = await imp('src/chests/chests.js');
+const AL = await imp('src/album/album.js');
+const X = await imp('src/expedition/expedition.js');
+const XD = await imp('src/expedition/exp-data.js');
+const TH = await imp('src/threats/threats.js');
+const TR = await imp('src/threats/threat-rules.js');
+const TD = await imp('src/threats/threat-data.js');
+const BOTS = await import(pathToFileURL(path.join(HERE, 'exp-bots.mjs')).href);
+const D = data.BUILDING_BY_ID;
+// --k 0.5: escala la producción de monedas de todos los edificios (para explorar; 1 = los números del juego)
+const K = Number(opt('k', 1));
+if (K !== 1) for (const b of data.BUILDINGS) if (b.prod?.coins) b.prod.coins = Math.max(1, Math.round(b.prod.coins * K));
 
 store.load(); store.reset();
 const s = store.state;
-let levelUps = 0;
-bus.on('level:up', () => levelUps++);
-const tally = { prod: 0, games: 0, quests: 0, level: 0 };
-bus.on("production:collected", ({ b, amount, currency }) => { if (currency === "coins") { tally.prod += amount; } });
-bus.on('level:up', ({ reward }) => { tally.level += reward.coins; });
+s.onboarded = true;
+for (const f of [CH.initChests, AL.initAlbum, SE.initSeason, EV.initEvents, X.initExpedition, TH.initThreats, Q.initQuests]) f();
+const flush = () => new Promise(r => setImmediate(r));   // las chispas de amenaza llegan por import() dinámico
 
-function findSpot(id) {
+// ---------------------------------------------------------------- registro (bus)
+const DAY = 864e5;
+const day0 = new Date(2026, 10, 2).getTime();
+const dayOf = (t = T) => Math.floor((t - day0) / DAY);
+const per = [];   // por día: { gems, chests:{src:n}, sparks:{reason:n}, coinsIn:{src:n}, normals, shorts, ... }
+const P = (d = dayOf()) => (per[d] ||= { gems: 0, gemsBy: {}, chests: 0, chestsBy: {}, sparks: 0, sparksBy: {}, coinsIn: 0, coinsBy: {}, normals: 0, shorts: 0, mats: 0, planos: 0, finds: 0, threats: [], xp: 0, xpBy: {}, matIn: {}, matOut: {} });
+// materiales: de dónde vienen y en qué se gastan (la razón sin el id: 'upgrade:faro' → 'upgrade:monumento')
+bus.on('materials:changed', ({ delta, reason }) => {
+  const r = String(reason || '?').replace(/^(w+):(.+)$/, (m, a, id) => a + ':' + (D[id]?.cat === 'monumento' ? 'monumento' : D[id]?.cat || id));
+  for (const n of Object.values(delta || {})) { const p = P(); if (n > 0) p.matIn[r] = (p.matIn[r] || 0) + n; else p.matOut[r] = (p.matOut[r] || 0) - n; }
+});
+bus.on('currency:changed', ({ delta, reason }) => {
+  if (delta?.gems > 0) { P().gems += delta.gems; P().gemsBy[reason || '?'] = (P().gemsBy[reason || '?'] || 0) + delta.gems; }
+  if (delta?.coins > 0) { P().coinsIn += delta.coins; P().coinsBy[reason || '?'] = (P().coinsBy[reason || '?'] || 0) + delta.coins; }
+});
+// monedas cobradas por tipo de edificio (para ver quién sostiene la economía)
+const coinsById = {};
+bus.on('production:collected', ({ b, amount, currency }) => { if (currency === 'coins') coinsById[b.id] = (coinsById[b.id] || 0) + amount; });
+// experiencia por fuente: store.grant marca de dónde viene; lo demás (obras, mejoras, terreno) es 'obra'
+let xpCtx = 'obra';
+const grant0 = store.grant, addXp0 = store.addXp;
+store.grant = (r, src) => { const prev = xpCtx; xpCtx = src || '?'; try { return grant0.call(store, r, src); } finally { xpCtx = prev; } };
+store.addXp = (n) => { const p = P(); p.xp = (p.xp || 0) + Math.round(n); p.xpBy[xpCtx] = (p.xpBy[xpCtx] || 0) + Math.round(n); return addXp0.call(store, n); };
+bus.on('chests:changed', (p) => { if (p?.added) { P().chests += p.n || 1; const k = p.source || '?'; P().chestsBy[k] = (P().chestsBy[k] || 0) + (p.n || 1); } });
+bus.on('season:points', ({ added, reason }) => { P().sparks += added; P().sparksBy[reason] = (P().sparksBy[reason] || 0) + added; });
+bus.on('expedition:finished', ({ kind, loot }) => {
+  const p = P();
+  if (kind === 'corta') p.shorts++; else p.normals++;
+  p.mats += Object.values(loot?.mats || {}).reduce((a, n) => a + n, 0); p.planos += loot?.planos || 0; p.finds += (loot?.finds || []).length;
+});
+const rankAt = {}, rankStartAt = {};
+const eraLast = [];   // en cada cambio de época: qué fue lo último del expediente
+const rankLast = [];  // en cada subida: { rank, last, waitLevelMs, spanMs }
+let firstMonumentDay = null;
+const threatLog = [];
+bus.on('threat:resolved', ({ id, type, pct, mode, damaged }) => threatLog.push({ id, type, pct, mode, damaged: damaged.length, day: dayOf() }));
+bus.on('town:rankup', ({ rank }) => { rankAt[rank] = T; });
+const monDone = {};
+bus.on('building:upgraded', ({ b }) => { if (D[b.id]?.cat === 'monumento' && b.level >= data.MONUMENTS[b.id].stages.length && !monDone[b.id]) monDone[b.id] = dayOf() + 1; });
+
+// ---------------------------------------------------------------- utilidades de lugar
+const isBusy = (b) => E.isBusy(b, T);
+function spots(id) {
+  const [w, d] = E.footprint(id, 0);
   const { min, max } = E.landBounds();
-  for (let z = min; z < max; z++) for (let x = min; x < max; x++) if (E.canPlace(id, x, z, 0).ok) return [x, z];
-  return null;
+  const c = s.city.buildings.find(b => b.id === 'castillo');
+  const cx = c ? c.x + 2 : 14, cz = c ? c.z + 2 : 14;
+  const out = [];
+  for (let x = min; x <= max - w; x++) for (let z = min; z <= max - d; z++) if (E.canPlace(id, x, z, 0).ok) out.push([x, z, Math.hypot(x + w / 2 - cx, z + d / 2 - cz)]);
+  return out;
 }
-/** Reacomoda todos los edificios (menos la Municipalidad) dejando lugar para `id`. Devuelve el lugar o null. */
+const noSpot = new Set();
+const spaceTried = new Set();
+let roomWanted = null;                // edificio importante que espera lugar (se deja de llenar el terreno con cosas chicas)         // edificios para los que ya se intentó hacer lugar en este rato             // tamaños sin lugar en este paso (se limpia en cada paso)
+function findSpot(id) {
+  const key = E.footprint(id, 0).join('x');
+  if (noSpot.has(key)) return null;
+  const all = spots(id);
+  if (!all.length) { noSpot.add(key); return null; }
+  all.sort((a, b) => a[2] - b[2]);    // cerca de la Municipalidad, como lo hace una persona
+  return all[0];
+}
+/** Lugar para una defensa: el que más cubre de lo que está en riesgo para su tipo. */
+function defenseSpot(id) {
+  const all = spots(id);
+  let best = null, bc = -1;
+  for (const [x, z, dist] of all) {
+    const n = TH.wouldCover(id, x, z, 0, 1).length;
+    if (n > bc || (n === bc && dist < best[2])) { bc = n; best = [x, z, dist]; }
+  }
+  // una defensa de 1×1 (Pararrayos) que no cubre nada donde hay lugar: se cambia por una deco chica que esté cerca de lo que corre riesgo
+  if (bc <= 0 && D[id].size[0] * D[id].size[1] === 1) {
+    let pick = null, pc = 0;
+    for (const b of s.city.buildings) {
+      if (!E.canRemove(b) || D[b.id].size[0] * D[b.id].size[1] !== 1) continue;
+      const n = TH.wouldCover(id, b.x, b.z, 0, 1).length;
+      if (n > pc) { pc = n; pick = b; }
+    }
+    if (pick) { const at = [pick.x, pick.z, 0]; E.removeBuilding(pick.uid); noSpot.clear(); return at; }
+  }
+  return best;
+}
+/** Mueve una defensa al lugar donde cubre más de lo que está en riesgo (si gana algo). */
+const movedFor = new Set();
+function moveDefense(b) {
+  const id = b.id, [w, d] = E.footprint(id, 0), { min, max } = E.landBounds();
+  const here = TH.wouldCover(id, b.x, b.z, b.rot || 0, b.level || 1).length;
+  let best = null, bc = here;
+  for (let x = min; x <= max - w; x++) for (let z = min; z <= max - d; z++) {
+    if (!E.canPlace(id, x, z, 0, b.uid).ok) continue;
+    const n = TH.wouldCover(id, x, z, 0, b.level || 1).length;
+    if (n > bc) { bc = n; best = [x, z]; }
+  }
+  if (best) { E.moveBuilding(b.uid, best[0], best[1], 0); noSpot.clear(); }
+}
+/** Reacomoda la ciudad (todo menos la Municipalidad y las defensas, de lo más grande a lo más chico) para hacerle lugar a `id`. */
 function repackFor(id) {
   const keep = s.city.buildings.slice();
   const castle = keep.find(b => b.id === 'castillo');
-  const area = (b) => data.BUILDING_BY_ID[b.id].size[0] * data.BUILDING_BY_ID[b.id].size[1];
-  const others = keep.filter(b => b !== castle).sort((a, b) => area(b) - area(a));
-  s.city.buildings = [castle];
-  const spot = findSpot(id);
+  const area = (b) => D[b.id].size[0] * D[b.id].size[1];
+  // la Municipalidad y las defensas se quedan donde están (las defensas cubren lo que tienen cerca)
+  const fixed = keep.filter(b => b === castle || D[b.id].cat === 'defensa');
+  const others = keep.filter(b => !fixed.includes(b)).sort((a, b) => area(b) - area(a));
+  const firstFree = (bid) => { const { min, max } = E.landBounds(); const [w, d] = E.footprint(bid, 0); for (let z = min; z <= max - d; z++) for (let x = min; x <= max - w; x++) if (E.canPlace(bid, x, z, 0).ok) return [x, z]; return null; };
+  s.city.buildings = fixed.slice();
+  const spot = firstFree(id);
   if (!spot) { s.city.buildings = keep; return null; }
-  const dummy = { uid: -1, id, x: spot[0], z: spot[1], rot: 0, level: 1 };
-  s.city.buildings.push(dummy);
+  s.city.buildings.push({ uid: -1, id, x: spot[0], z: spot[1], rot: 0, level: 1 });
   const pos = new Map();
   for (const b of others) {
-    const p = findSpot(b.id);
+    const p = firstFree(b.id);
     if (!p) { s.city.buildings = keep; return null; }
     pos.set(b, p);
     s.city.buildings.push({ ...b, x: p[0], z: p[1], rot: 0 });
   }
   for (const [b, p] of pos) { b.x = p[0]; b.z = p[1]; b.rot = 0; }
   s.city.buildings = keep;
+  noSpot.clear();
+  movedFor.clear();   // la ciudad cambió de lugar: las defensas se vuelven a acomodar
   return spot;
 }
-// prioridad de compra: juegos > casas si falta población > negocios > mejoras > deco > castillo > expandir
-function spend() {
-  for (let guard = 0; guard < 40; guard++) {
-    const L = s.player.level;
-    // con el expediente completo, la Municipalidad (subir de rango) va primero
-    const castle = s.city.buildings.find(b => b.id === 'castillo');
-    if (castle && E.canUpgrade(castle).ok) { E.startUpgrade(castle.uid); continue; }
-    // monumentos: la próxima etapa apenas alcanza (materiales + monedas)
-    let mon = false;
+
+// ---------------------------------------------------------------- costos con reserva
+// Lo de menor prioridad no puede usar las monedas/materiales que se guardan para la obra de rango o la etapa de monumento.
+let reserved = { coins: 0, gems: 0, mats: {} };
+const addMats = (a = {}, b = {}) => { const o = { ...a }; for (const [k, n] of Object.entries(b || {})) o[k] = (o[k] || 0) + n; return o; };
+function afford(cost = {}) {
+  if (!store.canAfford(cost)) return false;
+  if ((cost.coins || 0) + reserved.coins > s.coins) return false;
+  if ((cost.gems || 0) + reserved.gems > s.gems) return false;
+  if (cost.mats && !store.hasMats(addMats(cost.mats, reserved.mats))) return false;
+  return true;
+}
+function reserve(cost = {}, { coins = true, mats = true } = {}) {
+  if (coins) { reserved.coins += cost.coins || 0; reserved.gems += cost.gems || 0; }
+  if (mats && cost.mats) reserved.mats = addMats(reserved.mats, cost.mats);
+}
+/** Faltantes de materiales de lo que se quiso hacer y no alcanzó (guía la elección de región). */
+let matWant = {};
+function wantMats(m) { for (const [k, n] of Object.entries(m || {})) { const miss = n + (reserved.mats[k] || 0) - (s.materials[k] || 0); if (miss > 0) matWant[k] = Math.max(matWant[k] || 0, miss); } }
+
+// ---------------------------------------------------------------- acciones
+// Cada acción devuelve 'done' o un motivo. bigCost: la primera acción grande que no se pudo hacer (meta de monedas).
+let bigNext = null;
+// La primera acción grande que no se pudo hacer es "lo próximo": se le guardan las monedas (lo de menor prioridad solo
+// usa lo que sobra por encima), como hace una persona que junta para lo que viene.
+// Para la meta de monedas, lo que espera materiales no es un gasto de monedas que se esté juntando (salvo la etapa de
+// monumento y la obra de rango): "el próximo gasto grande" (bigMetric) es el primero que no está frenado solo por materiales.
+let bigMetric = null;
+const noteBig = (what, cost) => {
+  if (!(cost?.coins > 0)) return;
+  if (!bigNext) { bigNext = { what, coins: cost.coins }; if (CUSHION) reserved.coins += cost.coins; }
+  if (bigMetric) return;
+  const id = what.split(' ')[1];
+  const goal = id === 'castillo' || D[id]?.cat === 'monumento';
+  if (!goal && cost.mats && !store.hasMats(addMats(cost.mats, reserved.mats))) return;
+  bigMetric = { what, coins: cost.coins };
+};
+const CUSHION = !args.includes('--greedy');
+function build(id, { big = true, place = null, room = false } = {}) {
+  const d = D[id];
+  if (!d) return 'x';
+  const c = E.canBuild(id, s, T);
+  const cost = E.placeCost(id);
+  if (!c.ok) {
+    if (c.locked || c.reason === 'Ya lo tenés') return 'locked';
+    if (c.mats) wantMats(cost.mats);
+    if (big) noteBig('construir ' + id, cost);
+    return c.reason;
+  }
+  if (!c.free && !afford(cost)) { wantMats(cost.mats); if (big) noteBig('construir ' + id, cost); return 'reservado'; }
+  // si algo importante está esperando lugar, no se ocupa el terreno con cosas chicas (si no, se libera y se vuelve a llenar)
+  if (roomWanted && roomWanted !== id && !room && ['deco', 'casa', 'negocio'].includes(d.cat)) return 'sin lugar';
+  let spot = place ? place(id) : findSpot(id);
+  if (!spot) {
+    const ex = E.expansionStatus();
+    if (ex?.ok && afford(ex.cost)) { E.expand(); noSpot.clear(); spot = place ? place(id) : findSpot(id); }
+    else if (ex?.ok && big) noteBig('terreno', ex.cost);
+  }
+  // sin lugar: lo que importa (room: expediente, monumento, base del ciclo, defensa de la amenaza que viene) se hace lugar
+  // como lo haría una persona: reacomoda la ciudad y, si no alcanza, guarda deco chica (devuelve la mitad) hasta que entre
+  if (!spot && room && (d.cat !== 'deco' || room === 'deco') && d.cat !== 'camino' && !spaceTried.has(id)) {
+    spaceTried.add(id);   // una vez por rato y por edificio (reacomodar es caro)
+    spot = repackFor(id);
+    for (let k = 0; !spot && k < 12; k++) {
+      const deco = s.city.buildings.filter(b => E.canRemove(b) && D[b.id].size[0] * D[b.id].size[1] === 1 && (room !== 'deco' || (D[b.id].happy || 0) < (d.happy || 0) / (d.size[0] * d.size[1])))
+        .sort((a, b) => E.charmBase(D[a.id]) - E.charmBase(D[b.id]))[0];
+      if (!deco) break;
+      E.removeBuilding(deco.uid); noSpot.clear();
+      spot = findSpot(id) || (k % 3 === 2 ? repackFor(id) : null);
+    }
+  }
+  if (!spot) { if (room === true) roomWanted = id; return 'sin lugar'; }
+  if (roomWanted === id) roomWanted = null;
+  const r = E.placeBuilding(id, spot[0], spot[1], 0);
+  if (r.error) return r.error;
+  noSpot.clear();
+  return 'done';
+}
+function upgrade(b, { big = true } = {}) {
+  if (!b) return 'x';
+  const info = E.upgradeInfo(b);
+  if (!info) return 'max';
+  const c = E.canUpgrade(b, s, T);
+  if (!c.ok) {
+    if (c.locked || c.reason === 'Está en obra' || c.damaged) return 'locked';
+    if (c.mats) wantMats(info.cost.mats);
+    if (big) noteBig('mejorar ' + b.id, info.cost);
+    return c.reason;
+  }
+  if (!afford(info.cost)) { wantMats(info.cost.mats); if (big) noteBig('mejorar ' + b.id, info.cost); return 'reservado'; }
+  const r = E.startUpgrade(b.uid);
+  return r.error || 'done';
+}
+function renovate(b) {
+  const info = E.renovateInfo(b);
+  if (!info) return 'x';
+  const c = E.canRenovate(b, s, T);
+  if (!c.ok) { if (c.mats) wantMats(info.cost.mats); if (!c.damaged && c.reason !== 'Está en obra') noteBig('renovar ' + b.id, info.cost); return c.reason; }
+  if (!afford(info.cost)) { wantMats(info.cost.mats); noteBig('renovar ' + b.id, info.cost); return 'reservado'; }
+  const r = E.startRenovate(b.uid);
+  return r.error || 'done';
+}
+function craft(kind, id) {
+  const st = X.craftStatus(kind, id);
+  if (!st.ok) { if (st.mats) wantMats(st.cost.mats); return st.reason; }
+  if (!afford(st.cost)) { wantMats(st.cost.mats); return 'reservado'; }
+  const r = X.craft(kind, id);
+  return r.error || 'done';
+}
+const all = (id) => s.city.buildings.filter(b => b.id === id);
+const one = (id) => s.city.buildings.find(b => b.id === id) || null;
+const lvl = (id) => E.cycleLevel(id, s, T);
+const rank = () => E.townRank();
+const L = () => s.player.level;
+
+/** Provisiones por día que dan los productores con este ritmo de ratos (cada productor se llena entre rato y rato). */
+function provPerDay() {
+  const gaps = HOURS.map((h, i) => ((i + 1 < HOURS.length ? HOURS[i + 1] : HOURS[0] + 24) - h) * 3600);
+  let tot = 0;
+  for (const b of s.city.buildings) {
+    const d = D[b.id];
+    if (!d.prod?.prov) continue;   // lo que está en obra también cuenta (si no, se construyen de más)
+    const perC = E.cycleValue(b.id, 'prov', b.level || 1, d.prod.prov);
+    for (const g of gaps) tot += Math.min(d.prod.cap, Math.floor(g / d.prod.cycle)) * perC;
+  }
+  return tot;
+}
+/** Tandas por día de un productor con este ritmo de ratos. */
+function tandas(id) {
+  const d = D[id], gaps = HOURS.map((h, i) => ((i + 1 < HOURS.length ? HOURS[i + 1] : HOURS[0] + 24) - h) * 3600);
+  return gaps.reduce((a, g) => a + Math.min(d.prod.cap, Math.floor(g / d.prod.cycle)), 0);
+}
+const normalsWanted = () => (rank() >= 5 ? 3 : 2);
+
+// ---------------------------------------------------------------- gastar (en orden de prioridad)
+function wishlist() {
+  const W = [];
+  const add = (f) => W.push(f);
+  const r = rank();
+  // 1. reparar (barato, al instante)
+  add(() => { for (const b of TH.damagedBuildings()) { const info = TH.repairInfo(b); if (afford(info.cost)) { TH.repair(b.uid); return 'done'; } wantMats(info.cost.mats); } return 'x'; });
+  // 2. obra de rango: con el expediente y el nivel listos va primero (y se guardan monedas para ella)
+  add(() => {
+    const c = one('castillo'); const rs = E.rankStatus();
+    if (!rs.next || isBusy(c)) return 'x';
+    const info = E.upgradeInfo(c);
+    if (!rs.allOk || !rs.levelOk) return 'x';
+    const res = upgrade(c);
+    if (res !== 'done') reserve(info.cost);
+    return res;
+  });
+  // 3. misión principal: lo que pide
+  add(() => {
+    const mq = Q.mainQuest(); if (!mq || mq.done) return 'x';
+    const g = mq.goal;
+    if (g.type === 'build' && g.id) return build(g.id);
+    if (g.type === 'craft') return craft(data.EQUIP_RECIPES[g.id] ? 'equip' : 'reserve', g.id || 'cuerda');
+    if (g.type === 'expand') { const ex = E.expansionStatus(); if (ex?.ok) { if (afford(ex.cost)) { E.expand(); noSpot.clear(); return 'done'; } noteBig('terreno', ex.cost); } return 'x'; }
+    return 'x';
+  });
+  // 4. amenaza que se viene: reservas y una defensa de su tipo
+  add(() => {
+    const st = TH.threatStatus(); if (!st || !st.visible || st.phase === 'pasada') return 'x';
+    const info = st.info;
+    if (info.have < info.need && st.reserve) { const res = craft('reserve', st.reserve); if (res === 'done') return 'done'; }
+    const defId = TD.THREAT_TYPES[st.type].defense;
+    const uncovered = info.list.filter(x => !x.covered).length;
+    if (uncovered >= 2 && all(defId).length < D[defId].max) { const res = build(defId, { place: defenseSpot, room: true }); if (res === 'done') return 'done'; }
+    // las que ya están, donde más cubren (la ciudad cambió desde que se pusieron) y mejoradas si se puede
+    if (uncovered >= 2 && !movedFor.has(st.t.id)) { movedFor.add(st.t.id); for (const b of all(defId)) moveDefense(b); }
+    for (const b of all(defId)) if ((b.level || 1) < Math.min(5, 1 + Math.ceil(r / 2))) { const res = upgrade(b); if (res === 'done') return res; }
+    return 'x';
+  });
+  // 5. base del ciclo: Casa de Expediciones, Huerta, Taller, Establo, Dispensario (y el Vestidor del t-algo)
+  for (const id of ['huerta', 'casa_exp', 'taller', 'establo', 'dispensario']) add(() => (all(id).length ? 'x' : build(id, { room: true })));
+  // 6. monumento: la primera etapa pendiente del primero abierto sin terminar (se guardan materiales y, con ellos, monedas)
+  add(() => {
     for (const id of data.MONUMENT_IDS) {
       const st = E.monumentStatus(id);
-      if (!st.unlocked || !st.can.ok) continue;
-      if (st.b) { if (!E.startUpgrade(st.b.uid).error) { mon = true; break; } continue; }
-      // sin lugar: como haría una jugadora, reacomoda la ciudad (mueve todo, de lo más grande a lo más chico)
-      const spot = findSpot(id) || repackFor(id);
-      if (spot && !E.placeBuilding(id, spot[0], spot[1], 0).error) { mon = true; break; }
+      if (!st.unlocked || st.done) continue;
+      if (st.busy) return 'x';
+      const cost = st.next.cost;
+      const res = st.b ? upgrade(st.b) : build(id, { room: true });
+      if (res !== 'done') { const matsOk = store.hasMats(addMats(cost.mats, reserved.mats)); reserve(cost, { coins: matsOk, mats: true }); }
+      return res;
     }
-    if (mon) continue;
-    const want = [];
-    if (L >= 2 && !E.countOf('boutique_real')) want.push('boutique_real');
-    const biz = data.BUILDINGS.filter(b => b.cat === 'negocio' && b.prod?.coins && b.unlock <= L);
-    const houses = data.BUILDINGS.filter(b => b.cat === 'casa' && b.unlock <= L);
+    return 'x';
+  });
+  // 7. expediente del próximo rango
+  add(() => {
+    const rs = E.rankStatus(); if (!rs.next) return 'x';
+    const need = Object.fromEntries(rs.reqs.filter(x => !x.ok).map(x => [x.key, x]));
     const pop = E.population();
-    const nextBiz = biz.filter(b => E.countOf(b.id) < 2).sort((a, b) => b.cost.coins - a.cost.coins);
-    const blocked = nextBiz.find(b => b.popReq > pop);
-    if (blocked) want.push(houses.sort((a, b) => b.pop / b.cost.coins - a.pop / a.cost.coins)[0].id);
-    for (const b of nextBiz) if (b.popReq <= pop) want.push(b.id);
-    const hp = E.happiness();
-    if (hp.pct < 70) {
-      const deco = data.BUILDINGS.filter(b => b.cat === 'deco' && b.unlock <= L && b.cost.coins && !b.cost.gems && E.countOf(b.id) < 8).sort((a, b) => b.happy / b.cost.coins - a.happy / a.cost.coins);
-      if (deco[0]) want.push(deco[0].id);
+    const houses = data.BUILDINGS.filter(b => b.cat === 'casa' && !(b.rank > r) && b.unlock <= L());
+    if (need.pop) {
+      const h = houses.sort((a, b) => b.pop / E.placeCost(b.id).coins - a.pop / E.placeCost(a.id).coins)[0];
+      if (h) { const res = build(h.id, { room: true }); if (res === 'done') return res; }
+      const up = s.city.buildings.filter(b => D[b.id].cat === 'casa' && E.upgradeInfo(b)).sort((a, b) => E.upgradeInfo(a).cost.coins - E.upgradeInfo(b).cost.coins)[0];
+      if (up && upgrade(up) === 'done') return 'done';
     }
-    if (houses.length && E.countOf(houses[0].id) < 6) want.push(houses.sort((a, b) => b.pop - a.pop)[0].id);
-    // expediente del próximo rango: tipos de negocio que faltan, encanto (deco variada) y población
-    const rs = E.rankStatus();
-    const need = Object.fromEntries(rs.reqs.filter(r => !r.ok).map(r => [r.key, true]));
-    if (need.shops) for (const b of data.BUILDINGS.filter(b => b.cat === 'negocio' && b.unlock <= L && !E.countOf(b.id) && (b.popReq || 0) <= pop)) want.push(b.id);
-    if (need.pop) want.push(houses.sort((a, b) => b.pop / b.cost.coins - a.pop / a.cost.coins)[0].id);
+    if (need.shops) {
+      for (const b of data.BUILDINGS.filter(b => b.cat === 'negocio' && b.unlock <= L() && !(b.rank > r) && !E.countOf(b.id) && (b.popReq || 0) <= pop)) { const res = build(b.id, { room: true }); if (res === 'done') return res; }
+    }
     if (need.charm || need.happy) {
-      const deco = data.BUILDINGS.filter(b => b.cat === 'deco' && b.unlock <= L && b.cost.coins && !b.max && E.countOf(b.id) < 8)
-        .sort((a, b) => E.charmGain(b.id) / b.cost.coins - E.charmGain(a.id) / a.cost.coins);
-      if (deco[0]) want.push(deco[0].id);
+      const key = need.happy ? (d) => (d.happy || 0) : (d) => E.charmGain(d.id);
+      // por moneda y por lote: en una ciudad llena rinde más lo que da mucho en poco lugar
+      const val = (d) => key(d) / (E.placeCost(d.id).coins + 30 * (E.placeCost(d.id).gems || 0) + 150 * d.size[0] * d.size[1]);
+      const deco = data.BUILDINGS.filter(b => b.cat === 'deco' && b.unlock <= L() && !(b.rank > r) && E.countOf(b.id) < 8 && (b.cost.coins || b.cost.gems < 20))
+        .sort((a, b) => val(b) - val(a));
+      // si falta felicidad y no hay lugar, se cambia deco chica por otra que rinda más por lote
+      for (const dd of deco.slice(0, 3)) { const res = build(dd.id, { big: false, room: need.happy && (dd.happy || 0) / (dd.size[0] * dd.size[1]) >= 3 ? 'deco' : false }); if (res === 'done') return res; }
     }
-    let did = false;
-    for (const id of want) {
-      const c = E.canBuild(id);
-      if (!c.ok) continue;
-      const spot = findSpot(id);
-      if (!spot) {
-        const ex = E.expansionStatus();
-        if (ex && ex.ok && store.canAfford(ex.cost)) { E.expand(); did = true; break; }
+    return 'x';
+  });
+  // 8. provisiones para las salidas del día
+  add(() => {
+    const want = normalsWanted() * Math.min(X.provMax(), Math.max(XD.EXP.provMinNormal, provUsed));
+    const deficit = want - provPerDay();
+    if (deficit <= 0) return 'x';
+    // de a poco: lo que suma menos pero alcanza (mejorar una Huerta, otra Huerta, un Tambo…); si nada alcanza, lo que más suma
+    const cands = [];
+    for (const b of s.city.buildings) {
+      if (!D[b.id].prod?.prov || !E.upgradeInfo(b)) continue;
+      const c = E.canUpgrade(b, s, T);
+      if (c.locked) continue;
+      cands.push({ gain: tandas(b.id) * (E.cycleValue(b.id, 'prov', (b.level || 1) + 1) - E.cycleValue(b.id, 'prov', b.level || 1)), go: () => upgrade(b) });
+    }
+    for (const id of ['huerta', 'tambo', 'molino', 'conservera'])
+      if (all(id).length < D[id].max && !(D[id].rank > r) && D[id].unlock <= L()) cands.push({ gain: tandas(id) * E.cycleValue(id, 'prov', 1), go: () => build(id) });
+    if (!cands.length) return 'x';
+    cands.sort((a, b) => a.gain - b.gain);
+    const pick = cands.find(c => c.gain >= deficit) || cands[cands.length - 1];
+    return pick.go();
+  });
+  // 9. mejoras del ciclo hasta un nivel acorde al rango; Vestidor y defensas abiertas (una de cada tipo)
+  add(() => {
+    const target = Math.min(5, Math.max(1, r));
+    for (const id of ['casa_exp', 'establo', 'taller', 'dispensario']) { const b = one(id); if (b && (b.level || 1) < target) { const res = upgrade(b); if (res === 'done') return res; } }
+    return 'x';
+  });
+  add(() => {
+    for (const [id, dd] of Object.entries(data.DEFENSES)) {
+      if (all(id).length || (D[id].rank || 1) > r) continue;
+      if (dd.threat !== '*' && TD.THREAT_TYPES[dd.threat].rank > r) continue;
+      const res = build(id, { place: defenseSpot }); if (res === 'done') return res;
+    }
+    return 'x';
+  });
+  // 10. ingresos: negocios que faltan (hasta 2 de cada uno), casas para la población que piden, mejoras de lo que produce
+  add(() => {
+    const pop = E.population();
+    const biz = data.BUILDINGS.filter(b => b.cat === 'negocio' && b.prod?.coins && b.unlock <= L() && !(b.rank > r) && E.countOf(b.id) < 2)
+      .sort((a, b) => b.cost.coins - a.cost.coins);
+    for (const b of biz) {
+      if ((b.popReq || 0) > pop) {
+        const h = data.BUILDINGS.filter(x => x.cat === 'casa' && x.unlock <= L() && !(x.rank > r)).sort((a, c) => c.pop / E.placeCost(c.id).coins - a.pop / E.placeCost(a.id).coins)[0];
+        if (h && build(h.id) === 'done') return 'done';
         continue;
       }
-      const r = E.placeBuilding(id, spot[0], spot[1], 0);
-      if (!r.error) { did = true; break; }
+      const res = build(b.id); if (res === 'done') return res;
     }
-    if (did) continue;
-    // mejoras: castillo primero, después el productor más barato de mejorar
-    const ups = s.city.buildings.filter(b => E.canUpgrade(b).ok).sort((a, b) => (a.id === 'castillo' ? -1 : 0) - (b.id === 'castillo' ? -1 : 0) || E.upgradeInfo(a).cost.coins - E.upgradeInfo(b).cost.coins);
-    if (ups[0] && store.canAfford({ coins: E.upgradeInfo(ups[0]).cost.coins + 200 })) { E.startUpgrade(ups[0].uid); continue; }
-    break;
-  }
+    // las casas suman gente al mejorarlas: si la felicidad está justa para el próximo rango, se mejoran solo los negocios
+    const rsx = E.rankStatus(), happyTight = rsx.next?.req?.happy && E.happiness().pct < rsx.next.req.happy + 8;
+    const ups = s.city.buildings.filter(b => (D[b.id].cat === 'negocio' || (D[b.id].cat === 'casa' && !happyTight)) && D[b.id].prod?.coins && E.upgradeInfo(b))
+      .sort((a, b) => E.upgradeInfo(a).cost.coins / (D[a.id].prod.coins / D[a.id].prod.cycle) - E.upgradeInfo(b).cost.coins / (D[b.id].prod.coins / D[b.id].prod.cycle));
+    for (const b of ups.slice(0, 2)) { const res = upgrade(b); if (res === 'done') return res; }
+    return 'x';
+  });
+  // 11. renovar a la época actual (lo que produce primero)
+  add(() => {
+    const list = E.outdatedBuildings().filter(b => !isBusy(b) && !b.damaged).sort((a, b) => (D[b.id].prod ? 1 : 0) - (D[a.id].prod ? 1 : 0) || E.renovateInfo(a).cost.coins - E.renovateInfo(b).cost.coins);
+    for (const b of list.slice(0, 2)) { const res = renovate(b); if (res === 'done') return res; }
+    return 'x';
+  });
+  // 12. defensas al nivel del rango
+  add(() => {
+    const target = Math.ceil(r / 2);
+    for (const id of Object.keys(data.DEFENSES)) for (const b of all(id)) if ((b.level || 1) < target) { const res = upgrade(b); if (res === 'done') return res; }
+    return 'x';
+  });
+  // 13. terreno cuando ya se puede
+  add(() => { const ex = E.expansionStatus(); if (!ex?.ok) return 'x'; if (afford(ex.cost)) { E.expand(); noSpot.clear(); return 'done'; } noteBig('terreno', ex.cost); return 'x'; });
+  return W;
 }
-// Sin minijuegos (Fase 5): una salida de expedición aproximada da materiales de región y experiencia, sin monedas.
-// La sim nueva de la Fase 5b reemplaza esto por las salidas reales (sim-expedition) y las provisiones.
-function playGame() {
-  const stars = Math.floor(Math.random() * 4);
-  const mats = {};
-  for (let i = 0; i < 10; i++) { const m = data.REGION_MAT_IDS[Math.floor(Math.random() * data.REGION_MAT_IDS.length)]; mats[m] = (mats[m] || 0) + 1; }
-  store.grant({ xp: Math.round((10 + 5 * stars) * (1 + E.monumentBonus('gameXp'))), mats }, 'expedition');
-}
-const rnd = (() => { let h = 12345; return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; })();
-Math.random = rnd;
-const out = [];
-const day0 = new Date(2026, 10, 2).getTime();
-let lastDay = -1;
-const rankDay = {};
-for (let day = 0; day < DAYS; day++) {
-  for (const hr of SESS) {
-    T = day0 + day * 864e5 + hr * 3600e3;
+let lastBig = null;
+function spend() {
+  for (let guard = 0; guard < 60; guard++) {
+    reserved = { coins: 0, gems: 0, mats: {} };
+    bigNext = null; bigMetric = null; matWant = {};
+    let did = false;
+    for (const f of wishlist()) if (f() === 'done') { did = true; break; }
+    if (!did) { lastBig = bigMetric; break; }   // la primera acción grande que quedó sin hacer = el próximo gasto grande
     E.tick();
-    if (day !== lastDay) {   // premio diario + diarias (aprox.)
-      lastDay = day;
-      const sc = data.rewardScale(s.player.level);
-      const q = Math.round(150 * sc + 120 + 200 + 280);
-      tally.quests += q;
-      // una de las diarias suele ser "jugá X": 3 de su material
-      const dm = data.MATERIALS[day % data.MATERIALS.length];
-      store.grant({ coins: q, xp: 70 + 50, mats: hasGame(data.GAME_BY_ID[dm.game]) ? { [dm.id]: 3 } : null }, 'quest');
-    }
-    E.collectAll();
-    spend();
-    for (let g = 0; g < GAMES_PER_SESSION; g++) { T += (SESSION_MIN / GAMES_PER_SESSION) * 60e3; E.tick(); playGame(); }
-    E.collectAll();
-    spend();
   }
-  const prodPerHour = s.city.buildings.reduce((a, b) => { const st = E.producerStatus(b, T); return a + (st.producer && !st.paused && st.currency === 'coins' ? st.perCycle * 3600 / st.cycleSec : 0); }, 0);
-  const rk = E.townRank();
-  for (let r = 2; r <= rk; r++) if (!rankDay[r]) rankDay[r] = day + 1;
-  if (DAYS > 14 && (day + 1) % 7 && day + 1 !== DAYS) continue;
-  const rs = E.rankStatus();
-  out.push({ day: day + 1, lvl: s.player.level, rank: rk, charm: E.cityCharm(), happy: E.happiness().pct, shops: E.shopKinds(), gems: s.gems,
-    falta: rs.reqs.filter(r => !r.ok).map(r => r.key + ' ' + r.have + '/' + r.need).join(' ') + (rs.next && !rs.levelOk ? ' nivel' + rs.next.reqLevel : ''),    mon: E.monumentsDone(), mats: data.MATERIALS.map(m => s.materials[m.id] || 0).join('/'),
- coins: s.coins, prod: tally.prod, games: tally.games, quests: tally.quests, lvlRw: tally.level, n: s.city.buildings.length, castle: E.castleLevel(), exp: s.city.expansions, pop: E.population(), prodH: Math.round(prodPerHour) });
+  // constructoras con gemas (las que se compran) cuando sobran
+  const bi = E.builderInfo();
+  if (bi && s.gems >= bi.cost.gems + 40 && rank() >= 3) E.buyBuilder();
 }
-console.log(mode, 'k=' + K, 'sesiones', SESS.join(','));
-console.table(out);
-console.log('día en que llega a cada rango:', JSON.stringify(rankDay));
-const ids = {}; for (const b of s.city.buildings) ids[b.id] = (ids[b.id] || 0) + 1;
-console.log(JSON.stringify(ids));
-console.log('monumentos:', data.MONUMENT_IDS.map(id => { const st = E.monumentStatus(id); return `${id} ${st.stagesDone}/${st.N}`; }).join(' · '));
-Date.now = realNow;
+
+// ---------------------------------------------------------------- cobrar y misiones
+function claimAll() {
+  Q.claimLogin();
+  for (let g = 0; g < 10 && Q.claimMain(); g++) ;
+  for (const d of Q.dailyQuests()) if (d.done && !d.claimed) Q.claimDaily(d.id);
+  Q.claimDailyBonus();
+  for (const a of Q.achievements()) if (a.ready) Q.claimAchievement(a.id);
+  CH.claimFreeChest(T);
+  for (let g = 0; g < 30; g++) { const t = CH.CHEST_LIST.find(c => CH.chestCount(c.id) > 0); if (!t) break; CH.openChest(t.id); }
+  SE.claimAllTiers(T);
+  for (const id of AL.claimableSets()) AL.claimSet(id);
+  // objetos de la mochila: martillo y reloj de arena sobre la obra más larga
+  for (const it of ['hammer', 'hourglass']) {
+    if (!CH.itemCount(it)) continue;
+    const b = s.city.buildings.filter(o => isBusy(o)).sort((a, c) => E.remainingMs(c, T) - E.remainingMs(a, T))[0];
+    if (b && E.remainingMs(b, T) > (it === 'hammer' ? 20 : 50) * 60e3) CH.useCityItem(it, { uid: b.uid });
+  }
+}
+/** Diarias que se cumplen en un toque (cambiar el look, construir 3 cosas chicas, fabricar 2 cosas). */
+function dailyHelpers() {
+  for (const d of Q.dailyQuests()) {
+    if (d.done || d.claimed) continue;
+    if (d.goal.type === 'customize') store.setLook('avatar', 'dressColor', s.avatar.dressColor === 'verde' ? 'celeste' : 'verde');
+    if (d.goal.type === 'build') for (let k = d.progress; k < d.goal.count; k++) if (build('arbol', { big: false }) !== 'done') break;
+    if (d.goal.type === 'craft') for (let k = d.progress; k < d.goal.count; k++) if (craft('equip', 'cuerda') !== 'done' && craft('reserve', 'lena') !== 'done') break;
+  }
+}
+
+// ---------------------------------------------------------------- expediciones
+let expSeed = SEED * 100003;
+function regionScore(id, kind) {
+  const rg = XD.REGIONS[id], st = X.regionInfo(id);
+  let sc = 0;
+  for (const [m, pct] of Object.entries(rg.mats)) sc += Math.min(30, matWant[m] || 0) * pct / 100;
+  sc += Object.values(rg.mats).reduce((a, p) => a + p, 0) / 100;   // algo trae siempre
+  if (kind === 'normal' && !st.done) sc += 6 - 0.6 * st.zone;      // explorar abre terreno y chispas
+  return sc - 0.8 * (rg.tier - 1) * (kind === 'normal' && !st.done ? st.zone / 3 : 1);
+}
+function pickRegion(kind) {
+  const open = XD.REGION_IDS.filter(id => X.regionOpen(id));
+  const mq = Q.mainQuest();
+  if (mq && !mq.done && (mq.goal.type === 'zone' || mq.goal.type === 'expedition') && mq.goal.region && open.includes(mq.goal.region)) {
+    if (mq.goal.type === 'zone' ? kind === 'normal' : (!mq.goal.kind || mq.goal.kind === kind)) return mq.goal.region;
+  }
+  return open.sort((a, b) => regionScore(b, kind) - regionScore(a, kind))[0];
+}
+/** Materiales de la próxima etapa del monumento que se está juntando ({} si no hay). */
+function monumentMats() {
+  for (const id of data.MONUMENT_IDS) {
+    const st = E.monumentStatus(id);
+    if (!st.unlocked || st.done) continue;
+    return st.busy ? {} : { ...(st.next.cost.mats || {}) };
+  }
+  return {};
+}
+function equipFor() {
+  const slots = X.equipSlots();
+  if (!slots) return;
+  for (const id of ['cuerda', 'carreta', 'lona', 'pala']) {
+    if ((s.equipment[id] || 0) > 0) continue;
+    if (Object.values(s.equipment).filter(n => n > 0).length >= slots) break;
+    craft('equip', id);
+  }
+}
+let budget = 0;   // segundos que quedan en el rato
+let provUsed = 14; // provisiones netas por salida normal (lo que se lleva menos lo que vuelve), promedio móvil
+function expedition(kind) {
+  const st = X.expeditionStatus();
+  if (kind === 'corta' ? !st.canShort : !st.canNormal) return false;
+  if (kind === 'normal' && (s.prov || 0) < Math.max(XD.EXP.provMinNormal, Math.ceil(0.8 * X.provMax()))) return false;
+  if (budget < (kind === 'corta' ? 90 : 200)) return false;
+  reserved = { coins: 0, gems: 0, mats: monumentMats() };   // el equipo no toca lo juntado para el monumento
+  if (kind === 'normal') equipFor();
+  const region = pickRegion(kind);
+  const prov0 = s.prov || 0;
+  const r = X.startExpedition({ region, kind });
+  if (r.error) return false;
+  const res = BOTS.play(r.run, 'medio', expSeed++);
+  X.finishExpedition(r.run);
+  if (kind === 'normal') provUsed = 0.8 * provUsed + 0.2 * Math.max(0, prov0 - (s.prov || 0));   // lo que de verdad gasta una salida
+  const sec = res.steps * STEP_SEC + 40;
+  budget -= sec;
+  T += sec * 1000;
+  return true;
+}
+
+// ---------------------------------------------------------------- amenazas
+const prepSeen = [];   // preparación al enfrentarla (o al resolverse sola) y lo que daría la automática
+function threats() {
+  TH.tick();
+  const st = TH.threatStatus();
+  if (!st || !st.canFace || budget < 90) return;
+  const auto = TR.autoResolve(st.info.prep, st.f, st.info.enRiesgo);
+  prepSeen.push({ id: st.t.id, type: st.type, f: st.f, prep: st.info.prep, enRiesgo: st.info.enRiesgo, auto: auto.pct, autoDamaged: auto.damaged, c: st.info.c, r: st.info.r, have: st.info.have, need: st.info.need, cov: st.info.list.filter(x => x.covered).length });
+  const d = TH.startDefense(st.t.id);
+  if (d.error) { prepSeen.pop(); return; }
+  for (let g = 0; g < 30 && TH.activeDefense(); g++) { TR.botTurn(TH.activeDefense(), { slip: 0.25 }); TH.endTurn(); }
+  budget -= 120; T += 120e3;
+}
+
+// ---------------------------------------------------------------- expediente (para la meta de rango)
+let rk = { rank: 1, okSince: {}, since: T, waitLevel: 0, lastT: T, onlyLevel: false };
+function sampleRank() {
+  const r = rank();
+  const c = one('castillo');
+  if (r !== rk.rank) rk = { rank: r, okSince: {}, since: T, waitLevel: 0, lastT: T, onlyLevel: false };
+  if (rk.onlyLevel) rk.waitLevel += T - rk.lastT;
+  rk.lastT = T;
+  if (c && E.isUpgrading(c, T)) return;   // obra de rango en curso (la registra rankStarted)
+  const rs = E.rankStatus();
+  if (!rs.next) return;
+  const st = { level: rs.levelOk };
+  for (const q of rs.reqs) st[q.key] = q.ok;
+  for (const [k, ok] of Object.entries(st)) { if (ok && !rk.okSince[k]) rk.okSince[k] = T; if (!ok) delete rk.okSince[k]; }
+  rk.onlyLevel = !rs.levelOk && rs.reqs.every(q => q.ok);
+}
+
+/** Al empezar la obra de rango: qué requisito se cumplió último y cuánto se esperó solo por nivel. */
+bus.on('building:upgradeStarted', ({ b, renovate }) => {
+  if (b?.id !== 'castillo' || renovate) return;
+  const r = b.level;
+  if (rk.rank !== r || rankStartAt[r + 1]) return;
+  if (rk.onlyLevel) rk.waitLevel += T - rk.lastT;
+  rk.lastT = T;
+  const rs = E.rankStatus();
+  // todo estaba cumplido justo antes de empezar (los planos ya se gastaron): lo que no tenía fecha se cumplió recién
+  for (const k of ['level', ...rs.reqs.map(q => q.key)]) if (!rk.okSince[k]) rk.okSince[k] = T;
+  const last = Object.entries(rk.okSince).sort((a, c) => c[1] - a[1])[0]?.[0] || '?';
+  rankLast.push({ rank: r + 1, last, waitLevel: rk.waitLevel, span: T - rk.since, day: dayOf() });
+  rankStartAt[r + 1] = T;
+  if (data.eraOfRank(r + 1) !== data.eraOfRank(r)) eraLast.push({ rank: r + 1, last, planosLast: last === 'planos' });
+  rk.onlyLevel = false;
+});
+
+// ---------------------------------------------------------------- un rato
+const sessions = [];
+const multMax = { base: 0, boost: 0, sum: 0 };   // { day, hour, coins, big, ratio, provFull }
+async function session(day, hour) {
+  T = day0 + day * DAY + hour * 3600e3;
+  budget = SESSION_MIN * 60;
+  spaceTried.clear(); movedFor.clear(); roomWanted = null;
+  const end = T + SESSION_MIN * 60e3;
+  E.tick(); TH.tick();
+  claimAll();
+  E.collectAll();
+  const provFull = (s.prov || 0) >= E.provCap();
+  let step = 0;
+  while (T < end || step === 0) {
+    noSpot.clear();
+    E.tick(); TH.tick(); sampleRank();
+    claimAll();
+    threats();
+    spend();
+    dailyHelpers();
+    let went = expedition('corta');
+    if (!went) for (let k = 0; k < 2; k++) if (expedition('normal')) went = true; else break;
+    // "cobrar todo" se toca al entrar, al volver de una salida y antes de irse (no a cada minuto)
+    if (went || T + 60e3 >= end) E.collectAll();
+    spend();
+    claimAll();
+    sampleRank();
+    step++;
+    if (T < end) { T = Math.min(end, T + 60e3); budget -= 60; }
+    if (step > 40) break;
+  }
+  await flush();
+  const big = lastBig;
+  // multiplicadores de producción (sumados con tope y temporales con tope): el mayor de cualquier edificio que produce monedas
+  if (E.productionMult) for (const b of s.city.buildings) if (D[b.id].prod?.coins) { const m = E.productionMult(b.id, s, T); multMax.base = Math.max(multMax.base, m.base); multMax.boost = Math.max(multMax.boost, m.boost); multMax.sum = Math.max(multMax.sum, 1 + m.happy + m.rank + m.mastery + m.monuments); }
+  sessions.push({ day, hour, coins: s.coins, big, ratio: big ? s.coins / big.coins : null, provFull });
+  if (TRACE) console.log('rato', 'día', day + 1, hour + ':00', 'monedas', s.coins, 'próximo', big ? big.what + ' ' + big.coins + ' (×' + (s.coins / big.coins).toFixed(1) + ')' : '-', 'constructoras libres', E.buildersFree() + '/' + s.builders, 'prov', (s.prov || 0) + '/' + E.provCap(), 'prov/día', provPerDay(), 'por salida', Math.round(provUsed));
+  if (!firstMonumentDay && E.monumentsDone() > 0) firstMonumentDay = day + 1;
+}
+
+// ---------------------------------------------------------------- correr
+const rows = [];
+let pass30Day = null;
+for (let day = 0; day < DAYS; day++) {
+  for (const h of HOURS) await session(day, h);
+  const p = P(day);
+  const si = SE.seasonInfo(T);
+  if (si.id === 1 && si.level >= 30 && !pass30Day) pass30Day = day + 1;
+  const rs = E.rankStatus();
+  rows.push({
+    día: day + 1, nv: L(), rango: rank(), pase: `${si.id}·${si.level}`, chispas: p.sparks,
+    monedas: s.coins, 'próx.': sessions.at(-1).big ? sessions.at(-1).big.coins : '-', gemas: s.gems, '+gem': p.gems, cofres: p.chests,
+    prov: `${s.prov}/${E.provCap()}`, salidas: `${p.shorts}+${p.normals}`, mats: Object.values(s.materials).reduce((a, n) => a + n, 0), planos: s.planos,
+    mon: E.monumentsDone(), época: E.cityEra(), pob: E.population(), encanto: E.cityCharm(), zonas: E.zonesExplored(), terreno: s.city.expansions, colonos: s.colonos || 0, feliz: E.happiness().pct,
+    falta: rs.next ? rs.reqs.filter(q => !q.ok).map(q => `${q.key} ${q.have}/${q.need}`).join(' ') + (rs.levelOk ? '' : ` nv${rs.next.reqLevel}`) : '—',
+  });
+}
+globalThis.Date = RealDate;
+console.warn = silence;
+
+// ---------------------------------------------------------------- reporte
+const pct = (a, n) => (n ? (100 * a / n) : 0);
+const f1 = (x) => (Math.round(x * 10) / 10).toFixed(1);
+const mark = (ok) => (ok == null ? '·' : ok ? '✔' : '✘');
+const dayOfRank = (r) => (rankAt[r] ? dayOf(rankAt[r]) + 1 : null);
+const inRange = (x, a, b) => x != null && x >= a && x <= b;
+const S2 = sessions.filter(x => x.day >= 1 && x.day < 60);
+const ratioOk = S2.filter(x => x.ratio != null && x.ratio >= 1 && x.ratio <= 3).length;
+const ratioLow = S2.filter(x => x.ratio != null && x.ratio < 1).length, ratioHigh = S2.filter(x => x.ratio != null && x.ratio > 3).length;
+const seasonDay30 = pass30Day;
+const d60 = Math.min(DAYS, 60);
+const sumDays = (k, n = d60) => { let t = 0; for (let d = 0; d < n; d++) t += per[d]?.[k] || 0; return t; };
+const chestsPerDay = sumDays('chests') / d60, gemsPerDay = sumDays('gems') / d60;
+const lastLevel = rankLast.filter(x => x.last === 'level').length;
+const waitFrac = rankLast.length ? rankLast.reduce((a, x) => a + x.waitLevel, 0) / Math.max(1, rankLast.reduce((a, x) => a + x.span, 0)) : 0;
+const provFullPct = pct(sessions.filter(x => x.provFull).length, sessions.length);
+const planosLastPct = pct(eraLast.filter(x => x.planosLast).length, eraLast.length);
+const normalsBy = (lo, hi) => { const ds = rows.filter(r => r.rango >= lo && r.rango <= hi && r.día > 1); return ds.length ? ds.reduce((a, r) => a + per[r.día - 1].normals, 0) / ds.length : null; };
+const prepAvg = prepSeen.length ? prepSeen.reduce((a, x) => a + x.prep, 0) / prepSeen.length : null;
+const autoAvg = prepSeen.length ? prepSeen.reduce((a, x) => a + x.auto, 0) / prepSeen.length : null;
+const real = threatLog.filter(x => x.id !== 'sim');
+const dmgAvg = real.length ? real.reduce((a, x) => a + x.damaged, 0) / real.length : null;
+const summary = {
+  seed: SEED, sessions: NSESS, days: DAYS,
+  ratioPct: pct(ratioOk, S2.filter(x => x.ratio != null).length), ratioLow, ratioHigh,
+  pass30: seasonDay30, rankDays: Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map(r => [r, dayOfRank(r)])),
+  lastLevelPct: pct(lastLevel, rankLast.length), waitFrac, chestsPerDay, gemsPerDay, firstMonumentDay, provFullPct,
+  eraLast, planosLastPct, prepAvg, autoAvg, dmgAvg, normals12: normalsBy(1, 2), normals5: normalsBy(5, 8),
+};
+if (JSON_OUT) { console.log(JSON.stringify(summary)); process.exit(0); }
+
+if (!args.includes('--goals')) {
+  const show = DAYS > 31 ? rows.filter(r => r.día <= 7 || r.día % 7 === 0 || r.día === DAYS) : rows;
+  console.log(`Pixelia · economía del ciclo · ${DAYS} días · ${HOURS.length} ratos por día (${HOURS.map(h => h + ':00').join(', ')}, ${SESSION_MIN} min) · semilla ${SEED}`);
+  console.log('Columnas: nv nivel · pase nivel del Pase (acumulado entre temporadas) · chispas del día · monedas al final del día · próx. el próximo gasto grande ·');
+  console.log('  +gem gemas ganadas en el día · cofres recibidos en el día · prov depósito · salidas corta+normales · mats materiales guardados · mon monumentos');
+  if (!QUIET) console.table(show);
+  else console.log('día rango nv pase mon: ' + rows.filter(r => r.día % 2 === 0 || r.día <= 6).map(r => `${r.día}:${r.rango}/${r.nv}/${r.pase.split('·')[1]}/${r.mon}`).join(' '));
+  const tot = (k) => { const o = {}; for (let d = 0; d < d60; d++) for (const [a, n] of Object.entries(per[d]?.[k] || {})) o[a] = (o[a] || 0) + n; return Object.entries(o).sort((a, b) => b[1] - a[1]).map(([a, n]) => `${a} ${f1(n / d60)}`).join(' · '); };
+  console.log(`chispas por día por fuente (días 1–${d60}): ${tot('sparksBy')}`);
+  console.log(`gemas por día por fuente: ${tot('gemsBy')}`);
+  console.log(`cofres por día por fuente: ${tot('chestsBy')}`);
+  console.log(`monedas por día por fuente: ${tot('coinsBy')}`);
+  console.log(`experiencia por día por fuente: ${tot('xpBy')}`);
+  { const t = Object.entries(coinsById).sort((a, b) => b[1] - a[1]), all = t.reduce((a, x) => a + x[1], 0) || 1; console.log(`monedas cobradas por edificio: ${t.slice(0, 12).map(([k, v]) => `${k} ${Math.round(100 * v / all)}%`).join(' · ')}`); }
+  console.log(`materiales por día, entran: ${tot('matIn')}`);
+  console.log(`materiales por día, salen: ${tot('matOut')}`);
+  console.log(`subidas de rango (último requisito · espera solo por nivel): ${rankLast.map(x => `${x.rank}@d${x.day + 1} ${x.last} ${f1(x.waitLevel / 36e5)}h/${f1(x.span / 36e5)}h`).join(' · ')}`);
+  console.log(`amenazas: ${threatLog.map(x => `${x.id} ${x.type} ${x.pct}% ${x.mode} ${x.damaged}d`).join(' · ')}`);
+  console.log(`preparación al llegar: ${prepSeen.map(x => `${x.id} ${x.type} ${Math.round(x.prep * 100)}% (cubiertos ${x.cov}/${x.enRiesgo}, c ${f1(x.c)}, reservas ${x.have}/${x.need}, auto ${x.auto}%)`).join(" · ")}`);
+  const ids = {}; for (const b of s.city.buildings) ids[b.id] = (ids[b.id] || 0) + 1;
+  console.log('ciudad al final:', Object.entries(ids).map(([k, n]) => `${k}${n > 1 ? '×' + n : ''}`).join(' '));
+  console.log('monumentos:', data.MONUMENT_IDS.map(id => { const st = E.monumentStatus(id); return `${id} ${st.stagesDone}/${st.N}${monDone[id] ? ' (día ' + monDone[id] + ')' : ''}`; }).join(' · '));
+  const lo = S2.filter(x => x.ratio != null && x.ratio < 1).length;
+  console.log(`saldo / próximo gasto grande al final de cada rato (días 2–60): p10 ${f1(q(S2.map(x => x.ratio ?? 0), 0.1))} · p50 ${f1(q(S2.map(x => x.ratio ?? 0), 0.5))} · p90 ${f1(q(S2.map(x => x.ratio ?? 0), 0.9))} · < 1× en ${lo} ratos, > 3× en ${ratioHigh}`);
+}
+function q(a, p) { const t = a.slice().sort((x, y) => x - y); return t.length ? t[Math.min(t.length - 1, Math.floor(p * t.length))] : 0; }
+
+// corridas extra (procesos aparte: el juego es un singleton)
+const child = (extra) => {
+  const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--json', ...extra], { encoding: 'utf8', maxBuffer: 1 << 24 });
+  try { return JSON.parse(r.stdout.trim().split('\n').pop()); } catch { return null; }
+};
+const s4 = CHECK4 ? child(['--sessions', '4', '--days', '30', '--seed', String(SEED)]) : null;
+const others = [];
+for (let k = 1; k <= RUNS; k++) { const o = child(['--days', String(DAYS), '--seed', String(SEED + k)]); if (o) others.push(o); }
+const runsAll = [summary, ...others];
+const eraAll = runsAll.flatMap(x => x.eraLast || []);
+const planosRunPct = pct(runsAll.filter(x => (x.eraLast || []).some(e => e.planosLast)).length, runsAll.length);
+
+const goals = [
+  ['Monedas', S2.length ? summary.ratioPct >= 80 : null, `saldo entre 1× y 3× el próximo gasto grande al final del rato (días 2–60) en ≥ 80%: ${f1(summary.ratioPct)}% (< 1×: ${ratioLow}, > 3×: ${ratioHigh})`],
+  ['Pase', NSESS === 2 ? inRange(seasonDay30, 22, 25) : NSESS >= 4 ? (seasonDay30 == null || seasonDay30 >= 16) : null, `nivel 30 del Pase entre el día 22 y el 25 (${HOURS.length} ratos): día ${seasonDay30 ?? '> 28'}`],
+  ['Pase', s4 ? (s4.pass30 == null || s4.pass30 >= 16) : null, `con 4 ratos por día, nivel 30 no antes del día 16: ${s4 ? 'día ' + (s4.pass30 ?? '> 28') : '(sin correr)'}`],
+  ['Rango', dayOfRank(2) != null ? dayOfRank(2) <= 1 : false, `rango 2 el día 1: día ${dayOfRank(2) ?? '—'}`],
+  ['Rango', inRange(dayOfRank(3), 4, 6), `rango 3 entre los días 4 y 6: día ${dayOfRank(3) ?? '—'}`],
+  ['Rango', DAYS >= 25 ? inRange(dayOfRank(5), 18, 25) : null, `rango 5 entre los días 18 y 25: día ${dayOfRank(5) ?? '—'}`],
+  ['Rango', DAYS >= 70 ? inRange(dayOfRank(8), 70, 90) : null, `rango 8 entre los días 70 y 90: ${DAYS >= 70 ? 'día ' + (dayOfRank(8) ?? '—') : '(hace falta --days 90)'}`],
+  ['Rango', rankLast.length ? summary.lastLevelPct <= 25 : null, `el último requisito es el nivel en ≤ 25% de las subidas: ${f1(summary.lastLevelPct)}% (${lastLevel} de ${rankLast.length})`],
+  ['Rango', rankLast.length ? waitFrac < 0.10 : null, `esperando solo por nivel < 10% del tiempo entre rangos: ${f1(waitFrac * 100)}%`],
+  ['Prov.', summary.normals12 != null ? summary.normals12 >= 1.8 : null, `rango 1–2: 2 salidas normales por día + la corta: ${summary.normals12 != null ? f1(summary.normals12) : '—'} normales`],
+  ['Prov.', summary.normals5 != null ? summary.normals5 >= 2.7 : null, `rango 5+: 3 normales por día: ${summary.normals5 != null ? f1(summary.normals5) : '—'}`],
+  ['Prov.', provFullPct < 30, `depósito al tope al llegar en < 30% de los ratos: ${f1(provFullPct)}%`],
+  ['Amen.', prepAvg != null ? prepAvg >= 0.7 : null, `preparación al llegar ≥ 70%: ${prepAvg != null ? Math.round(prepAvg * 100) + '%' : '—'}`],
+  ['Amen.', autoAvg != null ? autoAvg >= 75 && autoAvg <= 95 : null, `la automática daría 75–95%: ${autoAvg != null ? f1(autoAvg) + '%' : '—'}`],
+  ['Amen.', dmgAvg != null ? dmgAvg <= 2 : null, `≤ 2 edificios dañados en promedio: ${dmgAvg != null ? f1(dmgAvg) : '—'}`],
+  ['Mult.', !E.productionMult ? false : multMax.base <= E.PROD_MULT_CAP + 1e-9 && multMax.boost <= E.BOOST_MULT_CAP + 1e-9, `producción: 1 + felicidad + rango + maestría + monumentos con tope ×${E.PROD_MULT_CAP} y pociones × eventos con tope ×${E.BOOST_MULT_CAP}: máximo visto ×${multMax.base.toFixed(2)} (sin tope daría ×${multMax.sum.toFixed(2)}) · temporales ×${multMax.boost.toFixed(2)}`],
+  ['Otros', chestsPerDay <= 1.5, `cofres ≤ 1,5 por día: ${f1(chestsPerDay)}`],
+  ['Otros', gemsPerDay >= 15 && gemsPerDay <= 25, `gemas 15–25 por día: ${f1(gemsPerDay)}`],
+  ['Otros', inRange(firstMonumentDay, 10, 14), `primer monumento terminado entre los días 10 y 14: día ${firstMonumentDay ?? '—'}`],
+  ['Otros', eraAll.length ? planosRunPct <= 30 : null, `los planos son lo último que falta para un cambio de época en ≤ 30% de las corridas: ${f1(planosRunPct)}% de ${runsAll.length} corrida(s) (${eraAll.filter(e => e.planosLast).length} de ${eraAll.length} cambios)`],
+];
+console.log(`\nMetas de balance (DESIGN-CORE.md §8) · ${HOURS.length} ratos/día · ${DAYS} días · semilla ${SEED}${RUNS ? ` (+${RUNS} corridas)` : ''}`);
+for (const [g, ok, t] of goals) console.log(`  ${mark(ok)} ${g.padEnd(6)} ${t}`);
+if (others.length) console.log(`  corridas extra: ${others.map(o => `semilla ${o.seed}: rango 3 d${o.rankDays[3] ?? "—"} · 5 d${o.rankDays[5] ?? "—"} · 8 d${o.rankDays[8] ?? "—"} · monumento d${o.firstMonumentDay ?? "—"} · Pase d${o.pass30 ?? "> 28"} · monedas ${f1(o.ratioPct)}% · cofres ${f1(o.chestsPerDay)} · gemas ${f1(o.gemsPerDay)}`).join(' | ')}`);
+const failed = goals.filter(g => g[1] === false).length;
+console.log(`  ${goals.filter(g => g[1] === true).length} ✔ · ${failed} ✘ · ${goals.filter(g => g[1] == null).length} sin medir`);
 process.exit(0);

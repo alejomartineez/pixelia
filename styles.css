@@ -178,14 +178,11 @@ input[type=text]:focus { border-color: var(--primary-d); }
 .hud-top { position: absolute; top: calc(var(--safe-t) + 8px); left: calc(var(--safe-l) + 8px); right: calc(var(--safe-r) + 8px); display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .hud-profile { position: relative; display: flex; align-items: center; gap: 4px; background: #fff; border: var(--line) solid var(--ink); border-radius: 14px; box-shadow: var(--shadow); padding: 2px 12px 2px 2px; min-width: 0; }
 .hud-profile:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--ink); }
-/* Botón de Ajustes: redondo, al lado del perfil, con etiqueta abajo (como los de la columna derecha) */
-.hud-cfg { position: relative; flex: none; width: 46px; height: 46px; padding: 0; display: grid; place-items: center; margin-right: auto;
-  background: var(--second-l); border: var(--line) solid var(--ink); border-radius: 50%; box-shadow: inset 0 -4px 0 rgba(61,47,42,.12), 0 3px 0 var(--ink); }
-.hud-cfg > img { margin-top: -5px; }
-.hud-cfg > span { position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%); padding: 0 5px; font-size: 12px; line-height: 15px; font-weight: 700; white-space: nowrap;
-  background: #fff; border: 2px solid var(--ink); border-radius: 7px; }
-.hud-cfg:active { transform: translateY(2px); box-shadow: inset 0 -2px 0 rgba(61,47,42,.12), 0 1px 0 var(--ink); }
-.hud-cfg:active > img { animation: cfgspin .3s steps(4); }
+/* El perfil abre Ajustes (un solo control): el engranaje chico lo dice sin otro botón al lado */
+.hud-profile { margin-right: auto; }
+.hud-gear { flex: none; display: grid; place-items: center; width: 24px; height: 24px; margin-left: 4px; border-radius: 50%; background: var(--second-l); border: 2px solid var(--ink); }
+.hud-gear img { width: 16px; height: 16px; }
+.hud-profile:active .hud-gear img { animation: cfgspin .3s steps(4); }
 @keyframes cfgspin { to { transform: rotate(90deg); } }
 .lvl-star { position: relative; display: grid; place-items: center; }
 .lvl-star b { position: absolute; font-size: 15px; color: var(--ink); text-shadow: 0 0 2px #fff, 0 0 2px #fff; top: 52%; transform: translateY(-50%); }
@@ -210,6 +207,8 @@ input[type=text]:focus { border-color: var(--primary-d); }
 .hud-rank-txt b { font-size: 15px; white-space: nowrap; }
 .hud-rank-txt small { display: flex; align-items: center; gap: 2px; font-size: 12px; font-weight: 700; color: var(--ink-l); white-space: nowrap; }
 .hud-rank-stars { display: inline-flex; margin-left: 4px; }
+.hud-era { padding: 0 5px; margin-right: 4px; border: 2px solid var(--ink); border-radius: 6px; background: var(--sand-l, #f6eedf); color: var(--ink); font-size: 11px; line-height: 14px; }
+.hud-rank .badge { top: -7px; right: -7px; }
 .hud-rank.ready { background: var(--gold-l); }
 .hud-rank.ready .hud-rank-ic { background: radial-gradient(circle at 35% 30%, #fff, var(--gold) 75%); }
 .hud-fx { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -221,6 +220,8 @@ input[type=text]:focus { border-color: var(--primary-d); }
 @keyframes fxin { from { transform: scale(.4); opacity: 0; } }
 .hud-quest { width: min(250px, 100%); display: flex; gap: 8px; align-items: flex-start; text-align: left;
   background: rgba(255,255,255,.94); border: var(--line) solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); padding: 8px; }
+.hud-quest { position: relative; }
+.hud-quest .badge { top: -8px; right: -8px; }
 .hud-quest span { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
 .hud-quest b { font-size: 14px; }
 .hud-quest small { font-size: 12px; color: var(--ink-l); line-height: 1.15; }
@@ -228,6 +229,21 @@ input[type=text]:focus { border-color: var(--primary-d); }
 /* (no usar `pulse`: escalar 15% una tarjeta de 250px la corre y la corta contra el borde izquierdo) */
 .hud-quest.done { background: var(--gold-l); transform-origin: left center; animation: qready 1.2s steps(2) infinite; }
 @keyframes qready { 50% { transform: scale(1.03); box-shadow: 0 3px 0 var(--ink), 0 0 0 3px var(--gold); } }
+
+/* Capa Hoy: chips debajo de la misión (amenaza que viene, diarias, edificios para renovar) */
+.hud-today { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.hud-today:not(:has(> button:not([style*="none"]))) { display: none; }
+.hud-chip { position: relative; display: inline-flex; align-items: center; gap: 6px; max-width: min(250px, 100%); padding: 4px 10px 4px 6px; background: #fff;
+  border: 2px solid var(--ink); border-radius: 12px; box-shadow: 0 3px 0 var(--ink); font-size: 13px; font-weight: 700; line-height: 1.1; text-align: left; }
+.hud-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud-chip:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+.hud-chip.threat { background: #fdf4e6; }
+.hud-chip.threat.signs { background: #f4ece0; }
+.hud-chip.threat.today { background: #ffe9d2; animation: thpulse 1.6s ease-in-out infinite; }
+@keyframes thpulse { 50% { box-shadow: 0 3px 0 var(--ink), 0 0 0 4px rgba(238, 138, 92, 0.28); } }
+.hud-chip.daily.ready { background: var(--gold-l); }
+.hud-chip.daily.all { background: var(--mint-l); color: var(--ink-l); }
+.hud-chip.renov { background: var(--sky-l); }
 
 /* Columna derecha: botones redondos con globito y etiqueta */
 .hud-rail { position: absolute; top: calc(var(--safe-t) + 92px); right: calc(var(--safe-r) + 8px); display: flex; flex-direction: column; gap: 14px; align-items: center; }
@@ -240,18 +256,27 @@ input[type=text]:focus { border-color: var(--primary-d); }
 .rail-btn .badge { top: -6px; right: -7px; min-width: 22px; height: 22px; font-size: 12px; }
 .rail-tag { position: absolute; left: -9px; top: -6px; padding: 0 4px; font-style: normal; font-size: 11px; line-height: 15px; font-weight: 700; color: #fff; white-space: nowrap;
   background: var(--ecd); border: 2px solid var(--ink); border-radius: 7px; text-shadow: 0 1px 0 rgba(61,47,42,.4); }
+.rail-group { display: flex; flex-direction: inherit; gap: inherit; align-items: center; }
+.rail-group:not(:has(> button:not([style*="none"]))) { display: none; }
+.rail-group + .rail-group { padding-top: 6px; border-top: 2px dashed rgba(61,47,42,.25); }
+.rail-ev { position: absolute; right: -8px; bottom: 6px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #fff; border: 2px solid var(--ink); }
+.rail-ev img { width: 16px; height: 16px; }
+.rail-btn.pass.live { animation: evglow 2.4s ease-in-out infinite; }
 .rail-btn.pass { background: radial-gradient(circle at 50% 40%, #fff 45%, color-mix(in srgb, var(--ec) 35%, #fff)); }
 .rail-btn.event { opacity: .9; }
 .rail-btn.event.live { opacity: 1; background: radial-gradient(circle at 50% 40%, #fff 40%, color-mix(in srgb, var(--ec) 45%, #fff)); animation: evglow 2.4s ease-in-out infinite; }
 @keyframes evglow { 50% { box-shadow: inset 0 -5px 0 #f0e8dc, 0 3px 0 var(--ink), 0 0 0 4px color-mix(in srgb, var(--ec) 55%, transparent); } }
 
 .hud-bottom { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 8px); display: flex; align-items: flex-end; gap: 6px;
-  width: min(580px, calc(100% - 16px)); justify-content: space-between; }
+  width: min(420px, calc(100% - 16px)); justify-content: center;
+  display: grid; grid-template-columns: 1fr 1.4fr 1fr; }
+/* Construir siempre al centro, aunque Contactos todavía no se haya abierto */
+.hud-bottom > [data-act="wardrobe"] { grid-column: 1; } .hud-bottom > [data-act="build"] { grid-column: 2; } .hud-bottom > [data-act="social"] { grid-column: 3; }
 .hud-btn { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 6px 2px 4px; background: #fff; border: var(--line) solid var(--ink);
   border-radius: 14px; box-shadow: inset 0 -5px 0 #f0e8dc, var(--shadow); font-size: 12px; font-weight: 700; }
 .hud-btn span { white-space: nowrap; }
 .hud-btn:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 #f0e8dc, 0 1px 0 var(--ink); }
-.hud-btn.big { flex: 1.3; background: var(--primary); color: #fff; box-shadow: inset 0 -6px 0 var(--primary-d), var(--shadow); padding: 10px 2px 6px; text-shadow: 0 2px 0 rgba(61,47,42,.35); font-size: 14px; }
+.hud-btn.big { flex: 1.4; background: var(--primary); color: #fff; box-shadow: inset 0 -6px 0 var(--primary-d), var(--shadow); padding: 10px 2px 6px; text-shadow: 0 2px 0 rgba(61,47,42,.35); font-size: 14px; }
 .hud-btn .badge { top: -9px; right: -6px; }
 
 /* iPhone SE y pantallas bajas: todo un poco más compacto */
@@ -265,19 +290,24 @@ input[type=text]:focus { border-color: var(--primary-d); }
 @media (max-height: 520px) {
   #hud { --rail-w: 46px; }
   .hud-rail { flex-direction: row; top: calc(var(--safe-t) + 10px); right: calc(var(--safe-r) + 132px); gap: 24px; }
+  .rail-group + .rail-group { padding-top: 0; border-top: 0; padding-left: 10px; border-left: 2px dashed rgba(61,47,42,.25); }
+  /* la capa Hoy no entra debajo de la misión: va en fila debajo del riel */
+  .hud-today { position: fixed; top: calc(var(--safe-t) + 84px); right: calc(var(--safe-r) + 132px); flex-direction: row; flex-wrap: wrap; justify-content: flex-end;
+    max-width: calc(100vw - 420px); }
   .hud-left { top: calc(var(--safe-t) + 62px); right: auto; width: 250px; }
   .hud-quest small { display: none; }
   .hud-btn { flex-direction: row; justify-content: center; gap: 4px; padding: 3px 4px 5px; }
   .hud-btn img { width: 24px; height: 24px; }
   .hud-btn.big { padding: 4px 4px 6px; }
-  .hud-bottom { width: min(640px, calc(100% - 16px)); }
+  .hud-bottom { width: min(480px, calc(100% - 16px)); }
 }
 /* PC / tablet */
 @media (min-width: 760px) {
   #hud { --rail-w: 64px; }
   .hud-btn { font-size: 15px; }
   .hud-btn.big { font-size: 17px; }
-  .hud-bottom { width: min(640px, calc(100% - 16px)); gap: 10px; }
+  .hud-bottom { width: min(500px, calc(100% - 16px)); gap: 10px; }
+  .hud-chip { font-size: 15px; max-width: 300px; }
   .hud-left { top: calc(var(--safe-t) + 72px); }
   .hud-quest { width: 300px; }
   .hud-quest b { font-size: 16px; }
@@ -288,9 +318,6 @@ input[type=text]:focus { border-color: var(--primary-d); }
   .hud-quest small { font-size: 14px; }
   .hud-name b { font-size: 17px; max-width: 170px; }
   .hud-name { min-width: 110px; }
-  .hud-cfg { width: 56px; height: 56px; }
-  .hud-cfg > img { width: 34px; height: 34px; }
-  .hud-cfg > span { font-size: 14px; line-height: 17px; bottom: -10px; }
   .pill { font-size: 20px; min-width: 110px; }
   .pill.sm { font-size: 16px; }
   .fx-chip { font-size: 16px; } .fx-chip b { font-size: 17px; } .fx-chip small { font-size: 15px; }
@@ -303,7 +330,7 @@ input[type=text]:focus { border-color: var(--primary-d); }
   #hud { --rail-w: 54px; }
   .hud-rail { flex-direction: row; top: calc(var(--safe-t) + 10px); right: calc(var(--safe-r) + 140px); gap: 30px; }
 }
-@media (hover: hover) { .rail-btn:hover, .fx-chip:hover, .hud-profile:hover, .hud-cfg:hover, .hud-quest:hover { filter: brightness(1.05); } }
+@media (hover: hover) { .rail-btn:hover, .fx-chip:hover, .hud-profile:hover, .hud-chip:hover, .hud-quest:hover { filter: brightness(1.05); } }
 
 /* Toasts: en escenas sin HUD (minijuegos, vestidor) van más abajo para no tapar la barra del juego */
 body.no-hud #toast-root { top: calc(var(--safe-t) + 104px); }

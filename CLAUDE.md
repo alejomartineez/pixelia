@@ -27,6 +27,7 @@ adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
 - `npm test` → e2e, migración v2→v3, colocación, stress, visitas, mock online, social, rango, obras, Mi Casa, expedición,
   ciclo, amenazas, telemetría y SQL (Chrome headless; tarda unos minutos).
 - `node smoke.mjs --scene city --device desktop --dpr 1.25 --shot ../shots/x.png` → captura rápida de una escena.
+- `npm run sim:economy` → simula 60 días de economía (2 ratos por día) y chequea las metas de DESIGN-CORE.md §8.
 - `npm run test:live` → prueba el Supabase real (crea dos cuentas `@example.com`).
 - Atajos de URL: `?cheat=15`, `?reset`, `?scene=expedition` (o `wardrobe`, `home`), `?mock=1&mockuser=ana`, `?outline=0|1`, `?quality=low|high`.
 

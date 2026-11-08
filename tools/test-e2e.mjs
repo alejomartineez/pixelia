@@ -130,13 +130,18 @@ async function checkBadges(label) {
   await ev(() => window.__pixelia.ctx.hud.refreshBadges());
   const r = await ev(() => {
     const { chests: C, album: A, season: SE, quests: Q, ctx } = window.__pixelia;
-    const dom = (k) => { const el = document.querySelector(`[data-badge="${k}"]`); return !el || el.style.display === 'none' ? 0 : (el.textContent === '99+' ? 100 : +el.textContent); };
-    const want = { chests: C.chestBadge(), album: A.albumBadge(), pass: SE.seasonBadge(), quests: Q.claimableCount(), social: ctx.social?.socialBadge?.() || 0 };
+    const dom = (k) => { const el = document.querySelector(`[data-badge="${k}"]`); return !el || el.style.display === 'none' ? 0 : (el.textContent === '99+' ? 100 : el.textContent === '!' ? 1 : +el.textContent); };
+    // el HUD muestra como mucho 4 globitos, por prioridad (hud.js BADGE_ORDER); los que se ven tienen que coincidir
+    const st = ctx.hud.badgeState();
+    const raw = { chests: C.chestBadge(), album: A.albumBadge(), pass: SE.seasonBadge(), quests: Q.claimableCount() };
+    const want = st.shown;
     const got = Object.fromEntries(Object.keys(want).map(k => [k, dom(k)]));
-    return { want, got };
+    const visible = Object.values(got).filter(n => n > 0).length;
+    const srcOk = Object.keys(raw).every(k => !want[k] || want[k] === raw[k]);
+    return { want, got, visible, srcOk, raw };
   });
   const bad = Object.keys(r.want).filter(k => Math.min(100, r.want[k]) !== r.got[k]);
-  ok(!bad.length, `globitos del HUD correctos (${label}): ${JSON.stringify(r.got)}`, bad.length ? r : undefined);
+  ok(!bad.length && r.visible <= 4 && r.srcOk, `globitos del HUD correctos, ${r.visible} a la vista (${label}): ${JSON.stringify(r.got)}`, bad.length || !r.srcOk ? r : undefined);
   return r.got;
 }
 /** Termina todas las obras y mejoras (acelera el tiempo). */
@@ -154,7 +159,7 @@ async function drainOverlays({ maxRounds = 40, shots = {} } = {}) {
       sum: !!document.querySelector('.chx-sum .btn'),
       fan: !!document.querySelector('.chx-open .chx-stk, .chx-open [class*="stk"]'),
       lvl: !!document.querySelector('.modal.pnl-levelup'),
-      login: !!document.querySelector('.modal.pnl-login'),
+      login: !!document.querySelector('.modal.pnl-login, .modal.arrival-modal'),
       welcome: !!document.querySelector('.modal[class*="welcome"]'),
       reward: !!document.querySelector('.modal.reward-modal'),
       modal: !!document.querySelector('.modal'),
@@ -180,7 +185,7 @@ async function drainOverlays({ maxRounds = 40, shots = {} } = {}) {
       if (!(await tap('.modal.pnl-levelup .modal-foot .btn', 'Abrir ahora', { timeout: 300 }))) await tap('.modal.pnl-levelup .modal-foot .btn:last-child');
       continue;
     }
-    if (st.login) { seen.push('login'); if (!(await tap('.modal.pnl-login .modal-foot .btn', 'Abrir', { timeout: 300 }))) await tap('.modal.pnl-login .modal-foot .btn'); continue; }
+    if (st.login) { seen.push('login'); if (!(await tap('.modal.pnl-login .modal-foot .btn', 'Abrir', { timeout: 300 }))) await tap('.modal.pnl-login .modal-foot .btn, .modal.arrival-modal .modal-foot .btn'); continue; }
     if (st.welcome) { seen.push('welcome'); await tap('.modal[class*="welcome"] .modal-foot .btn:last-child'); continue; }
     if (st.reward) { seen.push('reward'); await tap('.modal.reward-modal .modal-foot .btn:last-child'); continue; }
     if (++quiet >= 4) break;
@@ -307,7 +312,7 @@ try {
   await tap('.scene-onboarding .ob-next', 'Empezar');
   ok(await waitFor(`!!document.querySelector('.modal.tp-modal .tp-card')`, 9000), 'al terminar se abre "Estilo de tu ciudad"');
   ok(await run(`return ctx.router.current === 'city' && store.state.onboarded === true`), 'ya en la ciudad y marcado como onboarded');
-  ok(!(await ev(() => !!document.querySelector('.modal.pnl-login'))), 'el premio diario espera a que se cierre el selector de estilo');
+  ok(!(await ev(() => !!document.querySelector('.modal.arrival-modal'))), 'el premio diario espera a que se cierre el selector de estilo');
   await sleep(900);
   await shot('estilo-ciudad');
   ok(await run(`return (store.state.city.theme || 'pueblo') !== '${OB_THEME}'`), `el tema inicial no es ${OB_THEME}`);
@@ -326,14 +331,18 @@ try {
   ok(saved?.name === OB_NAME && saved?.city === OB_CITY, `guardado: nombre «${OB_NAME}» y ciudad «${OB_CITY}»`, saved);
   ok(saved?.theme === OB_THEME, `guardado: tema ${OB_THEME}`, saved);
 
-  ok(await waitFor(`!!document.querySelector('.modal.pnl-login')`, 9000), 'aparece el premio diario al llegar a la ciudad');
+  // un solo modal al llegar (Fase 5b): el primer día trae el premio del día y adelanta lo que se abre mañana
+  ok(await waitFor(`!!document.querySelector('.modal.arrival-modal')`, 9000), 'aparece el modal de llegada con el premio del día');
+  const arrTxt = await ev(() => document.querySelector('.modal.arrival-modal')?.textContent.replace(/\s+/g, ' ') || '');
+  ok(/Tu primer día/.test(arrTxt) && /Premio del día/.test(arrTxt) && /Mañana se abre: el Pase de Temporada/.test(arrTxt), 'cuenta el premio y que mañana se abre el Pase', arrTxt.slice(0, 200));
   ok(await run(`return !Q.mainQuest() ? false : Q.mainQuest().id === 't1' && store.state.player.level === 1`), 'nivel 1 y misión t1');
   await sleep(700);
   await shot('premio-diario');
-  await tap('.modal.pnl-login .modal-foot .btn');
+  await tap('.modal.arrival-modal .modal-foot .btn');
   await sleep(1200);
   ok(await run(`return Q.loginStatus() === null`), 'premio diario cobrado');
-  await tap('.modal.pnl-login .modal-foot .btn', null, { timeout: 800 });
+  ok(await ev(() => ['pass', 'social', 'album', 'chests', 'works'].every(a => document.querySelector(`#hud [data-act="${a}"]`)?.style.display === 'none')), 'día 1: Pase, Contactos, Hallazgos, Cofres y Obras todavía cerrados');
+  ok(await run(`return ctx.hud.controls().length <= 14`), 'el HUD tiene ≤ 14 controles');
   await sleep(500);
   await drainOverlays();
   ok(!(await hasModal()), 'sin modales después del premio diario');
@@ -465,6 +474,9 @@ try {
 
   // ===================================================================
   section('Cofres: gratis, abrir, mochila, poción y martillo');
+  // apertura escalonada: Cofres aparece al ganar el primero
+  await run(`if (!store.state.unlocks.open.cofres) C.addChest('madera', 1, 'test'); return true;`);
+  ok(await waitFor(`document.querySelector('#hud [data-act="chests"]')?.style.display !== 'none'`, 3000), 'con el primer cofre aparece el botón Cofres');
   await run(`store.state.chests.freeBase = Date.now() - C.FREE_CHEST_EVERY_MS - 5000; store.markDirty(); ctx.bus.emit('chests:changed'); return true;`);
   await checkBadges('cofre gratis listo');
   await tap('[data-act="chests"]');
@@ -526,6 +538,18 @@ try {
 
   // ===================================================================
   section('Pase de Temporada, Álbum y Eventos');
+  // apertura escalonada: dos días después, al volver, "Hoy se abre: el Pase de Temporada" (una función por sesión)
+  await run(`store.state.created -= 3 * 864e5; store.markDirty(); ctx.bus.emit('season:welcome'); return true;`);
+  const opened = await waitFor(`/Hoy se abre: el Pase de Temporada/.test(document.querySelector('.modal.arrival-modal')?.textContent || '')`, 20000);
+  if (!opened) console.log('    estado:', await run(`const u = await import('/src/core/unlocks.js'); return { day: u.playDay(), open: store.state.unlocks.open, modals: [...document.querySelectorAll('.modal')].map(m => m.className), ov: !!document.querySelector('.chx-open, .alb-open, .cx-placebar, .th-bar'), scene: ctx.router.current };`));
+  ok(opened, 'al volver otro día: «Hoy se abre: el Pase de Temporada»');
+  await shot('llegada-se-abre-pase');
+  await tap('.modal.arrival-modal .modal-foot .btn');
+  await sleep(600);
+  await drainOverlays();
+  ok(await ev(() => document.querySelector('#hud [data-act="pass"]')?.style.display !== 'none'), 'aparece el botón Temporada');
+  ok(await run(`const u = await import('/src/core/unlocks.js'); return !u.isOpen('eventos')`), 'los eventos esperan a otra sesión');
+  await run(`const u = await import('/src/core/unlocks.js'); u._openAll(undefined, undefined, { all: true }); return true;`);
   await run(`SE.addSeasonPoints(400, 'test'); return true;`);
   await checkBadges('niveles del pase para cobrar');
   await tap('[data-act="pass"]');
@@ -546,8 +570,11 @@ try {
   await sleep(400);
   await drainOverlays();
   await checkBadges('después del álbum');
-  await tap('[data-act="events"]');
-  ok(await waitFor(`!!document.querySelector('.modal')`, 5000), 'Eventos abierto');
+  // Temporada = Pase + eventos en un botón: los eventos se abren desde el Pase
+  await tap('[data-act="pass"]');
+  ok(await waitFor(`!!document.querySelector('.modal.ssn-pass .ssn-evbar')`, 5000), 'el Pase muestra la barra de eventos de la semana');
+  await tap('.modal.ssn-pass [data-act="events"]');
+  ok(await waitFor(`document.querySelectorAll('.modal').length >= 1 && !!document.querySelector('.modal:not(.ssn-pass)')`, 5000), 'Eventos abierto desde el Pase');
   await sleep(800);
   await shot('eventos');
   await closeTop();

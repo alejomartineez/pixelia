@@ -1,9 +1,10 @@
 // Arranque, router de escenas y contexto compartido (ctx) que reciben todas las escenas.
 //
 // Orden de arranque: store.load (con la migración v3) → applyDebugParams → initChests → initAlbum → initSeason
-// → initEvents → initExpedition → initThreats → initQuests → HUD → (online) initSync → social.initSocial. Al entrar a la
-// ciudad se muestran, de a uno y sin pisarse: regalo de bienvenida ("Bienvenida de vuelta") → "Los minijuegos se
-// retiraron" (una sola vez, partidas de antes de la v3) → "Mientras no estabas" → premio diario → subidas de nivel.
+// → initEvents → initExpedition → initThreats → initQuests → initUnlocks → HUD → (online) initSync → social.initSocial.
+// Al entrar a la ciudad sale un solo modal "Mientras no estabas…" (scenes/arrival.js) con todo lo pendiente: regalo de
+// bienvenida, "Los minijuegos se retiraron" (una vez, partidas de antes de la v3), amenazas que se resolvieron solas,
+// premio del día y la función que se abre hoy (apertura escalonada, core/unlocks.js). Después, las subidas de nivel.
 import { bus } from './core/bus.js';
 import { store } from './core/state.js';
 import * as data from './core/data.js';
@@ -22,6 +23,7 @@ import { net } from './online/net.js';
 import * as home from './home/furniture.js';
 import * as expedition from './expedition/expedition.js';
 import * as threats from './threats/threats.js';   // Amenazas (Fase 3)
+import * as unlocks from './core/unlocks.js';      // apertura escalonada (Fase 5b)
 
 const SCENES = {
   city: () => import('./scenes/city.js'),
@@ -162,23 +164,30 @@ function waitIdle(maxMs = 60e3) {
 let arrival = null, arrivalAgain = false;
 async function arrivalSteps() {
   if (!(await waitIdle())) return false;
-  if (season.welcomeBackStatus()) {
-    await season.openWelcomeBack(ctx);
-    if (!(await waitIdle())) return false;
-  }
-  if (v3Pending()) {
-    await openV3Notice();
-    if (!(await waitIdle())) return false;
-  }
-  // amenazas que se resolvieron solas: un solo aviso "Mientras no estabas" (src/threats/threat-ui.js)
+  const parts = {};
+  let any = false;
+  const welcome = season.welcomeBackStatus();
+  if (welcome) { parts.welcome = welcome; any = true; }
+  if (v3Pending()) { const v = v3Lines(); parts.v3Lines = v.lines; parts.v3Gems = v.gems; any = true; }
+  // amenazas que se resolvieron solas (src/threats/threat-ui.js)
   if (threats.reportStatus()) {
-    await import('./threats/threat-ui.js').then(m => m.openReport(ctx)).catch(e => console.warn('[threats] aviso', e));
-    if (!(await waitIdle())) return false;
+    parts.threats = await import('./threats/threat-ui.js').then(m => m.reportParts(ctx)).catch(e => { console.warn('[threats] aviso', e); return null; });
+    if (parts.threats) any = true;
   }
-  if (quests.loginStatus()) {
-    await openPanel('login');
-    if (!(await waitIdle())) return false;
-  }
+  const login = quests.loginStatus();
+  if (login) { parts.login = login; any = true; }
+  const unlock = unlocks.sessionUnlock();
+  if (unlock) { parts.unlock = unlock; any = true; }
+  if (!any) return true;
+  parts.next = unlocks.nextUnlock();
+  parts.firstDay = unlocks.playDay() === 1 && !welcome && !parts.v3Lines && !parts.threats;
+  const arrival = await import('./scenes/arrival.js');
+  await arrival.openArrival(ctx, parts, {
+    claimWelcome: () => season.claimWelcomeBack(),
+    claimLogin: () => { quests.claimLogin(); audio.sfx('buy'); },
+  });
+  hud.refresh();
+  if (!(await waitIdle())) return false;
   return true;
 }
 /** Muestra en orden lo pendiente al llegar a la ciudad. Si se pide de nuevo mientras corre, repasa al terminar. */
@@ -191,6 +200,8 @@ function runArrival() {
     } catch (e) { console.error(e); }
     finally {
       arrival = null;
+      // si se pidió otra llegada mientras esta esperaba y se rindió (60 s sin quedar libre), no se pierde
+      if (arrivalAgain) { arrivalAgain = false; if (cityReady()) setTimeout(runArrival, 800); }
       if (pendingLevelUps.length && cityReady()) setTimeout(flushLevelUps, 300);
     }
   })();
@@ -234,7 +245,8 @@ function grantV3Finds() {
   store.markDirty();
 }
 const V3_NAMES = { joyeria: ['la Joyería', 'el Taller'], torre_bloques: ['la Torre de Bloques', 'el Dispensario'], garaje: ['el Garaje', 'el Establo'], pista: ['la Pista', 'la Casa de Expediciones'] };
-async function openV3Notice() {
+/** Lo que cuenta el aviso "Los minijuegos se retiraron" (va dentro de "Mientras no estabas…"). Lo da por visto. */
+function v3Lines() {
   const v = store.state.v3;
   v.shown = 1;
   store.save();
@@ -248,14 +260,7 @@ async function openV3Notice() {
   lines.push(li('album', `Tu álbum ahora se llama <b>Hallazgos</b>, con todo lo que tenías${v.finds ? ` y ${v.finds === 1 ? 'un hallazgo nuevo' : v.finds + ' hallazgos nuevos'} de regalo` : ''}.`));
   lines.push(li('🎒', 'Los potenciadores que guardabas ahora son <b>equipo de expedición</b>.'));
   if (v.refund) lines.push(li('coin', `Tenías dos edificios que ahora serían el mismo: te devolvimos ${v.refund.toLocaleString('es-AR')} monedas.`));
-  await rewardModal({
-    title: 'Los minijuegos se retiraron',
-    subtitle: 'Pixelia ahora gira alrededor de las expediciones: salir, traer lo que hace falta y volver a la ciudad.',
-    lines,
-    reward: v.gems ? { gems: v.gems } : {},
-    buttons: [{ label: 'Vamos', value: 'ok', cls: 'primary' }],
-    className: 'v3-notice',
-  });
+  return { lines, gems: v.gems || 0 };
 }
 
 // ---------- Online ----------
@@ -281,11 +286,12 @@ function applyDebugParams() {
     const lv = Number(params.get('cheat')) || 0;
     if (lv > s.player.level) s.player.level = Math.min(data.MAX_LEVEL, lv);
     store.markDirty();
+    unlocks._openAll();   // atajo de pruebas: Pase, Contactos y Eventos abiertos desde el principio
   }
 }
 
 function initProgression() {
-  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['threats', threats.initThreats], ['quests', quests.initQuests],
+  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
     ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds]];
   for (const [name, fn] of steps) { try { fn(); } catch (e) { console.error('[init] ' + name, e); } }
   // íconos pixel de cofres y sobres en los premios (costHtml)

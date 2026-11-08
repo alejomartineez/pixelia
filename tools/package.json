@@ -9,6 +9,7 @@
     "test:live": "node test-live.mjs",
     "sim:expedition": "node sim-expedition.mjs",
     "sim:threats": "node sim-threats.mjs",
+    "sim:economy": "node sim-economy.mjs",
     "bump": "node gen-sw-core.mjs --bump",
     "check": "node gen-sw-core.mjs --check"
   },

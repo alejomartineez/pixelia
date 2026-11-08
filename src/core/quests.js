@@ -56,6 +56,7 @@ function eventDelta(goal, ev) {
     case 'expStars': return name === 'expedition:finished' && !p.prototype ? (p.stars || 0) : 0;
     case 'expFar': return name === 'expedition:finished' && !p.prototype ? (p.far || 0) : 0;
     case 'prov': return name === 'production:collected' && p.currency === 'prov' ? p.amount : 0;
+    case 'repair': return name === 'building:repaired' && p.paid ? 1 : 0;   // la vecindad (auto) no cuenta
     case 'craft': return name === 'craft:done' && (!goal.id || p.id === goal.id) ? (p.n || 1) : 0;
     default: return 0;
   }
@@ -139,12 +140,20 @@ function seededPick(seedStr, arr, n) {
   while (out.length < n && pool.length) out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0]);
   return out;
 }
+/** needs de una diaria: id de un edificio que tiene que existir, o 'damaged' (algún edificio dañado por una amenaza). */
+function dailyNeedsOk(needs, s) {
+  if (!needs) return true;
+  if (needs === 'damaged') return s.city.buildings.some(b => b.damaged);
+  return s.city.buildings.some(b => b.id === needs);
+}
 export function ensureDaily() {
   const s = S();
   const today = todayStr();
   if (s.quests.daily?.date === today) return;
-  const pool = DAILY_POOL.filter(q => (q.minLevel || 1) <= s.player.level && (!q.needs || s.city.buildings.some(b => b.id === q.needs)));
-  const picks = seededPick(today + s.created, pool, 3);
+  const pool = DAILY_POOL.filter(q => (q.minLevel || 1) <= s.player.level && dailyNeedsOk(q.needs, s));
+  // "Repará un edificio" solo existe si hay alguno dañado, y en ese caso sale siempre (DESIGN-CORE.md §6.1)
+  const forced = pool.filter(q => q.needs === 'damaged');
+  const picks = [...forced, ...seededPick(today + s.created, pool.filter(q => !forced.includes(q)), 3 - forced.length)];
   // el objetivo escalado se congela al elegirlo: si subís de nivel a mitad del día no se aleja una misión ya cumplida
   s.quests.daily = { date: today, list: picks.map(q => ({ id: q.id, progress: 0, claimed: false, count: dailyCount(q, s.player.level) })), bonusClaimed: false };
   changed();
@@ -250,7 +259,7 @@ export function claimableCount() {
 
 // ---------- Escucha de eventos ----------
 const TRACKED = ['building:built', 'building:upgraded', 'production:collected', 'coins:earned', 'customize:changed', 'item:bought',
-  'expedition:finished', 'craft:done'];
+  'expedition:finished', 'craft:done', 'building:repaired'];
 export function initQuests() {
   migrateQuestChain();
   ensureDaily();

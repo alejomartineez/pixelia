@@ -38,7 +38,7 @@ export const EXP = {
     { id: 'niebla', text: 'Niebla cerrada: se perdieron un rato', prov: -1, morale: -1 },
   ],
   cargoStar: 1.0, moraleStar: 4,
-  gemsAt3: 1, chestAt3: 0.25,
+  gemsAt3: 1, chestAt3: 0.10,          // cofre de madera en una salida de 3★ (Fase 5b: era 0,25; §8 ≤ 1,5 cofres por día)
   // Prototipo (Fase 1): sin ciudad. 3 roles fijos en nivel 1 y lo que daría una ciudad con Casa nivel 3 y Establo 3.
   prototype: { party: ['exploracion', 'ingenieria', 'sanidad'], level: 1, prov: 24, cargoMax: 15, equip: [] },
 };

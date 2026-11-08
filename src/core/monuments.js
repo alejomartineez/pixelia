@@ -13,7 +13,7 @@ export function monumentComplete(id, state = store.state, now = Date.now()) {
 export function monumentsDone(state = store.state, now = Date.now()) {
   return MONUMENT_IDS.filter(id => monumentComplete(id, state, now)).length;
 }
-/** Suma de los bonus de un tipo (shopCoins, happy, gameXp, pass, stickers, time) de los monumentos terminados. */
+/** Suma de los bonus de un tipo (vision, happy, threatWarn, pass, stickers, time) de los monumentos terminados. */
 export function monumentBonus(type, state = store.state, now = Date.now()) {
   let s = 0;
   for (const id of MONUMENT_IDS) {

@@ -1,7 +1,7 @@
 // Migración del guardado v2 → v3 (DESIGN-CORE.md §7.2, Fase 5), en Chrome headless con el juego real.
 // Carga un guardado v2 armado a mano como el de alguien que ya jugaba (minijuegos jugados, álbum a medias, materiales
 // viejos, un monumento a medio juntar, potenciadores en la mochila, Mi Casa, contactos, tema y ropa) y comprueba que:
-//   materiales cristal/ladrillo/tuerca/mapa → mineral/piedra/madera/hierbas (sumados) y la etapa del Faro igual de cerca ·
+//   materiales cristal/ladrillo/tuerca/mapa → mineral/piedra/madera/hierbas (sumados) y la etapa del Faro con lo ya juntado ·
 //   Joyería/Torre de Bloques/Garaje/Pista → Taller/Dispensario/Establo/Casa de Expediciones (uid, lugar, rotación, nivel) ·
 //   compensación en gemas y hallazgos de 2★ o más con el aviso "Los minijuegos se retiraron" (una sola vez) ·
 //   álbum (Hallazgos) con lo pegado, recortes y sets cobrados · potenciadores → equipo · épocas · planos · diarias nuevas ·
@@ -128,7 +128,8 @@ try {
   const faro = await run(page, `const st = E.monumentStatus('faro'); return { done: st.stagesDone, cost: st.next?.cost || st.nextStage?.cost || null }`);
   ok(faro.done === 2, 'el Faro sigue con 2 etapas hechas', faro);
   const near = await run(page, `const mo = P.data.MONUMENTS.faro; const c = mo.stages[2].cost.mats; return { c, have: { piedra: S.materials.piedra, mineral: S.materials.mineral } }`);
-  ok(near.c.piedra === 12 && near.c.mineral === 10 && near.have.piedra === 9 && near.have.mineral === 7, 'la etapa 3 del Faro pide 12 piedra + 10 mineral y faltan los mismos 3 + 3 que antes', near);
+  // la etapa 3 se renombra a piedra + mineral (los números los recalibró la Fase 5b, sim-economy) y lo juntado no se pierde
+  ok(near.c.piedra > 0 && near.c.mineral > 0 && Object.keys(near.c).length === 2 && near.have.piedra === 9 && near.have.mineral === 7, 'la etapa 3 del Faro pide piedra + mineral y lo juntado (9 + 7) sigue ahí', near);
 
   // 2. edificios
   const byUid = Object.fromEntries(s1.buildings.map(b => [b[0], b]));
@@ -184,7 +185,7 @@ try {
   ok(await page.waitForFunction(() => !!document.querySelector('.modal.v3-notice'), { timeout: 15000 }).then(() => true, () => false), 'aparece el aviso «Los minijuegos se retiraron»');
   const txt = await page.evaluate(() => document.querySelector('.modal.v3-notice')?.textContent.replace(/\s+/g, ' ') || '');
   ok(/Los minijuegos se retiraron/.test(txt) && /Taller/.test(txt) && /Casa de Expediciones/.test(txt) && /Hallazgos/.test(txt) && /equipo/.test(txt), 'el aviso cuenta edificios, materiales, Hallazgos y equipo', txt.slice(0, 300));
-  await page.evaluate(() => [...document.querySelectorAll('.modal.v3-notice .btn')].find(b => /Vamos/.test(b.textContent))?.click());
+  await page.evaluate(() => document.querySelector('.modal.v3-notice .modal-foot .btn')?.click());
   await sleep(800);
   ok(await run(page, `return S.v3.shown === 1`), 'el aviso queda marcado como visto');
   ok(errors.length === 0, 'sin errores de página', errors);

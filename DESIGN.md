@@ -65,7 +65,8 @@ src/core/                  NO MODIFICAR salvo el dueño del núcleo
   icons.js     icon(name,size) / iconUrl(name)
   audio.js     audio.sfx(name) / audio.music(name)
   voxel.js     Voxels, createPixelRenderer, addLights, setIsoCamera, makeBillboard, imageSprite, shade, disposeObject
-  hud.js       HUD de la ciudad
+  hud.js       HUD de la ciudad en 3 capas (Hoy · Temporada · Largo plazo; ≤ 14 controles, ≤ 4 globitos)
+  unlocks.js   apertura escalonada de funciones (DESIGN-CORE.md §6.2)
 src/city/models.js         modelos vóxel de edificios/naturaleza  (agente Modelos)
 src/scenes/city.js         escena ciudad                          (agente Ciudad)
 src/avatar/avatar*.js      modelo del personaje (todos los tipos)  (agente Avatar)
@@ -210,7 +211,7 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
   Cada rango da `reward` (gemas y cofre), terreno (`land` = cuántas expansiones permite; `expansionStatus()` pide nivel **y** rango),
   constructoras de regalo (`builders`, en los rangos 3 y 6; no cuentan para el tope de compra) y desbloquea los edificios con `rank`.
   API en economy.js: `townRank`, `rankDef`, `rankStatus` (reqs, allOk, levelOk, stars), `syncRank` (en cada `tick`).
-  UI: chip de rango en el HUD (brilla con "!" si se puede subir) → panel `rank` (`panels-rank.js`), ficha de la Municipalidad con el expediente.
+  UI: chip de rango y época en el HUD (brilla con "!" si se puede subir) → panel `rank` (`panels-rank.js`), ficha de la Municipalidad con el expediente.
 - **Encanto** (`charmInfo`/`cityCharm`): qué tan linda y variada está la ciudad. Cada edificio terminado suma `charm` (o un valor por categoría,
   ver `charmBase`) × (1 + 0,25 por nivel extra); cada copia repetida del mismo edificio vale ×0,85 de la anterior; la variedad multiplica
   +2% por tipo distinto (tope ×1,5). Se muestra en estrellas (0–5) respecto del Encanto que pide el próximo rango. `charmGain(id)` = cuánto sumaría otra copia.
@@ -258,7 +259,7 @@ URL params: `?scene=id`, `?cheat=nivel` (+100k monedas, +1000 gemas), `?reset`, 
 
 Suites de punta a punta (todas con `--out carpeta` para las capturas; salen con 1 si algo falla):
 ```
-node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onboarding con toques reales (Osito, color de ropa, nombre y ciudad tipeados, estilo Bosque; verifica el guardado) → premio diario → tutorial t1–t10 → nivel → cofre → potenciador viejo → equipo → Pase/Hallazgos/Cofres/Eventos; revisa los globitos del HUD; al final recarga y confirma que no repite el onboarding
+node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onboarding con toques reales (Osito, color de ropa, nombre y ciudad tipeados, estilo Bosque; verifica el guardado) → modal de llegada (premio del día, «Mañana se abre») → tutorial t1–t10 → nivel → cofre → potenciador viejo → equipo → «Hoy se abre: el Pase» → Pase/Hallazgos/Cofres/Eventos (desde el Pase); revisa los globitos del HUD (≤ 4) y los controles (≤ 14); al final recarga y confirma que no repite el onboarding
 node tools/test-migration.mjs guardado v2 armado a mano (minijuegos jugados, álbum a medias, materiales viejos, monumento a medias, potenciadores) → v3 sin pérdidas; segunda carga igual; Joyería + Taller; sin Pista; importCode; partida nueva
 node tools/test-visit.mjs    ana y bea (mock): amistad por código, regalito, visita (like, notita, ayudar obra) → buzón → la obra se acelera; pedido "Acelerá mi obra"
 node tools/test-social.mjs   UI social completa (intercambios con escrow, ranking, Obra en Equipo, cuenta, conflicto)

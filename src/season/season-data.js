@@ -5,7 +5,7 @@
 export const EPOCH = { y: 2026, m: 10, d: 2 };
 export const SEASON_DAYS = 28;
 export const MAX_TIER = 30;
-export const BONUS_EVERY = 150;          // después del nivel 30: un cofre de madera cada 150 chispas
+export const BONUS_EVERY = 600;          // después del nivel 30: un cofre de madera cada 600 chispas (Fase 5b: eran 150)
 
 // ---------- Temas (rotan por índice de temporada) ----------
 // accent: color principal, dark: sombra/borde, light: fondo suave, sky: degradé del encabezado
@@ -22,27 +22,28 @@ export const THEMES = [
 
 // ---------- Costo de cada nivel (chispas) ----------
 // Los primeros niveles salen rápido para enganchar; después ≈ 1 nivel por día de juego normal.
-export const TIER_COST = Array.from({ length: MAX_TIER }, (_, i) => (i === 0 ? 60 : i === 1 ? 90 : 120));
+// Fase 5b (tools/sim-economy.mjs): 60, 120, 180 y después 440 → nivel 30 ≈ día 23 con 2 ratos por día (§8).
+export const TIER_COST = Array.from({ length: MAX_TIER }, (_, i) => (i === 0 ? 60 : i === 1 ? 120 : i === 2 ? 180 : 440));
 
 // ---------- Premios por nivel ----------
 // coins: BASE (se multiplica por rewardScale(nivel de jugadora)); gems; chest: tipo; stickers: {n, minStars};
 // items: {id: cantidad} (objetos de la mochila, ver ITEMS de chests.js); equip: {id: cantidad} (equipo de expedición);
 // cosmetic: true (prenda premium gratis); mats: {material: cantidad} (madera, piedra, mineral, hierbas);
-// furniture: id de mueble para Mi Casa.
+// furniture: id de mueble para Mi Casa; planos: planos de época (niveles 10, 20 y 30, DESIGN-CORE.md §5.1).
 // special: true = nivel destacado (10/20/30).
 export const TIERS = [
   /* 1 */ { coins: 150 },
   /* 2 */ { stickers: { n: 2 } },
   /* 3 */ { items: { hammer: 1 } },
-  /* 4 */ { gems: 5 },
-  /* 5 */ { chest: 'madera' },
+  /* 4 */ { gems: 3 },
+  /* 5 */ { coins: 250, mats: { madera: 4 } },
   /* 6 */ { coins: 300, mats: { piedra: 4 } },
   /* 7 */ { equip: { cuerda: 2 } },
   /* 8 */ { stickers: { n: 3 } },
   /* 9 */ { items: { potion_prod: 1 } },
-  /* 10 */ { cosmetic: true, gems: 10, special: true },
+  /* 10 */ { cosmetic: true, gems: 6, planos: 1, special: true },
   /* 11 */ { coins: 450, mats: { mineral: 5 } },
-  /* 12 */ { chest: 'madera' },
+  /* 12 */ { stickers: { n: 2 }, mats: { hierbas: 4 } },
   /* 13 */ { items: { hourglass: 1 } },
   /* 14 */ { gems: 8, furniture: 'globo' },
   /* 15 */ { chest: 'plata' },
@@ -50,33 +51,35 @@ export const TIERS = [
   /* 17 */ { equip: { pala: 1, farol: 1 } },
   /* 18 */ { coins: 650, mats: { madera: 6 } },
   /* 19 */ { items: { potion_happy: 1 } },
-  /* 20 */ { cosmetic: true, chest: 'oro', special: true },
-  /* 21 */ { gems: 10 },
+  /* 20 */ { cosmetic: true, chest: 'oro', planos: 1, special: true },
+  /* 21 */ { gems: 6 },
   /* 22 */ { stickers: { n: 4 } },
   /* 23 */ { equip: { lona: 1, pala: 1 } },
   /* 24 */ { coins: 850, mats: { hierbas: 6, piedra: 6 } },
-  /* 25 */ { chest: 'plata' },
+  /* 25 */ { coins: 900, mats: { mineral: 6 } },
   /* 26 */ { items: { potion_mega: 1 } },
-  /* 27 */ { gems: 15, furniture: 'telescopio' },
+  /* 27 */ { gems: 10, furniture: 'telescopio' },
   /* 28 */ { stickers: { n: 5, minStars: 3 } },
-  /* 29 */ { chest: 'oro' },
-  /* 30 */ { cosmetic: true, chest: 'real', special: true },
+  /* 29 */ { stickers: { n: 4, minStars: 3 }, mats: { piedra: 8 } },
+  /* 30 */ { cosmetic: true, chest: 'real', planos: 1, special: true },
 ];
 /** Gemas que se dan si ya tiene todas las prendas premium. */
 export const COSMETIC_FALLBACK_GEMS = 40;
 
 // ---------- Chispas por acción (DESIGN-RETENTION.md) ----------
 export const POINTS = {
-  dailyQuest: 60,        // misión diaria cobrada
-  dailyBonus: 100,       // set del bonus diario (las 3)
-  mainQuest: 80,         // misión principal cobrada
+  dailyQuest: 40,        // misión diaria cobrada
+  dailyBonus: 60,        // set del bonus diario (las 3)
+  mainQuest: 50,         // misión principal cobrada
   expedition: 20,        // salida terminada (corta o normal; vuelta o fracaso: siempre avanza algo)
   perStar: 5,            // + por estrella de la salida
   zone: 30,              // zona explorada
-  collect: 2,            // cobrar un edificio
-  collectDailyMax: 60,   // tope diario por cobros
-  built: 10,             // terminar construcción (no cuenta caminos)
-  upgraded: 25,          // terminar mejora
+  collect: 1,            // cobrar un edificio
+  collectDailyMax: 30,   // tope diario por cobros
+  built: 5,              // terminar construcción (no cuenta caminos)
+  upgraded: 15,          // terminar mejora
+  renovated: 15,         // terminar una renovación de época
+  repaired: 5,           // reparar un edificio pagando (lo que arregla la vecindad no cuenta)
   helped: 20,            // ayudar/regalar a una amiga
   newSticker: 5,         // hallazgo nuevo
 };
@@ -88,7 +91,10 @@ export const POINT_SOURCES = [
   { ic: 'crown', text: 'Cobrar una misión principal', pts: POINTS.mainQuest },
   { ic: '🧭', text: 'Terminar una expedición', pts: `${POINTS.expedition} +${POINTS.perStar}/★` },
   { ic: '🗺️', text: 'Explorar una zona', pts: POINTS.zone },
+  { ic: '⛈️', text: 'Pasar una amenaza (más cuanto más salvás)', pts: '40–100' },
   { ic: 'up', text: 'Terminar una mejora', pts: POINTS.upgraded },
+  { ic: 'up', text: 'Renovar un edificio a la época nueva', pts: POINTS.renovated },
+  { ic: 'build', text: 'Reparar un edificio', pts: POINTS.repaired },
   { ic: 'people', text: 'Ayudar o hacerle un regalo a alguien', pts: POINTS.helped },
   { ic: 'build', text: 'Terminar una construcción', pts: POINTS.built },
   { ic: '🃏', text: 'Encontrar un hallazgo nuevo', pts: POINTS.newSticker },
@@ -128,7 +134,7 @@ export const EVENT_TEMPLATES = {
     desc: 'Juntá estrellas en tus expediciones: hay 3 escalones con premio. Es una meta tuya, sin apuro.', mult: {},
     race: [
       { goal: 9, reward: { coins: 300, stickers: { n: 1 } } },
-      { goal: 21, reward: { gems: 8, chest: 'madera' } },
+      { goal: 21, reward: { gems: 5, stickers: { n: 2 } } },
       { goal: 39, reward: { gems: 12, chest: 'plata' } },
     ] },
   dorada: { short: 'Todo ×1,25', title: 'Semana Dorada', emoji: '🏆', color: '#ffd166', dark: '#e8a93a', days: [0, 6], golden: true,
