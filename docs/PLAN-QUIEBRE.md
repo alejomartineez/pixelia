@@ -375,6 +375,82 @@ vivo. Los valores nuevos los completa `deepFill`.
 - **Telemetría.** Ya existe (`src/online/telemetry.js`). Se suman eventos de combate (victoria, derrota, turnos,
   retirada) para ajustar con datos reales.
 
+### J. Dirección visual: un mundo más oscuro y vivo (pedido del usuario, 2026-11-08)
+Se mantiene el vóxel nítido y el pixel art, pero el clima y el diseño pasan a ir con el mundo de El Quiebre.
+
+**Decisiones:**
+- La oscuridad depende del lugar.
+- La interfaz pasa a ser oscura con acentos.
+- La luz avanza con la historia y con los ciclos de día y noche.
+- Se saca lo tierno.
+
+**J1. Ánimo según el lugar.** Cada lugar tiene un perfil de ambiente en `src/core/ambience.js` (módulo nuevo): paleta,
+niebla, cielo, luz, partículas y música. Lo usan la ciudad, la expedición, el combate y la cinemática.
+
+| Lugar | Clima |
+|---|---|
+| Ciudad | Refugio. Cálido y luminoso de a ratos, con faroles, ventanas y humo de chimeneas; puede ser alegre. |
+| Expedición, banda cerca | Natural, con luz de día. |
+| Expedición, bandas media y lejana | Más niebla, colores más apagados y más misterio a medida que te alejás. La profundidad se *ve*. |
+| Lugares de la historia | Cada uno con su clima: la mina oscura con vetas que brillan; la costa de los faros con bruma y haces de luz. |
+| Bajo Mundo (actos posteriores) | Muy oscuro. La luz sale de la lava, los cristales y las vetas. |
+
+**J2. La luz como progreso.**
+- La isla arranca nublada, gris y desaturada.
+- Cada hito la va iluminando: reconstruir, subir de rango y de Época, el Núcleo de Raíz (raíces que brillan por la isla) y
+  reencender el faro.
+- Se guarda como `state.world.light`, de 0 a 1, derivado de la historia y del rango. El ambiente lo interpola.
+
+**J3. Día y noche.**
+- **Ciudad.** Ciclo comprimido de unos 20 min reales por día. Al anochecer se prenden faroles y ventanas.
+- **Expedición.** Cada turno avanza la hora. De noche la visión baja en 1 y el farol del Taller la devuelve: el ciclo
+  pasa a ser una mecánica.
+- **Combate.** Hereda la hora y el clima de la casilla.
+- **Bajo Mundo.** No tiene sol.
+
+**J4. Clima dinámico.**
+- Lluvia, tormenta con relámpagos y viento, niebla, nieve y ceniza cerca de los volcanes.
+- Las **Amenazas se ven**: la tormenta trae una tormenta real, la crecida sube el agua, el incendio prende humo y
+  brasas, la helada pone escarcha.
+- **El clima juega** en la expedición, siempre con el efecto a la vista y nunca de sorpresa:
+  - la tormenta baja la visión y encarece moverse;
+  - la niebla esconde casillas.
+- La calidad del clima se ajusta en Ajustes → Gráficos (partículas).
+
+**J5. Lo que hace el jugador cambia el entorno.**
+- Polvo y huellas al caminar.
+- Cultivos que se mecen al cosechar.
+- Las casas nuevas prenden la luz y las chimeneas.
+- Las reparaciones después de una amenaza borran las marcas.
+- Los elementos transforman el paisaje.
+- En combate, el terreno se ve modificado: paredes de Raíz, charcos y trampas.
+
+Pequeño y legible: cada acción importante tiene una respuesta visual.
+
+**J6. Interfaz oscura con acentos.** En `styles.css`, con tokens:
+- Paneles de pizarra y madera oscura.
+- Bordes de metal gastado.
+- Texto claro.
+- Acentos en dorado y en el azul de Dezings (`#3d55b8`).
+
+También se oscurecen el splash, el HUD, los modales y las tarjetas. Hay que cuidar el contraste (AA) y la legibilidad
+del texto pixel. Las pantallas nuevas (Ajustes, Bitácora, combate) usan los mismos tokens desde el principio.
+
+**J7. Fuera lo tierno.**
+- **Personajes.** Solo personas: se sacan gato, zorro, conejo y oso. Los cuerpos, peinados y ropa de viajero van con el
+  mundo.
+- **Estilos de ciudad.** Los pastel, moderna y playa se reemplazan por estilos del mundo, por ejemplo ceniza, musgo,
+  bruma, ocaso y escarcha.
+- **Nombres y textos.** Se revisan los infantiles: el Vestidor pasa a algo como "Equipaje" o "Ropero", y la "Boutique
+  real" a una sastrería.
+- **Migración idempotente** (guardado v4, `migrate` en `src/core/state.js`):
+  - Los avatares animales pasan a una persona con colores parecidos.
+  - La ropa que solo existía para animales se devuelve en monedas.
+  - Los estilos viejos pasan a su equivalente nuevo.
+  - Hay un aviso único que explica el cambio.
+- **Tests.** `test-migration.mjs` suma el caso.
+- **Guía de tono.** Se actualiza DESIGN.md (arte y tono).
+
 ### F. Documentación
 - `DESIGN-STORY.md` nuevo: canon, actos 1 a 4, facciones, elementos, jefes y reglas de escritura.
 - `DESIGN-COMBAT.md` nuevo: reglas, fórmulas, IA y duración.
@@ -418,8 +494,11 @@ Sigue en pie la regla de CLAUDE.md: no tocar el otro proyecto de Supabase ni usa
    instalador `.exe` de prueba y workflow de GitHub Actions compilando Windows y Mac, con captura de Mac.
 2. **A + E8 + G**: logo, textos, pasada de "Tocá" a "Hacé clic" y Ajustes completos. Del logo se elige una variante
    y se dejan las otras en `shots/` para que el usuario las vea.
+2d. **J6 + J7**: interfaz oscura con tokens y fuera lo tierno, con su migración v4. Va antes de seguir sumando pantallas.
 3. **D + E1–E4 + E7 + H**: motor de historia, Bitácora con el Manual, prólogo, tutorial y los primeros contactos.
-4. **B**: cinemática.
+3b. **J1–J5**: `ambience.js`, la luz como progreso, día y noche, clima y las respuestas del entorno en la ciudad y la
+    expedición. El combate y el Bajo Mundo lo usan cuando existan.
+4. **B**: cinemática, que ya usa la paleta y el ambiente oscuro.
 5. **C**: combate. Primero el motor con sus tests, después la escena y la interfaz, después la casilla `enemigo`.
 6. **Acto 1 completo**: escenas, Núcleo de Raíz, jefes, faro, abordaje pirata y E5–E6.
 7. **Balance y primer release**: `sim-combat` y `sim:economy` dentro de sus metas, telemetría de combate y después
