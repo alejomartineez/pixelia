@@ -190,7 +190,7 @@ const RPC = {
     if (c.length !== 6) E('El código tiene 6 letras y números');
     const o = Object.values(db.profiles).find(x => x.code === c);
     if (!o) E(`No encontramos a nadie con el código ${c}`);
-    if (o.id === me) E('Ese es tu propio código 😄');
+    if (o.id === me) E('Ese es tu propio código');
     const f = db.friendships[pk(me, o.id)];
     if (f) {
       if (f.status === 'accepted') E(`${o.name} ya está entre tus contactos`);
@@ -240,7 +240,7 @@ const RPC = {
 
   send_gift(db, me, { p_to, p_kind, p_payload }) {
     if (!['gift', 'help', 'sticker'].includes(p_kind)) E('Ese tipo de regalo no existe');
-    if (p_to === me) E('No te podés mandar regalos a vos misma 😄');
+    if (p_to === me) E('No te podés mandar regalos a vos misma');
     pairLock(db, me, p_to);
     const pl = checkPayload(p_payload);
     const d = today(db);
@@ -339,7 +339,7 @@ const RPC = {
   },
 
   visit(db, me, { p_host }) {
-    if (p_host === me) E('Esa es tu ciudad 😄');
+    if (p_host === me) E('Esa es tu ciudad');
     pairLock(db, me, p_host);
     const v = visitRow(db, p_host, me);
     const first = !v.visited;
@@ -347,7 +347,7 @@ const RPC = {
     return { first };
   },
   give_like(db, me, { p_host }) {
-    if (p_host === me) E('No te podés dar corazón a vos misma 😄');
+    if (p_host === me) E('No te podés dar corazón a vos misma');
     pairLock(db, me, p_host);
     const v = visitRow(db, p_host, me);
     if (v.liked) E('Ya le diste ❤️ hoy. ¡Mañana podés de nuevo!');
@@ -358,7 +358,7 @@ const RPC = {
   },
   leave_note(db, me, { p_host, p_text }) {
     const t = String(p_text || '').trim();
-    if (p_host === me) E('Esa es tu ciudad 😄');
+    if (p_host === me) E('Esa es tu ciudad');
     if (!t) E('Escribí algo antes de mandarla');
     if ([...t].length > 80) E('La nota puede tener hasta 80 letras');
     pairLock(db, me, p_host);
@@ -452,7 +452,7 @@ const RPC = {
 
   // ----- Cuadrillas para la amenaza de un contacto (Fase 7b) -----
   send_crew(db, me, { p_host, p_threat }) {
-    if (p_host === me) E('Esa es tu ciudad 😄');
+    if (p_host === me) E('Esa es tu ciudad');
     pairLock(db, me, p_host);
     if (typeof p_threat !== 'string' || !/^\d{1,4}-[0-3]$/.test(p_threat)) E('Esa amenaza no existe');
     const hp = db.profiles[p_host];

@@ -30,6 +30,12 @@
 //
 // "Próximo gasto grande" (meta de monedas): la primera construcción, mejora, renovación, terreno u obra de rango de la
 // lista que quedó sin hacer, sin contar lo que espera solo materiales (salvo monumento y obra de rango).
+// Meta de monedas (pulido): al llegar a cada rato, el saldo contra lo que se quería comprar al irse del anterior; y al
+// irse, que no sobre más de 3× el próximo gasto. Medido solo al irse, la sim (que compra todo lo que le alcanza) queda
+// < 1× siempre que las monedas son lo que frena, así que esa versión no se podía cumplir.
+// Comercio con las aldeas (economy.buyMissing): si a la etapa del monumento le faltan materiales y después de comprarlos
+// le quedan ≥ 2,5× las monedas de la etapa (--trade-keep), los compra (hasta lo que tengan las aldeas en el día).
+//   perillas para explorar: --no-trade · --trade-keep 2 · --trade-price 1.5 · --mon-coins 0.8 (o faro=1,jardin=0.7…)
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -77,6 +83,9 @@ const imp = (p) => import(pathToFileURL(path.join(ROOT, p)).href);
 const { store } = await imp('src/core/state.js');
 const data = await imp('src/core/data.js');
 const E = await imp('src/core/economy.js');
+// perillas para explorar (1 = los números del juego): --mon-coins 0.8 o --mon-coins faro=0.8,jardin=0.6 · --trade-price 1.2
+{ const mc = String(opt('mon-coins', '')); if (mc) for (const id of data.MONUMENT_IDS) { const m = mc.includes('=') ? Number((mc.split(',').find(x => x.startsWith(id + '=')) || '=1').split('=')[1]) : Number(mc); for (const st of data.MONUMENTS[id].stages) st.cost.coins = Math.round(st.cost.coins * m / 500) * 500; } }
+{ const tp = Number(opt('trade-price', 1)); if (tp !== 1) E.TRADE.price.forEach((p, i) => { E.TRADE.price[i] = Math.round(p * tp); }); }
 const { bus } = await imp('src/core/bus.js');
 const Q = await imp('src/core/quests.js');
 const SE = await imp('src/season/season.js');
@@ -260,6 +269,9 @@ const noteBig = (what, cost) => {
   bigMetric = { what, coins: cost.coins };
 };
 const CUSHION = !args.includes('--greedy');
+const TRADE_ON = !args.includes('--no-trade');          // comercio con las aldeas (economy.buyMissing)
+const TRADE_KEEP = Number(opt('trade-keep', 2.5));      // compra si después le quedan ≥ N × las monedas de la etapa
+const tradeLog = [];
 function build(id, { big = true, place = null, room = false } = {}) {
   const d = D[id];
   if (!d) return 'x';
@@ -404,6 +416,11 @@ function wishlist() {
       if (!st.unlocked || st.done) continue;
       if (st.busy) return 'x';
       const cost = st.next.cost;
+      // sobran monedas y faltan materiales: lo que falta se compra a las aldeas si después queda un colchón
+      if (TRADE_ON && !store.hasMats(cost.mats)) {
+        const q = E.tradeQuote(cost.mats);
+        if (q.ok && s.coins - q.coins >= cost.coins * TRADE_KEEP) { E.buyMissing(cost.mats); tradeLog.push({ day: dayOf(), units: q.units, coins: q.coins }); }
+      }
       const res = st.b ? upgrade(st.b) : build(id, { room: true });
       if (res !== 'done') { const matsOk = store.hasMats(addMats(cost.mats, reserved.mats)); reserve(cost, { coins: matsOk, mats: true }); }
       return res;
@@ -440,7 +457,7 @@ function wishlist() {
   add(() => {
     const want = normalsWanted() * Math.min(X.provMax(), Math.max(XD.EXP.provMinNormal, provUsed));
     const deficit = want - provPerDay();
-    if (deficit <= 0) return 'x';
+    if (deficit <= 0.1 * want) return 'x';   // un 10% de menos no amerita otro productor (después sobra y llena el depósito)
     // de a poco: lo que suma menos pero alcanza (mejorar una Huerta, otra Huerta, un Tambo…); si nada alcanza, lo que más suma
     const cands = [];
     for (const b of s.city.buildings) {
@@ -667,6 +684,7 @@ async function session(day, hour) {
   claimAll();
   E.collectAll();
   const provFull = (s.prov || 0) >= E.provCap();
+  const arrCoins = s.coins, prevBig = lastBig;
   let step = 0;
   while (T < end || step === 0) {
     noSpot.clear();
@@ -690,8 +708,8 @@ async function session(day, hour) {
   const big = lastBig;
   // multiplicadores de producción (sumados con tope y temporales con tope): el mayor de cualquier edificio que produce monedas
   if (E.productionMult) for (const b of s.city.buildings) if (D[b.id].prod?.coins) { const m = E.productionMult(b.id, s, T); multMax.base = Math.max(multMax.base, m.base); multMax.boost = Math.max(multMax.boost, m.boost); multMax.sum = Math.max(multMax.sum, 1 + m.happy + m.rank + m.mastery + m.monuments); }
-  sessions.push({ day, hour, coins: s.coins, big, ratio: big ? s.coins / big.coins : null, provFull });
-  if (TRACE) console.log('rato', 'día', day + 1, hour + ':00', 'monedas', s.coins, 'próximo', big ? big.what + ' ' + big.coins + ' (×' + (s.coins / big.coins).toFixed(1) + ')' : '-', 'constructoras libres', E.buildersFree() + '/' + s.builders, 'prov', (s.prov || 0) + '/' + E.provCap(), 'prov/día', provPerDay(), 'por salida', Math.round(provUsed));
+  sessions.push({ day, hour, coins: s.coins, big, ratio: big ? s.coins / big.coins : null, provFull, ratioArr: prevBig ? arrCoins / prevBig.coins : null });
+  if (TRACE) console.log('rato', 'día', day + 1, hour + ':00', 'llegó', arrCoins + (prevBig ? ' (×' + (arrCoins / prevBig.coins).toFixed(1) + ' de ' + prevBig.what + ')' : ''), 'monedas', s.coins, 'próximo', big ? big.what + ' ' + big.coins + ' (×' + (s.coins / big.coins).toFixed(1) + ')' : '-', 'constructoras libres', E.buildersFree() + '/' + s.builders, 'prov', (s.prov || 0) + '/' + E.provCap(), 'prov/día', provPerDay(), 'por salida', Math.round(provUsed));
   if (!firstMonumentDay && E.monumentsDone() > 0) firstMonumentDay = day + 1;
 }
 
@@ -725,6 +743,11 @@ const S2 = sessions.filter(x => x.day >= 1 && x.day < 60);
 const ratioOk = S2.filter(x => x.ratio != null && x.ratio >= 1 && x.ratio <= 3).length;
 const ratioLow = S2.filter(x => x.ratio != null && x.ratio < 1).length, ratioHigh = S2.filter(x => x.ratio != null && x.ratio > 3).length;
 const seasonDay30 = pass30Day;
+// al llegar: el saldo después de cobrar contra lo que se quería comprar al irse del rato anterior (la meta de monedas)
+const A2 = S2.filter(x => x.ratioArr != null);
+const arrOk = A2.filter(x => x.ratioArr >= 1 && x.ratioArr <= 3).length;
+const arrLow = A2.filter(x => x.ratioArr < 1).length, arrHigh = A2.filter(x => x.ratioArr > 3).length;
+const tradeUnits = tradeLog.reduce((a, x) => a + x.units, 0), tradeCoins = tradeLog.reduce((a, x) => a + x.coins, 0);
 const d60 = Math.min(DAYS, 60);
 const sumDays = (k, n = d60) => { let t = 0; for (let d = 0; d < n; d++) t += per[d]?.[k] || 0; return t; };
 const chestsPerDay = sumDays('chests') / d60, gemsPerDay = sumDays('gems') / d60;
@@ -740,6 +763,7 @@ const dmgAvg = real.length ? real.reduce((a, x) => a + x.damaged, 0) / real.leng
 const summary = {
   seed: SEED, sessions: NSESS, days: DAYS,
   ratioPct: pct(ratioOk, S2.filter(x => x.ratio != null).length), ratioLow, ratioHigh,
+  arrPct: pct(arrOk, A2.length), arrLow, arrHigh, endHighPct: pct(ratioHigh, S2.filter(x => x.ratio != null).length), tradeUnits, tradeCoins,
   pass30: seasonDay30, rankDays: Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map(r => [r, dayOfRank(r)])),
   lastLevelPct: pct(lastLevel, rankLast.length), waitFrac, chestsPerDay, gemsPerDay, firstMonumentDay, provFullPct,
   eraLast, planosLastPct, prepAvg, autoAvg, dmgAvg, normals12: normalsBy(1, 2), normals5: normalsBy(5, 8),
@@ -770,6 +794,7 @@ if (!args.includes('--goals')) {
   console.log('monumentos:', data.MONUMENT_IDS.map(id => { const st = E.monumentStatus(id); return `${id} ${st.stagesDone}/${st.N}${monDone[id] ? ' (día ' + monDone[id] + ')' : ''}`; }).join(' · '));
   const lo = S2.filter(x => x.ratio != null && x.ratio < 1).length;
   console.log(`saldo / próximo gasto grande al final de cada rato (días 2–60): p10 ${f1(q(S2.map(x => x.ratio ?? 0), 0.1))} · p50 ${f1(q(S2.map(x => x.ratio ?? 0), 0.5))} · p90 ${f1(q(S2.map(x => x.ratio ?? 0), 0.9))} · < 1× en ${lo} ratos, > 3× en ${ratioHigh}`);
+  console.log(`comercio con las aldeas: ${tradeLog.length} compras, ${tradeUnits} materiales por ${tradeCoins} monedas (${f1(tradeCoins / d60)} por día)`);
 }
 function q(a, p) { const t = a.slice().sort((x, y) => x - y); return t.length ? t[Math.min(t.length - 1, Math.floor(p * t.length))] : 0; }
 
@@ -786,7 +811,8 @@ const eraAll = runsAll.flatMap(x => x.eraLast || []);
 const planosRunPct = pct(runsAll.filter(x => (x.eraLast || []).some(e => e.planosLast)).length, runsAll.length);
 
 const goals = [
-  ['Monedas', S2.length ? summary.ratioPct >= 80 : null, `saldo entre 1× y 3× el próximo gasto grande al final del rato (días 2–60) en ≥ 80%: ${f1(summary.ratioPct)}% (< 1×: ${ratioLow}, > 3×: ${ratioHigh})`],
+  ['Monedas', A2.length ? summary.arrPct >= 75 : null, `al llegar, saldo entre 1× y 3× de lo que se quería comprar al irse (días 2–60) en ≥ 75%: ${f1(summary.arrPct)}% (< 1×: ${arrLow}, > 3×: ${arrHigh})`],
+  ['Monedas', S2.length ? summary.endHighPct <= 10 : null, `al irse, saldo > 3× el próximo gasto grande en ≤ 10% de los ratos: ${f1(summary.endHighPct)}% (${ratioHigh} ratos; entre 1× y 3×: ${f1(summary.ratioPct)}%, < 1×: ${ratioLow})`],
   ['Pase', NSESS === 2 ? inRange(seasonDay30, 22, 25) : NSESS >= 4 ? (seasonDay30 == null || seasonDay30 >= 16) : null, `nivel 30 del Pase entre el día 22 y el 25 (${HOURS.length} ratos): día ${seasonDay30 ?? '> 28'}`],
   ['Pase', s4 ? (s4.pass30 == null || s4.pass30 >= 16) : null, `con 4 ratos por día, nivel 30 no antes del día 16: ${s4 ? 'día ' + (s4.pass30 ?? '> 28') : '(sin correr)'}`],
   ['Rango', dayOfRank(2) != null ? dayOfRank(2) <= 1 : false, `rango 2 el día 1: día ${dayOfRank(2) ?? '—'}`],
@@ -809,7 +835,7 @@ const goals = [
 ];
 console.log(`\nMetas de balance (DESIGN-CORE.md §8) · ${HOURS.length} ratos/día · ${DAYS} días · semilla ${SEED}${RUNS ? ` (+${RUNS} corridas)` : ''}`);
 for (const [g, ok, t] of goals) console.log(`  ${mark(ok)} ${g.padEnd(6)} ${t}`);
-if (others.length) console.log(`  corridas extra: ${others.map(o => `semilla ${o.seed}: rango 3 d${o.rankDays[3] ?? "—"} · 5 d${o.rankDays[5] ?? "—"} · 8 d${o.rankDays[8] ?? "—"} · monumento d${o.firstMonumentDay ?? "—"} · Pase d${o.pass30 ?? "> 28"} · monedas ${f1(o.ratioPct)}% · cofres ${f1(o.chestsPerDay)} · gemas ${f1(o.gemsPerDay)}`).join(' | ')}`);
+if (others.length) console.log(`  corridas extra: ${others.map(o => `semilla ${o.seed}: rango 3 d${o.rankDays[3] ?? "—"} · 5 d${o.rankDays[5] ?? "—"} · 8 d${o.rankDays[8] ?? "—"} · monumento d${o.firstMonumentDay ?? "—"} · Pase d${o.pass30 ?? "> 28"} · monedas al llegar ${f1(o.arrPct)}% · cofres ${f1(o.chestsPerDay)} · gemas ${f1(o.gemsPerDay)}`).join(' | ')}`);
 const failed = goals.filter(g => g[1] === false).length;
 console.log(`  ${goals.filter(g => g[1] === true).length} ✔ · ${failed} ✘ · ${goals.filter(g => g[1] == null).length} sin medir`);
 process.exit(0);

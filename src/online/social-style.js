@@ -225,6 +225,7 @@ export const SOCIAL_CSS = `
 .soc-seg button + button { border-left: var(--line) solid var(--ink); }
 .soc-seg button.on { background: var(--second); color: #fff; text-shadow: 0 2px 0 rgba(61,47,42,.35); }
 .soc-pickgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; max-height: 236px; overflow-y: auto; padding: 4px 2px 6px; touch-action: pan-y; overscroll-behavior: contain; }
+.soc-pick-region { grid-column: 1 / -1; margin: 4px 2px 0; font-size: 14px; display: flex; align-items: center; gap: 4px; }
 .soc-pick { position: relative; padding: 0; border: 0; background: none; border-radius: 10px; }
 .soc-pick .soc-stk { width: 100%; }
 .soc-pick.on { outline: 4px solid var(--gold-d); outline-offset: 2px; }

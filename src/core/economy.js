@@ -1,7 +1,7 @@
 // Reglas de la ciudad: construir, producir, mejorar, expandir.
 // La escena de la ciudad y el HUD usan SOLO estas funciones para que los números siempre coincidan.
 import { bus } from './bus.js';
-import { store } from './state.js';
+import { store, todayStr } from './state.js';
 import {
   BUILDING_BY_ID, MAP_SIZE, START_LAND, LAND_STEP, MAX_EXPANSIONS, MAX_BUILDING_LEVEL,
   CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS, MONUMENTS, MONUMENT_IDS, MATERIAL_BY_ID,
@@ -649,6 +649,53 @@ export function materialHint(matId, state = S(), now = Date.now()) {
   }
   return null;
 }
+// ---------- Comercio con las aldeas ----------
+// Las aldeas que cruza la expedición venden materiales por monedas, a precio de época y con un tope por día. Sirve para
+// no quedarse esperando el último puñado de una etapa de monumento cuando sobran monedas (el sumidero de monedas del
+// medio del juego, DESIGN-CORE.md §8). Pide la Casa de Expediciones. Lo comprado no cuenta como material juntado.
+export const TRADE = { price: [60, 90, 200, 320, 480], perDay: [12, 20, 30, 45, 60] };   // índice = época − 1
+export function tradeStock(state = S(), now = Date.now()) {
+  const era = cityEra(state), i = Math.max(0, Math.min(TRADE.price.length - 1, era - 1));
+  const day = todayStr(new Date(now));
+  const used = state.trade?.day === day ? state.trade.n || 0 : 0;
+  return { price: TRADE.price[i], perDay: TRADE.perDay[i], left: Math.max(0, TRADE.perDay[i] - used), day };
+}
+/**
+ * Lo que costaría comprar lo que falta de estos materiales, hasta lo que les queda a las aldeas hoy:
+ * {units, coins, mats, missing (unidades que faltan en total), full (cubre todo), left, price, ok, reason}.
+ */
+export function tradeQuote(mats, state = S(), now = Date.now()) {
+  const st = tradeStock(state, now), have = materials(state), out = {};
+  let units = 0, missing = 0;
+  for (const [id, n] of Object.entries(mats || {})) {
+    const miss = Math.max(0, (n || 0) - (have[id] || 0));
+    missing += miss;
+    const take = Math.min(miss, st.left - units);
+    if (take > 0) { out[id] = take; units += take; }
+  }
+  const coins = units * st.price;
+  let reason = '';
+  if (!hasBuilt('casa_exp', state, now)) reason = 'Hace falta la Casa de Expediciones';
+  else if (!missing) reason = 'No falta nada';
+  else if (!st.left) reason = 'Las aldeas no tienen más por hoy';
+  else if (coins > state.coins) reason = 'No te alcanza';
+  return { units, coins, mats: out, missing, full: units >= missing, left: st.left, price: st.price, ok: !reason, reason };
+}
+/** Compra a las aldeas lo que falta de estos materiales (lo que tengan hoy). Devuelve la cotización o {error}. */
+export function buyMissing(mats, state = S(), now = Date.now()) {
+  const q = tradeQuote(mats, state, now);
+  if (!q.ok) return { error: q.reason };
+  if (!store.spend({ coins: q.coins }, 'trade')) return { error: 'No te alcanza' };
+  state.materials ||= {};
+  for (const [id, n] of Object.entries(q.mats)) state.materials[id] = (state.materials[id] || 0) + n;
+  const day = tradeStock(state, now).day;
+  state.trade = { day, n: (state.trade?.day === day ? state.trade.n || 0 : 0) + q.units };
+  store.markDirty();
+  bus.emit('materials:changed', { materials: state.materials, delta: { ...q.mats }, reason: 'trade' });
+  bus.emit('trade:bought', { mats: q.mats, coins: q.coins, units: q.units });
+  return q;
+}
+
 export function startUpgrade(uid, state = S()) {
   const b = state.city.buildings.find(o => o.uid === uid);
   if (!b) return { error: 'No existe' };

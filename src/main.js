@@ -6,7 +6,7 @@
 // bienvenida, "Los minijuegos se retiraron" (una vez, partidas de antes de la v3), amenazas que se resolvieron solas,
 // premio del día y la función que se abre hoy (apertura escalonada, core/unlocks.js). Después, las subidas de nivel.
 import { bus } from './core/bus.js';
-import { store } from './core/state.js';
+import { store, todayStr } from './core/state.js';
 import * as data from './core/data.js';
 import * as economy from './core/economy.js';
 import * as quests from './core/quests.js';
@@ -162,8 +162,20 @@ function waitIdle(maxMs = 60e3) {
   });
 }
 let arrival = null, arrivalAgain = false;
+// ¿Llegada de verdad o la app siguió abierta? Al abrir la app, al volver después de AWAY_MS en segundo plano o con la
+// bienvenida de la temporada, lo pendiente sale en el modal "Mientras no estabas…". Con la app abierta (pasó la
+// medianoche, volviste de una expedición, llegaron cuadrillas) sale un aviso liviano, sin modal ni ese título.
+const AWAY_MS = 10 * 60e3;
+let freshArrival = true, hiddenAt = 0;
+addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') { hiddenAt = Date.now(); return; }
+  if (hiddenAt && Date.now() - hiddenAt >= AWAY_MS) freshArrival = true;
+  hiddenAt = 0;
+});
 async function arrivalSteps() {
   if (!(await waitIdle())) return false;
+  const fresh = freshArrival;   // la primera pasada después de llegar se lo queda, aunque no haya nada que mostrar
+  freshArrival = false;
   const parts = {};
   let any = false;
   const welcome = season.welcomeBackStatus();
@@ -181,6 +193,7 @@ async function arrivalSteps() {
   if (!any) return true;
   parts.next = unlocks.nextUnlock();
   parts.firstDay = unlocks.playDay() === 1 && !welcome && !parts.v3Lines && !parts.threats;
+  parts.light = !fresh && !welcome && !parts.v3Lines && !parts.firstDay;
   const arrival = await import('./scenes/arrival.js');
   await arrival.openArrival(ctx, parts, {
     claimWelcome: () => season.claimWelcomeBack(),
@@ -231,7 +244,7 @@ bus.on('city:placing', ({ active } = {}) => {
   if (!active && pendingLevelUps.length && cityReady() && !arrival) setTimeout(flushLevelUps, 400);
 });
 // bienvenida que aparece al volver a la app después de días en segundo plano (iPhone deja la PWA abierta)
-bus.on('season:welcome', () => { if (cityReady()) runArrival(); });
+bus.on('season:welcome', () => { freshArrival = true; if (cityReady()) runArrival(); });
 // cuadrillas de contactos que llegaron para tu amenaza (Fase 7b): se cuentan en "Mientras no estabas…"
 bus.on('social:crews', () => { if (cityReady()) runArrival(); });
 
@@ -317,6 +330,9 @@ async function boot() {
   import('./scenes/install-card.js').then(m => m.initInstallCard(ctx)).catch(e => console.warn('[install]', e));
   economy.tick();
   setInterval(() => economy.tick(), 1000);
+  // pasó la medianoche con la app abierta: el premio del día y lo que se abre salen en un aviso liviano
+  let lastDay = todayStr();
+  setInterval(() => { const d = todayStr(); if (d !== lastDay) { lastDay = d; if (cityReady()) runArrival(); } }, 30e3);
 
   // iOS solo habilita el audio dentro de un gesto; touchend/click son los más confiables en Safari
   const unlock = () => audio.unlock();

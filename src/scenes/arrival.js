@@ -30,10 +30,12 @@ const addTo = (total, r = {}) => {
 const CHEST_NAME = { madera: 'Cofre de Madera', plata: 'Cofre de Plata', oro: 'Cofre de Oro', diamante: 'Cofre de Diamante' };
 
 /**
- * parts: { welcome, v3Lines, v3Gems, threats: {lines, reward}, login, unlock, next, firstDay }
+ * parts: { welcome, v3Lines, v3Gems, threats: {lines, reward}, login, unlock, next, firstDay, light }
+ * light: la app siguió abierta (pasó la medianoche, volviste de una expedición): avisos cortos en vez del modal.
  * hooks: { claimWelcome(), claimLogin() } — se llaman al tocar el botón.
  */
 export async function openArrival(ctx, parts, hooks = {}) {
+  if (parts.light) return openLight(ctx, parts, hooks);
   ensureStyle();
   const lines = [];
   const total = {};
@@ -81,4 +83,20 @@ export async function openArrival(ctx, parts, hooks = {}) {
   try { if (welcome) hooks.claimWelcome?.(); } catch (e) { console.error(e); }
   try { if (login) hooks.claimLogin?.(); } catch (e) { console.error(e); }
   return val;
+}
+
+/** Aviso liviano con la app abierta: el premio del día se cobra solo y cada novedad sale en un aviso corto. */
+function openLight(ctx, parts, hooks = {}) {
+  const { threats, login, unlock } = parts;
+  const plain = (html) => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent.replace(/\s+/g, ' ').trim(); };
+  if (login) {
+    try { hooks.claimLogin?.(); } catch (e) { console.error(e); }
+    const r = login.reward || {};
+    const got = [r.coins && `${ctx.economy.fmtNum(r.coins)} monedas`, r.gems && `${r.gems} gemas`, r.chest && (CHEST_NAME[r.chest] || 'un cofre')].filter(Boolean).join(', ');
+    const streak = login.streak > 1 ? `racha de ${login.streak} días` : 'día 1 de la racha';
+    ctx.ui.toast(`Empezó un día nuevo (${streak})${got ? `: ${got}` : ''}`, { icon: login.streak > 1 ? 'fire' : 'calendar', type: 'good' });
+  }
+  for (const l of threats?.lines || []) ctx.ui.toast(plain(l), { icon: 'info' });
+  if (unlock) ctx.ui.toast(`Hoy se abre: ${unlock.name}`, { icon: unlock.icon || 'sparkle', type: 'good' });
+  return Promise.resolve('ok');
 }

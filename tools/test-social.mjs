@@ -229,6 +229,14 @@ try {
   await click(A, '.soc-friend .soc-acts .btn.second');
   await A.waitForSelector('.modal.soc-ed .soc-pane-box.give .soc-pick', { timeout: 8000, polling: 150 });
   await settle(A);
+  // los hallazgos van agrupados por región, como en la pantalla de Hallazgos: cada uno abajo del título de su región
+  const byRegion = await ev(A, `const AL = await import('/src/album/album.js'); const out = [];
+    for (const box of document.querySelectorAll('.modal.soc-ed .soc-pane-box')) { let r = null;
+      for (const el of box.querySelector('.soc-pickgrid')?.children || []) {
+        if (el.matches('.soc-pick-region')) { r = el.dataset.region; continue; }
+        const id = el.querySelector('.stk')?.dataset.id; out.push({ r, ok: AL.SET_BY_ID[AL.stickerDef(id)?.set]?.region === r }); } }
+    return { n: out.length, bad: out.filter(x => !x.ok).length, heads: document.querySelectorAll('.modal.soc-ed .soc-pick-region').length };`);
+  ok(byRegion.n > 0 && byRegion.bad === 0 && byRegion.heads >= 2, 'el editor agrupa los hallazgos por región', byRegion);
   await A.evaluate((id) => document.querySelector(`.soc-pane-box.give .stk[data-id="${id}"]`).closest('button').click(), Y);
   await sleep(150);
   await A.waitForSelector(`.soc-pane-box.get .stk[data-id="${Z}"]`, { timeout: 8000, polling: 150 });

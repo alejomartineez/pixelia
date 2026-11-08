@@ -6,7 +6,7 @@ import { store } from '../core/state.js';
 import { fmtNum, isBusy, remainingMs } from '../core/economy.js';
 import { BUILDING_BY_ID } from '../core/data.js';
 import { ITEMS, itemCount } from '../chests/chests.js';
-import { STICKERS, stickerDef, stickerCount, duplicates } from '../album/album.js';
+import { STICKERS, SET_BY_ID, REGION_ORDER, regionName, stickerDef, stickerCount, duplicates } from '../album/album.js';
 import { canAffordPayload } from './sync.js';
 import {
   socialCache as cache, refreshSocial, friendProfiles, friendAlbum, stickerRules, stickerPairProblem, proposeTrade,
@@ -117,19 +117,26 @@ export async function openTradeEditor(ctx, opts = {}) {
     return o;
   };
 
+  // agrupados por región de la expedición, como en la pantalla de Hallazgos (el orden de cada grupo se respeta)
   function stickerGrid(list, sel, onPick, mark) {
     const g = h('div.soc-pickgrid');
     if (!list.length) return null;
-    for (const it of list) {
-      const b = h('button.soc-pick' + (sel === it.id ? '.on' : '') + (it.off ? '.off' : ''), { 'aria-label': stickerDef(it.id).name, disabled: !!it.off });
-      b.append(stickerCard(it.id, { owned: it.owned !== false }));
-      const mk = mark(it);
-      if (mk) b.append(h('span.soc-has', { html: mk }));
-      if (it.cnt) b.append(h('span.soc-cnt', { html: '×' + it.cnt }));
-      b.onclick = () => { audio.sfx('select'); onPick(it.id); };
-      g.append(b);
+    const regionOf = (id) => SET_BY_ID[stickerDef(id)?.set]?.region || 'bosque';
+    const groups = REGION_ORDER.map(r => [r, list.filter(it => regionOf(it.id) === r)]).filter(([, l]) => l.length);
+    for (const [r, items] of groups) {
+      g.append(h('h4.soc-pick-region', { 'data-region': r, html: `${icon('🧭', 14)} ${esc(regionName(r))}` }));
+      for (const it of items) pickBtn(g, it, sel, onPick, mark);
     }
     return g;
+  }
+  function pickBtn(g, it, sel, onPick, mark) {
+    const b = h('button.soc-pick' + (sel === it.id ? '.on' : '') + (it.off ? '.off' : ''), { 'aria-label': stickerDef(it.id).name, disabled: !!it.off });
+    b.append(stickerCard(it.id, { owned: it.owned !== false }));
+    const mk = mark(it);
+    if (mk) b.append(h('span.soc-has', { html: mk }));
+    if (it.cnt) b.append(h('span.soc-cnt', { html: '×' + it.cnt }));
+    b.onclick = () => { audio.sfx('select'); onPick(it.id); };
+    g.append(b);
   }
   function drawStickers() {
     const offerDef = offerSt && stickerDef(offerSt);

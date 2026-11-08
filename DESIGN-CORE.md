@@ -843,9 +843,16 @@ Las mide el `tools/sim-economy.mjs` nuevo (Fase 5) con el perfil **2 ratos por d
 diga otra cosa, y `tools/sim-expedition.mjs` (Fase 1) con bots. Cada meta tiene que salir en el reporte de la sim con
 ✔/✘.
 
-**Monedas**
-- Al final de cada rato, del día 2 al 60: saldo entre **1× y 3× el próximo gasto grande** (la próxima mejora, construcción,
-  renovación, expansión u obra de rango que la sim quiere hacer) en ≥ 80% de los ratos.
+**Monedas** (reformulada en el pulido; antes: "al final de cada rato, saldo entre 1× y 3× del próximo gasto grande en
+≥ 80%", ver abajo por qué no se podía cumplir)
+- **Al llegar** a cada rato, del día 2 al 60: el saldo (después de cobrar) está entre **1× y 3× de lo que se quería comprar
+  al irse del rato anterior** (la próxima mejora, construcción, renovación, expansión u obra de rango que la sim quiere
+  hacer) en **≥ 75%** de los ratos.
+- **Al irse**: el saldo pasa **3× el próximo gasto grande** en **≤ 10%** de los ratos (no se juntan monedas sin destino).
+- Sumidero del medio del juego: **comercio con las aldeas** (`economy.tradeQuote` / `buyMissing`, botón en Obras). Las aldeas
+  venden los materiales que le faltan a la etapa de un monumento, por monedas y con tope por día (`TRADE`, por época:
+  60/90/200/320/480 monedas cada uno, 12/20/30/45/60 por día). Pide la Casa de Expediciones; lo comprado no cuenta como
+  material juntado. La sim compra si después le quedan ≥ 2,5× las monedas de la etapa.
 - Multiplicadores de producción **sumados y con tope**: `1 + felicidad + rango + maestría + monumentos`, tope ×2,5; las
   pociones y los eventos multiplican después, con tope ×2 entre ambos.
 
@@ -907,6 +914,24 @@ del nivel 1 al 5 (cruzar un río 75% → 95% con Ingeniería). En el agregado: E
 eventos con tope ×2 (`economy.js`). Colonos: suman población hasta el 25% de lo que alojan las casas. **No se cumple**:
 saldo 1×–3× en el 41–59% de los ratos (bimodal: < 1× los primeros 10 días, > 3× esperando materiales de monumento); se
 acepta y queda para la próxima vuelta. Detalle de cada número en `docs/HANDOFF-fase5b.md`.
+
+**Resultado del pulido** (`node tools/sim-economy.mjs`, semilla 1): **20 ✔ · 0 ✘** a 60 días y a 90 (rango 8 el día 77,
+depósito al tope 0,6%). Por qué cambió la meta de monedas: la sim (como una persona) compra todo lo que le alcanza, así
+que al irse el saldo queda < 1× siempre que las monedas son lo que frena; solo pasa 1× cuando frenan los materiales o las
+constructoras. Con la medida vieja, ningún ajuste pasó de ~60% (comercio 59%; monumentos con −20/−30% de monedas 50–65%,
+y además rompen las metas de amenazas y del primer monumento, que están al límite). Medida al llegar y con el comercio:
+
+| Semilla | Al llegar 1×–3× (antes, sin comercio) | Al irse > 3× | Al irse 1×–3× (meta vieja) |
+|---|---|---|---|
+| 1 | **77,7%** (61%) | 1,8% (antes 15%) | 51% (antes 41%) |
+| 2 | 73% (61%) | — | — |
+| 3 | 48% (61%) | — | — |
+| 4 | 64% (51%) | — | — |
+
+Lo que queda abajo de 1× al llegar son las etapas de monumento que se pagan en 3 o 4 ratos (Jardín, Observatorio,
+Estadio, Museo): ahí frenan las monedas, que es lo esperable. Las semillas 3 y 4 encuentran más materiales y entonces las
+monedas frenan más seguido: si se quiere ≥ 75% en todas, el próximo paso es bajar un poco las monedas de esas etapas y a
+la vez reacomodar las amenazas (que hoy quedan en 75–76%, justo en el borde).
 ---
 
 ## 9. Abierto (lo deciden las fases con el juego en la mano)
