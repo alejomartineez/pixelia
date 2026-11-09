@@ -328,7 +328,14 @@ try {
   await sleep(500);
   await shot('onboarding-pueblo');
   await tap('.scene-onboarding .ob-next');
-  ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso 2: nombre del personaje y de la ciudad');
+  // paso de la clase (paso 5b, tercera parte): 6 tarjetas, el personaje se viste con la elegida
+  ok(await waitFor(`document.querySelectorAll('.scene-onboarding .cls-card').length === 6`, 4000), 'paso 2: las 6 clases');
+  ok(await tap('.scene-onboarding .cls-card[data-cls="cazador"]'), 'toqué Cazador');
+  await sleep(400);
+  ok(await ev(() => !!document.querySelector('.scene-onboarding .cls-card.on[data-cls="cazador"]') && /Cazador/.test(document.querySelector('.scene-onboarding .ob-title b')?.textContent || '')), 'Cazador queda elegido y en el título');
+  await shot('onboarding-clase');
+  await tap('.scene-onboarding .ob-next');
+  ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso 3: nombre del personaje y de la ciudad');
   await sleep(500);
   await tap('.scene-onboarding [data-f=name]');
   await sleep(250);
@@ -344,6 +351,7 @@ try {
   await tap('.scene-onboarding .ob-next', 'Empezar');
   // orden de entrada (El Quiebre §E7): personaje → nombre → prólogo → estilo
   ok(await waitFor(`!!document.querySelector('.st-epic')`, 12000), 'al terminar llega el prólogo a pantalla completa');
+  ok(await ev(() => window.__pixelia.store.state.classes?.leader?.cls === 'cazador'), 'la clase elegida (Cazador) queda en la partida');
   await sleep(900);
   await shot('prologo');
   for (let i = 0; i < 12 && !/cartógrafa/.test(await ev(() => document.querySelector('.st-epic .st-head')?.textContent || '')); i++) { await tapXY(VIEW.width / 2, VIEW.height / 2); await sleep(150); }

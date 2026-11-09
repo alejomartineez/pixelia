@@ -162,7 +162,8 @@ export function createLife(r, ctx) {
   function buildPlayer() {
     let prevPos = null;
     if (player) { prevPos = [player.fx, player.fz]; group.remove(player.obj); disposeObject(player.obj); }
-    const obj = avatarModel(ctx.state.avatar, { player: true });
+    // con el arma o la herramienta de su clase en la mano (paso 5b, tercera parte); la ropa es la del Equipaje
+    const obj = avatarModel(ctx.state.avatar, { player: true, clsGear: ctx.state.classes?.leader?.cls || null });
     // aro de luz bajo los pies: en los temas oscuros el personaje no se pierde contra el piso
     const glow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.62, depthWrite: false }));
     glow.rotation.x = -Math.PI / 2; glow.position.y = 0.012; glow.renderOrder = -1;

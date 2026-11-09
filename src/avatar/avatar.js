@@ -9,7 +9,9 @@
 //     opts.seated: sin piernas ni falda, con la cadera a 4 × AVATAR_VOXEL (para manejar el auto)
 //     opts.npc / opts.lowDetail: versión liviana (todo fusionado menos las piernas)
 //     opts.gear: equipo fuera del catálogo (GEAR de figure.js, p. ej. 'trabuco')
-//     opts.cls: clase (o rol de la expedición): cambia ropa, arma y casco (classLook, plan §M3)
+//     opts.cls: clase (o rol de la expedición): cambia ropa, arma y casco (classLook, plan §M3). Se usa en la
+//       expedición y en el combate
+//     opts.clsGear: clase, pero solo su arma o herramienta en la mano (la ciudad: la ropa sigue siendo la del Equipaje)
 //   randomLook(seed, opts) -> look válido determinista (opts.type: pueblo, opts.cls: clase)
 //   normalizeLook(look) -> look completo y válido (traduce los looks viejos: chica/chico y las piezas de antes de v5)
 import * as THREE from 'three';
@@ -70,6 +72,7 @@ const lookKey = (l) => [l.type, l.build, l.skin, l.hair, l.hairColor, l.face, l.
 export function avatarModel(lookIn = {}, opts = {}) {
   let look = normalizeLook(lookIn);
   if (opts.cls) look = normalizeLook({ ...classLook(look, opts.cls), type: look.type });
+  else if (opts.clsGear) { const k = CLASS_KIT[opts.clsGear] || CLASS_KIT[ROLE_CLASS[opts.clsGear]]; if (k?.acc) look = normalizeLook({ ...look, acc: k.acc }); }
   if ((opts.npc || opts.lowDetail) && !opts.seated) return lowDetailModel(look, opts);
   const seated = !!opts.seated;
   const D = dimsOf(look.type, look.build), P = paletteOf(look), o = outfitOf(look.dress);

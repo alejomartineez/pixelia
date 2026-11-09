@@ -784,6 +784,9 @@ golpes finales van por clase (`lider` para el líder). El motor sigue siendo JSO
   `sleep(900)` fijo.
 
 ### 14.10 Para la segunda parte del 5b (después del 4a)
+Hecho en §15 (Progreso, nivel visible, Guerrero "nivel 2") y en §16 (onboarding, modelos y la URL del combate). Falta
+elegir las activas y la subclase en la ciudad.
+
 - **Onboarding:** elegir la clase del líder (`setLeaderClass`). En una partida vieja (`leader.cls === null`), la primera
   vez que abre la ciudad.
 - **Interfaz:**
@@ -893,7 +896,85 @@ ya cumple la condición de llegada (por ejemplo, a Brígida en el rango 2) y le 
   - la pestaña Progreso completa y mejorar desde ella;
   - el nivel del líder en el panel de Expedición.
 
+## 16. Elegir la clase y el aspecto de cada clase (paso 5b, tercera parte)
+Plan: M3 de `docs/PLAN-QUIEBRE.md`, sobre el 4a (`CLASS_KIT`, `classLook` y `opts.cls` de `src/avatar/figure.js` y
+`avatar.js`).
+
+| Archivo | Qué es |
+|---|---|
+| `src/scenes/class-pick.js` | Tarjetas de clase, el selector (modal) y el aviso de la partida vieja |
+| `src/scenes/onboarding.js` | Paso nuevo de la clase, entre el personaje y los nombres |
+| `src/avatar/avatar.js` | `opts.clsGear`: solo el arma o la herramienta de la clase, para la ciudad |
+| `tools/test-class-look.mjs` | Chrome headless (§16.5) |
+
+### 16.1 Dónde se elige
+- **Onboarding:** personaje → **clase** → nombres → (en la ciudad) prólogo y estilo, con 4 puntos arriba.
+  - Hay 6 tarjetas con el personaje del jugador vestido de cada clase (`thumbnail` con `cls`), una línea propia y el
+    equipo que lleva.
+  - La que viene elegida es Guerrero. El personaje del escenario se viste con la elegida.
+  - Al terminar, `setLeaderClass`. "Volver" vuelve al paso anterior, y la clase elegida se mantiene.
+  - Lo que el usuario dijo del orden de entrada no cambia: el prólogo sigue después de los nombres.
+- **En la ciudad:**
+  - un botón "Elegir clase" o "Cambiar clase" en la fila de quien lidera de la pestaña Progreso;
+  - tocar la ficha de quien lidera en el panel de Expedición ("Lidera · Cazador · cambiar").
+  - Los dos abren el mismo selector.
+  - Cambiar de clase no baja el nivel del líder. La subclase y las activas elegidas vuelven a cero, porque son de cada
+    clase (`setLeaderClass`).
+  - No se puede cambiar con una salida en curso.
+- **Partida vieja sin clase** (`leader.cls === null`, lo que deja la migración de los roles): sale un aviso, una vez
+  por sesión, cuando la ciudad está libre: "Ya se puede elegir la clase de quien lidera: Bitácora, pestaña Progreso".
+  - **Decisión:** un aviso y no un modal que obligue a elegir. Un modal que no se puede cerrar trababa la ciudad de las
+    partidas viejas y de las pruebas.
+  - Sin clase se juega igual que antes: el líder pelea con su kit base.
+
+### 16.2 El aspecto de cada clase
+| Clase | Ropa | En la mano | Cabeza |
+|---|---|---|---|
+| Guerrero | cota | espada | casco |
+| Cazador | cuero | arco | capucha |
+| Forjador | delantal | martillo | la suya |
+| Curandero | hábito | bolso de remedios | la suya |
+| Monje | hábito | bastón | nada |
+| Saqueador | cuero | hacha | pañuelo |
+
+- **El color de la ropa es el del jugador** (`dressColor`). Pelo, piel y cara también son suyos. Las 30 combinaciones
+  (5 pueblos × 6 clases) entran en el catálogo de cada pueblo.
+- **Expedición y combate:** el kit completo (`avatarModel(look, { cls })`).
+  - Quien lidera usa la clase de la salida (`run.mods.leader`) o, si no, la de la partida.
+  - Cada integrante usa su clase: `run.party` en la expedición, `u.cls` o el tipo de la unidad en el combate.
+  - El cautivo que se rescata no cambia.
+- **Ciudad:** solo lo que va en la mano (`opts.clsGear`).
+  - **Decisión:** la ropa y el sombrero siguen siendo los del Equipaje. En la ciudad el jugador se viste a su gusto, y
+    con el kit completo el Equipaje dejaría de verse.
+  - Al cambiar de clase, el personaje se vuelve a armar (`leader:changed`).
+  - Manejando el esquife no lleva el arma (`NOT_SEATED`, del 4a).
+- **Mi Casa y el Equipaje** muestran el look sin clase.
+
+### 16.3 Combate por la URL
+`newFromParams` de `combat-scene.js` toma `leader`, `classLevel` y `picks`. Sin `leader`, usa el de la partida. La
+pelea de la expedición y el abordaje traen la batalla armada y no pasan por acá.
+
+### 16.4 Lo que queda
+- La interfaz para elegir las activas (`setPicks` y `setLeaderPicks`) y la subclase en la ciudad (§14.10) todavía no
+  está. Hoy el líder usa las que vienen por defecto de su nivel.
+- Del paso 7 (§14.10 y §15.3): el balance del líder cazador y del curandero, la curva del líder en `sim:economy` y la
+  parte de ciudad de las herramientas.
+
+### 16.5 Pruebas
+`node test-class-look.mjs` (con `--shots`, capturas en `shots/clase-*.png`): 31 bien, 0 mal. Cubre:
+- los 5 pueblos × 6 clases con su kit, `clsGear` y la versión liviana del grupo;
+- el aviso de la partida vieja;
+- elegir desde la pestaña Progreso, con la fila que se vuelve a dibujar y el martillo en la mano en la ciudad;
+- cambiar desde el panel de Expedición, conservando el nivel;
+- el kit de quien lidera y de cada integrante en el combate y en la expedición;
+- el paso del onboarding, con los 4 puntos, el título, la explicación y la clase que se mantiene al volver.
+
+`test-e2e` elige Cazador en el onboarding y revisa que quede en la partida. `test-story` pasa por el paso nuevo.
+
 ## Estado
+- **Paso 5b, tercera parte** (elegir la clase en el onboarding y en la ciudad, y el aspecto de cada clase en la
+  ciudad, la expedición y el combate, §16): **hecha** en la rama `claude/clases-look-5b3`, sin mergear. Falta la
+  interfaz de activas y subclase (§16.4).
 - **Paso 5b, segunda parte** (la gente de la ciudad, el Vínculo, las herramientas, el nivel del líder visible y la
   pestaña Progreso, §15): **hecha** en la rama `claude/progreso-5b2`, sin mergear. Falta lo que espera al 4a (§14.10) y
   la parte de ciudad de las herramientas (paso 7, §15.3). Para integrar: sumar `"test:people": "node test-people.mjs"` y

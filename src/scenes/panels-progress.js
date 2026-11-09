@@ -10,6 +10,7 @@ import { CLASSES, SUBCLASSES, LEADER } from '../combat/classes.js';
 import { eraDef } from '../core/data.js';
 import { PAGES, ELEMENTS } from '../story/story-data.js';
 import * as RZ from '../core/raiz.js';
+import { openClassPicker } from './class-pick.js';
 
 const CSS = `
 .pnl-story .pg-row { display: grid; grid-template-columns: 44px 1fr auto; gap: 2px 12px; align-items: center; padding: 10px 12px; background: var(--surface); border: 2px solid var(--edge); border-radius: 12px; }
@@ -56,9 +57,16 @@ export function progressPane(ctx, rerender) {
   const cls = li.cls ? CLASSES[li.cls].name : 'Sin clase';
   const sub = li.sub ? SUBCLASSES[li.sub].name : '';
   const nextKey = li.next ? `En el nivel ${li.next.level}: ${esc(li.next.text)}.` : '';
-  wrap.append(row('xp', `${esc(s.player?.name || 'Quien lidera')} · ${esc(cls)}${sub ? ' · ' + esc(sub) : ''}`, `Nivel ${li.level}`,
+  const lead = row('xp', `${esc(s.player?.name || 'Quien lidera')} · ${esc(cls)}${sub ? ' · ' + esc(sub) : ''}`, `Nivel ${li.level}`,
     (li.xp.max ? '<small>Nivel máximo.</small>' : bar(li.xp.into, li.xp.need, `${li.xp.into}/${li.xp.need}`))
-    + `<small>${li.cls ? '' : 'La clase se elige en la ciudad. '}Experiencia de salidas, peleas y amenazas aguantadas. ${nextKey}</small>`, '', { 'data-pg': 'lider', 'data-level': String(li.level) }));
+    + `<small>${li.cls ? '' : 'Todavía no tiene clase: elegila acá abajo. '}Experiencia de salidas, peleas y amenazas aguantadas. ${nextKey}</small>`, '', { 'data-pg': 'lider', 'data-level': String(li.level), 'data-cls': li.cls || '' });
+  // elegir o cambiar la clase (paso 5b, tercera parte)
+  const la = h('div.pg-acts');
+  const cb = h('button.btn.small' + (li.cls ? '' : '.primary'), { 'data-pick-class': '1', html: `${icon('people', 18)} ${li.cls ? 'Cambiar clase' : 'Elegir clase'}` });
+  cb.onclick = async () => { audio.sfx('tap'); if (await openClassPicker(ctx)) rerender(); };
+  la.append(cb);
+  lead.append(la);
+  wrap.append(lead);
 
   // clases de la ciudad
   const cc = K.cityClasses(s);

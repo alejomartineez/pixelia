@@ -105,6 +105,8 @@ try {
   ok(await run(`return !!store.state.story && store.state.story.v === 1 && store.state.introSeen === false && !store.state.story.veteran`), 'partida nueva: state.story armado, sin intro vista y no es veterana');
   await sleep(500);
   await click('.scene-onboarding .ob-next');
+  ok(await waitFor(`!!document.querySelector('.scene-onboarding .cls-card')`, 4000), 'paso de la clase');
+  await click('.scene-onboarding .ob-next');   // la que viene elegida (Guerrero)
   ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso del nombre');
   await page.evaluate(() => {
     const set = (f, v) => { const i = document.querySelector(`.scene-onboarding [data-f=${f}]`); i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); };
