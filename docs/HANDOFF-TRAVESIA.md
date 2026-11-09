@@ -51,7 +51,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
-| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a → trav-2a2 → trav-2a3 | **hecho** (sin bump): rebasado sobre v57, `fightRate` 1,5, textos a `t()`, `npm test` entero sin confirmar (primera parte ✔, ver notas) | rama `claude/nifty-nightingale-01cb64` |
+| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a → trav-2a2 → trav-2a3 | **hecho** (sin bump): rebasado sobre v57, `fightRate` 1,5, textos a `t()`, **`test-social` falla (es del 2a)**; lo de después sin correr (ver notas) | rama `claude/nifty-nightingale-01cb64` |
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
@@ -524,7 +524,7 @@ Hecho:
 3. DESIGN-CORE.md §8 y DESIGN-COMBAT.md §18: anotar el balance final y la meta de Avance por 20 min; `sim:seeds` del
    package.json corre 1–6.
 
-### 2a, tercera sesión (rama `claude/nifty-nightingale-01cb64`, sin bump) · **HECHO**
+### 2a, tercera sesión (rama `claude/nifty-nightingale-01cb64`, sin bump) · **CORTADO por contexto (40 %), falta test-social**
 - **Rebase sobre `master` v57** (3a y 4a-2). Conflictos: CLAUDE.md y `package.json` (arsenal y cinemáticas juntos),
   `hud.js` (el "Nivel N" de la estrella va por `t('city.info.level')`), `city.js` (los dos imports), es/en/ja y
   `test-i18n` (los dos bloques). Sin claves repetidas.
@@ -539,8 +539,11 @@ Hecho:
   `test-i18n` no los toma por claves). `fonts/pixel-ja.woff2` regenerada.
 - **Pruebas:** `test-classes` 81, `test-combat` 100, `test-act1` 84, `test-arsenal` 122, `test-i18n` 116, todo ✔.
   `sim:combat --n 6`: 4 metas ✘ al borde por la muestra chica (no depende de fightRate; con `--n 20` daba todo ✔).
-  `npm test` entero: lo lancé y corté por la regla del 40 % de contexto con la primera parte en verde (icons, e2e 104,
-  i18n 116, migration 65+105, place, stress 20, sin fallas hasta ahí). **Falta confirmarlo entero**: el orquestador lo corre al
-  integrar (las que fallen por tiempo, de a una).
+  `npm test` entero: todo ✔ hasta **`test-social`, que falla (65 ✔ / 1 ✘) también sola, y en master pasa (65/0)**: es
+  del 2a. En `setDevice(B, 'desktop')` (test-social.mjs:481, después de las capturas desktop de Ana) la página de Bea
+  recarga y `window.__pixelia.ctx.social` no aparece en 20 s (sin errores de página). Las pruebas que siguen a
+  test-social en `npm test` no corrieron. **Falta (sesión que siga):** encontrar por qué Bea no arranca después del reload
+  (sospecha: algo del 2a en el arranque con su guardado mock, p. ej. un panel de subida/talento o `migrateV7`), arreglarlo
+  y correr de `test-social` en adelante.
 - Para el orquestador: `npm run bump` al integrar. El 2b y el 2c pueden partir de esta rama.
 
