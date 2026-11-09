@@ -8,6 +8,7 @@ import { applyA11y, setParticles } from './ui.js';
 import { SETTINGS_DEFAULTS } from './state.js';
 import { setKeyMap } from './keys.js';
 import { applyWindow, isDesktop } from './desktop.js';
+import { LANG_CODES, t } from './i18n.js';
 
 export { SETTINGS_DEFAULTS };
 
@@ -46,6 +47,7 @@ export function normalize(s) {
   if (!['slow', 'normal', 'fast', 'instant'].includes(s.textSpeed)) s.textSpeed = 'normal';
   if (![1, 2, 3].includes(s.combatSpeed)) s.combatSpeed = 1;
   s.camSpeed = num(s.camSpeed, 1, 0.5, 2);
+  if (s.lang !== '' && !LANG_CODES.includes(s.lang)) s.lang = '';
   if (!s.keys || typeof s.keys !== 'object' || Array.isArray(s.keys)) s.keys = {};
   return s;
 }
@@ -185,7 +187,8 @@ function scheduleAutoPreset(ctx) {
     const ratio = med / Math.min(60, cap);
     const pick = ratio > 0.8 ? 'high' : ratio > 0.55 ? 'medium' : 'low';
     setSetting({ gfxPreset: pick });
-    if (pick !== 'high') ctx.ui.toast(`Ajustamos los gráficos a tu compu (${PRESET_NAMES[pick]}). Lo podés cambiar en Ajustes.`, { icon: 'gear' });
+    if (pick !== 'high') ctx.ui.toast(t('settings.preset.toast', { preset: t('settings.preset.' + pick) }), { icon: 'gear' });
   }
 }
-export const PRESET_NAMES = { low: 'Baja', medium: 'Media', high: 'Alta', custom: 'Personalizada', auto: 'Automática' };
+/** Nombre de cada preset en el idioma actual (las claves están en src/i18n/es.js). */
+export const presetName = (id) => t('settings.preset.' + id);

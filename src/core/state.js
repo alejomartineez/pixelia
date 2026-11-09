@@ -34,6 +34,8 @@ export const SETTINGS_DEFAULTS = {
   // accesibilidad
   textSize: 'normal', motion: 'auto', subtitles: true, hiContrast: false,
   telemetry: true,
+  // idioma (src/core/i18n.js): '' = todavía no se eligió; al arrancar se toma el del sistema y se guarda
+  lang: '',
 };
 
 

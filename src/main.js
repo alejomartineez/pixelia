@@ -29,7 +29,8 @@ import { initAct1 } from './story/act1.js';   // jefes, faro y abordaje del Acto
 import * as act1 from './story/act1.js';
 import * as unlocks from './core/unlocks.js';      // apertura escalonada (Fase 5b)
 import { isDesktop, initDesktop } from './core/desktop.js';
-import { initSettings } from './core/settings.js';   // juego de PC (Tauri)
+import { initSettings } from './core/settings.js';
+import { initI18n, translateDom, t } from './core/i18n.js';   // idiomas (Bloque 4 de La Travesía)   // juego de PC (Tauri)
 import * as story from './story/story.js';
 import * as people from './core/people.js';
 import { initWorldLight } from './core/ambience.js';   // la luz como progreso (PLAN-QUIEBRE §J2)
@@ -385,6 +386,14 @@ function initProgression() {
 // preloader inline de index.html (window.__boot); en páginas de herramientas puede no existir
 const bootUi = window.__boot || null;
 
+/** Textos del splash (index.html) en el idioma elegido. */
+function translateBoot() {
+  const splash = document.getElementById('splash');
+  if (splash) translateDom(splash);
+  bootUi?.lang?.({ tips: t('boot.tips').split('|'), slow: [t('boot.slow.title'), t('boot.slow.text')],
+    fail: [t('boot.fail.title'), t('boot.fail.text')], open: t('boot.opening') });
+}
+
 let firstSession = false;   // se acaba de hacer el onboarding: la próxima llegada no abre modal
 bus.on('onboarding:done', () => { firstSession = true; });
 async function boot() {
@@ -392,6 +401,9 @@ async function boot() {
   store.load();
   applyDebugParams();
   audio.connect(bus);   // stingers, trueno y noche por eventos (DESIGN-AUDIO.md)
+  await initI18n(ctx);   // idioma: diccionario y fuente antes de pintar nada (src/core/i18n.js)
+  translateBoot();
+  bus.on('lang:changed', () => hud.refresh?.());   // el HUD se repinta con el idioma nuevo
   initSettings(ctx);   // gráficos, sonido, texto, escala de la interfaz y atajos (src/core/settings.js)
   initTips();
   initProgression();

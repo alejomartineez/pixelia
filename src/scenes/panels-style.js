@@ -457,7 +457,8 @@ export const PANEL_CSS = `
    con media ventana vacía abajo; las pestañas largas (Gráficos, Controles) se desplazan dentro */
 .modal.set-panel { width: min(940px, 100%); height: min(88vh, 560px); height: min(88dvh, 560px); }
 .modal.set-panel .modal-body { padding: 0; display: flex; overflow: hidden; }
-.set-wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr); }
+/* la columna de pestañas crece con el texto (el alemán ocupa ~30 % más): nada de anchos fijos para texto */
+.set-wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(176px, max-content) minmax(0, 1fr); }
 .set-tabs { display: flex; flex-direction: column; gap: 4px; padding: 12px 8px; border-right: 2px dashed var(--rule); overflow-y: auto; background: var(--surface-2); }
 .set-tab { display: flex; align-items: center; gap: 8px; padding: 8px 10px; min-height: 44px; border: var(--line) solid transparent; border-radius: 12px; background: transparent;
   font: inherit; font-size: 18px; color: var(--ink-l); text-align: left; cursor: pointer; white-space: nowrap; }
@@ -471,7 +472,9 @@ export const PANEL_CSS = `
 .set-lbl b { font-size: 17px; }
 .set-lbl small, .set-switch small { font-size: 14px; line-height: 1.2; color: var(--ink-l); font-weight: 400; }
 .set-switch .pnl-toggle-lbl { flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; }
-.set-seg .a11y-opt { min-height: 40px; font-size: 15px; }
+/* las opciones se reparten el ancho, pero ninguna queda más angosta que su texto: si no entran, bajan de línea */
+.set-seg { display: flex; flex-wrap: wrap; }
+.set-seg .a11y-opt { flex: 1 1 0; min-width: max-content; min-height: 40px; font-size: 15px; }
 .set-seg .a11y-opt:disabled { opacity: .55; cursor: default; }
 .set-seg .a11y-opt:disabled:not(.on) { display: none; }
 .set-seg .a11y-opt:hover:not(.on):not(:disabled) { background: var(--surface-hover); }
@@ -495,6 +498,12 @@ export const PANEL_CSS = `
 .set-fixed div { display: flex; align-items: center; gap: 10px; }
 .set-fixed kbd { min-width: 96px; text-align: center; }
 .set-file { display: none; }
+.set-langs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 8px; }
+.set-lang { min-height: 48px; padding: 6px 12px; border: var(--line) solid var(--edge); border-radius: 10px; background: var(--surface);
+  box-shadow: 0 3px 0 var(--shade); font: inherit; font-size: 19px; color: var(--ink); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.set-lang:hover:not(.on) { background: var(--surface-hover); }
+.set-lang.on { background: var(--mint-l); }
+.set-lang:focus-visible { outline: 3px solid var(--second); outline-offset: 2px; }
 .set-more summary { cursor: pointer; font-weight: 700; color: var(--ink-l); padding: 4px 0; }
 .set-more[open] summary { margin-bottom: 8px; }
 .set-credits { gap: 6px; background: linear-gradient(var(--surface), var(--accent-l)); }

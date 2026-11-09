@@ -4,6 +4,7 @@
 //   setFullscreen(on), isFullscreen() → los usa Ajustes
 //   applyWindow(settings) → ventana / pantalla completa / sin bordes y resolución (Ajustes → Pantalla)
 //   monitorInfo()   → tamaño lógico del monitor (para no ofrecer resoluciones que no entran)
+//   systemLocales() → idiomas del sistema operativo (i18n.js elige con eso el idioma la primera vez)
 // La API de Tauri llega como window.__TAURI__ (withGlobalTauri en desktop/src-tauri/tauri.conf.json).
 const T = () => window.__TAURI__ || null;
 const params = new URLSearchParams(location.search);
@@ -23,6 +24,17 @@ export async function setFullscreen(on) {
   const w = win();
   if (w) { try { await w.setFullscreen(!!on); return; } catch (e) { console.warn('[desktop] fullscreen', e); } }
   try { if (on) await document.documentElement.requestFullscreen(); else if (document.fullscreenElement) await document.exitFullscreen(); } catch {}
+}
+
+/**
+ * Idiomas del sistema en el juego de PC. WebView2 (Windows) y WKWebView (macOS) ya llenan navigator.languages con
+ * los del sistema operativo; si algún día se suma tauri-plugin-os, su locale() va primero. null fuera de la app.
+ */
+export async function systemLocales() {
+  if (!isDesktop) return null;
+  const nav = navigator.languages?.length ? [...navigator.languages] : [navigator.language].filter(Boolean);
+  try { const l = await T()?.os?.locale?.(); if (l) return [l, ...nav]; } catch {}
+  return nav;
 }
 
 async function toggleFullscreen() { await setFullscreen(!(await isFullscreen())); }
