@@ -4,7 +4,7 @@ import { bus } from './bus.js';
 import {
   CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
   LEGACY_TYPES, LEGACY_ITEMS, REGION_MATERIALS, PROV_START, RESERVE_CAP, LEGACY_MATS, LEGACY_BUILDINGS, LEGACY_BOOSTERS,
-  TOWN_RANKS, eraOfRank, RETIRED_ITEMS, V5_TYPES, V5_ITEMS, v5Look,
+  TOWN_RANKS, eraOfRank, RETIRED_ITEMS, V5_TYPES, V5_ITEMS, v5Look, V5_CAR,
 } from './data.js';
 import { THEME_ALIASES } from '../city/themes.js';
 
@@ -77,7 +77,7 @@ export function defaultState() {
     // personaje del jugador. state.princess es un alias de state.avatar (saves viejos)
     avatar: { type: 'humano', ...avatarType('humano').look },
     avatarLooks: {}, // último look usado con cada tipo: { [type]: look } (al volver a un tipo se recupera)
-    car: { body: 'convertible', color: 'celeste', wheels: 'clasica', topper: 'ninguno' },
+    car: { body: 'bote', color: 'azul', wheels: 'vela', topper: 'ninguno' },   // el esquife (plan §M5)
     owned: freeOwned(),
     city: {
       // b: { uid, id, x, z, rot(0..3), level, buildEnd(ms|0), upgradeEnd(ms|0), lastCollect(ms), damaged(ms|0, amenazas) }
@@ -141,6 +141,7 @@ function migrate(s) {
   if ((s.v || 1) < 3) migrateV3(s);
   if ((s.v || 1) < 4) migrateV4(s);
   if ((s.v || 1) < 5) migrateV5(s);
+  else migrateSkiff(s);   // las partidas v5 de antes del esquife (rama de prueba) también se traducen
   if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'humano';
   if (s.onboarded === undefined) s.onboarded = true;
   // el nombre por defecto viejo era 'Princesa': ahora el juego es neutro
@@ -360,8 +361,27 @@ function migrateV5(s) {
   }
   if (coins) { s.coins = num(s.coins) + coins; v5.coins = num(v5.coins) + coins; }
   if (gems) { s.gems = num(s.gems) + gems; v5.gems = num(v5.gems) + gems; }
+  if (migrateSkiff(s)) v5.skiff = 1;
   if (v5.shown == null) v5.shown = isFreshGame(s);
   s.v = 5;
+}
+/**
+ * El auto pasa a ser el esquife (plan §M5): state.car y las piezas compradas pasan a la pieza que ocupa su lugar (casco,
+ * vela, proa; el color queda). Nada se pierde y es seguro de repetir: solo traduce ids viejos. Devuelve si cambió algo.
+ */
+function migrateSkiff(s) {
+  let changed = false;
+  if (s.car && typeof s.car === 'object') for (const kind of ['body', 'wheels', 'topper']) {
+    const to = V5_CAR[kind][s.car[kind]];
+    if (to) { s.car[kind] = to; changed = true; }
+  }
+  if (s.owned && typeof s.owned === 'object') for (const kind of ['body', 'wheels', 'topper']) {
+    const list = Array.isArray(s.owned[kind]) ? s.owned[kind] : null;
+    if (!list || !list.some(id => V5_CAR[kind][id])) continue;
+    s.owned[kind] = [...new Set(list.map(id => V5_CAR[kind][id] || id))];
+    changed = true;
+  }
+  return changed;
 }
 /** state.princess → state.avatar (no enumerable: no se guarda dos veces ni cambia el hash de sincronización). */
 function withAlias(s) {

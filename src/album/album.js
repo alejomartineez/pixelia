@@ -23,11 +23,12 @@ const RAW = [
     ['🧣', 'Bufanda Tejida'], ['👛', 'Monedero Gastado'],
     ['👗', 'Vestido de Domingo'], ['🧥', 'Tapado Heredado'],
     ['🥾', 'Botas de Caminata'], ['🧳', 'La Valija Completa']]],
-  ['autitos', 'Vehículos', '🚗', '#8fd3ff', '#4fa8e0', '#daf2ff', [
-    ['🚲', 'Bici con Canasto'], ['🛴', 'Monopatín Veloz'], ['🚕', 'Taxi Apurado'],
-    ['🚙', 'Camioneta Familiar'], ['🛵', 'Moto de Reparto'],
-    ['🚐', 'Combi Vieja'], ['🏎️', 'Auto de Carrera'],
-    ['🚂', 'Tren de la Costa'], ['🚗', 'Descapotable Clásico']]],
+  // el id 'autitos' quedó de cuando eran autos: ahora son cosas de navegar el aire (plan §M5)
+  ['autitos', 'Navegación', '⛵', '#8fd3ff', '#4fa8e0', '#daf2ff', [
+    ['🪢', 'Soga de Amarre'], ['🛶', 'Canoa de Corteza'], ['🧭', 'Brújula de Céfiro'],
+    ['🏮', 'Farol de Proa'], ['🪁', 'Barrilete de Señales'],
+    ['🎈', 'Globo de Lona'], ['⛵', 'Balandra del Puerto'],
+    ['⚓', 'Ancla de Piedra'], ['🚢', 'Maqueta de Galeón']]],
   ['postres', 'Postres', '🍰', '#ffab7a', '#e07d4a', '#ffe3d1', [
     ['🍪', 'Galleta Robada'], ['🍯', 'Caramelo de Miel'], ['🍩', 'Dona Glaseada'],
     ['🥧', 'Tarta de Manzana'], ['🍮', 'Flan con Dulce de Leche'],

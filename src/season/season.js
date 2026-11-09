@@ -95,7 +95,7 @@ function cosmeticPlan(index, claimed) {
   TIERS.forEach((t, i) => {
     const n = i + 1;
     if (!t.cosmetic || claimed.includes(n) || !free.length) return;
-    // preferimos prendas que le sirvan a su personaje (más emoción); si ya tiene todas, partes del auto (si no, gemas)
+    // preferimos prendas que le sirvan a su personaje (más emoción); si ya tiene todas, piezas del esquife (si no, gemas)
     const type = S().avatar?.type;
     const mine = free.filter(c => AVATAR_KINDS.includes(c.kind) && fitsType(CUSTOM_CATALOG[c.kind].find(i => i.id === c.id), type));
     const pool = mine.length ? mine : free.filter(c => !AVATAR_KINDS.includes(c.kind));

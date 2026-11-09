@@ -1,4 +1,4 @@
-// Escenarios 3D del Equipaje (la Sastrería y el taller) + miniaturas offscreen de prendas/autos.
+// Escenarios 3D del Equipaje (la Sastrería y el muelle del esquife) + miniaturas offscreen de prendas y del esquife.
 // Los modelos están pintados con la paleta clara de antes: al armarlos se re-mapean a madera oscura, cuero y bronce
 // (tailor, interfaz oscura y fuera lo tierno: PLAN-QUIEBRE §J6/J7). Las lucecitas (glowMaterial) no se tocan.
 // Lo usa src/scenes/wardrobe.js. Todo lo que crea acá se libera con disposeObject / dispose().
@@ -173,78 +173,58 @@ export const buildBoutique = withTailor(function buildBoutique() {
 });
 
 // =====================================================================
-//                                 TALLER
+//                    MUELLE DE AMARRE (ex taller del auto, plan §M5)
 // =====================================================================
-export const buildGarage = withTailor(function buildGarage() {
+// Un muelle de tablas en el borde de la isla, de noche: postes con sogas, un farol, cajones y el cielo abierto atrás
+// (anticipa el muelle de dirigibles del Acto 2). Paleta propia, ya oscura: no pasa por tailor.
+export function buildDock() {
   const g = new THREE.Group();
+  const W1 = 0x5a4430, W2 = 0x4c3926, W3 = 0x3e2e20, POST = 0x35281c, ROPE = 0x9a8460, IRON = 0x4a4e56, STONE = 0x3a3836, STONE2 = 0x312f2e;
+  // piso: tablas del muelle que salen hacia el vacío y la roca de la isla atrás
   const fv = new Voxels();
   floor(fv, -32, 31, -24, 20, (x, z) => {
-    if ((x === -10 || x === 9) && z > -4 && z % 3 !== 0) return 0xffd166;
-    return (((x >> 2) + (z >> 2)) & 1) ? 0xeae2d5 : 0xf2ece2;
+    if (z < -14) return ((x * 7 + z * 3) & 7) === 0 ? STONE2 : STONE;
+    if (x < -14 || x > 13) return null;   // a los costados del muelle, el vacío
+    const plank = (z + 99) % 3 === 0 ? W3 : ((x >> 2) + (z >> 1)) % 2 ? W1 : W2;
+    return plank;
   });
   g.add(mesh(fv, E, { shadow: false }));
-
+  // fondo: el cielo de la noche con nubes bajas y la silueta de otra isla
   const w = new Voxels();
-  for (let x = -32; x <= 31; x++) for (let y = 0; y <= 31; y++) for (let z = -26; z <= -25; z++) {
-    const row = y >> 1, brickX = (x + (row & 1) * 2 + 64) % 4;
-    let c = (y & 1) === 1 && brickX !== 0 ? 0xc5d3f2 : (brickX === 0 || (y & 1) === 0 ? 0xf8f0e3 : 0xc5d3f2);
-    if ((y & 1) === 1 && brickX !== 0 && ((x * 7 + y * 3) % 11 === 0)) c = 0x9bb2e8;
-    if (y <= 3) c = 0xa2917f;
-    w.set(x, y, z, c);
+  for (let x = -32; x <= 31; x++) for (let y = 0; y <= 31; y++) {
+    const cloud = y < 8 && Math.sin(x * 0.35) * 2 + Math.sin(x * 0.13 + 1) * 2 + 4 > y;
+    const isle = y >= 9 && y <= 13 && Math.abs(x - 14) < 9 - (13 - y) * 0.2 - (y - 9) * 1.6;
+    const c = cloud ? (y > 5 ? 0x4a4f5c : 0x3d424e) : isle ? (y === 13 ? 0x3a4a3a : 0x2e2a2c) : y > 24 ? 0x141822 : y > 16 ? 0x1a1f2b : 0x222837;
+    w.set(x, y, -25, c);
+    if (!cloud && !isle && ((x * 13 + y * 7) % 37 === 0) && y > 14) w.set(x, y, -25, 0x8a90a0);   // estrellas
   }
-  // panel de herramientas
-  for (let x = -26; x <= -12; x++) for (let y = 8; y <= 20; y++) w.set(x, y, -24, (x + y) % 3 === 0 ? 0xe8dcc8 : 0xf6ecd8);
-  // cartel de neón con corazón
-  const heart = ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'];
-  heart.forEach((row, i) => [...row].forEach((ch, j) => { if (ch === '#') w.set(16 + j, 20 - i, -24, i === 1 && j === 1 ? 0xffffff : 0xee8a5c); }));
-  for (let x = 12; x <= 26; x++) { w.set(x, 12, -24, 0x3d2f2a); w.set(x, 23, -24, 0x3d2f2a); }
-  for (let y = 12; y <= 23; y++) { w.set(12, y, -24, 0x3d2f2a); w.set(26, y, -24, 0x3d2f2a); }
-  // banderines
-  for (let x = -30; x <= 29; x++) {
-    const y = 27 + Math.round(Math.abs(Math.sin((x + 30) / 60 * Math.PI * 2)) * -2);
-    w.set(x, y, -24, 0xfff0c2);
-    if ((x + 64) % 6 === 0) { const c = [0xffd166, 0x6fe3c1, 0xee8a5c][((x + 64) / 6) % 3 | 0]; w.set(x, y - 1, -24, c); w.set(x - 1, y - 1, -24, c); w.set(x + 1, y - 1, -24, c); w.set(x, y - 2, -24, c); }
-  }
-  g.add(mesh(w, E, { shadow: false }));
-  // neón brillante (aparte para el material que brilla)
-  const nv = new Voxels();
-  heart.forEach((row, i) => [...row].forEach((ch, j) => { if (ch === '#') nv.set(16 + j, 20 - i, -23, i === 1 && j === 1 ? 0xffffff : 0xf1a181); }));
-  const neon = mesh(nv, E, { shadow: false, material: glowMaterial() });
-  neon.scale.z = 0.4; neon.position.z = -0.06;
-  g.add(neon);
-
+  g.add(mesh(w, E, { shadow: false, receive: false }));
+  // muebles finos: postes con soga, cornamusas, farol, cajones y un rollo de soga
   const m = new Voxels();
-  // herramientas en el panel (llaves y martillo, en vóxel fino)
-  for (let i = 0; i < 3; i++) {
-    const x = -46 + i * 8;
-    for (let y = 22; y <= 34; y++) m.set(x, y, -47, 0xada190);
-    m.box(x - 1, 34, -47, 3, 3, 1, 0xada190); m.set(x, 36, -47, null);
-    m.box(x - 1, 21, -47, 3, 2, 1, i === 1 ? 0xee8a5c : 0x8fd3ff);
+  for (const x of [-26, 24]) for (const z of [-20, 8]) {
+    m.box(x - 1, 0, z - 1, 3, 16, 3, (xx, y) => (y === 15 ? W1 : y % 5 === 0 ? IRON : POST));
+    m.box(x - 2, 12, z - 2, 5, 1, 5, ROPE);
   }
-  for (let y = 22; y <= 34; y++) m.set(-26, y, -47, 0xb07a52);
-  m.box(-29, 33, -47, 7, 3, 1, 0x9c907f);
-  // pila de neumáticos (izquierda)
-  for (let k = 0; k < 3; k++) m.cylinder(-38, k * 4, -30, 5, 4, (x, y, z) => {
-    const d = Math.hypot(x + 38, z + 30);
-    if (d < 2.2) return null;
-    return y === k * 4 + 3 ? 0x665b4a : 0x554a3a;
-  });
-  m.cylinder(-38, 12, -30, 5.3, 1, (x, y, z) => (Math.hypot(x + 38, z + 30) < 2.2 ? null : 0xf1a181));
-  // caja de herramientas (derecha)
-  m.box(28, 0, -44, 14, 14, 8, (x, y) => (y % 5 === 4 ? 0xc8673d : 0xee8a5c));
-  for (let y = 2; y <= 12; y += 5) m.box(33, y, -36, 4, 1, 1, 0xfff0c2);
-  m.box(29, 14, -43, 12, 1, 6, 0x3d2f2a);
-  // conos
-  for (const [x, z] of [[-20, 10], [20, 14]]) for (let y = 0; y <= 8; y++) {
-    const r = Math.max(0.6, 3 - y * 0.32);
-    m.cylinder(x, y, z, r, 1, y === 0 ? 0xa2917f : (y === 3 || y === 4) ? 0xffffff : 0xffb38a);
-  }
-  // bidón de "nafta" mágica
-  m.box(18, 0, -30, 5, 7, 4, 0x6fe3c1); m.box(19, 7, -29, 2, 2, 2, 0x3cbf9a); m.set(20, 4, -26, 0xffffff); m.set(20, 3, -26, 0xffffff);
+  for (const x of [-26, 24]) for (let z = -19; z < 8; z++) m.set(x, 11 - Math.round(Math.sin(((z + 19) / 27) * Math.PI) * 3), z, ROPE);   // sogas entre los postes
+  // farol en un poste alto atrás a la derecha
+  m.box(32, 0, -36, 3, 34, 3, POST); m.box(28, 33, -36, 6, 2, 2, POST);
+  m.box(27, 25, -37, 4, 1, 4, IRON); m.box(27, 31, -37, 4, 1, 4, IRON);
+  for (const [x, z] of [[27, -37], [30, -37], [27, -34], [30, -34]]) m.box(x, 26, z, 1, 5, 1, IRON);
+  // cajones apilados atrás a la izquierda, con flejes
+  m.box(-46, 0, -44, 12, 10, 10, (x, y) => (y === 9 ? W1 : y === 4 ? IRON : x % 4 === 0 ? W3 : W2));
+  m.box(-44, 10, -42, 8, 8, 8, (x, y) => (y === 17 ? W1 : y === 13 ? IRON : x % 4 === 0 ? W3 : W2));
+  // rollo de soga y un barril
+  m.cylinder(-30, 0, 10, 4, 2, (x, y) => (y === 1 ? ROPE : 0x7e6a4a)); m.cylinder(-30, 2, 10, 2.5, 1, ROPE);
+  m.cylinder(36, 0, 6, 4, 10, (x, y) => (y === 2 || y === 7 ? IRON : y === 9 ? W1 : W2));
   g.add(mesh(m, F));
+  // el vidrio del farol brilla
+  const lv = new Voxels(); lv.box(28, 26, -36, 2, 5, 2, (x, y) => (y >= 28 ? 0xe8b866 : 0xd08a3a));
+  g.add(mesh(lv, F, { shadow: false, material: glowMaterial() }));
   g.userData.update = () => {};
   return g;
-});
+}
+/** Compatibilidad: el escenario del esquife (antes, el taller del auto). */
+export const buildGarage = buildDock;
 
 // =====================================================================
 //                   MINIATURAS OFFSCREEN (cacheadas como dataURL)
@@ -306,7 +286,7 @@ function fitOrtho(camera, obj, margin = 0.1) {
 /**
  * Devuelve el dataURL de una miniatura. spec:
  *  { type:'avatar' (o 'princess'), look, frame:'head'|'tall'|'bust'|'body'|'tallbody'|'back', cls?, raw? }
- *  { type:'car', car, frame:'car'|'wheel', driver? }
+ *  { type:'car', car, frame:'car'|'wheel' (el aparejo), driver? } (el esquife: el id 'car' quedó del auto)
  */
 export function thumbnail(spec) {
   const key = JSON.stringify(spec);
@@ -324,11 +304,11 @@ export function thumbnail(spec) {
     const a = AV[spec.frame] || AV.body;
     fr = { ...fr, y: a[0], view: a[1], ang: spec.frame === 'back' ? 2.55 : spec.frame === 'bust' ? 0.3 : 0.45, elev: spec.frame === 'bust' ? 0.08 : 0.18 };
   }
-  else if (spec.frame === 'wheel') {
+  else if (spec.frame === 'wheel') {   // el aparejo del esquife (vela o globo) solo, encuadrado a su caja
     const c = carModel(spec.car);
-    const w = c.userData.wheels[0];
+    const w = c.userData.sail;
     obj = new THREE.Mesh(w.geometry, w.material);
-    obj.rotation.x = 0.4; obj.rotation.y = -0.35;
+    fr = { ...fr, ang: 0.9, elev: 0.25, fit: true };
   } else {
     obj = carModel(spec.car, { driver: spec.driver || null });
     const s = obj.userData.size;
@@ -338,7 +318,7 @@ export function thumbnail(spec) {
   const target = new THREE.Vector3(0, fr.y, 0);
   camera.position.set(Math.sin(fr.ang) * 10 * Math.cos(fr.elev), fr.y + Math.sin(fr.elev) * 10, Math.cos(fr.ang) * 10 * Math.cos(fr.elev));
   camera.lookAt(target);
-  if (fr.fit) fitOrtho(camera, obj, 0.1); // autos: encuadre según la caja real (los adornos altos no se cortan)
+  if (fr.fit) fitOrtho(camera, obj, 0.1); // esquife: encuadre según la caja real (el globo y los palos no se cortan)
   else { camera.left = -fr.view / 2; camera.right = fr.view / 2; camera.top = fr.view / 2; camera.bottom = -fr.view / 2; }
   camera.updateProjectionMatrix();
   renderer.render(scene, camera);

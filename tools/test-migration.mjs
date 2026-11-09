@@ -12,7 +12,8 @@
 //   v4: un guardado v3 con el oso (persona con sus colores, piezas retiradas devueltas, playa → bruma, aviso único,
 //   idempotente) y perfiles de contactos viejos que se ven como personas.
 //   v5 (personajes serios, PLAN-QUIEBRE §M): chica y chico pasan a humanos, las piezas a su equivalente (las repetidas y
-//   las que ahora son gratis se devuelven, lo puesto queda tuyo), el look del otro tipo se guarda, aviso único, idempotente.
+//   las que ahora son gratis se devuelven, lo puesto queda tuyo), el look del otro tipo se guarda, aviso único, idempotente;
+//   el auto pasa a ser el esquife (M5): casco, pintura, vela y proa, con lo comprado traducido.
 //
 //   node tools/test-migration.mjs
 import http from 'node:http';
@@ -194,8 +195,9 @@ try {
   const a1 = s1.avatar;
   ok(a1.type === 'humano' && a1.build === 'esbelto' && a1.hair === 'coleta' && a1.dress === 'viajero' && a1.crown === 'gorra' && a1.acc === 'mochila' && a1.face === 'ninguna' && a1.skin === 3 && a1.dressColor === 'azul',
     'la chica pasa a humana esbelta con su ropa traducida (v5)', a1);
-  const want = { hair: ['coleta', 'corto'], dress: ['viajero'], crown: ['ninguna', 'gorra'], acc: ['mochila', 'ninguno'], body: ['convertible', 'jeep'] };
-  ok(JSON.stringify(s1.car) === JSON.stringify(V2.car) && Object.entries(want).every(([k, list]) => list.every(id => s1.owned[k]?.includes(id))), 'auto y ropa comprada intactos (con sus ids nuevos)', { car: s1.car, owned: s1.owned });
+  const want = { hair: ['coleta', 'corto'], dress: ['viajero'], crown: ['ninguna', 'gorra'], acc: ['mochila', 'ninguno'], body: ['bote', 'balandra'] };
+  ok(JSON.stringify(s1.car) === JSON.stringify({ ...V2.car, body: 'balandra', wheels: 'vela' }) && Object.entries(want).every(([k, list]) => list.every(id => s1.owned[k]?.includes(id))),
+    'el auto pasa a su esquife y la ropa comprada queda (con sus ids nuevos)', { car: s1.car, owned: s1.owned });
   ok(s1.theme === 'musgo' && s1.flag === 'verde', 'el tema bosque pasa a musgo (v4) y la bandera queda intacta', { theme: s1.theme, flag: s1.flag });
   const hi = (list) => JSON.stringify((list || []).map(i => [i.id, i.x, i.z, i.rot || 0]));
   ok(hi(s1.home.items) === hi(V2.home.items) && s1.home.wall === 'menta' && s1.home.floor === 'nogal', 'Mi Casa por dentro intacta (muebles y trofeo)', s1.home);
@@ -318,10 +320,12 @@ try {
       avatarLooks: { chica: { skin: 1, hair: 'ondas', hairColor: 'rubio', dress: 'sirena', dressColor: 'violeta', crown: 'flores', acc: 'bolso' } },
       owned: { ...base.owned, hair: ['largo', 'coleta', 'cortito', 'despeinado', 'barba', 'ondas'],
         dress: ['clasico', 'corto', 'buzo', 'remera', 'chaqueta', 'capa_real', 'gala', 'sirena', 'pollera', 'camisa', 'estrellas_p'],
-        crown: ['ninguna', 'vincha', 'laurel', 'gorra', 'gorro', 'flores', 'galera', 'sombrero_estrellas'], acc: ['ninguno', 'mochila', 'espada', 'gatito', 'buho', 'bolso'] } };
+        crown: ['ninguna', 'vincha', 'laurel', 'gorra', 'gorro', 'flores', 'galera', 'sombrero_estrellas'], acc: ['ninguno', 'mochila', 'espada', 'gatito', 'buho', 'bolso'],
+        body: ['convertible', 'mini', 'jeep'], wheels: ['clasica', 'estrella'], topper: ['ninguno', 'moño', 'corazon'] },
+      car: { body: 'jeep', color: 'rojo', wheels: 'estrella', topper: 'corazon' } };
     delete V4.v5;
     const { page: p6, context, errors: e6 } = await openWithSave(V4);
-    const r = await run(p6, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, v5: S.v5,
+    const r = await run(p6, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, v5: S.v5, car: S.car,
       threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
     ok(r.v === 5, 'la partida queda en v5', r.v);
     const a = r.avatar;
@@ -334,10 +338,18 @@ try {
     ok(['capa_viaje', 'vestido_noble', 'placas'].every(id => r.owned.dress.includes(id)) && r.owned.crown.includes('yelmo') && r.owned.crown.includes('galera')
       && r.owned.acc.includes('buho') && r.owned.acc.includes('bolso') && r.owned.hair.includes('ondas') && !OLD.some(oldIn),
       'lo comprado pasa a su equivalente y lo puesto queda tuyo (la capa de viaje, aunque ahora se paga)', r.owned);
+    // M5: el auto pasa a ser el esquife; cada pieza a su equivalente, sin perder nada
+    ok(r.car.body === 'balandra' && r.car.color === 'rojo' && r.car.wheels === 'globo' && r.car.topper === 'mascaron',
+      'el jeep pasa a balandra, las ruedas estrella al globo y el corazón al mascarón (el color queda)', r.car);
+    ok(['bote', 'chalupa', 'balandra'].every(id => r.owned.body.includes(id)) && ['vela', 'globo'].every(id => r.owned.wheels.includes(id))
+      && ['ninguno', 'farol', 'mascaron'].every(id => r.owned.topper.includes(id))
+      && !['convertible', 'mini', 'jeep', 'clasica', 'estrella', 'moño', 'corazon'].some(id => [...r.owned.body, ...r.owned.wheels, ...r.owned.topper].includes(id)),
+      'las piezas del auto que tenías pasan a las del esquife', { body: r.owned.body, wheels: r.owned.wheels, topper: r.owned.topper });
     ok(r.coins === 500 + 600 + 1000 + 300 + 450 + 400 && r.v5.coins === 2750, 'se devuelven 2.750 monedas: barba de sabio, el vestido largo repetido, pollera, camisa y flores', { coins: r.coins, v5: r.v5 });
     ok(r.gems === 5 + 20 + r.threatGems && r.v5.gems === 20, 'y 20 gemas por el búho (el gato ya es el cuervo)', { gems: r.gems, v5: r.v5 });
     ok(await p6.waitForFunction(() => !!document.querySelector('.modal.v3-notice'), { timeout: 15000 }).then(() => true, () => false), 'aparece el aviso único');
     const txt = await p6.evaluate(() => document.querySelector('.modal.v3-notice')?.textContent.replace(/\s+/g, ' ') || '');
+    ok(/esquife/.test(txt), 'el aviso cuenta que el auto ahora es un esquife', txt.slice(0, 400));
     ok(/pueblos/.test(txt) && /devolvimos/.test(txt) && !/Bruma/.test(txt), 'el aviso cuenta lo de los pueblos y la devolución (y no repite lo de la v4)', txt.slice(0, 400));
     await p6.evaluate(() => document.querySelector('.modal.v3-notice .modal-foot .btn')?.click());
     await sleep(800);
@@ -353,10 +365,14 @@ try {
     const model = await p6.evaluate(async () => {
       const A = await import('/src/avatar/avatar.js');
       const m = A.avatarModel({ type: 'chica', hair: 'colitas', dress: 'estrellas', crown: 'sombrero_luna', acc: 'globo' });
-      return { look: m.userData.look, h: m.userData.height };
+      const K = await import('/src/avatar/car.js');
+      const sk = K.carModel({ body: 'limusina', wheels: 'flor', topper: 'alas' });
+      return { look: m.userData.look, h: m.userData.height, skiff: sk.userData.car };
     });
-    ok(model.look.type === 'humano' && model.look.dress === 'archimago' && model.look.crown === 'sombrero_mago' && model.look.acc === 'farolito' && model.h > 0.8 && model.h < 1.3,
+    ok(model.look.type === 'humano' && model.look.dress === 'archimago' && model.look.crown === 'sombrero_mago' && model.look.acc === 'farolito' && model.h > 0.8 && model.h < 1.4,   // los humanos miden ~3,8 cabezas desde la tercera pasada; con el sombrero de mago llegan a ~1,33
       'un perfil de contacto de antes de v5 se arma con las piezas nuevas', model);
+    ok(model.skiff.body === 'barcaza' && model.skiff.wheels === 'vela_doble' && model.skiff.topper === 'cristal',
+      'un auto de antes de v5 (de un contacto) se arma como su esquife', model.skiff);
     ok(e6.length === 0, 'sin errores de página', e6);
     await context.close();
   }

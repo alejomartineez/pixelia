@@ -321,9 +321,10 @@ export default function create(ctx) {
       w.idle = 1.6; w.t = 1; w.tx = w.fx; w.tz = w.fz;
       return;
     }
-    if (life.car && life.car.obj.visible && hitWalker(life.car, x, y, 26)) { audio.sfx('horn'); return; }
     const uid = raycastBuilding(x, y);
     if (uid != null) { tapBuilding(uid); return; }
+    // el esquife amarra al lado del Establo: los edificios de al lado tienen prioridad sobre él
+    if (life.car && life.car.obj.visible && hitWalker(life.car, x, y, 26)) { audio.sfx('swoosh'); return; }
   }
   function tapBuilding(uid) {
     const e = entries.get(uid);

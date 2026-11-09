@@ -67,7 +67,7 @@ src/main.js                arranque, router, ctx, endGame
 src/core/                  NO MODIFICAR salvo el dueño del núcleo
   bus.js       eventos
   state.js     store: estado + guardado + monedas/xp/compras
-  data.js      catálogos y balance (edificios, ropa, autos, misiones, logros)
+  data.js      catálogos y balance (edificios, ropa, piezas del esquife, misiones, logros)
   economy.js   reglas de ciudad (construir, producir, mejorar, expandir, formatos)
   quests.js    misiones, diarias, logros, login
   ui.js        h(), modal, toast, rewardModal, floatText, flyCurrency, confetti, costHtml, progressHtml
@@ -81,8 +81,8 @@ src/scenes/city.js         escena ciudad                          (agente Ciudad
 src/avatar/avatar*.js      modelo del personaje (todos los tipos)  (agente Avatar)
 src/city/themes*.js        temas de ciudad + selector             (agente Ciudad)
 src/scenes/onboarding.js   primera partida: personaje, nombre, ciudad, tema
-src/avatar/car.js          modelo auto                            (agente Avatar)
-src/scenes/wardrobe.js     vestidor + auto                        (agente Avatar)
+src/avatar/skiff.js        modelo del esquife (car.js lo reexporta) (agente Avatar)
+src/scenes/wardrobe.js     vestidor + esquife                     (agente Avatar)
 src/scenes/panels.js       misiones, ajustes, login, nivel, obras    (agente Paneles)
 src/expedition/            Expedición: exp-data, exp-gen, exp-rules, exp-scene, exp-ui, expedition (DESIGN-CORE.md §2)
 src/threats/               Amenazas de temporada (DESIGN-CORE.md §3)
@@ -243,12 +243,20 @@ export function avatarModel(look, opts = {}) // -> THREE.Group, altura total ≈
 export function randomLook(seed, opts)        // look aleatorio válido (gente de la ciudad); opts.type: pueblo, opts.cls: clase
 // opts de avatarModel: cls (viste por clase o rol, ROLE_CLASS), gear (equipo fuera del catálogo), seated, npc, scale
 ```
-### src/avatar/car.js (agente Avatar)
+### src/avatar/skiff.js (agente Avatar): el esquife volador (plan §M5, ex auto)
 ```js
-export function carModel(car, opts = {})  // -> THREE.Group, largo ≈ 1 unidad en Z, frente a +Z, base y=0
-// group.userData.size = {w, l, h}; group.userData.update(dt, speed, steer) — gira ruedas y las dobla
-export function carStats(car)           // {speed, handling} 1..5 desde CAR_BODIES
+export function skiffModel(car, opts = {})  // -> THREE.Group, eslora ≈ 1,5–1,9 en Z, proa a +Z, flota a SKIFF_FLOAT sobre y=0
+// car = state.car = { body: casco, color: pintura, wheels: aparejo (vela o globo), topper: proa } (claves de antes)
+// opts.driver: look sentado en el banco de popa · userData.sail: el aparejo (miniatura) · userData.size = {w, l, h}
+// userData.update(dt, speed, steer): se mece, escora al doblar, la vela flamea y el cristal de Céfiro late
+export function carStats(car)             // {speed, handling} 1..5 desde CAR_BODIES
+export function normalizeCar(car)         // corrige ids y traduce los del auto de antes (V5_CAR)
 ```
+`car.js` reexporta todo como `carModel`. Vóxel de 1/24, madera en 4 tonos, la pintura sale de `clothHex` y el cristal
+de abajo va con `lightMat`. En la ciudad (`city-life.js`) amarra al muelle del Establo (un poste con soga y dos tablas)
+y cada 40 a 80 s da una vuelta a la isla por fuera del borde, a la altura de los techos. En el Equipaje, el escenario
+es el muelle de amarre de noche (`buildDock` en `wardrobe-stage.js`). Galería: `tools/people.html?set=esquifes`
+(`part=casco|vela|proa`, `driver=1`).
 Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS` y los `skins` de cada pueblo); la ropa los apaga con `clothHex` y las rampas salen de `ramp` (`avatar-kit.js`).
 
 ## Economía (resumen)

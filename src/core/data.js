@@ -545,28 +545,38 @@ export const RETIRED_ITEMS = {
   acc: { alas_hada: null },
 };
 
-// ---------------- PERSONALIZACIÓN AUTO ----------------
-// stats: speed / handling 1..5 (de cuando el auto se manejaba en los minijuegos; hoy solo se muestran en el Equipaje)
+// ---------------- EL ESQUIFE (ex auto, plan §M5) ----------------
+// El auto del Pixelia de antes pasó a ser un esquife que flota con Céfiro (src/avatar/skiff.js). Las claves del catálogo
+// y de state.car siguen siendo las de antes (body, color, wheels, topper) para no tocar el pase, los cofres ni el
+// álbum: body es el casco, color la pintura, wheels la vela (o el globo) y topper la proa.
+// stats: speed / handling 1..5 (se muestran en el Equipaje)
 export const CAR_BODIES = [
-  { id: 'convertible', name: 'Convertible', free: true, speed: 3, handling: 3 },
-  { id: 'mini', name: 'Mini', price: { coins: 600 }, unlock: 3, speed: 2, handling: 5 },
-  { id: 'jeep', name: 'Jeep safari', price: { coins: 1200 }, unlock: 5, speed: 3, handling: 4 },
-  { id: 'deportivo', name: 'Deportivo', price: { coins: 2500 }, unlock: 7, speed: 5, handling: 3 },
-  { id: 'limusina', name: 'Limusina', price: { gems: 25 }, unlock: 9, speed: 4, handling: 2 },
-  { id: 'carruaje', name: 'Calabaza rodante', price: { gems: 40 }, unlock: 12, speed: 4, handling: 4 },
+  { id: 'bote', name: 'Bote de pino', free: true, speed: 3, handling: 3 },
+  { id: 'chalupa', name: 'Chalupa con toldo', price: { coins: 600 }, unlock: 3, speed: 2, handling: 5 },
+  { id: 'balandra', name: 'Balandra', price: { coins: 1200 }, unlock: 5, speed: 3, handling: 4 },
+  { id: 'cuter', name: 'Cúter', price: { coins: 2500 }, unlock: 7, speed: 5, handling: 3 },
+  { id: 'barcaza', name: 'Barcaza de carga', price: { gems: 25 }, unlock: 9, speed: 4, handling: 2 },
+  { id: 'ceremonia', name: 'Nave de ceremonia', price: { gems: 40 }, unlock: 12, speed: 4, handling: 4 },
 ];
 export const CAR_WHEELS = [
-  { id: 'clasica', name: 'Clásicas', free: true },
-  { id: 'dorada', name: 'Doradas', price: { coins: 400 }, unlock: 3 },
-  { id: 'estrella', name: 'Estrella', price: { coins: 700 }, unlock: 5 },
-  { id: 'flor', name: 'Flor', price: { gems: 8 }, unlock: 6 },
+  { id: 'vela', name: 'Vela de cuchillo', free: true },
+  { id: 'vela_cuadra', name: 'Vela cuadra', price: { coins: 400 }, unlock: 3 },
+  { id: 'globo', name: 'Globo', price: { coins: 700 }, unlock: 5 },
+  { id: 'vela_doble', name: 'Dos palos', price: { gems: 8 }, unlock: 6 },
 ];
 export const CAR_TOPPERS = [
   { id: 'ninguno', name: 'Nada', free: true },
-  { id: 'moño', name: 'Moño', price: { coins: 300 }, unlock: 3 },
-  { id: 'corazon', name: 'Corazón', price: { coins: 600 }, unlock: 4 },
-  { id: 'alas', name: 'Alerón', price: { gems: 15 }, unlock: 8 },
+  { id: 'farol', name: 'Farol de proa', price: { coins: 300 }, unlock: 3 },
+  { id: 'mascaron', name: 'Mascarón de ave', price: { coins: 600 }, unlock: 4 },
+  { id: 'cristal', name: 'Cristal mayor', price: { gems: 15 }, unlock: 8 },
 ];
+export const SKIFF_HULLS = CAR_BODIES, SKIFF_RIGS = CAR_WHEELS, SKIFF_PROWS = CAR_TOPPERS;
+/** Guardado v5 (M5): cada pieza del auto pasa a la del esquife que ocupa su lugar (mismo precio y desbloqueo). */
+export const V5_CAR = {
+  body: { convertible: 'bote', mini: 'chalupa', jeep: 'balandra', deportivo: 'cuter', limusina: 'barcaza', carruaje: 'ceremonia' },
+  wheels: { clasica: 'vela', dorada: 'vela_cuadra', estrella: 'globo', flor: 'vela_doble' },
+  topper: { 'moño': 'farol', corazon: 'mascaron', alas: 'cristal', corona: 'mascaron' },
+};
 
 export const CUSTOM_CATALOG = {
   hair: HAIR_STYLES, dress: DRESS_STYLES, crown: CROWNS, acc: ACCESSORIES, face: FACES, build: BUILDS,
@@ -579,7 +589,7 @@ export const CUSTOM_CATALOG = {
 //  upgrade {id?}         terminar una mejora
 //  collect               monedas recolectadas de edificios (suma)
 //  earn                  monedas ganadas de cualquier fuente (suma)
-//  customize             cambios en el Equipaje (personaje o auto)
+//  customize             cambios en el Equipaje (personaje o esquife)
 //  buy                   compras en el Equipaje
 //  level                 llegar a nivel count (absoluto)
 //  pop                   población >= count (absoluto)

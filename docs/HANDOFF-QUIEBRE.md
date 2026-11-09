@@ -47,14 +47,14 @@ cada paso.
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | 0bba507 (v34) |
-| 4a | M1 + M2: personajes serios (vóxel detallado y low-poly para criaturas y jefes) y pueblos del mundo | **en curso** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`); espera el OK del usuario con las 3 muestras antes de propagar; la integra el coordinador | |
+| 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y el esquife volador | **hecho** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`); falta que la integre el coordinador | |
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | pendiente | |
 | 6 | Acto 1 completo + E5–E6 | pendiente | |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
-## Paso 4a (personajes serios y pueblos): en curso, rama `claude/personajes-4a-6b06a8`
+## Paso 4a (personajes serios, pueblos y esquife): hecho, rama `claude/personajes-4a-6b06a8`
 **Hecho (commits de esta rama, sin mergear):**
 - Catálogo nuevo en `src/core/data.js`: el tipo es el pueblo (`humano`, `enano`, `anuro`, `zorro`, `orco`), cada uno con
   sus tonos de piel. Piezas serias. Categorías nuevas `face` (barbas, cicatrices, parche, pintura) y `build` (recio o
@@ -110,16 +110,31 @@ cada paso.
     volver a correrlo.
 - **Galería:** `set=caras&who=pueblos`, `pick=` y `set=autos`.
 
-**Falta:**
-1. **Pasada de detalle** (respuesta a la pregunta del usuario), sobre las 3 muestras primero:
-   - tonos pintados por bloque, sin ruido: degradé en la barba, luz en los bordes de arriba y sombra en los pliegues;
-   - más accesorios: hebillas, remaches, correas y bolsos;
-   - proporción más robusta, como la referencia: cabeza y manos más grandes;
-   - mostrársela al usuario y recién ahí propagar.
-2. Volver a correr `test-e2e` y `test-stress` hasta que den verde.
-3. Capturas finales en `shots/personajes/` y enviárselas al usuario.
-4. **M5, el esquife volador** (pedido del coordinador, `docs/PLAN-QUIEBRE.md` M5): el brief está en las notas,
-   `paso-4a-detalle-y-esquife-brief.md`.
+- **Pasada de detalle** (commit `73bde5b`; guía en `docs/ARTE-PERSONAJES.md` §7):
+  - barba en 5 tonos por capas, con mechones y puntas dentadas;
+  - borde de luz, sombra bajo el cinturón y pliegues;
+  - hebilla con relieve, remaches, correa con hebilla, bolsos con tapa, puños, pulgar y doblez de la bota;
+  - hacha parada que se lee de frente;
+  - enano a ~3 cabezas (cabeza de 14 × 13, manos de 9);
+  - todo es genérico en `figure.js`, así que ya está propagado a todos los pueblos y a la gente de la ciudad.
+- **Tests:** `test-e2e` 96 OK, `test-stress` 15 OK sin fugas y `test-migration` 80 OK (el tope de alto del perfil
+  viejo subió a 1,4: los humanos más altos de la tercera pasada miden 1,33 con el sombrero de mago).
+- **Capturas finales** en `shots/personajes/final-*.png` (vestuario, ciudad, expedición, combate, jefe y retratos),
+  enviadas al usuario.
+- **M5, el esquife volador** (este commit):
+  - modelo en `src/avatar/skiff.js`; `car.js` lo reexporta como `carModel`;
+  - las claves de `state.car` y del catálogo siguen igual (`body`, `color`, `wheels`, `topper`), así no se tocan el pase,
+    los cofres ni el álbum; los ids nuevos están en `CAR_BODIES`, `CAR_WHEELS` y `CAR_TOPPERS`;
+  - migración: `V5_CAR` en `data.js` y `migrateSkiff` en `state.js`, que corre dentro de `migrateV5` (y también en las
+    partidas que ya eran v5); `normalizeCar` traduce los perfiles de contactos viejos; el aviso único suma la línea del
+    esquife (`v5.skiff`);
+  - ciudad: `city-life.js` lo amarra al muelle del Establo y cada 40 a 80 s da una vuelta a la isla;
+  - Equipaje: el escenario es el muelle de amarre (`buildDock`); las categorías son Casco, Pintura, Aparejo y Proa;
+  - textos: pase, cofres, recompensas, ficha del Establo y álbum (la colección "Vehículos" pasa a "Navegación", con los
+    mismos ids); el ícono `car` ahora es el esquife;
+  - galería: `tools/people.html?set=esquifes&part=casco|vela|proa&driver=1`; capturas en `shots/personajes/esquife-*.png`.
+
+**Falta:** nada del 4a. Lo integra el coordinador (no se corrió `npm run bump`).
 
 ## Decisiones tomadas
 - Plataforma:

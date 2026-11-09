@@ -1,5 +1,5 @@
 // Equipaje + Taller: elegí tu personaje (chica, chico o animalito), probá peinados,
-// ropa, cosas para la cabeza, accesorios y tuneá tu auto.
+// ropa, cosas para la cabeza, accesorios y el esquife (ex auto, plan §M5).
 // Arriba (o a la izquierda en PC) un escenario 3D giratorio; abajo (o a la derecha) el panel con categorías.
 // Tocar una pieza la prueba al instante; si no es tuya aparece "Comprar". Los colores y el tipo de personaje son gratis.
 import * as THREE from 'three';
@@ -42,10 +42,10 @@ const BACK_ITEMS = new Set(['mochila', 'capa_viaje']);
 const TALL_ITEMS = new Set(['sombrero_mago', 'yelmo', 'piluso', 'galera']);
 const BODY_ITEMS = new Set(['barba_larga', 'barba_trenzada', 'lanza', 'baston', 'arco', 'farolito', 'escudo', 'buho']);
 const CAR_CATS = [
-  { id: 'body', label: 'Modelo', icon: 'car', kind: 'body', list: CAR_BODIES, frame: 'car', stats: true },
-  { id: 'color', label: 'Color', icon: 'palette', colors: colorList(OUTFIT_COLORS) },
-  { id: 'wheels', label: 'Ruedas', icon: 'gear', kind: 'wheels', list: CAR_WHEELS, frame: 'wheel' },
-  { id: 'topper', label: 'Adorno', icon: 'heart', kind: 'topper', list: CAR_TOPPERS, frame: 'car' },
+  { id: 'body', label: 'Casco', icon: 'car', kind: 'body', list: CAR_BODIES, frame: 'car', stats: true },
+  { id: 'color', label: 'Pintura', icon: 'palette', colors: colorList(OUTFIT_COLORS) },
+  { id: 'wheels', label: 'Aparejo', icon: 'car', kind: 'wheels', list: CAR_WHEELS, frame: 'wheel' },
+  { id: 'topper', label: 'Proa', icon: 'car', kind: 'topper', list: CAR_TOPPERS, frame: 'car' },
 ];
 // ángulo del escenario que mejor muestra cada pieza
 const FOCUS = {
@@ -176,7 +176,7 @@ export default function create(ctx) {
   const catLabel = (c) => (typeof c.label === 'function' ? c.label(tdef()) : c.label);
   const itemsFor = (c) => (mode === 'avatar' ? c.list.filter(i => fitsType(i, pv.avatar.type)) : c.list);
   const cat = () => cats().find(c => c.id === catId) || cats()[0];
-  const garageOk = () => ctx.economy.hasBuilt('establo');   // el auto vive en el Establo (ex Garaje, DESIGN-CORE.md §5.3)
+  const garageOk = () => ctx.economy.hasBuilt('establo');   // el esquife amarra en el muelle del Establo (ex Garaje, DESIGN-CORE.md §5.3)
   const S = () => store.state;
 
   // ---------------- UI ----------------
@@ -200,7 +200,7 @@ export default function create(ctx) {
       <div class="wd-panel">
         <div class="wd-seg">
           <button class="wd-segbtn" data-mode="avatar"></button>
-          <button class="wd-segbtn" data-mode="car">${icon('car', 24)}Auto</button>
+          <button class="wd-segbtn" data-mode="car">${icon('car', 24)}Esquife</button>
         </div>
         <div class="tabs wd-cats"></div>
         <div class="wd-list scroll"></div>
@@ -269,7 +269,7 @@ export default function create(ctx) {
       if (b.dataset.mode === 'car') {
         const locked = !garageOk();
         b.classList.toggle('locked', locked);
-        b.innerHTML = `${icon('car', 24)}Auto${locked ? icon('lock', 18) : ''}`;
+        b.innerHTML = `${icon('car', 24)}Esquife${locked ? icon('lock', 18) : ''}`;
       }
     }
   }
@@ -408,8 +408,8 @@ export default function create(ctx) {
     if (m === 'car' && !garageOk()) {
       audio.sfx('error');
       const enObra = S().city.buildings.some(b => b.id === 'establo');
-      ui.toast(enObra ? `Tu ${BUILDING_BY_ID.establo.name} está en obra. Cuando termine vas a poder tunear tu auto`
-        : `Construí el ${BUILDING_BY_ID.establo.name} para tunear tu auto`, { icon: enObra ? 'hammer' : 'lock' });
+      ui.toast(enObra ? `Tu ${BUILDING_BY_ID.establo.name} está en obra. Cuando termine, tu esquife va a tener dónde amarrar`
+        : `Construí el ${BUILDING_BY_ID.establo.name}: su muelle es donde amarra tu esquife`, { icon: enObra ? 'hammer' : 'lock' });
       return;
     }
     if (!silent) audio.sfx('swoosh');
@@ -613,12 +613,13 @@ export default function create(ctx) {
     const car = mode === 'car';
     const phone = h < 520;
     const big = h >= 700;
-    let dist = car ? (phone ? 4.3 : big ? 4.7 : 4.5) : (phone ? 4.1 : big ? 5.2 : 4.7);
-    const look = lookWant.set(0, car ? 0.3 : 0.62, 0);
+    // el esquife es más largo y alto que el auto de antes (con el palo o el globo): la cámara se aleja y mira más arriba
+    let dist = car ? (phone ? 6 : big ? 6.6 : 6.3) : (phone ? 4.1 : big ? 5.2 : 4.7);
+    const look = lookWant.set(0, car ? 0.95 : 0.62, 0);
     if (phone) look.y += car ? 0.1 : 0.08; // la barra de arriba tapa un poco
-    const need = car ? 1.1 : 0.85; // ancho mínimo visible
+    const need = car ? 1.2 : 0.85; // ancho mínimo visible
     if (aspect < need) dist *= need / aspect;
-    const lift = car ? 1.2 : 0.45;
+    const lift = car ? 0.7 : 0.45;
     camWant.set(0, look.y + lift * (dist / 4), dist);
   }
 
@@ -734,7 +735,7 @@ export default function create(ctx) {
     ray.setFromCamera(r.toNDC(e.clientX, e.clientY), r.camera);
     if (!ray.intersectObject(model, true).length) return;
     hop();
-    if (mode === 'car') { audio.sfx('horn'); carSpin = 6; burst(0.4, 10, 0xffe066); }
+    if (mode === 'car') { audio.sfx('swoosh'); carSpin = 6; burst(0.4, 10, 0x8fe0d4); }
     else { audio.sfx('pop'); burst(0.8, 12, 0xf1a181); ui.floatText(e.clientX, e.clientY - 20, icon('heart', 28)); }
   }
 

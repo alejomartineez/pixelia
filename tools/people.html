@@ -84,6 +84,14 @@ if (set === 'pueblos') {
   const { carModel } = await import('../src/avatar/car.js');
   const peoples = ['humano', 'enano', 'orco', 'anuro', 'zorro'];
   peoples.forEach((t, i) => items.push({ obj: carModel({}, { driver: base(t, i % 2 ? { build: 'esbelto' } : {}) }), label: t }));
+} else if (set === 'esquifes') {   // el esquife volador (plan §M5): cascos, aparejos y proas; part=casco|vela|proa
+  const { carModel } = await import('../src/avatar/car.js');
+  const { CAR_BODIES, CAR_WHEELS, CAR_TOPPERS } = await import('../src/core/data.js');
+  const part = q.get('part') || 'casco', color = q.get('color') || 'azul';
+  const list = part === 'vela' ? CAR_WHEELS.map(w => ({ body: 'bote', wheels: w.id, topper: 'farol', color, n: w.name }))
+    : part === 'proa' ? CAR_TOPPERS.map(p => ({ body: 'balandra', wheels: 'vela', topper: p.id, color, n: p.name }))
+    : CAR_BODIES.map(b => ({ body: b.id, wheels: 'vela', topper: 'ninguno', color, n: b.name }));
+  list.forEach((c, i) => items.push({ obj: carModel(c, q.get('driver') ? { driver: base(['humano', 'enano', 'orco', 'anuro', 'zorro'][i % 5]) } : {}), label: c.n }));
 } else if (set === 'enemigos') {
   for (const id of (q.get('ids') ? q.get('ids').split(',') : ENEMY_MODEL_TYPES)) items.push({ obj: enemyModel(id), label: id });
 }
@@ -105,7 +113,7 @@ if (set === 'retratos') {   // retratos de la Bitácora (story-ui.js → portrai
 if (q.get('gray')) document.body.style.filter = 'grayscale(1)';
 const cols = Number(q.get('cols') || Math.min(items.length, 8));
 const rows = Math.ceil(items.length / cols);
-const gap = Number(q.get('gap') || (set === 'enemigos' ? 1.9 : 1.05)), pitch = Number(q.get('pitch') || 0.32), rowGap = Number(q.get('rowgap') || (set === 'enemigos' ? 2.4 : 1.5)) / Math.sin(pitch);
+const gap = Number(q.get('gap') || (set === 'enemigos' ? 1.9 : set === 'esquifes' ? 2.3 : 1.05)), pitch = Number(q.get('pitch') || 0.32), rowGap = Number(q.get('rowgap') || (set === 'enemigos' || set === 'esquifes' ? 2.6 : 1.5)) / Math.sin(pitch);
 const r = createPixelRenderer(document.getElementById('view'), { viewSize: Number(q.get('vs') || Math.max(rows * rowGap * Math.sin(pitch) + 0.3, (cols * gap + 0.2) * innerHeight / innerWidth)), background: 0x26221f, outline: true });
 addLights(r.scene, { shadowSize: 30, shadowRes: 2048 });
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshLambertMaterial({ color: 0x3a342c }));

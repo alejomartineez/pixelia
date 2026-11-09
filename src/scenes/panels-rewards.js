@@ -102,7 +102,7 @@ export function openLogin(ctx) {
 // ---------- Subida de nivel ----------
 const KIND = {
   hair: ['Peinado', 'ribbon'], dress: ['Ropa', 'dress'], crown: ['Cabeza', 'crown'], acc: ['Accesorio', 'wand'],
-  body: ['Auto', 'car'], wheels: ['Ruedas', 'sparkle'], topper: ['Adorno de auto', 'ribbon'],
+  body: ['Esquife', 'car'], wheels: ['Aparejo del esquife', 'car'], topper: ['Proa del esquife', 'car'],
 };
 const CAT_ICON = { casa: 'home', negocio: 'shop', deco: 'flower', especial: 'castle', camino: 'map' };
 const CAT_NAME = { casa: 'Casa', negocio: 'Negocio', deco: 'Deco', especial: 'Especial', camino: 'Camino' };

@@ -306,6 +306,7 @@ function v4Lines() {
   if (v5Pending()) {   // v5: personajes serios y pueblos (plan §M)
     v5.shown = 1;
     lines.push(li('dress', 'Los personajes cambiaron: ahora hay <b>pueblos</b> (humanos, enanos, anuros, gente-zorro y orcos) y ropa de viaje. Tu ropa pasó a su equivalente; elegí tu pueblo en el <b>Equipaje</b>.'));
+    if (v5.skiff) lines.push(li('car', 'Tu auto ahora es un <b>esquife</b> que flota con Céfiro y amarra en el muelle del Establo. Cada pieza pasó a la suya: casco, pintura, aparejo y proa.'));
     if (v5.coins || v5.gems) { lines.push(li('coin', 'Algunas prendas ahora son la misma: te devolvimos lo que pagaste por las repetidas.')); if (v5.coins) reward.coins = v5.coins; if (v5.gems) reward.gems = v5.gems; }
   }
   if (!v4Only()) { store.save(); return { lines, reward }; }

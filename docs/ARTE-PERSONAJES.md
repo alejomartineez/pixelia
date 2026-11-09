@@ -256,7 +256,27 @@ Las muestras se pueden recolorear con `cd`, `cm` y `cf`.
 - **Galería:**
   - `set=caras&who=pueblos` (o `set=giro&who=pueblos`) muestra cada pueblo, recio y esbelto, y un Vaciado;
   - `pick=orco,anuro` filtra;
-  - `set=autos` sienta a un conductor de cada pueblo.
+  - `set=autos` sienta a un conductor de cada pueblo en el esquife, y `set=esquifes` muestra cascos, aparejos y proas.
+
+## 7. Pasada de detalle (respuesta a "¿por qué no se ven así de detallados?")
+
+La referencia del usuario era un enano pixel art pintado a mano, con 4 o 5 tonos por material. Lo nuestro es 3D a 1/48
+con la luz del motor, así que el detalle se suma en bloques limpios y en piezas chicas, sin ruido:
+- **Barba en 5 tonos por capas** (`T5` en `drawFace`): luz en el centro y arriba, bordes y capas de atrás un tono más
+  oscuros, mechones de 2 columnas que alternan medio tono, el centro que abomba 1 y las puntas dentadas (`jag`), con la
+  punta de cada mechón en el tono más oscuro. La barba corta se queda con 4 tonos: el más claro, chico, se lee amarillo.
+  El bigote es lo más claro de la cara.
+- **Borde de luz** (`lit(c, 2)`): en la arista de arriba de los hombros, la primera fila de las mangas, el ruedo de la
+  hombrera y el doblez de la bota. **Sombra** bajo el cinturón (la fila de arriba de la falda) y **pliegues** de 1
+  cada 4 columnas en las faldas largas.
+- **Piezas chicas:** hebilla con relieve (marco, cuero que pasa y lengüeta), remaches del cinturón cada 4, correa
+  cruzada con hebilla en el pecho (`strapCol`), bolsos con tapa y botón, remaches en las hombreras, puño del guante,
+  pulgar, doblez de la bota y suela oscura.
+- **Hacha parada al costado**, con la hoja mirando afuera (se lee de frente y no de canto): empuñadura de cuero, anillos
+  de metal, regatón, la hoja en medialuna con 3 tonos y un pincho.
+- **Enano robusto, a ~3 cabezas:** cabeza de 14 × 13, ojos en la fila 6, manos de 9, punta de bota de 3 y la hombrera
+  alta en todos los enanos (los hombros suben).
+- Los ojos negros de 2 × 2 y las cejas de §2 no cambian.
 
 ## Fuentes
 - [Veloren]: https://book.veloren.net/contributors/artists/voxel-models.html (escala de los modelos vóxel)

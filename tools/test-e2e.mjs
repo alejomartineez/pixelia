@@ -558,8 +558,16 @@ try {
 
     const opened = await ev((uid) => { const c = window.__pixelia.city; const e = c.entries.get(uid); if (!e) return false; const v = e.root.position.clone(); v.y += 0.4; v.project(c.r.camera); const b = document.querySelector('.scene-city').getBoundingClientRect(); return { x: b.left + (v.x + 1) / 2 * b.width, y: b.top + (1 - v.y) / 2 * b.height }; }, busyUid).catch(() => null);
     if (opened) await tapXY(opened.x, opened.y);
-    await sleep(800);
-    const viaUI = await tap('.modal .btn.gold', 'Martillo', { timeout: 1500 });
+    // el toque puede caer en alguien que pasa por delante de la casa (el personaje lleva al Equipaje): si la ficha no
+    // abrió, se vuelve a la ciudad y se abre la misma ficha por el bus (city:focus). Así el martillo se usa siempre desde
+    // la ficha y no queda nada abierto que tape el aviso del Pase más adelante.
+    if (!(opened && await waitFor(`!!document.querySelector('.modal.cx-info-modal')`, 2500))) {
+      if (await run(`return ctx.router.current`) !== 'city') { await run(`ctx.router.go('city'); return true;`); await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 8000); await sleep(1500); }
+      await run(`ctx.bus.emit('city:focus', { uid: ${busyUid} }); return true;`);
+      await waitFor(`!!document.querySelector('.modal.cx-info-modal')`, 5000);
+    }
+    await sleep(500);
+    const viaUI = await tap('.modal .btn.gold', 'Martillo', { timeout: 4000 });
     if (!viaUI) await run(`C.useCityItem('hammer', { uid: ${busyUid} }); E.tick(); return true;`);
     await sleep(600);
     ok((await run(`return C.itemCount('hammer')`)) === hammers - 1 && (await run(`return !(store.state.city.buildings.find(b => b.uid === ${busyUid})?.buildEnd > Date.now())`)), `martillo terminó la obra (${viaUI ? 'desde la ficha' : 'por API'})`);
