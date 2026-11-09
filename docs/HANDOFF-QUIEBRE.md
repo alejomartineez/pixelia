@@ -50,8 +50,8 @@ cada paso.
 | 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y esquife | **en curso** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`), propagando el estilo; la integra el coordinador | |
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
-| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | primera parte (lógica de clases y nivel del líder) **en curso** en la rama `claude/clases-5b-*` | |
-| 6 | Acto 1 completo + E5–E6 | primera parte (Núcleo de Raíz, extracción y Grieta, Invernadero, páginas p4–p8) **en curso** en la rama `claude/raiz-grieta-6a-*` | |
+| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | primera parte hecha (6 clases con nivel 1–10, subclases de Raíz, nivel del líder 1–30, migración de roles; decisiones en DESIGN-COMBAT §8 y §14). Segunda parte (personajes de la ciudad, herramientas, Vínculo, Progreso) **en curso**; la clase en el onboarding y el aspecto de cada clase esperan al 4a | ed2ba67 (v36) |
+| 6 | Acto 1 completo + E5–E6 | primera parte hecha (Núcleo de Raíz, elección de extracción L1, Grieta en amenazas e isla, Invernadero, páginas p4–p8, `test-raiz`). Segunda parte (jefes, faro, abordaje pirata, ecos L6, E5) **en curso** | ed2ba67 (v36) |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
 ### Plan nocturno (2026-11-09)
@@ -71,6 +71,15 @@ tener que dar confirmaciones, le doy el si a todo".
   - el paso 6 en su segunda parte (jefes en sus lugares, faro, abordaje pirata, ecos de noche L6 y E5 en `quests.js`),
     a la sesión de la Raíz.
 - **Release:** no se publica nada sin el usuario. Como mucho, queda listo para `npm run release`.
+
+### Noche, integración 1 (v36)
+- 6a y 5b mergeados en master antes que el 4a: ninguno sube la versión del guardado (la migración de clases no depende
+  de `s.v`), así que el 4a solo tiene que juntar dos líneas en `migrate()` de `state.js` cuando se integre.
+- `npm test` en v36: todo verde salvo `test-e2e`, que ya fallaba en v35 (7 fallas en "Pase de Temporada, Álbum y
+  Eventos": no aparece el aviso «Hoy se abre: el Pase de Temporada»). Se lo pasé a la sesión quiebre-5-3. `test-telemetry`
+  falló con carga y pasó solo.
+- Para no chocar con el 4a, las segundas partes de 5b y 6 no tocan `src/avatar/*`, `enemy-models.js`, onboarding,
+  wardrobe, cofres, migraciones ni el esquife. Los jefes van en un archivo de modelos aparte.
 
 ## Decisiones tomadas
 - Plataforma:
