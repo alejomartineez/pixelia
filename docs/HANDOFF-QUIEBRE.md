@@ -46,7 +46,7 @@ cada paso.
 | 2d | J6 interfaz oscura + J7 fuera lo tierno (solo personas, estilos nuevos, guardado v4) | hecho | 3ef5f83 (v29) |
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
-| 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | **siguiente**: falta el OK del usuario para las descargas (lista en las notas compartidas, `paso-3c-fuentes-audio.md`); la sesión del 3c se abre con su respuesta | |
+| 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | **siguiente**: descargas aprobadas ("dale", set mínimo de `paso-3c-fuentes-audio.md`). La abre el usuario desde la app (brief `paso-3b-hecho-brief-3c.md` en las notas compartidas) | |
 | 4 | B: cinemática "El Quiebre" | pendiente | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | pendiente | |
 | 5b | L5: personas con nombre, Vínculo, herramientas, nivel del líder y pestaña Progreso | pendiente | |
