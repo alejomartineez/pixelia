@@ -5,6 +5,19 @@ import { DEFENSES, RESERVES } from '../core/data.js';
 // ---------- Calendario (§3.1) ----------
 export const THREAT_DAYS = [5, 12, 19, 26];            // días de la temporada (0 = lunes); todos sábados
 export const DAYS_BY_RANK = (rank) => (rank >= 6 ? [0, 1, 2, 3] : rank >= 4 ? [0, 1, 3] : rank >= 2 ? [1, 3] : []);   // índices de THREAT_DAYS
+// La Grieta (src/core/raiz.js, L1) suma amenazas: primero los sábados que le falten al rango y después los miércoles
+// (índices 4 y 5 de ALL_DAYS, días 9 y 23). grietaExtra(g) dice cuántas.
+export const EXTRA_DAYS = [9, 23];
+export const ALL_DAYS = [...THREAT_DAYS, ...EXTRA_DAYS];
+const EXTRA_ORDER = [2, 0, 1, 3, 4, 5];
+/** Índices de ALL_DAYS que le tocan a un rango con `extra` amenazas más por la Grieta (en orden de fecha). */
+export function daysFor(rank, extra = 0) {
+  const base = DAYS_BY_RANK(rank);
+  if (!base.length || !(extra > 0)) return base;
+  const out = base.slice();
+  for (const i of EXTRA_ORDER) { if (out.length >= base.length + extra) break; if (!out.includes(i)) out.push(i); }
+  return out.sort((a, b) => ALL_DAYS[a] - ALL_DAYS[b]);
+}
 export const ORDER = ['crecida', 'incendio', 'tormenta', 'sequia', 'helada'];
 export const OPEN_HOUR = 8;                              // de 08:00 a 23:59 se puede enfrentar
 export const WARN_DAYS = 4;                              // aviso 4 días antes a las 08:00 (6 con el Observatorio)

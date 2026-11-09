@@ -12,6 +12,7 @@ import { codeFor, actionFor, keyLabel } from '../core/keys.js';
 import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
 import { createCityAmbience } from './city-ambience.js';
+import { createCityGrieta } from './city-grieta.js';
 import { STYLE, openBuildMenu, openInfo, openExpand, questBuildIds, setThumbTheme } from './city-ui.js';
 import { createPlacer, PLACE_STYLE, LONG_PRESS_MS } from './city-place.js';
 import { currentThemeId, themeOf } from '../city/themes.js';
@@ -23,7 +24,7 @@ import { eventMult } from '../season/events.js';
 // Amenazas (Fase 3): capa de defensa por turnos, cartel/señales/daño y radio al colocar una defensa
 import { attach as attachDefense, createDecor, createCoverage, openPanel as openThreatPanel } from '../threats/threat-scene.js';
 // ícono de lo que produce cada edificio (globito y cobro): monedas, gemas o provisiones (Huerta, Tambo…)
-const CUR_ICON = { coins: 'coin', gems: 'gem', prov: '🍞' };
+const CUR_ICON = { coins: 'coin', gems: 'gem', prov: '🍞', hierbas: '🌿' };
 
 const TAP_PX = 8;
 
@@ -54,6 +55,7 @@ export default function create(ctx) {
   let placer = null;
   let visit = null;
   let cityAmb = null;                             // ambiente: día y noche, clima, luz (city-ambience.js)
+  let grietaFx = null;                            // la Grieta que brilla en el borde de la isla (city-grieta.js, L1)
   let defense = null, decor = null, TA = null;   // amenazas: defensa en curso, decoración y API para su capa
   let syncAcc = 0, disposed = false, batchCollect = false;
   const raycaster = new THREE.Raycaster();
@@ -835,6 +837,7 @@ export default function create(ctx) {
     life.update(dt, t);
     fx.update(dt);
     cityAmb?.update(dt);
+    grietaFx?.update(dt);
     decor?.update(dt); defense?.update(dt);
     placer.frame(dt, t);
     hoverT += dt;
@@ -1009,6 +1012,7 @@ export default function create(ctx) {
       decor = createDecor(TA);
       cityAmb = createCityAmbience({ ctx, r, lights, container, fx, cam, entries, getTheme: () => themeOf(themeId),
         threatWeather: () => decor?.weather || null, hidden: () => !!placer?.active });
+      grietaFx = createCityGrieta({ ctx, r });
       // radio de cobertura al colocar o mover una defensa (Fase 3 sobre el gancho de city-place.js)
       let cov = null;
       const dropCov = () => { cov?.dispose(); cov = null; };
@@ -1028,7 +1032,7 @@ export default function create(ctx) {
       r.onFrame(frame);
       r.start();
       // gancho de depuración para pruebas headless (tools/smoke.mjs)
-      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placer?.state || null; }, get placer() { return placer; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; }, get coverage() { return cov; }, get ambience() { return cityAmb; } };
+      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placer?.state || null; }, get placer() { return placer; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; }, get coverage() { return cov; }, get ambience() { return cityAmb; }, get grieta() { return grietaFx; } };
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },
     unmount() {
@@ -1038,6 +1042,7 @@ export default function create(ctx) {
       if (defense) { defense.detach(); defense = null; }
       decor?.dispose(); decor = null;
       cityAmb?.dispose(); cityAmb = null;
+      grietaFx?.dispose(); grietaFx = null;
       offs.forEach(f => f()); offs.length = 0;
       removeEventListener('keydown', onKey);
       removeEventListener('keyup', onKey);

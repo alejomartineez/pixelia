@@ -13,6 +13,9 @@
 //   node tools/sim-economy.mjs --trace         una línea por rato con las monedas y el próximo gasto grande
 //   node tools/sim-economy.mjs --k 0.8         escala la producción de monedas (para explorar; 1 = los números del juego)
 //   node tools/sim-economy.mjs --no-check4     sin la corrida extra de 4 ratos (más rápido)
+//   node tools/sim-economy.mjs --raiz exprimir la extracción que se elige al encontrar el Núcleo de Raíz (sellar, medida
+//                                              o exprimir; por defecto medida). Sin --json corre además las tres opciones
+//                                              en procesos aparte y mide la meta de L1 (--no-raiz3 para saltearla)
 //   (desde tools/: npm run sim:economy)
 //
 // Cómo juega (una persona razonable en ratos cortos): al entrar cobra todo (login, cofre gratis, cofres, Pase, misiones,
@@ -53,6 +56,11 @@ const JSON_OUT = args.includes('--json');
 const TRACE = args.includes('--trace');   // una línea por rato: monedas y próximo gasto grande
 const CHECK4 = !args.includes('--no-check4') && !JSON_OUT && NSESS === 2;
 const SESSION_MIN = Number(opt('min', 10));
+// L1 (PLAN-QUIEBRE): la extracción elegida en la mina. La sim encuentra el Núcleo al llegar a la mina o, si el bot no fue
+// al Cerro, 3 días después del rango 5 (como si hubiera ido).
+const RAIZ = ['sellar', 'medida', 'exprimir'].includes(opt('raiz', 'medida')) ? opt('raiz', 'medida') : 'medida';
+const RAIZ3 = !args.includes('--no-raiz3') && !JSON_OUT && NSESS === 2;
+const MAT_V = 250, PROV_V = 20;   // valor en monedas de un material y de una provisión (para la ventaja neta de L1)
 const HOURS = NSESS >= 4 ? [8, 12, 17, 21] : NSESS === 3 ? [9, 14, 20] : NSESS === 1 ? [20] : [9, 20];
 const STEP_SEC = 12;                 // segundos por paso de expedición (≈ 3–6 min por salida normal)
 // peleas de la casilla `enemigo` (DESIGN-COMBAT.md §13): jugada ≈ 4 min (el plan dice 3–6), resuelta rápido ≈ 10 s.
@@ -101,6 +109,7 @@ const XD = await imp('src/expedition/exp-data.js');
 const TH = await imp('src/threats/threats.js');
 const TR = await imp('src/threats/threat-rules.js');
 const TD = await imp('src/threats/threat-data.js');
+const RZ = await imp('src/core/raiz.js');
 const BOTS = await import(pathToFileURL(path.join(HERE, 'exp-bots.mjs')).href);
 const D = data.BUILDING_BY_ID;
 // --k 0.5: escala la producción de monedas de todos los edificios (para explorar; 1 = los números del juego)
@@ -150,6 +159,27 @@ let firstMonumentDay = null;
 const threatLog = [];
 bus.on('threat:resolved', ({ id, type, pct, mode, damaged }) => threatLog.push({ id, type, pct, mode, damaged: damaged.length, day: dayOf() }));
 bus.on('town:rankup', ({ rank }) => { rankAt[rank] = T; });
+// ---- L1: el Núcleo de Raíz, la extracción y lo que gana y pierde la isla desde ese día (monedas, materiales y
+// provisiones que entran, menos reparaciones y obras de Raíz)
+const rz = { mode: RAIZ, foundDay: null, how: null, coinsIn: 0, matsIn: 0, provIn: 0, invMats: 0, repairCoins: 0, repairMats: 0, suturaCoins: 0, suturaMats: 0, suturas: 0, threats: 0, damaged: 0, grietaByDay: [] };
+bus.on('raiz:found', ({ first }) => { if (!first) return; rz.foundDay = dayOf() + 1; rz.how ||= 'mina'; RZ.chooseExtraction(RAIZ, s, T); });
+bus.on('raiz:sutura', () => { rz.suturas++; });
+bus.on('currency:changed', ({ delta, reason }) => {
+  if (!rz.foundDay) return;
+  if (delta?.coins > 0) rz.coinsIn += delta.coins;
+  if (delta?.coins < 0 && reason === 'repair') rz.repairCoins -= delta.coins;
+  if (delta?.coins < 0 && reason === 'sutura') rz.suturaCoins -= delta.coins;
+});
+bus.on('materials:changed', ({ delta, reason }) => {
+  if (!rz.foundDay) return;
+  for (const n of Object.values(delta || {})) {
+    if (n > 0) rz.matsIn += n;
+    else if (reason === 'repair') rz.repairMats -= n;
+    else if (reason === 'sutura') rz.suturaMats -= n;
+  }
+});
+bus.on('production:collected', ({ b, amount, currency }) => { if (!rz.foundDay) return; if (currency === 'prov') rz.provIn += amount; if (b.id === 'invernadero') rz.invMats += amount; });
+bus.on('threat:resolved', ({ damaged }) => { if (rz.foundDay) { rz.threats++; rz.damaged += damaged.length; } });
 const monDone = {};
 bus.on('building:upgraded', ({ b }) => { if (D[b.id]?.cat === 'monumento' && b.level >= data.MONUMENTS[b.id].stages.length && !monDone[b.id]) monDone[b.id] = dayOf() + 1; });
 
@@ -412,6 +442,15 @@ function wishlist() {
   });
   // 5. base del ciclo: Casa de Expediciones, Huerta, Taller, Establo, Dispensario (y el Equipaje del t-algo)
   for (const id of ['huerta', 'casa_exp', 'taller', 'establo', 'dispensario']) add(() => (all(id).length ? 'x' : build(id, { room: true })));
+  // 5b. la Raíz (L1): el Invernadero apenas se encuentra el Núcleo, y la obra de Raíz cuando la Grieta pasa de 40
+  add(() => (RZ.raizFound(s) && !all('invernadero').length ? build('invernadero', { room: true }) : 'x'));
+  add(() => {
+    if (RZ.grieta(s, T) < 40) return 'x';
+    const i = RZ.suturaInfo(s, T);
+    if (i.can.ok) { RZ.startSutura(s, T); return 'done'; }
+    if (i.can.reason === 'Faltan materiales') wantMats(i.cost.mats);
+    return 'x';
+  });
   // 6. monumento: la primera etapa pendiente del primero abierto sin terminar (se guardan materiales y, con ellos, monedas)
   add(() => {
     for (const id of data.MONUMENT_IDS) {
@@ -688,6 +727,8 @@ async function session(day, hour) {
   spaceTried.clear(); movedFor.clear(); roomWanted = null;
   const end = T + SESSION_MIN * 60e3;
   E.tick(); TH.tick();
+  // el bot no fue al Cerro: a los 3 días del rango 5 encuentra el Núcleo igual
+  if (!RZ.raizFound(s) && rankAt[5] && T - rankAt[5] >= 3 * DAY) { rz.how = 'forzado'; RZ.foundNucleo(s, T); }
   claimAll();
   E.collectAll();
   const provFull = (s.prov || 0) >= E.provCap();
@@ -725,6 +766,7 @@ const rows = [];
 let pass30Day = null;
 for (let day = 0; day < DAYS; day++) {
   for (const h of HOURS) await session(day, h);
+  rz.grietaByDay[day] = Math.round(RZ.grieta(s, T) * 10) / 10;
   const p = P(day);
   const si = SE.seasonInfo(T);
   if (si.id === 1 && si.level >= 30 && !pass30Day) pass30Day = day + 1;
@@ -774,6 +816,12 @@ const summary = {
   pass30: seasonDay30, rankDays: Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map(r => [r, dayOfRank(r)])),
   lastLevelPct: pct(lastLevel, rankLast.length), waitFrac, chestsPerDay, gemsPerDay, firstMonumentDay, provFullPct,
   eraLast, planosLastPct, prepAvg, autoAvg, dmgAvg, normals12: normalsBy(1, 2), normals5: normalsBy(5, 8),
+  raiz: (() => {
+    const repair = rz.repairCoins + MAT_V * rz.repairMats, sutura = rz.suturaCoins + MAT_V * rz.suturaMats;
+    const income = rz.coinsIn + MAT_V * rz.matsIn + PROV_V * rz.provIn;
+    return { ...rz, grietaByDay: undefined, grieta: rz.grietaByDay[Math.min(DAYS, 60) - 1] ?? 0, income, repair, sutura, net: income - repair - sutura,
+      bonus: MAT_V * rz.invMats, invernadero: !!all('invernadero').length, legacy: RZ.grietaLegacy(s, T) };
+  })(),
 };
 if (JSON_OUT) { console.log(JSON.stringify(summary)); process.exit(0); }
 
@@ -812,6 +860,19 @@ const child = (extra) => {
   try { return JSON.parse(r.stdout.trim().split('\n').pop()); } catch { return null; }
 };
 const s4 = CHECK4 ? child(['--sessions', '4', '--days', '30', '--seed', String(SEED)]) : null;
+const raiz3 = RAIZ3 ? ['sellar', 'medida', 'exprimir'].map(m => (m === RAIZ ? summary : child(['--days', String(DAYS), '--seed', String(SEED), '--raiz', m]))) : null;
+let raizAdv = null;
+if (raiz3 && raiz3.every(x => x?.raiz?.foundDay)) {
+  const nets = raiz3.map(x => x.raiz.net), lo = Math.min(...nets);
+  raizAdv = lo > 0 ? (Math.max(...nets) - lo) / lo : null;
+  if (!args.includes('--goals')) {
+    console.log(`\nRaíz (L1) · desde el día en que se encuentra el Núcleo hasta el ${Math.min(DAYS, 60)} · valor neto = monedas + ${MAT_V} × material + ${PROV_V} × provisión que entran − reparaciones − obras de Raíz`);
+    for (const x of raiz3) {
+      const r = x.raiz;
+      console.log(`  ${r.mode.padEnd(8)} Núcleo día ${r.foundDay} (${r.how}) · Grieta al final ${f1(r.grieta)} · amenazas ${r.threats} (${r.damaged} dañados) · Invernadero ${r.invernadero ? 'sí' : 'no'}, ${r.invMats} hierbas · reparaciones ${r.repair} · obras de Raíz ${r.suturas} (${r.sutura}) · neto ${r.net} · rango 7 día ${x.rankDays[7] ?? '—'} · final del Acto 4: ${r.legacy.ending}`);
+    }
+  }
+}
 const others = [];
 for (let k = 1; k <= RUNS; k++) { const o = child(['--days', String(DAYS), '--seed', String(SEED + k)]); if (o) others.push(o); }
 const runsAll = [summary, ...others];
@@ -839,6 +900,8 @@ const goals = [
   ['Otros', chestsPerDay <= 1.5, `cofres ≤ 1,5 por día: ${f1(chestsPerDay)}`],
   ['Otros', gemsPerDay >= 15 && gemsPerDay <= 25, `gemas 15–25 por día: ${f1(gemsPerDay)}`],
   ['Otros', inRange(firstMonumentDay, 10, 14), `primer monumento terminado entre los días 10 y 14: día ${firstMonumentDay ?? '—'}`],
+  ['Raíz', raiz3 ? (raizAdv != null && raizAdv <= 0.15) : null, `ninguna extracción saca más de 15 % de ventaja neta a los ${Math.min(DAYS, 60)} días contando las amenazas: ${raizAdv != null ? f1(raizAdv * 100) + '%' : raiz3 ? '(falta el Núcleo en alguna)' : '(sin correr)'}`],
+  ['Raíz', raiz3 ? (() => { const [a, , c] = raiz3.map(x => x?.raiz); return !!(a && c && c.bonus > a.bonus && c.grieta > a.grieta && c.damaged >= a.damaged); })() : null, `exprimir da más bonus y trae más Grieta y no menos daño que sellar: ${raiz3 ? raiz3.map(x => `${x?.raiz?.mode} bonus ${x?.raiz?.bonus} · Grieta ${f1(x?.raiz?.grieta ?? 0)} · dañados ${x?.raiz?.damaged}`).join(' | ') : '(sin correr)'}`],
   ['Otros', eraAll.length ? planosRunPct <= 30 : null, `los planos son lo último que falta para un cambio de época en ≤ 30% de las corridas: ${f1(planosRunPct)}% de ${runsAll.length} corrida(s) (${eraAll.filter(e => e.planosLast).length} de ${eraAll.length} cambios)`],
 ];
 console.log(`\nMetas de balance (DESIGN-CORE.md §8) · ${HOURS.length} ratos/día · ${DAYS} días · semilla ${SEED}${RUNS ? ` (+${RUNS} corridas)` : ''}`);

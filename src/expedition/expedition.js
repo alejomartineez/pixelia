@@ -16,6 +16,7 @@ import { ENCOUNTERS } from '../combat/combat-data.js';
 import * as R from './exp-rules.js';
 import { eventMult } from '../season/events.js';
 import { comfortInfo } from '../home/furniture.js';
+import { mineObjective, foundNucleo, raizMult } from '../core/raiz.js';
 
 export { zonesExplored, roleLevel } from '../core/economy.js';
 
@@ -283,11 +284,32 @@ export function startExpedition({ region = 'bosque', kind = 'normal', party = nu
   if (equip.length) store.spend({ equip: Object.fromEntries(equip.map(id => [id, 1])) }, 'expedition');
   const run = R.newRun({ region, zone, kind, seed, party, equip, prov, mods: cityMods(party, equip, state, { region, kind, tutorial, daily: !!dInfo }) });
   run.city = { recorrido: recorrido && !dInfo, tutorial, at: now, daily: dInfo ? dInfo.day : null };
+  // la mina sellada del Cerro (L1): el objetivo de la salida normal es la mina, para encontrar el Núcleo o volver a elegir
+  const mine = kind === 'normal' && !dInfo && region === 'cerro' ? mineObjective(state) : null;
+  if (mine) placeMine(run, mine);
   e.active = run;
   e.party = party.slice();
   store.markDirty();
   bus.emit('expedition:started', { region, zone, kind, party: run.party.slice(), equip: run.equip.slice(), prov: run.prov, daily: run.city.daily });
   return { run };
+}
+/**
+ * Pone la mina sellada como objetivo de la salida (un lugar lejano). Si el mapa tenía "juntar", elige una casilla al
+ * fondo; el resto del mapa queda igual. mode: 'nucleo' (la primera vez) o 'revisit' (volver a elegir la extracción).
+ */
+export const MINE_NAME = 'la mina sellada';
+function placeMine(run, mode) {
+  const o = run.objective;
+  let cell = o.cell;
+  if (!cell) {
+    const [lo, hi] = EXP.kinds.normal.objDepth;
+    const cands = run.cells.map((c, i) => i).filter(i => { const c = run.cells[i]; return !c.band && c.depth >= lo && c.depth <= hi + 1 && (c.content === 'vacio' || c.content === 'recurso'); });
+    const i = cands.length ? cands[run.seed % cands.length] : run.cells.reduce((b, c, k) => (c.depth > run.cells[b].depth ? k : b), 0);
+    cell = [i % run.w, (i / run.w) | 0];
+  }
+  const c = run.cells[cell[1] * run.w + cell[0]];
+  c.content = 'objetivo'; c.sub = 'lugar'; c.mina = true;
+  run.objective = { type: 'lugar', name: MINE_NAME, cell: cell.slice(), hint: (o.hint || cell).slice(), known: false, done: false, mina: mode };
 }
 /** Salida en curso guardada (para retomarla) o null. */
 export function activeRun(state = S()) {
@@ -378,6 +400,11 @@ export function finishExpedition(run, state = S()) {
     objectiveDone: res.objectiveDone, party: run.party.slice(), equip: run.equip.slice(), far,
     daily: daily ? { day: daily.day, region: daily.region, score: daily.score, stars: daily.stars, loot: daily.loot } : null,
   });
+  // la mina: el Núcleo de Raíz (la primera vez) o la elección de extracción otra vez (raiz.js emite 'raiz:found')
+  if (run.objective?.mina && res.objectiveDone) {
+    const f = foundNucleo(state, now, { revisit: run.objective.mina === 'revisit' });
+    summary.nucleo = { first: f.first, revisit: run.objective.mina === 'revisit' };
+  }
   if (zoneExplored) bus.emit('expedition:zone', { region: run.region, zone: run.zone, total: summary.zonesTotal });
   if (regionDone) bus.emit('expedition:region', { region: run.region });
   return summary;
@@ -427,6 +454,12 @@ export function cycleEffects(id, level) {
       add('tired', 'Descanso tras un fracaso', `${E.cycleValue(id, 'tiredMin', level)} min`);
       if (level >= 3) add('atender', 'Atender', '+2 ánimo', 'Una vez por salida: Atender (+2 de ánimo)');
       break;
+    case 'invernadero': {
+      const d = BUILDING_BY_ID[id];
+      const n = Math.max(1, Math.round(E.cycleValue(id, 'mat', level) * (raizMult() || 0.5)));
+      add('mat', 'Hierbas', n, `${n} de hierbas cada ${Math.round(d.prod.cycle / 60)} min (según la extracción de la Raíz)`);
+      break;
+    }
     case 'huerta': case 'tambo': case 'molino': case 'conservera': {
       const d = BUILDING_BY_ID[id];
       add('prov', 'Provisiones', E.cycleValue(id, 'prov', level), `${E.cycleValue(id, 'prov', level)} provisiones cada ${Math.round(d.prod.cycle / 60)} min`);

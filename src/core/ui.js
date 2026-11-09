@@ -219,7 +219,7 @@ export function flyCurrency(x, y, kind = 'coins', count = 6) {
   const target = document.querySelector(`[data-hud="${kind}"]`);
   const r = target?.getBoundingClientRect();
   const tx = r ? r.left + 14 : innerWidth / 2, ty = r ? r.top + r.height / 2 : 20;
-  const name = kind === 'gems' ? 'gem' : kind === 'xp' ? 'xp' : kind === 'prov' ? '🍞' : 'coin';
+  const name = kind === 'gems' ? 'gem' : kind === 'xp' ? 'xp' : kind === 'prov' ? '🍞' : kind === 'hierbas' ? '🌿' : 'coin';
   if (reducedMotion()) {
     // sin íconos volando: solo el sonido y el saltito del contador
     audio.sfx(kind === 'gems' ? 'gem' : 'coin');

@@ -2,6 +2,7 @@
 // ciudad, nunca el estado vivo:
 //   city = { bounds: {min, max}, buildings: [{ uid, id, x, z, w, d, era, height, cat, level, prov, wood, tree, building }] }
 //   (w, d ya rotados; prov = produce provisiones; wood = época Madera; tree = deco de árbol; building = en obra)
+//   city.mods = { eff: { tipo: eficacia extra } } (la Raíz contra la sequía y la helada; opcional)
 // La defensa en curso es un objeto plano serializable (se guarda en state.threats.active y se retoma).
 import { DEFENSES } from '../core/data.js';
 import {
@@ -87,6 +88,8 @@ export function efficacy(b, type, city) {
     else if (dd.threat === '*' && covers(d, R, b)) hosp = true;
   }
   let eff = best + (hosp ? HOSPITAL_BONUS : 0);
+  // la Raíz (L1): resistencia a la sequía y a la helada en toda la isla (city.mods.eff, lo arma threats.cityView)
+  eff += city.mods?.eff?.[type] || 0;
   const eb = THREAT_TYPES[type]?.eraBonus;
   if (eb && (b.era || 1) >= eb[0]) eff += eb[1];
   return { eff: Math.min(1, eff), by, hospital: hosp };

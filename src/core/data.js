@@ -86,6 +86,11 @@ export const BUILDINGS = [
     happy: 2, xp: 70, prod: { prov: 8, cycle: 5400, cap: 3 }, eraArt: true, desc: 'Harina para el pan de la vianda.' },
   { id: 'conservera', name: 'Conservera', cat: 'ciclo', size: [3, 3], unlock: 8, rank: 5, cost: { coins: 9000, mats: { mineral: 6 } }, time: 240, max: 2,
     happy: 1, xp: 150, prod: { prov: 15, cycle: 7200, cap: 2 }, eraArt: true, desc: 'Frascos y latas que aguantan cualquier viaje.' },
+  // Invernadero de Raíz (PLAN-QUIEBRE L1, DESIGN-STORY §5): pide el Núcleo de Raíz (element). Produce hierbas (prod.mat:
+  // un material de región, al cobrar van a state.materials) que rinden según la extracción (×0,5 sellada, ×1 con medida,
+  // ×2 exprimida; src/core/raiz.js), y en él se hace la obra de Raíz que cose la Grieta. Igual en todas las épocas.
+  { id: 'invernadero', name: 'Invernadero de Raíz', cat: 'ciclo', size: [2, 2], unlock: 8, rank: 5, element: 'raiz', cost: { coins: 7000, mats: { madera: 6, hierbas: 6, mineral: 2 } }, time: 180, max: 1,
+    happy: 3, charm: 12, xp: 140, prod: { mat: 'hierbas', n: 2, cycle: 10800, cap: 2 }, eraArt: true, desc: 'Vidrio ahumado y una raíz que no para de crecer. Da hierbas y, con tiempo, cose la Grieta.' },
 
   // --- Defensas contra las amenazas (DESIGN-CORE.md §3.3, §5.2; radio y efecto por nivel en DEFENSES, más abajo) ---
   // Cubren los edificios con algún tile a distancia ≤ radio. firstPlanos: planos que pide solo la primera.
@@ -172,6 +177,7 @@ export const CYCLE = {
     up: { 3: { mats: { madera: 2 } }, 4: { mats: { madera: 3, hierbas: 2 } }, 5: { mats: { madera: 4, hierbas: 3 } } } },
   tambo: { prov: [5, 7, 9, 11, 13], up: { 3: { mats: { madera: 3 } }, 4: { mats: { madera: 4, hierbas: 2 } }, 5: { mats: { madera: 5, piedra: 3 } } } },
   molino: { prov: [8, 11, 14, 17, 20], up: { 3: { mats: { piedra: 4 } }, 4: { mats: { piedra: 6, madera: 3 }, era: 3 }, 5: { mats: { piedra: 8, mineral: 3 }, era: 3 } } },
+  invernadero: { mat: [2, 3, 3, 4, 5], up: { 3: { mats: { hierbas: 5, madera: 3 } }, 4: { mats: { hierbas: 7, piedra: 4 } }, 5: { mats: { hierbas: 9, mineral: 4 } } } },
   conservera: { prov: [15, 19, 23, 27, 31], up: { 3: { mats: { mineral: 4 } }, 4: { mats: { mineral: 6, piedra: 3 } }, 5: { mats: { mineral: 8, piedra: 4 } } } },
 };
 export const ROLE_BUILDING = { exploracion: 'casa_exp', ingenieria: 'taller', guia: 'establo', sanidad: 'dispensario', recoleccion: 'huerta' };

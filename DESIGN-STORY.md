@@ -83,7 +83,7 @@ Cada uno da dos cosas (resuelve el pendiente de DESIGN-CORE §9):
 | Céfiro | lo sabe alguien que no lo dice | la isla sube y se ve más lejos | Ráfaga: mueve a todo el grupo |
 
 Se acreditan con `store.grant({ element: 'raiz' })` (emite `reward:element`; `story.js` lo anota en `state.story.elements`
-y dispara el contacto de los elementos). Los efectos se aplican en el paso 6.
+y dispara el contacto de los elementos). Los efectos de la Raíz ya están (paso 6a, abajo).
 
 ### Elegir cuánto sacar: la Grieta (L1)
 Al encontrar un elemento (el Núcleo de Raíz en el Acto 1) se elige cuánto sacarle. Vos también podés repetir el Quiebre.
@@ -102,9 +102,36 @@ Al encontrar un elemento (el Núcleo de Raíz en el Acto 1) se elige cuánto sac
 - Balance: `sim:economy` corre las tres opciones; a los 60 días ninguna saca más de un 15 % de ventaja neta contando las
   pérdidas por amenazas.
 
+**Estado (paso 6a, rama `claude/raiz-grieta-6a-4dd18b`, sin mergear):** hecho y probado (`tools/test-raiz.mjs`, 60 ✔).
+- **Dónde está el Núcleo.** Desde el rango 5, la salida normal al Cerro del Hierro tiene como objetivo "la mina sellada"
+  (`placeMine` en `src/expedition/expedition.js`; no toca `exp-data` ni `exp-rules`). Al volver con el objetivo cumplido,
+  `foundNucleo` (`src/core/raiz.js`) acredita `element: 'raiz'` y abre la elección; en la ciudad sale la escena épica
+  `nucleo_1` + `nucleo_2` (galería honda, página 6) y después la pantalla de elección (`src/story/raiz-ui.js`), que la
+  primera vez no se cierra sin elegir.
+- **Volver a elegir.** En Expedición, con el Cerro elegido, "Volver a la mina" (`setRevisit`) manda la próxima salida a la
+  galería; al volver se reabre la elección (se puede cerrar sin cambiar). Subir la extracción suma su Grieta; bajarla no
+  la cose.
+- **La Grieta** (`state.world.grieta`, `state.world.raiz`, completados en `raizState` sin subir la versión): sube sola
+  (`syncGrieta`, idempotente), pega en las amenazas (`grietaPower`, `grietaExtra`; `threats.js` guarda `g` en cada
+  aviso), se ve en la isla (`src/scenes/city-grieta.js`: fisuras naranjas que bajan por el acantilado y entran en el pasto,
+  laten más con más Grieta y de noche; `?grieta=N` para capturas) y Vera la nota a los 25, 50 y 75 (`grieta_*`). Se cose
+  con la obra de Raíz en la ficha del Invernadero (12 h, cara y cada vez más cara).
+- **Final del Acto 4:** `grietaLegacy()` devuelve la Grieta de hoy, el pico, la acumulada (Grieta × días), las obras y una
+  lectura (`entera` ≤ 300, `remendada` ≤ 1.500, `partida`). El final lo escribe el Acto 4.
+- **Efectos de la Raíz en la isla:** +0,1 × rinde de eficacia contra la sequía y la helada (`city.mods.eff` en
+  `threat-rules`) y el **Invernadero de Raíz** (`data.js`, modelo en `src/city/models-raiz.js`: basalto, hierro negro,
+  vidrio ahumado y una raíz con vetas que brillan; igual en todas las épocas). Da hierbas según la extracción.
+- **Pistas del Acto 1:** p4 (abrir La mina sellada), p5 (zona del Bañado), p6 (el Núcleo), p7 (abrir Los faros apagados),
+  p8 (zona de la Costa); `mina_camino` y `mina_mapas` (Vera habla de las marcas de agrimensor, se calla y cambia de
+  tema: L2). Los ecos de noche (L6) quedan para cuando estén las siluetas del 4a.
+- **Para integrar:** sumar `node test-raiz.mjs` al `npm test` y `"test:raiz": "node test-raiz.mjs"` en
+  `tools/package.json`. Al mergear con el 4a (`state.js` v5) no hace falta tocar `defaultState`: los campos nuevos los
+  arma `raizState`. Falta `npm run bump`.
+
 ## 6. Páginas del diario
 Ocho en el Acto 1 (`PAGES`). Se acreditan con `store.grant({ page: 'p3' })` o por su `trigger`:
-p1 en el prólogo, p2 al explorar una zona del Bosque, p3 al subir a rango 2; el resto llega con el Acto 1 completo. Cada
+p1 en el prólogo, p2 al explorar una zona del Bosque, p3 al subir a rango 2, p4 al abrir La mina sellada, p5 al explorar
+una zona del Bañado, p6 con el Núcleo de Raíz, p7 al abrir Los faros apagados y p8 al explorar una zona de la Costa. Cada
 página deja una pregunta abierta (los lobos, el bote de abajo, los permisos, el agua que respira, la galería sellada, el
 faro, la llave). Las páginas 5 a 8 siembran L2 y L4 sin decirlo: p5, los mapas del archivo con "una letra prolija que no
 era la mía" (Vera); p6, las Casas cavaban siguiendo una línea, siempre debajo de sus tierras; p7, "no todos los que
