@@ -124,3 +124,13 @@ jobs:
         with:
           name: mac-smoke
           path: shots/
+      # .dmg universal (Intel y Apple Silicon) para pasárselo a alguien con Mac; sin firma: se abre con clic derecho → Abrir
+      - name: Agregar los objetivos de Intel y Apple Silicon
+        run: rustup target add x86_64-apple-darwin aarch64-apple-darwin
+      - name: Compilar el .dmg universal
+        working-directory: desktop
+        run: npx tauri build --bundles dmg --target universal-apple-darwin --config src-tauri/tauri.check.conf.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-dmg
+          path: desktop/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
