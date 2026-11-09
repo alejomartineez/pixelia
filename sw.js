@@ -4,7 +4,7 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v52';
+const VERSION = 'pixelia-v53';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
@@ -33,6 +33,7 @@ const CORE = [
   './assets/audio/sfx/ui_tick2.m4a', './assets/audio/sfx/ui_toggle2.m4a',
   './src/main.js',
   './src/album/album-art.js', './src/album/album-ui.js', './src/album/album.js',
+  './src/art/sprite-outfits.js', './src/art/sprite-parts.js', './src/art/sprite2d.js',
   './src/audio/composer.js', './src/audio/engine.js', './src/audio/mixer.js', './src/audio/pieces.js', './src/audio/sampler.js',
   './src/audio/soundscape.js', './src/audio/synth.js',
   './src/avatar/avatar-kit.js', './src/avatar/avatar.js', './src/avatar/car.js', './src/avatar/figure.js', './src/avatar/lowpoly.js',
