@@ -5,12 +5,15 @@
 //
 // Revisa:
 //   1. cada idioma con texto tiene todas las claves de es.js, con las mismas {variables}, etiquetas y formas de plural;
-//   2. los archivos ya pasados a claves (PASSED) no tienen texto con tilde fuera de src/i18n/;
+//   2. los archivos ya pasados a claves (PASSED) no tienen texto con tilde fuera de src/i18n/, y cada clave que usan
+//      existe en es.js;
 //   3. cada carácter de un idioma tiene glifo en su fuente (Jersey 10 o fonts/pixel-<idioma>.woff2): nada de "tofu";
 //   4. t(), tn(), matchLang() y el idioma del sistema;
 //   5. en el juego: el splash en japonés, el cambio en vivo desde Ajustes → Idioma, ?lang= sobre los Ajustes, y las
 //      pestañas de Ajustes en alemán (con ?pseudo=1: textos ~35 % más largos) y en japonés sin texto cortado
-//      (scrollWidth > clientWidth en botones, pestañas y tarjetas).
+//      (scrollWidth > clientWidth en botones, pestañas y tarjetas);
+//   6. el HUD de la ciudad, el menú Construir y la ficha de la municipalidad en japonés y en alemán largo: sin texto
+//      cortado, sin botones del HUD encimados y sin claves que falten.
 import http from 'node:http';
 import { readFileSync, writeFileSync, existsSync, statSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, extname, dirname, resolve } from 'node:path';
@@ -83,6 +86,10 @@ const PASSED = {
   'src/core/i18n.js': ['Español', '[i18n]'],   // el nombre del idioma y los avisos de consola para quien programa
   'src/core/settings.js': [],
   'src/scenes/panels-settings.js': ['Pixelín'],
+  'src/core/hud.js': ['señales'],   // el id de una fase de las amenazas (threats.js), no un texto
+  'src/core/ui.js': [],
+  'src/scenes/city-ui.js': [],
+  'src/scenes/city.js': [],
 };
 console.log('Archivos pasados a claves');
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
@@ -91,12 +98,21 @@ for (const [file, allow] of Object.entries(PASSED)) {
   const lits = [...code.matchAll(/'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g)].map(m => m[0]);
   const bad = lits.filter(l => /[áéíóúüñÁÉÍÓÚÑ¿¡]/.test(l.replace(/\$\{[^}]*\}/g, '')) && !allow.some(a => l.includes(a)));
   ok(!bad.length, `${file}: sin texto en español escrito en el código`, bad.slice(0, 6).join(' · '));
+  // las claves escritas enteras ('zona.cosa'); las que se arman ('city.look.cycle.' + n) terminan en punto y no se miran
+  const zones = new Set(Object.keys(ES).map(k => k.split('.')[0]));
+  const keys = lits.filter(l => /^'[a-z]\w*(\.[\w-]+)+'$/.test(l)).map(l => l.slice(1, -1)).filter(k => zones.has(k.split('.')[0]) && !/\.(js|mjs|png|json|m4a|woff2)$/.test(k));
+  const unknown = [...new Set(keys.filter(k => !(k in ES)))];
+  ok(!unknown.length, `${file}: las ${new Set(keys).size} claves que usa están en es.js`, unknown.join(', '));
 }
 
 // ---------- 3. glifos ----------
 console.log('Fuentes');
 const FONT_OF = { ru: 'pixel-cyr', ja: 'pixel-ja', 'zh-CN': 'pixel-zh-CN', ko: 'pixel-ko' };
 const jersey = await cmapOfFile(readFileSync(join(ROOT, 'fonts', 'jersey10.woff2')));
+// pixel-names va en todos los idiomas detrás de Jersey (styles.css, --font): los nombres de los idiomas y algún símbolo (→)
+const names = await cmapOfFile(readFileSync(join(ROOT, 'fonts', 'pixel-names.woff2')));
+const namesRange = (readFileSync(join(ROOT, 'styles.css'), 'utf8').match(/PixelNames[^}]*unicode-range:([^;]+);/) || [])[1] || '';
+const inRange = (c) => namesRange.split(',').some(r => { const m = r.trim().match(/^U\+([0-9A-F]+)(?:-([0-9A-F]+))?$/i); if (!m) return false; const a = parseInt(m[1], 16), b = m[2] ? parseInt(m[2], 16) : a; return c >= a && c <= b; });
 const allText = (d) => Object.values(d).flatMap(forms).join('');
 for (const code of CODES) {
   const text = allText(DICTS[code]).replace(/<[^>]*>|\{\w+\}/g, '');
@@ -104,7 +120,7 @@ for (const code of CODES) {
   const file = FONT_OF[code] && join(ROOT, 'fonts', FONT_OF[code] + '.woff2');
   const own = file && existsSync(file) ? await cmapOfFile(readFileSync(file)) : null;
   if (FONT_OF[code]) ok(!!own, `${code}: está fonts/${FONT_OF[code]}.woff2 (correr node tools/subset-fonts.mjs)`);
-  const lost = [...new Set(text)].filter(ch => { const c = ch.codePointAt(0); return c > 0x20 && !jersey.has(c) && !(own && own.has(c)); });
+  const lost = [...new Set(text)].filter(ch => { const c = ch.codePointAt(0); return c > 0x20 && !jersey.has(c) && !(own && own.has(c)) && !(names.has(c) && inRange(c)); });
   ok(!lost.length, `${code}: todos los caracteres tienen glifo (Jersey 10${own ? ' + ' + FONT_OF[code] : ''})`, lost.join(''));
 }
 for (const f of ['OFL-Jersey10.txt', 'OFL-FusionPixel.txt']) ok(existsSync(join(ROOT, 'fonts', f)), `fonts/${f} (licencia)`);
@@ -159,13 +175,19 @@ const clipped = (root) => page.evaluate((root) => {
   const out = [];
   const box = document.querySelector(root);
   if (!box) return ['(no está ' + root + ')'];
-  for (const el of box.querySelectorAll('button, .set-tab, .a11y-opt, .set-lang, .chip, .card, .pnl-sec-title, .set-lbl b, .set-lbl small, h2, h3, kbd, summary, label')) {
+  // lo que cuelga por diseño (globitos, puntos, carteles del riel) va con position: absolute y no cuenta como texto
+  // cortado: se esconde un momento para medir
+  const hung = [...box.querySelectorAll('*')].filter(el => /^(absolute|fixed)$/.test(getComputedStyle(el).position));
+  const prev = hung.map(el => el.style.display);
+  hung.forEach(el => { el.style.display = 'none'; });
+  for (const el of box.querySelectorAll('button, .set-tab, .a11y-opt, .set-lang, .chip, .pill, .card, .pnl-sec-title, .set-lbl b, .set-lbl small, h2, h3, h4, kbd, summary, label, .cx-lock span, .cx-free span, .cx-card .nm')) {
     const r = el.getBoundingClientRect();
     if (!r.width || !r.height || getComputedStyle(el).visibility === 'hidden') continue;
     const cs = getComputedStyle(el);
     if (cs.overflowX === 'auto' || cs.overflowX === 'scroll') continue;
     if (el.scrollWidth > el.clientWidth + 1 || (cs.overflowY === 'hidden' && el.scrollHeight > el.clientHeight + 2)) out.push(`${el.className || el.tagName}: "${el.textContent.trim().slice(0, 40)}" ${el.scrollWidth}>${el.clientWidth}`);
   }
+  hung.forEach((el, i) => { el.style.display = prev[i]; });
   // el título y las pestañas no se salen del panel
   const panel = document.querySelector('.modal.set-panel')?.getBoundingClientRect();
   if (panel) for (const el of document.querySelectorAll('.set-tab span, .modal-head h2')) {
@@ -174,6 +196,56 @@ const clipped = (root) => page.evaluate((root) => {
   }
   return out;
 }, root);
+/** Botones del HUD que se pisan entre sí o se salen de la ventana (con textos largos, las columnas crecen). */
+const hudOverlaps = () => page.evaluate(() => {
+  const out = [];
+  // los botones y los carteles que cuelgan del riel (nombre abajo, nivel arriba)
+  const els = [...document.querySelectorAll('#hud button, #hud .pill, .cx-side > *, .rail-btn > span:not(.rail-ic), .rail-tag')].filter(el => el.offsetParent !== null && el.getBoundingClientRect().width > 0);
+  const rs = els.map(el => ({ el, r: el.getBoundingClientRect(), name: (el.dataset.act || el.dataset.hud || el.className) }));
+  for (const a of rs) if (a.r.left < -1 || a.r.top < -1 || a.r.right > innerWidth + 1 || a.r.bottom > innerHeight + 1) out.push(`${a.name} se sale de la ventana`);
+  for (let i = 0; i < rs.length; i++) for (let j = i + 1; j < rs.length; j++) {
+    const a = rs[i], b = rs[j];
+    if (a.el.contains(b.el) || b.el.contains(a.el) || a.el.parentElement === b.el.parentElement && a.el.closest('.rail-btn')) continue;
+    const w = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left), h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+    if (w > 2 && h > 2) out.push(`${a.name} pisa a ${b.name} (${Math.round(w)}×${Math.round(h)})`);
+  }
+  return out;
+});
+/** El HUD, el menú Construir y la ficha de la municipalidad en un idioma: nada cortado, nada encimado, ninguna clave de menos. */
+async function checkCity(query, label) {
+  ok(await openCity(query + '&cheat=15'), `${label}: ciudad con todo el HUD abierto (?cheat=15)`);
+  await waitFor(`document.querySelector('#hud [data-act="pass"]')?.style.display !== 'none'`, 5000);
+  await sleep(900);
+  await closeModals();
+  await run(`bus.emit('resources:changed', {}); return true;`);
+  await sleep(400);
+  await shot(`city-${label}`);
+  const cut = await clipped('#hud');
+  ok(!cut.length, `${label}: el HUD no tiene texto cortado`, cut.slice(0, 8).join('\n      '));
+  const over = await hudOverlaps();
+  ok(!over.length, `${label}: en el HUD nada se pisa ni se sale de la ventana`, over.slice(0, 8).join('\n      '));
+  // menú Construir
+  await run(`bus.emit('hud:build'); return true;`);
+  ok(await waitFor(`document.querySelectorAll('.cx-build .cx-card').length > 3`, 5000), `${label}: se abre el menú Construir`);
+  await sleep(700);
+  await shot(`build-${label}`);
+  const cutB = await clipped('.cx-build');
+  ok(!cutB.length, `${label}: el menú Construir no tiene texto cortado`, cutB.slice(0, 8).join('\n      '));
+  await closeModals();
+  // ficha de la municipalidad (rango, producción, terreno, constructoras y acciones)
+  await run(`const b = ctx.state.city.buildings.find(o => o.id === 'castillo'); bus.emit('city:focus', { uid: b.uid }); return true;`);
+  ok(await waitFor(`!!document.querySelector('.cx-info-modal .cx-actions')`, 5000), `${label}: se abre la ficha de la municipalidad`);
+  await sleep(500);
+  await shot(`info-${label}`);
+  const cutI = await clipped('.cx-info-modal');
+  ok(!cutI.length, `${label}: la ficha no tiene texto cortado`, cutI.slice(0, 8).join('\n      '));
+  await closeModals();
+  const code = query.match(/lang=([\w-]+)/)[1];
+  if (Object.keys(DICTS[code]).length) {   // los idiomas sin texto todavía caen al español (paso 4b)
+    const miss = (await run(`return [...I.missing];`)).filter(k => /^(hud|city|ui|common)\./.test(k));
+    ok(!miss.length, `${label}: al HUD y a la ciudad no les falta ninguna clave`, miss.join(', '));
+  }
+}
 const TABS = ['gfx', 'screen', 'sound', 'game', 'lang', 'keys', 'a11y', 'save'];
 async function checkTabs(code, label) {
   await run(`ctx.openPanel('settings', { tab: 'gfx' }); return true;`);
@@ -250,7 +322,6 @@ try {
   // --- 5d. Ajustes en japonés y en alemán largo ---
   console.log('Texto cortado');
   ok(await openCity('&lang=ja'), 'ciudad en japonés');
-  await shot('city-ja');
   const miss0 = await run(`return [...I.missing];`);
   await checkTabs('ja', 'ja');
   const missJa = (await run(`return [...I.missing];`)).filter(k => !miss0.includes(k) && k.startsWith('settings.'));
@@ -259,6 +330,17 @@ try {
   await checkTabs('de', 'de');
   ok(await openCity('&lang=en'), 'ciudad en inglés');
   await checkTabs('en', 'en');
+
+  // --- 6. el HUD y la ciudad en japonés, en alemán largo y en inglés ---
+  console.log('HUD y ciudad');
+  await checkCity('&lang=ja', 'ja');
+  await checkCity('&lang=de&pseudo=1', 'de');
+  await checkCity('&lang=en', 'en');
+  // el HUD se repinta al cambiar el idioma en vivo
+  await run(`const S = await import('/src/core/settings.js'); S.setSetting({ lang: 'ja' }); return true;`);
+  ok(await waitFor(`document.querySelector('#hud [data-act="build"] span')?.textContent === ${JSON.stringify(DICTS.ja['hud.build'])} && document.querySelector('.cx-collect span')?.textContent === ${JSON.stringify(DICTS.ja['city.side.collectAll'])}`, 6000),
+    'al cambiar el idioma, el HUD y los botones de la ciudad se repintan');
+  ok(await page.evaluate((tip) => document.querySelector('#hud [data-hud="coins"]')?.getAttribute('data-tip') === tip, DICTS.ja['hud.coins.tip']), 'también las pistas (data-tip) del HUD');
 } catch (e) {
   fail++; console.log('  ✗ excepción: ' + (e.stack || e.message));
 } finally {

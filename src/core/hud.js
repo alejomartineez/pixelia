@@ -13,6 +13,7 @@ import { store } from './state.js';
 import { icon } from './icons.js';
 import { esc, progressHtml } from './ui.js';
 import { audio } from './audio.js';
+import { t, tn, fmtNum as num } from './i18n.js';
 import { population, happiness, buildersBusy, fmtNum, fmtTime, rankStatus, monumentStatus, renovateInfo, cityEra } from './economy.js';
 import { MONUMENT_IDS, eraDef } from './data.js';
 import { mainQuest, dailyQuests, dailyBonusStatus, claimableCount } from './quests.js';
@@ -39,6 +40,8 @@ function shortTime(ms) {
   if (sec >= 60) return Math.ceil(sec / 60) + 'm';
   return sec + 's';
 }
+/** Texto de una clave listo para un atributo HTML. */
+const a = (key, vars) => esc(t(key, vars));
 const show = (el, on) => { if (el && (el.style.display === 'none') === !!on) el.style.display = on ? '' : 'none'; };
 
 function render() {
@@ -46,7 +49,7 @@ function render() {
   const xp = store.xpProgress();
   root.innerHTML = `
     <div class="hud-top">
-      <button class="hud-profile" data-act="settings" aria-label="Tu perfil y ajustes" title="Perfil y ajustes">
+      <button class="hud-profile" data-act="settings" aria-label="${a('hud.profile.aria')}" title="${a('hud.profile.title')}">
         <span class="lvl-star">${icon('star', 40)}<b data-hud="level">${xp.level}</b></span>
         <span class="hud-name">
           <b data-hud="name">${esc(s.player.name)}</b>
@@ -55,49 +58,63 @@ function render() {
         <span class="hud-gear">${icon('gear', 18)}</span>
       </button>
       <div class="hud-res">
-        <div class="pill" data-hud="coins" data-tip-title="Monedas" data-tip="Las producen casas y negocios: hacé clic en lo que aparece arriba de cada edificio. Pagan obras y mejoras.">${icon('coin', 20)}<b>${fmtNum(s.coins)}</b></div>
-        <div class="pill gem" data-hud="gems" data-tip-title="Gemas" data-tip="Se ganan con misiones, logros, niveles, amenazas y salidas de 3 estrellas. Sirven para cosas especiales.">${icon('gem', 20)}<b>${fmtNum(s.gems)}</b></div>
+        <div class="pill" data-hud="coins" data-tip-title="${a('hud.coins')}" data-tip="${a('hud.coins.tip')}">${icon('coin', 20)}<b>${fmtNum(s.coins)}</b></div>
+        <div class="pill gem" data-hud="gems" data-tip-title="${a('hud.gems')}" data-tip="${a('hud.gems.tip')}">${icon('gem', 20)}<b>${fmtNum(s.gems)}</b></div>
       </div>
     </div>
     <div class="hud-left">
-      <button class="hud-rank" data-act="rank" data-hud="rank" aria-label="Rango y época de tu ciudad"></button>
+      <button class="hud-rank" data-act="rank" data-hud="rank" aria-label="${a('hud.rank.aria')}"></button>
       <div class="hud-stats">
-        <div class="pill sm" data-hud="pop" data-tip-title="Población" data-tip="La traen las casas. Muchos negocios piden un mínimo para abrir.">${icon('people', 16)}<b></b></div>
-        <div class="pill sm" data-hud="happy" data-tip-title="Felicidad" data-tip="Árboles, plantas y deco la suben. Con la ciudad feliz todo produce hasta un 50 % más.">${icon('smile', 16)}<b></b></div>
-        <div class="pill sm" data-hud="builders" data-tip-title="Constructoras" data-tip="Libres / en total. Cada obra o mejora ocupa una hasta que termina.">${icon('hammer', 16)}<b></b></div>
+        <div class="pill sm" data-hud="pop" data-tip-title="${a('hud.pop')}" data-tip="${a('hud.pop.tip')}">${icon('people', 16)}<b></b></div>
+        <div class="pill sm" data-hud="happy" data-tip-title="${a('hud.happy')}" data-tip="${a('hud.happy.tip')}">${icon('smile', 16)}<b></b></div>
+        <div class="pill sm" data-hud="builders" data-tip-title="${a('hud.builders')}" data-tip="${a('hud.builders.tip')}">${icon('hammer', 16)}<b></b></div>
       </div>
       <div class="hud-fx" data-hud="fx"></div>
       <button class="hud-quest" data-act="quests"></button>
       <div class="hud-today" data-layer="hoy">
-        <button class="hud-chip threat" data-act="threat" data-hud="threat" aria-label="Amenaza de la temporada" style="display:none"></button>
-        <button class="hud-chip daily" data-act="daily" data-hud="daily" aria-label="Misiones diarias" style="display:none"></button>
-        <button class="hud-chip renov" data-act="renovate" data-hud="renov" aria-label="Edificios para renovar" style="display:none"></button>
+        <button class="hud-chip threat" data-act="threat" data-hud="threat" aria-label="${a('hud.threat.aria')}" style="display:none"></button>
+        <button class="hud-chip daily" data-act="daily" data-hud="daily" aria-label="${a('hud.daily.aria')}" style="display:none"></button>
+        <button class="hud-chip renov" data-act="renovate" data-hud="renov" aria-label="${a('hud.renov.aria')}" style="display:none"></button>
       </div>
     </div>
     <div class="hud-rail">
       <div class="rail-group" data-layer="hoy">
-        <button class="rail-btn exp" data-act="expedition" data-hud="prov" aria-label="Expedición" style="display:none">${icon('expedition', 30)}<span>Expedición</span><em class="rail-tag" data-hud="provtag"></em><i class="badge" data-badge="expedition"></i></button>
-        <button class="rail-btn" data-act="chests" aria-label="Cofres" style="display:none">${chestIcon('madera', 34)}<span>Cofres</span><i class="badge" data-badge="chests"></i></button>
+        <button class="rail-btn exp" data-act="expedition" data-hud="prov" aria-label="${a('hud.expedition')}" style="display:none">${icon('expedition', 30)}<span>${a('hud.expedition')}</span><em class="rail-tag" data-hud="provtag"></em><i class="badge" data-badge="expedition"></i></button>
+        <button class="rail-btn" data-act="chests" aria-label="${a('hud.chests')}" style="display:none">${chestIcon('madera', 34)}<span>${a('hud.chests')}</span><i class="badge" data-badge="chests"></i></button>
       </div>
       <div class="rail-group" data-layer="temporada">
-        <button class="rail-btn pass" data-act="pass" aria-label="Temporada: Pase y eventos" style="display:none"><span class="rail-ic" data-hud="passic">${icon('sparkle', 30)}</span><span>Temporada</span><em class="rail-tag" data-hud="passlv"></em><i class="rail-ev" data-hud="evdot"></i><i class="badge" data-badge="pass"></i></button>
+        <button class="rail-btn pass" data-act="pass" aria-label="${a('hud.season.aria')}" style="display:none"><span class="rail-ic" data-hud="passic">${icon('sparkle', 30)}</span><span>${a('hud.season')}</span><em class="rail-tag" data-hud="passlv"></em><i class="rail-ev" data-hud="evdot"></i><i class="badge" data-badge="pass"></i></button>
       </div>
       <div class="rail-group" data-layer="largo">
-        <button class="rail-btn works" data-act="works" data-hud="works" aria-label="Obras: monumentos" style="display:none">${icon('monument', 30)}<span>Obras</span><i class="badge" data-badge="works"></i></button>
-        <button class="rail-btn" data-act="album" aria-label="Hallazgos" style="display:none">${icon('finding', 30)}<span>Hallazgos</span><i class="badge" data-badge="album"></i></button>
-        <button class="rail-btn journal" data-act="story" aria-label="Bitácora" title="Bitácora (J)">${icon('journal', 30)}<span>Bitácora</span></button>
+        <button class="rail-btn works" data-act="works" data-hud="works" aria-label="${a('hud.works.aria')}" style="display:none">${icon('monument', 30)}<span>${a('hud.works')}</span><i class="badge" data-badge="works"></i></button>
+        <button class="rail-btn" data-act="album" aria-label="${a('hud.findings')}" style="display:none">${icon('finding', 30)}<span>${a('hud.findings')}</span><i class="badge" data-badge="album"></i></button>
+        <button class="rail-btn journal" data-act="story" aria-label="${a('hud.journal')}" title="${a('hud.journal.title', { key: 'J' })}">${icon('journal', 30)}<span>${a('hud.journal')}</span></button>
       </div>
     </div>
     <nav class="hud-bottom">
-      <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>Equipaje</span></button>
-      <button class="hud-btn big" data-act="build">${icon('hammer', 38)}<span>Construir</span></button>
-      <button class="hud-btn" data-act="social" style="display:none">${icon('people', 30)}<span>Contactos</span><i class="badge" data-badge="social"></i></button>
+      <button class="hud-btn" data-act="wardrobe">${icon('wardrobe', 30)}<span>${a('hud.wardrobe')}</span></button>
+      <button class="hud-btn big" data-act="build">${icon('hammer', 38)}<span>${a('hud.build')}</span></button>
+      <button class="hud-btn" data-act="social" style="display:none">${icon('people', 30)}<span>${a('hud.contacts')}</span><i class="badge" data-badge="social"></i></button>
     </nav>`;
   // el globito de las misiones va en la tarjeta de la misión actual (ya no hay botón Misiones abajo)
   lastFx = lastEv = lastPass = lastQuest = lastRank = lastExp = lastThreat = lastDaily = lastRenov = null;
   lastGates = ''; rankReady = false;
   refreshDynamic();
   refreshBadges();
+  fitRail();
+}
+
+/** Los nombres que cuelgan debajo de los botones del riel van centrados; si uno largo (alemán) se sale por el
+ *  borde de la ventana, se corre hacia adentro lo justo. */
+function fitRail() {
+  if (!root) return;
+  for (const el of root.querySelectorAll('.rail-btn > span:not(.rail-ic)')) {
+    el.style.marginLeft = '';
+    const r = el.getBoundingClientRect();
+    if (!r.width) continue;
+    const over = r.right - (window.innerWidth - 6);
+    if (over > 0) el.style.marginLeft = `-${Math.ceil(over)}px`;
+  }
 }
 
 function setText(sel, txt) { const el = root.querySelector(`[data-hud="${sel}"] b`); if (el && el.textContent !== txt) el.textContent = txt; }
@@ -118,11 +135,11 @@ function refreshFx() {
   const now = Date.now();
   const chips = [];
   const b = safe(() => activeBoosts(now), {});
-  if (b.prod) chips.push(`<button class="fx-chip gold" data-act="backpack" aria-label="Poción de producción">${icon('potion', 16)}<b>x${b.prod.mult}</b><small>${shortTime(b.prod.leftMs)}</small></button>`);
-  if (b.happy) chips.push(`<button class="fx-chip primary" data-act="backpack" aria-label="Felicidad al máximo">${icon('perfume', 16)}<b>Feliz</b><small>${shortTime(b.happy.leftMs)}</small></button>`);
+  if (b.prod) chips.push(`<button class="fx-chip gold" data-act="backpack" aria-label="${a('hud.fx.potion')}">${icon('potion', 16)}<b>x${b.prod.mult}</b><small>${shortTime(b.prod.leftMs)}</small></button>`);
+  if (b.happy) chips.push(`<button class="fx-chip primary" data-act="backpack" aria-label="${a('hud.fx.happyAria')}">${icon('perfume', 16)}<b>${a('hud.fx.happy')}</b><small>${shortTime(b.happy.leftMs)}</small></button>`);
   for (const e of safe(() => activeEvents(now), [])) {
     const m = e.mult?.production;
-    if (m && m > 1) chips.push(`<button class="fx-chip mint" data-act="events" aria-label="${esc(e.title)}">${icon(e.emoji || 'calendar', 16)}<b>x${String(m).replace('.', ',')}</b><small>${fmtLeft(e.endsInMs)}</small></button>`);
+    if (m && m > 1) chips.push(`<button class="fx-chip mint" data-act="events" aria-label="${esc(e.title)}">${icon(e.emoji || 'calendar', 16)}<b>x${num(m)}</b><small>${fmtLeft(e.endsInMs)}</small></button>`);
   }
   const html = chips.join('');
   if (html !== lastFx) { lastFx = html; el.innerHTML = html; el.style.display = html ? '' : 'none'; }
@@ -149,7 +166,8 @@ function refreshRank() {
     + `<small>${era ? `<span class="hud-era">${esc(era.name)}</span>` : ''}${icon('sparkle', 12)}${fmtNum(st.charm)}<span class="hud-rank-stars">${stars}</span></small></span>`
     + `<i class="badge" data-badge="rank"></i>`;
   el.classList.toggle('ready', ready);
-  el.title = ready ? `¡Ya podés subir a ${st.next.name}!` : `Rango ${st.def.name}${era ? ` · época de ${era.name}` : ''} · ${st.charm} de Encanto`;
+  el.title = ready ? t('hud.rank.ready', { rank: st.next.name })
+    : t(era ? 'hud.rank.titleEra' : 'hud.rank.title', { rank: st.def.name, era: era?.name, charm: fmtNum(st.charm) });
   applyBadges();
 }
 
@@ -172,10 +190,10 @@ function refreshSeason() {
   if (pk !== lastPass && si) {
     lastPass = pk;
     root.querySelector('[data-hud="passic"]').innerHTML = icon(si.theme?.emoji || 'sparkle', 30);
-    root.querySelector('[data-hud="passlv"]').textContent = 'Nv ' + si.level;
+    root.querySelector('[data-hud="passlv"]').textContent = t('hud.pass.lv', { n: si.level });
     btn.style.setProperty('--ec', ev?.color || si.theme?.accent || '');
     btn.style.setProperty('--ecd', ev?.dark || si.theme?.dark || '');
-    btn.title = `${si.theme?.name || 'Pase de Temporada'} · nivel ${si.level}` + (ev ? ` · ${ev.title}, termina en ${ev.endsIn}` : '');
+    btn.title = t(ev ? 'hud.pass.titleEv' : 'hud.pass.title', { name: si.theme?.name || t('hud.pass.default'), n: si.level, event: ev?.title, left: ev?.endsIn });
   }
 }
 
@@ -211,7 +229,7 @@ function refreshToday() {
       const all = list.length && list.every(q => q.claimed) && (!bonus || bonus.claimed);
       const ready = list.some(q => q.done && !q.claimed) || bonus?.ready;
       dEl.className = 'hud-chip daily' + (ready ? ' ready' : all ? ' all' : '');
-      dEl.innerHTML = `${icon(all ? 'check' : 'calendar', 18)}<span>${all ? 'Diarias al día' : `Diarias ${done}/${list.length}`}</span>`;
+      dEl.innerHTML = `${icon(all ? 'check' : 'calendar', 18)}<span>${esc(all ? t('hud.daily.done') : t('hud.daily.count', { n: `${done}/${list.length}` }))}</span>`;
     }
   }
   // edificios para renovar a la época de la ciudad (aviso fuera del festejo de cambio de época)
@@ -220,7 +238,7 @@ function refreshToday() {
   if (String(n) !== lastRenov) {
     lastRenov = String(n);
     show(rEl, n > 0);
-    if (n > 0) rEl.innerHTML = `${icon('hammer', 18)}<span>${n} ${n === 1 ? 'edificio para renovar' : 'edificios para renovar'}</span>`;
+    if (n > 0) rEl.innerHTML = `${icon('hammer', 18)}<span>${esc(tn('hud.renov.count', n))}</span>`;
   }
 }
 
@@ -247,7 +265,7 @@ function refreshDynamic() {
     else {
       qEl.style.display = '';
       qEl.classList.toggle('done', q.done);
-      const html = `${icon(q.done ? 'gift' : 'quest', 24)}<span><b>${esc(q.title)}</b><small>${q.done ? '¡Hacé clic para cobrar!' : esc(q.text)}</small>${q.done ? '' : progressHtml(q.progress / q.goal.count)}</span><i class="badge" data-badge="quests"></i>`;
+      const html = `${icon(q.done ? 'gift' : 'quest', 24)}<span><b>${esc(q.title)}</b><small>${q.done ? a('hud.quest.claim') : esc(q.text)}</small>${q.done ? '' : progressHtml(q.progress / q.goal.count)}</span><i class="badge" data-badge="quests"></i>`;
       if (html !== lastQuest) { lastQuest = html; qEl.innerHTML = html; applyBadges(); }
     }
   }
@@ -313,6 +331,7 @@ function refreshGates() {
   lastGates = key;
   for (const [act, on] of Object.entries(g)) show(root.querySelector(`[data-act="${act}"]`), on);
   applyBadges();
+  requestAnimationFrame(fitRail);
 }
 
 /** Expedición: aparece con la Casa de Expediciones (t4) o con una salida en curso; el cartelito muestra las provisiones. */
@@ -326,9 +345,10 @@ function refreshExpedition() {
   if (key === lastExp) return;
   lastExp = key;
   show(el, on);
+  if (on) requestAnimationFrame(fitRail);
   root.querySelector('[data-hud="provtag"]').textContent = fmtNum(s.prov || 0);
-  el.setAttribute('data-tip-title', 'Expedición');
-  el.setAttribute('data-tip', `${fmtNum(s.prov || 0)} provisiones en el depósito. Salen de la Huerta y cada paso afuera gasta.`);
+  el.setAttribute('data-tip-title', t('hud.expedition'));
+  el.setAttribute('data-tip', t('hud.prov.tip', { n: fmtNum(s.prov || 0) }));
   applyBadges();
 }
 /** Renovar: va al próximo edificio que quedó en una época anterior (abre su ficha); de a uno por toque. */
@@ -379,9 +399,11 @@ export const hud = {
     for (const ev of RAF_EVENTS) bus.on(ev, () => { threatAt = 0; if (!rafDyn) rafDyn = requestAnimationFrame(() => { rafDyn = 0; refreshDynamic(); }); });
     for (const ev of BADGE_EVENTS) bus.on(ev, () => { if (!rafBadge) rafBadge = requestAnimationFrame(() => { rafBadge = 0; refreshBadges(); }); });
     timer = setInterval(() => { if (!root.classList.contains('hidden')) refreshDynamic(); }, 1000);
+    window.addEventListener('resize', () => requestAnimationFrame(fitRail));
+    document.fonts?.ready.then(fitRail);
     badgeTimer = setInterval(refreshBadges, 30e3);
   },
-  show() { root?.classList.remove('hidden'); document.body.classList.remove('no-hud'); refreshDynamic(); refreshBadges(); },
+  show() { root?.classList.remove('hidden'); document.body.classList.remove('no-hud'); refreshDynamic(); refreshBadges(); requestAnimationFrame(fitRail); },
   hide() { root?.classList.add('hidden'); document.body.classList.add('no-hud'); },
   refresh() { render(); },
   refreshBadges() { refreshBadges(); },

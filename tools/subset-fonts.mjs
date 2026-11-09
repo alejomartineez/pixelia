@@ -86,8 +86,10 @@ for (const code of ['ja', 'zh-CN', 'ko']) {
 // ruso: el cirílico entero (son pocos glifos) más el latín de base
 const ru = await dictText('ru');
 lost += await build('cyr', VARIANT.cyr, BASE + range(0x400, 0x45f) + ru, ru);
-// nombres de los idiomas para el selector de Ajustes (styles.css la declara con unicode-range: se baja solo si se ven)
-const namesExtra = [...LANG_NAMES].filter(ch => ch.codePointAt(0) > 0x24f).join('');
+// nombres de los idiomas para el selector de Ajustes, más los símbolos que Jersey 10 no tiene y que usa el texto en
+// alfabeto latino (→). styles.css la declara con unicode-range: se baja solo si se ven.
+const SYMBOLS = '→';
+const namesExtra = [...LANG_NAMES].filter(ch => ch.codePointAt(0) > 0x24f).join('') + SYMBOLS;
 lost += await build('names', VARIANT.names, namesExtra);
 console.log(`  unicode-range de pixel-names: ${[...uniq(namesExtra)].map(c => 'U+' + c.codePointAt(0).toString(16).toUpperCase()).join(', ')}`);
 

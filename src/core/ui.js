@@ -2,6 +2,7 @@
 import { icon } from './icons.js';
 import { audio } from './audio.js';
 import { fmtNum } from './economy.js';
+import { t, tn } from './i18n.js';
 import { MATERIAL_BY_ID, RESOURCES, RESERVES } from './data.js';
 import { EQUIPMENT } from '../expedition/exp-data.js';
 
@@ -56,16 +57,16 @@ export function costHtml(cost = {}, size = 16, opts = {}) {
   if (opts.extras && cost.chest) {
     const type = typeof cost.chest === 'object' ? cost.chest.type : cost.chest;
     const n = (typeof cost.chest === 'object' ? cost.chest.n : cost.chests) || 1;
-    const name = rewardArt.chestName?.(type) || 'Cofre';
+    const name = rewardArt.chestName?.(type) || t('ui.chest');
     const art = rewardArt.chest ? rewardArt.chest(type, Math.round(size * 1.15)) : icon('gift', size);
     parts.push(`<span class="cost cost-chest" title="${esc(name)}" aria-label="${esc(name)}">${art}${n > 1 ? '×' + n : ''}</span>`);
   }
   if (opts.extras && cost.stickers) {
     const n = typeof cost.stickers === 'object' ? cost.stickers.n : cost.stickers;
     const art = rewardArt.pack ? rewardArt.pack(Math.round(size * 1.15)) : icon('pack', size);
-    parts.push(`<span class="cost cost-pack" title="Hallazgos" aria-label="${n} hallazgos">${art}×${n}</span>`);
+    parts.push(`<span class="cost cost-pack" title="${esc(t('hud.findings'))}" aria-label="${esc(tn('ui.findings', n))}">${art}×${n}</span>`);
   }
-  return parts.join(' ') || '<span class="cost">Gratis</span>';
+  return parts.join(' ') || `<span class="cost">${t('city.build.gratis')}</span>`;
 }
 
 // ---------- Toast ----------
@@ -112,7 +113,7 @@ export function modal({ title = '', content = '', actions = [], closable = true,
   const back = h('div.modal-back');
   const box = h('div.modal' + (className ? '.' + className.split(' ').join('.') : ''));
   const head = h('div.modal-head', { html: (ic ? icon(ic, 24) : '') + `<h2>${esc(title)}</h2>` });
-  if (closable) head.append(h('button.icon-btn.modal-x', { 'aria-label': 'Cerrar', html: icon('close', 18), onclick: () => close() }));
+  if (closable) head.append(h('button.icon-btn.modal-x', { 'aria-label': t('common.close'), html: icon('close', 18), onclick: () => close() }));
   const body = h('div.modal-body');
   if (typeof content === 'string') body.innerHTML = content; else if (content) body.append(content);
   box.append(head, body);
@@ -160,7 +161,7 @@ if (typeof document !== 'undefined') {
   }, true);
 }
 
-export function confirm(title, text, okLabel = 'Sí', cancelLabel = 'No') {
+export function confirm(title, text, okLabel = t('common.yes'), cancelLabel = t('common.no')) {
   return new Promise(res => {
     let v = false;
     modal({ title, content: `<p class="center">${text}</p>`, onClose: () => res(v),
@@ -174,7 +175,7 @@ export function confirm(title, text, okLabel = 'Sí', cancelLabel = 'No') {
  * Si el modal se cierra sin tocar un botón (p.ej. al cambiar de escena) resuelve con dismissValue
  * (por defecto 'city' si algún botón la tiene, si no el value del primer botón). party: true tira confeti (solo momentos grandes).
  */
-export function rewardModal({ title = '¡Bien!', subtitle = '', reward = {}, stars, lines = [], buttons = [{ label: 'Genial', value: 'ok' }], dismissValue, className = '', party = false } = {}) {
+export function rewardModal({ title = t('ui.reward.title'), subtitle = '', reward = {}, stars, lines = [], buttons = [{ label: t('ui.reward.ok'), value: 'ok' }], dismissValue, className = '', party = false } = {}) {
   return new Promise(res => {
     let val = dismissValue !== undefined ? dismissValue : buttons.some(b => b.value === 'city') ? 'city' : buttons[0].value;
     const wrap = h('div.reward');
