@@ -559,6 +559,90 @@ del texto pixel. Las pantallas nuevas (Ajustes, Bitácora, combate) usan los mis
   a `shots/audio/`, para que el usuario los escuche y opine.
 - `DESIGN-AUDIO.md` nuevo: arquitectura, mapeo por lugar, motivos, fuentes y reglas de mezcla.
 
+### L. Historia que se juega: personajes, herramientas y progreso (pedido del usuario, 2026-11-09)
+Elegidas por el usuario. Todo va a `DESIGN-STORY.md`, que es un borrador: los nombres se pueden cambiar.
+
+**L1. Vos también podés repetir el Quiebre.** Al encontrar un elemento (el Núcleo de Raíz en el Acto 1), se elige
+cuánto sacarle:
+
+| Opción | Lo que da | Lo que cuesta |
+|---|---|---|
+| Sellar | un bonus chico | nada: la isla queda estable |
+| Con medida | el bonus normal | poco |
+| Exprimir | el doble de bonus | sube la **Grieta** |
+
+- **Qué hace la Grieta** (`state.world.grieta`, de 0 a 100):
+  - las amenazas pegan más fuerte y llegan más seguido;
+  - la isla muestra grietas que brillan (J5);
+  - la cartógrafa lo nota.
+- **Se puede reparar**, lento y caro, con obras de la Raíz. Ninguna decisión es para siempre, como pide el tono cozy.
+- **Más adelante** se puede volver a elegir en el mismo lugar: subir o bajar la extracción.
+- **El final del Acto 4** cambia según la Grieta acumulada.
+- **Balance:** `sim:economy` corre las tres opciones. A los 60 días, ninguna puede sacar más de un 15 % de ventaja neta
+  contando las pérdidas por amenazas.
+
+**L2. La culpa de Vera.** Antes del Quiebre, Vera dibujó los mapas de las vetas para las Casas. Sin saberlo, les mostró
+dónde cavar. Por eso se quedó en las ruinas: quiere arreglar algo.
+- **En el Acto 1** solo hay pistas: un eco (L6), una página del diario y un silencio cuando se habla de mapas.
+- **En el Acto 2** se revela.
+- **Es la pista falsa del traidor:** todo apunta a ella y no es ella.
+
+**L4. El giro final.** El Quiebre no fue un accidente.
+- Las Casas sabían que el continente se iba a partir. Con los mapas de Vera cavaron justo donde estaba el Céfiro, para
+  que **sus** tierras subieran y el resto quedara abajo.
+- El traidor es quien guarda ese secreto desde entonces. Ya se insinúa en los "permisos" del diario de Tadeo y en
+  "Céfiro: lo sabe alguien que no lo dice".
+- **Propuesta:** el traidor sale de la gente que llegó a tu ciudad (L5). Así la traición duele.
+- **Pistas repartidas:** páginas p5 a p8 en el Acto 1, ecos y diálogos en los actos 2 y 3. La revelación es en el
+  Acto 4.
+
+**L5. La ciudad cuenta historias, y cada personaje trae una herramienta.**
+- **Cómo llegan.** A medida que crece la población, llegan personas con nombre: solo personas, sin animales que hablen
+  (J7). Cada una dice 2 líneas al llegar y trae un dato del mundo.
+- **Vínculo.** Cada una tiene un nivel de **Vínculo**, de 1 a 5. Sube con sus encargos chicos (que van a la cadena de
+  misiones) y con la historia.
+- **Herramienta.** Cada nivel de Vínculo abre un nivel de su **herramienta**. La herramienta mejora la ciudad, la
+  expedición y el combate a la vez.
+- **Mejorar la herramienta** cuesta materiales de región y pasar por el Taller.
+
+  | Quién (borrador) | Llega | Herramienta | Qué mejora |
+  |---|---|---|---|
+  | Vera, cartógrafa | desde el inicio | Catalejo | ve más lejos en la niebla y, con más niveles, qué hay en cada casilla; en combate muestra las intenciones de más enemigos |
+  | Brígida, herrera que escapó de un reino | rango 2 | Martillo | obras más baratas; las trampas de ingeniería pegan más |
+  | Nahuel, subió del Bajo Mundo colgado de una cuerda | Bosque explorado | Cuerda | atajos en la expedición; en combate trepa a lo alto (clave contra la bestia del Bañado) |
+  | Olga, curandera | rango 3 | Botiquín | más ánimo en la expedición; la sanidad cura más |
+  | Ramiro Ochoa, ex guardia de las Casas | rango 5 | Farol de guardia | más preparación contra las amenazas; en combate protege |
+
+- **Nivel del líder** (1 a 30). Sube con la experiencia que dan las expediciones, los combates y las amenazas
+  aguantadas.
+  - Cada nivel da un bonus chico.
+  - Los niveles clave abren espacios de habilidad. Esas habilidades salen de los elementos y del equipo.
+- **Pestaña "Progreso"** en la Bitácora. Junta todo lo que sube en un solo lugar:
+  - rango y Época;
+  - nivel del líder;
+  - Vínculos y herramientas;
+  - elementos;
+  - Grieta;
+  - páginas del diario.
+
+  En cada fila se ve qué falta para el próximo nivel.
+- **Balance:** las curvas de experiencia y de Vínculo van en DESIGN-CORE §8 y en `sim:economy`. Ninguna herramienta es
+  obligatoria para ganar una pelea común.
+
+**L6. Ecos de noche.** De noche (J3), en algunas ruinas de la ciudad y de la expedición aparecen siluetas vóxel
+traslúcidas que repiten de 5 a 8 s un momento de antes del Quiebre.
+- **Al hacer clic** dan una línea o una página del diario.
+- **Salen una sola vez** cada uno y quedan en la Bitácora.
+- **Tono:** misteriosos, no dan miedo.
+- **Algunos siembran L2 y L4.** Por ejemplo, Vera joven dibujando un mapa para un señor de una Casa.
+
+**Dónde entra en el orden de trabajo:**
+- **3b** deja lista la base de los ecos: noche y lugares.
+- **5b**, nuevo paso después del combate, hace L5: personas, Vínculo, herramientas, nivel del líder y la pestaña
+  Progreso.
+- **6** hace L1 con el Núcleo de Raíz, las pistas de L2, L4 y L6 en el Acto 1, y los primeros ecos.
+- **7** balancea L1 y L5 en los simuladores.
+
 ### F. Documentación
 - `DESIGN-STORY.md` nuevo: canon, actos 1 a 4, facciones, elementos, jefes y reglas de escritura.
 - `DESIGN-COMBAT.md` nuevo: reglas, fórmulas, IA y duración.
@@ -610,9 +694,11 @@ Sigue en pie la regla de CLAUDE.md: no tocar el otro proyecto de Supabase ni usa
     que define los lugares, el clima y el día y la noche. Reemplaza la música sintetizada actual.
 4. **B**: cinemática, que ya usa la paleta, el ambiente oscuro y el motivo de El Quiebre (K3) en modo épico.
 5. **C**: combate. Primero el motor con sus tests, después la escena y la interfaz, después la casilla `enemigo`.
-6. **Acto 1 completo**: escenas, Núcleo de Raíz, jefes, faro, abordaje pirata y E5–E6.
-7. **Balance y primer release**: `sim-combat` y `sim:economy` dentro de sus metas, telemetría de combate y después
-   `npm run release`.
+5b. **L5**: personas con nombre, Vínculo, herramientas, nivel del líder y pestaña Progreso de la Bitácora.
+6. **Acto 1 completo**: escenas, Núcleo de Raíz con la elección de extracción y la Grieta (L1), jefes, faro, abordaje
+   pirata, pistas de Vera y del giro (L2, L4), primeros ecos de noche (L6) y E5–E6.
+7. **Balance y primer release**: `sim-combat` y `sim:economy` dentro de sus metas (incluidas L1 y L5), telemetría de
+   combate y después `npm run release`.
 
 Antes de cada commit: `npm run bump`. La web se sigue regenerando igual, aunque no se pruebe en celular.
 
