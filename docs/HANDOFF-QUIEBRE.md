@@ -47,10 +47,10 @@ cada paso.
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | 0bba507 (v34) |
-| 4a | M1 + M2: personajes serios (vóxel detallado y low-poly para criaturas y jefes) y pueblos del mundo | **en curso en una rama aparte** (worktree propio, la abrió el coordinador); la integra el coordinador | |
+| 4a | M1 + M2: personajes serios (vóxel detallado y low-poly para criaturas y jefes) y pueblos del mundo | **en curso** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`); espera el OK del usuario con las 3 muestras antes de propagar; la integra el coordinador | |
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
-| 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | pendiente | |
-| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder y pestaña Progreso | pendiente | |
+| 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
+| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | pendiente | |
 | 6 | Acto 1 completo + E5–E6 | pendiente | |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
