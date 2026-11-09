@@ -77,7 +77,7 @@ const CSS = `
 .scene-combat .cb-act.item { background:var(--wood-d); }
 .scene-combat .cb-end { min-height:58px; padding:6px 16px; font-size:19px; display:flex; flex-direction:column; align-items:center; line-height:1; }
 .scene-combat .cb-end small { font-size:12px; opacity:.85; margin-top:3px; }
-.scene-combat .cb-keys { font-size:13px; color:var(--ink-ll); text-shadow:0 1px 0 var(--shade); }
+.scene-combat .cb-keys { font-size:13px; color:var(--ink-l); background:var(--hud-glass); padding:1px 8px 2px; border-radius:6px; }
 .scene-combat .cb-hint { min-height:22px; padding:3px 12px; font-size:16px; text-align:center; transition:opacity .25s; }
 .scene-combat .cb-hint.gone { opacity:0; }
 

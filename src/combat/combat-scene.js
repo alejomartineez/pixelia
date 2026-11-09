@@ -4,16 +4,19 @@
 // velocidad de Ajustes → Juego (combatSpeed). La interfaz DOM está en combat-ui.js.
 //
 //   router.go('combat', { battle, onEnd, onSave })   retoma una pelea guardada (state.expedition.active.battle)
-//   router.go('combat', { encounter, seed, party, level, element, tools, equip, roleLevel, attempt, onEnd, onSave })
+//   router.go('combat', { encounter, seed, party, level, element, tools, equip, roleLevel, attempt, conditions, onEnd, onSave })
 //   ?scene=combat                      encuentro de prueba (Ojos en el monte con el grupo del tutorial)
 //   &enc=banado_bestia&seed=3&party=exploracion,guia,sanidad&level=5&element=raiz&tools=cuerda:3&equip=botiquin,farol
 //
 // onSave(b) se llama después de cada acción y de cada turno (la pelea es JSON puro); onEnd(result) al cerrar la pantalla
-// de resultado. Sin onEnd vuelve a la ciudad. El traspaso con la expedición (casilla `enemigo`) llega después del paso 3b.
-// Enganche de ambiente (paso 3b): si existe ctx.ambience, se llama ctx.ambience.apply(r, { place: 'combat', region, time,
-// weather }) al montar; si no, queda la luz propia de cada región.
+// de resultado. Sin onEnd vuelve a la ciudad. El traspaso con la expedición (casilla `enemigo`) va aparte.
+// Ambiente (plan §J3, paso 3b): el combate hereda la hora y el clima de la casilla. Se le pasa `conditions` (lo que da
+// combatConditions de src/core/ambience.js: { hour, weather, place }) y la escena lo dibuja con createAmbience
+// (src/core/ambience-fx.js) sobre la paleta oscura de cada región. Para las capturas: &hour=21&weather=lluvia.
 import * as THREE from 'three';
 import { createPixelRenderer, addLights, setIsoCamera } from '../core/voxel.js';
+import { createAmbience } from '../core/ambience-fx.js';
+import { combatConditions, WEATHER } from '../core/ambience.js';
 import { actionFor } from '../core/keys.js';
 import { voxelModel } from '../city/models.js';
 import { avatarModel, randomLook } from '../avatar/avatar.js';
@@ -34,6 +37,7 @@ const REG = {
   costa: { bg: 0x16171e, grass: ['#6a5d49', '#615541', '#72654f'], dirt: '#3f3328', dirt_d: '#30271f', rock: ['#5b5a58', '#4e4d4b'],
     tree: 'poste', plank: ['#5a3f2c', '#4c3525'], water: ['#24414a', '#2c4d57'], hemi: [0xb0b8cc, 0x24202a, 1.05], sun: [0xffd8b0, 1.45] },
 };
+const LIGHT_FLOOR = { hemi: 0.95, sun: 0.7 };
 const TOP = { llano: 2, salida: 2, pasarela: 2, roca: 2, arbol: 2, agua: 1, alto: 6, vacio: 0 };
 const topOf = (t) => (TOP[t] ?? 2) / 8;
 
@@ -892,9 +896,12 @@ export default function create(ctx) {
     units.clear(); overG.clear(); propsG.clear();
     const R = REG[region] || REG.bosque;
     r.scene.background = new THREE.Color(R.bg);
-    lights.hemi.color.setHex(R.hemi[0]); lights.hemi.groundColor.setHex(R.hemi[1]); lights.hemi.intensity = R.hemi[2];
-    lights.sun.color.setHex(R.sun[0]); lights.sun.intensity = R.sun[1];
-    ctx.ambience?.apply?.(r, { place: 'combat', region, time: p.time, weather: p.weather });
+    const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+    amb.setBase({ sky: [[hex(R.bg), 0], [hex(R.bg), 100]], stars: 0, hemiSky: hex(R.hemi[0]), hemiGround: hex(R.hemi[1]), hemiI: R.hemi[2] * 1.45, sun: hex(R.sun[0]), sunI: R.sun[1] * 1.4 });
+    const cond = combatConditions(p.conditions || {});
+    const qs = new URLSearchParams(location.search);
+    const qHour = qs.has('hour') ? Number(qs.get('hour')) : null, qWeather = WEATHER[qs.get('weather')] ? qs.get('weather') : null;
+    amb.set({ hour: qHour ?? cond.hour, weather: qWeather ?? cond.weather, place: cond.place, region, light: store.state.world?.light ?? 1 }, { now: true });
     buildBoard();
     sel.id = null; hover = null; busy = false;
     autoSelect();
@@ -905,7 +912,7 @@ export default function create(ctx) {
     opts.onSave?.(b);
   }
 
-  let lights = null, frameN = 0;
+  let lights = null, amb = null, frameN = 0;
   return {
     hud: false,
     music: audio.songs?.includes?.('threat') ? 'threat' : 'game',
@@ -928,6 +935,9 @@ export default function create(ctx) {
       r = createPixelRenderer(stage, { ortho: true, viewSize: 10, background: 0x141a17, outline: true, idleFps: 30 });
       lights = addLights(r.scene, { shadowSize: 14, shadowRes: 1024 });
       lights.sun.position.set(-7, 18, 9);
+      amb = createAmbience(r, { lights, sky: null, place: 'exp:cerca', fog: { near: 63, far: 95 },   // niebla detrás del campo, no encima
+        onThunder: () => setTimeout(() => bus.emit('ambience:thunder', { place: 'combat' }), 300 + Math.random() * 900) });
+      amb.setArea(6, 6, 6);
       r.scene.add(world);
       start(params);
       let tagT = 0;
@@ -941,6 +951,12 @@ export default function create(ctx) {
           if (k >= 1) { anims.delete(a); a.done?.(); }
         }
         for (const [, u] of units) u.model.userData.update?.(dt, !!u.moving, t);
+        if (amb) {
+          amb.update(dt, { x: 0, z: 0 });
+          // en el combate la lectura manda: de noche o con tormenta nunca baja de un piso de luz
+          lights.hemi.intensity = Math.max(LIGHT_FLOOR.hemi, lights.hemi.intensity);
+          lights.sun.intensity = Math.max(LIGHT_FLOOR.sun, lights.sun.intensity);
+        }
         tagT += dt;
         if (busy || anims.size || tagT > 0.25) { tagT = 0; placeTags(); }
       });
@@ -982,6 +998,7 @@ export default function create(ctx) {
       if (b && !b.ended) opts.onSave?.(b);
       anims.clear();
       modal?.close?.(); modal = null;
+      amb?.dispose(); amb = null;
       if (r) { r.stop(); r.dispose(); r = null; }
       for (const m of Object.values(overMats)) { m.map?.dispose(); m.dispose(); }
       overMats = {};

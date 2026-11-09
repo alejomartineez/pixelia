@@ -1,8 +1,8 @@
 # Combate táctico por turnos (El Quiebre, paso 5)
 
 Plan: [docs/PLAN-QUIEBRE.md](docs/PLAN-QUIEBRE.md), §C (combate), §I (principios y balance) y §L5 (herramientas y nivel
-del líder). Este documento cubre el **motor puro**. La escena 3D, la interfaz y la casilla `enemigo` van en la segunda parte
-del paso 5 (ver §11).
+del líder). Cubre el motor puro (§1–§10) y la escena con su interfaz (§11). La casilla `enemigo` de la expedición y el
+traspaso entre las dos escenas quedan pendientes (§12).
 
 | Archivo | Qué es |
 |---|---|
@@ -10,6 +10,10 @@ del paso 5 (ver §11).
 | `src/combat/combat-rules.js` | Motor puro y determinista: sin DOM, sin three.js y sin `Math.random` |
 | `tools/test-combat.mjs` | Pruebas en Node: `node test-combat.mjs` (con `--quick` saltea las corridas largas) |
 | `tools/sim-combat.mjs` | Simulador con una IA de jugador: `node sim-combat.mjs [--n 40] [--only id] [--tools]` |
+| `src/combat/combat-scene.js` | Escena `combat` en 3D: campo, unidades, casillas marcadas, animaciones y entrada |
+| `src/combat/combat-ui.js` | Interfaz DOM: objetivo, orden del turno, fichas, barra de acciones, vista previa, menú y resultado |
+| `src/combat/enemy-models.js` | Modelos vóxel de los enemigos del Acto 1 |
+| `tools/test-combat-scene.mjs` | La escena en Chrome headless (SwiftShader): teclado, mouse, turno enemigo y una victoria |
 
 Los dos scripts corren desde `tools/` sin `node_modules`. Todavía no están en `package.json`: se suman al integrar.
 
@@ -297,30 +301,156 @@ cloneBattle(b)
 - **Guardado.** `b` es JSON puro, con la suerte en `b.rs`. Se guarda tal cual en `state.expedition.active`, por ejemplo
   en `active.battle`, después de cada acción o de cada turno.
 
-## 11. Pendiente para el paso 5, segunda parte
-- **`combat-scene.js`**:
-  - cámara ortográfica como `exp-scene.js`;
-  - el grupo con `avatarModel`;
-  - los enemigos en `combat/enemy-models.js`;
-  - lo alto, el agua que sube y la pasarela;
-  - animar los eventos.
-- **`combat-ui.js`**:
-  - barra de acciones con atajos (`src/core/keys.js`);
-  - fichas: vida, recargas y rasgos como acoso, coraza y trabado;
-  - orden de turnos;
-  - previsualización con `preview` al pasar el mouse;
-  - casillas marcadas con el daño (`view().tiles[].danger`);
-  - lo que llega (`incoming`);
-  - objetivo y desafíos;
-  - retirada y resolución rápida.
-- **Casilla `enemigo`**:
+## 11. Escena e interfaz (paso 5, segunda parte)
+**Cómo se abre.**
+- `?scene=combat` abre un encuentro de prueba: Ojos en el monte, con el grupo del tutorial.
+- Parámetros de la URL: `&enc=banado_bestia&seed=3&party=exploracion,guia,sanidad&level=5&element=raiz&tools=cuerda:3,catalejo:2&equip=botiquin,farol&attempt=2`.
+- Para las capturas, `&hour=21&weather=lluvia` cambia solo el dibujo.
+- Desde el juego: `router.go('combat', { battle | encounter…, conditions, onSave(b), onEnd(result, b) })`.
+  - `battle` retoma una pelea guardada (JSON puro).
+  - `onSave` se llama después de cada acción y de cada turno.
+  - `onEnd` se llama al cerrar el resultado. Sin `onEnd` vuelve a la ciudad: es el caso de la prueba, que no guarda.
+
+**La escena (`combat-scene.js`).**
+- Cámara ortográfica como la de la expedición, encuadrada en el espacio libre entre los paneles. Q y E la giran de a 90°.
+- El campo de 8×8 está armado con modelos vóxel por región, con paleta oscura:
+  - el monte tiene pinos;
+  - la mina tiene rocas con vetas que brillan;
+  - el bañado tiene agua, juncos y sauces muertos;
+  - la costa tiene tablones, postes y el dirigible de la capitana del otro lado de la pasarela.
+- Lo alto es un peñón de 6 vóxeles. La salida tiene dos faroles. La pasarela cortada queda como hueco.
+- Lo que cambia se rearma con los eventos:
+  - paredes de raíz y barreras;
+  - trampas;
+  - el agua que sube;
+  - rocas partidas;
+  - la pasarela cortada.
+- El grupo se arma con `avatarModel`: el líder con el look del jugador y los demás con el mismo `randomLook` que en la
+  expedición. El minero atado lleva una soga. Cada unidad tiene un aro: azul el grupo, gris si ya actuó, dorado la elegida
+  y rojo los enemigos.
+- **Casillas marcadas.**
+  - Llevan relleno rojo con borde y el daño en la esquina delantera, para que no tape a la unidad.
+  - Al pasar el mouse por un enemigo, sus casillas se encienden.
+  - El agua que sube va rayada en celeste.
+  - Los refuerzos que llegan se ven rayados en rojo, con el cartel "Llega".
+  - **Alto contraste** (`settings.hiContrast`, clase `hi-contrast`): fondo negro con rayado rojo y borde grueso claro.
+    Se lee sin depender del color y cambia en vivo.
+- **Animaciones.** Cada evento del motor se anima en orden:
+  - caminar casilla por casilla;
+  - estocada al actuar y al golpear;
+  - sacudón y número al recibir daño;
+  - caída al morir;
+  - deslizarse al ser empujado;
+  - salto al cambiar de lugar;
+  - caer del cielo al llegar un refuerzo;
+  - carteles de combo, fase del jefe, turno enemigo y "El agua sube".
+- La velocidad es `settings.combatSpeed` (x1, x2 o x3). Con "reducir movimiento" va siempre a x3.
+- Las animaciones van con tiempo real, no con el tiempo de cuadro. Si la máquina va lenta, saltan pero terminan a tiempo.
+  Con SwiftShader se dibujan 3 cuadros por segundo.
+- **Ambiente** (paso 3b).
+  - Se le pasa `conditions` (lo que devuelve `combatConditions` de `src/core/ambience.js`) y lo dibuja `createAmbience`
+    de `src/core/ambience-fx.js`, sobre la base oscura de cada región. Así hereda la hora y el clima de la casilla.
+  - La niebla va detrás del campo, no encima (`fog` de 63 a 95).
+  - La lectura manda: la luz nunca baja de un piso (`LIGHT_FLOOR`), ni de noche ni con tormenta.
+
+**La interfaz (`combat-ui.js`).** Usa solo los tokens de J6.
+- **Arriba:**
+  - el encuentro y el objetivo ("Vencé a la bestia del Bañado");
+  - los desafíos, con una estrella encendida mientras se cumplen;
+  - la pasarela con su vida;
+  - lo que llega en el próximo turno enemigo;
+  - el turno, sobre el máximo (pasado ese turno, se hace de noche);
+  - el botón de menú.
+- **Izquierda, el orden del turno:**
+  - el grupo, con su estado (se movió, listo o atado) y su vida;
+  - después, los enemigos en el orden en que juegan, con el daño de su golpe o "?" si no se ve;
+  - "N golpes no se ven desde acá", para que se entienda qué suma el Catalejo (L5).
+  - Con un clic en alguien del grupo, se lo elige.
+- **Abajo:**
+  - la ficha de la unidad elegida: vida, mover, ataque y rasgos (trabado, frenado, en lo alto, ya actuó);
+  - la barra de acciones: habilidades primero y consumibles después, con el número de su tecla, la recarga y el texto de
+    la habilidad en el cartel del mouse;
+  - el botón **Fin de turno** (Espacio).
+- **Derecha:** la ficha de lo que está bajo el mouse.
+  - Si es un enemigo: el golpe que marcó, la coraza, el acoso, si está marcado y la fase del jefe.
+  - Si es una casilla: qué es y cuánto cuesta. Subir a lo alto muestra el costo con la Cuerda (L5).
+- **Sobre el campo:** la barra de vida de cada unidad, con "+3" si está marcada, "frenado" o "?".
+- **Vista previa al pasar el mouse.**
+  - Con una habilidad elegida: el alcance en dorado tenue, los blancos en dorado y, sobre cada unidad afectada, lo que
+    pasaría ("−8 · cae", "+4", "sin golpe"). Usa `preview` y no toca la pelea.
+  - Moviendo: el alcance del ataque básico desde la casilla del mouse.
+- **Atajos:**
+
+  | Tecla | Qué hace |
+  |---|---|
+  | 1 a 9 | Habilidades y consumibles de la barra (1 a 4 son las habilidades) |
+  | Espacio | Fin de turno |
+  | Esc | Suelta la habilidad o abre el menú |
+  | Tab y Shift+Tab | Siguiente o anterior del grupo |
+  | Enter | Usa sobre uno mismo (Aliento, Farol, Lona, Cuerda) |
+  | Q y E | Giran la cámara |
+  | Clic derecho | Suelta la habilidad |
+
+- **Clic:**
+  - en alguien del grupo, lo elige;
+  - en una casilla azul, mueve;
+  - en un enemigo al alcance, le pega con el ataque básico;
+  - con una habilidad elegida, la usa en el blanco.
+- **Confirmar el fin de turno** (`settings.confirmEnd`): si a alguien le quedan acciones, pregunta. Espacio confirma y Esc
+  sigue jugando.
+- **Menú (Esc):** seguir, retirarse (pide confirmar y explica lo que cuesta), Ajustes y, en la prueba, volver a la ciudad.
+- **Resultado:**
+  - victoria, derrota o retirada, con el motivo;
+  - las 3 estrellas (victoria y los dos desafíos);
+  - el botín y la experiencia;
+  - los combos;
+  - el ánimo que se pierde;
+  - si perdiste, una lección corta según `result.reason`;
+  - contra un jefe, la revancha.
+  - Botones: "Seguir", o "Reintentar" / "Revancha" y "Volver". La revancha suma un intento.
+  - Emite `combat:end` en el bus.
+
+**Enemigos (`enemy-models.js`).** `enemyModel(type, { broken })`. Cabeza y ojos van en partes animadas, y los ojos brillan
+(capa `light`).
+- **Lobos:** gris gastado, lomo erizado, colmillos y ojos amarillos.
+- **Lobo viejo:** más grande, con melena y cicatriz, y ojos naranja.
+- **Bicho de veta:** caparazón de piedra con cristales celestes que laten. Con `broken`, la coraza queda partida.
+- **Grumete:** bandana, antiparras del cielo y sable.
+- **Tirador:** saco largo, tricornio y trabuco.
+- **Capitana:** saco rojo oscuro con dorado, pluma, brazo de bronce, sable y pistola.
+- **Bestia del Bañado:** lomo de barro y musgo con juncos, garras, boca abierta y cuatro ojos verdes.
+
+**Pruebas.** `node test-combat-scene.mjs`: 29 bien, 0 mal, en unos 4 minutos.
+- Monta la escena.
+- Teclado: Tab, 1 y Esc.
+- Mueve con un clic real.
+- Muestra las fichas al pasar el mouse.
+- Espacio pide confirmar.
+- Pasa el turno enemigo y los lobos marcan casillas, cada una con su número.
+- Vista previa del daño, sin tocar la pelea.
+- Alto contraste.
+- Gana Ojos en el monte con el líder de nivel 30 en 6 turnos, con 3 estrellas y la pantalla de resultado.
+- Retirada desde el menú.
+
+**Capturas** en `shots/combat/` (la carpeta no se sube): `pelea-comun`, `casillas-marcadas`, `vista-previa`,
+`alto-contraste`, `jefe`, `jefe-noche-lluvia` y `resultado`.
+
+## 12. Pendiente
+- **Casilla `enemigo` y traspaso con la expedición:**
   - `CONTENT` en `exp-data.js` y `exp-gen.js`, en las bandas media y lejana;
-  - `exp-scene` le pasa el control a `combat-scene` y vuelve;
-  - si perdés, volvés a la casilla anterior y el ánimo baja según `result.morale`;
+  - `exp-scene` guarda `active.battle` y llama a `router.go('combat', { battle, conditions: combatConditions(…), onSave,
+    onEnd })`;
+  - `onEnd` vuelve a `router.go('expedition', { resume: true })`;
+  - si perdiste, volvés a la casilla anterior y el ánimo baja según `result.morale`;
   - el botín entra a la carga.
-- **Atajo `?scene=combat`** y `npm` scripts (`test:combat`, `sim:combat`) en `tools/package.json`.
-- **Telemetría** (paso 7): victoria, derrota, turnos y retirada.
-- **Paso 5b, L5.** De dónde salen `tools`, `level` y `element`:
+- **Resolución rápida:** el botón va en la tarjeta de la casilla `enemigo`, antes de entrar (`canQuickResolve`).
+- **Integrar:**
+  - sumar `test-combat-scene` a `npm test` y un script `test:combat-scene` en `tools/package.json`;
+  - correr `npm run bump`.
+- **Sonido** (paso 3c): hoy usa los `sfx` que hay (`bump`, `crash`, `horn`, `combo`…) y la música `threat`. El 3c puede
+  sumar golpes propios y una pista de combate.
+- **Telemetría** (paso 7): victoria, derrota, turnos y retirada. Escuchar `combat:end`.
+- **Paso 5b, L5:** de dónde salen `tools`, `level` y `element`:
   - `tools` sale de los Vínculos;
   - `level` sale de la experiencia del líder;
   - `element` sale de los elementos encontrados.
@@ -329,5 +459,7 @@ cloneBattle(b)
   - meter el botín de combate en `sim:economy`.
 
 ## Estado
-Paso 5, primera parte (motor puro, tests, simulador y este documento): **hecho** en la rama
-`claude/combat-engine-2075f3`. Todavía no está integrado a `master` ni lo importa el juego.
+- **Paso 5, primera parte** (motor puro, tests, simulador y este documento): **hecho** e integrado en v32.
+- **Paso 5, segunda parte** (escena, interfaz, modelos de enemigos, prueba headless y capturas): **hecha** en la rama
+  `claude/combat-scene-02dc34`, sin mergear. Ya trae master (v33, con el 3b) adentro.
+- **Falta:** la casilla `enemigo` y el traspaso con la expedición (§12).
