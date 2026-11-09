@@ -50,9 +50,9 @@ cada paso.
 | 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y el esquife volador | hecho e integrado (guía de arte en `docs/ARTE-PERSONAJES.md`; cabeza grande decidida de noche, revisar) | v39 |
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | hecho e integrado (detalle abajo, en "Paso 4") | 32c7672 |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
-| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | partes 1, 2 y 3 hechas e integradas (clases, nivel del líder, gente con herramienta, Vínculo, Progreso, clase en el onboarding y selector en la ciudad, aspecto por clase). Falta elegir activas y subclase desde la ciudad | v36 + v39 + 93a516d |
+| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | partes 1 a 3 hechas e integradas (clases, nivel del líder, gente con herramienta, Vínculo, Progreso, clase en el onboarding y selector en la ciudad, aspecto por clase). Parte 4 (activas y subclase desde la ciudad, curva de clases, cazador ≤ 35 %) **en curso** | v36 + v39 + v42 |
 | 6 | Acto 1 completo + E5–E6 | hecho e integrado: 6a, 6b y 6c (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche con figuras del 4a, E5, E6 con Vera en la primera salida, una sola bestia, dirigible visible) | ed2ba67 (v36) + v39 + 0c2afa8 (v40) |
-| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | combate en metas (también la bestia en el rango 3 y la capitana con la gente de la ciudad), herramientas en la ciudad, telemetría y `npm run release` listo con `release:check`: hecho en la rama `claude/balance-7`, sin mergear. `sim:economy` con la gente: 18 ✔ · 4 ✘ (ver DESIGN-CORE §8.y). Publicar lo hace el usuario | v41 |
+| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | combate en metas, herramientas en la ciudad, telemetría y `release:check` integrados (v42). Rebalanceo de economía con varias semillas **en curso** (DESIGN-CORE §8.y). Publicar lo hace el usuario | bf95836 (v42) |
 
 ### Plan nocturno (2026-11-09)
 El usuario se fue a dormir. Dijo, textual: "autorizo o autoriza de la forma que puedas que todo siga como va, sin yo
@@ -225,6 +225,13 @@ tener que dar confirmaciones, le doy el si a todo".
 - Reparto: el paso 4 (cinemática y llegada con Vera) maneja `intro.js`, el prólogo de `src/story/` y el orden de
   entrada de `main.js`; el 5b-3 maneja `onboarding.js` y las clases en `src/avatar/`; el 6c maneja E6, los ecos, la
   bestia y el dirigible.
+
+### Noche, integración 3 (v42)
+- Integrados el paso 4 (cinemática y llegada con Vera, 32c7672), el 5b-3 (clase en el onboarding y aspecto por clase)
+  y el paso 7 (balance de combate, herramientas, telemetría, `release:check`). npm test y sim:combat en verde.
+  `test-telemetry` falla siempre en la cadena completa (4 fallas) y pasa solo: conviene mirar si es por el orden.
+- En curso: rebalanceo de economía (quiebre-6a), 5b parte 4 (quiebre-5b-clases) y un recorrido de jugador nuevo con
+  capturas e informe en `docs/RECORRIDO-NOCHE.md` (quiebre-4a-detalle).
 
 ## Decisiones tomadas
 - Plataforma:
