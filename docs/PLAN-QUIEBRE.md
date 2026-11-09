@@ -738,8 +738,25 @@ Decisiones del usuario:
   - nada de explicar el lore de entrada;
   - se muestra, no se cuenta.
 
+**M5. El auto pasa a ser un esquife volador** (pedido del usuario, 2026-11-09). El auto quedó del Pixelia de antes:
+`src/avatar/car.js`, el garaje, `state.car` y sus piezas en el vestuario, el pase, los cofres y el álbum. No tiene lugar
+en un mundo de islas flotantes.
+- **El esquife.** Lo reemplaza un bote chico que flota con Céfiro: casco de madera, vela o globo chico y cristal de
+  Céfiro.
+  - Está hecho en el estilo de M1, serio y nada de juguete.
+  - En la ciudad flota amarrado o da vueltas cerca del borde, en vez de andar por las calles.
+- **El garaje pasa a ser un muelle de amarre.** Prepara el muelle de dirigibles del Acto 2.
+- **Piezas.**
+  - Carrocería → casco;
+  - color → pintura;
+  - ruedas → vela o globo;
+  - topper → mascarón o farol.
+- **Migración del guardado.** Lo que tenía cada jugador se convierte en la pieza equivalente del esquife, sin perder
+  nada. Los textos de "auto" y "garaje" cambian en todo el juego.
+- **Va en el paso 4a**, junto con los personajes.
+
 **Dónde entra en el orden de trabajo:**
-- **4a**, nuevo: M1 y M2, el estilo nuevo de los personajes y los pueblos.
+- **4a**, nuevo: M1, M2 y M5 (el esquife), el estilo nuevo de los personajes y los pueblos.
 - **4**: la cinemática y la llegada con Vera (M4), que usan lo de 4a.
 - **5b**: suma M3, las clases y subclases, junto con L5.
 
