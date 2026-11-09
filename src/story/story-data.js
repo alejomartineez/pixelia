@@ -236,6 +236,8 @@ export const MANUAL = [
       ['home', 'Volver', 'Lo que traés cuenta recién al volver a la ciudad. Si las provisiones no alcanzan para el regreso, se llega con la mitad de la carga.'],
       ['star', 'Estrellas', 'Una por cumplir el objetivo, otra por volver con la carga llena y otra por volver con buen ánimo.'],
       ['people', 'Grupo y roles', 'Cada edificio del ciclo suma un rol: exploración, ingeniería, guía, sanidad y recolección. Cada rol resuelve peligros distintos.'],
+      ['🌙', 'Día y noche', 'Se sale al alba y cada paso es una hora. Desde las 20 es de noche: se ve una casilla menos, salvo que lleves el Farol.'],
+      ['⛈️', 'Clima', 'En la barra de arriba están la hora, el clima y lo que viene. La tormenta y la niebla tapan; con tormenta o nieve, colinas, bañados y rocas cuestan una provisión más, salvo con la Lona.'],
     ],
   },
   {

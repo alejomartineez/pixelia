@@ -171,7 +171,7 @@ export class Voxels {
   }
 }
 
-let _mat = null, _matEmissive = null;
+let _mat = null, _matEmissive = null, _matWindow = null;
 /** Material compartido de vóxeles (colores por vértice, sombreado plano). */
 export function voxelMaterial() {
   return _mat || (_mat = new THREE.MeshLambertMaterial({ vertexColors: true }));
@@ -179,6 +179,20 @@ export function voxelMaterial() {
 /** Variante que brilla un poco (ventanas, luces, gemas). */
 export function glowMaterial() {
   return _matEmissive || (_matEmissive = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0x332722 }));
+}
+
+/**
+ * Vidrios de las ventanas (models.js los separa en su capa): de día son vidrio; de noche se prenden (ambience-fx.js,
+ * `setNightGlow`). Sin la noche se ven igual que el material de siempre.
+ */
+export function windowMaterial() {
+  return _matWindow || (_matWindow = new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0xffc46a, emissiveIntensity: 0 }));
+}
+/** Cuánto brillan de noche ventanas (0..1) y luces de los modelos. Vale para todas las escenas: la escena lo vuelve a 0. */
+export function setNightGlow(k = 0) {
+  k = Math.max(0, Math.min(1, k));
+  windowMaterial().emissiveIntensity = k * 0.95;
+  glowMaterial().emissiveIntensity = 1 + k * 2.2;
 }
 
 // ---------- Render nítido ----------
@@ -248,12 +262,15 @@ export function createPixelRenderer(container, opts = {}) {
   const samples = () => (low || !GFX.aa || !renderer.capabilities.isWebGL2) ? 0 : 4;
   const wantOutline = () => (forced ? forced[1] === '1' : !!sceneOutline && GFX.outline);
   let outline = null, outlineKey = '';
+  // corrección de color del ambiente (saturación, tono y niebla por profundidad): va en el mismo pase final
+  let grade = null;
   function buildOutline() {
     const lines = wantOutline(), n = samples();
-    const key = lines || n ? `${lines}|${n}|${JSON.stringify(sceneOutline ?? null)}` : '';
+    const key = lines || n || grade ? `${lines}|${n}|${JSON.stringify(sceneOutline ?? null)}` : '';
     if (key === outlineKey) return false;
     outline?.dispose(); outline = null; outlineKey = key;
     if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines);
+    if (outline && grade) outline.setGrade(grade);
     return true;
   }
   buildOutline();
@@ -356,6 +373,7 @@ export function createPixelRenderer(container, opts = {}) {
       scene.traverse(o => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; for (const m of ms) m.needsUpdate = true; });
       if (_mat) _mat.needsUpdate = true;
       if (_matEmissive) _matEmissive.needsUpdate = true;
+      if (_matWindow) _matWindow.needsUpdate = true;
     }
     resize();
     gate.reset();
@@ -381,6 +399,17 @@ export function createPixelRenderer(container, opts = {}) {
     render: draw,
     /** Prende/apaga el contorno tinta de esta escena (true | {strength, threshold, width} | false). */
     setOutline(o) { sceneOutline = o; if (buildOutline()) resize(); },
+    /**
+     * Corrección de color del ambiente (src/core/ambience-fx.js): { sat, tint: [r,g,b], fog: { color, amt, near, far } }
+     * o null. Con un valor, el pase final queda aunque no haya contorno ni antialias.
+     */
+    setGrade(g) {
+      const had = !!grade;
+      grade = g || null;
+      if (had !== !!grade && buildOutline()) resize();
+      if (grade) outline?.setGrade(grade);
+    },
+    get grade() { return grade; },
     /** ¿Se dibuja el contorno tinta? */
     get outline() { return !!outline && wantOutline(); },
     /** Muestras de antialias (0 = sin antialias). */
@@ -441,6 +470,8 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
       tColor: { value: rt.texture }, tDepth: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) },
       near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3d2f2a) }, lineW: { value: 2 },
       strength: { value: cfg.strength ?? 0.85 }, lines: { value: lines ? 1 : 0 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
+      sat: { value: 1 }, tint: { value: new THREE.Vector3(1, 1, 1) }, fogColor: { value: new THREE.Color(0xc8c2b4) },
+      fogAmt: { value: 0 }, fogNear: { value: 50 }, fogFar: { value: 90 },
     },
     vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
     fragmentShader: `
@@ -448,6 +479,7 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
       uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel; uniform float lineW;
       uniform float near; uniform float far; uniform vec3 ink; uniform float strength; uniform float lines;
       uniform float thrAbs; uniform float thrLin; uniform float thrSq;
+      uniform float sat; uniform vec3 tint; uniform vec3 fogColor; uniform float fogAmt; uniform float fogNear; uniform float fogFar;
       varying vec2 vUv;
       float dist(vec2 uv) {
         float d = texture2D(tDepth, uv).x;
@@ -476,6 +508,11 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
         // c viene premultiplicado (fondo transparente): tinta encima y de vuelta a sRGB sin premultiplicar
         vec4 o = vec4(mix(c.rgb, ink, k), mix(c.a, 1.0, k));
         vec3 rgb = o.a > 0.0 ? o.rgb / o.a : vec3(0.0);
+        // ambiente: niebla por profundidad (lo lejano se pierde), saturación y tono (noche, clima, la isla gris)
+        float f = fogAmt * smoothstep(fogNear, fogFar, dc) * (1.0 - k);
+        rgb = mix(rgb, fogColor, f);
+        float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+        rgb = max(mix(vec3(lum), rgb, sat) * tint, 0.0);
         gl_FragColor = vec4(rgb, 1.0);
         #include <colorspace_fragment>
         gl_FragColor = vec4(gl_FragColor.rgb * o.a, o.a);
@@ -507,6 +544,14 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
       renderer.render(scene, camera);
       renderer.setRenderTarget(prev);
       renderer.render(postScene, postCam);
+    },
+    setGrade(g) {
+      const u = mat.uniforms;
+      u.sat.value = g.sat ?? 1;
+      const t = g.tint || [1, 1, 1]; u.tint.value.set(t[0], t[1], t[2]);
+      const f = g.fog || {};
+      u.fogAmt.value = f.amt || 0; if (f.color != null) u.fogColor.value.set(f.color);
+      u.fogNear.value = f.near ?? 50; u.fogFar.value = f.far ?? 90;
     },
     dispose() { rt.depthTexture.dispose(); rt.dispose(); quad.geometry.dispose(); mat.dispose(); },
   };

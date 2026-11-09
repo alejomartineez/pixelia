@@ -4,7 +4,7 @@
 //   constructionModel(w, d) / natureModel(kind, seed) / cloudModel(seed) / thumbnail(id, level)
 // Las geometrías se construyen una sola vez por id+nivel y se reusan en cada Group nuevo.
 import * as THREE from 'three';
-import { voxelMaterial, glowMaterial, addLights, setIsoCamera, Voxels, shade, outlineCanvas } from '../core/voxel.js';
+import { voxelMaterial, glowMaterial, windowMaterial, addLights, setIsoCamera, Voxels, shade, outlineCanvas } from '../core/voxel.js';
 import { BUILDING_BY_ID, OUTFIT_COLORS, MONUMENTS, eraOfRank } from '../core/data.js';
 import { Model, P, C, rng, pick, bush, cone, flower, FLOWER_COLORS, eraRecolor, clampEra } from './models-kit.js';
 import { SPECIAL_BUILDERS } from './models-special.js';
@@ -32,6 +32,7 @@ function matFor(kind, opts) {
   if (opts.ghost) return ghostMaterial();
   if (kind === 'light') return lightMaterial();
   if (kind === 'glow') return glowMaterial();
+  if (kind === 'win') return windowMaterial();
   return voxelMaterial();
 }
 
@@ -44,6 +45,11 @@ const snowAt = (x, y, z) => (((x * 73856093) ^ (y * 19349663) ^ (z * 83492791)) 
  */
 function applyTheme(model, themeId) {
   const t = themeOf(themeId);
+  // los vidrios van a su capa: de noche se prenden (ambience-fx.js, setNightGlow). El tema de noche ya los prende siempre.
+  if (!t.litWindows) {
+    const win = model.win || (model.win = new Voxels());
+    for (const [k, c] of [...model.v.map]) if (isGlass(t.id, c)) { model.v.map.delete(k); win.map.set(k, c); }
+  }
   if (t.identity) return;
   const recolor = (v) => { for (const [k, c] of v.map) v.map.set(k, mapColor(t.id, c)); };
   const v = model.v;
@@ -59,6 +65,7 @@ function applyTheme(model, themeId) {
     for (const [k, x, y, z, c] of lit) { v.map.delete(k); model.light.set(x, y, z, mapColor(t.id, c)); }
   } else recolor(v);
   recolor(model.glow);
+  if (model.win) recolor(model.win);
   if (!t.litWindows) recolor(model.light);
   for (const p of model.parts) recolor(p.v);
 }
@@ -161,6 +168,7 @@ function compile(model, themeId = DEFAULT_THEME, o = {}) {
   add(model.v, null, null, 'std', true);
   add(model.glow, null, null, 'glow', true);
   add(model.light, null, null, 'light', false);
+  if (model.win) add(model.win, null, null, 'win', true);
   for (const p of model.parts) add(p.v, p.name, p.pivot, p.mat, p.cast);
   return { parts, anims: model.anims, height: (model.height ?? maxY) * S, size: [model.W * S, model.D * S] };
 }

@@ -150,6 +150,26 @@ Todo color de la interfaz sale de los tokens de `:root` en `styles.css`; las pan
   y bronce con `tailor()` de `wardrobe-stage.js`.
 - Las láminas de los Hallazgos (`album-art.js`) son ilustración y conservan sus colores.
 
+## Ambiente: lugar, luz, día y noche, clima (El Quiebre, §J1–J5)
+- **`src/core/ambience.js`** (puro, también corre en Node): `PLACES` (ciudad, expedición cerca / media / lejos, mina,
+  faros, Bajo Mundo), `WEATHER` (despejado, nublado, lluvia, tormenta, niebla, nieve, ceniza y los de las amenazas: humo,
+  helada, sequía), `resolveLook({ base, place, hour, weather, light, region })` → cielo, luces, saturación, tono, niebla,
+  brillo de ventanas, partículas. Reloj de la ciudad `cityHour()` (20 min reales por día), `cityWeather()` (casi siempre
+  lindo: es el refugio), `lightFor(state, rank)` y `initWorldLight` (main.js) para `state.world.light`.
+- **`src/core/ambience-fx.js`** lo aplica a una escena: luces, cielo CSS (ciudad) o fondo (expedición), `r.setGrade` de
+  `voxel.js` (saturación, tono y niebla por profundidad en el pase final, que queda aunque no haya contorno),
+  `setNightGlow` (los vidrios van a su capa con `windowMaterial()`; `models.js` los separa al compilar), lluvia, nieve,
+  ceniza, brasas y polvo (`graphics().particles`; nada con reducir movimiento) y relámpagos (`ambience:thunder` para el 3c).
+- **Ciudad** (`src/scenes/city-ambience.js`): hora y clima del día, el clima de la amenaza en sus 48 h de señales
+  (`decor.weather`, `THREAT_WEATHER`), humo de chimeneas (más al atardecer, de noche y con frío), la casa nueva prende la
+  chimenea, la cosecha suelta hojas, la reparación limpia. Ajustes → Juego → "Día y noche en la ciudad".
+- **Expedición** (`exp-ambience.js`; reglas en `exp-rules.js` `conditions`): se sale al alba (6:00) y cada paso es una hora;
+  desde las 20 la visión baja 1 (el Farol la devuelve). Un frente de clima por salida a lo sumo, con su propia suerte (no
+  cambia mapas ni peligros) y anunciado: tormenta (visión −1 y +1 provisión en colina, bañado y roca; la Lona lo evita), niebla y
+  ceniza (visión −1), nieve (+1 en terreno difícil). Chip de hora y clima en la barra, aviso al cambiar, niebla y color según el anillo, polvo y huellas.
+- **Para lo que viene**: el combate pide `combatConditions(cond)`; los ecos de noche (L6) usan `cityEchoSpots` /
+  `expEchoSpots`, `ambience:night` y `__exp.echoSpots()`. Pruebas y capturas: `?hour=21.5` y `?weather=tormenta`.
+
 ## Personajes, temas y contorno
 - **Personajes** (`data.js` → `AVATAR_TYPES`): Chica y Chico, solo personas. Los animales (gato, zorro, conejo, oso) y sus piezas se retiraron en el guardado v4 (`migrateV4` de `state.js`: la persona conserva los colores, las piezas retiradas `RETIRED_ITEMS` se devuelven al precio pagado y hay un aviso único); `LEGACY_TYPES` traduce perfiles viejos de contactos. El código de pelajes de `avatar*.js` queda sin uso. La primera partida (`onboarding.js`, si `state.onboarded` es false) elige tipo (al azar al empezar), colores, nombre y ciudad; después se cambia en el Equipaje (pestaña Personaje) o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel. Textos neutros: nada de "princesa" salvo el nombre del tipo.
 - **Estilos de ciudad** (`city/themes.js`): Pueblo Acogedor (por defecto, sin re-mapeo), Otoño, Musgo, Ceniza (pizarra y brasas, ventanas encendidas), Bruma (la costa de los faros), Ocaso (ventanas encendidas), Escarcha y Luces de Noche (`dark: true`, aro claro bajo el personaje). Los ids viejos quedan como alias (`THEME_ALIASES`: pastel → otono, moderna → ceniza, playa → bruma, bosque → musgo, invierno → escarcha) y la v4 los cambia en el guardado. No hay modelos por tema: los colores de vóxel se re-mapean (`mapColor`; las reglas usan "ranuras": `pink` = terracota principal, `lilac` = azul pizarra) y cambian terreno, cielo, luces y naturaleza. Se guarda en `state.city.theme`, se elige gratis con `openThemePicker(ctx)` (botón paleta en la ciudad, Ajustes y onboarding), emite `city:theme` y se ve en las visitas.

@@ -11,6 +11,7 @@ import { createCameraCtl } from './city-camera.js';
 import { codeFor, actionFor, keyLabel } from '../core/keys.js';
 import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
+import { createCityAmbience } from './city-ambience.js';
 import { STYLE, openBuildMenu, openInfo, openExpand, questBuildIds, setThumbTheme } from './city-ui.js';
 import { createPlacer, PLACE_STYLE, LONG_PRESS_MS } from './city-place.js';
 import { currentThemeId, themeOf } from '../city/themes.js';
@@ -52,6 +53,7 @@ export default function create(ctx) {
   const myModals = new Set();
   let placer = null;
   let visit = null;
+  let cityAmb = null;                             // ambiente: día y noche, clima, luz (city-ambience.js)
   let defense = null, decor = null, TA = null;   // amenazas: defensa en curso, decoración y API para su capa
   let syncAcc = 0, disposed = false, batchCollect = false;
   const raycaster = new THREE.Raycaster();
@@ -776,6 +778,7 @@ export default function create(ctx) {
     const L = T.lights;
     lights.hemi.color.setHex(L.sky); lights.hemi.groundColor.setHex(L.ground); lights.hemi.intensity = L.hemi;
     lights.sun.color.setHex(L.sun); lights.sun.intensity = L.sunI;
+    cityAmb?.setTheme(T);
     setThumbTheme(themeId);
   }
   /** Cambia el tema en vivo: mundo nuevo, edificios recoloreados (geometrías cacheadas por tema). */
@@ -831,6 +834,7 @@ export default function create(ctx) {
     life.setCamAngle(cam.angle);
     life.update(dt, t);
     fx.update(dt);
+    cityAmb?.update(dt);
     decor?.update(dt); defense?.update(dt);
     placer.frame(dt, t);
     hoverT += dt;
@@ -1003,6 +1007,8 @@ export default function create(ctx) {
       TA = { ctx, r, ov, entries, fx, cam, container, sideEl, HALF, get world() { return world; }, topPos: (e, extra) => topPos(e, extra),
         startDefense, onDefenseEnd: endDefense, highlight: highlightBuilding, hidden: false };
       decor = createDecor(TA);
+      cityAmb = createCityAmbience({ ctx, r, lights, container, fx, cam, entries, getTheme: () => themeOf(themeId),
+        threatWeather: () => decor?.weather || null, hidden: () => !!placer?.active });
       // radio de cobertura al colocar o mover una defensa (Fase 3 sobre el gancho de city-place.js)
       let cov = null;
       const dropCov = () => { cov?.dispose(); cov = null; };
@@ -1022,7 +1028,7 @@ export default function create(ctx) {
       r.onFrame(frame);
       r.start();
       // gancho de depuración para pruebas headless (tools/smoke.mjs)
-      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placer?.state || null; }, get placer() { return placer; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; }, get coverage() { return cov; } };
+      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placer?.state || null; }, get placer() { return placer; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; }, get coverage() { return cov; }, get ambience() { return cityAmb; } };
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },
     unmount() {
@@ -1031,6 +1037,7 @@ export default function create(ctx) {
       if (window.__pixelia?.city?.r === r) delete window.__pixelia.city;
       if (defense) { defense.detach(); defense = null; }
       decor?.dispose(); decor = null;
+      cityAmb?.dispose(); cityAmb = null;
       offs.forEach(f => f()); offs.length = 0;
       removeEventListener('keydown', onKey);
       removeEventListener('keyup', onKey);
