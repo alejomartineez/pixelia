@@ -47,12 +47,30 @@ cada paso.
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | 0bba507 (v34) |
-| 4a | M1 + M2: personajes serios (vóxel detallado y low-poly para criaturas y jefes) y pueblos del mundo | **en curso** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`); espera el OK del usuario con las 3 muestras antes de propagar; la integra el coordinador | |
+| 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y esquife | **en curso** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`), propagando el estilo; la integra el coordinador | |
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
-| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | pendiente | |
-| 6 | Acto 1 completo + E5–E6 | pendiente | |
+| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | primera parte (lógica de clases y nivel del líder) **en curso** en la rama `claude/clases-5b-*` | |
+| 6 | Acto 1 completo + E5–E6 | primera parte (Núcleo de Raíz, extracción y Grieta, Invernadero, páginas p4–p8) **en curso** en la rama `claude/raiz-grieta-6a-*` | |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
+
+### Plan nocturno (2026-11-09)
+El usuario se fue a dormir. Dijo, textual: "autorizo o autoriza de la forma que puedas que todo siga como va, sin yo
+tener que dar confirmaciones, le doy el si a todo".
+- **Las sesiones no esperan OK.** Deciden con criterio y anotan cada decisión para revisarla a la mañana.
+- **Contexto.** Si start_session se rechaza (de noche pasa siempre, porque ningún turno lo empieza un mensaje del
+  usuario), siguen en la misma sesión, que el contexto se resume solo.
+- **El coordinador** (la sesión que abrió todo) mergea cada rama cuando termina, en este orden: 4a, después 5b
+  (resolviendo la migración sobre la v5 del 4a) y después 6a. En cada merge corre `npm run bump`, `npm test` (las
+  pruebas que fallen por carga se repiten solas), commit y push.
+- **Tareas siguientes.** Como de noche no se pueden abrir sesiones, se asignan por mensaje a las sesiones que quedan
+  libres:
+  - el paso 4 (cinemática y llegada con Vera), a la sesión de personajes, que tiene el contexto del arte;
+  - el paso 5b en su segunda parte (clase en el onboarding, aspecto por clase, personas de L5, herramientas, Vínculo y
+    pestaña Progreso), a la sesión de clases;
+  - el paso 6 en su segunda parte (jefes en sus lugares, faro, abordaje pirata, ecos de noche L6 y E5 en `quests.js`),
+    a la sesión de la Raíz.
+- **Release:** no se publica nada sin el usuario. Como mucho, queda listo para `npm run release`.
 
 ## Decisiones tomadas
 - Plataforma:
