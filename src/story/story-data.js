@@ -84,30 +84,23 @@ export const ACTS = [
 // contact: es uno de los 7 primeros contactos (H) y lleva art (íconos para la lámina). grant: premio al verla
 // (page/element pasan por store.grant). action: botón extra al final ({label, run: 'prologue'}).
 export const SCENES = [
-  // --- Prólogo (entre el nombre y el estilo de la ciudad; también se vuelve a ver desde la Bitácora) ---
+  // --- La llegada (PLAN-QUIEBRE §M4): reemplaza al prólogo de texto. Va entre el nombre y el estilo de la ciudad, sobre
+  // la ciudad (see: se ven las ruinas detrás) y se vuelve a ver desde la Bitácora. La historia del mundo ya la contó la
+  // cinemática (src/scenes/intro.js); acá, un gancho. ---
   {
-    id: 'prologo_1', who: 'narrador', epic: true, chapter: 'prologo', title: 'El Quiebre',
+    id: 'llegada', who: 'cartografa', epic: true, see: true, chapter: 'prologo', title: 'Vera', grant: { page: 'p1' },
     lines: [
-      'Antes, la tierra era una sola. Por dentro le corrían cuatro vetas: Raíz, Marea, Brasa y Céfiro.',
-      'Las Casas poderosas cavaron para tener más. Los de abajo les robaban lo que quedaba para comer. Nadie paró.',
-      'La tierra se vació por dentro y se partió. Lo que tenía Céfiro subió al cielo. Lo demás quedó abajo, a oscuras.',
-      'A eso le dicen el Quiebre. Tu isla es uno de los pedazos que subieron.',
+      '{name}. Te vi venir desde el borde. Hace años que no llega nadie.',
+      'Soy Vera. Hago los mapas de lo que queda, y tengo algo que arreglar acá.',
+      'Vos no viniste a mirar. Abajo alguien dijo tu nombre, y quiero saber quién.',
+      'Mientras tanto, {city} necesita techo. Tomá: lo escribió el último que lo intentó.',
     ],
   },
-  {
-    id: 'prologo_2', who: 'cartografa', epic: true, chapter: 'prologo', title: 'La cartógrafa', grant: { page: 'p1' },
-    lines: [
-      '{name}. Te esperaba hace rato. Soy Vera: hago los mapas de este pedazo de tierra.',
-      'Cuando la isla se vació, me quedé. Tengo algo que arreglar, y alguien tenía que anotar lo que sigue en pie.',
-      '{city} va a ser tu ciudad, si la levantás. Lo que la isla esconde no te lo puedo contar: hay que salir a buscarlo.',
-      'Tomá. Es una página del diario del último intendente. La encontré en la Municipalidad, abajo de una piedra.',
-    ],
-  },
-  // partidas que ya venían jugando: un aviso corto que lleva al prólogo (sin pantalla completa de golpe)
+  // partidas que ya venían jugando: un aviso corto que lleva a la cinemática (sin pantalla completa de golpe)
   {
     id: 'veterano', who: 'cartografa', trigger: ['story:veteran'], title: 'La cartógrafa',
-    lines: ['{name}, hay algo de esta isla que nunca te conté. Lo dejé anotado en la Bitácora, junto con el Manual.'],
-    action: { label: 'Leer el prólogo', run: 'prologue' }, grant: { page: 'p1' },
+    lines: ['{name}, nunca te conté cómo se rompió todo. Ahora se puede ver: está en la Bitácora, junto con el Manual.'],
+    action: { label: 'Ver El Quiebre', run: 'intro' }, grant: { page: 'p1' },
   },
 
   // --- Primeros contactos (H): la primera vez que aparece cada sistema central ---
@@ -303,7 +296,9 @@ export const RAIZ_LINES = {
   sutura: 'La raíz cerró un tramo de la Grieta. Despacio, pero cerró.',
   revisit: 'Mañana la salida al Cerro va a la mina. Pensá bien qué le vas a pedir.',
 };
-export const PROLOGUE = ['prologo_1', 'prologo_2'];
+// la llegada con Vera (playPrologue); 'prologo_1' y 'prologo_2' eran el prólogo de texto de antes (partidas que ya lo vieron)
+export const PROLOGUE = ['llegada'];
+export const OLD_PROLOGUE = ['prologo_1', 'prologo_2'];
 export const CONTACT_IDS = ['ciudad', 'expedicion', 'combate', 'amenazas', 'elementos', 'rango', 'taller'];
 
 // ---------- La cartógrafa al cumplir el tutorial (cobro automático de t1–t20) ----------

@@ -45,6 +45,12 @@ body.no-hud #story-root .st-card { display: none; }
   background: radial-gradient(ellipse at 50% 55%, var(--surface) 0%, var(--page) 62%, var(--shade) 100%); color: var(--ink);
   pointer-events: auto; cursor: pointer; animation: stFade .5s ease-out; user-select: none; }
 .st-epic.out { animation: stFadeOut .45s ease-in forwards; }
+/* la llegada (see): las ruinas de la ciudad se ven detrás y Vera habla desde abajo */
+.st-epic.see { justify-content: flex-end; padding-bottom: calc(9vh + 54px);
+  background: linear-gradient(to bottom, rgba(6,6,9,.1) 0%, rgba(6,6,9,.25) 40%, rgba(6,6,9,.82) 72%, rgba(6,6,9,.94) 100%); }
+.st-epic.see .st-veins { display: none; }
+.st-epic.see .st-head { margin-bottom: 12px; }
+.st-epic.see .st-face { width: 96px; height: 96px; margin-bottom: 12px; }
 .st-epic::before, .st-epic::after { content: ''; position: absolute; left: 0; right: 0; height: 9vh; background: var(--shade); z-index: 1; }
 .st-epic::before { top: 0; } .st-epic::after { bottom: 0; }
 .st-veins { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; opacity: .55; animation: stPulse 4s ease-in-out infinite; }
@@ -282,7 +288,7 @@ export function showEpic(ctx, scenes) {
     const steps = [];
     for (const sc of scenes) sc.lines.forEach((l, k) => steps.push({ sc, k, text: fill(l, ctx.state) }));
     let i = 0, finished = false;
-    const el = h('div.st-epic', { role: 'dialog', 'aria-label': scenes[0]?.title || 'Historia' });
+    const el = h('div.st-epic' + (scenes.some(sc => sc.see) ? '.see' : ''), { role: 'dialog', 'aria-label': scenes[0]?.title || 'Historia' });
     el.append(veins());
     const head = h('div.st-head');
     const faceBox = h('div');
