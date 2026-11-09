@@ -26,7 +26,7 @@ export const PEOPLE = {
     ],
   },
   brigida: {
-    id: 'brigida', name: 'Brígida', title: 'herrera', who: 'brigida', tool: 'martillo', arrive: { rank: 2 },
+    id: 'brigida', name: 'Brígida', title: 'herrera', who: 'herrera', tool: 'martillo', arrive: { rank: 2 },
     lines: ['Me llamo Brígida. Hacía herraduras para un rey que ya no existe.', 'Si me dejan un rincón con fuego, les afilo hasta las palas.'],
     fact: 'En el continente viejo los reinos cobraban el hierro en sangre. Por eso tantos herreros se fueron con el Quiebre.',
     tasks: [
@@ -48,7 +48,7 @@ export const PEOPLE = {
     ],
   },
   olga: {
-    id: 'olga', name: 'Olga', title: 'curandera', who: 'olga', tool: 'botiquin', arrive: { rank: 3 },
+    id: 'olga', name: 'Olga', title: 'curandera', who: 'curandera', tool: 'botiquin', arrive: { rank: 3 },
     lines: ['Olga. Curé en tres guerras y no gané ninguna.', 'Acá por lo menos se pelea por algo que se puede plantar.'],
     fact: 'Las hierbas del Bañado curan mejor después de una crecida: el agua baja la tierra de arriba.',
     tasks: [
@@ -59,7 +59,7 @@ export const PEOPLE = {
     ],
   },
   ramiro: {
-    id: 'ramiro', name: 'Ramiro Ochoa', title: 'ex guardia de las Casas', who: 'ramiro', tool: 'farol', arrive: { rank: 5 },
+    id: 'ramiro', name: 'Ramiro Ochoa', title: 'ex guardia de las Casas', who: 'guardia', tool: 'farol', arrive: { rank: 5 },
     lines: ['Ramiro Ochoa. Fui guardia de las Casas hasta que vi lo que cuidaba.', 'Ahora prefiero cuidar algo que valga la pena.'],
     fact: 'Las Casas sabían del Quiebre antes de que pasara. No todos sus guardias se enteraron a tiempo.',
     tasks: [

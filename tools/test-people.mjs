@@ -110,7 +110,20 @@ if (!QUICK) {
     // las escenas de la historia van primero: se pasan y después se pide la llegada (la ciudad la muestra sola cuando está tranquila)
     for (let k = 0; k < 6 && await page.evaluate(() => !!document.querySelector('.st-card')); k++) { await page.evaluate(() => document.querySelector('.st-card .st-next')?.click()); await sleep(400); }
     await run(`P.ctx.ui.closeAllModals?.(); PE.showNextArrival({ force: true }); return true;`);
-    ok(await waitFor(`window.__llega.length > 0`, 15000) && await waitFor(`/Me llamo|Olga/.test(window.__llega[0].txt)`, 8000), 'la llegada se cuenta con una escena (2 líneas y un dato)');
+    // un aviso de premio (el del rango nuevo) pausa la hoja hasta que se cierra (v50): se cierra como lo haría el jugador
+    // y si una escena de la historia tapa la llegada, se pasa: la llegada vuelve a salir sola después (people.js)
+    for (let k = 0; k < 30; k++) {
+      await sleep(500);
+      if (await page.evaluate(() => /Me llamo|Olga/.test(window.__llega[0]?.txt || ''))) break;
+      await page.evaluate(() => {
+        const m = document.querySelector('.reward-modal');
+        if (m) { (m.querySelector('.btn.primary, .btn.gold, button') || m).click(); return; }
+        const c = document.querySelector('.st-card:not(.out):not(.bark)');
+        if (c && !c.dataset.scene?.startsWith('llega_')) c.querySelector('.st-next')?.click();
+      });
+    }
+    const llegaOk = await waitFor(`window.__llega.length > 0`, 15000) && await waitFor(`/Me llamo|Olga/.test(window.__llega[0].txt)`, 8000);
+    ok(llegaOk, 'la llegada se cuenta con una escena (2 líneas y un dato)', llegaOk ? undefined : await page.evaluate(() => ({ modal: [...document.querySelectorAll('#modal-root > *, .reward-modal')].map(m => m.className).join(' | '), txt: document.querySelector('.st-card .st-txt')?.textContent, held: !!document.querySelector('.reward-modal'), speed: window.__pixelia?.state?.settings?.textSpeed })));
     r = await page.evaluate(() => window.__llega[0] || {});
     ok(/llega_(brigida|olga)/.test(r.id || '') && /Me llamo|Olga/.test(r.txt || ''), 'la escena dice quién llegó', r);
     for (let k = 0; k < 8 && await page.evaluate(() => !!document.querySelector('.st-card')); k++) { await page.evaluate(() => document.querySelector('.st-card .st-next, .st-card button')?.click()); await sleep(400); }
