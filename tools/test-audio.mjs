@@ -7,7 +7,7 @@
 // Chrome (OfflineAudioContext): 30 s de cada lugar sin silencio y con el pico debajo de 0 dBFS; todas las piezas
 // programan notas (también con la síntesis de respaldo, sin muestras); capas por intensidad; la noche cambia la
 // instrumentación; el límite de voces; stingers, trueno, pasos y loops. En el juego: el mezclador arranca con el primer
-// clic, los buses siguen a Ajustes, la ciudad suena como ciudad y Mi Casa tapa el afuera.
+// clic, los buses siguen a Ajustes, la ciudad suena como ciudad y Mi Casa ya no está (paso 1c).
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -112,7 +112,7 @@ try {
     if (name === 'combate') ok(r.music.layers.includes('choir:choir') && r.music.layers.includes('perc:brush'), 'en combate, con el peligro alto, entran la escobilla y el coro', r.music.layers);
     if (name === 'epico') ok(r.music.epic && r.reverb === 'hall' && r.stats.motifs > 0, `el modo épico usa sala, coro y cita El Quiebre (${r.stats.motifs} motivos)`, r.music);
     if (name === 'mina') ok(r.reverb === 'mine' && r.scape.beds.cave > 0.5, 'la mina tiene reverb de mina y zumbido de cueva');
-    if (name === 'mi-casa') ok(r.reverb === 'interior' && r.scape.beds.fire > 0 && r.scape.beds.rain > 0, 'Mi Casa: interior, el fuego y la lluvia afuera');
+    if (name === 'tranquila') ok(r.reverb === 'interior' && r.scape.beds.rain > 0 && !r.scape.beds.fire, 'pantalla tranquila: reverb de interior, la lluvia afuera y sin el fuego de Mi Casa', { reverb: r.reverb, beds: r.scape.beds });
   }
 
   section('Compositor');
@@ -201,12 +201,7 @@ try {
     const panel = await waitFor(`document.body.innerText.includes('Voces')`, 6000);
     await page.keyboard.press('Escape');
     ok(panel, 'Ajustes → Sonido tiene la fila Voces');
-    await page.evaluate(() => window.__pixelia.ctx.router.go('home'));
-    ok(await waitFor(`window.__pixelia.ctx.router.current === 'home'`, 20000), 'Mi Casa abre');
-    await sleep(1500);
-    d = await dbg();
-    ok(d.music.piece === 'calm' || d.music.pending === 'calm', 'en Mi Casa suena la pieza tranquila', d.music);
-    ok(d.scene.place === 'home' && d.scene.indoor && d.reverb === 'interior', 'Mi Casa: interior, con el afuera tapado', d.scene);
+    ok(await page.evaluate(() => { const s = window.__pixelia.store.state; return !s.home && !s.city.buildings.some(b => b.id === 'mi_casa'); }), 'sin Mi Casa: ni estado ni edificio');
     const cr = await page.evaluate(async () => (await import('/src/core/audio.js')).audio.credits());
     ok(cr.length >= 10, 'los créditos de los sonidos se leen para Ajustes → Partida');
     const errs = h.errors.filter(e => !/AudioContext was not allowed/i.test(e));

@@ -9,7 +9,6 @@ import {
   CYCLE, DEFENSES, ROLE_BUILDING, PROV_CAP_BASE, PROV_CAP_PER_CASA, PROV_CAP_PER_GRANERO, EXPANSION_ZONES,
 } from './data.js';
 import { monumentComplete, monumentsDone, monumentBonus } from './monuments.js';
-import { HOME_LEVELS, comfortInfo } from '../home/furniture.js';
 export { monumentComplete, monumentsDone, monumentBonus };
 import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild, addFreeBuild } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
@@ -93,7 +92,12 @@ export const CHARM_VARIETY = 0.02;     // +2% por cada tipo distinto (sin camino
  * {value, base, variety, kinds}
  */
 export function charmInfo(state = S(), now = Date.now()) {
+  if (state.v6?.charm) settleV6Charm(state, now);
+  return charmOf(state, now);
+}
+function charmOf(state, now, extra = null) {
   const per = new Map();
+  if (extra) per.set(extra.id, [extra.v]);
   for (const b of state.city.buildings) {
     if (isConstructing(b, now)) continue;
     const d = def(b);
@@ -106,15 +110,32 @@ export function charmInfo(state = S(), now = Date.now()) {
   for (const [id, list] of per) {
     list.sort((a, b) => b - a);
     list.forEach((v, i) => { base += v * Math.pow(CHARM_REPEAT, i); });
-    if (def(id).cat !== 'camino') kinds++;
+    if (def(id)?.cat !== 'camino') kinds++;
   }
   const variety = Math.min(1.5, 1 + CHARM_VARIETY * kinds);
-  // Mi Casa: el Confort de adentro también hace linda la ciudad (Confort / 4)
-  let home = 0;
-  try { if (state.city.buildings.some(b => b.id === 'mi_casa')) home = comfortInfo(state).charm; } catch {}
-  return { value: Math.round(base * variety) + home, base: Math.round(base), variety, kinds, home };
+  // bono fijo del guardado v6: el Encanto que daban Mi Casa y su Confort (state.js migrateV6, settleV6Charm)
+  const bonus = Math.max(0, Math.round(+state.city.charmBonus || 0));
+  return { value: Math.round(base * variety) + bonus, base: Math.round(base), variety, kinds, bonus };
 }
 export const cityCharm = (state = S(), now = Date.now()) => charmInfo(state, now).value;
+/**
+ * Guardado v6 (paso 1c): Mi Casa salió de la ciudad. migrateV6 deja en state.v6.charm { level, comfort } lo que había
+ * (nivel de la casa y el Encanto de su Confort) y acá, con las reglas del Encanto a mano, se pasa a un bono fijo
+ * (state.city.charmBonus) igual a lo que la casa sumaba: nadie pierde Encanto para el próximo rango. Una sola vez.
+ */
+export function settleV6Charm(state = S(), now = Date.now()) {
+  const p = state.v6?.charm;
+  if (!p) return 0;
+  delete state.v6.charm;
+  // Mi Casa era 'especial' con charm: 10, +25% por nivel (como cualquier edificio)
+  const withHome = charmOf(state, now, { id: '__mi_casa', v: 10 * (1 + 0.25 * (Math.max(1, +p.level || 1) - 1)) }).value;
+  const without = charmOf(state, now).value;
+  const add = Math.max(0, withHome - without) + Math.max(0, Math.round(+p.comfort || 0));
+  state.city.charmBonus = Math.max(0, Math.round(+state.city.charmBonus || 0)) + add;
+  state.v6.charmBonus = add;
+  store.markDirty();
+  return add;
+}
 /** Cuánto Encanto base sumaría construir otra copia de `id` (para mostrar en el menú). */
 export function charmGain(id, state = S()) {
   const d = def(id);
@@ -176,10 +197,10 @@ export function buildingEra(b) {
   if (b.id === 'castillo') return eraOfRank(b.level);
   return Math.max(1, Math.min(5, Math.round(b.era) || 1));
 }
-/** ¿Este edificio cambia con la época? (no: Municipalidad, Mi Casa, deco, caminos y monumentos). */
+/** ¿Este edificio cambia con la época? (no: Municipalidad, deco, caminos y monumentos). */
 export function hasEra(b) {
   const d = def(b);
-  if (!d || d.id === 'castillo' || d.id === 'mi_casa') return false;
+  if (!d || d.id === 'castillo') return false;
   return !['deco', 'camino', 'monumento'].includes(d.cat);
 }
 /**
@@ -393,8 +414,8 @@ export function placeCost(id, state = S()) {
   const d = def(id);
   const n = countOf(id, state);
   const mult = (d.cat === 'casa' || d.cat === 'negocio') ? 1 + 0.15 * n : 1;
-  // el Martillo de Brígida (L5, paso 7, tools-city.js): las obras salen más baratas (no los monumentos ni Mi Casa)
-  const tool = d.cat === 'monumento' || d.id === 'mi_casa' ? 1 : buildCoinMult(state);
+  // el Martillo de Brígida (L5, paso 7, tools-city.js): las obras salen más baratas (no los monumentos)
+  const tool = d.cat === 'monumento' ? 1 : buildCoinMult(state);
   const out = { coins: Math.round((d.cost.coins || 0) * mult * tool), gems: d.cost.gems || 0 };
   if (d.cost.mats) out.mats = { ...d.cost.mats };
   // planos: algunas defensas piden 1 (el Pararrayos, solo el primero: firstPlanos)
@@ -563,13 +584,12 @@ export function collectAll(state = S()) {
 // ---------- Mejoras ----------
 export function canUpgradeType(b) {
   const d = def(b);
-  return d.id === 'castillo' || d.id === 'mi_casa' || d.cat === 'monumento' || d.cat === 'ciclo' || d.cat === 'defensa' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
+  return d.id === 'castillo' || d.cat === 'monumento' || d.cat === 'ciclo' || d.cat === 'defensa' || ((d.cat === 'casa' || d.cat === 'negocio') && !!d.prod);
 }
 export function maxLevel(b) {
   const d = def(b);
   if (d.id === 'castillo') return TOWN_RANKS.length;
   if (d.cat === 'monumento') return MONUMENTS[d.id].stages.length;
-  if (d.id === 'mi_casa') return HOME_LEVELS.length;
   return MAX_BUILDING_LEVEL;
 }
 /** Duración real de una obra (segundos): la Torre del Reloj terminada la acorta. */
@@ -591,10 +611,6 @@ export function upgradeInfo(b) {
   if (d.id === 'castillo') {
     const c = rankDef(b.level + 1);
     return { cost: c.cost, time: stageTime(c.time), reqLevel: c.reqLevel, rank: c.rank };
-  }
-  if (d.id === 'mi_casa') {
-    const h = HOME_LEVELS[b.level];
-    return { cost: { ...h.cost, mats: { ...(h.cost.mats || {}) } }, time: stageTime(h.time), reqLevel: 1, homeRank: h.rank || 0, home: h };
   }
   if (d.cat === 'monumento') {
     const st = MONUMENTS[d.id].stages[b.level];
@@ -622,7 +638,6 @@ export function canUpgrade(b, state = S(), now = Date.now()) {
   if (b.damaged) return { ok: false, reason: 'Primero hay que repararlo', damaged: true };
   if (state.player.level < info.reqLevel) return { ok: false, reason: `Nivel ${info.reqLevel}`, locked: true };
   if (info.rank && !rankStatus(state, now).allOk) return { ok: false, reason: 'Falta completar el expediente', locked: true, reqs: true };
-  if (info.homeRank && townRank(state) < info.homeRank) return { ok: false, reason: `Rango ${rankName(info.homeRank)}`, locked: true, rank: info.homeRank };
   if (info.reqEra && cityEra(state) < info.reqEra) return { ok: false, reason: `Época ${eraDef(info.reqEra).name}`, locked: true, era: info.reqEra };
   if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
   if (!store.hasMats(info.cost.mats)) return { ok: false, reason: 'Faltan materiales', mats: true };
@@ -790,24 +805,9 @@ export function tick(state = S()) {
     if (b.upgradeEnd && b.upgradeEnd <= now) { finishUpgrade(b); store.markDirty(); }
   }
   syncRank(state, now);
-  ensureHome(state, now);
   ensureExpHouse(state, now);
 }
 
-// ---------- Mi Casa ----------
-let homeTry = 0;
-/**
- * Mi Casa aparece sola en la ciudad al llegar a nivel 2 (en el nivel 1 la partida sigue "recién empezada" para el
- * onboarding y la sincronización), cerca de la Municipalidad. Si no hay lugar, reintenta cada 30 s.
- */
-export function ensureHome(state = S(), now = Date.now()) {
-  if ((state.player?.level || 1) < 2 || state.city.buildings.some(b => b.id === 'mi_casa')) return null;
-  if (now - homeTry < 30e3) return null;
-  homeTry = now;
-  const b = placeNearCastle('mi_casa', state, now);
-  if (b) bus.emit('home:ready', { b });
-  return b;
-}
 /** Coloca un edificio (nivel 1, ya terminado) en el lugar libre más cercano a la Municipalidad. null si no entra. */
 function placeNearCastle(id, state = S(), now = Date.now(), extra = {}) {
   const c = state.city.buildings.find(b => b.id === 'castillo');

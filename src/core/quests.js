@@ -4,7 +4,6 @@ import { store, todayStr } from './state.js';
 import { MAIN_QUESTS, DAILY_POOL, DAILY_BONUS_ALL, ACHIEVEMENTS, LOGIN_REWARDS, rewardScale } from './data.js';
 import { population, happinessPoints, castleLevel, cityCharm, def, zonesExplored } from './economy.js';
 import { streakWithShield, consumeStreakShield, seasonInfo } from '../season/season.js';
-import { comfortInfo } from '../home/furniture.js';
 
 const S = () => store.state;
 const changed = () => { store.markDirty(); bus.emit('quests:changed'); };
@@ -249,12 +248,9 @@ export function claimLogin() {
   s.login.last = todayStr();
   s.login.streak = st.streak;
   store.setMax('bestStreak', st.streak);
-  // Confort de Mi Casa: más monedas en el premio diario (hasta +25%)
-  let reward = st.reward;
-  try { const cb = comfortInfo().loginBonus; if (cb && reward.coins) reward = { ...reward, coins: Math.round(reward.coins * (1 + cb)) }; } catch {}
-  store.grant(reward, 'login');
+  store.grant(st.reward, 'login');
   changed();
-  return reward;
+  return st.reward;
 }
 
 /** Cantidad de cosas para cobrar (para el globito del botón Misiones). */

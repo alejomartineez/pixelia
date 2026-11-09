@@ -19,7 +19,6 @@ import { hashSeed } from './exp-gen.js';
 import { ENCOUNTERS } from '../combat/combat-data.js';
 import * as R from './exp-rules.js';
 import { eventMult } from '../season/events.js';
-import { comfortInfo } from '../home/furniture.js';
 import { mineObjective, foundNucleo, raizMult } from '../core/raiz.js';
 import { lairFor, faroDue, lightFaro, BOSS_LAIRS, FARO } from '../story/act1.js';
 
@@ -30,7 +29,7 @@ const MIN = 60e3;
 // Primera salida corta (tutorial t5): mapa fijo del Bosque con "el aserradero abandonado" de objetivo y madera cerca
 // (semilla buscada con exp-gen: 4 casillas de madera a profundidad ≤ 3 y 2 peligros lejos de la base).
 export const TUTORIAL_SEED = 110;
-// Experiencia por salida terminada (la daban los minijuegos; Fase 5): base + por estrella, × Observatorio y Mi Casa.
+// Experiencia por salida terminada (la daban los minijuegos; Fase 5): base + por estrella, × Observatorio.
 export const EXP_XP = { base: 10, perStar: 5 };
 
 // ---------- Expedición del día (Fase 7b) ----------
@@ -386,16 +385,14 @@ export function finishExpedition(run, state = S()) {
   for (const f of run.fights || []) if (!f.credited) creditFight(run, f, state);
   // eventos de región y monumentos (reemplazan a los de los minijuegos, Fase 5): materiales ×, cofre de 3★ con segunda
   // tirada en "Lluvia de Cofres", hallazgos dobles en su fin de semana, Museo (+50% de chance de un hallazgo más) y la
-  // experiencia de la salida con el Observatorio y el confort de Mi Casa
+  // experiencia de la salida con el Observatorio
   const mult = (k) => { try { return eventMult(k) || 1; } catch { return 1; } };
   const matMult = mult('expMats') * mult('region_' + run.region);
   const mats = {};
   for (const [id, n] of Object.entries(L.mats || {})) mats[id] = Math.round((n || 0) * matMult);
   const reward = { mats, planos: L.planos || 0, colonos: L.colonos || 0, gems: res.gems || 0 };
   if (res.chest || (res.starCount === 3 && mult('chestDrop') > 1 && Math.random() < EXP.chestAt3 * (mult('chestDrop') - 1))) reward.chest = 'madera';
-  let xpBonus = 0;
-  try { xpBonus = comfortInfo().xpBonus || 0; } catch {}
-  reward.xp = run.prototype ? 0 : Math.round((EXP_XP.base + EXP_XP.perStar * res.starCount) * (1 + xpBonus));
+  reward.xp = run.prototype ? 0 : EXP_XP.base + EXP_XP.perStar * res.starCount;
   if (run.kind === 'normal' && res.reason === 'volvio' && res.provLeft > 0) reward.prov = res.provLeft;
   const got = store.grant(reward, 'expedition');
   // experiencia de clase y del líder (paso 5b): la de la salida, a quien fue y a quien lidera

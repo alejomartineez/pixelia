@@ -264,12 +264,7 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
       expansions: s.city?.expansions || 0,
       flagColor: s.city?.flagColor,
       theme: s.city?.theme || 'pueblo',
-      // Mi Casa por dentro (compacto; va en city porque publish_profile solo guarda esas claves): las amistades
-      // pueden entrar a mirarla al visitar la ciudad
-      home: s.home ? {
-        wall: s.home.wall, floor: s.home.floor,
-        items: (s.home.items || []).slice(0, 120).map(it => [it.id, it.x, it.z, it.rot || 0]),
-      } : undefined,
+      // (Mi Casa salió en el paso 1c de La Travesía: los perfiles viejos que traen city.home se ignoran)
     },
     stats: {
       pop, happy, rank, charm,

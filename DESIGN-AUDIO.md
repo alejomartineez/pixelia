@@ -20,8 +20,8 @@ nativo, sin dependencias en tiempo de ejecución, y todos los sonidos son CC0.
 `src/core/audio.js` es la fachada del juego. Mantiene la API de siempre (`audio.sfx('coin')`, `audio.music('city')`,
 `configure`, `unlock`, `setBackground`, `level`) y suma:
 - `setScene({ place, night, weather, light, threat, population, indoor, danger })`: lo llaman `city-ambience.js` (cada
-  segundo), `exp-ambience.js` (cada paso) y `main.js` al entrar a una escena (`enterScene`: Mi Casa pone `home` e
-  `indoor`; Equipaje y el onboarding quedan en silencio de ambiente).
+  segundo), `exp-ambience.js` (cada paso) y `main.js` al entrar a una escena (`enterScene`: Equipaje y el onboarding quedan
+  en silencio de ambiente). Mi Casa, que ponía `home` e `indoor`, salió en La Travesía (paso 1c).
 - `stinger(name)`, `intensity(x)`, `epic(on)`, `motif('quiebre')`, `step(superficie)`, `thunder()`, `dialog(on)`.
 - `connect(bus)` (en `main.js`): `ambience:thunder` → trueno, `ambience:night` → noche, `story:page` → página,
   `story:element` → elemento, `reward:stickers` → hallazgo, `threat:announced` → amenaza, `town:rankup` → rango (o Época
@@ -41,9 +41,9 @@ un cambio de pieza o de intensidad cae siempre en el próximo compás.
 - **Ducking.** Los stingers bajan la música mientras suenan (su `duck`, de 0,25 a 0,8). Hay ducking sostenido para el
   diálogo (`audio.dialog(true)`, 0,45) y para el modo épico.
 - **Reverb por lugar.** Respuestas de impulso hechas en código (ruido que decae y se oscurece): `open` (ciudad,
-  expedición, faros, combate), `interior` (Mi Casa), `mine`, `cave`, `under` (Bajo Mundo) y `hall` (modo épico). Al
+  expedición, faros, combate), `interior` (pantallas tranquilas, pieza `calm`), `mine`, `cave`, `under` (Bajo Mundo) y `hall` (modo épico). Al
   cambiar, la cola baja, se cambia la respuesta y vuelve, así no hay clic.
-- **Amortiguado.** Es un pasabajos sobre el ambiente: adentro de Mi Casa queda en 0,45, y con tormenta en 0,6.
+- **Amortiguado.** Es un pasabajos sobre el ambiente con `indoor`: queda en 0,45, y con tormenta en 0,6.
 - **Voces.** Hay 32 como máximo. Si no hay lugar, se corta la de menor prioridad con un fundido de 30 ms. El orden de
   prioridad es música < ambiente < efectos < interfaz < stingers.
 - **Sin clics.** Todo entra y sale con rampas, y los loops de las camas tienen fundido de cola sobre cabeza. El AAC trae
@@ -55,7 +55,7 @@ un cambio de pieza o de intensidad cae siempre en el próximo compás.
 |---|---|---|---|
 | Ciudad | `city`: Sol mayor en 3/4, 72 bpm | Vals cálido de piano y pizzicato. Se enriquece con la luz de la isla (intensidad de 0,2 a 0,75). | Viento, mar, murmullo (crece con la población), pájaros. |
 | Ciudad de noche | `city` con `night` | 62 bpm. La flauta reemplaza al piano, no hay pizzicato y hay más respiros. | Grillos, búho y un zumbido de faroles. |
-| Mi Casa | `calm`: Fa mayor, 60 bpm | Piano y colchón, reverb de interior. | Fuego del hogar y el afuera tapado. |
+| Pantallas tranquilas | `calm`: Fa mayor, 60 bpm | Piano y colchón, reverb de interior. | El afuera tapado. |
 | Expedición cerca / medio | `expedition`: Re dórico, 86 bpm | Pizzicato que camina, flauta y escobilla. | Viento y bosque (pájaros de día). |
 | Expedición lejos | `expedition_far`: Re eólico, 66 bpm | Dron, piano grave y flauta rara. Cambia sola al alejarse. | Viento fuerte y un fondo de cueva. |
 | Amenaza | `threat`: La menor armónica, 84 bpm | Timbal que late y pizzicato grave. | Las del clima de la amenaza (agua, fuego, escarcha). |
@@ -82,7 +82,7 @@ un cambio de pieza o de intensidad cae siempre en el próximo compás.
 
 ## Leitmotivs
 Están escritos en grados de la escala, así que suenan en el modo de cada pieza. Cada uno dura 8 pulsos.
-- **La isla**: sube a la quinta, se mece y vuelve a casa. Ciudad, Mi Casa y expedición cerca.
+- **La isla**: sube a la quinta, se mece y vuelve a casa. Ciudad, pantallas tranquilas y expedición cerca.
 - **La cartógrafa**: una pregunta con puntillo que mira lejos y baja a la tercera. Expedición y costa.
 - **El Quiebre**: quinta, sexta menor y la caída a la segunda bemol antes de la tónica. Expedición lejos, mina y Bajo
   Mundo, y sobre todo el modo épico, donde aparece en el 80 % de las frases.
@@ -121,7 +121,6 @@ durante 1,5 s.
   - yunque del Taller;
   - goteo en la mina, la cueva y lejos;
   - escarcha;
-  - crujidos de madera en Mi Casa;
   - retumbo en el Bajo Mundo.
 - **Trueno.** Llega 300 a 1200 ms después del relámpago (lo pone `ambience-fx`), más la distancia (d / 343 m/s). Cuanto
   más lejos, más oscuro y más bajo.
@@ -129,7 +128,7 @@ durante 1,5 s.
   sobre los pasos de Kenney.
   - En la expedición salen del terreno: llano y monte son pasto, colina y roca son piedra, y bañado es agua. Con nieve,
     nieve.
-  - Mi Casa y el combate los suman cuando tengan personaje que camine.
+  - El combate los suma cuando tenga personaje que camine.
 - **Acciones.**
   - `build`: hacha y yunque.
   - `harvest`: al cosechar, desde `city-ambience`.
@@ -179,14 +178,14 @@ durante 1,5 s.
   - el límite de voces;
   - los stingers, los efectos, los truenos, los pasos y los loops;
   - en el juego: que el mezclador arranque con el clic, que los buses sigan a Ajustes, la página del diario, la noche y
-    Mi Casa.
+    que Mi Casa ya no está (ni estado ni edificio).
 - `node tools/render-audio.mjs [--dur 30] [--only ciudad-dia]` deja `.wav` en `shots/audio/` para escuchar:
   - ciudad de día, de noche y con tormenta;
   - expedición cerca y lejos;
   - combate;
   - épico;
   - mina;
-  - Mi Casa.
+  - una pantalla tranquila (`calm`, adentro y con lluvia).
 - `tools/audio/harness.mjs` es el banco común. Avanza el render de a 1 s con `suspend()`, como el temporizador real, y
   acepta eventos a mitad del render.
 - Ninguna de estas pruebas usa la GPU: corren en Chrome headless.

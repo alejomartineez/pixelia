@@ -13,7 +13,7 @@ const BASE_KEY = 'pixelia.save.v1';
 // 1: original · 2: sin realeza (tipos/piezas de princesa → gente) y tema por defecto "pueblo"
 // 3: sin minijuegos (materiales de región, edificios del ciclo, equipo, épocas; DESIGN-CORE.md §7.2)
 // 4: fuera lo tierno (El Quiebre, plan §J7): solo personas, piezas retiradas devueltas y estilos de ciudad nuevos
-export const VERSION = 5;
+export const VERSION = 6;
 
 /** Ajustes por defecto (src/core/settings.js los aplica y valida; los saves viejos los reciben por deepFill). */
 export const SETTINGS_DEFAULTS = {
@@ -143,6 +143,7 @@ function migrate(s) {
   if ((s.v || 1) < 4) migrateV4(s);
   if ((s.v || 1) < 5) migrateV5(s);
   else migrateSkiff(s);   // las partidas v5 de antes del esquife (rama de prueba) también se traducen
+  if ((s.v || 1) < 6) migrateV6(s);
   migrateClasses(s);   // roles de la expedición → clases (paso 5b; una sola vez, sin depender de s.v)
   if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'humano';
   if (s.onboarded === undefined) s.onboarded = true;
@@ -198,7 +199,7 @@ function migrateNoRoyalty(s) {
  *  6. cada edificio sin época recibe la del rango actual (lo ya ganado no paga renovación);
  *  7. planos = ⌊rango / 2⌋ si la partida todavía no tenía (el resto de los recursos nuevos los completa deepFill);
  *  8. las diarias se vuelven a sortear (la cadena de misiones la migra quests.migrateQuestChain).
- * Monumentos, Mi Casa, rango, contactos, temas, ropa y auto no se tocan.
+ * Monumentos, Mi Casa (hasta el v6), rango, contactos, temas, ropa y auto no se tocan.
  */
 const LEGACY_REFUND = { joyeria: 150, torre_bloques: 300, garaje: 600, pista: 1200 };
 const num = (v) => Math.max(0, Math.round(Number(v) || 0));
@@ -367,6 +368,83 @@ function migrateV5(s) {
   if (v5.shown == null) v5.shown = isFreshGame(s);
   s.v = 5;
 }
+// Mi Casa (salió en el v6): [Confort, monedas, gemas] de cada mueble, lo de arranque (no se pagó) y las ampliaciones.
+const V6_FURN = {
+  cama: [12, 300], mesa: [6, 200], silla: [3, 80], ropero: [6, 400], lampara: [5, 150], planta: [5, 120], alfombra: [6, 180],
+  sillon: [14, 700], puff: [6, 250], mesita: [4, 220], tele: [10, 900], biblioteca: [10, 800], alfombra_larga: [8, 450],
+  chimenea: [18, 2500], cocina: [10, 1200], heladera: [6, 900], escritorio: [8, 600], consola: [9, 0, 10], acuario: [16, 0, 15],
+  piano: [18, 0, 25], cama_gato: [8, 500], cuadro: [4, 150], estante: [5, 250], reloj: [4, 300], poster: [4, 200], guirnalda: [7, 0, 8],
+  arcoiris: [14], trono: [20], globo: [10], telescopio: [12], trofeo_rango: [10], trofeo_obra: [10], trofeo_joyas: [8], trofeo_album: [8],
+};
+const V6_STARTER = ['cama', 'ropero', 'mesa', 'silla', 'lampara', 'planta', 'alfombra', 'cuadro'];
+const V6_CHEST = new Set(['arcoiris', 'trono', 'acuario', 'piano', 'chimenea', 'consola', 'guirnalda']);   // también salían en cofres
+const V6_LEVELS = [null, null, { coins: 2500, mats: { piedra: 8 } }, { coins: 7000, mats: { piedra: 14, madera: 8 } },
+  { coins: 18000, mats: { piedra: 20, madera: 12, mineral: 10 } }, { coins: 45000, gems: 15, mats: { piedra: 28, madera: 18, mineral: 16, hierbas: 12 } }];
+/**
+ * v5 → v6 (La Travesía, paso 1c: Mi Casa sale del juego). Corre antes de deepFill, una sola vez (s.v pasa a 6):
+ *  1. el edificio 'mi_casa' sale del mapa (la parcela queda libre) y state.home se borra;
+ *  2. se devuelve lo que se pagó: los muebles comprados (menos los de arranque; tope: stats.furnitureBought) y las
+ *     ampliaciones hechas o en obra (monedas, gemas y materiales);
+ *  3. el Encanto que daban la casa y su Confort queda anotado en s.v6.charm y economy.settleV6Charm lo pasa a un bono fijo
+ *     (state.city.charmBonus), para no perder avance hacia el próximo rango;
+ *  4. los trofeos (home.trophies) pasan a los Logros de la Bitácora (state.achievements).
+ * Lo que cambió queda en s.v6 { had, coins, gems, mats, shown } para el aviso único (main.js).
+ */
+function migrateV6(s) {
+  if ((s.v || 1) >= 6) return;
+  const v6 = (s.v6 && typeof s.v6 === 'object') ? s.v6 : (s.v6 = {});
+  const home = (s.home && typeof s.home === 'object') ? s.home : {};
+  const list = Array.isArray(s.city?.buildings) ? s.city.buildings : [];
+  const b = list.find(o => o && o.id === 'mi_casa');
+  let coins = 0, gems = 0;
+  const mats = {};
+  if (b) {
+    v6.had = 1;
+    const level = Math.max(1, Math.min(5, Math.round(+b.level) || 1));
+    // 2a. ampliaciones (la que estaba en obra también se pagó)
+    const top = Math.min(5, level + ((+b.upgradeEnd || 0) > 0 ? 1 : 0));
+    for (let lv = 2; lv <= top; lv++) {
+      const c = V6_LEVELS[lv];
+      coins += c.coins || 0; gems += c.gems || 0;
+      for (const [m, n] of Object.entries(c.mats || {})) mats[m] = (mats[m] || 0) + n;
+    }
+    // 3. Confort (misma cuenta que tenía Mi Casa): repetir rinde 85%, la variedad multiplica y el nivel suma 5%
+    const per = {};
+    for (const it of Array.isArray(home.items) ? home.items : []) if (it && V6_FURN[it.id]) (per[it.id] ||= []).push(V6_FURN[it.id][0] || 0);
+    let base = 0;
+    for (const vals of Object.values(per)) vals.forEach((v, i) => { base += v * Math.pow(0.85, i); });
+    const kinds = Object.keys(per).length;
+    const comfort = Math.round(base * Math.min(1.6, 1 + 0.03 * kinds) * (1 + 0.05 * (level - 1)));
+    v6.charm = { level, comfort: Math.round(comfort / 4) };
+    s.city.buildings = list.filter(o => o !== b);
+  }
+  // 2b. muebles comprados: los puestos y los guardados, menos un juego de arranque
+  const count = {};
+  for (const it of Array.isArray(home.items) ? home.items : []) if (it && V6_FURN[it.id]) count[it.id] = (count[it.id] || 0) + 1;
+  for (const [id, n] of Object.entries(home.owned && typeof home.owned === 'object' ? home.owned : {})) if (V6_FURN[id]) count[id] = (count[id] || 0) + num(n);
+  if (home.started) for (const id of V6_STARTER) if (count[id]) count[id]--;
+  const paid = [];
+  for (const [id, n] of Object.entries(count)) {
+    const [, c = 0, g = 0] = V6_FURN[id];
+    if (c || g) for (let i = 0; i < n; i++) paid.push({ c, g, chest: V6_CHEST.has(id) });
+  }
+  paid.sort((x, y) => (x.chest - y.chest));   // los que también salían en cofres, al final
+  const bought = s.stats && Number.isFinite(+s.stats.furnitureBought) ? num(s.stats.furnitureBought) : paid.length;
+  for (const p of paid.slice(0, bought)) { coins += p.c; gems += p.g; }
+  // 4. trofeos → logros
+  const ach = (s.achievements && typeof s.achievements === 'object') ? s.achievements : (s.achievements = {});
+  for (const [id, at] of Object.entries(home.trophies && typeof home.trophies === 'object' ? home.trophies : {})) if (at && !ach[id]) ach[id] = +at || Date.now();
+  delete s.home;
+  if (coins) { s.coins = num(s.coins) + coins; v6.coins = num(v6.coins) + coins; }
+  if (gems) { s.gems = num(s.gems) + gems; v6.gems = num(v6.gems) + gems; }
+  if (Object.keys(mats).length) {
+    const m = (s.materials && typeof s.materials === 'object') ? s.materials : (s.materials = {});
+    for (const [id, n] of Object.entries(mats)) m[id] = num(m[id]) + n;
+    v6.mats = mats;
+  }
+  if (v6.shown == null) v6.shown = isFreshGame(s) || !v6.had;
+  s.v = 6;
+}
 /**
  * El auto pasa a ser el esquife (plan §M5): state.car y las piezas compradas pasan a la pieza que ocupa su lugar (casco,
  * vela, proa; el color queda). Nada se pierde y es seguro de repetir: solo traduce ids viejos. Devuelve si cambió algo.
@@ -509,7 +587,7 @@ export const store = {
     return true;
   },
   /**
-   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats, furniture, prov, planos, equip, reserves, colonos, page, element}.
+   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats, prov, planos, equip, reserves, colonos, page, element}.
  * page / element: id o lista de ids (historia, src/story/story.js) → emiten 'reward:page' / 'reward:element'.
    * mats: { madera: n, piedra: n, ... } → emite 'materials:changed'. prov/planos/colonos/equip/reserves → 'resources:changed'
    * (las provisiones respetan el tope del depósito). source: 'collect'|'game'|'quest'|'levelup'|'login'|'expedition'|...
@@ -547,10 +625,6 @@ export const store = {
     }
     store._items('equipment', reward.equip, 1, source);
     store._items('reserves', reward.reserves, 1, source);
-    if (reward.furniture) {   // mueble para Mi Casa: { furniture: 'id' } (home/furniture.js lo suma al inventario)
-      const id = typeof reward.furniture === 'object' ? reward.furniture.id : reward.furniture;
-      if (id) bus.emit('reward:furniture', { id, n: (typeof reward.furniture === 'object' && reward.furniture.n) || 1, source });
-    }
     if (reward.xp) store.addXp(reward.xp);
     if (reward.chest) {
       const type = typeof reward.chest === 'object' ? reward.chest.type : reward.chest;

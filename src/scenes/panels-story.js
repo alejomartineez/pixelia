@@ -1,7 +1,7 @@
 // Bitácora (plan §D y §H): la historia, el diario y el Manual. Se abre con J o el botón del riel del HUD.
 //  - Historia: el acto y el capítulo, "Qué sigue" (el objetivo del capítulo y la misión actual con su botón), las escenas
 //    vistas (se vuelven a leer) y "Volver a ver el prólogo".
-//  - Diario: las páginas del diario del último intendente y los cuatro elementos.
+//  - Diario: las páginas del diario del último intendente, los cuatro elementos y los Logros (core/achievements.js).
 //  - Progreso (paso 5b): rango y Época, nivel del líder, clases, la gente con su Vínculo y su herramienta, elementos,
 //    Grieta y páginas, con lo que falta para el próximo nivel (src/scenes/panels-progress.js).
 //  - Manual: capítulos que se abren al llegar a cada sistema, con buscador. Reemplaza el "Cómo jugar" viejo.
@@ -15,6 +15,7 @@ import { portrait } from '../story/story-ui.js';
 import * as RZ from '../core/raiz.js';
 import { seenEchoes, ECHOES } from '../story/echoes.js';
 import { progressPane } from './panels-progress.js';
+import { achievementList } from '../core/achievements.js';
 
 const CSS = `
 .pnl-story .pnl-tabs { grid-template-columns: repeat(4, 1fr); }
@@ -189,6 +190,16 @@ export function openStory(ctx, params = {}) {
       wrap.append(h('div.st-h', { html: `${icon('🌙', 18)} Ecos de noche · ${echoes.length}/${ECHOES.length}` }));
       for (const e of echoes) wrap.append(h('div.st-page', { 'data-echo': e.id, html: `<b>${esc(e.title)}</b><p><i>${esc(e.line)}</i></p>` }));
     }
+    // logros (antes, los trofeos de Mi Casa): los cumplidos con su fecha y los que faltan
+    const ach = achievementList(s);
+    wrap.append(h('div.st-h', { html: `${icon('trophy', 18)} Logros · ${ach.filter(a => a.at).length}/${ach.length}` }));
+    const achEl = h('div.st-els');
+    for (const a of ach) {
+      achEl.append(h('div.st-el' + (a.at ? '' : '.locked'), { 'data-achievement': a.id, html: a.at
+        ? `${icon(a.ic, 36)}<b>${esc(a.name)}</b><small>${esc(a.desc)} · ${new Date(a.at).toLocaleDateString('es-AR')}</small>`
+        : `${icon('lock', 30)}<b>${esc(a.name)}</b><small>${esc(a.desc)}</small>` }));
+    }
+    wrap.append(achEl);
     return wrap;
   }
 

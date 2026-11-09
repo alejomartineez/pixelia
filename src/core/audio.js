@@ -95,12 +95,11 @@ export const audio = {
   /** Al entrar a una escena (main.js): la pista y el lugar por defecto (las escenas con ambiente propio lo pisan). */
   enterScene(id, song) {
     const p = resolvePiece(song);
-    if (id === 'home') audio.setScene({ place: 'home', indoor: true });
-    else if (id !== 'city' && id !== 'expedition') audio.setScene({ place: SONG_PLACE[p] || 'silent', indoor: false });
+    if (id !== 'city' && id !== 'expedition') audio.setScene({ place: SONG_PLACE[p] || 'silent', indoor: false });
     else audio.setScene({ indoor: false });
     audio.music(p);
   },
-  /** Lugar, hora y clima de ahora (city-ambience, exp-ambience, Mi Casa, combate). */
+  /** Lugar, hora y clima de ahora (city-ambience, exp-ambience, combate). */
   setScene(s = {}) {
     scene = { ...scene, ...s };
     if (running()) engine.setScene(scene);

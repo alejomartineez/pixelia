@@ -13,7 +13,6 @@ export const PLACE_BEDS = {
   mina: { day: { cave: 0.7, wind: 0.08 }, night: { cave: 0.7, wind: 0.08 } },
   faros: { day: { sea: 0.8, wind: 0.45 }, night: { sea: 0.8, wind: 0.5 } },
   bajo: { day: { cave: 0.8, fire: 0.35 }, night: { cave: 0.8, fire: 0.35 } },
-  home: { day: { fire: 0.32, wind: 0.08 }, night: { fire: 0.38, wind: 0.08, crickets: 0.08 } },
   combat: { day: { wind: 0.35 }, night: { wind: 0.35, crickets: 0.15 } },
   silent: { day: {}, night: {} },
 };
@@ -29,7 +28,7 @@ export const WEATHER_BEDS = {
   sequia: { wind: 0.25, forest: -0.15 },
 };
 // Reverb por lugar (mixer.REVERBS)
-export const PLACE_REVERB = { city: 'open', 'exp:cerca': 'open', 'exp:medio': 'open', 'exp:lejos': 'open', mina: 'mine', faros: 'open', bajo: 'under', home: 'interior', combat: 'open' };
+export const PLACE_REVERB = { city: 'open', 'exp:cerca': 'open', 'exp:medio': 'open', 'exp:lejos': 'open', mina: 'mine', faros: 'open', bajo: 'under', combat: 'open' };
 
 // Emisores: ids (round-robin), cada cuánto [min, max] s, prob (de sonar cuando toca), tono ± y volumen,
 // when: 'day' | 'night' | undefined, places, weather (solo con ese clima), dist [min, max] (metros en 3D).
@@ -39,7 +38,6 @@ export const EMITTERS = [
   { id: 'anvil', ids: ['sfx/anvil1', 'sfx/anvil2'], every: [14, 32], prob: 0.7, pitch: 0.05, gain: [0.18, 0.3], when: 'day', places: ['city'], dist: [8, 16] },
   { id: 'drip', synth: 'drip', every: [2, 7], prob: 0.8, pitch: 0.3, gain: [0.25, 0.45], places: ['mina', 'bajo', 'exp:lejos'], dist: [3, 14] },
   { id: 'frost', synth: 'frost', every: [1.5, 4], prob: 0.7, pitch: 0.4, gain: [0.2, 0.35], weather: ['helada', 'nieve'], dist: [2, 10] },
-  { id: 'creak', ids: ['act/creak1', 'act/creak2'], every: [16, 40], prob: 0.5, pitch: 0.1, gain: [0.12, 0.2], places: ['home'], dist: [2, 6] },
   { id: 'rumble', synth: 'rumble', every: [10, 22], prob: 0.6, pitch: 0.2, gain: [0.3, 0.5], places: ['bajo'], dist: [10, 30] },
 ];
 
@@ -110,7 +108,7 @@ export function createSoundscape({ ac, mixer, sampler, synth, rng = Math.random 
     const t = bedTargets(cur);
     for (const k of BED_IDS) if ((t[k] || 0) > 0 || beds.has(k)) setBed(k, t[k] || 0, at, tc);
     mixer.setReverb?.(PLACE_REVERB[cur.place] || 'open', at);
-    // adentro (Mi Casa) el afuera se escucha tapado; la tormenta desde adentro más todavía
+    // adentro (indoor) el afuera se escucha tapado; la tormenta desde adentro más todavía
     mixer.setMuffle?.(cur.indoor ? (cur.weather === 'tormenta' ? 0.6 : 0.45) : 0, at);
     // los faroles de noche zumban apenas (ciudad)
     const wantHum = cur.place === 'city' && cur.night;

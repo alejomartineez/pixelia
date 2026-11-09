@@ -121,5 +121,5 @@ export const SCENES = {
   'combate': { piece: 'battle', scene: { place: 'combat', danger: 0.3 }, events: [[10, 'intensity', 0.6], [18, 'intensity', 0.95], [27, 'stinger', 'victoria']] },
   'epico': { piece: 'epic', epic: true, scene: { place: 'silent' } },
   'mina': { piece: 'mine', scene: { place: 'mina' } },
-  'mi-casa': { piece: 'calm', scene: { place: 'home', indoor: true, weather: 'lluvia' } },
+  'tranquila': { piece: 'calm', scene: { place: 'silent', indoor: true, weather: 'lluvia' } },
 };

@@ -187,14 +187,14 @@ Todo color de la interfaz sale de los tokens de `:root` en `styles.css`; las pan
 - `onboarded`, `avatar{type, skin(index), hair, hairColor(id), dress, dressColor(id), crown, acc}` (`state.princess` = alias viejo, no enumerable), `avatarLooks{[type]: look}`, `city.theme`; `car{body, color(id de OUTFIT_COLORS), wheels, topper}`; `owned{hair:[],dress:[],...}`
 - `city{buildings:[{uid,id,x,z,rot,level,buildEnd,upgradeEnd,lastCollect}], nextUid, expansions, flagColor, camera, rankPerks{builders}}` (`rankPerks`: constructoras ya regaladas por rango, para no darlas dos veces)
 - `materials{madera, piedra, mineral, hierbas}`: materiales de región (expedición; monumentos, obras, equipo). Ver DESIGN-CORE.md §5.
-- `home{items:[{uid,id,x,z,rot}], owned{id:n}, wall, floor, nextUid, started, trophies{id:ms}}`: Mi Casa por dentro (`src/home/furniture.js`). El nivel de la casa es el del edificio `mi_casa`.
+- `achievements{id: ms}`: Logros cumplidos (`src/core/achievements.js`; se ven al final del Diario de la Bitácora) · `city.charmBonus`: Encanto fijo que dejó Mi Casa al irse (guardado v6) · `v6{had, coins, gems, mats, charm, charmBonus, shown}`: lo que hizo la migración v6 (el aviso «Mi Casa cerró sus puertas» sale una vez). Mi Casa (`home{…}`, edificio `mi_casa`) se retiró en el paso 1c de La Travesía.
 - `games{…}`: solo en partidas de antes de la v3 (progreso de los minijuegos retirados, guardado y sin uso) · `v3{gems, finds, conv, refund, placeExp, shown}`: lo que hizo la migración v3 (el aviso "Los minijuegos se retiraron" sale una vez).
 - `stats{}` (usar `store.inc(key,n)` / `store.setMax`): `match3Wins`, `blocksLines`, `parkingWins`, `drivingMeters`, `rankBest`, `charmBest` alimentan logros; `matsEarned` cuenta materiales ganados.
 - `tutorial{}` flags libres. `settings{music,sfx,lowQuality}`.
 - Mutar estado solo vía store/economy cuando exista función; si se toca a mano, llamar `store.markDirty()`.
 
 ## Eventos (bus)
-`currency:changed, coins:earned, gems:earned, xp:changed, level:up{level,reward}, building:placed{b}, building:built{b}, building:upgradeStarted{b}, building:upgraded{b,level}, building:moved{b}, building:removed{b}, production:collected{b,amount,currency}, city:expanded, builders:changed, minigame:finished{game,score,stars,won}, customize:changed, item:bought, quests:changed, scene:changed{id}, stats:changed, hud:build{focus?}, city:flag{color,hex}, town:rankup{rank,def,era,eraChanged}, era:changed{era,from}, building:renovated{b,era,from}, city:focus{uid}, city:place{id}, city:placing{active}, materials:changed{materials,delta,reason}, reward:furniture{id,n,source}, home:changed, home:ready{b}, home:trophy{ids}` (`hud:build` lo emite el botón Construir del HUD; la ciudad abre el menú; `focus` = id de edificio a resaltar. `town:rankup` sale al terminar la mejora de la Municipalidad: la ciudad abre el panel `rank` en modo festejo. `city:focus` abre la ficha de un edificio desde otro panel; `city:place` arranca la colocación de un edificio (lo usa el panel de Obras); `city:placing {active:false}` sale al terminar de colocar: las subidas de nivel ganadas mientras tanto se muestran recién ahí, para no tapar la barra de Colocar).
+`currency:changed, coins:earned, gems:earned, xp:changed, level:up{level,reward}, building:placed{b}, building:built{b}, building:upgradeStarted{b}, building:upgraded{b,level}, building:moved{b}, building:removed{b}, production:collected{b,amount,currency}, city:expanded, builders:changed, minigame:finished{game,score,stars,won}, customize:changed, item:bought, quests:changed, scene:changed{id}, stats:changed, hud:build{focus?}, city:flag{color,hex}, town:rankup{rank,def,era,eraChanged}, era:changed{era,from}, building:renovated{b,era,from}, city:focus{uid}, city:place{id}, city:placing{active}, materials:changed{materials,delta,reason}, achievement:new{ids}` (`hud:build` lo emite el botón Construir del HUD; la ciudad abre el menú; `focus` = id de edificio a resaltar. `town:rankup` sale al terminar la mejora de la Municipalidad: la ciudad abre el panel `rank` en modo festejo. `city:focus` abre la ficha de un edificio desde otro panel; `city:place` arranca la colocación de un edificio (lo usa el panel de Obras); `city:placing {active:false}` sale al terminar de colocar: las subidas de nivel ganadas mientras tanto se muestran recién ahí, para no tapar la barra de Colocar).
 
 ## API de modelos (contratos entre agentes)
 
@@ -211,8 +211,8 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
   DESIGN-CORE.md §4). Con arte por época (Fase 4, terminada): Municipalidad (`models-town.js`), casas (`eraHouse`),
   negocios (`models-shops.js`, `models-shops3.js`), edificios del ciclo (`models-cycle.js`), defensas
   (`models-defense.js`, usa `cycleBody` y `eraTower` de `models-cycle.js`), deco y caminos (`models-deco.js`, materiales
-  en `DS[era]`), Mi Casa (`models-home.js`) y la base de los monumentos (`eraBase` en `models-monuments.js`).
-  Deco, caminos, Mi Casa y monumentos no se renuevan: la escena les pasa la época de la ciudad (`drawEra` en `city.js`;
+  en `DS[era]`) y la base de los monumentos (`eraBase` en `models-monuments.js`).
+  Deco, caminos y monumentos no se renuevan: la escena les pasa la época de la ciudad (`drawEra` en `city.js`;
   en las visitas, la del rango del dueño). Árbol, arbusto, cerezo y unicornio valen 1 siempre (comparten caché).
   `upgradeDressing` ya no existe; el respaldo (`eraRecolor`) queda para los especiales de minijuego.
   `eraWall` arma volúmenes macizos (una cáscara hueca duplicaría los triángulos). El arte por época no pasa por
@@ -224,9 +224,6 @@ export function buildingModel(id, level = 1, opts = {}) // -> THREE.Group
   material colgando, pilas de los materiales que usa, cinta y un cartel con una pelotita por etapa (doradas las hechas).
   Terminado: borde dorado, brillitos y lo animado (haz del Faro, telescopio, agujas y campana de la Torre, banderas).
   Ojo: la capa y=0 del lote queda tapada por la base del lote en la ciudad; los detalles del piso van en y≥1.
-- Mi Casa (`mi_casa`, `models-home.js`): 5 niveles que se notan de afuera (ventanal, cocina con chimenea, segundo piso con balcón,
-  altillo con buhardilla, veleta y cerco dorado). Muebles: `src/home/furniture-models.js` con `voxelModel(key, W, D, build)` de models.js
-  (mismo kit y mallado); `objectThumbnail(key, make)` hace sus miniaturas.
 - Caminos (`cat:'camino'`): baldosa plana de 1 vóxel de alto que cubre el tile entero.
 - Cachear geometrías por `id+level` (clonar el grupo / reusar geometry).
 ```js
@@ -289,22 +286,15 @@ Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS` y los `skins` de cada 
   UI: botón **Obras** en el riel del HUD (desde el rango Pueblo; el globito cuenta las etapas que ya se pueden empezar) → panel `works`
   (`panels-works.js`): materiales con "Jugar", cada monumento con su etapa, lo que pide la próxima y el bonus. Al terminar una partida
   dice cuánto falta de ese material para la próxima etapa (`materialHint`). La ficha del monumento muestra "Etapa N de M" y "Avanzar obra".
-- **Mi Casa** (Fase 4). Edificio `mi_casa` (`auto: true`, no está en el menú Construir): aparece solo cerca de la Municipalidad al llegar
-  a nivel 2 (`economy.ensureHome` en cada `tick`; en el nivel 1 la partida sigue "recién empezada" para el onboarding y la sincronización).
-  Tocarlo → ficha con **Entrar** y **Ampliar**. Ampliar = mejora del edificio (`HOME_LEVELS`: 6×6 → 8×8 → 10×9 → 12×10 → 14×12, con
-  monedas, materiales, obra con constructora y rango 3/4/5 para los últimos). Cada nivel estrena arquitectura adentro (`roomLayout`:
-  ventanal, cocina con mesada, pileta y alacenas, tabique con arco, altillo con escalera y claraboya) que ocupa lugar; lo que queda tapado se reacomoda (`fitItems`).
-  Escena `home` (`src/scenes/home.js`): cuarto vóxel con las paredes del fondo y de la izquierda, tu personaje pasea y se sienta en sillas,
-  sillones y la cama; el ropero abre el Equipaje (`{back: 'home'}`). **Decorar**: tocar un mueble lo elige, arrastrarlo lo mueve (marca
-  verde/roja), Rotar (los de pared cambian de pared), Guardar (vuelve al inventario); pestañas Mis muebles / Tienda / Paredes / Pisos.
-  Muebles (`FURNITURE`): se compran en la Tienda, salen en cofres ("Mueble sorpresa", `CHEST_FURNITURE`), en el Pase (niveles 14 y 27) y
-  como **trofeos** que llegan solos (rango Villa, primer monumento, 10 niveles de Joyas, 30 figuritas). `store.grant({furniture: id})` los da.
-  **Confort** (`comfortInfo`, misma idea que el Encanto: repetir rinde 85%, variedad hasta ×1,6, +5% por nivel de la casa): +1% de XP en
-  las partidas cada 40 (tope +10%), +1% de monedas en el premio diario cada 20 (tope +25%) y suma Confort/4 al Encanto de la ciudad.
-  Online: el perfil publica `city.home` (paredes, piso y hasta 120 muebles) y al visitar una ciudad tocar su casa entra a mirarla (`{visit}`).
+- **Mi Casa** se retiró (La Travesía, paso 1c): la ciudad es el puerto desde donde se sale de travesía. El guardado v6
+  (`migrateV6` en `state.js`) saca el edificio `mi_casa` y deja libre la parcela, devuelve lo pagado por las ampliaciones y los
+  muebles comprados, y pasa el Encanto que daban la casa y su Confort a `city.charmBonus` (`economy.settleV6Charm`, la primera
+  vez que se pide el Encanto) para que nadie baje de rango. Los trofeos pasan a **Logros** (`src/core/achievements.js`), al final
+  del Diario de la Bitácora. En partidas nuevas la Municipalidad da 35 de Encanto (antes 20 + la casa). Los perfiles viejos
+  que traen `city.home` se ignoran.
 - Constructoras limitadas (2, se compran más con gemas). Obras con tiempo; se aceleran con gemas (≤5s gratis).
 - Recursos del ciclo: provisiones, materiales de región, planos, equipo, reservas y colonos (DESIGN-CORE.md §5); la expedición
-  no da monedas (sí experiencia: 10 + 5 por ★, con el Observatorio y el confort de Mi Casa). Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
+  no da monedas (sí experiencia: 10 + 5 por ★, con el Observatorio). Misiones principales guían, diarias dan hábito, logros a largo plazo, premio diario de login con racha.
 
 ## Pruebas
 ```
@@ -316,12 +306,11 @@ URL params: `?scene=id`, `?cheat=nivel` (+100k monedas, +1000 gemas), `?reset`, 
 Suites de punta a punta (todas con `--out carpeta` para las capturas; salen con 1 si algo falla):
 ```
 node tools/test-e2e.mjs      jugadora nueva sin cheat en iPhone: splash → onboarding con toques reales (Osito, color de ropa, nombre y ciudad tipeados, estilo Bosque; verifica el guardado) → modal de llegada (premio del día, «Mañana se abre») → tutorial t1–t10 → nivel → cofre → potenciador viejo → equipo → «Hoy se abre: el Pase» → Pase/Hallazgos/Cofres/Eventos (desde el Pase); revisa los globitos del HUD (≤ 4) y los controles (≤ 14); al final recarga y confirma que no repite el onboarding
-node tools/test-migration.mjs guardado v2 armado a mano (minijuegos jugados, álbum a medias, materiales viejos, monumento a medias, potenciadores) → v3 sin pérdidas; segunda carga igual; Joyería + Taller; sin Pista; importCode; partida nueva
+node tools/test-migration.mjs guardado v2 armado a mano (minijuegos jugados, álbum a medias, materiales viejos, monumento a medias, potenciadores) → v3 sin pérdidas; segunda carga igual; Joyería + Taller; sin Pista; importCode; partida nueva; v5 → v6 (Mi Casa sale: devoluciones, bono de Encanto, Logros)
 node tools/test-visit.mjs    ana y bea (mock): amistad por código, regalito, visita (like, notita, ayudar obra) → buzón → la obra se acelera; pedido "Acelerá mi obra"
 node tools/test-social.mjs   UI social completa (intercambios con escrow, ranking, Obra en Equipo, cuenta, conflicto)
 node tools/test-rank.mjs     rango y Encanto (mock + cheat): chip del HUD → panel con expediente → Mejorar → festejo, constructora de regalo, ficha, menú, perfil público visto por una amistad
 node tools/test-works.mjs    monumentos (mock + cheat): rango Pueblo → botón Obras → materiales de región con «Salir» a la expedición → panel Obras → Construir y colocar el Faro → etapas → bonus de negocios y expediente; capturas de cada etapa
-node tools/test-home.mjs     Mi Casa (mock + cheat): aparece en la ciudad → Entrar → comprar y poner un mueble, arrastrarlo, rotarlo, guardarlo, pared y piso → ropero abre el Equipaje → volver → recarga conserva todo → ampliar la casa → visita a la casa de una amistad
 node tools/test-mock.mjs     API de net.js con dos pestañas     ·     node tools/test-sql.mjs   schema.sql en PGlite
 node tools/test-stress.mjs   recorre escenas + paneles N veces (--rounds 3) y mide fugas (WebGL, listeners, bus, intervalos)
 node tools/gen-sw-core.mjs   regenera CORE de sw.js con todos los .js reales (--bump sube VERSION, --check solo verifica)

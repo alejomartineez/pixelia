@@ -12,7 +12,6 @@ import { HOUSE_BUILDERS } from './models-houses.js';
 import { SHOP_BUILDERS } from './models-shops.js';
 import { DECO_BUILDERS } from './models-deco.js';
 import { MONUMENT_BUILDERS } from './models-monuments.js';
-import { HOME_BUILDERS } from './models-home.js';
 import { TOWN_BUILDERS } from './models-town.js';
 import { CYCLE_BUILDERS } from './models-cycle.js';
 import { RAIZ_BUILDERS } from './models-raiz.js';
@@ -21,7 +20,7 @@ import { DEFAULT_THEME, themeOf, mapColor, isGlass } from './themes.js';
 
 export const VOXELS_PER_TILE = 8;
 const S = 1 / VOXELS_PER_TILE;
-const BUILDERS = { ...SPECIAL_BUILDERS, ...TOWN_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS, ...HOME_BUILDERS, ...CYCLE_BUILDERS, ...DEFENSE_BUILDERS, ...RAIZ_BUILDERS };
+const BUILDERS = { ...SPECIAL_BUILDERS, ...TOWN_BUILDERS, ...HOUSE_BUILDERS, ...SHOP_BUILDERS, ...DECO_BUILDERS, ...MONUMENT_BUILDERS, ...CYCLE_BUILDERS, ...DEFENSE_BUILDERS, ...RAIZ_BUILDERS };
 
 // ---------- Materiales ----------
 let _light = null, _ghost = null;
@@ -209,7 +208,7 @@ function flagHex(c) {
 /** Plantas y adornos que se ven igual en cualquier época (comparten la caché). */
 const ERA_FREE = new Set(['arbol', 'arbusto', 'cerezo', 'unicornio']);
 /**
- * Época con la que se dibuja un edificio. La Municipalidad sigue al rango (su nivel). Deco, caminos, Mi Casa y
+ * Época con la que se dibuja un edificio. La Municipalidad sigue al rango (su nivel). Deco, caminos y
  * monumentos no se renuevan: la escena les pasa la época de la ciudad (city.js drawEra).
  */
 export function modelEra(id, level, era) {
@@ -261,7 +260,7 @@ export function buildingModel(id, level = 1, opts = {}) {
   return g;
 }
 
-// ---------- Modelos propios (muebles de Mi Casa, etc.) ----------
+// ---------- Modelos propios (armados por otros módulos) ----------
 const customCache = new Map();
 /**
  * Modelo vóxel armado por otro módulo con el mismo kit y el mismo mallado (oclusión, partes animadas, luces).
@@ -564,7 +563,7 @@ const _box = new THREE.Box3(), _v = new THREE.Vector3();
 function renderThumb(id, level, theme, era = 1) {
   return renderObjectThumb(buildingModel(id, level, { theme, era }));
 }
-/** Miniatura de cualquier objeto armado con voxelModel (muebles de Mi Casa). Promise<dataURL>, cacheada por key. */
+/** Miniatura de cualquier objeto armado con voxelModel. Promise<dataURL>, cacheada por key. */
 export function objectThumbnail(key, make) {
   const k = 'obj|' + key;
   let p = thumbCache.get(k);

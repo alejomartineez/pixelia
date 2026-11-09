@@ -142,7 +142,7 @@ export function createMixer(ac, { maxVoices = 32 } = {}) {
       if (typeof setTimeout === 'function' && ac instanceof (globalThis.AudioContext || Object)) setTimeout(swap, 350); else swap();
     },
     get reverb() { return reverbName; },
-    /** Amortiguado del ambiente (adentro de Mi Casa, la tormenta vista desde adentro): 0 = abierto, 1 = muy tapado. */
+    /** Amortiguado del ambiente (un interior: la tormenta vista desde adentro): 0 = abierto, 1 = muy tapado. */
     setMuffle(amount = 0, at = ac.currentTime) {
       const f = amount <= 0 ? 20000 : 20000 * Math.pow(500 / 20000, Math.min(1, amount));
       muffle.frequency.cancelScheduledValues(at);

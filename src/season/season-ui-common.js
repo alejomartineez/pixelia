@@ -37,7 +37,6 @@ export function partIcon(p, size = 40) {
     case 'stickers': return packIcon(size);
     case 'item': case 'equip': return icon(p.icon || 'gift', size);
     case 'mats': case 'planos': return icon(p.icon || 'gift', size);
-    case 'furniture': return icon('home', size);
     case 'cosmetic': return icon(COSMETIC_IC[p.target] || 'ribbon', size);
     default: return icon('gift', size);
   }
@@ -52,7 +51,6 @@ export function partLabel(p) {
     case 'item': case 'equip': return (p.n > 1 ? `${p.n}× ` : '') + p.name;
     case 'mats': return `${p.n} ${(p.name || '').toLowerCase()}`;
     case 'planos': return p.n === 1 ? '1 plano' : `${p.n} planos`;
-    case 'furniture': return p.name || 'Mueble';
     case 'cosmetic': return COSMETIC_NAME[p.target] ? COSMETIC_NAME[p.target](p.name, p.id) : p.name;
     default: return 'Regalo';
   }

@@ -14,6 +14,8 @@
 //   v5 (personajes serios, PLAN-QUIEBRE §M): chica y chico pasan a humanos, las piezas a su equivalente (las repetidas y
 //   las que ahora son gratis se devuelven, lo puesto queda tuyo), el look del otro tipo se guarda, aviso único, idempotente;
 //   el auto pasa a ser el esquife (M5): casco, pintura, vela y proa, con lo comprado traducido.
+//   v6 (La Travesía, paso 1c): Mi Casa sale del mapa, se devuelven muebles comprados y ampliaciones (con la que estaba en
+//   obra), el Encanto de la casa y su Confort pasa a un bono fijo, los trofeos van a Logros (Bitácora), aviso único, idempotente.
 //
 //   node tools/test-migration.mjs
 import http from 'node:http';
@@ -54,7 +56,7 @@ function saveV2({ withPista = true, withTaller = false } = {}) {
     B(2, 'joyeria', 8, 9, 3, 1),
     B(3, 'torre_bloques', 17, 9, 2, 0),
     B(4, 'garaje', 8, 17, 2, 2),
-    B(5, 'mi_casa', 13, 17, 2),
+    B(5, 'mi_casa', 13, 17, 1),                  // Mi Casa sin ampliar: el v6 la saca sin devolver nada
     B(6, 'casita', 17, 12, 3), B(7, 'panaderia', 17, 15, 2), B(8, 'heladeria', 9, 13, 1),
     B(9, 'faro', 6, 5, 2),                       // monumento: 2 etapas hechas de 4
     B(10, 'arbol', 11, 7), B(11, 'camino', 12, 11),
@@ -115,7 +117,7 @@ const snapshot = (page) => run(page, `
   return { v: S.v, materials: S.materials, buildings: b, gems: S.gems, coins: S.coins, equipment: S.equipment, items: S.chests.items,
     have: S.album.have, brillitos: S.album.brillitos, claimedSets: S.album.claimedSets, planos: S.planos, v3: S.v3, games: S.games,
     avatar: S.avatar, avatarLooks: S.avatarLooks, car: S.car, owned: S.owned, theme: S.city.theme, flag: S.city.flagColor,
-    home: S.home && { items: S.home.items, wall: S.home.wall, floor: S.home.floor }, social: S.social && { giftDay: S.social.giftDay, coop: S.social.coop },
+    home: S.home, achievements: S.achievements, social: S.social && { giftDay: S.social.giftDay, coop: S.social.coop },
     login: S.login, settings: S.settings, expansions: S.city.expansions, level: S.player.level, name: S.player.name, city: S.player.cityName,
     // una amenaza del calendario que cae justo hoy se resuelve sola al cargar y paga gemas: se descuenta para que no dependa del día
     threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) };`);
@@ -137,7 +139,7 @@ try {
   const V2 = saveV2();
   const { page, errors } = await openWithSave(V2);
   const s1 = await snapshot(page);
-  ok(s1.v === 5, 'la partida queda en v5 (pasa por la v3 y la v4)', s1.v);
+  ok(s1.v === 6, 'la partida queda en v6 (pasa por la v3, la v4 y la v5)', s1.v);
   ok(s1.name === 'Lu' && s1.city === 'Villa Sauce' && s1.level === 14 && s1.expansions === 2, 'nombre, ciudad, nivel y terreno intactos');
 
   // 1. materiales
@@ -157,8 +159,8 @@ try {
   ok(same(3, 'dispensario', 17, 9, 0, 2), 'Torre de Bloques → Dispensario (nivel 2)', byUid[3]);
   ok(same(4, 'establo', 8, 17, 2, 2), 'Garaje → Establo (nivel 2)', byUid[4]);
   ok(same(12, 'casa_exp', 14, 5, 3, 2), 'Pista → Casa de Expediciones (nivel 2)', byUid[12]);
-  ok(s1.buildings.length === V2.city.buildings.length && !s1.buildings.some(b => ['joyeria', 'torre_bloques', 'garaje', 'pista'].includes(b[1])), 'mismos edificios, ninguno con id viejo');
-  ok(same(9, 'faro', 6, 5, 0, 2) && same(5, 'mi_casa', 13, 17, 0, 2) && same(1, 'castillo', 12, 12, 0, 4), 'monumento, Mi Casa y Municipalidad (rango 4) intactos');
+  ok(s1.buildings.length === V2.city.buildings.length - 1 && !s1.buildings.some(b => ['joyeria', 'torre_bloques', 'garaje', 'pista'].includes(b[1])), 'mismos edificios menos Mi Casa, ninguno con id viejo');
+  ok(same(9, 'faro', 6, 5, 0, 2) && !byUid[5] && same(1, 'castillo', 12, 12, 0, 4), 'monumento y Municipalidad (rango 4) intactos; Mi Casa sale (v6)');
   const era4 = await run(page, `return P.data.eraOfRank(4)`);
   ok(s1.buildings.filter(b => b[1] !== 'castillo').every(b => b[6] === era4), `cada edificio tiene la época del rango (${era4})`, s1.buildings.map(b => b[6]));
   ok(await run(page, `return E.rankStatus ? E.townRank() === 4 : true`), 'el rango sigue en Villa');
@@ -200,7 +202,7 @@ try {
     'el auto pasa a su esquife y la ropa comprada queda (con sus ids nuevos)', { car: s1.car, owned: s1.owned });
   ok(s1.theme === 'musgo' && s1.flag === 'verde', 'el tema bosque pasa a musgo (v4) y la bandera queda intacta', { theme: s1.theme, flag: s1.flag });
   const hi = (list) => JSON.stringify((list || []).map(i => [i.id, i.x, i.z, i.rot || 0]));
-  ok(hi(s1.home.items) === hi(V2.home.items) && s1.home.wall === 'menta' && s1.home.floor === 'nogal', 'Mi Casa por dentro intacta (muebles y trofeo)', s1.home);
+  ok(!s1.home && s1.achievements?.trofeo_joyas, 'Mi Casa por dentro se borra y su trofeo queda en Logros (v6)', { home: s1.home, ach: s1.achievements });
   ok(JSON.stringify(s1.social.giftDay) === JSON.stringify(V2.social.giftDay) && s1.social.coop.local === 120, 'contactos (regalos del día, Obra en Equipo) intactos');
   ok(s1.login.streak === 12 && s1.settings.textSize === 'large' && s1.settings.music === false, 'racha y ajustes intactos');
 
@@ -239,7 +241,7 @@ try {
     const { page: p2, context } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
     const r = await run(p2, `const code = btoa(unescape(encodeURIComponent(JSON.stringify(args[0])))); P.store.importCode(code); E.tick(); const T = P.store.state;
       return { v: T.v, mats: T.materials, ids: T.city.buildings.map(b => b.id), gems: T.gems, eq: T.equipment, threatGems: Object.values(T.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) };`, V2);
-    ok(r.v === 5 && r.mats.mineral === 7 && r.ids.includes('casa_exp') && !r.ids.includes('pista') && r.gems === 40 + gems + r.threatGems && r.eq.cuerda === 2, 'importCode migra igual que la carga local', r);
+    ok(r.v === 6 && r.mats.mineral === 7 && r.ids.includes('casa_exp') && !r.ids.includes('mi_casa') && !r.ids.includes('pista') && r.gems === 40 + gems + r.threatGems && r.eq.cuerda === 2, 'importCode migra igual que la carga local', r);
     await context.close();
   }
 
@@ -278,7 +280,7 @@ try {
     const { page: p5, context, errors: e5 } = await openWithSave(V3);
     const r = await run(p5, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, theme: S.city.theme, v4: S.v4, v5: S.v5,
       threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
-    ok(r.v === 5, 'la partida queda en v5', r.v);
+    ok(r.v === 6, 'la partida queda en v6', r.v);
     ok(r.avatar.type === 'humano' && r.avatar.build === 'recio' && r.avatar.hairColor === 'castano' && r.avatar.dressColor === 'rojo', 'el oso pasa a ser un humano recio con el mismo color de pelo (el del pelaje) y de ropa', r.avatar);
     ok(r.avatar.hair !== 'medias' && r.avatar.dress !== 'capita' && r.avatar.crown !== 'orejitas' && r.avatar.acc === 'mochila', 'lo que no le sirve a una persona vuelve a lo de arranque; la mochila se queda', r.avatar);
     ok(!('gatito' in r.looks) && !('chica' in r.looks) && r.v5?.looks?.chica?.hair === 'trenzas', 'el look guardado del gato se va y el de la chica queda guardado (v5.looks)', { looks: r.looks, v5: r.v5 });
@@ -329,7 +331,7 @@ try {
     const { page: p6, context, errors: e6 } = await openWithSave(V4);
     const r = await run(p6, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, v5: S.v5, car: S.car,
       threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
-    ok(r.v === 5, 'la partida queda en v5', r.v);
+    ok(r.v === 6, 'la partida queda en v6', r.v);
     const a = r.avatar;
     ok(a.type === 'humano' && a.build === 'recio' && a.face === 'barba_larga' && a.hair === 'cortito' && a.dress === 'capa_viaje' && a.crown === 'galera' && a.acc === 'buho',
       'el chico pasa a humano recio: la barba de sabio es su cara, la capa de gala es la capa de viaje y el gato, el cuervo', a);
@@ -380,11 +382,58 @@ try {
   }
 
   // ===================================================================
+  section('Guardado v5 con Mi Casa amueblada y ampliándose → v6 (La Travesía, paso 1c)');
+  {
+    const { page: p0, context: c0 } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
+    const base = await run(p0, 'return JSON.parse(JSON.stringify(S))');
+    await c0.close();
+    const T0 = Date.now();
+    const starter = [['cama', 0, 0], ['ropero', 1, 0], ['mesa', 3, 0], ['silla', 3, 1], ['lampara', 5, 0], ['planta', 5, 5], ['alfombra', 2, 3], ['cuadro', 3, 0]];
+    const items = [...starter, ['sillon', 0, 4], ['sillon', 6, 4], ['piano', 6, 0], ['trofeo_rango', 7, 7]].map(([id, x, z], i) => ({ uid: i + 1, id, x, z, rot: 0 }));
+    const V5 = { ...base, v: 5, coins: 1000, gems: 10, onboarded: true,
+      player: { ...base.player, level: 12, xp: 40 }, stats: { ...base.stats, coinsEarned: 30000, furnitureBought: 3 },
+      materials: { madera: 1, piedra: 2, mineral: 3, hierbas: 4 },
+      city: { ...base.city, buildings: [...base.city.buildings, B(90, 'mi_casa', 13, 17, 3, 0, { upgradeEnd: T0 + HOUR })] },
+      home: { items, wall: 'menta', floor: 'nogal', nextUid: items.length + 1, owned: { tele: 1 }, trophies: { trofeo_rango: T0 - DAY }, started: true } };
+    delete V5.v6; delete V5.achievements;
+    const { page: p7, context, errors: e7 } = await openWithSave(V5);
+    const r = await run(p7, `return { v: S.v, coins: S.coins, gems: S.gems, mats: S.materials, ids: S.city.buildings.map(b => b.id), home: S.home || null,
+      v6: S.v6, ach: S.achievements, bonus: S.city.charmBonus || 0, charm: E.charmInfo(), threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
+    ok(r.v === 6, 'la partida queda en v6', r.v);
+    ok(!r.ids.includes('mi_casa') && !r.home, 'Mi Casa sale del mapa y state.home se borra', { ids: r.ids, home: r.home });
+    // ampliaciones 2 y 3 hechas y la 4 en obra: 2500 + 7000 + 18000 · muebles: 2 sillones y la tele (el piano salió de un cofre)
+    ok(r.v6.coins === 27500 + 2300 && r.coins >= 1000 + 29800, 'devuelve las ampliaciones (con la que estaba en obra) y los muebles comprados', { v6: r.v6, coins: r.coins });
+    ok(!r.v6.gems && r.gems === 10 + r.threatGems, 'el piano de cofre no se devuelve en gemas (tope: furnitureBought)', { gems: r.gems, v6: r.v6 });
+    ok(r.mats.piedra === 2 + 42 && r.mats.madera === 1 + 20 && r.mats.mineral === 3 + 10 && r.mats.hierbas === 4, 'y los materiales de las ampliaciones', r.mats);
+    // Confort 148 (Encanto 37) + lo que sumaba el edificio (10 × 1,5 por nivel 3, más la variedad)
+    ok(r.bonus >= 52 && r.bonus < 120 && r.v6.charmBonus === r.bonus && r.charm.bonus === r.bonus && !r.v6.charm, `el Encanto de la casa pasa a un bono fijo (+${r.bonus})`, { bonus: r.bonus, v6: r.v6, charm: r.charm });
+    ok(r.ach?.trofeo_rango === T0 - DAY, 'el trofeo pasa a Logros con su fecha', r.ach);
+    ok(await p7.waitForFunction(() => /Mi Casa cerró/.test(document.body.innerText), { timeout: 15000 }).then(() => true, () => false), 'el aviso «Mientras no estabas…» cuenta que Mi Casa cerró');
+    await p7.evaluate(() => document.querySelector('.modal .modal-foot .btn')?.click());
+    await sleep(800);
+    ok(await run(p7, `return S.v6.shown === 1`), 'el aviso queda marcado como visto');
+    const diary = await run(p7, `P.ctx.openPanel('story', { tab: 'diario' }); await new Promise(r => setTimeout(r, 900));
+      const el = document.querySelector('[data-achievement="trofeo_rango"]');
+      return { got: !!el && !el.classList.contains('locked'), text: document.querySelector('.pnl-story')?.innerText || '' };`);
+    ok(diary.got && /Logros/.test(diary.text), 'la Bitácora muestra el logro en el Diario', diary.text.slice(-300));
+    await p7.keyboard.press('Escape');
+    await run(p7, `P.store.save(); return true;`);
+    await p7.reload({ waitUntil: 'load' });
+    await p7.waitForFunction(() => window.__pixelia?.store?.state && window.__pixelia.ctx.router.current === 'city', { timeout: 30000 });
+    await sleep(1500);
+    const r2 = await run(p7, 'return { coins: S.coins, bonus: S.city.charmBonus, mats: S.materials, v: S.v }');
+    ok(r2.v === 6 && r2.bonus === r.bonus && r2.mats.piedra === r.mats.piedra && r2.coins < r.coins + 2000, 'la segunda carga no devuelve de nuevo ni suma otro bono', { r2, coins: r.coins });
+    ok(!(await p7.evaluate(() => /Mi Casa cerró/.test(document.body.innerText))), 'el aviso no vuelve a salir');
+    ok(e7.length === 0, 'sin errores de página', e7);
+    await context.close();
+  }
+
+  // ===================================================================
   section('Partida nueva: sin aviso ni compensación');
   {
     const { page: p4, context } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
-    const r = await run(p4, `return { v: S.v, v3: S.v3 || null, v4: S.v4 || null, v5: S.v5 || null, mats: Object.keys(S.materials), games: S.games || null }`);
-    ok(r.v === 5 && !r.v3 && !r.v4 && !r.v5 && !r.games && r.mats.join() === 'madera,piedra,mineral,hierbas', 'v5 de entrada, solo materiales de región y sin state.games', r);
+    const r = await run(p4, `return { v: S.v, v3: S.v3 || null, v4: S.v4 || null, v5: S.v5 || null, v6: S.v6 || null, home: S.home || null, mats: Object.keys(S.materials), games: S.games || null }`);
+    ok(r.v === 6 && !r.v3 && !r.v4 && !r.v5 && !r.v6 && !r.home && !r.games && r.mats.join() === 'madera,piedra,mineral,hierbas', 'v6 de entrada, solo materiales de región, sin state.games ni Mi Casa', r);
     await sleep(2500);
     ok(!(await p4.evaluate(() => !!document.querySelector('.modal.v3-notice'))), 'no ve el aviso de los minijuegos');
     await context.close();
