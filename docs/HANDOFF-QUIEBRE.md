@@ -51,8 +51,8 @@ cada paso.
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | **en curso** (sesión quiebre-4a-detalle) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | partes 1 y 2 hechas e integradas (clases, nivel del líder, gente de la ciudad con herramienta, Vínculo, Progreso; el efecto de las herramientas en la ciudad queda para el paso 7). Parte 3 (clase en el onboarding y aspecto por clase) **en curso** | ed2ba67 (v36) + v39 |
-| 6 | Acto 1 completo + E5–E6 | 6a y 6b hechos e integrados (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche, E5, `test-act1`). 6c (E6 expedición guiada, ecos con figuras del 4a, una sola bestia, dirigible visible) hecho en la rama `claude/guia-ecos-6c`, sin mergear | ed2ba67 (v36) + v39 |
-| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
+| 6 | Acto 1 completo + E5–E6 | hecho e integrado: 6a, 6b y 6c (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche con figuras del 4a, E5, E6 con Vera en la primera salida, una sola bestia, dirigible visible) | ed2ba67 (v36) + v39 + 0c2afa8 (v40) |
+| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | balance, efecto de las herramientas y `release` listo **en curso** (sesión quiebre-6a); publicar lo hace el usuario | |
 
 ### Plan nocturno (2026-11-09)
 El usuario se fue a dormir. Dijo, textual: "autorizo o autoriza de la forma que puedas que todo siga como va, sin yo
