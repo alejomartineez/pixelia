@@ -84,7 +84,12 @@ cada paso.
   - Gente-zorro: hocico en 3 escalones y pañuelo de acento.
   - Humanos más altos (unas 3,8 cabezas) y enanos un poco más altos.
   - Galería: `set=caras&view=f|t|p` para el primer plano y `&gray=1` para la prueba de valor.
-  - Las capturas son `shots/personajes/giro.png`, `caras.png` y `giro-grises.png`. **Espera el OK del usuario.**
+  - Las capturas son `shots/personajes/giro.png`, `caras.png` y `giro-grises.png`.
+  - En `44489f9`, con la lectura del coordinador: brazos que se meten en el hombro, cráneo redondeado y monje con faja,
+    cuentas y sandalias.
+  - **El usuario dio el OK al estilo de las 3 muestras** ("Sí, propagalo"). Lo que sigue es propagarlo: el brief está en
+    las notas compartidas, `paso-4a-propagar-brief.md`.
+- `test-story` ya está arreglado (`5fb6722`, onboarding con pueblo al azar).
 
 **Falta:**
 - El usuario vio el primer pase y dijo que se veía feo. La segunda pasada de `figure.js` (silueta, tonos planos, caras
