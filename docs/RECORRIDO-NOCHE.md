@@ -76,8 +76,9 @@ con la interfaz real hasta el primer combate. La bestia y el faro los adelanté 
   - En `55` el eco queda centrado, con su brillo.
 - **Juego de PC al 115 %:** lo miré con una ventana de 1670×939 a 1,15 (es lo que ve el WebView a 1920×1080). El panel
   mide 691 px en pantalla y las muestras, 55 px.
-- **Nuevo, sin arreglar:** con el cartel de nivel abierto, los avisos "Misión cumplida" y "Pase de Temporada" se
-  ponen encima del título "Subiste de nivel". Se lee igual, pero queda encimado.
+- **Arreglado (rama `claude/retoques-interfaz`):** con el cartel de nivel abierto, los avisos "Misión cumplida" y "Pase
+  de Temporada" se ponían encima del título "Subiste de nivel". Ahora `ui.toast` los guarda mientras hay un cartel de
+  premio (`.reward-modal`) y los muestra de a uno cuando se cierra.
 
 ### Economía
 En este recorrido no vi nada raro de economía. La salida corta gratis llegó a tiempo, la Huerta dio las 4 provisiones

@@ -453,7 +453,9 @@ export const PANEL_CSS = `
 }
 /* ---------- Ajustes por pestañas (panels-settings.js) ----------
    Solo tokens de :root (styles.css): el paso 2d (interfaz oscura) los cambia ahí y el panel sigue solo. */
-.modal.set-panel { width: min(940px, 100%); height: min(88vh, 760px); height: min(88dvh, 760px); }
+/* alto fijo (las pestañas no saltan de tamaño), justo para Pantalla: con 760, a 1920×1080 Pantalla y Sonido quedaban
+   con media ventana vacía abajo; las pestañas largas (Gráficos, Controles) se desplazan dentro */
+.modal.set-panel { width: min(940px, 100%); height: min(88vh, 560px); height: min(88dvh, 560px); }
 .modal.set-panel .modal-body { padding: 0; display: flex; overflow: hidden; }
 .set-wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: 196px minmax(0, 1fr); }
 .set-tabs { display: flex; flex-direction: column; gap: 4px; padding: 12px 8px; border-right: 2px dashed var(--rule); overflow-y: auto; background: var(--surface-2); }
