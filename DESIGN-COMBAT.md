@@ -941,7 +941,7 @@ Plan: L5 de `docs/PLAN-QUIEBRE.md`. La elección de clase en el onboarding y el 
   - Botiquín: ánimo máximo `+⌊nivel / 2⌋`.
   - Farol: +3 por nivel en "seguir con tormenta".
 - **Ciudad (paso 7, `src/core/tools-city.js`):** el Martillo de Brígida baja 2 % por nivel (hasta 10 %) las monedas de
-  construir y mejorar edificios (no el expediente de la Municipalidad, Mi Casa ni los monumentos); el Farol de Ramiro suma
+  construir y mejorar edificios (no el expediente de la Municipalidad ni los monumentos); el Farol de Ramiro suma
   4 puntos de preparación por nivel (hasta 20) contra las amenazas, sin pasar de 100 (`city.mods.prep` en
   `prepInfo`). Lee `state.people` directo, sin importar `people.js`, para no armar un ciclo con `economy.js`.
 - **Antes (paso 5b):** la ciudad quedaba para el paso 7 (decisión de esa noche). El Martillo tenía que dar obras más baratas y el Farol más
@@ -1038,7 +1038,7 @@ Plan: M3 de `docs/PLAN-QUIEBRE.md`, sobre el 4a (`CLASS_KIT`, `classLook` y `opt
     con el kit completo el Equipaje dejaría de verse.
   - Al cambiar de clase, el personaje se vuelve a armar (`leader:changed`).
   - Manejando el esquife no lleva el arma (`NOT_SEATED`, del 4a).
-- **Mi Casa y el Equipaje** muestran el look sin clase.
+- **El Equipaje** muestra el look sin clase.
 
 ### 16.3 Combate por la URL
 `newFromParams` de `combat-scene.js` toma `leader`, `classLevel` y `picks`. Sin `leader`, usa el de la partida. La

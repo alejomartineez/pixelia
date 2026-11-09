@@ -112,7 +112,7 @@ try {
     if (name === 'combate') ok(r.music.layers.includes('choir:choir') && r.music.layers.includes('perc:brush'), 'en combate, con el peligro alto, entran la escobilla y el coro', r.music.layers);
     if (name === 'epico') ok(r.music.epic && r.reverb === 'hall' && r.stats.motifs > 0, `el modo épico usa sala, coro y cita El Quiebre (${r.stats.motifs} motivos)`, r.music);
     if (name === 'mina') ok(r.reverb === 'mine' && r.scape.beds.cave > 0.5, 'la mina tiene reverb de mina y zumbido de cueva');
-    if (name === 'tranquila') ok(r.reverb === 'open' && r.scape.beds.rain > 0 && !r.scape.beds.fire, 'pantalla tranquila: la lluvia afuera y sin el fuego de Mi Casa', r.scape.beds);
+    if (name === 'tranquila') ok(r.reverb === 'interior' && r.scape.beds.rain > 0 && !r.scape.beds.fire, 'pantalla tranquila: reverb de interior, la lluvia afuera y sin el fuego de Mi Casa', { reverb: r.reverb, beds: r.scape.beds });
   }
 
   section('Compositor');

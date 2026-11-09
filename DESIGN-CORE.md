@@ -751,7 +751,6 @@ llegada adelanta la próxima ("Mañana se abre: Contactos").
 | Obras (monumentos) | rango Pueblo (igual que hoy) |
 | Hallazgos | al encontrar el primero |
 | Cofres | al ganar el primero |
-| Mi Casa | nivel 2 (igual que hoy) |
 
 **Resultado de la Fase 5b** (`src/core/unlocks.js`, `state.unlocks.open {id: ms}`):
 - Dos clases. Las **de juego** (Expedición, Diarias, Amenazas, Obras, Hallazgos, Cofres) se abren apenas se cumple la
@@ -782,7 +781,8 @@ llegada adelanta la próxima ("Mañana se abre: Contactos").
 | Pase y eventos | el Pase sigue, con puntos de expediciones y amenazas, ~1 nivel por día; los eventos de minijuego se cambian por eventos de región | 5 |
 | Encanto y rango | el rango maneja épocas, regiones y terreno; el Encanto mejora el trato en las aldeas | 2 y 4 |
 | Auto y garaje del Vestidor | el auto solo se usa en los minijuegos: queda abierto (§9) | 5 |
-| Mi Casa, Vestidor, temas, social | se quedan; el social se adapta en la Fase 7b | — |
+| Vestidor, temas, social | se quedan; el social se adapta en la Fase 7b | — |
+| Mi Casa | se quedó en la Fase 5; sale en La Travesía (paso 1c, guardado v6, §7.3) | — |
 
 ### 7.2 Guardado v3 (`state.js`, `VERSION = 3`, Fase 5)
 `migrateV3(s)` corre si `s.v < 3`, antes de `deepFill`, y es idempotente:
@@ -818,7 +818,7 @@ monumentos, edificios y niveles pasan sin pérdida, y que una segunda carga no c
 - "Niveles totales" para los hallazgos = (Joyas − 1) + (Estacionamiento − 1). Cada hallazgo de compensación es de 2★ o más.
   Las gemas se suman en la migración; los hallazgos se entregan al arrancar (después de `initAlbum`) y el aviso sale una vez en
   la llegada a la ciudad (`state.v3`). Una partida recién empezada (`isFreshGame`) no recibe aviso ni la Casa automática.
-- La Casa de Expediciones automática la coloca `economy.ensureExpHouse` en el primer `tick` (misma búsqueda que Mi Casa).
+- La Casa de Expediciones automática la coloca `economy.ensureExpHouse` en el primer `tick` (la misma búsqueda que usaba Mi Casa).
 - Hallazgos: `SET_REGION` en `album.js`; `grantStickers({region})` saca solo de los sets de esa región (la expedición pasa
   `run.region`). La pantalla agrupa los sets por región. Nombres y arte nuevos de los sets: pendiente (Fase 6).
 - Cofres: sin cofre por partida ganada; el cofre gratis pasa a 1 por día (sin acumular) y subir de nivel ya no da madera
@@ -834,6 +834,21 @@ monumentos, edificios y niveles pasan sin pérdida, y que una segunda carga no c
   `src/threats/` y `exp-rules.js`.
 - El auto del Vestidor queda atado al Establo (ex Garaje): botón "Auto" en su ficha y se estaciona al lado (§9).
 - Ranking semanal de contactos: solo Nivel, Estrellas (de expedición) y Encanto; el perfil publica `week {stars, exps}`.
+
+### 7.3 Guardado v6: sale Mi Casa (`state.js`, `VERSION = 6`, La Travesía paso 1c)
+La aldea pasa a ser el puerto de la travesía y no hace falta decorar una casa. `migrateV6`:
+- saca el edificio `mi_casa` (la parcela queda libre) y borra `state.home`;
+- devuelve las ampliaciones hechas y la que estaba en obra (monedas, gemas y materiales) y los muebles comprados: no los de
+  arranque, con tope `stats.furnitureBought`, y los que salieron en cofres van últimos;
+- el Encanto que daban la casa (10, +25 % por nivel, con su lugar en la variedad) y su Confort (Confort / 4) queda en
+  `v6.charm`, y `economy.settleV6Charm` lo pasa a `state.city.charmBonus` la primera vez que se pide el Encanto: nadie baja
+  de rango;
+- los trofeos pasan a `state.achievements` (Logros, `src/core/achievements.js`, al final del Diario de la Bitácora);
+- el aviso sale una vez dentro de «La isla cambió» (`v6Pending` en `main.js`). Una partida nueva no lo ve.
+
+Fuera del guardado: los muebles del Pase (niveles 14 y 27) pasan a monedas (400 y 700 base), el «Mueble sorpresa» de los
+cofres pasa a «Arcón de monedas» (épico, 700–1000), y se van el +XP de las salidas y el +% del premio diario del Confort.
+Las visitas ignoran el `city.home` de los perfiles viejos.
 
 ---
 
@@ -968,6 +983,22 @@ herramientas (con eso arma `sim-combat` su sección "En la partida").
   experiencia por Vínculo (40 × Vínculo) y Martillo al 3 %. Ninguno lleva las cuatro semillas a verde: las metas de
   arriba están al borde con cualquier suerte.
 - **Hecho en §8.z:** el rebalanceo con varias semillas.
+
+### 8.w Sin Mi Casa (La Travesía, paso 1c)
+Una partida nueva perdía ~28 de Encanto desde el nivel 2 (la casa y su Confort de arranque). Se compensa en la
+Municipalidad: **Encanto 20 → 35** (`castillo.charm` en `data.js`). Se probaron 30, 32, 38, 40 y 45, y contar a la
+Municipalidad como un tipo más en la variedad: de 38 para arriba el rango 3 y el 5 llegan antes de tiempo, y con 30 o
+32 falla más seguido el Pase (nivel 30 el día 26 o 27).
+
+| Semillas (60 días) | Base (antes del 1c) | 35 de Encanto |
+|---|---|---|
+| 1–12 | todas | 2 fallas sueltas: Pase nivel 30 el día 26 (semilla 9), planos últimos para la época (semilla 8) |
+| 13–24 | 7 fallas sueltas | 7 fallas sueltas |
+
+Las dos fallas de 1–12 son del bot: en la semilla 9 nunca saca 3★ y se traba en la misión t18 (pierde las chispas de 13
+misiones principales; en la base, las semillas 8, 11 y 12 se traban igual en `q_combate`). En la 8 el Encanto llega antes
+y lo último que falta para Piedra son los planos, que dependen de la suerte en la expedición. Con las 24 semillas la
+cuenta queda 9 contra 7 de la base: dentro del ruido.
 
 ### 8.z Rebalanceo con varias semillas (paso 7b)
 `npm run sim:seeds` (`node sim-economy.mjs --seeds 1-6`) corre una partida completa por semilla en paralelo, cada una

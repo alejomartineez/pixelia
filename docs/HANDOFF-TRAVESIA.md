@@ -38,7 +38,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 1a | Armas y armaduras fuera del cuerpo, `test-gear-fit` y galería de clases | — | por empezar | `claude/trav-1a` |
 | 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | — | por empezar | `claude/trav-1b` |
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
-| 1c | Sacar Mi Casa y guardado v6 | trav-1c (cortó por contexto) | WIP: código y v6 hechos; faltan balance, `npm test` y docs | `claude/trav-1c-a593b3` |
+| 1c | Sacar Mi Casa y guardado v6 | trav-1c + su continuación | hecho (sin bump) | `claude/zealous-hellman-0f063d` (sale de `claude/trav-1c-a593b3`) |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | — | por empezar | `claude/trav-1d` |
 | 2a | Nivel único, talentos, arsenal, maestría y fuerza | — | después del Bloque 1 | |
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
@@ -66,8 +66,8 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 ## Notas de cada paso
 (cada sesión anota acá lo que hizo, sus decisiones y lo que queda)
 
-### 1c · Sacar Mi Casa (WIP, corte por 50 % de contexto)
-**Hecho** (rama `claude/trav-1c-a593b3`, sin bump):
+### 1c · Sacar Mi Casa (hecho)
+**Primera sesión** (rama `claude/trav-1c-a593b3`, commit WIP `240a214`, sin bump):
 - Borrados `src/scenes/home.js`, `src/home/*`, `src/city/models-home.js`, `tools/test-home.mjs` (y su entrada en `npm test`).
 - Sin rastros de Mi Casa en `src/` (grep de `home/`, `mi_casa`, `comfortInfo`, `HOME_LEVELS`, `furniture`): main, data,
   economy (Comfort, eras, Martillo, mejoras, `ensureHome`), state (`reward.furniture`), quests (bono de login), expedition (XP),
@@ -87,12 +87,25 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 - `test-migration` en verde (93 ✔) con el caso nuevo v5 → v6. `test-stress` y `test-audio` editados (sin correr).
 - Arreglado de paso: `claimLogin` devolvía `reward` sin definir.
 
-**Falta:**
-1. **Balance** (`npm run sim:seeds` del 1 al 12, `node sim-economy.mjs --seeds 1-12` desde `tools/`). Sin Mi Casa toda
-   partida nueva perdía ~28 de Encanto fijo (casa + Confort de arranque). Probé `castillo.charm` 20 → **35** (data.js, ya
-   commiteado): quedan 2 fallas de 1 semilla cada una (Pase nivel 30 el día 26 en la semilla 9; planos últimos en la 8).
-   La línea base (master) da 12/12 en todo. Probar 30 o 40, o devolver el +1 % de XP / +2 % de login de arranque.
-2. `npm test` completo (sin bump). Mirar sobre todo test-stress, test-audio, test-e2e, test-rank, test-cycle.
-3. Docs: CLAUDE.md (Mi Casa en la intro, `?scene=home`, `npm test`), DESIGN.md, DESIGN-CORE.md (§7.2/§8, guardado v6),
-   DESIGN-AUDIO.md (lugar `home`), DESIGN-COMBAT.md; grep `Mi Casa` en `*.md`.
-4. Una captura del Diario con los Logros (`node smoke.mjs`), y PushNotification al cerrar.
+**Segunda sesión** (rama `claude/zealous-hellman-0f063d`, sale del WIP; sin bump):
+- **Balance:** queda `castillo.charm` **35**. Probé 30, 32, 38, 40, 45 y contar a la Municipalidad como un tipo más en la
+  variedad. Con 35, en las semillas 1–12 quedan las mismas 2 fallas sueltas (Pase nivel 30 el día 26 en la 9; planos
+  últimos en la 8) y en 13–24 hay 7, igual que la base (master da 0 en 1–12 y 7 en 13–24). En 24 semillas: 9 contra 7.
+  - La semilla 9 nunca saca 3★ y el bot se traba en la misión t18: pierde las chispas de 13 misiones principales. En la
+    base, las semillas 8, 11 y 12 se traban igual en `q_combate`. Es el bot, no el juego.
+  - En la 8 el Encanto llega antes que en la base y lo último para Piedra son los planos (suerte de la expedición).
+  - 38 o más adelanta los rangos 3 y 5; 30 o 32 hacen fallar más el Pase. Detalle en DESIGN-CORE.md §8.w.
+  - Si el orquestador quiere 12/12 sí o sí, lo que queda es arreglar el bot (que busque 3★ cuando la misión lo pide), no
+    el Encanto.
+- **Docs:** CLAUDE.md (intro, `npm test`, `?scene`), DESIGN.md (estado, eventos, arte, Mi Casa → retirada, pruebas),
+  DESIGN-CORE.md (§7.1, §7.3 guardado v6 nuevo, §8.w balance), DESIGN-AUDIO.md (lugar `home` → pantallas tranquilas) y
+  DESIGN-COMBAT.md. Los handoffs viejos quedan como historia.
+- **`npm test`** (sin bump), cada suite en verde corrida sola: e2e 104, migración 93, colocación 65, stress 15, visitas 20,
+  mock 91, social 65, rango 32, obras 39, expedición 30, ciclo 67, amenazas y telemetría ok, ajustes, historia 107,
+  ambiente, audio 72, combate 100, escena de combate 29, combate-exp 75, clases 80, look de clase 51, Raíz 60, Acto 1 84 y
+  SQL 183. En la cadena larga fallaron por tiempo stress, expedición e historia; solas pasan.
+  - `test-audio`: lo que esperaba el WIP para la «pantalla tranquila» estaba mal (reverb `open`); la pieza `calm` usa
+    `interior`. Corregido.
+  - **`test-people` da 29 bien y 2 mal** («la llegada se cuenta con una escena»): **falla igual en master** (`a335752`,
+    con su propio servidor), no es del 1c. Queda para quien toque `people`/historia.
+- Captura del Diario con los Logros: bien (2 de 4 cumplidos, el de Joyas solo porque se ganó). Encanto de arranque 36.
