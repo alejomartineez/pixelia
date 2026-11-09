@@ -53,6 +53,12 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | — | junto con el 2a | |
 | 4b | Extraer el texto, glosario, traducir a 8 idiomas y revisar | — | después del Bloque 3 | |
 
+## Claves externas (nunca copiarlas al repo, a los logs ni a la salida de comandos)
+- **Gemini (narrador, 3a):** variable `GEMINI_API_KEY` en `C:\cursor-laburo\signboox-remotion\.env`, según el usuario
+  el 2026-11-09. `tools/audio/narrate.mjs` toma `process.env.GEMINI_API_KEY` y, si no está, lee solo esa línea de ese
+  `.env`. Nunca se imprime ni se guarda.
+- **Suno (música):** la pasa el usuario más adelante.
+
 ## Cruces entre pasos del Bloque 1
 - El **1b y el 1c** se cruzan en `src/season/season-data.js`, `src/chests/chests.js` y `chests-ui-common.js`:
   - el 1c saca los premios de muebles;
