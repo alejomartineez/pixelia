@@ -46,7 +46,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | — | Plan, handoff y referencia de sprites (`docs/ref/`) | orquestador | hecho | (este commit) |
 | 1a | Armas y armaduras fuera del cuerpo, `test-gear-fit` y galería de clases | trav-1a-armas | integrado | master |
 | 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | trav-1b-iconos | integrado | master |
-| 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
+| 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | trav-1b2-laminas | hecho, sin integrar | rama `claude/youthful-hermann-d87126` |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
 | 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a-nivel | en curso | rama `trav-2a` |
@@ -281,6 +281,32 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
 - **Para después:**
   - Tanda 2: las 108 láminas de Hallazgos (`album*.js`), que todavía usan emojis.
   - Ícono propio para "líder" (hoy `settlers`), "jefes" (hoy `medal`) y "accesorio" (hoy `bag`).
+### 1b-2 · Íconos, tanda 2: las 108 láminas de Hallazgos (rama `claude/youthful-hermann-d87126`, sin bump)
+- **Láminas:** 108 ilustraciones de 32×32 (ids `hz-…`), 12 sets × 9, una familia por set (tonos y encuadre en el
+  comentario de cada `tools/finds/sets/<set>.mjs`). En `src/core/icons/finds/<set>.js` quedan solo grillas `s32`.
+  - Las grillas **se generan**: `node tools/finds.mjs [set]` pasa los dibujos (lápiz `tools/finds/lib.mjs`, con la luz
+    arriba a la izquierda puesta sola y máscaras para piezas de varias formas) a grillas y arma la hoja
+    `shots/finds/<set>.png` (×7, ×3, grises, ×2 a tamaño real, oscuro y silueta). Reglas y uso del lápiz:
+    `tools/finds/README.md`. Se corrige el dibujo, nunca la grilla; `test-icons` corre `finds.mjs --check`.
+  - Se dibujaron en paralelo, un set por subagente (Vecinos fue la referencia), y cada hoja se miró y se corrigió.
+    Rehechas en la revisión: canoa, bufanda, helado, tarta, perro (collie sentado) y zorro (bajo, cola grande).
+  - Siguen algo flojas: `hz-papel-picado` (piezas sueltas, parece ruido), `hz-estadio` (el "lleno" va por sectores de
+    color), `hz-flan` (el dulce de leche casi no se ve) y `hz-luna-llena` (los techos pueden leerse como castillo).
+- **Sistema:** `icons.js` elige entre 32, 24 y 16 (`pickGrid`); debajo de 32 px una lámina se achica con suavizado.
+  `icons/index.js` suma las láminas a `SPRITES` (`fam: 'finds'`, `set`) y exporta `FIND_SETS`.
+- **Datos:** `album.js` usa ids en vez de emojis (el campo sigue siendo `emoji`). La lámina del set es su 5★. La tienda
+  usa `flower`, `gem`, `bigstar` y `gift`. `renderPack` cae en `finding`. Los ids de las figuritas (`postres-3`…) no
+  cambiaron, así que partidas e intercambios viejos siguen bien.
+- **Test:** `test-icons` revisa las 108 (32×32, borde vacío, paleta, ≥4 tonos, ids únicos, 9 por set), suma `album.js`
+  a los datos y ya no saltea `album*.js`: no queda ningún emoji en el código (salvo `icons/legacy.js`).
+- **Galería:** `tools/icons.html?fam=finds` (o `?set=postres,noche`) muestra cada set con la grilla ×3, la carta real del
+  álbum, el claro del set, el oscuro, grises y silueta. `&sheet=1` es la hoja compacta:
+  `GALLERY_PAGE=icons.html node gallery-shot.mjs "fam=finds&sheet=1" ../shots/finds/hoja.png 1280 3200`.
+- **Para el 2c (no cableado):** el bono permanente por set completo y `regionBonus` / `findMult` siguen sin hacer nada.
+  `SET_REGION` reparte los 12 sets en las 5 regiones de hoy; cuando lleguen las islas, cada isla toma su set (o sets) y
+  el bono va en `claimSet` de `album.js`.
+- **Pruebas** (cada una corrida sola): test-icons OK (158 íconos, 108 láminas), test-e2e 104/0, test-social 65/0,
+  test-mock 91/0, test-migration 93/0 y test-telemetry 67/0.
 ### 4a · Base de idiomas (rama `claude/trav-4a-b849e1`)
 **Hecho** (commit sin bump; `npm run bump` regenera `sw.js` con las fuentes nuevas de `fonts/`):
 - **`src/core/i18n.js`**: `t(clave, vars)`, `tn(clave, n, vars)` con `Intl.PluralRules` (plurales como objetos

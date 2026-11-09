@@ -1,15 +1,16 @@
 // Íconos pixel-art dibujados a mano (src/core/icons/*.js), nítidos a cualquier tamaño.
-// Cada ícono tiene una grilla de 16×16 y otra de 24×24 con la paleta oscura de palette.js. Para mostrarlo a `dev`
+// Cada ícono tiene una grilla de 16×16 y otra de 24×24 con la paleta oscura de palette.js (las láminas de Hallazgos,
+// una sola de 32×32: icons/finds/). Para mostrarlo a `dev`
 // pixeles físicos se elige la grilla y el factor entero k que más llenan sin pasarse (16×2 a 32 px, 24×1 a 30 px…), se
 // le agrega el contorno de tinta y se agranda k veces sin suavizado. Si el CSS lo muestra a otro tamaño, un
 // ResizeObserver lo regenera a ese tamaño.
 // También se pueden registrar canvases ya pixelados (miniaturas 3D, banderas) con registerIcon.
 // Uso: icon('coin', 20) -> '<img class="pi" ...>'  |  iconUrl('gem', 32) -> dataURL
 import { PAL, INK } from './icons/palette.js';
-import { SPRITES, FAMILIES } from './icons/index.js';
+import { SPRITES, FAMILIES, FIND_SETS } from './icons/index.js';
 import { LEGACY } from './icons/legacy.js';
 
-export { FAMILIES, SPRITES };
+export { FAMILIES, SPRITES, FIND_SETS };
 
 // ---------- color ----------
 function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
@@ -65,16 +66,17 @@ function drawGrid(rows, map) {
   return img;
 }
 
-/** Grilla y factor entero que mejor llenan `dev` pixeles (empate: la de 24, que tiene más detalle). */
+/** Grilla y factor entero que mejor llenan `dev` pixeles (empate: la más grande, que tiene más detalle). */
 function pickGrid(def, dev) {
   let best = null;
-  for (const n of [24, 16]) {
+  for (const n of [32, 24, 16]) {
     const rows = def['s' + n];
     if (!rows) continue;
     const k = Math.floor(dev / n);
     if (k >= 1 && (!best || n * k > best.n * best.k)) best = { rows, n, k };
   }
-  return best || { rows: def.s16 || def.s24, n: (def.s16 || def.s24).length, k: 0 };
+  const rows = def.s16 || def.s24 || def.s32;
+  return best || { rows, n: rows.length, k: 0 };
 }
 
 /** Canvas de la grilla de un ícono a 1 pixel por pixel de arte (lo usa la galería). */
@@ -138,7 +140,11 @@ function urlFor(name, dev) {
     const art = canvas(n);
     art.getContext('2d').putImageData(drawGrid(rows, sp.map), 0, 0);
     if (k >= 1) { const off = Math.floor((dev - n * k) / 2); g.drawImage(art, off, off, n * k, n * k); }
-    else g.drawImage(art, 0, 0, dev, dev);   // más chico que 16 px: se achica sin suavizar
+    else {   // más chico que la grilla: se achica (una lámina de 32 se suaviza, para que no pierda pixeles enteros)
+      g.imageSmoothingEnabled = n > 24;
+      if (n > 24) g.imageSmoothingQuality = 'high';
+      g.drawImage(art, 0, 0, dev, dev);
+    }
   } else {
     const N = Math.max(12, Math.min(40, Math.round(dev / dpr() / 1.2)));
     const art = canvas(N);
