@@ -148,6 +148,10 @@ export default function create(ctx) {
   recurso con un aviso en consola, y `tools/test-icons.mjs` (en `npm test`) falla. `icons/legacy.js` traduce los
   emojis de partidas y mensajes viejos. Teñir un ícono: `registerTint(id, base, { carácter: '#hex' })` (los cofres
   por rareza); canvases propios (miniaturas 3D): `registerIcon`.
+  - **Láminas de Hallazgos** (`hz-…`, `icons/finds/`): 108 ilustraciones de **32×32**, una familia por set (mismos
+    tonos y encuadre en las 9), con las mismas reglas de lectura medidas a tamaño real en la carta del álbum. Las grillas
+    se generan con `tools/finds.mjs` desde los dibujos de `tools/finds/sets/` (lápiz con la luz automática,
+    `tools/finds/README.md`): se corrige el dibujo, nunca la grilla. `test-icons` falla si no coinciden.
 - Clases CSS listas: `.btn` (+ `.pink .lilac .mint .sky .gold .ghost .small .block`), `.icon-btn`, `.panel`, `.card` (+ `.locked .selected`), `.row .col .grid .grid.tight`, `.chip`, `.badge`, `.progress` (+ `.xp .pink .gold`), `.tabs .tab .tab.active`, `.swatches .swatch`, `.scroll`, `.game-bar` (+ `.game-stat` con `<small>` y `<b>`, `.game-title`, `.spacer`), `.game-bg`, `.game-bg.pattern`, `.game-help`.
 - Feedback claro: sonido (`audio.sfx`), partículas, `ui.floatText`, `ui.flyCurrency`, rebotes. Confeti y fanfarria solo en los
   momentos grandes de la Guía de tono (cambio de época, monumento, amenaza superada, región completa).

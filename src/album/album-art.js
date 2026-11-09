@@ -216,7 +216,7 @@ export function renderPack(item, opts = {}) {
   root.append(body);
   root.append(el('div', 'pk-top'));
   const label = el('div', 'pk-label');
-  label.innerHTML = `<img data-pi="${item?.emoji || '🌸'}" src="${iconUrl(item?.emoji || '🌸', 40)}" alt="" draggable="false"><b>${escTxt(item?.name || 'Sobre')}</b>${opts.small ? '' : `<small>HALLAZGOS</small>`}`;
+  label.innerHTML = `<img data-pi="${item?.emoji || 'finding'}" src="${iconUrl(item?.emoji || 'finding', 40)}" alt="" draggable="false"><b>${escTxt(item?.name || 'Sobre')}</b>${opts.small ? '' : `<small>HALLAZGOS</small>`}`;
   root.append(label);
   return root;
 }

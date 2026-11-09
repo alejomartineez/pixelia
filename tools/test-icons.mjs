@@ -17,7 +17,7 @@ const fail = (msg) => errors.push(msg);
 
 // ---------- 1. grillas ----------
 const { PAL } = await imp('src/core/icons/palette.js');
-const { FAMILIES, SPRITES } = await imp('src/core/icons/index.js');
+const { FAMILIES, SPRITES, FIND_SETS } = await imp('src/core/icons/index.js');
 let count = 0;
 const seen = new Map();
 for (const f of FAMILIES) {
@@ -48,13 +48,50 @@ for (const f of FAMILIES) {
 }
 console.log(`grillas: ${count} íconos`);
 
+// ---------- 1b. láminas de Hallazgos (32×32, una familia por set) ----------
+let finds = 0;
+const checkGrid = (id, rows, n) => {
+  if (!Array.isArray(rows)) { fail(`${id}: falta la grilla s${n}`); return; }
+  if (rows.length !== n) fail(`${id}.s${n}: tiene ${rows.length} filas`);
+  let ink = 0; const tones = new Set();
+  rows.forEach((r, y) => {
+    if (r.length !== n) fail(`${id}.s${n} fila ${y}: tiene ${r.length} columnas`);
+    for (const [x, ch] of [...r].entries()) {
+      if (ch !== '.' && !(ch in PAL)) fail(`${id}.s${n} (${x},${y}): "${ch}" no está en la paleta`);
+      if (ch !== '.' && (y === 0 || y === n - 1 || x === 0 || x === n - 1)) fail(`${id}.s${n} (${x},${y}): el borde va vacío`);
+      if (ch !== '.') { ink++; tones.add(ch); }
+    }
+  });
+  if (ink < n * n * 0.16) fail(`${id}.s${n}: casi vacía (${ink} pixeles)`);
+  if (tones.size < 4) fail(`${id}.s${n}: pocos tonos (${tones.size})`);
+};
+if (!famArg || famArg.includes('finds')) {
+  for (const s of FIND_SETS) {
+    const list = Object.entries(s.icons);
+    if (list.length !== 9) fail(`set ${s.id}: tiene ${list.length} láminas (van 9)`);
+    for (const [id, d] of list) {
+      finds++;
+      if (seen.has(id)) fail(`${id}: repetido en ${seen.get(id)} y ${s.id}`);
+      seen.set(id, s.id);
+      if (!/^hz-[a-z0-9-]+$/.test(id)) fail(`${id}: las láminas van con id hz-…`);
+      if (!d.name) fail(`${id}: falta name`);
+      checkGrid(id, d.s32, 32);
+    }
+  }
+  // que cada grilla sea la que sale de su dibujo (tools/finds/sets/)
+  const { spawnSync } = await import('node:child_process');
+  const r = spawnSync(process.execPath, [join(ROOT, 'tools/finds.mjs'), '--check'], { encoding: 'utf8' });
+  if (r.status !== 0) fail('tools/finds.mjs --check: ' + (r.stdout + r.stderr).split(/\r?\n/).filter(l => /no coincide|ERROR|no existe|tiene/.test(l)).join(' | '));
+  console.log(`láminas: ${finds} en ${FIND_SETS.length} sets`);
+}
+
 // ---------- 2. usos ----------
 if (!onlySprites) {
   const known = (name) => !!SPRITES[name] || /^(chest-|chest3d-|flag-|art-)/.test(name);
   // a) los datos: todo campo icon/emoji/ic de las tablas tiene que ser un id dibujado
   const DATA = ['src/core/data.js', 'src/expedition/exp-data.js', 'src/threats/threat-data.js', 'src/core/ambience.js',
     'src/story/story-data.js', 'src/season/season-data.js', 'src/chests/chests.js', 'src/city/themes.js', 'src/combat/combat-data.js',
-    'src/combat/classes.js'];
+    'src/combat/classes.js', 'src/album/album.js'];
   globalThis.localStorage ??= { getItem: () => null, setItem() {}, removeItem() {} };
   globalThis.addEventListener ??= () => {}; globalThis.removeEventListener ??= () => {};
   globalThis.window ??= globalThis;
@@ -78,8 +115,7 @@ if (!onlySprites) {
 
   // b) el código: llamadas icon('x') / iconUrl('x') y campos ic/icon/emoji literales; nada de emojis sueltos
   const EMOJI = /(?:\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}])/u;
-  // las láminas de Hallazgos son la tanda 2
-  const SKIP = /(^|\/)(album\.js|album-art\.js|icons\/legacy\.js)$/;
+  const SKIP = /(^|\/)icons\/legacy\.js$/;
   const files = [];
   const scan = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) scan(p); else if (p.endsWith('.js')) files.push(p); } };
   scan(join(ROOT, 'src'));

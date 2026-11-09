@@ -10,70 +10,72 @@ import { REGIONS } from '../expedition/exp-data.js';
 export { renderStickerCard, renderPack } from './album-art.js';
 
 // ---------- Datos ----------
-// Cada set: [id, nombre, emoji, color, oscuro, claro, figuritas ordenadas por estrellas (3×1★, 2×2★, 2×3★, 1×4★, 1×5★)]
+// Cada set: [id, nombre, lámina del set, color, oscuro, claro, figuritas ordenadas por estrellas (3×1★, 2×2★, 2×3★, 1×4★,
+// 1×5★)]. Cada figurita es [lámina, nombre]: la lámina es un ícono de 32×32 de src/core/icons/finds/ (el campo se
+// sigue llamando emoji por compatibilidad); la del set es su 5★.
 const RAW = [
   // (el id 'princesas' queda por compatibilidad con álbumes e intercambios viejos)
-  ['princesas', 'Vecinos', '🏘️', '#ee8a5c', '#c8673d', '#fde9d8', [
-    ['🥱', 'Siesta en la Hamaca'], ['🪞', 'Espejo de la Abuela'], ['🧹', 'Vecina que Barre'],
-    ['💌', 'Carta sin Firmar'], ['🫖', 'Té con Masitas'],
-    ['📮', 'Cartero Puntual'], ['🥖', 'Panadero Madrugador'],
-    ['💃', 'Bailarina de la Plaza'], ['🏘️', 'Los Vecinos de Pixelia']]],
-  ['vestidos', 'Ropa de Viaje', '🧥', '#7f9ee8', '#5a78c4', '#f8f0e4', [
-    ['🧦', 'Medias Desparejas'], ['🧤', 'Guantes de Cuero'], ['👒', 'Capelina de Verano'],
-    ['🧣', 'Bufanda Tejida'], ['👛', 'Monedero Gastado'],
-    ['👗', 'Vestido de Domingo'], ['🧥', 'Tapado Heredado'],
-    ['🥾', 'Botas de Caminata'], ['🧳', 'La Valija Completa']]],
+  ['princesas', 'Vecinos', 'hz-vecinos', '#ee8a5c', '#c8673d', '#fde9d8', [
+    ['hz-hamaca', 'Siesta en la Hamaca'], ['hz-espejo', 'Espejo de la Abuela'], ['hz-escoba', 'Vecina que Barre'],
+    ['hz-carta', 'Carta sin Firmar'], ['hz-te', 'Té con Masitas'],
+    ['hz-cartero', 'Cartero Puntual'], ['hz-panadero', 'Panadero Madrugador'],
+    ['hz-bailarina', 'Bailarina de la Plaza'], ['hz-vecinos', 'Los Vecinos de Pixelia']]],
+  ['vestidos', 'Ropa de Viaje', 'hz-valija', '#7f9ee8', '#5a78c4', '#f8f0e4', [
+    ['hz-medias', 'Medias Desparejas'], ['hz-guantes', 'Guantes de Cuero'], ['hz-capelina', 'Capelina de Verano'],
+    ['hz-bufanda', 'Bufanda Tejida'], ['hz-monedero', 'Monedero Gastado'],
+    ['hz-vestido', 'Vestido de Domingo'], ['hz-tapado', 'Tapado Heredado'],
+    ['hz-botas', 'Botas de Caminata'], ['hz-valija', 'La Valija Completa']]],
   // el id 'autitos' quedó de cuando eran autos: ahora son cosas de navegar el aire (plan §M5)
-  ['autitos', 'Navegación', '⛵', '#8fd3ff', '#4fa8e0', '#daf2ff', [
-    ['🪢', 'Soga de Amarre'], ['🛶', 'Canoa de Corteza'], ['🧭', 'Brújula de Céfiro'],
-    ['🏮', 'Farol de Proa'], ['🪁', 'Barrilete de Señales'],
-    ['🎈', 'Globo de Lona'], ['⛵', 'Balandra del Puerto'],
-    ['⚓', 'Ancla de Piedra'], ['🚢', 'Maqueta de Galeón']]],
-  ['postres', 'Postres', '🍰', '#ffab7a', '#e07d4a', '#ffe3d1', [
-    ['🍪', 'Galleta Robada'], ['🍯', 'Caramelo de Miel'], ['🍩', 'Dona Glaseada'],
-    ['🥧', 'Tarta de Manzana'], ['🍮', 'Flan con Dulce de Leche'],
-    ['🍦', 'Helado de Tres Gustos'], ['🥐', 'Medialuna de Manteca'],
-    ['🍫', 'Chocolate Amargo'], ['🎂', 'Torta de Cumpleaños']]],
-  ['mascotas', 'Fauna de la Isla', '🦊', '#6fe3c1', '#3cbf9a', '#d4f7ec', [
-    ['🦔', 'Erizo del Monte'], ['🐟', 'Pez del Arroyo'], ['🐢', 'Tortuga sin Apuro'],
-    ['🐇', 'Liebre Veloz'], ['🦆', 'Pato del Bañado'],
-    ['🐈', 'Gato de Granero'], ['🐕', 'Perro Pastor'],
-    ['🦊', 'Zorro Gris'], ['🦌', 'Ciervo Blanco']]],
-  ['flores', 'Flores', '🌸', '#9ee06a', '#6bb83c', '#e3f7d2', [
-    ['🌼', 'Margarita Me Quiere'], ['🌱', 'Brote Valiente'], ['🍀', 'Trébol (de Tres, Igual)'],
-    ['🌷', 'Tulipán Tímido'], ['🌻', 'Girasol Chusma'],
-    ['🌹', 'Rosa con Carácter'], ['🌺', 'Hibisco Fiestero'],
-    ['🌸', 'Cerezo en Flor'], ['💐', 'Ramo para Vos']]],
-  ['castillos', 'Edificios', '🏛️', '#9aa6f0', '#6a76c8', '#f9f1e6', [
-    ['🧱', 'Ladrillo con Onda'], ['🗝️', 'Llave Perdida'], ['🕯️', 'Vela Tembleque'],
-    ['🚪', 'Puerta que Rechina'], ['🪟', 'Ventana con Macetas'],
-    ['🏠', 'Casa del Árbol'], ['🗼', 'Torre del Vigía'],
-    ['🏟️', 'Estadio Lleno'], ['🏛️', 'La Municipalidad de Pixelia']]],
-  ['joyas', 'Tesoros', '💎', '#5fd4e0', '#2fa6b5', '#d2f4f7', [
-    ['📿', 'Collar de Cuentas'], ['🧿', 'Ojo Protector'], ['⌚', 'Reloj de la Abuela'],
-    ['💍', 'Anillo de Compromiso'], ['🔔', 'Campana de Bronce'],
-    ['🔮', 'Bola de Cristal Chusma'], ['💠', 'Cristal Celeste'],
-    ['🏆', 'Copa de Oro'], ['💎', 'Diamante Legendario']]],
-  ['musica', 'Música', '🎵', '#f09774', '#c96943', '#f8f0e4', [
-    ['🥁', 'Tambor Ruidoso'], ['📻', 'Radio de la Tía'], ['🎧', 'Auriculares Enredados'],
-    ['🎸', 'Guitarra Fogonera'], ['🎹', 'Piano Paciente'],
-    ['🎻', 'Violín Dramático'], ['🎺', 'Trompeta Mañanera'],
-    ['🪗', 'Bandoneón Tanguero'], ['🎤', 'Micrófono de Estrella']]],
-  ['playa', 'Costa', '🏖️', '#efc99a', '#c99a62', '#fff1de', [
-    ['🐚', 'Caracol Chismoso'], ['🦀', 'Cangrejo de Costado'], ['🩴', 'Ojotas Perdidas'],
-    ['⚓', 'Ancla Oxidada'], ['🍉', 'Sandía Fresca'],
-    ['🐬', 'Delfín de la Bahía'], ['🏄', 'Surfista Valiente'],
-    ['🐙', 'Pulpo de las Rocas'], ['🏝️', 'Isla Secreta']]],
-  ['noche', 'Noche Estrellada', '🌙', '#5e83d9', '#3b5ba5', '#dfe7f8', [
-    ['🦉', 'Búho Desvelado'], ['🏮', 'Farol de Papel'], ['🌙', 'Luna Menguante'],
-    ['🔭', 'Telescopio Curioso'], ['🪐', 'Saturno con Pollera'],
-    ['☄️', 'Cometa Apurado'], ['🌌', 'Vía Láctea'],
-    ['🌠', 'Deseo Fugaz'], ['🌕', 'Luna Llena de Pixelia']]],
-  ['fiesta', 'Fiesta', '🎉', '#ff6f6f', '#d94848', '#ffdada', [
-    ['🎈', 'Globo Escapista'], ['🎉', 'Cotillón Ruidoso'], ['🥤', 'Gaseosa sin Gas'],
-    ['🎁', 'Regalo Misterioso'], ['🍕', 'Pizza de Muzza'],
-    ['🪅', 'Piñata Llena'], ['🎊', 'Lluvia de Papel Picado'],
-    ['🎆', 'Fuegos Artificiales'], ['🥳', 'El Alma de la Fiesta']]],
+  ['autitos', 'Navegación', 'hz-galeon', '#8fd3ff', '#4fa8e0', '#daf2ff', [
+    ['hz-soga', 'Soga de Amarre'], ['hz-canoa', 'Canoa de Corteza'], ['hz-brujula', 'Brújula de Céfiro'],
+    ['hz-farol-proa', 'Farol de Proa'], ['hz-barrilete', 'Barrilete de Señales'],
+    ['hz-globo-lona', 'Globo de Lona'], ['hz-balandra', 'Balandra del Puerto'],
+    ['hz-ancla-piedra', 'Ancla de Piedra'], ['hz-galeon', 'Maqueta de Galeón']]],
+  ['postres', 'Postres', 'hz-torta', '#ffab7a', '#e07d4a', '#ffe3d1', [
+    ['hz-galleta', 'Galleta Robada'], ['hz-caramelo', 'Caramelo de Miel'], ['hz-dona', 'Dona Glaseada'],
+    ['hz-tarta', 'Tarta de Manzana'], ['hz-flan', 'Flan con Dulce de Leche'],
+    ['hz-helado', 'Helado de Tres Gustos'], ['hz-medialuna', 'Medialuna de Manteca'],
+    ['hz-chocolate', 'Chocolate Amargo'], ['hz-torta', 'Torta de Cumpleaños']]],
+  ['mascotas', 'Fauna de la Isla', 'hz-ciervo', '#6fe3c1', '#3cbf9a', '#d4f7ec', [
+    ['hz-erizo', 'Erizo del Monte'], ['hz-pez', 'Pez del Arroyo'], ['hz-tortuga', 'Tortuga sin Apuro'],
+    ['hz-liebre', 'Liebre Veloz'], ['hz-pato', 'Pato del Bañado'],
+    ['hz-gato', 'Gato de Granero'], ['hz-perro', 'Perro Pastor'],
+    ['hz-zorro', 'Zorro Gris'], ['hz-ciervo', 'Ciervo Blanco']]],
+  ['flores', 'Flores', 'hz-ramo', '#9ee06a', '#6bb83c', '#e3f7d2', [
+    ['hz-margarita', 'Margarita Me Quiere'], ['hz-brote', 'Brote Valiente'], ['hz-trebol', 'Trébol (de Tres, Igual)'],
+    ['hz-tulipan', 'Tulipán Tímido'], ['hz-girasol', 'Girasol Chusma'],
+    ['hz-rosa', 'Rosa con Carácter'], ['hz-hibisco', 'Hibisco Fiestero'],
+    ['hz-cerezo', 'Cerezo en Flor'], ['hz-ramo', 'Ramo para Vos']]],
+  ['castillos', 'Edificios', 'hz-municipalidad', '#9aa6f0', '#6a76c8', '#f9f1e6', [
+    ['hz-ladrillo', 'Ladrillo con Onda'], ['hz-llave', 'Llave Perdida'], ['hz-vela', 'Vela Tembleque'],
+    ['hz-puerta', 'Puerta que Rechina'], ['hz-ventana', 'Ventana con Macetas'],
+    ['hz-casa-arbol', 'Casa del Árbol'], ['hz-torre-vigia', 'Torre del Vigía'],
+    ['hz-estadio', 'Estadio Lleno'], ['hz-municipalidad', 'La Municipalidad de Pixelia']]],
+  ['joyas', 'Tesoros', 'hz-diamante', '#5fd4e0', '#2fa6b5', '#d2f4f7', [
+    ['hz-collar', 'Collar de Cuentas'], ['hz-ojo', 'Ojo Protector'], ['hz-reloj', 'Reloj de la Abuela'],
+    ['hz-anillo', 'Anillo de Compromiso'], ['hz-campana', 'Campana de Bronce'],
+    ['hz-bola-cristal', 'Bola de Cristal Chusma'], ['hz-cristal', 'Cristal Celeste'],
+    ['hz-copa', 'Copa de Oro'], ['hz-diamante', 'Diamante Legendario']]],
+  ['musica', 'Música', 'hz-microfono', '#f09774', '#c96943', '#f8f0e4', [
+    ['hz-tambor', 'Tambor Ruidoso'], ['hz-radio', 'Radio de la Tía'], ['hz-auriculares', 'Auriculares Enredados'],
+    ['hz-guitarra', 'Guitarra Fogonera'], ['hz-piano', 'Piano Paciente'],
+    ['hz-violin', 'Violín Dramático'], ['hz-trompeta', 'Trompeta Mañanera'],
+    ['hz-bandoneon', 'Bandoneón Tanguero'], ['hz-microfono', 'Micrófono de Estrella']]],
+  ['playa', 'Costa', 'hz-isla', '#efc99a', '#c99a62', '#fff1de', [
+    ['hz-caracol', 'Caracol Chismoso'], ['hz-cangrejo', 'Cangrejo de Costado'], ['hz-ojotas', 'Ojotas Perdidas'],
+    ['hz-ancla-oxidada', 'Ancla Oxidada'], ['hz-sandia', 'Sandía Fresca'],
+    ['hz-delfin', 'Delfín de la Bahía'], ['hz-surfista', 'Surfista Valiente'],
+    ['hz-pulpo', 'Pulpo de las Rocas'], ['hz-isla', 'Isla Secreta']]],
+  ['noche', 'Noche Estrellada', 'hz-luna-llena', '#5e83d9', '#3b5ba5', '#dfe7f8', [
+    ['hz-buho', 'Búho Desvelado'], ['hz-farol-papel', 'Farol de Papel'], ['hz-luna-menguante', 'Luna Menguante'],
+    ['hz-telescopio', 'Telescopio Curioso'], ['hz-saturno', 'Saturno con Pollera'],
+    ['hz-cometa', 'Cometa Apurado'], ['hz-via-lactea', 'Vía Láctea'],
+    ['hz-deseo', 'Deseo Fugaz'], ['hz-luna-llena', 'Luna Llena de Pixelia']]],
+  ['fiesta', 'Fiesta', 'hz-alma-fiesta', '#ff6f6f', '#d94848', '#ffdada', [
+    ['hz-globo', 'Globo Escapista'], ['hz-cotillon', 'Cotillón Ruidoso'], ['hz-gaseosa', 'Gaseosa sin Gas'],
+    ['hz-regalo', 'Regalo Misterioso'], ['hz-pizza', 'Pizza de Muzza'],
+    ['hz-pinata', 'Piñata Llena'], ['hz-papel-picado', 'Lluvia de Papel Picado'],
+    ['hz-fuegos', 'Fuegos Artificiales'], ['hz-alma-fiesta', 'El Alma de la Fiesta']]],
 ];
 // Reparto de los sets por región, en orden (DESIGN-CORE.md §7.2.4)
 export const SET_REGION = {
@@ -128,10 +130,10 @@ export function stickerDropsForChest(type) { return { ...(CHEST_STICKERS[type] |
 
 /** Tienda de brillitos. */
 export const SHOP = [
-  { id: 'sobre_comun', kind: 'pack', name: 'Sobre Común', cost: 10, n: 3, minStars: 1, desc: '3 hallazgos', color: '#ee8a5c', dark: '#c8673d', emoji: '🌸' },
-  { id: 'sobre_brillante', kind: 'pack', name: 'Sobre Brillante', cost: 30, n: 3, minStars: 3, desc: '3 hallazgos · uno de 3★ o más', color: '#8fd3ff', dark: '#4fa8e0', emoji: '💎' },
-  { id: 'sobre_dorado', kind: 'pack', name: 'Sobre Dorado', cost: 70, n: 5, minStars: 4, desc: '5 hallazgos · uno de 4★ o más', color: '#ffd166', dark: '#e8a93a', emoji: '🌟' },
-  { id: 'cofre_plata', kind: 'chest', name: 'Cofre de Plata', cost: 45, chest: 'plata', desc: 'Un cofre con premios y 3 hallazgos', color: '#c9d6ea', dark: '#8fa3c2', emoji: '🎁' },
+  { id: 'sobre_comun', kind: 'pack', name: 'Sobre Común', cost: 10, n: 3, minStars: 1, desc: '3 hallazgos', color: '#ee8a5c', dark: '#c8673d', emoji: 'flower' },
+  { id: 'sobre_brillante', kind: 'pack', name: 'Sobre Brillante', cost: 30, n: 3, minStars: 3, desc: '3 hallazgos · uno de 3★ o más', color: '#8fd3ff', dark: '#4fa8e0', emoji: 'gem' },
+  { id: 'sobre_dorado', kind: 'pack', name: 'Sobre Dorado', cost: 70, n: 5, minStars: 4, desc: '5 hallazgos · uno de 4★ o más', color: '#ffd166', dark: '#e8a93a', emoji: 'bigstar' },
+  { id: 'cofre_plata', kind: 'chest', name: 'Cofre de Plata', cost: 45, chest: 'plata', desc: 'Un cofre con premios y 3 hallazgos', color: '#c9d6ea', dark: '#8fa3c2', emoji: 'gift' },
 ];
 export const SHOP_BY_ID = Object.fromEntries(SHOP.map(i => [i.id, i]));
 /** Sobre genérico para mostrar figuritas que llegan de otras fuentes (cofres, juegos, regalos). */

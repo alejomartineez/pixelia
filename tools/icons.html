@@ -30,19 +30,36 @@
   body.sheet .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
   body.sheet .card { gap: 6px; padding: 4px 6px; }
   body.sheet .card .name { width: auto; flex: 1; }
+  /* láminas de Hallazgos: por set, grilla ×3, a tamaño real en la carta del álbum, grises y silueta */
+  .fgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(410px, 1fr)); gap: 8px; }
+  .fcard { display: flex; align-items: flex-start; gap: 8px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; }
+  .fcard .name { width: 84px; flex: none; line-height: 1.2; }
+  .fcard .name b { display: block; font-size: 12px; }
+  .fcard .name span { color: var(--mute); font-size: 11px; }
+  .fcard .stkw { width: 96px; flex: none; --ink: #3d2f2a; --ink-ll: #b9aa9a; --primary: #ee8a5c; --coral: #dc6b61; --gold: #ffd166; --mint: #6fe3c1; --font: system-ui; }
+  .fcol { display: flex; flex-direction: column; gap: 4px; }
+  .sw.set { background: var(--setl); }
+  body.sheet .fgrid { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 6px; }
+  body.sheet .fcard { flex-direction: column; align-items: center; padding: 4px; gap: 3px; }
+  body.sheet .fcard .name { width: auto; text-align: center; }
+  body.sheet .fcard .stkw { width: 100%; }
+  body.sheet h2 { margin: 10px 0 6px; }
 </style>
 </head>
 <body>
 <h1>Íconos de Pixelia</h1>
 <div class="legend">Por ícono: grilla de 16 ×4 y de 24 ×3 · oscuro a 16/24/32 · claro a 16/24/32 · grises a 24 · silueta a 16/24.
-  Parámetros: <code>?fam=res,ui</code> · <code>?ids=coin,gem</code> · <code>?sheet=1</code> (hoja compacta).</div>
+  Por lámina de Hallazgos: grilla de 32 ×3 · la carta del álbum · sobre el claro del set a 32/64 · oscuro a 32 · grises · silueta.<br>
+  Parámetros: <code>?fam=res,ui</code> (<code>finds</code> = Hallazgos) · <code>?set=postres,noche</code> · <code>?ids=coin,gem</code> · <code>?sheet=1</code> (hoja compacta).</div>
 <div id="out"></div>
 <script type="module">
-import { FAMILIES, icon, spriteCanvas } from '../src/core/icons.js';
+import { FAMILIES, FIND_SETS, icon, spriteCanvas } from '../src/core/icons.js';
+import { STICKER_SETS, renderStickerCard } from '../src/album/album.js';
 const q = new URLSearchParams(location.search);
 const fams = q.get('fam')?.split(',');
 const ids = q.get('ids')?.split(',');
 const sheet = q.get('sheet') === '1';
+const sets = q.get('set')?.split(',');
 if (sheet) document.body.classList.add('sheet');
 const out = document.getElementById('out');
 const zoom = (id, n, k) => {
@@ -54,7 +71,7 @@ const zoom = (id, n, k) => {
 };
 let total = 0;
 for (const f of FAMILIES) {
-  if (fams && !fams.includes(f.id)) continue;
+  if ((fams && !fams.includes(f.id)) || sets) continue;
   const list = Object.entries(f.icons).filter(([id]) => !ids || ids.includes(id));
   if (!list.length) continue;
   total += list.length;
@@ -76,6 +93,35 @@ for (const f of FAMILIES) {
         `<div class="sw light">${icon(id, 16)}${icon(id, 24)}${icon(id, 32)}</div>` +
         `<div class="sw dark gray">${icon(id, 24)}</div>` +
         `<div class="sw light sil">${icon(id, 16)}${icon(id, 24)}</div>`);
+    }
+    grid.append(c);
+  }
+  out.append(h, grid);
+}
+// láminas de Hallazgos, por set
+for (const fs of FIND_SETS) {
+  if ((fams && !fams.includes('finds')) || (sets && !sets.includes(fs.id))) continue;
+  const S = STICKER_SETS.find(s => s.id === fs.id);
+  const list = (S ? S.stickers.slice().sort((a, b) => a.stars - b.stars || a.slot - b.slot) : [])
+    .filter(st => !ids || ids.includes(st.emoji));
+  if (!list.length) continue;
+  total += list.length;
+  const h = document.createElement('h2');
+  h.innerHTML = `Hallazgos · ${fs.name} <small>${fs.id} · ${list.length}</small>`;
+  const grid = document.createElement('div'); grid.className = sheet ? 'fgrid' : 'fgrid';
+  grid.style.setProperty('--setl', S.light);
+  for (const st of list) {
+    const id = st.emoji, c = document.createElement('div'); c.className = 'fcard';
+    const card = document.createElement('div'); card.className = 'stkw';
+    card.append(renderStickerCard(st, { showCount: false }));
+    if (sheet) {
+      c.append(card);
+      c.insertAdjacentHTML('beforeend', `<div class="sw dark gray">${icon(id, 32)}</div>`);
+    } else {
+      c.innerHTML = `<div class="name"><b>${st.name}</b><span>${id} · ${st.stars}★</span></div>`;
+      c.append(zoom(id, 32, 3), card);
+      c.insertAdjacentHTML('beforeend', `<div class="fcol"><div class="sw set">${icon(id, 32)}</div><div class="sw dark">${icon(id, 32)}</div></div>`
+        + `<div class="fcol"><div class="sw dark gray">${icon(id, 32)}</div><div class="sw light sil">${icon(id, 32)}</div></div>`);
     }
     grid.append(c);
   }
