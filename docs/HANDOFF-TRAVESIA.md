@@ -113,6 +113,12 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
   la casilla otra vez mientras la tarjeta vieja todavía se iba. Con los modelos nuevos la escena tarda un poco más y la
   carrera se perdía siempre (3 de 3; con `src/avatar` de antes pasaba). Ahora espera a que la tarjeta se cierre: 30/30
   dos veces seguidas.
+- **`npm test`**: verde en todo lo que toca el 1a (`test-gear-fit` 422/0, `test-class-look`, `test-classes`, `test-combat*`,
+  `test-act1`, `test-expedition` 30/0), salvo dos cosas que no vienen de este paso:
+  - `test-people` falla 2 chequeos: "la llegada se cuenta con una escena" y "la escena dice quién llegó"
+    (`llega_brigida` muestra solo "SaltarSeguir"). Falla igual con el `src/avatar` de `a335752`: ya estaba en `master`.
+  - `test-settings` es intermitente bajo carga: falla una medición de tiempo distinta en cada corrida (FPS con tope 30,
+    cámara al 200 %), y a veces ninguna. También falla con el código de antes.
 - **Queda**:
   - en tres cuartos el arco se ve de canto (gira hacia afuera para leerse de frente);
   - el arco de los orcos sale chico (brazo largo y piernas cortas: el puño queda bajo);
