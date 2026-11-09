@@ -34,7 +34,7 @@ const AVATAR_CATS = [
   { id: 'face', label: () => 'Cara', icon: 'beard', kind: 'face', list: FACES, frame: 'head' },
   { id: 'dress', label: () => 'Ropa', icon: 'dress', kind: 'dress', list: DRESS_STYLES, frame: 'body' },
   { id: 'dressColor', label: () => 'Color de ropa', icon: 'palette', colors: () => OUTFIT_COLORS.map(c => ({ id: c.id, hex: clothHex(c.id), name: clothName(c.id) })) },
-  { id: 'crown', label: () => 'Cabeza', icon: 'wardrobe', kind: 'crown', list: CROWNS, frame: 'head' },
+  { id: 'crown', label: () => 'Cabeza', icon: 'hat', kind: 'crown', list: CROWNS, frame: 'head' },
   { id: 'acc', label: () => 'Equipo', icon: 'bag', kind: 'acc', list: ACCESSORIES, frame: 'body' },
 ];
 // encuadres de las miniaturas: lo que va en la espalda, lo alto y lo que llega al pecho o al piso

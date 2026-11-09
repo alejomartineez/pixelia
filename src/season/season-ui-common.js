@@ -28,7 +28,7 @@ export function packIcon(size = 40) {
 // pelajes (diseños de pelo de los animalitos) se nombran como tales; el resto, por su nombre
 const isFur = (id) => !!HAIR_STYLES.find(h => h.id === id)?.types?.every(t => avatarType(t).animal);
 const COSMETIC_NAME = { hair: (n, id) => `${isFur(id) ? 'Pelaje' : 'Peinado'} ${n}`, body: n => `Esquife: ${n}`, wheels: n => `Aparejo: ${n}`, topper: n => `Proa: ${n}` };
-const COSMETIC_IC = { hair: 'hair', dress: 'dress', crown: 'wardrobe', acc: 'bag', body: 'skiff', wheels: 'skiff', topper: 'skiff' };
+const COSMETIC_IC = { hair: 'hair', dress: 'dress', crown: 'hat', acc: 'bag', body: 'skiff', wheels: 'skiff', topper: 'skiff' };
 
 /** Ícono grande de una parte de premio. */
 export function partIcon(p, size = 40) {
