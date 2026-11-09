@@ -1010,6 +1010,32 @@ misiones principales; en la base, las semillas 8, 11 y 12 se traban igual en `q_
 y lo último que falta para Piedra son los planos, que dependen de la suerte en la expedición. Con las 24 semillas la
 cuenta queda 9 contra 7 de la base: dentro del ruido.
 
+### 8.v El Nivel único (La Travesía, paso 2a)
+El Nivel de jugador junta el de la ciudad y el del líder (DESIGN-COMBAT.md §18). La ciudad da su xp como antes; peleas,
+salidas y amenazas suman la suya × `NIVEL.fightRate`. Con el bot nuevo de `sim:economy` (talentos, armas, farmeo de peleas
+ya ganadas, rehacer rasgos una vez por día) se midió con 36 semillas (`--seeds 1-36`), contando fallas semilla-meta:
+
+| Variante (curva `40·n^e + c`, `fightRate`) | Semillas 1–36 | Monedas al llegar | Semillas 37–72 |
+|---|---|---|---|
+| master (sin el 2a) | 12 | 32/36 | — |
+| e 1,6, fr 2 (primera versión) | 45 | — | — |
+| e 1,58, fr 1 | 33 | 28/36 | 38 |
+| e 1,58, fr 1,25 | 36 | 29/36 | — |
+| **e 1,58, fr 1,5 (queda)** | **24** | **35/36** | **33** |
+| e 1,58, fr 1,75 | 35 | 32/36 | — |
+| e 1,56, fr 1 | 28 | 33/36 | — |
+| e 1,59, fr 1,5 | 33 | 29/36 | — |
+| e 1,58 + 50, fr 1,5 | 40 | 32/36 | — |
+
+- Con `fightRate` 1 el Nivel iba lento: lo que se quería comprar quedaba bloqueado por Nivel y se llegaba con más de 3×
+  (8 de 36). Con 2 iba un Nivel adelante los días 2–7 y adelantaba monumento, Pase y rango 5. 1,5 gana en las dos muestras.
+- **Monedas al llegar** queda mejor que en master (35/36 contra 32/36) y **Avance cada 20 min** pasa en 36/36.
+- **Queda, al borde y repartido** (fr 1,5, semillas 1–36): depósito de provisiones al tope 5 (master 1), rango 5 el día
+  17 en 4 (master 2), Pase con 4 ratos el día 15 en 3, primer monumento el día 9 en 3, Pase de 2 ratos el día 21 en 2,
+  rango 2 el día 2 en 2; el resto 1 o 0. Cada cambio chico de la curva mueve fallas de una semilla a otra (el azar es uno
+  solo): comparar siempre con 24–36 semillas. El depósito al tope probablemente sale del bot que farmea peleas cortas en vez de salidas
+  normales; se revisa con las rutas del 2c.
+
 ### 8.z Rebalanceo con varias semillas (paso 7b)
 `npm run sim:seeds` (`node sim-economy.mjs --seeds 1-6`) corre una partida completa por semilla en paralelo, cada una
 con sus metas (también la Raíz y los 4 ratos), y dice en cuántas pasa cada meta. `--seeds 13-24`, `--seeds 1,5,9` y

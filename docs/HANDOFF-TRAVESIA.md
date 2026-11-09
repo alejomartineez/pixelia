@@ -51,7 +51,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
-| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a → trav-2a2 | **rebasado sobre master; cortado por contexto otra vez**: falta cerrar `sim:economy` y `npm test` (ver notas) | rama `claude/trav-2a2-7cba92` |
+| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a → trav-2a2 → trav-2a3 | **hecho** (sin bump): rebasado sobre v57, `fightRate` 1,5, textos a `t()`, `npm test` (ver notas) | rama `claude/nifty-nightingale-01cb64` |
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
@@ -523,3 +523,24 @@ Hecho:
    las que fallen por tiempo. `sim:combat` no depende de fightRate (usa niveles fijos), pero conviene una corrida corta.
 3. DESIGN-CORE.md §8 y DESIGN-COMBAT.md §18: anotar el balance final y la meta de Avance por 20 min; `sim:seeds` del
    package.json corre 1–6.
+
+### 2a, tercera sesión (rama `claude/nifty-nightingale-01cb64`, sin bump) · **HECHO**
+- **Rebase sobre `master` v57** (3a y 4a-2). Conflictos: CLAUDE.md y `package.json` (arsenal y cinemáticas juntos),
+  `hud.js` (el "Nivel N" de la estrella va por `t('city.info.level')`), `city.js` (los dos imports), es/en/ja y
+  `test-i18n` (los dos bloques). Sin claves repetidas.
+- **Balance:** `NIVEL.fightRate` 1 → **1,5** (curva `40·n^1,58 + 20` igual). `sim:economy --seeds 1-36`: **24** fallas
+  semilla-meta (antes 33; master 12), **Monedas al llegar 35/36** (master 32/36), Avance 36/36. Fuera de muestra (37–72):
+  33 contra 38 con fr 1. Lo que queda, repartido al borde: depósito al tope 5, rango 5 día 17 en 4, Pase 4 ratos 3,
+  monumento día 9 en 3, Pase 2, rango 2 en 2. Tabla de todas las variantes en DESIGN-CORE.md §8.v; DESIGN-COMBAT.md §18.1 y
+  §18.5 (meta de Avance cada 20 min y arma del camino).
+- **Idiomas:** avisos de maestría y arma (`people.js` → `arsenal.toast.*`), el Taller (`arsenal.workshopHelp`), el punto de
+  talento y de paragon del panel de subida (`talents.levelup.*`, con `tn`) y `ELEMENTS` (`element.raiz`; el getter lo pone
+  `arsenal.js` para que `combat-data.js` siga puro, lo pide `test-combat`). `withText` usa prefijos con punto (así
+  `test-i18n` no los toma por claves). `fonts/pixel-ja.woff2` regenerada.
+- **Pruebas:** `test-classes` 81, `test-combat` 100, `test-act1` 84, `test-arsenal` 122, `test-i18n` 116, todo ✔.
+  `sim:combat --n 6`: 4 metas ✘ al borde por la muestra chica (no depende de fightRate; con `--n 20` daba todo ✔).
+  `npm test` entero: lo lancé y corté por la regla del 40 % de contexto con la primera parte en verde (icons, e2e 104,
+  i18n 116, migration 65+105, place, stress 20, sin fallas hasta ahí). **Falta confirmarlo entero**: el orquestador lo corre al
+  integrar (las que fallen por tiempo, de a una).
+- Para el orquestador: `npm run bump` al integrar. El 2b y el 2c pueden partir de esta rama.
+

@@ -1109,9 +1109,10 @@ cuatro bases: un solo Nivel, talentos, armas como objetos con maestría, y la Fu
 ### 18.1 Un solo Nivel (`src/combat/classes.js` NIVEL, `src/core/state.js`)
 - El nivel de la ciudad (`state.player.level`, tope 40) y el del líder (`state.classes.leader`, tope 30) son uno solo,
   **el Nivel**, tope **50**. Vive en `state.classes.leader.xp` y se ve en el HUD.
-- La curva sale de la de la ciudad de antes, un poco más larga (`NIVEL.need(n) = 40·n^1,6 + 20`; antes 1,55): los rangos piden su Nivel como antes y
-  `sim:economy` no cambia de ritmo. Todo suma: la ciudad (`store.addXp`) y las peleas, salidas y amenazas
-  (`grantLeaderXp` × `NIVEL.fightRate`, porque venían en la escala chica del líder).
+- La curva sale de la de la ciudad de antes, un poco más larga (`NIVEL.need(n) = 40·n^1,58 + 20`; antes 1,55): los rangos piden su Nivel como antes y
+  `sim:economy` no cambia de ritmo (balance en DESIGN-CORE.md §8.v). Todo suma: la ciudad (`store.addXp`) y las peleas, salidas y amenazas
+  (`grantLeaderXp` × `NIVEL.fightRate`, porque venían en la escala chica del líder; `fightRate` **1,5**: con 1 el Nivel
+  iba lento y las compras quedaban bloqueadas, con 2 adelantaba monumento, Pase y rango 5).
 - **El combate no usa el Nivel crudo.** `combatLevel(nivel)` lo pasa a la escala del líder de antes (4 → 1, 18 → 5,
   32 → 9, 50 → 14), así cada pelea del Acto 1 queda como estaba balanceada (§8). `leaderPerks`, `leaderKit` y
   `newBattle({ level })` siguen en esa escala; la interfaz dice "abre en el Nivel N" con `nivelFor`.
@@ -1157,6 +1158,17 @@ cuatro bases: un solo Nivel, talentos, armas como objetos con maestría, y la Fu
 - **Escalado**: con `power`, `newBattle` escala a los enemigos (`foeScale`): por encima de la recomendada se les suma la
   mitad de lo que sobra (vida ×, y +1 o +2 de ataque si pasa de ×1,35 o ×1,8); con menos, no se achican. Sin `power`
   (pruebas, simuladores viejos) nada cambia. La Marea del 2c suma su parte con `foeExtra`.
+
+
+### 18.5 Balance final y la meta de Avance
+- **Avance por cada 20 min de juego** (PLAN-TRAVESIA §2a: "un rato de 20 min"): subir de Nivel, una maestría de arma u
+  objeto o un arma nueva. `sim:economy` junta los ratos seguidos hasta 20 min (con 2 ratos de 10, uno por día) y pide
+  ≥ 90 % de los días 1–60; la tasa por rato de 10 min se muestra aparte (~63–70 %).
+- **Arma del camino** (`EXP.weaponFind` en exp-data.js): una salida normal con ≥ 1★ en la que ninguna pelea dejó arma
+  trae una con 30 %, con la rareza de una pelea común (`source: 'camino'`, `summary.weapon`). Sin esto la meta daba ~51–63 %:
+  las armas y la maestría salían solo de peleas, y hay 0–2 por salida normal.
+- Números: `NIVEL.need = 40·n^1,58 + 20`, `fightRate` 1,5, desarme 1/2/4/7/12 por rareza. Con eso Avance pasa en 36 de 36
+  semillas. `sim:combat` (Fuerza, §8) no depende de `fightRate`: usa niveles fijos.
 
 ## Estado
 - **La Travesía, paso 2a** (Nivel único, talentos, arsenal, maestría y Fuerza, §18): rama `claude/trav-2a-e5cfa6`.
