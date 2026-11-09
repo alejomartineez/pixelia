@@ -357,7 +357,7 @@ export default function create(ctx) {
     clearPress();
     if (pointers.size === 1) {
       gesture = 'pending';
-      down = { x: ev.clientX, y: ev.clientY, onGhost: placer.hitGhost(ev.clientX, ev.clientY, ev.pointerType), type: ev.pointerType };
+      down = { x: ev.clientX, y: ev.clientY, onGhost: placer.hitGhost(ev.clientX, ev.clientY, ev.pointerType), type: ev.pointerType, ts: ev.timeStamp };
       cam.stop();
       if (!placer.active) pressTimer = setTimeout(() => longPress(ev.pointerId), LONG_PRESS_MS);
     } else if (pointers.size === 2) {
@@ -376,7 +376,7 @@ export default function create(ctx) {
     if (hitBubble(p.sx, p.sy)) return;
     const uid = raycastBuilding(p.sx, p.sy);
     if (uid == null) return;
-    if (placer.startMove(uid, { x: p.x, y: p.y, type: down?.type || 'touch' })) gesture = 'ghost';
+    if (placer.startMove(uid, { x: p.x, y: p.y, type: down?.type || 'touch' })) { gesture = 'ghost'; if (down) down.lifted = true; }
   }
   function onMove(ev) {
     const p = pointers.get(ev.pointerId);
@@ -411,6 +411,11 @@ export default function create(ctx) {
       if (pointers.size === 1) { const [q] = [...pointers.values()]; gesture = 'pan'; cam.beginGrab(q.x, q.y); }
       else if (!pointers.size) gesture = null;
       return;
+    }
+    // Con el hilo trabado (un cuadro pesado, una carga) el soltar puede procesarse después de que venció el toque largo.
+    // La hora real del evento manda: si se soltó antes de LONG_PRESS_MS y sin moverse, fue un toque y abre la ficha.
+    if (gesture === 'ghost' && down?.lifted && ev.type === 'pointerup' && ev.timeStamp - down.ts < LONG_PRESS_MS && Math.hypot(p.x - p.sx, p.y - p.sy) <= TAP_PX) {
+      placer.cancelDrag(); endPlacement(true); gesture = 'pending';
     }
     if (gesture === 'pending' && ev.type === 'pointerup') onTap(ev.clientX, ev.clientY, ev.pointerType);
     else if (gesture === 'pan') cam.endGrab();
