@@ -46,7 +46,7 @@ cada paso.
 | 2d | J6 interfaz oscura + J7 fuera lo tierno (solo personas, estilos nuevos, guardado v4) | hecho | 3ef5f83 (v29) |
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
-| 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | (commit v34) |
+| 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | 0bba507 (v34) |
 | 4a | M1 + M2: personajes serios (vóxel detallado y low-poly para criaturas y jefes) y pueblos del mundo | **en curso en una rama aparte** (worktree propio, la abrió el coordinador); la integra el coordinador | |
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | pendiente | |
