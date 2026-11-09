@@ -24,8 +24,8 @@ const CSS = `
 .rz-choice .rz-opt .rz-row { font-size: 15px; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
 .rz-choice .rz-opt .rz-row b { color: var(--ink); }
 .rz-choice .rz-opt .rz-row.cost { color: var(--ink-l); }
-.rz-choice .rz-opt blockquote { margin: 2px 0 4px; padding: 6px 8px; border-left: 3px solid var(--gold-d); background: var(--surface-2);
-  font-size: 14px; font-style: italic; color: var(--ink-l); border-radius: 0 8px 8px 0; }
+.rz-choice .rz-opt blockquote { margin: 2px 0 4px; padding: 6px 8px; border: 1px solid var(--rule); background: var(--surface-2);
+  font-size: 14px; font-style: italic; color: var(--ink-l); border-radius: 8px; }
 .rz-choice .rz-opt .btn { margin-top: auto; }
 .rz-choice canvas.rz-face { width: 48px; height: 48px; image-rendering: pixelated; border: 2px solid var(--edge); border-radius: 10px; background: var(--surface-2); flex: none; }
 .rz-choice .rz-note { margin: 10px 0 0; font-size: 14px; color: var(--ink-ll); text-align: center; }
