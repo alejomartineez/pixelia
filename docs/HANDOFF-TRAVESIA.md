@@ -59,7 +59,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 3b | Cinemática "El Quiebre" nueva | — | después del 3a | |
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
-| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas | base integrada; falta pasar el HUD a claves | master |
+| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas, trav-4a2 | **hecho**: base en master; HUD y ciudad a claves en `claude/trav-4a2-ea2158` (sin bump) | master + rama |
 | 4b | Extraer el texto, glosario, traducir a 8 idiomas y revisar | — | después del Bloque 3 | |
 
 ## Claves externas (nunca copiarlas al repo, a los logs ni a la salida de comandos)
@@ -330,14 +330,50 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
 - **Dependencias de desarrollo nuevas en `tools/`:** `subset-font` y `fontverter`. Solo las usan las herramientas; el
   juego no suma nada.
 
-**Falta (después de que entre el 1b):**
-- Rebasar sobre `master` y pasar a claves:
-  - los textos de `src/core/hud.js`;
-  - los de `city-ui.js` que son del HUD;
-  - el `aria-label` "Cerrar" de `ui.js`.
-- Sumar esos archivos a `PASSED`, traducirlos a en y ja, y correr `node tools/subset-fonts.mjs`.
-- Conflicto esperable: una línea de `panels-settings.js` (el ícono `map` del paso 1 de iOS). Hay que quedarse con
-  el `t('settings.install.ios1')` de esta rama y el ícono del 1b.
+**HUD y ciudad a claves (sesión trav-4a2, rama `claude/trav-4a2-ea2158`, sin bump): hecho.**
+- **Archivos pasados a claves (prefijos `hud.`, `city.`, `ui.` y `common.`):**
+  - `src/core/hud.js` entero: botones, aria-labels, `data-tip`, `title`, chips, globitos y el riel. `render()` rearma
+    todo con `lang:changed`; el título del rango, el del pase y la pista de provisiones se rearman con cada refresco.
+  - `src/scenes/city-ui.js` entero: menú Construir (candados, cintas, chips), ficha de edificio, municipalidad,
+    terreno, constructoras, Raíz y Grieta, y expandir. Los "se le suma…" por nivel y época van con claves armadas
+    (`city.look.art.<nivel>[shop]`, `city.look.vert.<época>`, `city.look.plain.<nivel>`, `city.look.cycle.<nivel>`).
+  - `src/scenes/city.js`: flecha guiada, carteles de nivel y maestría, avisos, y los botones flotantes. Estos
+    se repintan con `lang:changed` (`applyLang()`).
+  - `src/core/ui.js`: "Cerrar" (`common.close`), `confirm()`, `rewardModal()` y los costos.
+- **Claves:** 428 en es, en y ja (eran 224). Las de `de`, `fr`, `pt-BR`, `ru`, `zh-CN` y `ko` quedan para el 4b.
+- **Qué queda en español a propósito:** lo que llega armado de otros módulos sigue en español hasta el 4b:
+  - nombres de `data.js` (edificios, categorías, rangos, épocas, descripciones);
+  - los `reason` de `economy.js` y `raiz.js` ("Nivel 5", "Rango Caserío"…);
+  - `chipText` de las amenazas;
+  - las misiones;
+  - `city-place.js` y `city-common.js` (los carteles "1 zona" y las frases de la gente).
+  - Para no depender del texto, `city-ui.js` ya no compara `can.reason === 'Ya lo tenés'`: usa `isOwned()`. Lo
+    mismo con `'No te alcanza'`, que ahora es `can.poor`. Sigue comparando `'Constructoras ocupadas'` y
+    `'Faltan materiales'` (Raíz) contra `economy.js`/`raiz.js`: **en el 4b, darles una bandera
+    (`busy: true`) antes de traducir esos `reason`.**
+- **Fuente:** Jersey 10 no tiene "→" (el "Encanto 12 → 15" de las fichas). Se sumó a `fonts/pixel-names.woff2`,
+  con `SYMBOLS` en `subset-fonts.mjs` y `U+2192` en el `unicode-range` de `styles.css`. `test-i18n` acepta
+  pixel-names como respaldo en todos los idiomas. `pixel-ja.woff2` se rearmó (970 caracteres, 24,7 KB).
+- **Interfaz flexible:**
+  - `.cx-actions` de la ficha pasó de grilla de 90 px a flex que crece con el texto ("あなたの町" y el alemán no
+    entraban).
+  - Los nombres del riel (Temporada, Bitácora) cuelgan centrados. Si uno largo se sale por el borde derecho,
+    `fitRail()` de `hud.js` lo corre hacia adentro; corre al pintar, al cambiar el tamaño y cuando cargan las fuentes.
+- **`test-i18n` (100 pruebas):**
+  - `PASSED` suma `hud.js`, `ui.js`, `city-ui.js` y `city.js`, y revisa que cada clave escrita entera exista en
+    es.js.
+  - Nuevo `checkCity()` en ja, de (`?pseudo=1`) y en, con `?cheat=15`: el HUD, el menú Construir y la ficha de la
+    municipalidad, sin texto cortado y sin botones del HUD encimados ni fuera de la ventana. Lo que cuelga con
+    `position: absolute` (globitos, puntos) no cuenta.
+  - Capturas en `shots/i18n/city-*.png`, `build-*.png` e `info-*.png`. Las miré a ojo en ja y de: nada cortado,
+    nada encimado y nada de tofu.
+  - Prueba el repintado en vivo del HUD, de los `data-tip` y de los botones flotantes al cambiar a ja.
+- **Para el 4b:**
+  - seguir con `city-place.js`, `city-common.js`, `panels-*.js` y los textos de `data.js` (los nombres van por
+    clave de id, p. ej. `bld.<id>.name`);
+  - traducir las 428 claves a de, fr, pt-BR, ru, zh-CN y ko;
+  - correr `node tools/subset-fonts.mjs`.
+
 ### 3a · Motor de cinemáticas (rama `claude/trav-3a-4f363c`, sin bump)
 Hecho:
 - **`src/cinema/timeline.js`** (sin three ni DOM; se prueba en node):

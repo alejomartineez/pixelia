@@ -22,6 +22,7 @@ import { createBatcher } from './city-batch.js';
 import { createVisit } from './city-visit.js';
 import { activeBoosts } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
+import { t } from '../core/i18n.js';
 // Amenazas (Fase 3): capa de defensa por turnos, cartel/señales/daño y radio al colocar una defensa
 import { attach as attachDefense, createDecor, createCoverage, openPanel as openThreatPanel } from '../threats/threat-scene.js';
 // ícono de lo que produce cada edificio (globito y cobro): monedas, gemas o provisiones (Huerta, Tambo…)
@@ -256,9 +257,9 @@ export default function create(ctx) {
 
   function doExpand() {
     const ex = E.expansionStatus();
-    if (!ex) { ui.toast('Tu terreno ya está al máximo', { icon: 'map' }); return false; }
+    if (!ex) { ui.toast(t('city.land.atMax'), { icon: 'map' }); return false; }
     if (!ex.ok) { audio.sfx('error'); ui.toast(ex.reason, { icon: 'lock' }); return false; }
-    if (!store.canAfford(ex.cost)) { audio.sfx('error'); ui.toast('No te alcanza todavía', { icon: 'coin' }); return false; }
+    if (!store.canAfford(ex.cost)) { audio.sfx('error'); ui.toast(t('city.info.poor'), { icon: 'coin' }); return false; }
     const res = E.expand();
     if (res.error) { audio.sfx('error'); ui.toast(res.error); return false; }
     return true;
@@ -316,7 +317,7 @@ export default function create(ctx) {
     if (act1?.hit(x, y)) return;
     if (hitWalker(life.player, x, y, 30)) {
       audio.sfx('pop');
-      ui.floatText(x, y - 34, 'Voy a cambiarme.', 'say');
+      ui.floatText(x, y - 34, t('city.say.change'), 'say');
       setTimeout(() => ctx.router.go('wardrobe'), 420);
       return;
     }
@@ -484,9 +485,17 @@ export default function create(ctx) {
   function applySettings() {
     const st = ctx.state.settings;
     cam?.setSpeed(st.camSpeed || 1);
-    if (homeBtnEl) homeBtnEl.title = `Ir a la municipalidad (${keyLabel(codeFor('home'))})`;
-    if (rotBtnEl) rotBtnEl.title = `Girar la vista (${keyLabel(codeFor('rotL'))} / ${keyLabel(codeFor('rotR'))})`;
-    if (themeBtnEl) themeBtnEl.title = `Estilo de la ciudad (${keyLabel(codeFor('themes'))})`;
+    if (homeBtnEl) homeBtnEl.title = `${t('city.side.home')} (${keyLabel(codeFor('home'))})`;
+    if (rotBtnEl) rotBtnEl.title = `${t('city.side.rotate')} (${keyLabel(codeFor('rotL'))} / ${keyLabel(codeFor('rotR'))})`;
+    if (themeBtnEl) themeBtnEl.title = `${t('city.side.style')} (${keyLabel(codeFor('themes'))})`;
+  }
+  /** Textos de los botones flotantes: al armarlos y cuando cambia el idioma. */
+  function applyLang() {
+    if (collectBtn) { collectBtn.querySelector('span').textContent = t('city.side.collectAll'); collectBtn.setAttribute('aria-label', t('city.side.collectAll')); }
+    homeBtnEl?.setAttribute('aria-label', t('city.side.home'));
+    rotBtnEl?.setAttribute('aria-label', t('city.side.rotate'));
+    themeBtnEl?.setAttribute('aria-label', t('city.side.style'));
+    applySettings();
   }
   let homeBtnEl = null, rotBtnEl = null, themeBtnEl = null;
   function onBlur() { cam?.clearKeys(); }
@@ -576,14 +585,14 @@ export default function create(ctx) {
   const entryOf = (id) => [...entries.values()].find(e => e.b.id === id && !e.b.buildEnd);
   /** A dónde apunta la flecha para la misión q: {el, side, text, panel} (botón del HUD), {entry, text} (edificio) o {sign}. */
   function guideTarget(q) {
-    const t = q.goal.type;
-    if (EXP_GOALS.includes(t) && !(t === 'combat' && q.goal.enc === 'costa_capitana') && entryOf('casa_exp')) return { el: '[data-act="expedition"]', side: 'left', panel: 'expedition', text: `${icon('expedition', 20)}Misión: salí de <b>Expedición</b>` };
-    if (t === 'craft' && entryOf('taller')) return { entry: 'taller', panel: 'workshop', text: `${icon('hammer', 18)}Hacé clic en el <b>Taller</b>` };
-    if (t === 'prov' && entryOf('huerta')) return { entry: 'huerta', text: `${icon('prov', 18)}Cosechá la <b>Huerta</b>` };
-    if (t === 'castle' || t === 'rank') return { el: '.hud-rank', side: 'right', panel: 'rank', text: `${icon('castle', 20)}Mirá el <b>expediente</b> del rango` };
-    if (t === 'threat' && document.querySelector('#hud [data-act="threat"]')?.style.display !== 'none') return { el: '[data-act="threat"]', side: 'right', panel: 'threat', text: `${icon('bolt', 20)}Prepará la ciudad` };
-    if (t === 'expand') return { sign: true };
-    if (t === 'story') return { el: '[data-act="story"]', side: 'left', panel: 'story', text: `${icon('journal', 20)}Abrí la <b>Bitácora</b>` };
+    const gt = q.goal.type;
+    if (EXP_GOALS.includes(gt) && !(gt === 'combat' && q.goal.enc === 'costa_capitana') && entryOf('casa_exp')) return { el: '[data-act="expedition"]', side: 'left', panel: 'expedition', text: icon('expedition', 20) + t('city.guide.expedition') };
+    if (gt === 'craft' && entryOf('taller')) return { entry: 'taller', panel: 'workshop', text: icon('hammer', 18) + t('city.guide.workshop') };
+    if (gt === 'prov' && entryOf('huerta')) return { entry: 'huerta', text: icon('prov', 18) + t('city.guide.garden') };
+    if (gt === 'castle' || gt === 'rank') return { el: '.hud-rank', side: 'right', panel: 'rank', text: icon('castle', 20) + t('city.guide.rank') };
+    if (gt === 'threat' && document.querySelector('#hud [data-act="threat"]')?.style.display !== 'none') return { el: '[data-act="threat"]', side: 'right', panel: 'threat', text: icon('bolt', 20) + t('city.guide.threat') };
+    if (gt === 'expand') return { sign: true };
+    if (gt === 'story') return { el: '[data-act="story"]', side: 'left', panel: 'story', text: icon('journal', 20) + t('city.guide.journal') };
     return null;
   }
   let guideSign = false;
@@ -594,11 +603,11 @@ export default function create(ctx) {
     const tgt = hints && q && !q.done && !T()['q_' + q.id] ? guideTarget(q) : null;
     // flecha a un botón del HUD: Construir (por defecto) o el que pida la misión
     let tipText = null, tipSel = '.hud-btn.big', side = 'top';
-    if (!T().cityIntro && ctx.state.city.buildings.length <= 1) tipText = `${icon('hammer', 20)}Hacé clic en <b>Construir</b> para empezar`;
+    if (!T().cityIntro && ctx.state.city.buildings.length <= 1) tipText = icon('hammer', 20) + t('city.guide.build');
     else if (tgt?.el) { tipText = tgt.text; tipSel = tgt.el; side = tgt.side; }
     else if (hints && q && !q.done && !tgt && !T()['q_' + q.id] && !(q.goal.type === 'pop' || q.goal.type === 'happy')) {
       const ids = questBuildIds(ctx).filter(id => E.canBuild(id).ok);
-      if (ids.length) tipText = `${icon('quest', 20)}Misión: construí <b>${ui.esc(E.def(ids[0]).name)}</b>`;
+      if (ids.length) tipText = icon('quest', 20) + t('city.guide.questBuild', { name: ui.esc(E.def(ids[0]).name) });
     }
     const btn = document.querySelector(`#hud:not(.hidden) ${tipSel}`);
     const rc = btn?.getBoundingClientRect();
@@ -620,8 +629,8 @@ export default function create(ctx) {
     const guideEntry = tgt?.entry && !blocked ? entryOf(tgt.entry) : null;
     const firstBubble = !T().collect && !blocked && !guideEntry ? pickTipBubble() : null;
     if (guideEntry) setWorldTip(guideEntry.bubble ? 'collect' : 'guide', guideEntry, tgt.text);
-    else if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}Hacé clic para cobrar`);
-    else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('dress', 18)}Hacé clic para abrir el Equipaje`);
+    else if (firstBubble) setWorldTip('collect', firstBubble, icon('coin', 18) + t('city.guide.collect'));
+    else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), icon('dress', 18) + t('city.guide.wardrobe'));
     else clearWorldTip();
     if (gameTip && performance.now() > gameTip.until) gameTip = null;
   }
@@ -686,9 +695,9 @@ export default function create(ctx) {
       if (big) fx.confetti(c.x, e.height * 0.8, c.z);
       fx.sparkle(c.x, e.height * 0.6, c.z, [PALETTE.slate, '#ffffff', PALETTE.gold]);
       // casas y negocios: el cartel cuenta qué cambia en la estructura (arte por época y nivel)
-      const d = E.def(b), NEW = { 2: 'Anexo nuevo', 3: 'Un piso más', 4: 'Más alto', 5: 'Remate y cerco' };
-      const extra = (d.cat === 'casa' || d.cat === 'negocio') && d.prod && NEW[level] ? ` · ${NEW[level]}` : b.id === 'castillo' ? ` · ${E.rankName(level)}` : '';
-      setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Nivel ${level}!${extra}`), 120);
+      const d = E.def(b);
+      const extra = (d.cat === 'casa' || d.cat === 'negocio') && d.prod && level >= 2 && level <= 5 ? ` · ${t('city.float.new.' + level)}` : b.id === 'castillo' ? ` · ${E.rankName(level)}` : '';
+      setTimeout(() => !disposed && floatAt(e, icon('star', 22) + t('city.float.level', { n: level }) + extra), 120);
       if (big) ui.confetti();
       life.refreshGrid();
       syncStatus();
@@ -709,7 +718,7 @@ export default function create(ctx) {
       life.refreshGrid();
       syncStatus();
     }));
-    offs.push(bus.on('production:full', () => { ui.toast('El depósito de provisiones está lleno: salí de expedición', { icon: 'prov' }); }));
+    offs.push(bus.on('production:full', () => { ui.toast(t('city.toast.provFull'), { icon: 'prov' }); }));
     offs.push(bus.on('production:collected', ({ b, amount, currency }) => {
       const e = entries.get(b.uid);
       if (!e) return;
@@ -771,7 +780,7 @@ export default function create(ctx) {
       if (!e) return;
       const c = e.root.position;
       fx.sparkle(c.x, e.height * 0.7, c.z, ['#ffd166', '#ffffff', '#f1a181']);
-      setTimeout(() => !disposed && floatAt(e, `${icon('star', 22)}¡Maestría ${stars}!`), 450);
+      setTimeout(() => !disposed && floatAt(e, icon('star', 22) + t('city.float.mastery', { n: stars })), 450);
     }));
     offs.push(bus.on('city:theme', ({ theme } = {}) => setTheme(theme || currentThemeId(ctx.state))));
     offs.push(bus.on('city:flag', () => {
@@ -1003,19 +1012,19 @@ export default function create(ctx) {
 
       // botones flotantes
       sideEl = ui.h('div.cx-side');
-      collectBtn = ui.h('button.cx-collect', { html: `${icon('coin', 24)}Cobrar todo<i class="badge">0</i>`, 'aria-label': 'Cobrar todo' });
+      collectBtn = ui.h('button.cx-collect', { html: `${icon('coin', 24)}<span></span><i class="badge">0</i>` });
       collectBtn.style.display = 'none';
       collectBtn.addEventListener('click', () => collectAll());
-      const homeBtn = ui.h('button.cx-fab', { html: icon('castle', 30), 'aria-label': 'Ir a la municipalidad', title: 'Ir a la municipalidad (H)' });
+      const homeBtn = ui.h('button.cx-fab', { html: icon('castle', 30) });
       homeBtn.addEventListener('click', focusCastle);
-      const rotBtn = ui.h('button.cx-fab', { html: icon('rotate', 30), 'aria-label': 'Girar la vista', title: 'Girar la vista (Q / E)' });
+      const rotBtn = ui.h('button.cx-fab', { html: icon('rotate', 30) });
       rotBtn.addEventListener('click', () => { cam.rotate(1); audio.sfx('swoosh'); });
-      const themeBtn = ui.h('button.cx-fab', { html: icon('palette', 30), 'aria-label': 'Estilo de la ciudad', title: 'Estilo de la ciudad (T)' });
+      const themeBtn = ui.h('button.cx-fab', { html: icon('palette', 30) });
       themeBtn.addEventListener('click', () => { audio.sfx('tap'); openThemes(); });
       sideEl.append(collectBtn, homeBtn, rotBtn, themeBtn);
       homeBtnEl = homeBtn; rotBtnEl = rotBtn; themeBtnEl = themeBtn;
-      applySettings();
-      offs.push(bus.on('settings:changed', applySettings));
+      applyLang();
+      offs.push(bus.on('settings:changed', applySettings), bus.on('lang:changed', applyLang));
       container.append(sideEl);
 
       // entrada
