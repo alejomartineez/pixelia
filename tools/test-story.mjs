@@ -2,11 +2,13 @@
 //
 //   node tools/test-story.mjs
 //
-// Cubre: partida nueva (splash → personaje → nombre → prólogo a pantalla completa → estilo, sin el modal de llegada
+// Cubre: partida nueva (splash → cinemática El Quiebre → personaje → nombre → llegada con Vera a pantalla completa →
+// estilo, sin el modal de llegada
 // apilado), el primer contacto de la ciudad que no bloquea el juego, el cobro automático de t1–t5 con la línea de la
 // cartógrafa, la flecha guiada (Construir, Huerta, Expedición, rango), goalAction para todos los tipos de objetivo, los
 // contactos que salen una sola vez (también al recargar), Saltar, la Bitácora (J, Historia con "Qué sigue", Diario,
-// Manual con capítulos que se abren y buscador, volver a ver el prólogo) y una partida vieja que recibe state.story sin
+// Manual con capítulos que se abren y buscador, volver a ver la cinemática y la llegada) y una partida vieja que recibe
+// state.story sin
 // perder nada. El combate todavía no existe (paso 5): se prueba solo que su contacto responde a combat:won.
 import http from 'node:http';
 import { readFileSync, existsSync, statSync } from 'node:fs';
@@ -94,15 +96,26 @@ const rectOf = (sel) => page.evaluate((sel) => { const r = document.querySelecto
 
 try {
   // ===================================================================
-  section('Partida nueva: personaje → nombre → prólogo → estilo');
+  section('Partida nueva: cinemática → personaje → nombre → llegada con Vera → estilo');
   await page.goto(BASE + '?nosw&reset', { waitUntil: 'load' });
   await page.evaluate(() => history.replaceState(null, '', location.pathname + '?nosw'));
   ok(await waitFor(`document.getElementById('splash')?.classList.contains('ready')`, 8000), 'splash listo');
   await waitFor(`!document.getElementById('studio') || getComputedStyle(document.getElementById('studio')).display === 'none' || document.getElementById('studio').classList.contains('out')`, 5000);
   await sleep(600);
-  for (let i = 0; i < 4 && !(await page.evaluate(() => window.__pixelia?.ctx.router.current === 'onboarding')); i++) { await page.mouse.click(640, 500); await sleep(1500); }
-  ok(await waitFor(`window.__pixelia.ctx.router.current === 'onboarding' && !!document.querySelector('.scene-onboarding .ob-next')`, 12000), 'onboarding');
+  for (let i = 0; i < 4 && !(await page.evaluate(() => !!window.__pixelia?.ctx.router.current)); i++) { await page.mouse.click(640, 500); await sleep(1500); }
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'intro' && !!document.querySelector('.scene-intro .in-skip')`, 15000), 'partida nueva: primero la cinemática, con Saltar a la vista');
   ok(await run(`return !!store.state.story && store.state.story.v === 1 && store.state.introSeen === false && !store.state.story.veteran`), 'partida nueva: state.story armado, sin intro vista y no es veterana');
+  ok(await waitFor(`(document.querySelector('.scene-intro .in-sub')?.textContent || '').startsWith('Antes del cielo')`, 4000), 'primer plano con su subtítulo de una línea');
+  ok(!(await has('#hud:not(.hidden)')), 'sin HUD durante la cinemática');
+  await click('.scene-intro .in-root');
+  ok(await waitFor(`window.__pixelia.intro?.shot === 1 && /Casas/.test(document.querySelector('.scene-intro .in-sub')?.textContent || '')`, 3000), 'un clic pasa al plano siguiente (las torres de las Casas)');
+  await shot('intro-torres');
+  await page.keyboard.press('KeyB');
+  await sleep(200);
+  ok(!(await has('.modal')), 'las teclas del juego no llegan durante la cinemática');
+  await page.keyboard.press('Escape');
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'onboarding' && !!document.querySelector('.scene-onboarding .ob-next')`, 12000), 'Esc la saltea y sigue el onboarding');
+  ok(await run(`return store.state.introSeen === true`), 'la cinemática queda vista (no se repite al recargar)');
   await sleep(500);
   await click('.scene-onboarding .ob-next');
   ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso del nombre');
@@ -111,30 +124,28 @@ try {
     set('name', 'Irene'); set('city', 'Paso Viejo');
   });
   await click('.scene-onboarding .ob-next');
-  ok(await waitFor(`!!document.querySelector('.st-epic')`, 12000), 'después del nombre llega el prólogo a pantalla completa');
-  ok(await run(`return ctx.router.current === 'city' && store.state.onboarded`), 'ya en la ciudad (el prólogo va encima)');
+  ok(await waitFor(`!!document.querySelector('.st-epic')`, 12000), 'después del nombre llega Vera a pantalla completa');
+  ok(await run(`return ctx.router.current === 'city' && store.state.onboarded`), 'ya en la ciudad (la llegada va encima)');
   ok(!(await has('.modal')), 'el estilo de la ciudad todavía no se abrió');
-  ok(/El Quiebre/.test(await text('.st-epic .st-head')), 'primer plano: El Quiebre');
+  ok(await has('.st-epic.see'), 'la llegada deja ver la ciudad detrás');
+  ok(/Vera/.test(await text('.st-epic .st-head')), 'la recibe Vera');
+  ok(await has('.st-epic .st-face'), 'con su retrato');
   await sleep(300);
   await click('.st-epic');   // termina de escribir la línea
   await sleep(80);
-  ok((await text('.st-epic .st-line')).startsWith('Antes, la tierra era una sola'), 'la primera línea se completa con un clic');
-  await shot('prologo-quiebre');
-  // seguir hasta la cartógrafa
-  for (let i = 0; i < 12 && !/cartógrafa/.test(await text('.st-epic .st-head')); i++) { await click('.st-epic'); await sleep(120); }
-  ok(/cartógrafa/.test(await text('.st-epic .st-head')), 'segundo plano: la cartógrafa');
-  ok(await has('.st-epic canvas.st-face'), 'con su retrato pixel');
-  await click('.st-epic'); await sleep(60);
-  ok((await text('.st-epic .st-line')).includes('Irene'), 'la cartógrafa nombra al personaje', await text('.st-epic .st-line'));
-  await shot('prologo-cartografa');
+  ok((await text('.st-epic .st-line')).includes('Irene'), 'Vera nombra al personaje', await text('.st-epic .st-line'));
+  ok(await run(`return (await import('./src/story/story-data.js')).SCENE_BY_ID.llegada.lines.length <= 4`), 'la llegada es corta: 4 líneas como mucho');
+  await shot('llegada-vera');
+  for (let i = 0; i < 8 && !/alguien dijo tu nombre/.test(await text('.st-epic .st-line')); i++) { await click('.st-epic'); await sleep(120); }
+  ok(/alguien dijo tu nombre/.test(await text('.st-epic .st-line')), 'el gancho: abajo alguien dijo tu nombre', await text('.st-epic .st-line'));
   // las teclas no llegan a la ciudad mientras se lee
   await page.keyboard.press('KeyB');
   await sleep(300);
-  ok(!(await has('.modal')), 'B (Construir) no abre nada durante el prólogo');
+  ok(!(await has('.modal')), 'B (Construir) no abre nada durante la llegada');
   await page.keyboard.press('Escape');
-  ok(await waitFor(`!document.querySelector('.st-epic')`, 3000), 'Esc saltea el prólogo');
-  ok(await waitFor(`!!document.querySelector('.modal.tp-modal')`, 6000), 'después del prólogo, el estilo de la ciudad');
-  ok(await run(`return !!store.state.story.seen.prologo_1 && !!store.state.story.seen.prologo_2 && !!store.state.story.pages.p1`), 'prólogo visto y la primera página del diario acreditada');
+  ok(await waitFor(`!document.querySelector('.st-epic')`, 3000), 'Esc saltea la llegada');
+  ok(await waitFor(`!!document.querySelector('.modal.tp-modal')`, 6000), 'después de la llegada, el estilo de la ciudad');
+  ok(await run(`return !!store.state.story.seen.llegada && !!store.state.story.pages.p1`), 'llegada vista y la primera página del diario acreditada');
   await page.evaluate(() => [...document.querySelectorAll('.modal.tp-modal .modal-foot .btn')].pop()?.click());
   ok(await waitFor(`!document.querySelector('.modal.tp-modal')`, 4000), 'estilo elegido');
   await sleep(2500);
@@ -275,13 +286,23 @@ try {
   await run(`ctx.openPanel('help'); return true;`);
   ok(await waitFor(`document.querySelector('.modal.pnl-story .tab.active')?.dataset.tab === 'manual'`, 3000), 'el panel "help" de antes abre el Manual');
   await closeModals();
-  // volver a ver el prólogo
+  // volver a ver la llegada y la cinemática
   await run(`ctx.openPanel('story'); return true;`);
   await waitFor(`!!document.querySelector('.pnl-story .st-prologue')`, 3000);
   await click('.pnl-story .st-prologue');
-  ok(await waitFor(`!!document.querySelector('.st-epic')`, 4000), 'la Bitácora vuelve a pasar el prólogo');
+  ok(await waitFor(`!!document.querySelector('.st-epic')`, 4000), 'la Bitácora vuelve a pasar la llegada');
   await page.keyboard.press('Escape');
   ok(await waitFor(`!document.querySelector('.st-epic')`, 3000), 'y se saltea con Esc');
+  await closeModals();
+  await run(`ctx.openPanel('story'); return true;`);
+  await waitFor(`!!document.querySelector('.pnl-story .st-intro')`, 3000);
+  ok(/Volver a ver El Quiebre/.test(await text('.pnl-story .st-intro')), 'la Bitácora ofrece volver a ver El Quiebre');
+  await click('.pnl-story .st-intro');
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'intro'`, 6000), 'la cinemática vuelve a pasar');
+  await sleep(600);
+  await page.keyboard.press('Escape');
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 8000), 'y al saltearla vuelve a la ciudad');
+  await sleep(1200);
   await closeModals();
 
   // ===================================================================
@@ -330,12 +351,13 @@ try {
   ok(['c_ciudad', 'c_expedicion', 'c_taller', 'c_rango'].every(id => old.seen.includes(id)), 'lo que ya conoce no se le explica', old.seen);
   ok(old.ch === 'banado', 'arranca en el capítulo que le toca por su rango', old.ch);
   await drain(3000);
-  ok(await waitFor(`!!document.querySelector('.st-card[data-scene="veterano"]')`, 15000), 'un aviso corto lleva al prólogo (sin pantalla completa de golpe)');
-  ok(!(await has('.st-epic')), 'no hay pantalla completa sin pedirla');
+  ok(await waitFor(`!!document.querySelector('.st-card[data-scene="veterano"]')`, 15000), 'un aviso corto lleva a la cinemática (sin pantalla completa de golpe)');
+  ok(!(await has('.st-epic')) && await run(`return ctx.router.current === 'city'`), 'no hay pantalla completa sin pedirla');
   await click('.st-card[data-scene="veterano"] .st-act');
-  ok(await waitFor(`!!document.querySelector('.st-epic')`, 4000), '"Leer el prólogo" lo abre');
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'intro'`, 6000), '"Ver El Quiebre" abre la cinemática');
+  await sleep(600);
   await page.keyboard.press('Escape');
-  ok(await waitFor(`!document.querySelector('.st-epic')`, 3000), 'Esc');
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 8000), 'Esc vuelve a la ciudad');
   ok(await run(`return !!store.state.story.pages.p1`), 'también recibe la primera página');
 
   // ===================================================================

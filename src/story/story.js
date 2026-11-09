@@ -11,7 +11,7 @@
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 import { isOpen } from '../core/unlocks.js';
-import { SCENES, SCENE_BY_ID, ACTS, PAGES, PAGE_BY_ID, QUEST_LINES, AUTO_CLAIM, PROLOGUE, CHARACTERS, RAIZ_LINES } from './story-data.js';
+import { SCENES, SCENE_BY_ID, ACTS, PAGES, PAGE_BY_ID, QUEST_LINES, AUTO_CLAIM, PROLOGUE, OLD_PROLOGUE, CHARACTERS, RAIZ_LINES } from './story-data.js';
 import { raizState } from '../core/raiz.js';
 
 const S = () => store.state;
@@ -152,6 +152,7 @@ async function pump() {
       if (res === 'away') { delete storyState().seen[id]; queue.unshift(id); return; }
       bus.emit('story:scene', { id, result: res });
       if (res === 'action' && sc.action?.run === 'prologue') await playPrologue({ replay: true });
+      if (res === 'action' && sc.action?.run === 'intro') playIntro();
     } catch (e) { console.error('[story] escena', id, e); }
     finally { playing = false; schedule(600); }
     return;
@@ -193,8 +194,9 @@ export function say(text, ms = 4800) {
 }
 
 /**
- * Prólogo a pantalla completa (entre el nombre y el estilo de la ciudad, plan §E7). Devuelve una promesa que resuelve al
- * terminar o saltearlo. replay: desde la Bitácora (no acredita de nuevo ni marca nada).
+ * La llegada con Vera (plan §M4, reemplaza al prólogo de texto): a pantalla completa sobre la ciudad, entre el nombre y
+ * el estilo de la ciudad. Devuelve una promesa que resuelve al terminar o saltearlo. replay: desde la Bitácora (no
+ * acredita de nuevo ni marca nada).
  */
 let epicOn = false;
 /** Hay una escena a pantalla completa (o cargándose): la llegada y las subidas de nivel esperan. */
@@ -211,11 +213,17 @@ export async function playPrologue({ replay = false } = {}) {
     return res;
   } finally { playing = false; epicOn = false; if (!replay) { bus.emit('story:prologueDone', {}); } schedule(800); }
 }
+/** La cinemática "El Quiebre" (src/scenes/intro.js), de nuevo: al terminar vuelve a la ciudad propia. */
+export function playIntro() {
+  const r = ctxRef?.router;
+  if (!r) return Promise.resolve(false);
+  return r.go('intro', { replay: 1, back: 'city' });
+}
 /** Vuelve a mostrar una escena ya vista (Bitácora). */
 export async function replay(id) {
   const sc = SCENE_BY_ID[id];
   if (!sc) return null;
-  if (PROLOGUE.includes(id)) return playPrologue({ replay: true });
+  if (PROLOGUE.includes(id) || OLD_PROLOGUE.includes(id)) return playPrologue({ replay: true });
   const m = await loadUi();
   return sc.epic ? m.showEpic(ctxRef, [sc]) : m.showScene(ctxRef, sc, { replay: true });
 }

@@ -29,9 +29,9 @@ levantes es el refugio desde el que se sale a buscar respuestas.
 ## 2. Personajes
 | Quién | Rol | Notas |
 |---|---|---|
-| **Vera, la cartógrafa** | Guía y voz del tutorial | La única que se quedó en la isla. Seca, práctica, con humor de barrio. Habla en los contactos y al cumplir el tutorial. Retrato: un busto 3D de su `look` en `CHARACTERS.cartografa` (el 16×16 queda de respaldo). **Su culpa (L2):** antes del Quiebre dibujó los mapas de las vetas para las Casas y, sin saberlo, les mostró dónde cavar. Se quedó porque quiere arreglar algo ("Tengo algo que arreglar", prólogo). En el Acto 1 solo hay pistas (un eco, la página 5, un silencio cuando se habla de mapas); se revela en el Acto 2. Es la **pista falsa del traidor**: todo apunta a ella y no es ella. |
+| **Vera, la cartógrafa** | Guía y voz del tutorial | La única que se quedó en la isla. Seca, práctica, con humor de barrio. Habla en los contactos y al cumplir el tutorial. Retrato: un busto 3D de su `look` en `CHARACTERS.cartografa` (el 16×16 queda de respaldo). **Su culpa (L2):** antes del Quiebre dibujó los mapas de las vetas para las Casas y, sin saberlo, les mostró dónde cavar. Se quedó porque quiere arreglar algo ("tengo algo que arreglar acá", en la llegada). En el Acto 1 solo hay pistas (un eco, la página 5, un silencio cuando se habla de mapas); se revela en el Acto 2. Es la **pista falsa del traidor**: todo apunta a ella y no es ella. |
 | **Tadeo Ibarra, el último intendente** | Voz del diario | No aparece: se lo lee. Firmó permisos para la Cofradía y lo cuenta. Las Páginas del diario son el coleccionable de la historia. |
-| **El narrador** | Prólogo y momentos grandes | Sin retrato. Registro épico. |
+| **El narrador** | La cinemática y los momentos grandes | Sin retrato. Registro épico. |
 | Tu personaje | Quien lidera | Elegido en el onboarding. Los elementos le dan habilidades de líder. |
 
 ### Pueblos (paso 4a)
@@ -66,7 +66,7 @@ cumple es el actual, y nunca vuelve atrás.
 
 | # | Capítulo | Arranca cuando | Qué pasa |
 |---|---|---|---|
-| 1 | Lo que quedó | partida nueva | Prólogo: el Quiebre y la cartógrafa. Primeras casas y la base. |
+| 1 | Lo que quedó | partida nueva | La cinemática El Quiebre y la llegada con Vera. Primeras casas y la base. |
 | 2 | El Bosque del Arroyo | t4 (Casa de Expediciones) | Primer combate, de tutorial: los lobos de ojos brillantes (misión `q_combate`, E5). |
 | 3 | Las Sierras Bajas | rango 2 | Desde las sierras se ve el borde y las luces del Bajo Mundo. |
 | 4 | El agua que respira | rango 3 | La bestia del Bañado espera en **la poza honda**, al fondo de la salida normal (jefe, `q_bestia`). |
@@ -216,7 +216,7 @@ Al encontrar un elemento (el Núcleo de Raíz en el Acto 1) se elige cuánto sac
 
 ## 6. Páginas del diario
 Diez en el Acto 1 (`PAGES`). Se acreditan con `store.grant({ page: 'p3' })` o por su `trigger`:
-p1 en el prólogo, p2 al explorar una zona del Bosque, p3 al subir a rango 2, p4 al abrir La mina sellada, p5 al explorar
+p1 en la llegada con Vera, p2 al explorar una zona del Bosque, p3 al subir a rango 2, p4 al abrir La mina sellada, p5 al explorar
 una zona del Bañado, p6 con el Núcleo de Raíz, p7 al abrir Los faros apagados, p8 al ganar el abordaje (la capitana),
 p9 al vencer a la bestia del Bañado (la Madre del Agua de los Anuros) y p10 con el eco de la mesa del archivo (L2). Cada
 página deja una pregunta abierta (los lobos, el bote de abajo, los permisos, el agua que respira, la galería sellada, el
@@ -263,10 +263,27 @@ y de `expEchoSpots(run)` (ruinas ya pisadas, solo de noche: `__exp.echoSpots()`)
   `state.introSeen`. Disparadores por el bus (`unlock:<id>`, `built:<id>`, `rank:<n>`, `quest:<id>`, `zone:<región>`,
   `chapter:<id>`, `threat:announced`, `combat:first`, `element:first`, `story:city`, `story:veteran`). Cola de escenas
   que espera a la ciudad libre. **Cobro automático de t1–t20** con aviso y la línea de la cartógrafa.
-- `src/story/story-ui.js`: hoja de diálogo (no bloquea), líneas sueltas y pantalla completa épica.
+- `src/story/story-ui.js`: hoja de diálogo (no bloquea), líneas sueltas y pantalla completa épica. Con `see` (la
+  llegada) la pantalla completa deja ver la ciudad detrás y el texto va abajo.
+- `src/scenes/intro.js`: la cinemática **El Quiebre** (plan §B y §M4), seis planos en vóxel de 7,5 a 9,5 s con un
+  subtítulo de una línea cada uno (`INTRO_LINES`):
+  1. el continente con las cuatro vetas latiendo en el corte;
+  2. las torres de las Casas, con enanos de la Veta empujando vagonetas de cristal, una noble en el balcón y la veta que
+     sube por la grúa;
+  3. de noche, un humano, una persona-zorro y otro humano roban cristales y la guardia los persigue con faroles;
+  4. la tierra se agrieta y se abre sobre la Brasa;
+  5. desde abajo, orcos de la Brasa y un vaciado miran subir los pedazos con Céfiro entre las nubes;
+  6. tu fragmento en ruinas al atardecer, un esquife que llega y el título.
+  Es lo primero de una partida nueva (`main.js`: sin `onboarded` ni `introSeen`). Clic, Enter o Espacio pasan de plano;
+  Esc o Saltar la terminan. Al terminar marca `introSeen` y sigue el onboarding. Se vuelve a ver desde la Bitácora
+  (`story.playIntro()`, `{replay: 1, back: 'city'}`): ahí el esquife lo lleva tu personaje. `?scene=intro&shot=N` abre
+  un plano (para capturas; `window.__pixelia.intro` tiene `go`, `seek`, `next` y `skip`).
+- **La llegada** (`llegada`, reemplaza al prólogo de texto `prologo_1`/`prologo_2`): `playPrologue()` la pasa entre el
+  nombre y el estilo de la ciudad. Cuatro líneas de Vera con un gancho y la página 1. Las partidas viejas reciben el
+  aviso `veterano` con el botón "Ver El Quiebre".
 - `src/scenes/panels-story.js`: la Bitácora (J): Historia con "Qué sigue", Diario y Manual.
 - Partidas viejas: reciben `state.story` sin subir la versión del guardado; lo que ya conocen queda visto y les llega un
-  aviso corto que lleva al prólogo.
+  aviso corto que lleva a la cinemática.
 
 ## 8. Guías del juego (lo esencial, sin guiar todo)
 - Se guía cada sistema central **la primera vez que aparece**, con una sola hoja corta: los **siete primeros contactos**
@@ -280,7 +297,7 @@ y de `expEchoSpots(run)` (ruinas ya pisadas, solo de noche: `__exp.echoSpots()`)
 
 ## 9. Reglas de escritura
 - Rioplatense, sin diminutivos (Guía de tono de DESIGN.md).
-- **La ciudad es cozy**: cálida, sobria, humor seco. **La historia puede ser épica**: el prólogo, los jefes, las
+- **La ciudad es cozy**: cálida, sobria, humor seco. **La historia puede ser épica**: la cinemática, los jefes, las
   revelaciones. Épico sin grandilocuencia: frases cortas, cosas concretas, nada de mayúsculas ni signos de más.
 - Cada escena tiene de **1 a 4 líneas**, se puede saltear y **nunca bloquea** el juego. Las épicas van a pantalla
   completa y se saltean con Esc.
@@ -290,6 +307,11 @@ y de `expEchoSpots(run)` (ruinas ya pisadas, solo de noche: `__exp.echoSpots()`)
 - Ningún texto antes del Acto 4 dice que el Quiebre fue a propósito ni quién es el traidor: solo preguntas.
 - Nadie es bueno puro. Los de arriba cavaron; los de abajo robaron. El jugador hereda las dos cosas.
 - Las preguntas abiertas se responden de a una, y cada respuesta abre otra.
+- **Que den ganas de leer** (plan §M4): cada línea tiene que empujar a la siguiente con una pregunta, una amenaza o
+  algo personal. Si una línea se puede saltear sin perder nada, sobra.
+- **Nada de explicar el lore de entrada.** La historia del mundo está en la cinemática (imágenes que se entienden
+  solas), el diario y los ecos; los diálogos dan ganchos, no lecciones.
+- **Se muestra, no se cuenta.** Si una imagen lo dice, el texto no lo repite.
 
 ## 10. Principios de diseño (plan §I)
 - Cada decisión tiene un costo visible.

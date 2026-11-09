@@ -134,11 +134,17 @@ export function openStory(ctx, params = {}) {
     // escenas vistas
     const seen = story.seenScenes(s);
     wrap.append(h('div.st-h', { html: `${icon('play', 18)} Lo que pasó` }));
-    const prologueSeen = story.hasSeen('prologo_1', s) || story.hasSeen('prologo_2', s) || story.hasSeen('veterano', s);
-    wrap.append(h('button.st-scene.st-prologue', {
-      html: `${portraitHtml('narrador')}<span><b>${prologueSeen ? 'Volver a ver el prólogo' : 'Ver el prólogo'}</b><small>El Quiebre y la cartógrafa</small></span>`,
-      onclick: () => { audio.sfx('tap'); story.playPrologue({ replay: true }); },
+    // la cinemática (El Quiebre) y la llegada con Vera se vuelven a ver siempre
+    wrap.append(h('button.st-scene.st-intro', {
+      html: `${portraitHtml('narrador')}<span><b>${s.introSeen ? 'Volver a ver El Quiebre' : 'Ver El Quiebre'}</b><small>Cómo se rompió la tierra</small></span>`,
+      onclick: () => { audio.sfx('tap'); sh.close(); setTimeout(() => story.playIntro(), 240); },
     }));
+    if (story.hasSeen('llegada', s) || story.hasSeen('prologo_2', s)) {
+      wrap.append(h('button.st-scene.st-prologue', {
+        html: `${portraitHtml('cartografa')}<span><b>La llegada</b><small>Vera te recibe entre las ruinas</small></span>`,
+        onclick: () => { audio.sfx('tap'); story.playPrologue({ replay: true }); },
+      }));
+    }
     for (const sc of seen.filter(x => !x.epic && x.id !== 'veterano').reverse()) {
       const btn = h('button.st-scene', { 'data-scene': sc.id, html: `${portraitHtml(sc.who)}<span><b>${esc(sc.title || '')}</b><small>${esc(story.fill(sc.lines[0], s))}</small></span>` });
       btn.onclick = () => { audio.sfx('tap'); sh.close(); setTimeout(() => story.replay(sc.id), 240); };

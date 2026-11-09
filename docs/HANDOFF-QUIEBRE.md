@@ -48,7 +48,7 @@ cada paso.
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | 0bba507 (v34) |
 | 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y el esquife volador | hecho e integrado (guía de arte en `docs/ARTE-PERSONAJES.md`; cabeza grande decidida de noche, revisar) | v39 |
-| 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | **en curso** (sesión quiebre-4a-detalle) | |
+| 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | hecho e integrado (detalle abajo, en "Paso 4") | 32c7672 |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | partes 1 y 2 hechas e integradas (clases, nivel del líder, gente de la ciudad con herramienta, Vínculo, Progreso; el efecto de las herramientas en la ciudad queda para el paso 7). Parte 3 (clase en el onboarding y aspecto por clase) **en curso** | ed2ba67 (v36) + v39 |
 | 6 | Acto 1 completo + E5–E6 | hecho e integrado: 6a, 6b y 6c (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche con figuras del 4a, E5, E6 con Vera en la primera salida, una sola bestia, dirigible visible) | ed2ba67 (v36) + v39 + 0c2afa8 (v40) |
@@ -80,6 +80,42 @@ tener que dar confirmaciones, le doy el si a todo".
   falló con carga y pasó solo.
 - Para no chocar con el 4a, las segundas partes de 5b y 6 no tocan `src/avatar/*`, `enemy-models.js`, onboarding,
   wardrobe, cofres, migraciones ni el esquife. Los jefes van en un archivo de modelos aparte.
+
+## Paso 4 (cinemática El Quiebre y llegada con Vera): hecho, rama `claude/quiebre-4b-m4`
+- **La cinemática** está en `src/scenes/intro.js`, registrada en `SCENES` como `intro`.
+  - Son seis planos en vóxel, de 7,5 a 9,5 s cada uno, con un subtítulo de una línea por plano:
+    1. el continente con las vetas;
+    2. las torres de las Casas, con enanos de la Veta empujando vagonetas;
+    3. el robo nocturno, con un humano y una persona-zorro, y la guardia con faroles;
+    4. la grieta sobre la Brasa;
+    5. los orcos de la Brasa y un vaciado mirando subir las islas;
+    6. tu fragmento en ruinas, el esquife que llega y el título.
+  - Usa los pueblos del 4a, el esquife (M5) y la música `intro`, que es el alias de `epic`.
+  - Calidad: el renderer respeta `?quality=low` y los Ajustes. No agregué nada propio de la escena.
+- **Orden de entrada** (`main.js`): en una partida nueva sin `introSeen`, primero la cinemática. Después vienen el
+  onboarding, la ciudad, la llegada con Vera, el estilo y el contacto de la ciudad.
+  - Mientras pasa la cinemática se bajan el onboarding y la ciudad.
+  - Saltar, Esc o el final marcan `introSeen`.
+- **`onboarding.js` no se tocó.** Sigue llamando a `story.playPrologue()`, que ahora pasa la llegada.
+- **La llegada** reemplaza al prólogo de texto.
+  - Es la escena `llegada` en `story-data.js`: cuatro líneas de Vera con gancho ("Abajo alguien dijo tu nombre…") y la
+    página 1.
+  - Va a pantalla completa con `see`: las ruinas se ven detrás y el texto queda abajo.
+  - Se borraron `prologo_1` y `prologo_2`. `OLD_PROLOGUE` queda para las partidas que ya los vieron.
+- **Bitácora:**
+  - "Volver a ver El Quiebre" (`story.playIntro()`). Al volver a verla, el esquife lo lleva tu personaje.
+  - "La llegada" para releer a Vera.
+  - El aviso de las partidas viejas (`veterano`) ahora abre la cinemática.
+- **Reglas de escritura de M4** sumadas a DESIGN-STORY §9. La cinemática y la llegada quedaron documentadas en §7.
+- **Tests:**
+  - `test-story` sigue el recorrido nuevo: cinemática, un clic para pasar de plano, teclas bloqueadas, Esc, onboarding,
+    llegada con Vera, estilo, volver a ver las dos desde la Bitácora y el aviso de las partidas viejas.
+  - `test-e2e` saltea la cinemática al arrancar y espera a Vera.
+- **Capturas** de los seis planos en `shots/intro/`.
+- **Decisiones mías, para revisar:**
+  - Los textos de los seis subtítulos y las cuatro líneas de Vera.
+  - Un clic pasa de plano en vez de no hacer nada.
+  - Al volver a verla desde la Bitácora, siempre se vuelve a la ciudad propia.
 
 ## Paso 4a (personajes serios, pueblos y esquife): hecho, rama `claude/personajes-4a-6b06a8`
 **Hecho (commits de esta rama, sin mergear):**
@@ -485,7 +521,7 @@ los primeros ecos, 7 balancea L1 y L5.
   solos. Si falla una en la cadena, correrla sola antes de buscar un bug.
 - **Del paso 3**: el contacto del combate y el de los elementos ya están escritos pero se disparan con `combat:won`/
   `combat:lost` (paso 5) y `reward:element` (paso 6). Las páginas p4–p8 no tienen disparador todavía (paso 6). "Volver
-  a ver la intro" en la Bitácora va cuando exista la cinemática (paso 4; hoy está "Volver a ver el prólogo"). El ajuste
+  a ver la intro" en la Bitácora ya está (paso 4: "Volver a ver El Quiebre"). El ajuste
   `skipSeen` todavía no se usa. En la web, la hoja de diálogo puede quedar encima de la tarjeta "Instalar" (solo
   navegador). E6 (primera expedición guiada con pistas de un uso) y E5 (pasos nuevos en la cadena) van en el paso 6.
 - **J7 a medias en el arte de los personajes**: siguen siendo chibi (ojos grandes, cachetes). El plan pide cuerpos,
@@ -497,8 +533,7 @@ los primeros ecos, 7 balancea L1 y L5.
   amenazas y Obras; si algo quedó claro o sin contraste, es un color fijo que el script no agarró (buscar `#f`/`#e` en
   `background` del archivo de esa pantalla).
 - **Ajustes que todavía no se usan**: diálogos, cinemáticas vistas, combate, subtítulos y alto contraste se guardan
-  pero los usan los pasos 3 a 5 (leer `ctx.state.settings`). "Volver a ver la intro" va en Partida o en la Bitácora
-  cuando exista la intro (paso 4).
+  pero los usan los pasos 3 a 5 (leer `ctx.state.settings`). "Volver a ver la intro" quedó en la Bitácora (paso 4).
 - **No se hicieron** (no tienen sentido en WebView): VSync (lo maneja siempre el sistema; el panel lo explica),
   oclusión ambiental (va horneada en la geometría y es barata) y distancia de detalle de la ciudad.
 - **Sin bordes en Windows**: el tamaño exterior queda 8 px más grande por lado (sombra invisible de la ventana); se ve

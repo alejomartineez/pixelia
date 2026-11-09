@@ -1,5 +1,5 @@
 // Partida de punta a punta como jugadora nueva (sin cheat) en iPhone, con la interfaz real:
-// splash → onboarding (personaje, nombre, ciudad) → prólogo de la cartógrafa → estilo (se verifica el guardado) → premio
+// splash → cinemática El Quiebre → onboarding (personaje, nombre, ciudad) → llegada con Vera → estilo (se verifica el guardado) → premio
 // diario sin modal (primera sesión) → la cartógrafa presenta la ciudad → tutorial t1–t10 (se cobran solas: El Quiebre §E4) (casa, huerta y cosecha, Casa de Expediciones, salida corta, Taller y Cuerda, población,
 // panadería, salida normal con Cuerda) → subida de nivel
 // → cofre con hallazgos → potenciador viejo → equipo → Pase → Hallazgos → Cofres (gratis, mochila,
@@ -310,6 +310,13 @@ try {
   await tapXY(VIEW.width / 2, VIEW.height * 0.7);
 
   // ===================================================================
+  section('Cinemática El Quiebre (lo primero de una partida nueva)');
+  ok(await waitFor(`window.__pixelia.ctx.router.current === 'intro' && !!document.querySelector('.scene-intro .in-skip')`, 12000), 'partida nueva: primero la cinemática');
+  await sleep(1500);
+  await shot('intro');
+  ok(await tap('.scene-intro .in-skip'), 'Saltar');
+
+  // ===================================================================
   section('Onboarding: personaje, nombre y estilo de ciudad');
   ok(await waitFor(`window.__pixelia.ctx.router.current === 'onboarding' && !!document.querySelector('.scene-onboarding .ob-type')`, 9000), 'partida nueva entra al onboarding (no directo a la ciudad)');
   ok(await run(`return store.state.onboarded === false`), 'todavía no figura como onboarded');
@@ -342,16 +349,13 @@ try {
   await sleep(300);
   await shot('onboarding-nombre');
   await tap('.scene-onboarding .ob-next', 'Empezar');
-  // orden de entrada (El Quiebre §E7): personaje → nombre → prólogo → estilo
-  ok(await waitFor(`!!document.querySelector('.st-epic')`, 12000), 'al terminar llega el prólogo a pantalla completa');
-  await sleep(900);
-  await shot('prologo');
-  for (let i = 0; i < 12 && !/cartógrafa/.test(await ev(() => document.querySelector('.st-epic .st-head')?.textContent || '')); i++) { await tapXY(VIEW.width / 2, VIEW.height / 2); await sleep(150); }
-  ok(/cartógrafa/.test(await ev(() => document.querySelector('.st-epic .st-head')?.textContent || '')), 'la cartógrafa se presenta');
+  // orden de entrada (El Quiebre §E7 y §M4): cinemática → personaje → nombre → llegada con Vera → estilo
+  ok(await waitFor(`!!document.querySelector('.st-epic')`, 12000), 'al terminar llega Vera a pantalla completa');
+  ok(/Vera/.test(await ev(() => document.querySelector('.st-epic .st-head')?.textContent || '')), 'la cartógrafa se presenta');
   await sleep(1200);
-  await shot('prologo-cartografa');
+  await shot('llegada-vera');
   await tap('.st-epic .st-skip');
-  ok(await waitFor(`!document.querySelector('.st-epic')`, 3000), 'Saltar cierra el prólogo');
+  ok(await waitFor(`!document.querySelector('.st-epic')`, 3000), 'Saltar cierra la llegada');
   ok(await waitFor(`!!document.querySelector('.modal.tp-modal .tp-card')`, 9000), 'después se abre "Estilo de tu ciudad"');
   ok(await run(`return ctx.router.current === 'city' && store.state.onboarded === true`), 'ya en la ciudad y marcado como onboarded');
   ok(!(await ev(() => !!document.querySelector('.modal.arrival-modal'))), 'el premio diario espera a que se cierre el selector de estilo');

@@ -38,6 +38,7 @@ import { initTips } from './core/tips.js';   // pistas al pasar el mouse (data-t
 const SCENES = {
   city: () => import('./scenes/city.js'),
   wardrobe: () => import('./scenes/wardrobe.js'),
+  intro: () => import('./scenes/intro.js'),   // cinemática "El Quiebre" (PLAN-QUIEBRE §B): lo primero de una partida nueva
   onboarding: () => import('./scenes/onboarding.js'),   // primera vez: elegir personaje, nombre y ciudad
   home: () => import('./scenes/home.js'),   // Mi Casa por dentro (también la de una amistad: {visit})
   expedition: () => import('./expedition/exp-scene.js'),   // Expedición (DESIGN-CORE.md §2)
@@ -418,8 +419,8 @@ async function boot() {
   const splash = document.getElementById('splash');
   const startScene = params.get('scene') || 'city';
   const skipSplash = params.has('scene') || params.has('nosplash');
-  // partida nueva sin ?scene=: primero el onboarding (al terminar entra a la ciudad)
-  const first = !store.state.onboarded && !params.has('scene') ? 'onboarding' : startScene;
+  // partida nueva sin ?scene=: primero la cinemática (si no se vio), después el onboarding y al terminar la ciudad
+  const first = !store.state.onboarded && !params.has('scene') ? (store.state.introSeen ? 'onboarding' : 'intro') : startScene;
   const cssReady = new Promise(r => (bootUi ? bootUi.whenCss(r) : r()));
   // si la primera escena (o three.js) no baja, el preloader muestra "No pudimos abrir Pixelia" + Reintentar
   // en vez de ofrecer "Tocá para jugar" y dejar una pantalla vacía
@@ -429,6 +430,8 @@ async function boot() {
     .then(() => { bootUi?.tick('scene'); return true; }, e => { console.warn('[boot] precarga de escena', e); return false; });
   // onboarding: la ciudad se baja de fondo mientras se elige personaje
   if (first === 'onboarding') scenePrefetch.then(ok => ok && setTimeout(() => SCENES.city().catch(() => {}), 1500));
+  // cinemática: mientras se ve, se bajan el onboarding y la ciudad
+  if (first === 'intro') scenePrefetch.then(ok => ok && setTimeout(() => SCENES.onboarding().then(() => SCENES.city()).catch(() => {}), 1500));
 
   let started = false;
   const begin = async () => {
