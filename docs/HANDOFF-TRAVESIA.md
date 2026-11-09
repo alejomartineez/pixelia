@@ -42,15 +42,15 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
-| 2a | Nivel único, talentos, arsenal, maestría y fuerza | — | después del Bloque 1 | |
+| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a-nivel | en curso | rama `trav-2a` |
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
-| 3a | Motor de cinemáticas, viñetas 2D, narrador Gemini y `audio.track` | — | después del 2c | |
+| 3a | Motor de cinemáticas, viñetas 2D, narrador Gemini y `audio.track` (más retoques de sprites del 1d) | trav-3a-cinema | en curso (adelantado: el motor no depende del 2c) | rama `trav-3a` |
 | 3b | Cinemática "El Quiebre" nueva | — | después del 3a | |
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
-| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | — | junto con el 2a | |
+| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas | en curso | rama `trav-4a` |
 | 4b | Extraer el texto, glosario, traducir a 8 idiomas y revisar | — | después del Bloque 3 | |
 
 ## Claves externas (nunca copiarlas al repo, a los logs ni a la salida de comandos)
