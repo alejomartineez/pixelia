@@ -40,11 +40,13 @@ const towards = (h, target, amt) => { const d = ((target - h + 540) % 360) - 180
  * enfría (hacia el violeta de la sombra), con un poco más de saturación en la sombra y menos en la luz. La luz sube ~8 %
  * por paso; la sombra baja ~20 % de la luminosidad por paso (relativo, para que los oscuros no se vuelvan negro). hue: grados de giro por paso (la piel gira menos hacia violeta, va al rojo).
  */
-export function ramp(c, k, { hue = 9, val = 0.09, cool = 255, warm = 48 } = {}) {
+// sat: cuánto cambia la saturación por paso de sombra (negativo la sube; la piel usa positivo para apagarse al
+// oscurecer, si no la sombra sale anaranjada y se lee como un rubor o un ojo colorado)
+export function ramp(c, k, { hue = 9, val = 0.09, cool = 255, warm = 48, sat = -0.06 } = {}) {
   if (!k) return hexToInt(c);
   const [h, s, l] = toHsl(c);
   const H = towards(h, k > 0 ? warm : cool, Math.abs(k) * hue);
-  const S = k > 0 ? s * (1 - 0.07 * k) : s * (1 - 0.06 * k);
+  const S = k > 0 ? s * (1 - 0.07 * k) : s * Math.max(0.2, 1 + sat * k);
   // la sombra baja en proporción a la luminosidad: un carbón no se va a negro puro (nada más oscuro que ~#1a1614)
   return fromHsl(H, S, k > 0 ? l + k * val * 0.85 : Math.max(0.07, l * (1 + k * val * 2.2)));
 }

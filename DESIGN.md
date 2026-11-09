@@ -171,7 +171,7 @@ Todo color de la interfaz sale de los tokens de `:root` en `styles.css`; las pan
   `expEchoSpots`, `ambience:night` y `__exp.echoSpots()`. Pruebas y capturas: `?hour=21.5` y `?weather=tormenta`.
 
 ## Personajes, temas y contorno
-- **Personajes** (`data.js` → `AVATAR_TYPES`): Chica y Chico, solo personas. Los animales (gato, zorro, conejo, oso) y sus piezas se retiraron en el guardado v4 (`migrateV4` de `state.js`: la persona conserva los colores, las piezas retiradas `RETIRED_ITEMS` se devuelven al precio pagado y hay un aviso único); `LEGACY_TYPES` traduce perfiles viejos de contactos. El código de pelajes de `avatar*.js` queda sin uso. La primera partida (`onboarding.js`, si `state.onboarded` es false) elige tipo (al azar al empezar), colores, nombre y ciudad; después se cambia en el Equipaje (pestaña Personaje) o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel. Textos neutros: nada de "princesa" salvo el nombre del tipo.
+- **Personajes** (`data.js` → `AVATAR_TYPES`, paso 4a de El Quiebre): el tipo es el **pueblo** (humano, enano, anuro, gente-zorro, orco; los Vaciados no se eligen), con complexión recia o esbelta (`build`) y una cara (`face`: barbas, cicatrices, parche, pintura). Chica y chico pasan a humano esbelto y recio en el guardado v5 (`migrateV5`). Estilo **mezcla**: la gente en vóxel detallado a 1/48 (`src/avatar/figure.js` arma las piezas y `avatar.js` el modelo) y las criaturas en low-poly facetado (`lowpoly.js`). **Las reglas de arte (caras, proporciones, rampas de color y prueba en grises) están en [docs/ARTE-PERSONAJES.md](docs/ARTE-PERSONAJES.md)**; la galería para revisarlas es `tools/people.html`. La primera partida (`onboarding.js`) arranca con un pueblo al azar; después se cambia en el Equipaje o en Ajustes → "Cambiar personaje". Cada pieza de `CUSTOM_CATALOG` puede tener `types` y se filtra con `fitsType(item, type)` en tienda, cofres, Pase y subida de nivel.
 - **Estilos de ciudad** (`city/themes.js`): Pueblo Acogedor (por defecto, sin re-mapeo), Otoño, Musgo, Ceniza (pizarra y brasas, ventanas encendidas), Bruma (la costa de los faros), Ocaso (ventanas encendidas), Escarcha y Luces de Noche (`dark: true`, aro claro bajo el personaje). Los ids viejos quedan como alias (`THEME_ALIASES`: pastel → otono, moderna → ceniza, playa → bruma, bosque → musgo, invierno → escarcha) y la v4 los cambia en el guardado. No hay modelos por tema: los colores de vóxel se re-mapean (`mapColor`; las reglas usan "ranuras": `pink` = terracota principal, `lilac` = azul pizarra) y cambian terreno, cielo, luces y naturaleza. Se guarda en `state.city.theme`, se elige gratis con `openThemePicker(ctx)` (botón paleta en la ciudad, Ajustes y onboarding), emite `city:theme` y se ve en las visitas.
 - **Vóxel nítido** (desde nov 2026; antes el 3D se dibujaba a ~480 px y se agrandaba pixelado, y los bordes diagonales hacían serrucho): el "pixel" del arte es el **vóxel**, no el pixel de pantalla. `createPixelRenderer` dibuja a **2 pixeles de render por px CSS** (en PC es supersampleo 2×2; en celu, casi nativo) con **MSAA 4×** y el canvas al 100% suavizado (`.voxel-canvas`, nunca `pixelated`). Tope de 4,6 M pixeles de render; si los cuadros vienen lentos (<42 fps) baja solo a 1,5× y 1,2×. `settings.lowQuality` (o `?quality=low`) arranca en ≤1,5× sin MSAA; `?quality=high` apaga el ajuste automático (capturas).
 - **Oclusión ambiental por vértice**: `Voxels.toGeometry` oscurece cada esquina según sus 3 vecinos (rincones, aleros, pie de las paredes) — es lo que da volumen y lectura. `{ ao: false }` la apaga. Pisos con variación en manchas de 2×2 y contraste bajo.
@@ -240,7 +240,8 @@ export function thumbnail(id, level = 1, era = 1, theme) // -> Promise<dataURL> 
 ```js
 export function avatarModel(look, opts = {}) // -> THREE.Group, altura total ≈ 1 unidad, mira a +Z, base en y=0
 // group.userData.update(dt, moving:boolean)   — caminar (piernas/brazos/rebote) o idle (respira, parpadea)
-export function randomLook(seed)              // look aleatorio válido (para vecinas NPC)
+export function randomLook(seed, opts)        // look aleatorio válido (gente de la ciudad); opts.type: pueblo, opts.cls: clase
+// opts de avatarModel: cls (viste por clase o rol, ROLE_CLASS), gear (equipo fuera del catálogo), seated, npc, scale
 ```
 ### src/avatar/car.js (agente Avatar)
 ```js
@@ -248,7 +249,7 @@ export function carModel(car, opts = {})  // -> THREE.Group, largo ≈ 1 unidad 
 // group.userData.size = {w, l, h}; group.userData.update(dt, speed, steer) — gira ruedas y las dobla
 export function carStats(car)           // {speed, handling} 1..5 desde CAR_BODIES
 ```
-Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS`, `SKIN_TONES`).
+Usar colores de `data.js` (`OUTFIT_COLORS`, `HAIR_COLORS` y los `skins` de cada pueblo); la ropa los apaga con `clothHex` y las rampas salen de `ramp` (`avatar-kit.js`).
 
 ## Economía (resumen)
 - Casas dan **población**; negocios requieren población mínima (`popReq`) y producen monedas por ciclo con tope (`cap` ciclos) → hay que volver a cobrar.

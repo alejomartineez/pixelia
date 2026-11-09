@@ -217,6 +217,39 @@ Las muestras se pueden recolorear con `cd`, `cm` y `cf`.
      2 o 3 tonos sin ruido y caras con volumen. Cada personaje necesita **un distintivo de oficio** que se lea en la
      silueta o en el pecho: el arma, las cuentas, el parche.
 
+## 6. Propagación al resto (después del OK de las muestras)
+
+- **Orcos:**
+  - la cabeza se hunde 1 (no 3) entre los hombros, así la cara queda arriba de la línea de los hombros;
+  - el ceño sale 1 y la frente pesada va en la fila de arriba. Con 2 de vuelo, desde la cámara tapaba el ojo;
+  - ojo ámbar de brasa con la pupila adentro, como la gente-zorro: el ojo oscuro no se leía sobre el verde;
+  - nariz chata con las fosas oscuras, mandíbula que sale 2, boca de 6 y colmillos que suben por delante del labio.
+- **Anuros:** las manchas del lomo van en parches limpios de 3 × 3, a mitad de camino entre la piel y el color de
+  marcas. Las rayas negras de antes eran ruido.
+- **Vaciados:**
+  - una sola grieta de veta que baja en zigzag por el pecho, más clara arriba, y una línea corta en la pierna. Los
+    puntos sueltos eran ruido;
+  - pelo oscuro y ropa de cuero (carbón o ciruela), porque la ropa de mina gris se fundía con la piel gris.
+- **Red de valor (`paletteOf`):** si la tela queda a menos de un escalón de luminosidad de la piel (0,1), baja de a
+  pasos de rampa. Con piel muy oscura, sube. Cubre a la gente de la ciudad (`randomLook`) sin listas de combinaciones
+  prohibidas.
+- **Pintura de guerra:** una franja de ocre rojo bajo los ojos, de oreja a oreja, y dos rayas en las mejillas (en
+  verdes, hueso). Las manchas oscuras bajo el ojo se leían como otro par de ojos.
+- **Cota de malla:** bandas de 3 filas en vez de damero, que a distancia de juego es ruido.
+- **Pañuelo:** va carbón solo si la ropa es roja de verdad (matiz < 16° o > 340° y saturación > 0,3). La arcilla ya no
+  cuenta como roja.
+- **Low-poly (`lowpoly.js`):** cada cara toma un paso de la rampa según hacia dónde mira. Las de arriba van un paso de
+  luz y las de abajo uno de sombra. Así cada material tiene 3 tonos con cambio de matiz. Las paletas de
+  `enemy-models.js` subieron de valor para separarse del piso de la grilla:
+  - lobos con el lomo oscuro y el vientre y la quijada claros;
+  - gólem de piedra clara con liquen;
+  - bicho con el borde del caparazón;
+  - bestia de musgo más vivo.
+- **Galería:**
+  - `set=caras&who=pueblos` (o `set=giro&who=pueblos`) muestra cada pueblo, recio y esbelto, y un Vaciado;
+  - `pick=orco,anuro` filtra;
+  - `set=autos` sienta a un conductor de cada pueblo.
+
 ## Fuentes
 - [Veloren]: https://book.veloren.net/contributors/artists/voxel-models.html (escala de los modelos vóxel)
 - [Hytale 2025]: https://hytale.com/news/2025/12/an-introduction-to-making-models-for-hytale (geometría simple, sombras

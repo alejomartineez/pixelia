@@ -61,7 +61,7 @@ export function paletteOf(look) {
   for (let i = 0; i < 3 && Math.abs(luma(cloth) - luma(skin)) < 0.1; i++) cloth = ramp(cloth, up);
   // rampas con cambio de matiz (docs/ARTE-PERSONAJES.md §3): la piel oscurece hacia el rojo (nunca al gris) y aclara
   // hacia el durazno; la tela y el pelo oscurecen hacia el violeta frío y aclaran hacia el ocre
-  const SK = { hue: 7, val: 0.085, cool: t === 'anuro' || t === 'orco' ? 200 : 350, warm: 42 };
+  const SK = { hue: 7, val: 0.085, cool: t === 'anuro' || t === 'orco' ? 200 : 350, warm: 42, sat: 0.16 };
   const CL = { hue: 8, val: 0.08 };
   return {
     ...MAT, type: t,
@@ -71,7 +71,9 @@ export function paletteOf(look) {
     cream: t === 'zorro' ? mix(skin, 0xe6dcc6, 0.8) : t === 'anuro' ? mix(skin, 0xd8d0a0, 0.55) : ramp(skin, 1, SK),
     cloth, clothD: ramp(cloth, -1.2, CL), clothDD: ramp(cloth, -2.2, CL), clothL: ramp(cloth, 1.2, CL),
     iris: IRIS[t] || IRIS.humano, sclera: t === 'orco' ? 0xa09a70 : mix(ramp(skin, 1.5, SK), 0xc8bca6, 0.6),
-    lid: ramp(skin, -1.6, SK), lip: mix(ramp(skin, -1.4, SK), 0x8a3a34, 0.25),
+    // párpado: sombra honda y apagada (casi tinta con un poco de piel). Con la rampa de la piel salía rojo saturado y
+    // el ojo se leía colorado
+    lid: mix(ramp(skin, -2.4, SK), 0x2a2428, 0.6), lip: mix(ramp(skin, -1.4, SK), 0x8a3a34, 0.25),
     scar: mix(skin, 0xc8988a, 0.6),
   };
 }
@@ -456,7 +458,9 @@ export function buildHead(v, look, D, P) {
   const t = look.type;
   const { W, fz, zb } = headBox(v, D, P, look);
   const hh = D.hh, ey = EYE[t] ?? 6;
-  const browC = t === 'vaciado' ? P.skinDD : P.hairD;   // cejas del color del pelo aunque esté rapado
+  // cejas del color del pelo aunque esté rapado, un poco más oscuras y apagadas (pegadas al ojo, un cobre vivo se
+  // leía como párpado colorado)
+  const browC = t === 'vaciado' ? P.skinDD : mix(P.hairD, 0x2a2224, 0.35);
   if (t === 'anuro') {
     // ojos saltones que salen por arriba de la cabeza, boca de lado a lado con labio, fosas
     for (const s of [-1, 1]) {
