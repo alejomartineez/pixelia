@@ -1008,6 +1008,10 @@ con sus metas (también la Raíz y los 4 ratos), y dice en cuántas pasa cada me
   exprime se defiende mejor, y el costo neto ya lo mide la meta del 15 %.
 - Se probaron y se descartaron: comprar en las aldeas con 2× o 3× (2,5× sigue siendo lo mejor), topes de comercio más
   altos y monumentos al 70, 80 y 85 %.
+- **Desbloqueos por nivel** (recorrido de la noche, E): el nivel 3 abría 11 cosas de golpe. El Tambo, la Fuente y el
+  Camino de Ladrillo pasan al nivel 4 (más arriba, a los 5–7, el Pase llegaba tarde en una semilla) y el vestuario se
+  reparte del 3 al 7. El nivel 3 abre 6 cosas y el expediente; los demás, de 6 a 9 (sin contar las piezas del esquife,
+  que son de la sesión de personajes). `sim:seeds` con 12 semillas: todas las metas.
 - **Queda:** a 90 días, en 1 de 6 semillas el depósito de provisiones pasa el 30 % de los ratos al tope desde el día 50
   (entran 88 por día y tres salidas normales gastan ~72). Fuera de muestra (semillas 13–24) cada meta pasa en 10 u 11
   de 12, con las fallas al borde: el ruido del bot.

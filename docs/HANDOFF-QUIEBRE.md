@@ -579,6 +579,12 @@ los primeros ecos, 7 balancea L1 y L5.
   primer intento, 96 % al tercero; con la tripulación un poco menos dura (foeHp 1,25, bossHp 1,45) queda en 53 % y 96 %, en 10,8 turnos.
 - No se tocaron `CLASS_XP`, `CLASS_GAIN` ni las pasivas de clase.
 
+**Ajustes del recorrido de la noche** (rama `claude/recorrido-ajustes`, desde v45)
+- E: desbloqueos del nivel 3 escalonados (`data.js`: Tambo, Fuente y Camino de Ladrillo al 4; vestuario del 3 al 7).
+- F: la bestia no marca el agua al empezar y Vera explica la franja la primera vez (`combat-rules`, `combat-scene`).
+- La capitana alineada con la economía real del rango 6 (líder 6, clases 5/4/3, Martillo 5, Cuerda 5; `bossHp` 1,35).
+- `sim:seeds` 1–12 y `sim:combat` con todas las metas.
+
 ## Pendiente o frágil
 - **`npm test` con la máquina cargada** (2026-11-09, otras sesiones corriendo tests a la vez): `test-mock`,
   `test-migration`, `test-social`, `test-threats` y `test-story` fallaron alguna vez en la cadena por tiempos y pasaron

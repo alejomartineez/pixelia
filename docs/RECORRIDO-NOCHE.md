@@ -50,10 +50,10 @@ con la interfaz real hasta el primer combate. La bestia y el faro los adelanté 
 - **D. Una línea de Vera queda congelada detrás de la subida de nivel.** La hoja de Vera empezó a escribirse ("P") y
   quedó trabada abajo a la izquierda, detrás del cartel "¡Nivel 3!". Parece roto. Mejor que espere a que se cierre el
   cartel. La captura es `43-ciudad-despues-pelea.png`.
-- **E. La subida al nivel 3 desbloquea 11 cosas de golpe.** Florería, Dispensario, Tambo, cerezo, fuente, camino,
+- **E. (Resuelto en `claude/recorrido-ajustes`: el nivel 3 abre 6 cosas y el expediente; ver DESIGN-CORE §8.z.) La subida al nivel 3 desbloquea 11 cosas de golpe.** Florería, Dispensario, Tambo, cerezo, fuente, camino,
   expediente, peinado y tres prendas: es mucho para leer a la vez. Es ritmo de desbloqueos, así que va para la sesión
   de la Raíz (economía).
-- **F. En la pelea de la bestia, casi todo el lado del grupo arranca rayado en rojo, con "−1" en cada casilla.**
+- **F. (Resuelto en `claude/recorrido-ajustes`: el turno 1 no marca agua y Vera explica la franja la primera vez; DESIGN-COMBAT §8.) En la pelea de la bestia, casi todo el lado del grupo arranca rayado en rojo, con "−1" en cada casilla.**
   Antes de entender las casillas marcadas se lee como ruido. Una línea de Vera la primera vez, o marcar menos en el
   turno 1, ayudaría. Va para la sesión de clases (combate).
 

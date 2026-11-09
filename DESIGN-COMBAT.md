@@ -270,6 +270,13 @@ siempre), pero el paso 7 lo mira.
   del jefe, encima) y `foeDmg` (golpe extra): la capitana va con 1,25, 1,45 y +3 (desde el rebalanceo §8.z de DESIGN-CORE, con el grupo nuevo). `expected.city` saca el abordaje de la
   prueba del grupo del tutorial (nunca lo pelea).
 - **Revancha:** el jefe pierde 25 % de vida por cada derrota (antes 20 %), hasta dos veces.
+- **La bestia deja leer el primer turno** (recorrido de la noche, F): al armar la pelea no marca el agua (`planIncoming(b,
+  ev, true)`); la primera franja se marca después del primer turno enemigo. La primera vez que se marca, en cualquier
+  pelea, Vera explica lo rayado (`oneTip('flood')` en `combat-scene`, de un solo uso en `state.tutorial.combatTips`).
+  Con el grupo esperado da 59,3 % al primer intento; en el rango 3, 55 % y 85,5 %.
+- **El abordaje con la curva de clases del 5b-4:** el grupo de la ciudad en el rango 6 es líder 6, clases 5/4/3, Catalejo 4,
+  Martillo 5, Cuerda 5, Botiquín 5 y Farol 1 (`sim:economy`, semilla 1). Con ese `expected` y `bossHp` 1,35 da
+  60,5 % al primer intento, 96,5 % al tercero y 10,9 turnos.
 - **"En la partida"** (sección nueva de `sim-combat`, `--no-real` la saltea): la bestia con el grupo que tiene la ciudad
   cuando se abre la poza.
 

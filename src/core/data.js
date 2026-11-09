@@ -22,6 +22,9 @@ export { PALETTE } from './palette.js';
 // max: cantidad máxima (undefined = ilimitado). game: escena que abre al tocarlo (hoy solo el Equipaje).
 // rank: rango de ciudad mínimo para construirlo. charm: Encanto (si falta, sale de la categoría: ver economy.charmBase).
 // eraArt: el modelo tiene arte propio por época (models.js no le agrega adornos ni recoloreo; DESIGN-CORE.md §4.4).
+// Desbloqueos por nivel escalonados (recorrido de la noche: el nivel 3 abría 11 cosas de golpe): el Tambo, la Fuente y el
+// Camino de Ladrillo pasan al nivel 4 (más arriba atrasaban el Pase, sim:seeds), y el vestuario se reparte del 3 al 7
+// (HAIR_STYLES, FACES, DRESS_STYLES, CROWNS y ACCESSORIES). El nivel 3 abre 6 cosas y el expediente; los demás, 6 a 9.
 export const BUILDINGS = [
   // --- Especiales ---
   { id: 'castillo', name: 'Municipalidad', cat: 'especial', size: [4, 4], unlock: 1, cost: { coins: 0 }, time: 0, max: 1,
@@ -80,7 +83,7 @@ export const BUILDINGS = [
     happy: 2, xp: 40, eraArt: true, desc: 'Mulas que cargan sin quejarse. Más carga y Guía.' },
   { id: 'dispensario', name: 'Dispensario', cat: 'ciclo', size: [2, 2], unlock: 3, rank: 2, cost: { coins: 900, mats: { hierbas: 3 } }, time: 45, max: 1,
     happy: 2, xp: 45, eraArt: true, desc: 'Vendas, té de hierbas y alguien que escucha. Entrena Sanidad.' },
-  { id: 'tambo', name: 'Tambo', cat: 'ciclo', size: [3, 3], unlock: 3, rank: 2, cost: { coins: 900 }, time: 45, max: 3,
+  { id: 'tambo', name: 'Tambo', cat: 'ciclo', size: [3, 3], unlock: 4, rank: 2, cost: { coins: 900 }, time: 45, max: 3,
     happy: 1, xp: 40, prod: { prov: 5, cycle: 3600, cap: 4 }, eraArt: true, desc: 'Leche y queso para el camino. Las vacas no opinan.' },
   { id: 'molino', name: 'Molino', cat: 'ciclo', size: [2, 2], unlock: 5, rank: 3, cost: { coins: 2400, mats: { piedra: 4 } }, time: 90, max: 3,
     happy: 2, xp: 70, prod: { prov: 8, cycle: 5400, cap: 3 }, eraArt: true, desc: 'Harina para el pan de la vianda.' },
@@ -113,7 +116,7 @@ export const BUILDINGS = [
   { id: 'farol', name: 'Farol', cat: 'deco', size: [1, 1], unlock: 2, cost: { coins: 40 }, time: 0, happy: 1, xp: 3, eraArt: true, desc: 'Ilumina las noches.' },
   { id: 'banco', name: 'Banco', cat: 'deco', size: [1, 1], unlock: 2, cost: { coins: 50 }, time: 0, happy: 2, xp: 3, eraArt: true, desc: 'Para sentarse a ver pasar a la gente.' },
   { id: 'cerezo', name: 'Cerezo', cat: 'deco', size: [1, 1], unlock: 3, cost: { coins: 90 }, time: 0, happy: 2, xp: 5, eraArt: true, desc: 'Flores de cerezo todo el año.' },
-  { id: 'fuente', name: 'Fuente de la Plaza', cat: 'deco', size: [2, 2], unlock: 3, cost: { coins: 300 }, time: 10, happy: 6, xp: 15, eraArt: true, desc: 'Agua fresca en el medio de la plaza.' },
+  { id: 'fuente', name: 'Fuente de la Plaza', cat: 'deco', size: [2, 2], unlock: 4, cost: { coins: 300 }, time: 10, happy: 6, xp: 15, eraArt: true, desc: 'Agua fresca en el medio de la plaza.' },
   { id: 'macetas', name: 'Macetas de Tulipanes', cat: 'deco', size: [1, 1], unlock: 4, cost: { coins: 70 }, time: 0, happy: 2, xp: 4, eraArt: true, desc: 'Tulipanes de colores.' },
   { id: 'estatua', name: 'Estatua del Fundador', cat: 'deco', size: [2, 2], unlock: 6, cost: { coins: 900 }, time: 20, happy: 10, xp: 30, eraArt: true, desc: 'Homenaje a quien fundó el pueblo. Sí, a vos.' },
   { id: 'glorieta', name: 'Glorieta', rank: 3, cat: 'deco', size: [2, 2], unlock: 8, cost: { coins: 1400 }, time: 30, happy: 12, xp: 40, eraArt: true, desc: 'Ideal para picnics.' },
@@ -123,7 +126,7 @@ export const BUILDINGS = [
 
   // --- Caminos ---
   { id: 'camino', name: 'Camino de Piedra', cat: 'camino', size: [1, 1], unlock: 1, cost: { coins: 5 }, time: 0, xp: 0, eraArt: true, desc: 'Conectá tu ciudad.' },
-  { id: 'camino_rosa', name: 'Camino de Ladrillo', cat: 'camino', size: [1, 1], unlock: 3, cost: { coins: 12 }, time: 0, happy: 0, xp: 0, eraArt: true, desc: 'Ladrillos rojizos, como los de antes.' },
+  { id: 'camino_rosa', name: 'Camino de Ladrillo', cat: 'camino', size: [1, 1], unlock: 4, cost: { coins: 12 }, time: 0, happy: 0, xp: 0, eraArt: true, desc: 'Ladrillos rojizos, como los de antes.' },
   { id: 'camino_dorado', name: 'Camino Dorado', rank: 3, cat: 'camino', size: [1, 1], unlock: 8, cost: { coins: 30 }, time: 0, happy: 0, xp: 0, eraArt: true, desc: 'Adoquines dorados, para la avenida principal.' },
 ];
 
@@ -430,7 +433,7 @@ export const HAIR_STYLES = [
   { id: 'rodete', name: 'Rodete', price: { coins: 350 }, unlock: 2, types: HAIRY },
   { id: 'jopo', name: 'Cresta', price: { coins: 450 }, unlock: 2, types: HAIRY },
   { id: 'trenzas', name: 'Dos trenzas', price: { coins: 500 }, unlock: 3, types: HAIRY },
-  { id: 'rizos', name: 'Rulos', price: { coins: 800 }, unlock: 5, types: ['humano', 'enano'] },
+  { id: 'rizos', name: 'Rulos', price: { coins: 800 }, unlock: 6, types: ['humano', 'enano'] },
   { id: 'colitas', name: 'Dos colas bajas', price: { coins: 1200 }, unlock: 7, types: ['humano', 'enano', 'zorro'] },
   { id: 'ondas', name: 'Ondas largas', price: { gems: 15 }, unlock: 9, types: ['humano', 'zorro'] },
 ];
@@ -443,7 +446,7 @@ export const FACES = [
   { id: 'cicatriz', name: 'Cicatriz en la mejilla', free: true, types: ALL },
   { id: 'cicatriz_ojo', name: 'Ojo cruzado', price: { coins: 300 }, unlock: 1, types: ALL },
   { id: 'barba_trenzada', name: 'Barba trenzada', price: { coins: 400 }, unlock: 2, types: BEARDED },
-  { id: 'pintura', name: 'Pintura de guerra', price: { coins: 500 }, unlock: 3, types: ALL },
+  { id: 'pintura', name: 'Pintura de guerra', price: { coins: 500 }, unlock: 7, types: ALL },
   { id: 'parche', name: 'Parche', price: { coins: 600 }, unlock: 4, types: ALL },
 ];
 export const DRESS_STYLES = [
@@ -457,10 +460,10 @@ export const DRESS_STYLES = [
   { id: 'cuero', name: 'Coraza de cuero', price: { coins: 600 }, unlock: 2, types: ALL },
   { id: 'vestido_noble', name: 'Vestido de casa noble', price: { coins: 600 }, unlock: 2, types: ALL },
   { id: 'tabardo', name: 'Tabardo de guardia', price: { coins: 650 }, unlock: 3, types: ALL },
-  { id: 'capa_viaje', name: 'Capa de viaje', price: { coins: 700 }, unlock: 3, types: ALL },
-  { id: 'pieles', name: 'Pieles del norte', price: { coins: 800 }, unlock: 4, types: ALL },
+  { id: 'capa_viaje', name: 'Capa de viaje', price: { coins: 700 }, unlock: 4, types: ALL },
+  { id: 'pieles', name: 'Pieles del norte', price: { coins: 800 }, unlock: 5, types: ALL },
   { id: 'abrigo', name: 'Abrigo de cielo', price: { coins: 900 }, unlock: 5, types: ALL },
-  { id: 'cota', name: 'Cota de malla', price: { coins: 1000 }, unlock: 5, types: ALL },
+  { id: 'cota', name: 'Cota de malla', price: { coins: 1000 }, unlock: 6, types: ALL },
   { id: 'placas', name: 'Armadura de placas', price: { gems: 25 }, unlock: 8, types: ALL },
   { id: 'archimago', name: 'Manto de archimago', price: { gems: 25 }, unlock: 9, types: ALL },
 ];
@@ -473,9 +476,9 @@ export const CROWNS = [
   { id: 'gorra', name: 'Boina', free: true, types: ALL },
   { id: 'sombrero_mago', name: 'Sombrero de mago', free: true, types: ALL },
   { id: 'bandana', name: 'Pañuelo de cielo', price: { coins: 300 }, unlock: 1, types: ALL },
-  { id: 'piluso', name: 'Sombrero de paja', price: { coins: 400 }, unlock: 3, types: ALL },
-  { id: 'casco', name: 'Casco de hierro', price: { coins: 600 }, unlock: 3, types: ALL },
-  { id: 'galera', name: 'Sombrero de ala ancha', price: { coins: 700 }, unlock: 5, types: ALL },
+  { id: 'piluso', name: 'Sombrero de paja', price: { coins: 400 }, unlock: 5, types: ALL },
+  { id: 'casco', name: 'Casco de hierro', price: { coins: 600 }, unlock: 5, types: ALL },
+  { id: 'galera', name: 'Sombrero de ala ancha', price: { coins: 700 }, unlock: 7, types: ALL },
   { id: 'yelmo', name: 'Yelmo con cuernos', price: { gems: 15 }, unlock: 8, types: ALL },
 ];
 export const ACCESSORIES = [
@@ -488,12 +491,12 @@ export const ACCESSORIES = [
   { id: 'collar', name: 'Amuleto de veta', free: true, types: ALL },
   { id: 'bolso', name: 'Bolso cruzado', price: { coins: 450 }, unlock: 2, types: ALL },
   { id: 'farolito', name: 'Farol', price: { coins: 500 }, unlock: 3, types: ALL },
-  { id: 'hacha', name: 'Hacha', price: { coins: 600 }, unlock: 3, types: ALL },
-  { id: 'orbe', name: 'Piedra de veta', price: { coins: 600 }, unlock: 3, types: ALL },
-  { id: 'catalejo', name: 'Catalejo', price: { coins: 600 }, unlock: 4, types: ALL },
-  { id: 'martillo', name: 'Martillo de forja', price: { coins: 700 }, unlock: 4, types: ALL },
-  { id: 'lanza', name: 'Lanza', price: { coins: 800 }, unlock: 5, types: ALL },
-  { id: 'arco', name: 'Arco', price: { coins: 800 }, unlock: 5, types: ALL },
+  { id: 'hacha', name: 'Hacha', price: { coins: 600 }, unlock: 7, types: ALL },
+  { id: 'orbe', name: 'Piedra de veta', price: { coins: 600 }, unlock: 7, types: ALL },
+  { id: 'catalejo', name: 'Catalejo', price: { coins: 600 }, unlock: 6, types: ALL },
+  { id: 'martillo', name: 'Martillo de forja', price: { coins: 700 }, unlock: 7, types: ALL },
+  { id: 'lanza', name: 'Lanza', price: { coins: 800 }, unlock: 6, types: ALL },
+  { id: 'arco', name: 'Arco', price: { coins: 800 }, unlock: 7, types: ALL },
   { id: 'buho', name: 'Cuervo mensajero', price: { gems: 20 }, unlock: 6, types: ALL },
 ];
 /** Tipo de personaje (o el primero si el id no existe). */
