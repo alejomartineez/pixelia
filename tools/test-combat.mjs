@@ -343,7 +343,8 @@ section('Jefes');
   ok(ev.events.some(e => e.type === 'flood') && b.flood[wet] > 0, 'el agua sube donde marcó');
   ok(L.hp === hp - COMBAT.floodDmg[0] || b.ended, 'el agua tira: quien está abajo recibe daño');
   // capitana y pasarela
-  const c = R.newBattle({ encounter: 'costa_capitana', seed: 2, party: ['saqueador', 'cazador', 'curandero'] });
+  // con el grupo del abordaje (la gente de la ciudad en el rango 6): uno de nivel 1 cae antes de que lleguen refuerzos
+  const c = R.newBattle({ encounter: 'costa_capitana', seed: 2, party: ['saqueador', 'cazador', 'curandero'], level: 7, classLevel: { saqueador: 10, cazador: 10, curandero: 9 } });
   ok(c.bridge && c.bridge.tiles.length === 2, 'la capitana trae una pasarela');
   let arrived = false;
   for (let k = 0; k < 2; k++) { R.endTurn(c); if (R.enemyTurn(c).events.some(e => e.type === 'spawn' && e.from === 'bridge')) arrived = true; }
@@ -355,7 +356,7 @@ section('Jefes');
   const hp0 = c.bridge.hp;
   Rc.cd = {};
   R.act(c, Rc.id, 'romper', px, py);
-  ok(hp0 - c.bridge.hp === 2 * (Rc.atk + 2), 'Romper pega doble a la pasarela');
+  ok(hp0 - c.bridge.hp === Math.min(hp0, 2 * (Rc.atk + 2)), 'Romper pega doble a la pasarela (hasta cortarla)');
   const z = scene('costa_capitana', ['saqueador', 'cazador', 'curandero']);
   for (const e of z.units.filter(u => u.side === 'enemy' && u.type !== 'capitana')) e.alive = false;
   const zc = z.units.find(u => u.type === 'capitana');
@@ -430,7 +431,7 @@ section('preview');
 // ------------------------------------------------------------------ corridas largas
 if (!QUICK) {
   section('Cada encuentro del Acto 1 se gana con el grupo del tutorial (líder nivel 1, sin herramientas ni elemento)');
-  for (const id of ACT1) {
+  for (const id of ACT1.filter(id => !ENCOUNTERS[id].expected?.city)) {   // el abordaje lo pelea la gente de la ciudad
     const N = 30;
     let w = 0;
     for (let s = 1; s <= N; s++) w += playBattle({ encounter: id, seed: s, party: TUTORIAL_PARTY, level: 1 }).res.outcome === 'win';

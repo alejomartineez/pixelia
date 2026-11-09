@@ -105,8 +105,10 @@ export function prepInfo(type, city, reserves, f) {
   const need = Math.ceil(enRiesgo / 2);
   const c = enRiesgo ? list.reduce((s, x) => s + x.eff, 0) / enRiesgo : 1;
   const r = need ? Math.min(1, have / need) : 1;
-  const prep = enRiesgo ? PREP_W_COVER * c + PREP_W_RESERVES * r : 1;
-  return { type, f, enRiesgo, list, c, need, have, r, prep, pct: Math.round(prep * 100) };
+  // city.mods.prep: preparación extra (el Farol de guardia, src/core/tools-city.js), sin pasar de 1
+  const extra = Math.max(0, city?.mods?.prep || 0);
+  const prep = enRiesgo ? Math.min(1, PREP_W_COVER * c + PREP_W_RESERVES * r + extra) : 1;
+  return { type, f, enRiesgo, list, c, need, have, r, prep, pct: Math.round(prep * 100), extra };
 }
 
 // ---------- Resolución automática (§3.5) ----------

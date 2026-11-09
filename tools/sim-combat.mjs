@@ -6,6 +6,7 @@
 //   node tools/sim-combat.mjs --noclass       el líder sin clase (como antes del paso 5b)
 //   node tools/sim-combat.mjs --only banado_bestia
 //   node tools/sim-combat.mjs --tools         suma una tabla con el efecto de cada herramienta (nivel 3)
+//   node tools/sim-combat.mjs --no-real       sin la sección "En la partida" (los jefes con el grupo que da sim:economy)
 //
 // La IA (botTurn) es golosa con un paso de mirada: para cada integrante prueba cada casilla a la que llega y cada
 // acción posible sobre una copia de la pelea, y se queda con la que mejor deja el tablero según evalState. Solo usa lo
@@ -213,9 +214,10 @@ const ok = (c) => (c ? '✔' : '✘');
 /** Grupo esperado: nivel del líder y de clase de `expected`, el elemento, y el líder de la clase `lead` (null: sin clase). */
 export function expectedCfg(id, party, seed, extra = {}, lead = null) {
   const ex = ENCOUNTERS[id].expected || {};
+  // classLevel: un número (todos iguales) o una lista del mejor al peor integrante (el abordaje, con la gente de la ciudad)
   const cl = ex.classLevel || 1;
   return { encounter: id, seed, party, level: ex.level || 1, element: ex.element || null, leader: lead ? { cls: lead } : null,
-    classLevel: Object.fromEntries(party.map(c => [c, cl])), ...extra };
+    classLevel: Object.fromEntries(party.map((c, i) => [c, Array.isArray(cl) ? cl[i] || 1 : cl])), tools: { ...(ex.tools || {}) }, equip: (ex.equip || []).slice(), ...extra };
 }
 let LEAD_CLASSES = CLASS_IDS;
 
@@ -246,6 +248,35 @@ function runEncounter(id, N, extra = {}, opt = {}) {
         st.roleN[r + has] = (st.roleN[r + has] || 0) + 1;
         st.roleWin[r + has] = (st.roleWin[r + has] || 0) + win;
       }
+    }
+  }
+  return st;
+}
+
+/**
+ * "En la partida" (paso 7): los jefes con el grupo que tiene la ciudad cuando llegan, según sim:economy (semilla 1, con
+ * la gente y sus herramientas; la línea "(info) en cada rango"). classLevel va del mejor al peor integrante: con cada
+ * combinación de 3 clases, la primera tiene el nivel más alto.
+ */
+export const REAL = [
+  { id: 'bestia_r3', enc: 'banado_bestia', name: 'Bestia, rango 3', level: 2, classLevel: [2, 1, 1], element: null,
+    tools: { catalejo: 1, martillo: 1, cuerda: 3, botiquin: 1 } },
+  // dato, sin meta: quien espera al rango 4 para ir a la poza la encuentra más fácil (la meta es la del capítulo, el rango 3)
+  { id: 'bestia_r4', enc: 'banado_bestia', name: 'Bestia, rango 4 (dato)', level: 4, classLevel: [6, 5, 1], element: null, info: true,
+    tools: { catalejo: 4, martillo: 2, cuerda: 4, botiquin: 3 } },
+];
+// la capitana se pelea solo en el abordaje: su grupo esperado (combat-data) ya es el de la ciudad en el rango 6
+function runReal(sc, N, attempt) {
+  const st = { n: 0, wins: 0, winTurns: 0 };
+  let seed = 5000;
+  for (const party of combos3()) {
+    for (let k = 0; k < N; k++) {
+      const lead = LEAD_CLASSES[seed % LEAD_CLASSES.length] || null;
+      const cfg = { encounter: sc.enc, seed: ++seed, party, level: sc.level, element: sc.element, leader: lead ? { cls: lead } : null,
+        classLevel: Object.fromEntries(party.map((c, i) => [c, sc.classLevel[i] || 1])), tools: sc.tools || {}, equip: sc.equip || [], attempt };
+      const { res } = playBattle(cfg, { knows: attempt >= 2 });
+      st.n++;
+      if (res.outcome === 'win') { st.wins++; st.winTurns += res.turns; }
     }
   }
   return st;
@@ -301,6 +332,17 @@ function main() {
     const lead = t.startsWith('líder ');
     const w = allWin[t + 'con'] != null ? `${pct(allWin[t + 'con'] / allWinN[t + 'con'])} / ${pct(allWin[t + 'sin'] / allWinN[t + 'sin'])}` : ''.padEnd(17);
     console.log(`${t.padEnd(18)} ${pct(d)}   ${pct(k)}          ${w}   ${lead ? '(como líder)' : check(d <= 0.35 && k <= 0.35)}`);
+  }
+
+  if (!opt('no-real', false) && !ONLY) {
+    console.log('\nEn la partida: los jefes con el grupo que tiene la ciudad cuando llegan (sim:economy, con la gente y sus herramientas)');
+    console.log('Escenario                    nivel · clases     1.º        3.º        meta');
+    for (const sc of REAL) {
+      const n = Math.max(5, N >> 1);
+      const a1 = runReal(sc, n, 1), a3 = runReal(sc, n, 3);
+      const p1 = a1.wins / a1.n, p3 = a3.wins / a3.n;
+      console.log(`${sc.name.padEnd(28)} ${String(sc.level).padStart(2)} · ${sc.classLevel.join('/').padEnd(9)} ${pct(p1)}  ${pct(p3)}   ${sc.info ? '(sin meta)          ' : `45–65 % ${check(p1 >= 0.45 && p1 <= 0.65)} · ≥ 85 % ${check(p3 >= 0.85)}`} · ${(a1.winTurns / Math.max(1, a1.wins)).toFixed(1)} turnos`);
+    }
   }
 
   if (TOOLS) {

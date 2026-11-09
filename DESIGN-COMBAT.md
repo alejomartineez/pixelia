@@ -262,6 +262,33 @@ siempre), pero el paso 7 lo mira.
   bien las curas en peleas cortas. El paso 7 lo revisa con la telemetría.
 - Ninguna clase gana siempre: las dos que más suben las victorias (cazador y monje) suman unos 7 puntos.
 
+**Paso 7: balance con la partida real** (`node sim-combat.mjs --n 20`, todas las metas ✔).
+- **El abordaje con la gente de la ciudad.** La capitana se pelea solo en el abordaje (paso 6b), así que su grupo esperado
+  pasó a ser el que da `sim:economy` en el rango 6: líder 7, clases 10/10/9, las herramientas de ese momento (Catalejo 4,
+  Martillo 2, Cuerda 4, Botiquín 5, Farol 1) y dos consumibles del depósito. Con el grupo viejo (clase 4) se ganaba el
+  100 % de las veces. El motor suma tres números por encuentro, `foeHp` (vida de todos los enemigos), `bossHp` (vida
+  del jefe, encima) y `foeDmg` (golpe extra): la capitana va con 1,35, 1,45 y +3. `expected.city` saca el abordaje de la
+  prueba del grupo del tutorial (nunca lo pelea).
+- **Revancha:** el jefe pierde 25 % de vida por cada derrota (antes 20 %), hasta dos veces.
+- **"En la partida"** (sección nueva de `sim-combat`, `--no-real` la saltea): la bestia con el grupo que tiene la ciudad
+  cuando se abre la poza.
+
+| Pelea | Meta | Paso 7 | Paso 5b |
+|---|---|---|---|
+| Comunes (6) | 85–95 % | 86,8–92,5 % ✔ (sin cambios) | igual |
+| Bestia, grupo esperado | 45–65 % / ≥ 85 % | 61,3 % / 93,8 % ✔ · 8,2 turnos | 61,3 % / 89,3 % |
+| Bestia, rango 3 (líder 2, clases 2/1/1, Catalejo 1, Martillo 1, Cuerda 3, Botiquín 1) | 45–65 % / ≥ 85 % | 52,0 % / 89,5 % ✔ · 8,8 turnos | — |
+| Bestia, rango 4 (dato, sin meta) | — | 86,5 % / 96,5 % · 6,6 turnos | — |
+| Capitana, grupo del abordaje | 45–65 % / ≥ 85 % | 59,8 % / 97,0 % ✔ · 10,7 turnos | 100 % (con este grupo) |
+
+- **Aporte por clase:** todas ≤ 35 % (cazador 34,1 %, monje 31,7 %; curandero 2,4 %, que aporta curando). Como líder,
+  el cazador queda en 36,2 % (antes 38 %): no cuenta para la meta, porque el líder está siempre, pero queda anotado. El
+  número que lo mueve es la pasiva Pulso (+1 de ataque en el nivel 9) y el Tiro desde lo alto, en
+  `src/combat/classes.js` y `combat-data.js`, de la sesión de clases: no se tocó.
+- **Para mirar:** las clases de la ciudad suben rápido (10/10/9 en el rango 6, cuando los encuentros comunes de la Costa
+  esperan 4). Las peleas comunes de la Costa con la partida real salen más fáciles que la meta. La curva es
+  `CLASS_XP` / `CLASS_GAIN` (sesión de clases).
+
 **Herramientas en nivel 3** (medido con los roles, antes del 5b). % de peleas ganadas, primer intento contra los jefes:
 
 | Variante | La manada | Bestia | Capitana |
@@ -494,9 +521,10 @@ cloneBattle(b)
   Los jefes se dibujan en low-poly (`src/combat/boss-models.js`, con `setPhase` en la fase 2, kit de `lowpoly.js`); desde el
   6c hay una sola bestia: `enemyModel('bestia')` devuelve esa misma. La bestia ahora da la
   página 9 (antes p3, que ya daba el rango 2). Detalle en DESIGN-STORY §5, "Estado (paso 6b…)".
-- **Paso 7:**
-  - revisar que la Cuerda no quede obligatoria contra la bestia;
-  - ajustar con los datos de la telemetría de combate (`combat:won`, `combat:lost` y `combat:retreat`).
+- **Paso 7 (hecho):** la bestia en el rango 3 se gana sin Cuerda alta (Cuerda 3: 52 % al primer intento); el abordaje
+  con la gente de la ciudad; la revancha; las herramientas en la ciudad. La telemetría suma `outcome`, `level` y
+  `lead` (nivel y clase de quien lidera) y `party` a `combat:won` · `combat:lost` · `combat:retreat`, y registra
+  `abordaje:*` (llega, sale a pelear, gana o pierde). Lo que falta es ajustar con datos reales, después del release.
 
 ## 13. Combate en la expedición (paso 5, tercera parte)
 **La casilla `enemigo`** (`CONTENT.enemigo`, ícono ⚔️). `sub` es el id del encuentro.
@@ -855,7 +883,11 @@ Plan: L5 de `docs/PLAN-QUIEBRE.md`. La elección de clase en el onboarding y el 
   - Cuerda: +3 por nivel en "cruzar" y +4 en "trepar".
   - Botiquín: ánimo máximo `+⌊nivel / 2⌋`.
   - Farol: +3 por nivel en "seguir con tormenta".
-- **Ciudad: queda para el paso 7** (decisión de esta noche). El Martillo tiene que dar obras más baratas y el Farol más
+- **Ciudad (paso 7, `src/core/tools-city.js`):** el Martillo de Brígida baja 2 % por nivel (hasta 10 %) las monedas de
+  construir y mejorar edificios (no el expediente de la Municipalidad, Mi Casa ni los monumentos); el Farol de Ramiro suma
+  4 puntos de preparación por nivel (hasta 20) contra las amenazas, sin pasar de 100 (`city.mods.prep` en
+  `prepInfo`). Lee `state.people` directo, sin importar `people.js`, para no armar un ciclo con `economy.js`.
+- **Antes (paso 5b):** la ciudad quedaba para el paso 7 (decisión de esa noche). El Martillo tenía que dar obras más baratas y el Farol más
   preparación contra las amenazas. Las dos cosas tocan los costos de `economy.js` y la preparación de `src/threats`, y
   hay que balancearlas con `sim:economy` y `sim:threats`.
 - **Ninguna herramienta es obligatoria:** las peleas comunes ya pasan del 85 % sin ninguna (§8).

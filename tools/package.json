@@ -26,7 +26,8 @@
     "check": "node gen-sw-core.mjs --check",
     "desktop:dev": "npm --prefix ../desktop run dev",
     "desktop:build": "npm --prefix ../desktop run build -- --bundles nsis",
-    "release": "node release.mjs"
+    "release": "node release.mjs",
+    "release:check": "node release.mjs --dry"
   },
   "license": "ISC",
   "type": "commonjs",

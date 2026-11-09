@@ -9,6 +9,9 @@
 //   node tools/sim-economy.mjs --runs 4        además corre 4 semillas más (en procesos aparte) para las metas "por corrida"
 //   node tools/sim-economy.mjs --quiet         sin la tabla (fuentes, subidas y metas) · --goals: solo las metas
 //   node tools/sim-economy.mjs --json          resumen en JSON (lo usan --runs y el chequeo de 4 ratos)
+//   node tools/sim-economy.mjs --no-tools      sin la gente de la ciudad ni sus herramientas (como antes del paso 7)
+//     diagnóstico: --no-tool-city (sin Martillo ni Farol en la ciudad) · --no-tool-exp (sin sus efectos en la expedición)
+//     · --no-tool-buy (la gente llega, pero el bot no entrega encargos ni mejora herramientas)
 //   node tools/sim-economy.mjs --greedy        sin guardar para lo próximo (gasta todo lo que puede, en orden)
 //   node tools/sim-economy.mjs --trace         una línea por rato con las monedas y el próximo gasto grande
 //   node tools/sim-economy.mjs --k 0.8         escala la producción de monedas (para explorar; 1 = los números del juego)
@@ -112,6 +115,17 @@ const TH = await imp('src/threats/threats.js');
 const TR = await imp('src/threats/threat-rules.js');
 const TD = await imp('src/threats/threat-data.js');
 const RZ = await imp('src/core/raiz.js');
+// la gente de la ciudad y sus herramientas (L5, paso 7): llegadas, encargos (Vínculo) y mejoras en el Taller.
+// --no-tools: sin gente ni herramientas (para comparar el efecto del Martillo y el Farol en la ciudad)
+const PE = await imp('src/core/people.js');
+const PD = await imp('src/core/people-data.js');
+const KC = await imp('src/core/classes.js');
+const NO_TOOLS = !!opt('no-tools', false);
+// --no-tool-city: con la gente y las herramientas en la expedición, pero sin el Martillo ni el Farol en la ciudad
+const TC = await imp('src/core/tools-city.js');
+if (opt('no-tool-city', false)) { TC.TOOL_CITY.martillo.discount = 0; TC.TOOL_CITY.farol.prep = 0; }
+// --no-tool-exp: sin los efectos de las herramientas en la expedición (para medir cuánto mueven la economía)
+if (opt('no-tool-exp', false)) { for (const t of Object.values(PD.TOOL_EXP)) { if (t.opt) for (const k of Object.keys(t.opt)) t.opt[k] = 0; t.vision = 99; t.morale = false; } }
 const BOTS = await import(pathToFileURL(path.join(HERE, 'exp-bots.mjs')).href);
 const D = data.BUILDING_BY_ID;
 // --k 0.5: escala la producción de monedas de todos los edificios (para explorar; 1 = los números del juego)
@@ -123,6 +137,27 @@ const s = store.state;
 s.onboarded = true;
 for (const f of [CH.initChests, AL.initAlbum, SE.initSeason, EV.initEvents, X.initExpedition, TH.initThreats, Q.initQuests]) f();
 const flush = () => new Promise(r => setImmediate(r));   // las chispas de amenaza llegan por import() dinámico
+// la gente: los mismos eventos que engancha initPeople (sin la interfaz)
+const peopleCheck = () => { if (NO_TOOLS) return; PE.checkArrivals(); PE.checkFlags(); };
+if (!NO_TOOLS) {
+  PE.peopleState();
+  bus.on('town:rankup', peopleCheck);
+  bus.on('expedition:zone', () => { PE.progress('zone'); peopleCheck(); });
+  bus.on('expedition:finished', (p) => { if (!p?.prototype) PE.progress('expedition', { region: p?.region || null }); peopleCheck(); });
+  bus.on('combat:won', () => PE.progress('combatWin'));
+  bus.on('threat:resolved', (p) => { if (p && p.id !== 'sim') PE.progress('threat'); });
+  bus.on('quests:changed', () => PE.checkFlags());
+}
+// lo que tiene la ciudad en cada subida de rango: nivel del líder, nivel de clase de los 3 mejores y herramientas
+// (sim-combat arma con esto sus escenarios "de la partida": la bestia en el rango 3 y la capitana en el abordaje)
+const progLog = [];
+let toolSpend = 0, toolSession = null;
+const T0 = () => sessionStart;   // una mejora de herramienta por rato
+bus.on('town:rankup', ({ rank }) => {
+  const lv = CL.leaderLevelFromXp(s.classes?.leader?.xp || 0);
+  const cls = KC.cityClasses(s).map(r => r.classLevel || 1).sort((a, b) => b - a).slice(0, 3);
+  progLog.push({ rank, day: dayOf() + 1, leader: lv, classLevel: cls, tools: NO_TOOLS ? {} : PE.toolLevels(s) });
+});
 
 // ---------------------------------------------------------------- registro (bus)
 const DAY = 864e5;
@@ -444,6 +479,24 @@ function wishlist() {
   });
   // 5. base del ciclo: Casa de Expediciones, Huerta, Taller, Establo, Dispensario (y el Equipaje del t-algo)
   for (const id of ['huerta', 'casa_exp', 'taller', 'establo', 'dispensario']) add(() => (all(id).length ? 'x' : build(id, { room: true })));
+  // 5a. la gente (L5): entregar lo que pide un encargo y mejorar herramientas en el Taller (Martillo y Farol primero:
+  // los que rinden en la ciudad). Como un jugador prudente: con lo que sobra después del próximo gasto grande (monedas y
+  // materiales) y una mejora por rato.
+  if (!NO_TOOLS && !opt('no-tool-buy', false)) {
+    const spare = (cost) => s.coins - (cost.coins || 0) >= (lastBig?.coins || 0)
+      && Object.entries(cost.mats || {}).every(([m, n]) => (s.materials[m] || 0) - n >= 6);
+    add(() => { for (const id of PD.PEOPLE_IDS) { const t = PE.currentTask(id, s); if (t?.type === 'deliver' && afford({ mats: t.mats }) && spare({ mats: t.mats })) { if (PE.deliver(id, s).ok) return 'done'; } } return 'x'; });
+    add(() => {
+      if (toolSession === T0()) return 'x';
+      for (const id of ['brigida', 'ramiro', 'nahuel', 'vera', 'olga']) {
+        const inf = PE.toolUpgradeInfo(id, s);
+        if (inf.ok && afford(inf.cost) && spare(inf.cost)) {
+          const c0 = s.coins; if (PE.upgradeTool(id, s).ok) { toolSpend += c0 - s.coins; toolSession = T0(); return 'done'; }
+        }
+      }
+      return 'x';
+    });
+  }
   // 5b. la Raíz (L1): el Invernadero apenas se encuentra el Núcleo, y la obra de Raíz cuando la Grieta pasa de 40
   add(() => (RZ.raizFound(s) && !all('invernadero').length ? build('invernadero', { room: true }) : 'x'));
   add(() => {
@@ -723,14 +776,17 @@ bus.on('building:upgradeStarted', ({ b, renovate }) => {
 // ---------------------------------------------------------------- un rato
 const sessions = [];
 const multMax = { base: 0, boost: 0, sum: 0 };   // { day, hour, coins, big, ratio, provFull }
+let sessionStart = null;
 async function session(day, hour) {
   T = day0 + day * DAY + hour * 3600e3;
+  sessionStart = T;
   budget = SESSION_MIN * 60;
   spaceTried.clear(); movedFor.clear(); roomWanted = null;
   const end = T + SESSION_MIN * 60e3;
   E.tick(); TH.tick();
   // el bot no fue al Cerro: a los 3 días del rango 5 encuentra el Núcleo igual
   if (!RZ.raizFound(s) && rankAt[5] && T - rankAt[5] >= 3 * DAY) { rz.how = 'forzado'; RZ.foundNucleo(s, T); }
+  peopleCheck();
   claimAll();
   E.collectAll();
   const provFull = (s.prov || 0) >= E.provCap();
@@ -911,6 +967,8 @@ console.log(`\nMetas de balance (DESIGN-CORE.md §8) · ${HOURS.length} ratos/d�
 for (const [g, ok, t] of goals) console.log(`  ${mark(ok)} ${g.padEnd(6)} ${t}`);
 if (others.length) console.log(`  corridas extra: ${others.map(o => `semilla ${o.seed}: rango 3 d${o.rankDays[3] ?? "—"} · 5 d${o.rankDays[5] ?? "—"} · 8 d${o.rankDays[8] ?? "—"} · monumento d${o.firstMonumentDay ?? "—"} · Pase d${o.pass30 ?? "> 28"} · monedas al llegar ${f1(o.arrPct)}% · cofres ${f1(o.chestsPerDay)} · gemas ${f1(o.gemsPerDay)}`).join(' | ')}`);
 console.log(`  (info) nivel del líder: ${leaderLog.join(' · ')} — meta del paso 7: 6 o 7 al llegar a la Costa`);
+console.log(`  (info) en cada rango (líder · clases · herramientas)${NO_TOOLS ? ' · sin herramientas' : ''}: ${progLog.map(p => `r${p.rank} d${p.day}: nv ${p.leader} · cl ${p.classLevel.join('/') || '-'} · ${Object.entries(p.tools).filter(([, n]) => n).map(([k, n]) => k.slice(0, 3) + n).join(' ') || '-'}`).join(' | ')}`);
+if (!NO_TOOLS) { const tl = PE.toolLevels(s); console.log(`  (info) herramientas al final: ${Object.entries(tl).map(([k, n]) => `${k} ${n}`).join(' · ')} · monedas gastadas en mejorarlas ${toolSpend}`); }
 const failed = goals.filter(g => g[1] === false).length;
 console.log(`  ${goals.filter(g => g[1] === true).length} ✔ · ${failed} ✘ · ${goals.filter(g => g[1] == null).length} sin medir`);
 process.exit(0);

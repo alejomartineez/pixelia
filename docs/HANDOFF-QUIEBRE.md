@@ -52,7 +52,7 @@ cada paso.
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | partes 1, 2 y 3 hechas e integradas (clases, nivel del líder, gente con herramienta, Vínculo, Progreso, clase en el onboarding y selector en la ciudad, aspecto por clase). Falta elegir activas y subclase desde la ciudad | v36 + v39 + 93a516d |
 | 6 | Acto 1 completo + E5–E6 | hecho e integrado: 6a, 6b y 6c (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche con figuras del 4a, E5, E6 con Vera en la primera salida, una sola bestia, dirigible visible) | ed2ba67 (v36) + v39 + 0c2afa8 (v40) |
-| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | balance, efecto de las herramientas y `release` listo **en curso** (sesión quiebre-6a); publicar lo hace el usuario | |
+| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | combate en metas (también la bestia en el rango 3 y la capitana con la gente de la ciudad), herramientas en la ciudad, telemetría y `npm run release` listo con `release:check`: hecho en la rama `claude/balance-7`, sin mergear. `sim:economy` con la gente: 18 ✔ · 4 ✘ (ver DESIGN-CORE §8.y). Publicar lo hace el usuario | v41 |
 
 ### Plan nocturno (2026-11-09)
 El usuario se fue a dormir. Dijo, textual: "autorizo o autoriza de la forma que puedas que todo siga como va, sin yo
@@ -514,6 +514,23 @@ los primeros ecos, 7 balancea L1 y L5.
   `enemy-models.js` ya no tiene su bestia (entrega la de `boss-models`).
 - El dirigible se amarra abajo a la izquierda de la cámara inicial y amplía el tope de la cámara mientras está.
 - Con esto el paso 6 queda completo. Sigue el paso 7 (balance y primer release).
+
+**Paso 7: balance, herramientas en la ciudad, telemetría y release** (rama `claude/balance-7`)
+- **Combate** (DESIGN-COMBAT §8, "Paso 7"): `sim-combat` con todas las metas en ✔. La capitana se arma para la gente de la
+  ciudad en el rango 6 (`expected` con clases 10/10/9 y herramientas; `foeHp`, `bossHp` y `foeDmg` nuevos en el
+  motor). La revancha baja 25 % la vida del jefe por derrota. Sección "En la partida": la bestia en el rango 3 da 52 % y
+  89,5 %.
+- **Herramientas en la ciudad** (`src/core/tools-city.js`): Martillo −2 % de monedas por nivel en obras; Farol +4 puntos de
+  preparación por nivel.
+- **`sim:economy`** simula a la gente de la ciudad (`--no-tools` para comparar). Con la gente, la semilla 1 da 18 ✔ · 4 ✘;
+  las mismas metas fallan con otras semillas sin la gente (DESIGN-CORE §8.y). Hace falta un rebalanceo de la economía
+  mirando varias semillas: propuesto para una sesión propia.
+- **Telemetría:** `combat:*` suma resultado, nivel y clase de quien lidera y el grupo; `abordaje:*` se registra.
+- **Release:** `npm run release:check` (`node release.mjs --dry`) revisa la rama, que esté al día con origin, las cuatro
+  versiones, el tag (local y GitHub), el workflow y la clave del actualizador, sin crear nada. `npm run release` hace lo
+  mismo y recién ahí crea y sube el tag. No se corrió: publicar lo hace el usuario.
+- **Para la sesión de clases** (números de balance en sus archivos, no se tocaron): las clases de la ciudad llegan a 10/10/9
+  en el rango 6 (`CLASS_XP`/`CLASS_GAIN`), y el cazador como líder hace 36,2 % del daño (pasiva Pulso).
 
 ## Pendiente o frágil
 - **`npm test` con la máquina cargada** (2026-11-09, otras sesiones corriendo tests a la vez): `test-mock`,

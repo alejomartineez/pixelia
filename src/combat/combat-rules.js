@@ -141,8 +141,12 @@ function connected(m, points) {
 // ---------- crear ----------
 function makeUnit(b, side, type, x, y, extra = {}) {
   const d = side === 'ally' ? UNITS[type] : ENEMIES[type];
+  // un encuentro puede traer enemigos más duros que los de siempre (paso 7: el abordaje, contra la gente de la ciudad):
+  // enc.foeHp multiplica la vida de todos y enc.bossHp la del jefe (encima de foeHp)
+  const enc = ENCOUNTERS[b.enc] || {};
+  const hp = side === 'enemy' ? Math.round(d.hp * (enc.foeHp || 1) * (d.boss ? enc.bossHp || 1 : 1)) : d.hp;
   const u = {
-    id: 'u' + b.nextId++, side, type, x, y, hp: d.hp, maxHp: d.hp, mv: d.mv, atk: d.atk || 0, armor: d.armor || 0,
+    id: 'u' + b.nextId++, side, type, x, y, hp, maxHp: hp, mv: d.mv, atk: d.atk || 0, armor: d.armor || 0,
     abilities: (d.abilities || []).slice(), cd: {}, moved: false, acted: false, alive: true, safe: false,
     root: 0, marked: 0, hurt: false, intent: null, dir: [0, side === 'ally' ? -1 : 1], phase: 0, ...extra,
   };
@@ -700,7 +704,8 @@ function bestAttackFrom(b, e, x, y) {
   return best;
 }
 function setIntent(b, e, best, ev) {
-  e.intent = { id: best.atk.id, name: best.atk.name, pattern: best.atk.pattern, dmg: best.atk.dmg, dir: best.dir, len: best.atk.len || 0 };
+  // enc.foeDmg: golpe extra de los enemigos de ese encuentro (paso 7)
+  e.intent = { id: best.atk.id, name: best.atk.name, pattern: best.atk.pattern, dmg: best.atk.dmg + (ENCOUNTERS[b.enc]?.foeDmg || 0), dir: best.dir, len: best.atk.len || 0 };
   e.dir = best.dir;
   ev.push({ type: 'intent', id: e.id, attack: best.atk.id, tiles: intentTiles(b, e) });
 }
