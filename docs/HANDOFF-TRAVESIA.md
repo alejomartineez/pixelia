@@ -35,11 +35,11 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | Paso | Qué | Sesión | Estado | Rama o commit |
 |---|---|---|---|---|
 | — | Plan, handoff y referencia de sprites (`docs/ref/`) | orquestador | hecho | (este commit) |
-| 1a | Armas y armaduras fuera del cuerpo, `test-gear-fit` y galería de clases | — | por empezar | `claude/trav-1a` |
-| 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | — | por empezar | `claude/trav-1b` |
+| 1a | Armas y armaduras fuera del cuerpo, `test-gear-fit` y galería de clases | trav-1a-armas | en curso | rama `trav-1a` |
+| 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | trav-1b-iconos | en curso | rama `trav-1b` |
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
-| 1c | Sacar Mi Casa y guardado v6 | — | por empezar | `claude/trav-1c` |
-| 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | — | por empezar | `claude/trav-1d` |
+| 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa | en curso | rama `trav-1c` |
+| 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | en curso | rama `trav-1d` |
 | 2a | Nivel único, talentos, arsenal, maestría y fuerza | — | después del Bloque 1 | |
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
