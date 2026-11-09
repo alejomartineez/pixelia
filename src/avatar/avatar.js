@@ -22,7 +22,7 @@ import {
 import { S, AVATAR_VOXEL, cachedGeo, cacheGet, cacheSet, meshOf, pivot, lightMat } from './avatar-kit.js';
 import {
   dimsOf, paletteOf, outfitOf, drawTorso, drawArm, drawLeg, drawSkirt, drawCape, drawTail, buildHead, eyeVoxels,
-  hairSwings, hairShape, GEAR, classLook, CLASS_KIT, ROLE_CLASS,
+  hairSwings, hairShape, GEAR, gripAt, classLook, CLASS_KIT, ROLE_CLASS,
 } from './figure.js';
 
 export { AVATAR_VOXEL, classLook, CLASS_KIT, ROLE_CLASS };
@@ -92,6 +92,7 @@ export function avatarModel(lookIn = {}, opts = {}) {
   body.add(upper);
 
   const torso = meshOf(cachedGeo(`t|${K}|${acc}|${look.hairColor}`, (v) => drawTorso(v, look, D, P, gear)));
+  torso.userData.fitPart = 'torso';
   upper.add(torso);
 
   // piernas y faldón
@@ -101,15 +102,13 @@ export function avatarModel(lookIn = {}, opts = {}) {
     for (const s of [-1, 1]) {
       const pv = pivot(s * D.hip, hipY, 0);
       const m = meshOf(legGeo);
+      m.userData.fitPart = 'leg';
       if (s < 0) m.scale.x = -1;
       pv.add(m); body.add(pv); legs.push(pv);
     }
   }
-  let skirt = null;
-  if (!seated && o.skirt) {
-    const g = cachedGeo(`k|${K}`, (v) => drawSkirt(v, look, D, P));
-    if (g) { skirt = pivot(0, hipY, 0); skirt.add(meshOf(g)); body.add(skirt); }
-  }
+  // faldón: un panel por pierna, colgado de su pivote (gira con la pierna y no lo atraviesa al caminar)
+  const skirt = seated ? null : addSkirt(look, D, P, K, legs);
 
   // brazos (el izquierdo es el mismo espejado)
   const armGeo = cachedGeo(`a|${K}`, (v) => drawArm(v, look, D, P));
@@ -117,6 +116,7 @@ export function avatarModel(lookIn = {}, opts = {}) {
   for (const s of [-1, 1]) {
     const pv = pivot(s * D.armX, D.H - 2, 0);
     const m = meshOf(armGeo);
+    m.userData.fitPart = 'arm';
     if (s < 0) m.scale.x = -1;
     pv.add(m); upper.add(pv); arms.push(pv);
   }
@@ -125,15 +125,40 @@ export function avatarModel(lookIn = {}, opts = {}) {
   if (seated) Object.assign(pose, { lx: -1.15, rx: -1.15, lz: 0.12, rz: -0.12, swing: 0 });
   else if (gear?.pose) Object.assign(pose, gear.pose);
   const glow = [];
-  if (gear?.hand) armR.add(meshOf(cachedGeo(`gh|${acc}|${look.type}|${look.build}`, (v) => gear.hand(v, D, P))));
-  if (gear?.off) armL.add(meshOf(cachedGeo(`go|${acc}|${look.type}|${look.build}`, (v) => gear.off(v, D, P))));
-  if (gear?.light) { const m = meshOf(cachedGeo(`gl|${acc}|${look.type}|${look.build}`, (v) => gear.light(v, D, P)), lightMat()); m.castShadow = false; armR.add(m); glow.push(m); }
-  if (gear?.offLight) { const m = meshOf(cachedGeo(`gk|${acc}|${look.type}|${look.build}`, (v) => gear.offLight(v, D, P)), lightMat()); m.castShadow = false; armL.add(m); glow.push(m); }
+  // lo que se sostiene: la mano izquierda es el espejo de la derecha (en las dos, +x es hacia afuera). Si la pieza
+  // tiene su propia inclinación (grip), gira en el puño
+  const grips = {};
+  const held = (arm, s, key, build, mat) => {
+    const g = cachedGeo(`${key}|${acc}|${look.type}|${look.build}`, build);
+    if (!g) return null;
+    const m = meshOf(g, mat);
+    m.userData.fitPart = 'gear';
+    if (s < 0) m.scale.x = -1;
+    let host = arm;
+    if (gear.grip) {
+      const [gx, gy, gz] = gripAt(D);
+      if (!grips[s]) {
+        grips[s] = pivot(s * gx, gy, gz);
+        grips[s].rotation.set(gear.grip.rx || 0, s * (gear.grip.ry || 0), s * (gear.grip.rz || 0));
+        arm.add(grips[s]);
+      }
+      host = grips[s];
+      m.position.set(-s * gx * S, -gy * S, -gz * S);
+    }
+    host.add(m);
+    return m;
+  };
+  if (gear?.hand) held(armR, 1, 'gh2', (v) => gear.hand(v, D, P));
+  if (gear?.off) held(armL, -1, 'go2', (v) => gear.off(v, D, P));
+  if (gear?.light) { const m = held(armR, 1, 'gl', (v) => gear.light(v, D, P), lightMat()); m.castShadow = false; glow.push(m); }
+  if (gear?.offLight) { const m = held(armL, -1, 'gk', (v) => gear.offLight(v, D, P), lightMat()); m.castShadow = false; glow.push(m); }
 
   // cabeza, ojos y pelo que se balancea
   const head = pivot(0, D.H + D.neck - D.headY, D.headZ);
   upper.add(head);
-  head.add(meshOf(cachedGeo(`h|${lookKey(look)}`, (v) => buildHead(v, look, D, P))));
+  const headMesh = meshOf(cachedGeo(`h|${lookKey(look)}`, (v) => buildHead(v, look, D, P)));
+  headMesh.userData.fitPart = 'head';
+  head.add(headMesh);
   const eyeList = eyeVoxels(look, D, P);
   // la malla de los ojos tiene el pivote a la altura de los ojos: al parpadear se cierran en el lugar
   const eyeY = eyeList.length ? Math.min(...eyeList.map(e => e[1])) : 0;
@@ -156,8 +181,11 @@ export function avatarModel(lookIn = {}, opts = {}) {
   // capa y cola
   let cape = null;
   if (o.cape) {
-    cape = pivot(0, D.H - 1, -hd - (long ? 2 : 0) - (acc === 'mochila' ? 4 : 0));
-    cape.add(meshOf(cachedGeo(`c|${K}`, (v) => drawCape(v, look, D, P))));
+    // detrás del pelo largo y de lo que va en la espalda (mochila, catalejo), sin compartir celda
+    cape = pivot(0, D.H - 1, -hd - (long ? 2 : 0) - (gear?.cape || 0));
+    const cm = meshOf(cachedGeo(`c|${K}`, (v) => drawCape(v, look, D, P)));
+    cm.userData.fitPart = 'armor';
+    cape.add(cm);
     upper.add(cape);
   }
   let tail = null;
@@ -179,7 +207,7 @@ export function avatarModel(lookIn = {}, opts = {}) {
   // ---------------- animación ----------------
   let t = Math.random() * 10, walk = 0, phase = 0;
   let blinkIn = 1.5 + Math.random() * 3, blinkLeft = 0;
-  const legAmp = o.skirt?.long ? 0.32 : 0.7;
+  const legAmp = o.skirt?.long ? LONG_SKIRT_AMP : 0.7;
   const headY = head.position.y;
   root.userData.look = look;
   root.userData.height = height * (opts.scale || 1);
@@ -193,7 +221,7 @@ export function avatarModel(lookIn = {}, opts = {}) {
     const idle = 1 - walk;
     const breath = Math.sin(t * 2.2);
     for (let i = 0; i < legs.length; i++) legs[i].rotation.x = (i ? -sw : sw) * legAmp;
-    armL.rotation.x = pose.lx - sw * 0.6 * pose.swing * (gear?.off ? 0.4 : 1);
+    armL.rotation.x = pose.lx - sw * 0.6 * pose.swing * (gear?.offStill ? 0.1 : gear?.off ? 0.4 : 1);
     armR.rotation.x = pose.rx + sw * 0.6 * pose.swing * (gear?.still || gear?.hand ? 0.35 : 1);
     armL.rotation.z = pose.lz - breath * 0.03 * idle * pose.swing;
     armR.rotation.z = pose.rz + breath * 0.03 * idle * pose.swing;
@@ -208,17 +236,36 @@ export function avatarModel(lookIn = {}, opts = {}) {
       s.pv.rotation.x = 0.1 * walk + Math.sin(phase * 2) * 0.1 * walk * s.amp + Math.sin(t * 1.7) * 0.03 * idle;
       s.pv.rotation.z = (Math.sin(phase) * 0.14 * walk + Math.sin(t * 1.3) * 0.04 * idle) * s.amp;
     }
-    if (skirt) skirt.rotation.x = Math.sin(phase) * 0.04 * walk;
     if (tail) { tail.rotation.y = Math.sin(t * (moving ? 7 : 2.4)) * (0.22 + walk * 0.15); tail.rotation.x = -0.15 + Math.sin(t * 1.4) * 0.05; }
-    if (cape) cape.rotation.x = 0.06 + walk * 0.3 + Math.sin(t * 2.6 + phase) * (0.025 + walk * 0.05);
+    // al caminar la capa se va hacia atrás: así no la pisa la pierna de atrás
+    if (cape) cape.rotation.x = 0.06 + walk * 0.42 + Math.sin(t * 2.6 + phase) * (0.025 + walk * 0.05);
     for (const g of glow) g.scale.setScalar(1 + Math.sin(t * 5.3) * 0.03);
     blinkIn -= dt;
     if (blinkIn <= 0) { blinkLeft = 0.12; blinkIn = 2.5 + Math.random() * 3.5; }
     if (blinkLeft > 0) blinkLeft -= dt;
     eyes.scale.y = blinkLeft > 0 ? 0.2 : 1;
   };
+  // para las pruebas (tools/test-gear-fit.mjs): fija el paso (fase y cuánto camina) y el reloj de la respiración
+  root.userData.setWalk = (ph, w = 1, tt) => { phase = ph; walk = w; if (tt != null) t = tt; };
   root.userData.update(0, false);
   return root;
+}
+
+// las faldas largas dan pasos cortos: así el panel no se abre de más
+const LONG_SKIRT_AMP = 0.26;
+/** Faldón en dos paneles, uno colgado de cada pierna (figure.js → drawSkirt dibuja el derecho). */
+function addSkirt(look, D, P, K, legs) {
+  if (!outfitOf(look.dress).skirt || legs.length < 2) return null;
+  const g = cachedGeo(`k2|${K}`, (v) => drawSkirt(v, look, D, P));
+  if (!g) return null;
+  return legs.map((pv, i) => {
+    const s = i === 0 ? -1 : 1, m = meshOf(g);
+    m.userData.fitPart = 'armor'; m.userData.skirt = true;
+    m.position.x = -s * D.hip * S;   // el panel se dibuja centrado en la cadera
+    if (s < 0) m.scale.x = -1;
+    pv.add(m);
+    return m;
+  });
 }
 
 // =====================================================================
@@ -299,8 +346,10 @@ function lowDetailModel(look, opts = {}) {
     if (s < 0) m.scale.x = -1;
     pv.add(m); body.add(pv); legs.push(pv);
   }
+  const K = `${look.type}|${look.build}|${look.skin}|${look.dress}|${look.dressColor}`;
+  for (const m of addSkirt(look, D, P, K, legs) || []) m.castShadow = false;
   if (opts.scale) root.scale.setScalar(opts.scale);
-  const legAmp = outfitOf(look.dress).skirt?.long ? 0.32 : 0.7;
+  const legAmp = outfitOf(look.dress).skirt?.long ? LONG_SKIRT_AMP : 0.7;
   let t = Math.random() * 10, walk = 0, phase = 0;
   root.userData.look = look;
   root.userData.lowDetail = true;

@@ -37,7 +37,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | Paso | Qué | Sesión | Estado | Rama o commit |
 |---|---|---|---|---|
 | — | Plan, handoff y referencia de sprites (`docs/ref/`) | orquestador | hecho | (este commit) |
-| 1a | Armas y armaduras fuera del cuerpo, `test-gear-fit` y galería de clases | trav-1a-armas | en curso | rama `trav-1a` |
+| 1a | Armas y armaduras fuera del cuerpo, `test-gear-fit` y galería de clases | trav-1a-armas | integrado | master |
 | 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | trav-1b-iconos | en curso | rama `trav-1b` |
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa | en curso | rama `trav-1c` |
@@ -69,3 +69,62 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 
 ## Notas de cada paso
 (cada sesión anota acá lo que hizo, sus decisiones y lo que queda)
+
+### 1a · Armas y armaduras fuera del cuerpo (rama `claude/trav-1a-f43a3b`)
+- **Anclaje** (`GEAR` en `figure.js`). Nada que se sostenga pasa por el puño ni por el brazo:
+  - lo que sale hacia adelante (guarda, martillo, trabuco) arranca en `front(D)`; las partes del mango que quedaban
+    adentro del puño ya no se dibujan;
+  - lo largo (hacha, lanza, bastón, arco) va parado en `zf(D) = max(front, ceil(armW/2) + 2)`. Así libra también el
+    puño del guante y la manga ancha, que llegan hasta `ceil(armW/2)`. Una empuñadura de cuero llena la luz contra el
+    puño (el "+1" del plan se cumple igual: `front(D)` es la primera celda libre, el puño ocupa `z < front`);
+  - cada arma tiene su inclinación `grip: { rx, ry, rz }` y gira en el puño (`gripAt(D)`, un pivote dentro del brazo en
+    `avatar.js`). La mano izquierda ahora se espeja como el brazo, así que en las dos manos +x es afuera;
+  - los largos salen de `handUp(D)` y `tallOf(D)`, con tope para no tocar el piso;
+  - el hacha lleva la hoja afuera y ya no tiene pincho del lado del cuerpo;
+  - el arco va con la curva y la cuerda adelante y gira afuera (`ry`) para que la curva se lea de frente;
+  - el escudo mira adelante, corrido afuera de la cadera y de la pierna, con una correa al puño;
+  - el farol cuelga debajo del puño; libro y orbe se levantan menos y casi no se balancean (`offStill`).
+- **Cuerpo**:
+  - el bolso va adelante de la cadera derecha, del lado de adentro del brazo y por debajo de la barba. Reemplaza el
+    bolsito derecho del traje (`noPouch`);
+  - el catalejo va atravesado en la espalda, en el cinturón;
+  - la mochila corre la capa 5 vóxeles (`cape` en GEAR), y su manta no se mete en la nuca de las cabezas hundidas.
+- **Hombrera**: pasó a la grilla del torso, una tapa 1 vóxel arriba de la camisa más la placa de afuera, pegada a la
+  cabeza del brazo. No rota con el brazo. Los labios de adelante y atrás bajo la tapa se sacaron porque los barría el
+  brazo al caminar.
+- **Faldón**: `drawSkirt` dibuja el panel derecho centrado en la cadera, y `avatar.js → addSkirt` cuelga un panel de
+  cada pierna (también en la versión liviana). Cada fila es tan ancha como la pierna y la bota más 1. A la altura de la
+  mano, queda a 1 vóxel del brazo. Las faldas largas dan pasos más cortos (`LONG_SKIRT_AMP` 0,26).
+  `userData.parts.skirt` ahora es la lista de los dos paneles.
+- **Manto, capucha y cuello alto**: el manto cubre hombros y cabeza del brazo y queda abierto adelante, del ancho de la
+  cabeza (la barba cae por ahí). Capucha caída, capucha de cabeza (orcos) y cuello alto dejan 1 vóxel de luz con la
+  cabeza y la espalda: la cabeza gira un poco al respirar. La capa vuela un poco más al caminar (0,42).
+- **`armX`**: ahora es `W/2 + sh - 1 + floor(armW/2)`, en vóxel entero respecto del torso.
+- **Prueba** `tools/test-gear-fit.mjs` (en `npm test` y `npm run test:gear-fit`):
+  - recorre 410 modelos: 5 pueblos × 2 contexturas × (6 clases + 16 GEAR + 16 ropas + capa con mochila o catalejo +
+    capucha con pieles);
+  - en cada uno mira 6 cuadros: quieto con la cabeza a cada lado y 4 pasos;
+  - las grillas salen de `avatar-kit.js` con `globalThis.__gearFit`. Las capas se marcan con `lay(v, 'armor' | 'gear' |
+    'outfit')` en `figure.js`, y `userData.setWalk(fase, camina, t)` fija el cuadro;
+  - excepciones a propósito: la punta de arriba del faldón puede meterse bajo el cinturón (gira hacia adentro del torso,
+    que la tapa) y la capucha puede tapar pelo en su propia grilla.
+- **Galería**: `tools/people.html?set=clases` arma los 5 × 6, con `view=f|p|e|t`, `build=esbelto` y `walk=1`. Las
+  capturas están en `shots/personajes/clases-{frente,perfil,espalda,tres-cuartos,caminando}.png`.
+- **Para el 1d**: no cambió ningún export de paletas (`paletteOf`, `PEOPLE`, `OUTFITS`, `dimsOf` siguen iguales, salvo
+  `armX`). Se suman `GEAR[id].grip`, `zf`, `handUp`, `tallOf` y `gripAt` por si el sprite 2D quiere la misma pose del
+  arma.
+- **Fuera del alcance, a propósito**: `tools/test-expedition.mjs` tenía una carrera. Después de "Retroceder" tocaba
+  la casilla otra vez mientras la tarjeta vieja todavía se iba. Con los modelos nuevos la escena tarda un poco más y la
+  carrera se perdía siempre (3 de 3; con `src/avatar` de antes pasaba). Ahora espera a que la tarjeta se cierre: 30/30
+  dos veces seguidas.
+- **`npm test`**: verde en todo lo que toca el 1a (`test-gear-fit` 422/0, `test-class-look`, `test-classes`, `test-combat*`,
+  `test-act1`, `test-expedition` 30/0), salvo dos cosas que no vienen de este paso:
+  - `test-people` falla 2 chequeos: "la llegada se cuenta con una escena" y "la escena dice quién llegó"
+    (`llega_brigida` muestra solo "SaltarSeguir"). Falla igual con el `src/avatar` de `a335752`: ya estaba en `master`.
+  - `test-settings` es intermitente bajo carga: falla una medición de tiempo distinta en cada corrida (FPS con tope 30,
+    cámara al 200 %), y a veces ninguna. También falla con el código de antes.
+- **Queda**:
+  - en tres cuartos el arco se ve de canto (gira hacia afuera para leerse de frente);
+  - el arco de los orcos sale chico (brazo largo y piernas cortas: el puño queda bajo);
+  - la capucha de cabeza sigue siendo una caja grande en orcos y anuros (diseño de antes, no es un choque).
+

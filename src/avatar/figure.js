@@ -56,9 +56,15 @@ export const dimsOf = (type, build) => {
   let D = (PEOPLE[type] || PEOPLE.humano)[build === 'esbelto' ? 'esbelto' : 'recio'];
   const B = bigHead() && BIG_HEAD[type];
   if (B) D = { ...D, hw: B.hw - (build === 'esbelto' && type === 'anuro' ? 2 : 0), hh: B.hh, hd: B.hd - (build === 'esbelto' && type !== 'humano' ? 1 : 0), legH: D.legH + B.dl, H: D.H + B.dH };
-  // el brazo se mete 1 vóxel en el hombro: con la pose en A no queda una rendija entre brazo y torso
-  return { ...D, armX: D.W / 2 + D.sh + D.armW / 2 - 1 };
+  // el brazo se mete 1 vóxel en el hombro: con la pose en A no queda una rendija entre brazo y torso. Siempre en
+  // vóxel entero respecto del torso (con armW impar caía en medio vóxel y el brazo pisaba media columna)
+  return { ...D, armX: D.W / 2 + D.sh - 1 + Math.floor(D.armW / 2) };
 };
+// Capas de la grilla (tools/test-gear-fit.mjs): lo que se pinta después de lay(v, 'armor' | 'gear' | 'outfit') no es
+// cuerpo, y la prueba revisa que no se meta en la piel. Sin la prueba, v.layer no hace nada.
+const lay = (v, name) => { v.layer = name; };
+/** Celdas x del brazo derecho en la grilla del torso: [x0, x1). El izquierdo es el espejo (x → -1 - x). */
+const armSpan = (D) => { const x0 = D.armX - Math.floor(D.armW / 2); return [x0, x0 + D.armW]; };
 
 // ---------------- Paleta de un look ----------------
 const luma = (c) => (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
@@ -236,7 +242,7 @@ export const OUTFITS = {
     sleeve: (r, L, P) => (r >= L - 3 ? P.clothD : P.cloth),
     glove: true,
     leg: (y, P) => boots(10, P)(y) ?? P.trouser,
-    skirt: { len: 13, flare: 8, col: (y, len, P, c) => (c.front && Math.abs(c.x + 0.5) <= 2 ? null : y === 0 ? P.clothDD : P.cloth) },
+    skirt: { len: 13, flare: 8, col: (y, len, P, c) => (c.front && Math.abs(c.x + 0.5) <= 3 ? null : y === 0 ? P.clothDD : P.cloth) },
   },
   cota: {
     torso: (c, P) => belt(c, P) || (collar(c, 4) ? P.metalD : chain(c.x, c.y, c.z, P)),
@@ -306,33 +312,76 @@ export function drawTorso(v, look, D, P, gear) {
   }
   for (let y = H; y < H + D.neck; y++) v.box(-2, y, -2, 4, 1, 4, P.skinD);
   if (look.type === 'zorro' && !o.mantle) v.box(-2, H - 4, hd, 4, 4, 1, (x, y) => (y === H - 4 ? null : P.cream));   // pechera de pelo
+  // dónde cae la cabeza en la grilla del torso (enanos, orcos y anuros la tienen hundida entre los hombros): lo que
+  // va alrededor del cuello deja 1 vóxel de luz, porque la cabeza gira un poco al respirar
+  const hb = H + D.neck - D.headY, HW = D.hw / 2, hz0 = -Math.floor(D.hd / 2) + D.headZ, hz1 = Math.ceil(D.hd / 2) + D.headZ;
+  // (las orejas salen 1 por cada lado: en x la luz es de 2)
+  const inHead = (x, y, z) => y >= hb && x >= -HW - 2 && x < HW + 2 && z >= hz0 - 1 && z < hz1 + 1;
+  const [ax0, ax1] = armSpan(D);
+  lay(v, 'armor');
   if (o.mantle) {
-    const fur = o.mantle === 'fur';
-    for (let y = H - 3; y < H + (fur ? 2 : 1); y++) for (let x = -hw - D.sh - 1; x < hw + D.sh + 1; x++) for (let z = -hd - 1; z < hd + 1; z++) {
-      const edge = x === -hw - D.sh - 1 || x === hw + D.sh || z === -hd - 1 || z === hd || y >= H;
-      const hole = y >= H && Math.abs(x + 0.5) < 3 && Math.abs(z + 0.5) < 3;
-      if (!edge || hole || (z === hd && Math.abs(x + 0.5) < 2 && y < H)) continue;
+    // manto corto: una tapa sobre hombros y brazos, 1 vóxel por encima de la camisa, con los paños de adelante y
+    // atrás colgando 3 filas a 1 vóxel de la tela y los costados cerrados sobre la cabeza del brazo (no la pisa)
+    const fur = o.mantle === 'fur', X = ax1 + 1;
+    for (let y = H - 3; y < H + (fur ? 2 : 1); y++) for (let x = -X; x < X; x++) for (let z = -hd - 1; z < hd + 1; z++) {
+      const top = y >= H, wall = z === -hd - 1 || z === hd, side = (x === -X || x === X - 1) && y >= H - 2;
+      if (!top && !wall && !side) continue;
+      if (inHead(x, y, z) || (top && y >= hb - 1 && Math.abs(x + 0.5) < 3 && Math.abs(z + 0.5) < 3)) continue;   // el cuello
+      if (z >= 0 && Math.abs(x + 0.5) < HW + 2) continue;   // abierto adelante del ancho de la cabeza (la barba cae por ahí)
+      if (fur && y === H + 1 && !(wall || x === -X || x === X - 1)) continue;   // el pelo hace un ruedo arriba
       v.set(x, y, z, fur ? (y === H + 1 ? P.furL : (x + z + 99) % 3 === 0 ? P.furD : P.fur) : y === H - 3 ? P.clothDD : P.clothD);
     }
-    if (!fur) { v.set(-1, H - 2, hd + 1, P.brass); v.set(0, H - 2, hd + 1, P.brass); }   // broche
+    if (!fur) for (const s of [-1, 1]) v.set(s < 0 ? -HW - 3 : HW + 2, H - 1, hd + 1, P.brass);   // broches
   }
   if (o.hood) {   // capucha caída: un cuello de tela alrededor de la nuca y un pliegue en la espalda
-    for (let x = -5; x < 5; x++) for (let z = -hd - 1; z < 2; z++) if (x === -5 || x === 4 || z === -hd - 1) v.set(x, H, z, z === -hd - 1 ? P.clothD : P.cloth);
-    v.box(-4, H - 4, -hd - 1, 8, 4, 1, (x, y) => (y === H - 4 ? P.clothDD : P.clothD));
+    if (hb > H) { for (let x = -5; x < 5; x++) for (let z = -hd - 1; z < 2; z++) if (x === -5 || x === 4 || z === -hd - 1) v.set(x, H, z, z === -hd - 1 ? P.clothD : P.cloth); }
+    else {   // con la cabeza hundida, el cuello de tela rodea la cabeza (no se mete en ella)
+      const X0 = -HW - 2, X1 = HW + 1, Z0 = Math.min(-hd - 1, hz0 - 2);
+      for (let x = X0; x <= X1; x++) for (let z = Z0; z < 2; z++) if (x === X0 || x === X1 || z === Z0) v.set(x, H, z, z === Z0 ? P.clothD : P.cloth);
+    }
+    const zF = hb > H ? -hd - 1 : Math.min(-hd - 1, hz0 - 2);
+    v.box(-4, H - 4, zF, 8, 4, 1, (x, y) => (y === H - 4 ? P.clothDD : P.clothD));
+    if (zF < -hd - 1) v.box(-4, H - 4, zF + 1, 8, 1, -hd - 1 - zF, P.clothDD);   // se apoya en la espalda
   }
-  if (o.highCollar) v.box(-hw + 2, H, -hd - 1, 2 * hw - 4, 4, 2, (x, y) => (y === H + 3 ? P.brass : P.clothDD));
+  if (o.highCollar) {   // cuello alto del archimago: detrás de la nuca, apoyado en la espalda
+    const z0 = Math.min(-hd - 2, hz0 - 3);
+    for (let y = H - 3; y < H + 4; y++) for (let x = -hw + 2; x < hw - 2; x++) for (let z = z0; z < -hd; z++) {
+      if (inHead(x, y, z)) continue;
+      v.set(x, y, z, y === H + 3 ? P.brass : P.clothDD);
+    }
+  }
+  const pd = o.pauldron?.(P);
+  if (pd) {
+    // hombrera en la grilla del torso (no rota con el brazo): una tapa 1 vóxel por encima de la camisa, la placa de
+    // afuera pegada a la cabeza del brazo y dos labios adelante y atrás, todo por fuera de lo que barre el brazo al
+    // caminar. Las grandes (y las de los enanos, de hombros altos) suben una fila más.
+    const big = o.bigPauldron || o.furPauldron || look.type === 'enano' ? 1 : 0;
+    const z0 = -Math.floor(D.armW / 2) - 1, z1 = z0 + D.armW + 1;   // de un labio al otro (inclusive)
+    for (const s of [-1, 1]) for (let y = H - 4; y <= H + big; y++) for (let x = ax0 - 1; x <= ax1; x++) for (let z = z0; z <= z1; z++) {
+      const cap = y >= H, plate = x === ax1;
+      if (!cap && !plate) continue;
+      const rivet = !o.furPauldron && plate && y === H - 2 && (z - z0) % 2 === 1;
+      const col = rivet ? ramp(P.brass, 0.8) : y === H - 4 ? ramp(pd, -1) : y === H + big ? ramp(pd, plate || z === z0 || z === z1 ? 1.5 : 0.8)
+        : o.bigPauldron && y === H - 3 ? P.brassD : o.furPauldron && (x + y + z + 99) % 3 === 0 ? P.furD : pd;
+      v.set(s > 0 ? x : -1 - x, y, z, col);
+    }
+  }
   // bolsos del cinturón: casi todos llevan algo colgado
   // bolso con tapa: el cuerpo, la tapa que sale 1 y cae sobre el frente, y el botón de bronce
+  lay(v, 'outfit');
+  const fzP = hd + (look.type === 'anuro' ? 1 : 0);
   const pouch = (s) => {
     const pw = hw >= 11 ? 4 : 3, x0 = s > 0 ? hw - pw - 1 : -hw + 1;
-    v.box(x0, -2, hd, pw, 5, 2, (x, y) => (y === -2 ? P.leatherD : y === 2 ? P.leatherL : P.leather));
-    v.box(x0, 0, hd + 2, pw, 3, 1, (x, y) => (y === 2 ? P.leatherL : y === 0 ? P.leatherD : P.leather));
-    v.set(x0 + (pw >> 1), 0, hd + 3, P.brass);
+    v.box(x0, -2, fzP, pw, 5, 2, (x, y) => (y === -2 ? P.leatherD : y === 2 ? P.leatherL : P.leather));
+    v.box(x0, 0, fzP + 2, pw, 3, 1, (x, y) => (y === 2 ? P.leatherL : y === 0 ? P.leatherD : P.leather));
+    v.set(x0 + (pw >> 1), 0, fzP + 3, P.brass);
   };
-  if (o.pouch === 'right' || o.pouch === 'both') pouch(1);
+  if (gear?.noPouch !== 'right' && (o.pouch === 'right' || o.pouch === 'both')) pouch(1);
   if (o.pouch === 'left' || o.pouch === 'both') pouch(-1);
   o.extra?.(v, D, P);
+  lay(v, 'gear');
   gear?.body?.(v, D, P, look);
+  lay(v, 'body');
 }
 
 /** Brazo (pivote en el hombro, cuelga hacia -Y). Mano grande: las 4 filas de abajo. */
@@ -368,19 +417,7 @@ export function drawArm(v, look, D, P) {
       v.set(x, y, z, lit(col, r === 0 ? 2 : r <= 2 ? 1 : wide && r === L - 5 ? -1 : 0));
     }
   }
-  const pd = o.pauldron?.(P);
-  if (pd) {   // hombrera: cubre el hombro y sale hacia afuera
-    // pegada al hombro: una capa sobre el brazo y el borde más oscuro (las grandes, un vóxel más)
-    // los enanos, con la hombrera alta: los hombros suben (proporción robusta de la referencia)
-    const big = o.bigPauldron || o.furPauldron || look.type === 'enano' ? 1 : 0;
-    for (let y = -3 - big; y < 1 + big; y++) for (let x = a0; x < a1 + 1; x++) for (let z = a0 - 1; z < a1 + 1; z++) {
-      const shell = x === a1 || z === a0 - 1 || z === a1 || y === big;
-      if (!shell) continue;
-      // borde de luz arriba, ruedo en sombra y una fila de remaches en la cara de afuera
-      const rivet = !o.furPauldron && x === a1 && y === -2 - big + 1 && (z - a0 + 99) % 2 === 0;
-      v.set(x, y, z, rivet ? ramp(P.brass, 0.8) : y === -3 - big ? ramp(pd, -1) : y === big ? ramp(pd, x === a1 || z === a0 - 1 || z === a1 ? 1.5 : 0.8) : o.bigPauldron && y === -1 ? P.brassD : pd);
-    }
-  }
+  // la hombrera va en la grilla del torso (drawTorso): así no rota con el brazo ni queda debajo del hombro
 }
 
 /** Pierna (pivote en la cadera, hacia -Y). Bota ancha y con punta; los anuros, pie palmeado. */
@@ -412,21 +449,31 @@ export function drawLeg(v, look, D, P) {
   }
 }
 
-/** Falda / faldón (va fija en el cuerpo, las piernas se mueven adentro). Arriba en y = 0. */
+/**
+ * Faldón: el panel de la pierna derecha (el izquierdo es el espejo). Va colgado del pivote de la pierna y gira con
+ * ella, así la pierna nunca lo atraviesa al caminar; queda abierto adelante y atrás, entre los dos paneles. Se dibuja
+ * centrado en la cadera (x = 0 es el medio del cuerpo, x ≥ 0 este lado) y arriba en y = 0.
+ */
 export function drawSkirt(v, look, D, P) {
   const o = outfitOf(look.dress);
   const sk = o.skirt;
   if (!sk) return;
+  lay(v, 'armor');
   const len = sk.long ? D.legH - (sk.gap || 2) : Math.min(sk.len, D.legH - 3);
   const hw = D.W / 2, hd = Math.floor(D.D / 2) + (look.type === 'anuro' ? 1 : 0);
+  const armIn = D.armX - Math.floor(D.armW / 2) - (o.wide ? 1 : 0), handY = handUp(D) + 3;
   for (let i = 0; i < len; i++) {
     const y = -1 - i, fy = len - 1 - i;   // fy: alto desde el ruedo
     const f = sk.flare ? Math.floor(i / sk.flare) : 0;
-    const w = hw + f - (D.slim && !sk.long ? 1 : 0), d = hd + f;
-    for (let x = -w; x < w; x++) for (let z = -d; z < d; z++) {
-      const edge = x === -w || x === w - 1 || z === -d || z === d - 1;
+    const [lx, lz] = legReach(look, D, P, D.legH - 1 - i);
+    let w = hw + f - (D.slim && !sk.long ? 1 : 0);
+    if (D.legH - 1 - i < handY) w = Math.min(w, armIn - 1);
+    w = Math.max(w, lx + 1);
+    const d = Math.max(hd + f, lz + 1);
+    for (let x = look.type === 'anuro' ? 1 : 0; x < w; x++) for (let z = -d; z < d; z++) {
+      const edge = x === w - 1 || z === -d || z === d - 1;
       if (!edge || bevel(x, z, -w, w, -d, d)) continue;
-      const c = { x, y: fy, z, hw: w, hd: d, front: z === d - 1, back: z === -d, side: x === -w || x === w - 1 };
+      const c = { x, y: fy, z, hw: w, hd: d, front: z === d - 1, back: z === -d, side: x === w - 1 };
       const col = sk.col(fy, len, P, c);
       // arriba, la sombra que tira el cinturón; en las faldas largas, pliegues verticales de 1 en sombra cada 4
       // columnas que se abren hacia el ruedo (tonos en bloque: no hay ruido)
@@ -434,6 +481,13 @@ export function drawSkirt(v, look, D, P) {
       if (col != null) v.set(x, y, z, fold ? ramp(col, -0.7) : lit(col, i === 0 ? -1 : 0));
     }
   }
+}
+
+/** Hasta dónde llega la pierna derecha (con la bota y su doblez) en la fila yy desde el piso: [x, z] de la primera celda libre. */
+function legReach(look, D, P, yy) {
+  const o = outfitOf(look.dress), col = o.leg(yy, P);
+  const e = look.type !== 'anuro' && (col === P.boot || col === P.bootL) ? 1 : 0, cuff = e && col === P.bootL ? 1 : 0;
+  return [Math.ceil(D.hip + D.legW - Math.floor(D.legW / 2) + e + cuff), D.legD - Math.floor(D.legD / 2) + e + cuff];
 }
 
 /** Capa (pivote arriba de la espalda): dos tonos, con pliegues verticales. */
@@ -816,12 +870,18 @@ function drawHat(v, look, D, P, g) {
   };
   switch (id) {
     case 'capucha': {
+      lay(v, 'armor');
       for (let y = 1; y < hh + 3; y++) for (let x = -W - 2; x < W + 2; x++) for (let z = zc0 - 1; z <= zc1; z++) {
         const out = x === -W - 2 || x === W + 1 || z === zc0 - 1 || y === hh + 2 || (z === zc1 && (Math.abs(x + 0.5) >= W - 1 || y >= hh));
         if (out && !((x === -W - 2 || x === W + 1) && z === zc0 - 1)) v.set(x, y, z, z === zc1 ? P.clothDD : y >= hh + 1 ? P.cloth : P.clothD);
       }
-      v.box(-W, -3, zc0 - 1, 2 * W, 5, 2, P.clothD);
+      // el paño que cae sobre la espalda: detrás del torso con 1 vóxel de luz (los orcos llevan la cabeza adelantada y
+      // el torso hondo: antes se les metía en la espalda)
+      const zBack = -Math.floor(D.D / 2) - D.headZ, zd = Math.min(zc0 - 1, zBack - 3);
+      v.box(-W, -3, zd, 2 * W, 5, 2, P.clothD);
+      if (zd < zc0 - 1) v.box(-W, 1, zd + 2, 2 * W, 1, zc0 - 1 - zd - 2, P.clothD);   // lo une a la capucha
       v.box(-1, hh + 2, zc0, 2, 1, 3, P.clothD);   // punta de la capucha
+      lay(v, 'body');
       break;
     }
     case 'gorro': shell(hh - 3, top + 3, (x, y) => (y <= hh - 2 ? P.clothDD : y === top + 2 ? P.clothL : P.clothD)); v.box(-1, top + 3, -1, 2, 2, 2, P.clothD); break;
@@ -879,112 +939,153 @@ function drawHat(v, look, D, P, g) {
 
 // ---------------- Equipo ----------------
 // Cada pieza dice dónde va: hand (mano derecha), off (mano izquierda), body (en el cuerpo). pose: brazos en radianes.
-// Coordenadas de la mano: brazo de largo L, el puño en y = -L .. -L+4 (centro y = -L+2), ancho D.hand.
+// Coordenadas de la mano: brazo de largo L, el puño en y = -L .. -L+4 (centro y = HY), ancho D.hand. En las dos manos
+// +x es hacia afuera del cuerpo (la izquierda se dibuja igual y se espeja).
+// Regla de anclaje (plan de La Travesía, 1a): nada de lo que se sostiene pasa por el puño ni por el brazo. Lo que sale
+// hacia adelante arranca en front(D), la primera celda libre delante del puño; lo largo va parado delante del puño,
+// desde zf(D), que deja libre también el puño del guante y la manga ancha, y se inclina con su propia pose (grip: rx
+// hacia adelante, ry gira la cara hacia afuera, rz inclina hacia afuera, en radianes, girando en el puño). Los largos salen del cuerpo (handUp, tallOf) y la
+// punta de abajo nunca llega al piso.
 const HY = (D) => -D.armL + 2;
 const front = (D) => Math.ceil(D.hand / 2);
+const back = (D) => -Math.floor(D.hand / 2) - 1;   // primera celda libre detrás del puño
+export const zf = (D) => Math.max(front(D), Math.ceil(D.armW / 2) + 2);
+/** Alto del centro del puño sobre el piso con el brazo colgando, y alto de la figura sin sombrero. */
+export const handUp = (D) => D.legH + D.H - D.armL;
+export const tallOf = (D) => D.legH + D.H + D.neck - D.headY + D.hh;
+/** Dónde gira la pieza que se sostiene (centro del astil, a la altura del puño). */
+export const gripAt = (D) => [0, HY(D), zf(D) + 1];
 function blade(v, D, len) {
   const y = HY(D), z0 = front(D);
-  v.box(-1, y - 1, -z0 - 2, 2, 2, 2, MAT.brassD);   // pomo
+  v.box(-1, y - 1, back(D) - 1, 2, 2, 2, MAT.brassD);   // pomo
   v.box(-3, y - 1, z0, 6, 2, 1, MAT.brass);   // guarda
   for (let i = 0; i < len; i++) v.box(-1, y - 1, z0 + 1 + i, 2, 3 - (i === len - 1 ? 1 : 0), 1, (x, yy) => (yy === y + 1 ? MAT.metalL : x === 0 ? MAT.metal : MAT.metalD));
 }
-const haft = (v, D, z0, z1) => { const y = HY(D); for (let z = z0; z < z1; z++) v.box(-1, y - 1, z, 2, 2, 1, (z + 99) % 5 === 0 ? MAT.leatherD : MAT.wood); };
+/** Mango que cruza el puño de atrás hacia adelante (martillo): lo que queda adentro del puño no se dibuja. */
+const haft = (v, D, z0, z1) => { const y = HY(D); for (let z = z0; z < z1; z++) if (z <= back(D) || z >= front(D)) v.box(-1, y - 1, z, 2, 2, 1, (z + 99) % 5 === 0 ? MAT.leatherD : MAT.wood); };
+/** Astil parado delante del puño, de y0 a y1, con la empuñadura de cuero que toca el puño. */
+function pole(v, D, y0, y1, col) {
+  const y = HY(D), z = zf(D);
+  for (let yy = y0; yy < y1; yy++) v.box(-1, yy, z, 2, 1, 2, typeof col === 'function' ? col(yy) : col);
+  // la mano lo agarra: la empuñadura llena la luz entre el puño y el astil en las filas del puño
+  v.box(-1, y - 2, front(D), 2, 4, z - front(D), (x, yy) => ((yy + 99) % 2 ? MAT.leatherD : MAT.leather));
+}
+/** Cuánto baja lo largo debajo del puño sin tocar el piso (con la inclinación y el paso). */
+const reach = (D, k = 0.75, gap = 3) => Math.max(4, Math.min(Math.round(D.armL * k), handUp(D) - gap));
 export const GEAR = {
-  espada: { hand: (v, D) => blade(v, D, 16), pose: { rx: -0.5, rz: 0.12 } },
+  espada: { hand: (v, D) => blade(v, D, Math.round(D.armL * 0.9)), pose: { rx: -0.5, rz: 0.12 } },
   hacha: { hand: (v, D) => {
-    // hacha grande parada al costado (pasada de detalle): la hoja de medialuna mira hacia afuera, así se lee de frente
-    // y no de canto. Mango de madera con la empuñadura de cuero, anillos de metal y un regatón abajo; la hoja con 3
-    // tonos (sombra junto al ojo, base y el filo claro) y un pincho corto del otro lado.
-    const y = HY(D), hz = -1, top = y + 22;
-    for (let yy = y - 14; yy < top; yy++) {
-      const grip = yy >= y - 3 && yy <= y + 3, ringY = yy === y - 5 || yy === y + 5 || yy === top - 12;
-      v.box(-1, yy, hz, 2, 1, 2, grip ? ((yy + 99) % 2 ? MAT.leatherD : MAT.leather) : ringY ? MAT.metalL : (yy + 99) % 6 === 0 ? MAT.woodD : MAT.wood);
-      if (ringY) v.box(-2, yy, hz - 1, 4, 1, 4, (x, y2, z) => (v.has(x, y2, z) ? MAT.metalL : MAT.metal));
-    }
-    v.box(-2, y - 16, hz - 1, 4, 2, 4, MAT.metalD);   // regatón
-    // ojo del hacha: un bloque de metal que abraza el mango
-    v.box(-2, top - 8, hz - 1, 4, 8, 4, (x, yy) => (yy === top - 1 ? MAT.metalL : yy === top - 8 ? MAT.metalD : MAT.metal));
+    // hacha grande parada al costado: la hoja de medialuna mira hacia afuera (se lee de frente, no de canto) y del lado
+    // del cuerpo no sale nada. Mango con la empuñadura de cuero, anillos de metal y un regatón abajo; la hoja con 3
+    // tonos (sombra junto al ojo, base y el filo claro).
+    const y = HY(D), hz = zf(D), top = y + Math.round(D.armL * 1.1), low = y - reach(D, 0.6, 4);
+    pole(v, D, low, top, (yy) => (yy === top - 12 ? MAT.metalL : (yy + 99) % 6 === 0 ? MAT.woodD : MAT.wood));
+    for (const ry of [y - 5, y + 5]) v.box(-2, ry, hz, 4, 1, 3, MAT.metal);   // anillos
+    v.box(-2, low - 2, hz, 4, 2, 3, MAT.metalD);   // regatón
+    v.box(-2, top - 8, hz - 1, 4, 8, 4, (x, yy) => (yy === top - 1 ? MAT.metalL : yy === top - 8 ? MAT.metalD : MAT.metal));   // ojo
     v.box(-1, top, hz, 2, 2, 2, MAT.metalD);
-    for (let i = 0; i < 15; i++) {   // hoja: crece hacia el filo
-      // cuello angosto junto al ojo y la hoja que se abre arriba y abajo (silueta de medialuna, no una tabla)
-      const d = Math.abs(i - 7), xA = 2 + (d > 2 ? 3 : 0) + Math.max(0, d - 5), xB = 10 + (d < 4 ? 1 : 0) - (d > 6 ? 1 : 0), yy = top - 11 + i;
-      for (let x = xA; x < xB; x++) v.box(x, yy, hz, 1, 1, 2, x >= xB - 2 ? MAT.metalL : x === xB - 3 ? MAT.metalD : x === xA || d === 7 ? MAT.metalD : MAT.metal);
+    const hl = Math.max(9, Math.round(D.armL * 0.8));   // alto de la hoja
+    for (let i = 0; i < hl; i++) {   // cuello angosto junto al ojo y la hoja que se abre arriba y abajo (medialuna)
+      const m = (hl - 1) / 2, d = Math.abs(i - m) / m, yy = top - 4 - Math.round(m) + i;
+      const xA = 2 + (d > 0.3 ? 2 : 0) + (d > 0.75 ? 1 : 0), xB = 9 + (d < 0.5 ? 1 : 0) - (d > 0.85 ? 1 : 0);
+      for (let x = xA; x < xB; x++) v.box(x, yy, hz, 1, 1, 2, x >= xB - 2 ? MAT.metalL : x === xB - 3 ? MAT.metalD : x === xA || d >= 0.99 ? MAT.metalD : MAT.metal);
     }
-    v.box(-5, top - 5, hz, 3, 2, 2, (x) => (x === -5 ? MAT.metalL : MAT.metal));   // pincho
     v.box(2, top - 4, hz - 1, 1, 1, 1, MAT.brass); v.box(2, top - 4, hz + 2, 1, 1, 1, MAT.brass);   // remaches de la hoja
-  }, pose: { rx: 0, rz: 0.1 }, still: true },
+  }, pose: { rx: 0, rz: 0.1 }, grip: { rx: 0.16, rz: -0.2 }, still: true },
   martillo: { hand: (v, D) => {
     const y = HY(D), z0 = front(D);
-    haft(v, D, -z0 - 3, z0 + 13);
+    haft(v, D, back(D) - 2, z0 + 13);
     v.box(-3, y - 4, z0 + 11, 6, 7, 6, (x, yy, z) => (yy === y + 2 ? MAT.metalL : z === z0 + 11 || z === z0 + 16 ? MAT.metalD : MAT.metal));
     v.box(-2, y - 3, z0 + 10, 4, 5, 1, MAT.brassD);
   }, pose: { rx: -0.4, rz: 0.14 } },
-  lanza: { hand: (v, D) => {
-    const y = HY(D);
-    for (let yy = y - 18; yy < y + 32; yy++) v.box(-1, yy, 0, 2, 1, 2, (yy + 99) % 6 === 0 ? MAT.leatherD : MAT.wood);
-    for (let i = 0; i < 7; i++) v.box(-1 - (i < 3 ? 1 : 0), y + 32 + i, 0, i < 3 ? 4 : 2, 1, 2, i === 6 ? MAT.metalL : MAT.metal);
-    v.box(-2, y + 30, -1, 4, 2, 4, MAT.leatherD);
-  }, pose: { rx: 0, rz: 0.1 }, still: true },
-  baston: { hand: (v, D) => {   // bastón alto con un nudo y la piedra de veta arriba
-    const y = HY(D);
-    for (let yy = y - 18; yy < y + 26; yy++) v.box(-1, yy, 0, 2, 1, 2, (yy + 99) % 7 === 0 ? MAT.woodD : MAT.wood);
-    v.box(-2, y + 26, -1, 4, 3, 4, MAT.woodD); v.box(-1, y + 29, 0, 2, 3, 2, MAT.vein); v.box(-2, y + 28, 0, 1, 2, 1, MAT.woodD); v.box(1, y + 28, 1, 1, 3, 1, MAT.woodD);
-  }, pose: { rx: 0, rz: 0.1 }, still: true },
+  lanza: { hand: (v, D) => {   // más alta que quien la lleva, con la moharra arriba
+    const y = HY(D), hz = zf(D), top = y + tallOf(D) - handUp(D) + 4;
+    pole(v, D, y - reach(D, 0.9), top, (yy) => ((yy + 99) % 6 === 0 ? MAT.leatherD : MAT.wood));
+    for (let i = 0; i < 7; i++) v.box(-1 - (i < 3 ? 1 : 0), top + i, hz, i < 3 ? 4 : 2, 1, 2, i === 6 ? MAT.metalL : MAT.metal);
+    v.box(-2, top - 2, hz - 1, 4, 2, 4, MAT.leatherD);
+  }, pose: { rx: 0, rz: 0.1 }, grip: { rx: 0.1, rz: -0.18 }, still: true },
+  baston: { hand: (v, D) => {   // bastón alto con un nudo y la piedra de veta arriba, a la altura de la cabeza
+    const y = HY(D), hz = zf(D), top = y + tallOf(D) - handUp(D) - 3;
+    pole(v, D, y - reach(D, 0.9), top, (yy) => ((yy + 99) % 7 === 0 ? MAT.woodD : MAT.wood));
+    v.box(-2, top, hz - 1, 4, 3, 4, MAT.woodD); v.box(-1, top + 3, hz, 2, 3, 2, MAT.vein);
+    v.box(-2, top + 2, hz, 1, 2, 1, MAT.woodD); v.box(1, top + 2, hz + 1, 1, 3, 1, MAT.woodD);
+  }, pose: { rx: 0, rz: 0.1 }, grip: { rx: 0.1, rz: -0.18 }, still: true },
   libro: { off: (v, D) => {
-    const y = HY(D), z0 = front(D);
+    const y = HY(D), z0 = zf(D) - 1;
     v.box(-4, y - 3, z0, 8, 7, 3, (x, yy, z) => (z === z0 + 1 && x > -4 && x < 3 && yy > y - 3 && yy < y + 3 ? MAT.linen : yy === y + 3 ? MAT.leatherL : MAT.leatherD));
-  }, pose: { lx: -0.75, lz: 0.1 } },
-  escudo: { off: (v, D) => {   // escudo redondo de tablas con aro y umbo de metal
-    const z0 = front(D), cy = HY(D) + 3;
-    for (let x = -9; x <= 8; x++) for (let y = cy - 9; y <= cy + 8; y++) {
-      const dx = x + 0.5, dy = y - cy + 0.5, d = Math.sqrt(dx * dx + dy * dy);
-      if (d > 8.8) continue;
-      v.set(x, y, z0 + 1, d > 7.6 ? MAT.metalD : d < 2.2 ? MAT.metalL : (x + 99) % 4 === 0 ? MAT.woodD : MAT.wood);
-      if (d < 2.2) v.set(x, y, z0 + 2, MAT.metal);
+  }, pose: { lx: -0.6, lz: -0.05 }, offStill: true },
+  escudo: { off: (v, D) => {
+    // escudo redondo de tablas con aro y umbo de metal, al costado de la cadera: mira hacia adelante y queda corrido
+    // hacia afuera, así no tapa la riñonera ni lo pisa la pierna al caminar
+    const z0 = zf(D), cy = HY(D) + 2, r = Math.max(5, Math.min(8, Math.round(D.H * 0.4))) + 0.8;
+    const clear = Math.max(D.W / 2, D.hip + Math.ceil(D.legW / 2) + 2) + 1, cx = Math.max(0, Math.ceil(r - (D.armX - clear)));
+    for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++) {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.sqrt(dx * dx + dy * dy);
+      if (d > r) continue;
+      v.set(x, y, z0, d > r - 1.2 ? MAT.metalD : d < 2.2 ? MAT.metalL : (x + 99) % 4 === 0 ? MAT.woodD : MAT.wood);
+      if (d < 2.2) v.set(x, y, z0 + 1, MAT.metal);
     }
+    v.box(-1, HY(D) - 1, front(D), 2, 2, z0 - front(D), MAT.leatherD);   // la correa que agarra el puño
   }, pose: { lz: -0.2 } },
   arco: { off: (v, D) => {
-    const y0 = HY(D);
-    for (let i = -16; i <= 16; i++) {
-      const z = 2 + Math.round(Math.cos((i / 16) * Math.PI / 2) * 4);
-      v.box(-1, y0 + i, z, 2, 1, 1, Math.abs(i) < 2 ? MAT.leatherD : MAT.wood);
-      if (Math.abs(i) < 16 && i !== 0) v.set(0, y0 + i, 1, MAT.linenD);
+    // arco parado en la mano: la empuñadura toca el puño, las palas se curvan hacia adelante y la cuerda va delante de
+    // todo, con luz entre la cuerda y la madera. Gira hacia afuera (grip.ry) para que la curva se lea de frente
+    const y0 = HY(D), z0 = zf(D), n = Math.min(Math.round(D.armL * 0.95), handUp(D) - 4), k = 6;
+    for (let i = -n; i <= n; i++) {
+      const t = Math.abs(i) / n, z = z0 + Math.round((1 - Math.cos(t * Math.PI / 2)) * k);
+      v.box(-1, y0 + i, z, 2, 1, t > 0.5 ? 2 : 1, Math.abs(i) < 3 ? MAT.leatherD : t > 0.85 ? MAT.woodD : MAT.wood);
+      if (Math.abs(i) < n) v.set(0, y0 + i, z0 + k + 1, MAT.linen);
     }
-  }, pose: { lz: -0.16 } },
+    v.box(-1, y0 - n, z0 + k, 2, 1, 2, MAT.woodD); v.box(-1, y0 + n, z0 + k, 2, 1, 2, MAT.woodD);   // las puntas atan la cuerda
+    v.box(-1, y0 - 2, front(D), 2, 4, z0 - front(D), MAT.leatherD);
+  }, pose: { lz: -0.16 }, grip: { rx: 0, ry: 0.85, rz: -0.08 } },
   farolito: { hand: (v, D) => {
-    const y = HY(D) - 2;
+    const y = HY(D) - 3, h = Math.max(4, Math.min(8, handUp(D) - 7));   // cuelga debajo del puño; en los bajos, más chico
     v.box(-1, y - 1, -1, 2, 2, 2, MAT.metalD);
-    v.box(-3, y - 9, -3, 6, 8, 6, (x, yy, z) => (((x === -3 || x === 2) && (z === -3 || z === 2)) || yy === y - 9 || yy === y - 2 ? MAT.metalD : null));
+    v.box(-3, y - h - 1, -3, 6, h, 6, (x, yy, z) => (((x === -3 || x === 2) && (z === -3 || z === 2)) || yy === y - h - 1 || yy === y - 2 ? MAT.metalD : null));
     v.box(-2, y - 1, -2, 4, 1, 4, MAT.metal);
-  }, light: (v, D) => { const y = HY(D) - 2; v.box(-2, y - 8, -2, 4, 6, 4, (x, yy) => (yy >= y - 4 ? 0xe8b866 : 0xd08a3a)); }, pose: { rz: 0.14 } },
-  orbe: { off: (v, D) => { const y = HY(D), z0 = front(D); v.box(-2, y + 2, z0 - 2, 4, 1, 4, MAT.leatherD); },
-    offLight: (v, D) => { const y = HY(D) + 3, z0 = front(D) - 1; v.box(-1, y, z0, 2, 5, 2, MAT.vein); v.box(-2, y, z0 - 1, 1, 3, 1, MAT.veinD); v.box(1, y, z0 + 1, 1, 4, 1, MAT.veinD); },
-    pose: { lx: -0.65, lz: 0.08 } },
-  catalejo: { body: (v, D) => { const hw = D.W / 2; v.box(-hw - 2, -1, -4, 2, 2, 9, (x, y, z) => (z === 4 || z === -4 ? MAT.brassD : MAT.brass)); } },
+  }, light: (v, D) => { const y = HY(D) - 3, h = Math.max(4, Math.min(8, handUp(D) - 7)); v.box(-2, y - h, -2, 4, h - 2, 4, (x, yy) => (yy >= y - h / 2 ? 0xe8b866 : 0xd08a3a)); }, pose: { rz: 0.14 } },
+  orbe: { off: (v, D) => { const y = HY(D), z0 = front(D); v.box(-2, y - 2, z0, 4, 4, 1, MAT.leatherD); },
+    offLight: (v, D) => { const y = HY(D) - 1, z0 = front(D) + 1; v.box(-1, y, z0, 2, 3, 3, MAT.vein); v.box(-2, y, z0 + 1, 1, 2, 1, MAT.veinD); v.box(1, y + 1, z0 + 2, 1, 2, 1, MAT.veinD); },
+    pose: { lx: -0.6, lz: -0.05 }, offStill: true },
+  catalejo: { body: (v, D) => {   // atravesado en la espalda, en el cinturón: al costado lo pisaba el brazo
+    const hw = D.W / 2, hd = Math.floor(D.D / 2), n = Math.min(9, 2 * hw - 3), x0 = -hw + 1;
+    v.box(x0, 1, -hd - 2, n, 2, 2, (x) => (x === x0 || x === x0 + n - 1 ? MAT.brassD : x === x0 + 3 ? MAT.leatherD : MAT.brass));
+  }, cape: 2 },
   mochila: {
     body: (v, D) => {   // mochila de lona con la manta enrollada arriba
-      const hw = D.W / 2, hd = Math.floor(D.D / 2), H = D.H;
+      const hw = D.W / 2, hd = Math.floor(D.D / 2), H = D.H, hz0 = -Math.floor(D.hd / 2) + D.headZ;
+      const rz1 = H + D.neck - D.headY > H ? -hd - 1 : Math.min(-hd - 1, hz0 - 2);   // fin de la manta
       v.box(-hw + 2, H - 13, -hd - 5, 2 * hw - 4, 11, 5, (x, y, z) => (y === H - 8 ? MAT.leatherD : z === -hd - 5 && Math.abs(x + 0.5) < 2.5 && y < H - 8 ? MAT.leather : 0x5e5442));
-      v.box(-hw + 1, H - 2, -hd - 4, 2 * hw - 2, 3, 3, (x) => ((x + 99) % 5 === 0 ? MAT.leatherD : 0x6e5f4a));
+      v.box(-hw + 1, H - 2, -hd - 4, 2 * hw - 2, 3, Math.max(1, rz1 + hd + 4), (x) => ((x + 99) % 5 === 0 ? MAT.leatherD : 0x6e5f4a));
     },
     paint: (c) => ((c.front && Math.abs(Math.abs(c.x + 0.5) - (c.hw - 3.5)) < 1 && c.y > 4) ? MAT.leatherD : undefined),
+    cape: 5,   // la capa cae detrás de la mochila
   },
   bolso: {
-    body: (v, D) => { const hw = D.W / 2; v.box(hw + D.sh - 1, -4, -2, 4, 7, 6, (x, y, z) => (y === 2 ? MAT.leatherD : z === 3 && y === 0 ? MAT.brass : MAT.leather)); },
+    // bolso grande colgado de la correa cruzada, adelante de la cadera derecha y del lado de adentro del brazo (al
+    // costado lo atravesaba el brazo al caminar)
+    body: (v, D, P, look) => {
+      const hw = D.W / 2, fz = Math.floor(D.D / 2) + (look?.type === 'anuro' ? 1 : 0), x0 = Math.max(3, hw - 7, D.hw / 2 - 2), w = hw - 1 - x0, y0 = D.hunch > 0.08 ? 2 : 0;   // los encorvados lo llevan más arriba
+      v.box(x0, y0, fz, w, 4, 3, (x, y) => (y === y0 ? MAT.leatherD : y === y0 + 3 ? MAT.leatherL : MAT.leather));
+      v.box(x0, y0 + 1, fz + 3, w, 3, 1, (x, y) => (y === y0 + 3 ? MAT.leatherL : y === y0 + 1 ? MAT.leatherD : MAT.leather));   // la tapa
+      v.set(x0 + (w >> 1), y0 + 2, fz + 4, MAT.brass);
+    },
     paint: (c, P) => strapCol(c, P, 2) ?? undefined,
+    noPouch: 'right',
   },
   collar: { paint: (c) => (c.front && c.y === c.H - 6 && Math.abs(c.x + 0.5) < 1 ? MAT.vein
     : c.front && ((c.y === c.H - 5 && Math.abs(c.x + 0.5) === 1.5) || (c.y === c.H - 4 && Math.abs(c.x + 0.5) === 2.5) || (c.y === c.H - 3 && Math.abs(c.x + 0.5) === 3.5)) ? MAT.brassD : undefined) },
-  buho: { body: (v, D) => {   // un cuervo en el hombro izquierdo
+  buho: { body: (v, D) => {   // un cuervo en el hombro izquierdo, parado sobre la hombrera si la hay
     const hw = D.W / 2 + D.sh, H = D.H, x0 = -hw - 4;
-    v.box(x0, H + 1, -3, 4, 4, 6, MAT.crow); v.box(x0, H + 5, 1, 4, 4, 4, MAT.crow);
-    v.box(x0 + 1, H + 6, 5, 2, 1, 2, 0x4a4238); v.set(x0, H + 7, 4, 0x9a8a48); v.set(x0 + 3, H + 7, 4, 0x9a8a48);
-    v.box(x0, H + 2, -6, 4, 1, 3, MAT.crow);
+    v.box(x0, H + 2, -3, 4, 4, 6, MAT.crow); v.box(x0, H + 6, 1, 4, 4, 4, MAT.crow);
+    v.box(x0 + 1, H + 7, 5, 2, 1, 2, 0x4a4238); v.set(x0, H + 8, 4, 0x9a8a48); v.set(x0 + 3, H + 8, 4, 0x9a8a48);
+    v.box(x0, H + 3, -6, 4, 1, 3, MAT.crow);
   } },
   trabuco: { hand: (v, D) => {   // solo para los piratas del combate (no está en el catálogo)
-    const y = HY(D), z0 = front(D);
-    v.box(-1, y - 3, -z0 - 3, 2, 4, 5, MAT.wood);
-    for (let z = -z0 + 2; z < z0 + 12; z++) v.box(-1, y, z, 2, 2, 1, z > z0 + 9 ? MAT.metalL : MAT.metal);
+    const y = HY(D), z0 = front(D), b = back(D);
+    v.box(-1, y - 3, b - 4, 2, 4, 5, MAT.wood);   // culata, detrás del puño
+    for (let z = z0; z < z0 + 12; z++) v.box(-1, y, z, 2, 2, 1, z > z0 + 9 ? MAT.metalL : MAT.metal);
     v.box(-2, y - 1, z0 + 12, 4, 4, 1, (x, yy) => (Math.abs(x + 0.5) < 1 && yy === y ? MAT.ink : MAT.metalD));
   }, pose: { rx: -0.35, rz: 0.1 } },
 };

@@ -137,13 +137,32 @@ function grain(v) {
 let HEAD = 'grande';
 export const headMode = () => HEAD;
 export function setHeadMode(m) { HEAD = m === 'chico' ? 'chico' : 'grande'; }
+// Prueba de encaje (tools/test-gear-fit.mjs): con globalThis.__gearFit cada geometría guarda su grilla, en qué capa se
+// pintó cada vóxel (figure.js marca v.layer: 'armor', 'gear', 'outfit'; sin marca es cuerpo) y qué celdas de cuerpo
+// tapó una capa de armadura o de equipo en la misma grilla.
+function fitVoxels() {
+  const v = new Voxels(), set = v.set.bind(v);
+  v.layers = new Map(); v.clash = [];
+  v.set = (x, y, z, c) => {
+    const k = `${x},${y},${z}`;
+    if (c == null) v.layers.delete(k);
+    else {
+      const L = v.layer || 'body';
+      if (v.layers.get(k) === 'body' && (L === 'armor' || L === 'gear')) v.clash.push(k + ' ' + L);
+      v.layers.set(k, L);
+    }
+    return set(x, y, z, c);
+  };
+  return v;
+}
 export function cachedGeo(key, build, scale = S) {
   key = HEAD + '|' + key;
   if (geoCache.has(key)) return geoCache.get(key);
-  const v = new Voxels();
+  const v = globalThis.__gearFit ? fitVoxels() : new Voxels();
   build(v);
   if (!NO_GRAIN.test(key)) grain(v);
   const g = v.size ? v.toGeometry({ scale, jitter: 0 }) : null;
+  if (g && v.layers) g.userData.fit = { cells: v.layers, clash: v.clash };
   geoCache.set(key, g);
   return g;
 }

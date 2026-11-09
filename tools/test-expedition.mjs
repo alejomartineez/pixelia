@@ -149,6 +149,8 @@ try {
   await sleep(500); await idle(); await sleep(400);
   v = await exp();
   ok(!v.pending && v.prov === 23 && v.run.steps === 1, 'Retroceder cierra la tarjeta sin costo');
+  // que la tarjeta vieja termine de irse antes de volver a entrar (si no, el toque puede caer en ella)
+  await waitFor(`!document.querySelector('.scene-expedition .ex-card.in')`, 4000); await sleep(300);
   await tapCell(3, 6);
   await cardReady();
   await sleep(200);
