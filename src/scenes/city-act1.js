@@ -86,8 +86,9 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
 
   // ---------- el dirigible del abordaje ----------
   let ship = null;
-  // el borde de la izquierda de la cámara inicial (ángulo π/4: la izquierda de la pantalla es −x +z), así se ve al llegar
-  const edge = islandEdgeSpots(48, 77).reduce((a, s) => (s.z - s.x > a.z - a.x ? s : a));
+  // el borde de adelante a la izquierda con la cámara inicial (ángulo π/4: +z queda abajo a la izquierda de la pantalla),
+  // donde no hay tarjetas del HUD; mientras está amarrado, la cámara puede alejarse un poco más (limitBonus)
+  const edge = islandEdgeSpots(48, 77).reduce((a, s) => (s.z > a.z ? s : a));
   function syncShip() {
     const st = A.abordajeStatus(state);
     if (st === 'ready' && !ship) {
@@ -129,7 +130,7 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
     if (cardOpen || A.abordajeStatus(state) !== 'ready') return;
     cardOpen = true;
     // la cámara se aleja hacia el borde donde está amarrado el dirigible
-    if (cam && edge) cam.flyTo(edge.x * 0.85, edge.z * 0.85, 30);
+    if (cam && edge) cam.flyTo(edge.x + edge.nx * 2.5, edge.z + edge.nz * 2.5, 26);
     const enc = ENCOUNTERS[A.ABORDAJE.enc];
     const attempt = A.bossAttempt(state, A.ABORDAJE.enc);
     const party = A.defenders(state);
@@ -169,6 +170,8 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
     openAbordaje,
     get echo() { return echo ? { id: echoId, leaving: echo.leaving, pos: echo.group.position.clone() } : null; },
     get ship() { return ship; },
+    /** Cuánto más se puede correr la cámara (en casillas): con el dirigible amarrado, hasta verlo entero. */
+    get limitBonus() { return ship ? 7 : 0; },
     dispose() {
       offs.forEach(f => f && f());
       echo?.dispose(); echo = null;

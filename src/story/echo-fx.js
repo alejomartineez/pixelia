@@ -1,15 +1,49 @@
-// Siluetas de los ecos de noche (L6; datos en echoes.js). Figuras de bloques traslúcidas, de un celeste apagado, que
-// repiten en bucle (unos 6,5 s) un momento de antes del Quiebre: aparecen, hacen lo suyo y se desvanecen. Sin caras ni
-// detalle: se leen como un recuerdo. No usan los modelos de personajes (los rehace la sesión 4a), solo bloques.
+// Siluetas de los ecos de noche (L6; datos en echoes.js). Las figuras son la gente de siempre (avatarModel del 4a, con
+// su pueblo y su contextura) pintadas de un celeste apagado y traslúcido: repiten en bucle (unos 6,5 s) un momento de
+// antes del Quiebre, aparecen, hacen lo suyo y se desvanecen. Sin color ni cara: se leen como un recuerdo. Si el modelo
+// de personas falla, queda una figura de bloques con la misma forma.
 //   const fx = createEcho('mapa', { scale: 1 }); scene.add(fx.group); fx.update(t); fx.pick (malla para el clic); fx.dispose()
 import * as THREE from 'three';
+import { avatarModel, randomLook } from '../avatar/avatar.js';
 
 export const ECHO_LOOP = 6.5;
 const GHOST = '#a9dcf0';
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 
-/** Una figura de bloques (≈ 0,8 de alto): piernas, torso, brazos con pivote en el hombro y cabeza. */
-function figure(mat, { h = 1, wide = 1 } = {}) {
+/**
+ * Una persona del eco (≈ 0,8 × h de alto): el avatar con el material fantasma. userData: head, arms [izq, der] (pivote en
+ * el hombro) y hands (grupos en la punta del brazo, en las unidades del eco, para colgar herramientas).
+ * o: { h, wide, type (pueblo), build, seed }
+ */
+function figure(mat, o = {}) {
+  try { return personFigure(mat, o); } catch (e) { console.warn('[eco] figura de bloques', e); return blockFigure(mat, o); }
+}
+function personFigure(mat, { h = 1, wide = 1, type = 'humano', build = null, seed = 1 } = {}) {
+  const look = { ...randomLook(seed, { type }), build: build || (wide > 1.05 ? 'recio' : 'esbelto'), crown: 'ninguna', acc: 'ninguno' };
+  const body = avatarModel(look);
+  const P = body.userData.parts || {};
+  if (!P.head || !P.armL || !P.armR) throw new Error('sin partes');
+  body.traverse(m => { if (m.isMesh) { m.material = mat; m.castShadow = false; m.receiveShadow = false; m.renderOrder = 9; m.userData.shared = true; } });
+  const k = (0.8 * h) / (body.userData.height || 1);
+  // manos: grupos en la punta de cada brazo, con la escala del eco
+  body.updateMatrixWorld(true);
+  const hands = [P.armL, P.armR].map(arm => {
+    const top = new THREE.Vector3().setFromMatrixPosition(arm.matrixWorld);
+    const bb = new THREE.Box3().setFromObject(arm);
+    const hold = new THREE.Group();
+    hold.position.set(0, bb.min.y - top.y, 0);
+    hold.scale.setScalar(1 / k);
+    arm.add(hold);
+    return hold;
+  });
+  body.scale.setScalar(k);
+  const g = new THREE.Group();
+  g.add(body);
+  g.userData = { head: P.head, arms: [P.armL, P.armR], hands, height: 0.8 * h };
+  return g;
+}
+/** Figura de bloques (si falla el avatar): piernas, torso, brazos con pivote en el hombro y cabeza. */
+function blockFigure(mat, { h = 1, wide = 1 } = {}) {
   const g = new THREE.Group();
   const add = (geo, x, y, z, parent = g) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.renderOrder = 9; parent.add(m); return m; };
   const legH = 0.32 * h, bodyH = 0.3 * h;
@@ -23,7 +57,8 @@ function figure(mat, { h = 1, wide = 1 } = {}) {
     add(box(0.07, 0.26 * h, 0.08), 0, -0.13 * h, 0, a);
     return a;
   });
-  g.userData = { head, arms, height: legH + bodyH + 0.18 };
+  const hands = arms.map(a => { const hd = new THREE.Group(); hd.position.y = -0.26 * h; a.add(hd); return hd; });
+  g.userData = { head, arms, hands, height: legH + bodyH + 0.18 };
   return g;
 }
 
@@ -31,9 +66,9 @@ const ease = (k) => k * k * (3 - 2 * k);
 /** Coreografías: arman la escena y devuelven update(p) con p en 0..1 a lo largo del bucle. */
 const SCENES = {
   cavar(g, mat) {
-    const a = figure(mat), b = figure(mat, { h: 0.95 });
+    const a = figure(mat, { type: 'enano', build: 'recio', seed: 11 }), b = figure(mat, { h: 0.95, type: 'enano', build: 'esbelto', seed: 23 });
     a.position.set(-0.22, 0, 0); b.position.set(0.25, 0, 0.05); b.rotation.y = -0.6; a.rotation.y = 0.3;
-    const pick = new THREE.Mesh(box(0.04, 0.04, 0.34), mat); pick.position.set(0, -0.26, 0.14); a.userData.arms[0].add(pick);
+    const pick = new THREE.Mesh(box(0.04, 0.04, 0.34), mat); pick.position.set(0, 0, 0.14); a.userData.hands[0].add(pick);
     const post = new THREE.Mesh(box(0.04, 0.6, 0.04), mat); post.position.set(0.02, 0.3, -0.3);
     const lamp = new THREE.Mesh(box(0.1, 0.1, 0.1), mat); lamp.position.set(0.02, 0.62, -0.3);
     g.add(a, b, post, lamp);
@@ -48,9 +83,9 @@ const SCENES = {
   },
   subir(g, mat) {
     const slab = new THREE.Mesh(box(0.9, 0.08, 0.6), mat); slab.position.set(-0.15, 0.04, 0);
-    const fam = [figure(mat), figure(mat, { h: 0.92, wide: 0.9 }), figure(mat, { h: 0.6, wide: 0.75 })];
+    const fam = [figure(mat, { seed: 31, build: 'recio' }), figure(mat, { h: 0.92, wide: 0.9, seed: 37 }), figure(mat, { h: 0.6, wide: 0.75, seed: 41 })];
     fam.forEach((f, i) => { f.position.set(-0.45 + i * 0.27, 0.08, 0); slab.add(f); f.position.y = 0.04; });
-    const other = figure(mat); other.position.set(0.62, 0, 0.1); other.rotation.y = -1.2;
+    const other = figure(mat, { seed: 43 }); other.position.set(0.62, 0, 0.1); other.rotation.y = -1.2;
     g.add(slab, other);
     return (p) => {
       slab.position.y = 0.04 + ease(Math.min(1, p / 0.8)) * 0.45;
@@ -63,8 +98,8 @@ const SCENES = {
     const table = new THREE.Mesh(box(0.5, 0.06, 0.34), mat); table.position.set(0, 0.36, 0);
     for (const [x, z] of [[-0.2, -0.13], [0.2, -0.13], [-0.2, 0.13], [0.2, 0.13]]) { const l = new THREE.Mesh(box(0.04, 0.34, 0.04), mat); l.position.set(x, 0.17, z); g.add(l); }
     const sheet = new THREE.Mesh(box(0.3, 0.012, 0.22), mat); sheet.position.set(0, 0.4, 0);
-    const girl = figure(mat, { h: 0.78, wide: 0.85 }); girl.position.set(0, 0, -0.32);
-    const lord = figure(mat, { h: 1.12, wide: 1.15 }); lord.position.set(0.42, 0, 0.12); lord.rotation.y = -1.9;
+    const girl = figure(mat, { h: 0.78, wide: 0.85, seed: 53 }); girl.position.set(0, 0, -0.32);
+    const lord = figure(mat, { h: 1.12, wide: 1.15, seed: 59 }); lord.position.set(0.42, 0, 0.12); lord.rotation.y = -1.9;
     g.add(table, sheet, girl, lord);
     return (p) => {
       girl.userData.arms[1].rotation.x = -1.1 + Math.sin(p * Math.PI * 9) * 0.12;
@@ -79,8 +114,8 @@ const SCENES = {
   },
   permiso(g, mat) {
     const table = new THREE.Mesh(box(0.42, 0.06, 0.3), mat); table.position.set(0, 0.34, 0);
-    const clerk = figure(mat, { h: 0.82 }); clerk.position.set(0, 0, -0.3);
-    const buyer = figure(mat, { h: 1.05 });
+    const clerk = figure(mat, { h: 0.82, seed: 61 }); clerk.position.set(0, 0, -0.3);
+    const buyer = figure(mat, { h: 1.05, wide: 1.1, seed: 67 });
     const bag = new THREE.Mesh(box(0.1, 0.1, 0.1), mat);
     const post = new THREE.Mesh(box(0.04, 0.7, 0.04), mat); post.position.set(-0.36, 0.35, -0.2);
     const lamp = new THREE.Mesh(box(0.1, 0.1, 0.1), mat); lamp.position.set(-0.36, 0.72, -0.2);
@@ -99,7 +134,7 @@ const SCENES = {
   farero(g, mat, lampMat) {
     const tower = new THREE.Mesh(box(0.22, 0.9, 0.22), mat); tower.position.set(-0.2, 0.45, -0.1);
     const lamp = new THREE.Mesh(box(0.3, 0.2, 0.3), lampMat); lamp.position.set(-0.2, 1.0, -0.1);
-    const man = figure(mat); man.position.set(0.25, 0, 0.12); man.rotation.y = -0.7;
+    const man = figure(mat, { seed: 71, build: 'recio' }); man.position.set(0.25, 0, 0.12); man.rotation.y = -0.7;
     g.add(tower, lamp, man);
     return (p) => {
       lampMat.opacity = mat.opacity * (p < 0.4 ? 1 : Math.max(0.1, 1 - (p - 0.4) / 0.15));
@@ -152,7 +187,7 @@ export function createEcho(sceneId, { scale = 1, opacity = 0.42 } = {}) {
     leave() { if (!api.leaving) { api.leaving = true; fading = 1; } },
     leaving: false,
     dispose() {
-      group.traverse(o => { if (o.isMesh) { o.geometry.dispose(); } });
+      group.traverse(o => { if (o.isMesh && !o.userData.shared) o.geometry.dispose(); });
       mat.dispose(); lampMat.dispose(); halo.material.dispose(); pick.material.dispose();
       group.removeFromParent();
     },

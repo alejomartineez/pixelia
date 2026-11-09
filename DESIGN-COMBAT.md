@@ -491,7 +491,8 @@ cloneBattle(b)
   con `enc` opcional). Los jefes van en lugares de la historia: la bestia en la poza honda del Bañado (casilla `enemigo`
   con `boss`, al fondo de la salida normal) y la capitana en el abordaje, que se pelea en la ciudad
   (`src/story/act1.js`). La revancha cuenta las derrotas guardadas (`mods.bossLosses` → `attempt` en `makeBattle`).
-  Los jefes se dibujan en low-poly (`src/combat/boss-models.js`, con `setPhase` en la fase 2). La bestia ahora da la
+  Los jefes se dibujan en low-poly (`src/combat/boss-models.js`, con `setPhase` en la fase 2, kit de `lowpoly.js`); desde el
+  6c hay una sola bestia: `enemyModel('bestia')` devuelve esa misma. La bestia ahora da la
   página 9 (antes p3, que ya daba el rango 2). Detalle en DESIGN-STORY §5, "Estado (paso 6b…)".
 - **Paso 7:**
   - revisar que la Cuerda no quede obligatoria contra la bestia;

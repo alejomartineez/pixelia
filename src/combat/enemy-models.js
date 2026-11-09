@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { avatarModel } from '../avatar/avatar.js';
 import { Facets } from '../avatar/lowpoly.js';
+import { bossModel } from './boss-models.js';
 
 // ---------- paletas (terrosas, con ojos que brillan en la penumbra) ----------
 const P = {
@@ -21,11 +22,9 @@ const P = {
   old: '#7e7870', old_d: '#57534d', old_l: '#a59d8f', old_eye: '#ff9a3d', scar: '#8a3b34',
   stone: '#5a5148', stone_d: '#3c3631', stone_l: '#7e7262', vein: '#5fe0d0', vein_d: '#2f9e94', bug_eye: '#ff5a4a',
   bone: '#cfc6b0', bone_d: '#a89f8a', ink: '#161210',
-  moss: '#4a5a34', moss_d: '#323d26', moss_l: '#728248', mud: '#54432e', reed: '#8a8044', beast_eye: '#d6ff70',
   rock: '#7a7468', rock_d: '#54504a', rock_l: '#a19a8a', root: '#5e4630', rootL: '#86683e', golem_eye: '#8ff0a0', lichen: '#6e8a4a',
   orc: '#6c7a4e', orc_d: '#55613d', iron: '#4a4b4e', iron_d: '#333437', iron_l: '#6e7074', ember: '#ff8a3a', leather: '#4a3426',
 };
-const mix = (a, b, t) => new THREE.Color(a).lerp(new THREE.Color(b), t).getHex();
 
 // ---------- piezas ----------
 /** Grupo con partes animadas. parts: { name: Facets } → mallas; las que tienen glow usan el material sin luz. */
@@ -87,27 +86,7 @@ function bug(broken) {
   return assemble({ parts: { body: { f: body, glow }, crystals: { f: new Facets() } } });
 }
 
-// la bestia del Bañado: lomo encorvado de barro y musgo, juncos en la espalda, boca abierta y garras
-function beast() {
-  const body = new Facets(), head = new Facets(), eyes = new Facets({ ao: false, vary: 0 });
-  const moss = (y) => (y < 0.35 ? P.mud : y > 0.95 ? P.moss_l : P.moss);
-  body.blob(0, 0.75, -0.1, 0.62, 0.55, 0.62, moss, { seed: 11, jit: 0.18 });
-  body.blob(0, 0.55, 0.38, 0.5, 0.4, 0.36, moss, { seed: 3 });
-  for (const s of [-1, 1]) {
-    body.limb([s * 0.5, 0.75, 0.35], [s * 0.62, 0.35, 0.62], 0.17, 0.13, P.moss_d, 5);   // brazos
-    body.limb([s * 0.62, 0.35, 0.62], [s * 0.58, 0.04, 0.78], 0.13, 0.12, P.moss_d, 5);
-    for (const d of [-0.07, 0, 0.07]) body.spike([s * 0.58 + d, 0.05, 0.84], [s * 0.6 + d * 1.4, 0.0, 1.0], 0.035, P.bone, 3);
-    body.limb([s * 0.35, 0.4, -0.45], [s * 0.42, 0.02, -0.4], 0.17, 0.14, P.moss_d, 5);   // patas
-  }
-  body.limb([0, 0.45, -0.7], [0, 0.15, -1.15], 0.18, 0.05, P.moss_d, 5);   // cola
-  [[-0.2, -0.2, 0.4], [0.15, -0.35, 0.5], [0.3, 0.0, 0.32], [-0.35, 0.05, 0.3], [0.05, 0.1, 0.45]].forEach(([x, z, h]) => body.spike([x, 1.15, z], [x * 1.1, 1.15 + h, z - 0.05], 0.035, mix(P.reed, '#8a7f45', 0.4), 3));
-  head.blob(0, 0.08, 0.1, 0.34, 0.24, 0.3, P.moss, { seed: 9, detail: 0 });
-  head.box(0, -0.1, 0.34, 0.5, 0.12, 0.3, P.moss_d, { taper: 0.9 });   // mandíbula
-  head.box(0, -0.02, 0.46, 0.42, 0.05, 0.08, P.ink);   // garganta
-  for (const x of [-0.16, -0.06, 0.06, 0.16]) { head.spike([x, 0.0, 0.47], [x, -0.1, 0.48], 0.022, P.bone, 3); head.spike([x + 0.04, -0.05, 0.47], [x + 0.04, 0.03, 0.48], 0.018, P.bone, 3); }
-  for (const [x, y] of [[-0.2, 0.14], [-0.11, 0.2], [0.11, 0.2], [0.2, 0.14]]) eyes.box(x, y, 0.36, 0.05, 0.035, 0.03, P.beast_eye);
-  return assemble({ parts: { body: { f: body }, head: { f: head, glow: eyes, at: [0, 0.95, 0.55] } } });
-}
+// la bestia del Bañado es un jefe: la arma src/combat/boss-models.js (una sola bestia para el combate y la galería)
 
 // gólem de Raíz: bloques de piedra con raíces y una veta verde que late
 function golem() {
@@ -180,15 +159,15 @@ const BEASTS = {
   lobo: () => wolf({ base: P.wolf, d: P.wolf_d, l: P.wolf_l, eye: P.wolf_eye }),
   lobo_viejo: () => wolf({ base: P.old, d: P.old_d, l: P.old_l, eye: P.old_eye }, { k: 1.15, mane: true, scar: true }),
   bicho: (o) => bug(!!o.broken),
-  bestia: () => beast(),
   golem: () => golem(),
   orco: () => orc(),
 };
-const SCALE = { lobo: 1, lobo_viejo: 1, bicho: 0.95, bestia: 0.82, golem: 0.9, orco: 0.92 };
+const SCALE = { lobo: 1, lobo_viejo: 1, bicho: 0.95, golem: 0.9, orco: 0.92 };
 const cache = new Map();
 
 /** Modelo de un enemigo (types de ENEMIES en combat-data.js, más los que vienen: vaciado, golem, orco). */
 export function enemyModel(type, opts = {}) {
+  if (type === 'bestia') return bossModel('bestia', opts);
   const pp = PEOPLE[type];
   if (pp) {
     const g = avatarModel(pp.look, pp.gear ? { gear: pp.gear } : {});

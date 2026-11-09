@@ -23,6 +23,7 @@ import { hasBase, startExpedition, finishExpedition, expeditionStatus, creditFig
 import { ENCOUNTERS, ENEMIES } from '../combat/combat-data.js';
 import { expPlace, expEchoSpots } from '../core/ambience.js';
 import { createEcho } from '../story/echo-fx.js';
+import { createExpGuide } from './exp-guide.js';
 import { expEcho, seeEcho } from '../story/echoes.js';
 import { PAGE_BY_ID } from '../story/story-data.js';
 import { icon as iconHtml } from '../core/icons.js';
@@ -177,6 +178,7 @@ export default function create(ctx) {
   const anims = new Set();     // tweens: { t, dur, fn(k), done }
   let shownTips = {};
   let expAmb = null;           // ambiente: hora, clima, niebla por distancia, polvo y huellas (exp-ambience.js)
+  let guide = null;            // la primera expedición guiada (plan §E6, exp-guide.js)
   let echo = null;             // eco de noche en una ruina ya pisada (L6, paso 6b): { fx, id, x, y }
 
   const music = audio.songs?.includes?.('expedition') ? 'expedition' : 'calm';
@@ -559,6 +561,14 @@ export default function create(ctx) {
   function tips(v) {
     if (v.ended || v.pending || busy) return;
     const unsafe = v.moves.some(m => m.ok && !m.safe);
+    // la primera salida, con Vera (pistas de un solo uso); si va guiada, no se repiten abajo
+    if (guide?.active) {
+      if (v.steps === 0) guide.on('start');
+      else if (unsafe && guide.on('unsafe')) {}
+      else if (v.objective?.cell && !v.objective.done && guide.on('objSeen')) {}
+      else if (v.cargoMax && v.cargoN >= v.cargoMax) guide.on('cargoFull');
+      shownTips.start = true; if (unsafe) shownTips.unsafe = true;
+    }
     let t = null;
     if (!shownTips.start && v.steps === 0) { t = 'Hacé clic en una casilla vecina para avanzar. El número es lo que cuesta en provisiones.'; shownTips.start = true; }
     else if (unsafe && !shownTips.unsafe) { t = `En rojo: si das ese paso, no te alcanza para volver. ${'Volver'} siempre dice cuánto cuesta.`; shownTips.unsafe = true; }
@@ -595,6 +605,7 @@ export default function create(ctx) {
           break;
         }
         case 'loot': {
+          guide?.on('loot');
           const p = partyScreen();
           const parts = [];
           if (e.mats && Object.keys(e.mats).length) parts.push('+' + matsHtml(e.mats, 22));
@@ -648,7 +659,7 @@ export default function create(ctx) {
           ui.confetti?.(90);
           const p = partyScreen();
           float(p.x, p.y - 40, `${ui.icon('star', 26)} Objetivo cumplido`);
-          dom.hint(e.objective === 'aldea' ? 'Llegaron a la aldea perdida: se suman 2 personas.' : `Encontraron ${ui.esc(e.name)}. ¿Seguís o volvés?`, 6000);
+          if (!guide?.on('objDone')) dom.hint(e.objective === 'aldea' ? 'Llegaron a la aldea perdida: se suman 2 personas.' : `Encontraron ${ui.esc(e.name)}. ¿Seguís o volvés?`, 6000);
           await wait(700);
           break;
         }
@@ -708,6 +719,7 @@ export default function create(ctx) {
     dom.clearChips();
     const depth = run.cells[pd.y * run.w + pd.x].depth;
     const fightInfo = pd.kind === 'enemigo' ? { fightParty: R.fightParty(run), party: run.party.slice() } : {};
+    if (pd.kind === 'peligro' || pd.kind === 'ruina') guide?.on('hazard');
     const cardRef = card = openDecision(root, pd, { depth, ...fightInfo }, (id) => {
       if (!card || busy) return;
       const c = card; card = null;
@@ -977,6 +989,8 @@ export default function create(ctx) {
       expAmb = createExpAmbience({ ctx, r, lights, world, cellPos: (x, y) => cellPos(x, y), cellTop: (x, y) => cellTop(x, y) });
       start(params);
       if (!run) return;   // no se pudo salir: vuelve a la ciudad
+      guide = createExpGuide({ root, store, run });
+      if (lastView) tips(lastView);
       r.onFrame((dt, t) => {
         for (const a of [...anims]) {
           a.t += dt;
@@ -1017,6 +1031,7 @@ export default function create(ctx) {
         get cond() { return run ? R.conditions(run) : null; },
         get look() { return expAmb?.amb.look || null; },
         echoSpots() { return run ? expAmb?.echoSpots(run) || [] : []; },
+        get guide() { return guide ? { active: guide.active, text: guide.text } : null; },
         get echo() { return echo ? { id: echo.id, x: echo.x, y: echo.y, leaving: echo.fx.leaving } : null; },
       };
     },
@@ -1029,6 +1044,7 @@ export default function create(ctx) {
       if (modal) { modal.close(); modal = null; }
       expAmb?.dispose(); expAmb = null;
       echo?.fx.dispose(); echo = null;
+      guide?.dispose(); guide = null;
       if (r) { r.stop(); r.dispose(); r = null; }
       for (const m of texCache.values()) { m.map?.dispose(); m.dispose(); }
       texCache.clear();

@@ -976,7 +976,7 @@ export default function create(ctx) {
       for (const b of ctx.state.city.buildings) createEntry(b);
       life = createLife(r, ctx);
 
-      cam = createCameraCtl(r, ctx.state.city.camera, { onChange: (c) => { ctx.state.city.camera = c; store.markDirty(); }, limit: () => E.landBounds().side / 2 + 2.5 });
+      cam = createCameraCtl(r, ctx.state.city.camera, { onChange: (c) => { ctx.state.city.camera = c; store.markDirty(); }, limit: () => E.landBounds().side / 2 + 2.5 + (act1?.limitBonus || 0) });
       ov = createOverlays(container, r);
       ro = new ResizeObserver(() => { cam.applyProj(); ov.resize(); });
       ro.observe(container);

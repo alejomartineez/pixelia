@@ -200,6 +200,8 @@ try {
     a.userData.update(0.016, false, 1); a.userData.setPhase(1); a.userData.update(0.016, false, 1.2); c.userData.setPhase(1); c.userData.update(0.5, false, 2);
     return { lp: a.userData.lowpoly && c.userData.lowpoly, ha: a.userData.height, hc: c.userData.height, none: n === null, tris, types: B.BOSS_TYPES };`);
   ok(bm.lp && bm.none && bm.types.join() === 'bestia,capitana', 'bossModel arma la bestia y la capitana (y nada para los demás)', bm);
+  const one = await run(`const EM = await import('/src/combat/enemy-models.js'); const g = EM.enemyModel('bestia'); return { lp: !!g.userData.lowpoly, name: g.name, types: EM.ENEMY_MODEL_TYPES.includes('bestia') };`);
+  ok(one.lp && one.name === 'boss:bestia' && one.types, 'una sola bestia: enemyModel("bestia") entrega la de boss-models (la galería y el combate ven la misma)', one);
   ok(bm.ha > 1.2 && bm.hc > 1.4 && bm.hc < 2.4 && bm.tris > 400, 'tienen tamaño de jefe y caras facetadas', bm);
   await page.goto(`${BASE}?scene=combat&enc=banado_bestia&seed=3&level=5&element=raiz&nosplash&nosw`, { waitUntil: 'load' });
   ok(await waitFor(`!!document.querySelector('.cb-top, .cb-hud, [class*="cb-"]')`, 25000), 'la pelea contra la bestia abre con el modelo nuevo');
@@ -250,7 +252,11 @@ try {
   await click('.ab-modal .modal-x, .ab-modal .btn.ghost');
   await sleep(400);
   // la tarjeta ya llevó la cámara hacia el borde donde está amarrado el dirigible
-  await sleep(1500);
+  await sleep(1800);
+  const vis = await run(`const c = window.__pixelia.city, s = c.act1.ship; const p = s.position.clone(); p.y += 1.4;
+    const sc = c.ov.project(p, {}); const el = document.elementFromPoint(sc.x, sc.y);
+    return { x: Math.round(sc.x), y: Math.round(sc.y), w: innerWidth, h: innerHeight, tag: el?.tagName, cls: el?.className?.baseVal ?? el?.className };`);
+  ok(vis.x > 0 && vis.x < vis.w && vis.y > 0 && vis.y < vis.h && vis.tag === 'CANVAS', 'el dirigible queda en pantalla, sin tarjetas del HUD encima', vis);
   await shot('6-dirigible');
   // la pelea en la ciudad
   await run(`bus.emit('abordaje:panel'); return true;`);
@@ -303,6 +309,9 @@ try {
   await run(`store.save = () => {}; return true;`);
   await drainStory(2500);
   ok(await waitFor(`window.__pixelia.city.act1.echo?.id === 'e_cavar'`, 6000), 'de noche aparece el primer eco en el borde de la isla');
+  const fig = await run(`const g = window.__pixelia.city.r.scene.getObjectByName('act1').children.find(o => o.name.startsWith('echo:'));
+    let people = 0, ghost = 0; g.traverse(o => { if (o.isMesh && o.userData.shared) { people++; if (o.material.transparent && o.material.opacity < 0.7) ghost++; } }); return { people, ghost };`);
+  ok(fig.people > 10 && fig.ghost === fig.people, 'las figuras del eco son la gente del 4a (avatarModel), pintadas de fantasma', fig);
   await run(`const p = window.__pixelia.city.act1.echo.pos; window.__pixelia.city.cam.flyTo(p.x, p.z, 26); return true;`);
   await sleep(2500);
   await shot('9-eco-ciudad');
@@ -346,6 +355,40 @@ try {
   ok(xe?.id === 'e_permiso', 'es el de los permisos (L4)', xe);
   await sleep(1500);
   await shot('11-eco-expedicion');
+
+  // ===================================================================
+  section('E6: la primera expedición, guiada');
+  await page.goto(`${BASE}?scene=city&reset&nosplash&nosw&cheat=15`, { waitUntil: 'load' });
+  ok(await waitFor(`window.__pixelia?.ctx.router.current === 'city'`, 25000), 'partida nueva');
+  await run(`store.save = () => {}; store.state.onboarded = true; return true;`);
+  await place('casa_exp');
+  const g0 = await run(`const s = store.state; s.stats.expeditions = 0; X.expState(s).tutorialShort = false; X.expState(s).freeDay = null;
+    const r = X.startExpedition({ region: 'bosque', kind: 'corta' }); if (r.error) return { error: r.error };
+    const G = await import('/src/expedition/exp-guide.js');
+    return { tut: !!r.run.city.tutorial, seed: r.run.seed, guided: G.guidedRun(r.run, s), ids: G.EXP_GUIDE_IDS };`);
+  ok(g0.tut && g0.seed === 110 && g0.guided, 'la salida corta del tutorial (TUTORIAL_SEED) va guiada', g0);
+  ok(g0.ids?.length === 7, 'siete pistas: moverse, juntar, un imprevisto, el paso sin vuelta, el objetivo, volver y la carga llena', g0.ids);
+  await run(`ctx.router.go('expedition', { resume: true }); return true;`);
+  const xs = () => page.evaluate(() => [...document.querySelectorAll('*')].find(e => e.__exp)?.__exp);
+  ok(await waitFor(`!![...document.querySelectorAll('*')].find(e => e.__exp)?.__exp?.guide?.text`, 20000), 'Vera aparece abajo a la derecha con la primera pista');
+  const t1 = await page.evaluate(() => [...document.querySelectorAll('*')].find(e => e.__exp).__exp.guide.text);
+  ok(/casilla vecina/.test(t1) && /provisiones/.test(t1), 'la primera: cómo moverse y lo que cuesta', t1);
+  ok(await has('.ex-guide canvas') && await has('.ex-guide [data-a="ok"]'), 'con su retrato y un botón Entendido');
+  await shot('12-expedicion-guiada');
+  ok(await run(`return !!store.state.tutorial.expTips.start`), 'queda anotada (una sola vez)');
+  // dar un paso hacia una casilla con algo para juntar
+  const step = await page.evaluate(() => { const x = [...document.querySelectorAll('*')].find(e => e.__exp).__exp; const v = x.view, run = x.raw();
+    const mv = v.moves.filter(m => m.ok).sort((a, b) => (run.cells[b.y * run.w + b.x].content === 'recurso') - (run.cells[a.y * run.w + a.x].content === 'recurso'))[0];
+    x.move(mv.x, mv.y); return { x: mv.x, y: mv.y, content: run.cells[mv.y * run.w + mv.x].content }; });
+  await waitFor(`![...document.querySelectorAll('*')].find(e => e.__exp)?.__exp?.busy`, 8000);
+  await sleep(800);
+  const t2 = await run(`return { tips: Object.keys(store.state.tutorial.expTips), loot: !!store.state.tutorial.expTips.loot }`);
+  ok(step.content !== 'recurso' || t2.loot, 'juntar algo trae la pista de la carga', { step, t2 });
+  // en otra salida no se repite lo visto
+  const g1 = await run(`const G = await import('/src/expedition/exp-guide.js'); const s = store.state;
+    const daily = G.guidedRun({ kind: 'corta', city: { daily: 3 } }, s); s.stats.expeditions = 5; const later = G.guidedRun({ kind: 'normal', city: {} }, s);
+    return { daily, later };`);
+  ok(!g1.daily && !g1.later, 'la Expedición del día y las salidas de después no van guiadas', g1);
 
   section('Sin errores');
   ok(errors.length === 0, 'sin errores de consola', errors.slice(0, 5));

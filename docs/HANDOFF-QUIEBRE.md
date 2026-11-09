@@ -51,7 +51,7 @@ cada paso.
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | **en curso** (sesión quiebre-4a-detalle) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | partes 1 y 2 hechas e integradas (clases, nivel del líder, gente de la ciudad con herramienta, Vínculo, Progreso; el efecto de las herramientas en la ciudad queda para el paso 7). Parte 3 (clase en el onboarding y aspecto por clase) **en curso** | ed2ba67 (v36) + v39 |
-| 6 | Acto 1 completo + E5–E6 | 6a y 6b hechos e integrados (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche, E5, `test-act1`). 6c (E6 expedición guiada, ecos con figuras del 4a, una sola bestia, dirigible visible) **en curso** | ed2ba67 (v36) + v39 |
+| 6 | Acto 1 completo + E5–E6 | 6a y 6b hechos e integrados (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche, E5, `test-act1`). 6c (E6 expedición guiada, ecos con figuras del 4a, una sola bestia, dirigible visible) hecho en la rama `claude/guia-ecos-6c`, sin mergear | ed2ba67 (v36) + v39 |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
 ### Plan nocturno (2026-11-09)
@@ -468,9 +468,16 @@ los primeros ecos, 7 balancea L1 y L5.
 - Páginas: p8 la deja la capitana (ya no la zona de la Costa), p9 la bestia, p10 un eco. Capítulo 8 "Las islas te vieron".
 - Pruebas: `tools/test-act1.mjs` (`--shots` → `shots/act1/`). Para integrar: sumarlo al `npm test` y
   `"test:act1": "node test-act1.mjs"` en `tools/package.json`.
-- **Queda para después:** E6 (la primera expedición guiada con pistas de un uso; la primera pelea guiada ya está desde el
-  paso 5); ecos con las siluetas de los personajes del 4a (hoy son bloques); el balance de la bestia desde el rango 3 en
-  `sim-combat` (paso 7).
+- **Queda para después:** el balance de la bestia desde el rango 3 en `sim-combat` (paso 7).
+
+**Paso 6c: guía de la primera expedición, ecos con gente del 4a, una sola bestia y el dirigible a la vista** (rama
+`claude/guia-ecos-6c`; detalle en DESIGN-STORY §5, "Estado (paso 6c…)")
+- E6 en `src/expedition/exp-guide.js` (Vera en la salida corta del tutorial, siete pistas de un uso en
+  `state.tutorial.expTips`).
+- `echo-fx.js` arma las figuras con `avatarModel` y material fantasma; `boss-models.js` usa `Facets` de `lowpoly.js`;
+  `enemy-models.js` ya no tiene su bestia (entrega la de `boss-models`).
+- El dirigible se amarra abajo a la izquierda de la cámara inicial y amplía el tope de la cámara mientras está.
+- Con esto el paso 6 queda completo. Sigue el paso 7 (balance y primer release).
 
 ## Pendiente o frágil
 - **`npm test` con la máquina cargada** (2026-11-09, otras sesiones corriendo tests a la vez): `test-mock`,

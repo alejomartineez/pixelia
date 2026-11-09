@@ -173,7 +173,8 @@ Al encontrar un elemento (el Núcleo de Raíz en el Acto 1) se elige cuánto sac
 - **Los jefes en low-poly** (`bossModel(type, { phase })`, mismo contrato que `enemyModel`): la bestia (lomo de barro y
   musgo, juncos, cuatro ojos y vetas de Marea que en la fase 2 se encienden junto con la boca) y la capitana, gente-zorro
   del Céfiro (M2: saco rojo oscuro con dorado, tricornio con pluma, brazo de bronce con la pistola, sable que alza en la
-  fase 2). El kit facetado es propio del archivo; al integrar el 4a puede pasar a `src/avatar/lowpoly.js`.
+  fase 2). Desde el 6c usan el kit facetado del 4a (`src/avatar/lowpoly.js`) y hay **una sola bestia**:
+  `enemyModel('bestia')` devuelve la de `boss-models.js` (la low-poly duplicada de `enemy-models.js` se sacó).
 - **E5** (cadena de `MAIN_QUESTS`, seguida por id): `q_combate` después de t5 (se cobra sola), `q_bestia` después de
   m21 (rango 4), `q_nucleo` después de m24 (rango 5), `q_faro` y `q_abordaje` después de m26 (rango 6). Tipos nuevos en
   `quests.js` (`combat` con `enc` opcional, `element`, `flag`), todos absolutos: una partida que ya lo hizo los cumple
@@ -191,12 +192,27 @@ Al encontrar un elemento (el Núcleo de Raíz en el Acto 1) se elige cuánto sac
   | Los permisos | expedición | Cerro | un hombre firma sin leer; otro deja una bolsa que suena a piedra | L4 |
   | El farero | expedición (Costa) | Costa | un farero apaga la lámpara mirando al cielo: le pagaron | L4 |
 
-  Las siluetas son bloques traslúcidos propios (`echo-fx.js`), sin los modelos de personajes, para no depender del 4a.
+  Desde el 6c las figuras son la gente del 4a (`avatarModel`, con su pueblo: los mineros son enanos de la Veta) con un
+  material fantasma celeste y traslúcido; si el modelo falla, queda la figura de bloques. Las herramientas (el pico) se
+  cuelgan de `hands`, un grupo en la punta de cada brazo con la escala del eco.
 - **Pruebas:** `tools/test-act1.mjs` (72 ✔; `--shots` deja 11 capturas en `shots/act1/`). Se adaptaron `test-raiz`
   (p8 sin disparador), `test-story` y `test-e2e` (la primera pelea entre t5 y t6). `sim:economy`: 22 ✔ · 0 ✘ (la
   Raíz sigue en 2,2 % de ventaja).
 - **Para integrar:** sumar `node test-act1.mjs` al `npm test` y `"test:act1": "node test-act1.mjs"` en
-  `tools/package.json`.
+  `tools/package.json`. (Hecho en la integración v39.)
+
+**Estado (paso 6c, rama `claude/guia-ecos-6c`, sin mergear):**
+- **E6, la primera expedición guiada** (`src/expedition/exp-guide.js`): la salida corta del tutorial (`TUTORIAL_SEED`)
+  trae a Vera en un panel abajo a la derecha, con retrato y "Entendido", como la primera pelea. Siete pistas de un solo
+  uso (`state.tutorial.expTips`): moverse y lo que cuesta, lo que se junta va a la carga, un imprevisto (retroceder es
+  gratis), el paso sin vuelta (rojo), la bandera del objetivo, objetivo cumplido y cómo volver, la carga llena. Las que no
+  salieron en la corta pueden salir en las dos primeras normales; nunca en la Expedición del día. Mientras va guiada, las
+  pistas viejas de abajo (`tips` de `exp-scene`) no se repiten.
+- **Ecos con las figuras del 4a** y **una sola bestia** (ver arriba).
+- **El dirigible a la vista:** se amarra en el borde de adelante a la izquierda (abajo a la izquierda en pantalla, donde no
+  hay tarjetas del HUD). Al abrir la tarjeta, la cámara vuela hasta ahí; mientras está amarrado, el tope de la cámara se
+  corre 7 casillas (`act1.limitBonus` en el `limit` de `createCameraCtl`).
+- **Pruebas:** `test-act1.mjs` suma E6, la bestia única, el dirigible sin nada encima y los ecos con avatar.
 
 ## 6. Páginas del diario
 Diez en el Acto 1 (`PAGES`). Se acreditan con `store.grant({ page: 'p3' })` o por su `trigger`:
@@ -257,6 +273,7 @@ y de `expEchoSpots(run)` (ruinas ya pisadas, solo de noche: `__exp.echoSpots()`)
   (la ciudad, la expedición, el combate, las amenazas, los elementos, el rango y las Épocas, el Taller). Cada uno sale una
   vez y queda para releer en la Bitácora.
 - Lo demás se descubre jugando y queda en el **Manual**, por capítulos que se abren al llegar a cada sistema, con buscador.
+- La **primera expedición** va con Vera (E6, `exp-guide.js`): siete pistas de un solo uso, en el momento en que sirven.
 - La **flecha guiada** señala lo que pide la misión actual (Construir, Expedición, la Huerta, el Taller, el rango, la
   amenaza, el cartel de terreno o la Bitácora) y se apaga cuando se abre lo que señalaba. Se apaga del todo en Ajustes →
   Juego → Pistas de la guía.
