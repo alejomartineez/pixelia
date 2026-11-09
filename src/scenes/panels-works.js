@@ -38,7 +38,7 @@ export function openWorks(ctx, params = {}) {
       const cell = h('div.pnl-wk-mat', { style: { '--c': m.color }, html: `
         <span class="pnl-wk-mat-ic">${icon(m.icon, 34)}</span>
         <span class="pnl-wk-mat-txt"><b data-mat="${m.id}">${fmt(mats[m.id] || 0)}</b><small>${esc(m.name)}</small><em>${esc(r?.name || '')}</em></span>` });
-      const btn = h('button.btn.second.pnl-wk-play' + (canGo ? '' : '.off'), { html: `${icon('🧭', 14)}Salir`, title: r ? `Sale más en ${r.name}` : 'Salí de expedición' });
+      const btn = h('button.btn.second.pnl-wk-play' + (canGo ? '' : '.off'), { html: `${icon('expedition', 14)}Salir`, title: r ? `Sale más en ${r.name}` : 'Salí de expedición' });
       btn.onclick = goOut;
       cell.append(btn);
       grid.append(cell);
@@ -69,7 +69,7 @@ export function openWorks(ctx, params = {}) {
         </span>` });
       if (ok) row.append(h('span.pnl-rk-req-check', { html: icon('check', 22) }));
       else {
-        const b = h('button.btn.second.pnl-wk-get', { html: `${icon('🧭', 14)}Salir` });
+        const b = h('button.btn.second.pnl-wk-get', { html: `${icon('expedition', 14)}Salir` });
         b.onclick = goOut;
         row.append(b);
       }

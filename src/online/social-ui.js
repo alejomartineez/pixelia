@@ -19,10 +19,10 @@ import { renderRanking, renderTeam } from './social-week.js';
 
 export const TABS = [
   { id: 'amigas', name: 'Contactos', icon: 'people' },
-  { id: 'pedidos', name: 'Pedidos', icon: '🤝' },
-  { id: 'buzon', name: 'Buzón', icon: '📮' },
+  { id: 'pedidos', name: 'Pedidos', icon: 'handshake' },
+  { id: 'buzon', name: 'Buzón', icon: 'mail' },
   { id: 'ranking', name: 'Ranking', icon: 'trophy' },
-  { id: 'equipo', name: 'Equipo', icon: '🏗️' },
+  { id: 'equipo', name: 'Equipo', icon: 'build' },
 ];
 const RENDER = { amigas: renderFriends, pedidos: renderRequests, buzon: renderInbox, ranking: renderRanking, equipo: renderTeam };
 
@@ -137,13 +137,13 @@ async function renderFriends(api, tok) {
     const accepted = friends.filter(f => f.status === 'accepted');
     const nodes = [meCard(api), addCard(api)];
     if (incoming.length) {
-      const sec = h('div.soc-sec', { html: `<h4>${icon('💌', 22)} Te quieren agregar<small>${incoming.length}</small></h4>` });
+      const sec = h('div.soc-sec', { html: `<h4>${icon('mail', 22)} Te quieren agregar<small>${incoming.length}</small></h4>` });
       for (const f of incoming) sec.append(incomingCard(api, f));
       nodes.push(sec);
     }
     const sec = h('div.soc-sec', { html: `<h4>${icon('people', 22)} Tus contactos<small>${accepted.length}</small></h4>` });
     if (!accepted.length) {
-      sec.append(h('div.soc-card', { html: emptyHtml('🌷', 'Todavía no tenés contactos en Pixelia', 'Compartí tu código, o pedile el suyo a alguien y escribilo arriba. Es gratis.') }));
+      sec.append(h('div.soc-card', { html: emptyHtml('flower', 'Todavía no tenés contactos en Pixelia', 'Compartí tu código, o pedile el suyo a alguien y escribilo arriba. Es gratis.') }));
     } else for (const f of accepted) sec.append(friendCard(api, f));
     nodes.push(sec);
     if (outgoing.length) {
@@ -164,7 +164,7 @@ function meCard(api) {
   });
   const btns = h('div.soc-me-btns');
   btns.append(h('button.btn.second.small', {
-    html: `${icon('📋', 18)} Copiar`,
+    html: `${icon('copy', 18)} Copiar`,
     onclick: async () => {
       audio.sfx('tap');
       try { await navigator.clipboard.writeText(code); toast('Código copiado. Pasáselo a quien quieras', { icon: 'check', type: 'good' }); }
@@ -173,7 +173,7 @@ function meCard(api) {
   }));
   if (navigator.share) {
     btns.append(h('button.btn.primary.small', {
-      html: `${icon('💌', 18)} Compartir`,
+      html: `${icon('mail', 18)} Compartir`,
       onclick: async () => {
         audio.sfx('tap');
         const url = location.origin + location.pathname;
@@ -199,7 +199,7 @@ function addCard(api) {
     if (r?.error) { audio.sfx('error'); return r; }
     input.value = '';
     if (r.status === 'accepted') { audio.sfx('win'); toast(`${r.name} ya está entre tus contactos`, { icon: 'heart', type: 'good' }); }
-    else { audio.sfx('swoosh'); toast(`Solicitud enviada a ${r.name} 💌`, { icon: 'check', type: 'good' }); }
+    else { audio.sfx('swoosh'); toast(`Solicitud enviada a ${r.name}`, { icon: 'check', type: 'good' }); }
     await refreshSocial(['friends']);
     api.rerender();
     return r;
@@ -295,7 +295,7 @@ function friendCard(api, f) {
   });
   acts.append(gift);
   acts.append(h('button.btn.second.small', {
-    html: `${icon('🔄', 18)} Cambiar`,
+    html: `${icon('trade', 18)} Cambiar`,
     'aria-label': `Intercambiar con ${f.name}`,
     onclick: () => { audio.sfx('tap'); import('./social-trade.js').then(mod => mod.openTradeEditor(api.ctx, { friend: f, onDone: () => api.rerender() })); },
   }));

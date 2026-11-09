@@ -474,7 +474,7 @@ function installSection(ctx, section) {
       install.append(btn);
     } else if (isIOS()) {
       install.append(h('div.pnl-steps', { html: [
-        ['1', icon('🧭', 40), 'Abrí el juego en <b>Safari</b>'],
+        ['1', icon('map', 40), 'Abrí el juego en <b>Safari</b>'],
         ['2', art('share', 40), 'Tocá <b>Compartir</b> (abajo)'],
         ['3', art('addHome', 40), 'Elegí <b>Agregar a inicio</b>'],
       ].map(([n, ic, t]) => `<div class="pnl-stepc"><i>${n}</i>${ic}<span>${t}</span></div>`).join('') }));

@@ -165,7 +165,7 @@ export function rewardHtml(reward = {}, size = 16, { names = true } = {}) {
     parts.push(`<span class="cost pnl-rw" title="${esc(nm)}">${chestArt(type, Math.round(size * 1.25))}${names ? `<span>${esc(nm)}</span>` : ''}${n > 1 || !names ? `<span>×${n}</span>` : ''}</span>`);
   }
   const st = stickerCount(reward.stickers);
-  if (st) parts.push(`<span class="cost pnl-rw" title="Hallazgos">${icon('🃏', size)}<span>${names ? `${st} hallazgo${st === 1 ? '' : 's'}` : '×' + st}</span></span>`);
+  if (st) parts.push(`<span class="cost pnl-rw" title="Hallazgos">${icon('finding', size)}<span>${names ? `${st} hallazgo${st === 1 ? '' : 's'}` : '×' + st}</span></span>`);
   if (reward.items && typeof reward.items === 'object') {
     for (const [id, n] of Object.entries(reward.items)) {
       const it = ITEMS[id];
@@ -349,8 +349,8 @@ export function goalIcon(goal, size = 32) {
   const map = {
     build: 'hammer', upgrade: 'up', collect: 'coin', earn: 'coin',
     customize: 'dress', buy: 'shop', level: 'xp', pop: 'people', happy: 'smile', expand: 'map', castle: 'castle', charm: 'sparkle', rank: 'castle',
-    sticker: '🃏', stickers: '🃏', album: '🃏', season: 'sparkle', friend: 'people', friends: 'people', help: 'heart', gift: 'gift', visit: 'home',
-    prov: '🍞', craft: 'hammer', expedition: '🧭', zone: 'map', expStars: 'star', expFar: 'map', threat: 'bolt', repair: 'hammer', combat: '⚔️', story: '📖', element: 'sparkle', flag: 'map',
+    sticker: 'finding', stickers: 'finding', album: 'finding', season: 'sparkle', friend: 'people', friends: 'people', help: 'heart', gift: 'gift', visit: 'home',
+    prov: 'prov', craft: 'hammer', expedition: 'expedition', zone: 'map', expStars: 'star', expFar: 'map', threat: 'bolt', repair: 'wrench', combat: 'fight', story: 'journal', element: 'sparkle', flag: 'map',
   };
   return icon(map[goal.type] || 'quest', size);
 }
@@ -369,7 +369,7 @@ export function goalAction(ctx, goal, close) {
   const placed = (id) => st.city.buildings.some(b => b.id === id);
   const expOpen = () => { try { return ctx.expedition && (placed('casa_exp') || !!st.expedition?.active); } catch { return false; } };
   const toExpedition = (region) => (expOpen()
-    ? { label: 'Expedición', ic: '🧭', run: () => later(() => ctx.openPanel('expedition', region ? { region } : {})) }
+    ? { label: 'Expedición', ic: 'expedition', run: () => later(() => ctx.openPanel('expedition', region ? { region } : {})) }
     : buildFocus('casa_exp'));
   switch (goal.type) {
     case 'build': {
@@ -390,7 +390,7 @@ export function goalAction(ctx, goal, close) {
       return b ? { label: 'Mejorar', ic: 'up', run: () => { close(); ctx.bus.emit('city:focus', { uid: b.uid }); } } : buildFocus('casita');
     }
     case 'collect': case 'earn': return { label: 'Cobrar todo', ic: 'coin', run: () => { close(); ctx.bus.emit('city:collect'); } };
-    case 'prov': return has('huerta') ? { label: 'Ver la Huerta', ic: '🍞', run: () => { close(); ctx.bus.emit('city:highlight', { id: 'huerta' }); } } : buildFocus('huerta');
+    case 'prov': return has('huerta') ? { label: 'Ver la Huerta', ic: 'prov', run: () => { close(); ctx.bus.emit('city:highlight', { id: 'huerta' }); } } : buildFocus('huerta');
     case 'craft': return has('taller') ? { label: 'Taller', ic: 'hammer', run: () => later(() => ctx.openPanel('workshop')) } : buildFocus('taller');
     case 'expedition': case 'zone': return toExpedition(goal.region);
     case 'expStars': case 'expFar': return toExpedition();
@@ -399,7 +399,7 @@ export function goalAction(ctx, goal, close) {
       if (goal.enc === 'costa_capitana') {
         let st2 = 'none';
         try { st2 = ctx.act1?.abordajeStatus?.() || 'none'; } catch {}
-        return st2 === 'ready' ? { label: 'Defender el borde', ic: '⚔️', run: () => { close(); ctx.bus.emit('abordaje:panel'); } } : null;
+        return st2 === 'ready' ? { label: 'Defender el borde', ic: 'fight', run: () => { close(); ctx.bus.emit('abordaje:panel'); } } : null;
       }
       return toExpedition(goal.enc === 'banado_bestia' ? 'banado' : goal.enc ? undefined : 'bosque');
     }
@@ -415,7 +415,7 @@ export function goalAction(ctx, goal, close) {
       const b = st.city.buildings.find(x => x.damaged);
       return b ? { label: 'Reparar', ic: 'hammer', run: () => { close(); ctx.bus.emit('city:focus', { uid: b.uid }); } } : null;
     }
-    case 'story': return { label: 'Bitácora', ic: '📖', run: () => later(() => ctx.openPanel('story')) };
+    case 'story': return { label: 'Bitácora', ic: 'journal', run: () => later(() => ctx.openPanel('story')) };
     default: return null;
   }
 }

@@ -7,11 +7,10 @@ import { openShell, rewardFx, burst, goalIcon, goalAction, progressLabel, reward
 // Íconos de logros: data-driven. Se usa a.icon si viene en los datos (nombre de ícono, emoji
 // o 'chest:plata'); si no, uno por id conocido; si no, uno por la estadística que mide; si no, un trofeo.
 const ACH_ICON = {
-  a_coins: 'coin', a_build: 'hammer', a_upgrade: 'up', a_match3: '💎', a_blocks: '🧩', a_parking: '🅿️',
-  a_driving: '🚗', a_fashion: 'dress', a_streak: 'fire',
+  a_coins: 'coin', a_build: 'hammer', a_upgrade: 'up', a_fashion: 'dress', a_streak: 'fire',
 };
 const STAT_ICON = [
-  [/chest/i, 'chest:madera'], [/sticker|figu|album/i, '🃏'], [/friend|amig|gift|regal|help|ayud|visit/i, 'people'],
+  [/chest/i, 'chest:madera'], [/sticker|figu|album/i, 'finding'], [/friend|amig|gift|regal|help|ayud|visit/i, 'people'],
   [/season|chisp|tier/i, 'sparkle'],
   [/coin/i, 'coin'], [/gem/i, 'gem'], [/built|build/i, 'hammer'], [/upgrade/i, 'up'], [/streak|login/i, 'fire'], [/bought|fashion/i, 'dress'],
 ];
@@ -47,7 +46,7 @@ export function openQuests(ctx, params = {}) {
   const close = () => sh.close();
 
   const TABS = [
-    { id: 'main', label: 'Principal', ic: 'crown' },
+    { id: 'main', label: 'Principal', ic: 'medal' },
     { id: 'daily', label: 'Diarias', ic: 'calendar' },
     { id: 'ach', label: 'Logros', ic: 'trophy' },
   ];
@@ -82,7 +81,7 @@ export function openQuests(ctx, params = {}) {
     const q = quests.mainQuest();
     if (!q) {
       wrap.append(h('div.card.pnl-mq.pnl-allDone', { html: `
-        <div class="pnl-mq-icon pnl-bob">${icon('crown', 72)}</div>
+        <div class="pnl-mq-icon pnl-bob">${icon('medal', 72)}</div>
         <h3 class="pnl-mq-title">Completaste todas las misiones</h3>
         <p class="muted">Sos oficialmente la estrella de Pixelia. Seguí con las diarias y los logros para juntar más gemas.</p>
         <div class="pnl-chips"><span class="chip gold">${icon('star', 16)} ${MAIN_QUESTS.length}/${MAIN_QUESTS.length}</span></div>` }));
@@ -132,7 +131,7 @@ export function openQuests(ctx, params = {}) {
         <span class="pnl-step-body"><span class="pnl-step-txt"><small>Misión ${q.index + 2 + i}</small><b class="pnl-blur">${esc(nq.title)}</b></span>
         <span class="pnl-step-rew">${rewardHtml({ coins: nq.reward.coins, gems: nq.reward.gems, chest: nq.reward.chest }, 16, { names: false }) || costHtml(nq.reward, 16)}</span></span>` }));
     });
-    if (!next.length) path.append(h('div.pnl-step.last', { html: `<span class="pnl-step-dot">${icon('crown', 18)}</span><span class="pnl-step-body"><span class="pnl-step-txt"><b>Última misión</b><small>Después, la ciudad es toda tuya.</small></span></span>` }));
+    if (!next.length) path.append(h('div.pnl-step.last', { html: `<span class="pnl-step-dot">${icon('medal', 18)}</span><span class="pnl-step-body"><span class="pnl-step-txt"><b>Última misión</b><small>Después, la ciudad es toda tuya.</small></span></span>` }));
     wrap.append(path);
     return wrap;
   }
@@ -252,7 +251,7 @@ export function openQuests(ctx, params = {}) {
         </div>`;
       const side = h('div.pnl-q-side');
       if (a.memory) side.innerHTML = `<span class="pnl-done">${icon('trophy', 30)}</span>`;
-      else if (a.maxed) side.innerHTML = `<span class="pnl-done">${icon('crown', 30)}</span>`;
+      else if (a.maxed) side.innerHTML = `<span class="pnl-done">${icon('medal', 30)}</span>`;
       else {
         side.append(h('span.pnl-gemrew', { html: rewardHtml(rw, 18, { names: false }) || costHtml(rw, 18) }));
         if (a.ready) {

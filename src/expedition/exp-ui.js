@@ -29,8 +29,8 @@ export function foesText(enc) {
 }
 
 export const ICONS = {
-  prov: '🍞', morale: 'heart', cargo: '🎒', plano: '📜', find: '🏺', colono: '👪', home: 'home', step: '👣',
-  objetivo: '🚩', ...Object.fromEntries(MAT_IDS.map(m => [m, MATERIALS[m].icon])),
+  prov: 'prov', morale: 'heart', cargo: 'bag', plano: 'plans', find: 'finding', colono: 'settlers', home: 'home', step: 'steps',
+  objetivo: 'flag', ...Object.fromEntries(MAT_IDS.map(m => [m, MATERIALS[m].icon])),
 };
 const I = (k, s = 18) => icon(ICONS[k] || k, s);
 const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
@@ -165,7 +165,7 @@ export function buildDom(root, handlers) {
         <button class="ex-stat ex-menu icon-btn" data-ex="menu" aria-label="Menú">${icon('pause', 22)}</button>
         <div class="ex-stat" data-ex="prov" data-tip-title="Provisiones" data-tip="Cada paso gasta según el terreno. Guardá lo que cuesta volver: si no alcanza, el grupo llega con la mitad de la carga.">${I('prov', 22)}<span><b>0</b><em>provisiones</em></span></div>
         <div class="ex-stat" data-ex="morale" data-tip-title="Ánimo" data-tip="Baja con los peligros. Si llega a cero, el grupo vuelve con la mitad de la carga. Un campamento lo recupera.">${I('morale', 22)}<span><b>0</b><em>ánimo</em></span></div>
- <div class="ex-stat ex-clock" data-ex="clock" data-tip-title="Hora y clima" data-tip=""><i class="exc-ic" style="display:contents">${icon('☀️', 22)}</i><span><b>06:00</b><em>despejado</em></span></div>
+ <div class="ex-stat ex-clock" data-ex="clock" data-tip-title="Hora y clima" data-tip=""><i class="exc-ic" style="display:contents">${icon('sun', 22)}</i><span><b>06:00</b><em>despejado</em></span></div>
         <div class="ex-stat" data-ex="cargo" data-tip-title="Carga" data-tip="Lo que traés: materiales, planos y hallazgos. El Establo suma lugar. Volver con la carga llena da una estrella.">${I('cargo', 22)}<span><b>0</b><em>carga</em></span></div>
       </div>
       <div class="ex-goal" data-ex="goal"></div>
@@ -188,7 +188,7 @@ export function buildDom(root, handlers) {
     const e = $('clock');
     if (!c) { e.hidden = true; return; }
     const W = WEATHER[c.weather] || WEATHER.despejado;
-    const ic = c.weather !== 'despejado' ? W.icon : c.night ? '🌙' : c.hour < 8 ? '🌅' : c.hour >= 18 ? '🌇' : '☀️';
+    const ic = c.weather !== 'despejado' ? W.icon : c.night ? 'moon' : c.hour < 8 || c.hour >= 18 ? 'sunset' : 'sun';
     const f = c.forecast;
     const sub = c.weather !== 'despejado' ? `${W.name.toLowerCase()}${f?.left ? ` · ${f.left} ${f.left === 1 ? 'paso' : 'pasos'}` : ''}`
       : f && f.in > 0 && f.in <= 4 ? `${WEATHER[f.kind].name.toLowerCase()} en ${f.in}`
@@ -244,7 +244,7 @@ export function buildDom(root, handlers) {
       for (const id of v.items) {
         const b = document.createElement('button');
         b.className = 'btn mint ex-item';
-        b.innerHTML = id === 'botiquin' ? `${icon('🩹', 18)} Botiquín +${EXP.botiquin}` : `${icon('🩹', 18)} Atender +${EXP.atender}`;
+        b.innerHTML = id === 'botiquin' ? `${icon('medkit', 18)} Botiquín +${EXP.botiquin}` : `${icon('medkit', 18)} Atender +${EXP.atender}`;
         b.onclick = () => handlers.onItem(id);
         it.append(b);
       }
@@ -340,7 +340,7 @@ export function openDecision(root, pending, ctxInfo, onChoose) {
     const fp = ctxInfo.fightParty || [], own = ctxInfo.party || [];
     const who = ['Quien lidera', ...fp.map(r => (ROLES[r]?.name || r) + (own.includes(r) ? '' : ' (escolta)'))].join(', ');
     const tired = pending.options.find(o => o.fight)?.tired;
-    card.insertAdjacentHTML('beforeend', `<div class="ex-foes"><span>${icon('⚔️', 16)} ${esc(foesText(pending.encounter))}.</span>
+    card.insertAdjacentHTML('beforeend', `<div class="ex-foes"><span>${icon('fight', 16)} ${esc(foesText(pending.encounter))}.</span>
       <span>${icon('people', 16)} Pelean: ${esc(who)}.</span>${tired ? `<span class="bad">${I('morale', 14)} Con el ánimo tan bajo llegan cansados: ${EXP.enemy.tiredHp} de vida menos cada uno.</span>` : ''}</div>`);
   }
   const btns = [];
@@ -407,7 +407,7 @@ function lootWords(L) {
 /** Lo que la salida cambió en la ciudad: zona explorada, región completa y cuánto falta para ampliar el terreno. */
 function cityLines(res) {
   const out = [];
-  if (res.zoneExplored) out.push(`${icon('🚩', 16)} La zona ${res.zone} de ${esc(res.regionName || '')} quedó explorada.`);
+  if (res.zoneExplored) out.push(`${icon('flag', 16)} La zona ${res.zone} de ${esc(res.regionName || '')} quedó explorada.`);
   if (res.regionDone) out.push(`${icon('star', 16)} ${esc(res.regionName || 'La región')}: las 5 zonas exploradas.`);
   if (res.recorrido) out.push('Recorrido por una región ya explorada: no avanza zonas.');
   if (res.zoneExplored || res.canExpand) {
@@ -447,7 +447,7 @@ export function openResult(root, res, info, onAction) {
       <button class="btn primary" data-a="city">${icon('home', 20)} A la ciudad</button>
       <button class="btn second" data-a="again">${icon('map', 20)} Preparar otra salida</button>` : `
       <button class="btn primary" data-a="again">${icon('map', 20)} Otra salida</button>
-      <button class="btn second" data-a="short">${icon('🥪', 20)} Salida corta</button>
+      <button class="btn second" data-a="short">${icon('steps', 20)} Salida corta</button>
       <button class="btn ghost" data-a="city">${icon('home', 20)} A la ciudad</button>`}
     </div>`;
   const w = modalBox(root, html);

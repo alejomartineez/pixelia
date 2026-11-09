@@ -34,19 +34,19 @@ export const LATE_DAYS = 3;                              // amenazas sin aviso v
 // rank: abre en ese rango · edge: de dónde viene ('px' arroyo, 'nz' monte/norte, 'all' bordes) · defense · reserve ·
 // repair: material de reparación · eraBonus: [época mínima, +eficacia] · damagedLook: cómo se ve el daño
 export const THREAT_TYPES = {
-  crecida: { id: 'crecida', name: 'Crecida del arroyo', short: 'Crecida', icon: '🌊', rank: 2, edge: 'px', defense: 'dique', reserve: 'arena',
+  crecida: { id: 'crecida', name: 'Crecida del arroyo', short: 'Crecida', icon: 'flood', rank: 2, edge: 'px', defense: 'dique', reserve: 'arena',
     repair: 'piedra', eraBonus: [2, 0.1], verb: 'el agua', past: 'Pasó la crecida', look: 'barro',
     risk: 'Las casas y negocios a 4 casillas o menos del arroyo.', sign: 'El arroyo viene alto y turbio.' },
-  sequia: { id: 'sequia', name: 'Sequía', short: 'Sequía', icon: '☀️', rank: 2, edge: 'all', defense: 'granero', reserve: 'tinajas',
+  sequia: { id: 'sequia', name: 'Sequía', short: 'Sequía', icon: 'drought', rank: 2, edge: 'all', defense: 'granero', reserve: 'tinajas',
     repair: 'hierbas', eraBonus: null, verb: 'la sequía', past: 'Pasó la sequía', look: 'polvo',
     risk: 'Los productores de provisiones: huertas, tambos, molinos.', sign: 'Hace días que no llueve y el pasto amarillea.' },
-  incendio: { id: 'incendio', name: 'Incendio de monte', short: 'Incendio', icon: '🔥', rank: 3, edge: 'nz', defense: 'bomberos', reserve: 'baldes',
+  incendio: { id: 'incendio', name: 'Incendio de monte', short: 'Incendio', icon: 'fire', rank: 3, edge: 'nz', defense: 'bomberos', reserve: 'baldes',
     repair: 'madera', eraBonus: [2, 0.3], verb: 'el fuego', past: 'Se apagó el incendio', look: 'humo',
     risk: 'Lo que es de madera, primero lo que está cerca del monte.', sign: 'Se ve humo detrás del monte.' },
-  tormenta: { id: 'tormenta', name: 'Tormenta eléctrica', short: 'Tormenta', icon: '⛈️', rank: 3, edge: null, defense: 'pararrayos', reserve: 'lonas',
+  tormenta: { id: 'tormenta', name: 'Tormenta eléctrica', short: 'Tormenta', icon: 'storm', rank: 3, edge: null, defense: 'pararrayos', reserve: 'lonas',
     repair: 'mineral', eraBonus: [4, 0.2], verb: 'los rayos', past: 'Pasó la tormenta', look: 'lona',
     risk: 'Los edificios más altos.', sign: 'El cielo se carga y sopla un viento raro.' },
-  helada: { id: 'helada', name: 'Helada', short: 'Helada', icon: '❄️', rank: 4, edge: 'nz', defense: 'refugio', reserve: 'lena',
+  helada: { id: 'helada', name: 'Helada', short: 'Helada', icon: 'frost', rank: 4, edge: 'nz', defense: 'refugio', reserve: 'lena',
     repair: 'madera', eraBonus: [3, 0.2], verb: 'la escarcha', past: 'Pasó la helada', look: 'escarcha',
     risk: 'Casas y productores; la escarcha baja por los caminos desde el norte.', sign: 'Amanece con escarcha en los techos.' },
 };

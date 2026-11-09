@@ -287,11 +287,11 @@ function v3Lines() {
   const lines = [];
   const conv = (v.conv || []).filter(id => V3_NAMES[id]).map(id => `${V3_NAMES[id][0]} ahora es <b>${V3_NAMES[id][1]}</b>`);
   if (conv.length) lines.push(li('hammer', `Tus edificios quedan donde estaban y con su nivel: ${conv.join(', ')}.`));
-  if (v.expPlaced) lines.push(li('🧭', 'La <b>Casa de Expediciones</b> ya está en tu ciudad, cerca de la Municipalidad.'));
-  else if (v.expFree) lines.push(li('🧭', 'La <b>Casa de Expediciones</b> te espera gratis en Construir.'));
+  if (v.expPlaced) lines.push(li('expedition', 'La <b>Casa de Expediciones</b> ya está en tu ciudad, cerca de la Municipalidad.'));
+  else if (v.expFree) lines.push(li('expedition', 'La <b>Casa de Expediciones</b> te espera gratis en Construir.'));
   lines.push(li('monument', 'Cristales, ladrillos, tuercas y mapas pasaron a ser <b>mineral, piedra, madera y hierbas</b>: las obras a medio juntar siguen igual de cerca.'));
-  lines.push(li('album', `Tu álbum ahora se llama <b>Hallazgos</b>, con todo lo que tenías${v.finds ? ` y ${v.finds === 1 ? 'un hallazgo nuevo' : v.finds + ' hallazgos nuevos'} de regalo` : ''}.`));
-  lines.push(li('🎒', 'Los potenciadores que guardabas ahora son <b>equipo de expedición</b>.'));
+  lines.push(li('finding', `Tu álbum ahora se llama <b>Hallazgos</b>, con todo lo que tenías${v.finds ? ` y ${v.finds === 1 ? 'un hallazgo nuevo' : v.finds + ' hallazgos nuevos'} de regalo` : ''}.`));
+  lines.push(li('bag', 'Los potenciadores que guardabas ahora son <b>equipo de expedición</b>.'));
   if (v.refund) lines.push(li('coin', `Tenías dos edificios que ahora serían el mismo: te devolvimos ${v.refund.toLocaleString('es-AR')} monedas.`));
   return { lines, gems: v.gems || 0 };
 }
@@ -323,7 +323,7 @@ function v4Lines() {
   if (v5Pending()) {   // v5: personajes serios y pueblos (plan §M)
     v5.shown = 1;
     lines.push(li('dress', 'Los personajes cambiaron: ahora hay <b>pueblos</b> (humanos, enanos, anuros, gente-zorro y orcos) y ropa de viaje. Tu ropa pasó a su equivalente; elegí tu pueblo en el <b>Equipaje</b>.'));
-    if (v5.skiff) lines.push(li('car', 'Tu auto ahora es un <b>esquife</b> que flota con Céfiro y amarra en el muelle del Establo. Cada pieza pasó a la suya: casco, pintura, aparejo y proa.'));
+    if (v5.skiff) lines.push(li('skiff', 'Tu auto ahora es un <b>esquife</b> que flota con Céfiro y amarra en el muelle del Establo. Cada pieza pasó a la suya: casco, pintura, aparejo y proa.'));
     if (v5.coins || v5.gems) { lines.push(li('coin', 'Algunas prendas ahora son la misma: te devolvimos lo que pagaste por las repetidas.')); if (v5.coins) reward.coins = (reward.coins || 0) + v5.coins; if (v5.gems) reward.gems = (reward.gems || 0) + v5.gems; }
   }
   if (!v4Only()) { store.save(); return { lines, reward }; }

@@ -1,6 +1,6 @@
 // Utilidades de UI compartidas por el Pase de Temporada, la bienvenida y el panel de eventos:
 // estilos inyectados (.ssn-*), íconos pixel de cofres/sobres y HTML de premios.
-import { icon, registerIcon, chestLayers } from '../core/icons.js';
+import { icon, registerTint, rampOf } from '../core/icons.js';
 import { esc } from '../core/ui.js';
 import { fmtNum } from '../core/economy.js';
 import { CHESTS } from '../chests/chests.js';
@@ -15,7 +15,9 @@ export function chestIcon(type = 'madera', size = 40) {
   if (!chestDone.has(type)) {
     chestDone.add(type);
     const d = CHESTS[type] || { color: '#b07a52', trim: '#ddd5c8' };
-    registerIcon(name, chestLayers(type === 'oro' ? '#ffd166' : d.color, d.trim, type === 'oro' ? '#ee8a5c' : '#ffd166'));
+    // el cofre dibujado usa O u z en la madera, G g h en los flejes e Y y o en la cerradura
+    const [O, u, z] = rampOf(type === 'oro' ? '#ffd166' : d.color), [G, g, h] = rampOf(d.trim), [Y, y, o] = rampOf(type === 'oro' ? '#ee8a5c' : '#ffd166');
+    registerTint(name, 'chest', { O, u, z, G, g, h, Y, y, o });
   }
   return icon(name, size);
 }
@@ -26,7 +28,7 @@ export function packIcon(size = 40) {
 // pelajes (diseños de pelo de los animalitos) se nombran como tales; el resto, por su nombre
 const isFur = (id) => !!HAIR_STYLES.find(h => h.id === id)?.types?.every(t => avatarType(t).animal);
 const COSMETIC_NAME = { hair: (n, id) => `${isFur(id) ? 'Pelaje' : 'Peinado'} ${n}`, body: n => `Esquife: ${n}`, wheels: n => `Aparejo: ${n}`, topper: n => `Proa: ${n}` };
-const COSMETIC_IC = { hair: '💇', dress: 'dress', crown: 'crown', acc: 'wand', body: 'car', wheels: 'car', topper: 'car' };
+const COSMETIC_IC = { hair: 'hair', dress: 'dress', crown: 'wardrobe', acc: 'bag', body: 'skiff', wheels: 'skiff', topper: 'skiff' };
 
 /** Ícono grande de una parte de premio. */
 export function partIcon(p, size = 40) {
@@ -37,7 +39,7 @@ export function partIcon(p, size = 40) {
     case 'stickers': return packIcon(size);
     case 'item': case 'equip': return icon(p.icon || 'gift', size);
     case 'mats': case 'planos': return icon(p.icon || 'gift', size);
-    case 'cosmetic': return icon(COSMETIC_IC[p.target] || 'ribbon', size);
+    case 'cosmetic': return icon(COSMETIC_IC[p.target] || 'dress', size);
     default: return icon('gift', size);
   }
 }

@@ -45,7 +45,7 @@ export function progressPane(ctx, rerender) {
   const sec = (ic, t) => wrap.append(h('div.st-h', { html: `${icon(ic, 18)} ${esc(t)}` }));
 
   // rango y Época
-  sec('crown', 'La ciudad');
+  sec('castle', 'La ciudad');
   try {
     const rs = E.rankStatus(s), era = eraDef(E.cityEra(s));
     const miss = (rs.reqs || []).filter(r => !r.ok).map(r => `${REQ[r.key] || r.key} ${E.fmtNum ? E.fmtNum(r.have) : r.have}/${r.need}`);

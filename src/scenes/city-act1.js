@@ -121,7 +121,7 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
     const wrap = ui.h('div.ec-card');
     wrap.append(ui.h('p', { html: `<i>${ui.esc(e.line)}</i>` }));
     wrap.append(ui.h('p.ec-note', { html: page ? `${icon('quest', 16)} Página nueva del diario: <b>${ui.esc(page.title)}</b>.` : `${icon('quest', 16)} Queda anotado en el Diario de la Bitácora.` }));
-    ui.modal({ title: e.title, icon: '🌙', content: wrap, className: 'ec-modal' });
+    ui.modal({ title: e.title, icon: 'moon', content: wrap, className: 'ec-modal' });
   }
 
   function markStyle() {
@@ -178,7 +178,7 @@ html.reduce-motion .ec-mark { animation:none; }`;
   // botón a la vista mientras el dirigible espera
   const btn = document.createElement('button');
   btn.className = 'btn primary act1-alert';
-  btn.innerHTML = `${icon('⚔️', 18)} Abordaje: defendé el borde`;
+  btn.innerHTML = `${icon('fight', 18)} Abordaje: defendé el borde`;
   btn.style.cssText = 'position:absolute;left:50%;transform:translateX(-50%);top:14px;z-index:6;display:none;';
   btn.addEventListener('click', () => { audio.sfx('tap'); openAbordaje(); });
   container.append(btn);
@@ -197,7 +197,7 @@ html.reduce-motion .ec-mark { animation:none; }`;
     wrap.append(ui.h('p', {}, enc.text));
     wrap.append(ui.h('p', { html: `${icon('people', 16)} Defienden: quien lidera, ${ui.esc(party.map(id => CLASSES[id]?.name || id).join(', '))}.` }));
     if (items.length) wrap.append(ui.h('p', { html: `${icon('hammer', 16)} Del depósito: ${ui.esc(items.join(', '))} (se gastan si se usan).` }));
-    wrap.append(ui.h('p', { html: `${icon('⚔️', 16)} ${ui.esc(ENEMIES.capitana.name)}, un grumete y un tirador. Por la pasarela llegan más hasta que se corta.` }));
+    wrap.append(ui.h('p', { html: `${icon('fight', 16)} ${ui.esc(ENEMIES.capitana.name)}, un grumete y un tirador. Por la pasarela llegan más hasta que se corta.` }));
     if (attempt > 1) wrap.append(ui.h('p.good', { html: `${icon('up', 16)} Revancha ${attempt - 1}: el grupo con más vida y la capitana más cansada.` }));
     wrap.append(ui.h('p.muted', { html: 'Si se pierde, los piratas siguen en el borde y se puede volver a pelear. No se llevan nada mientras tanto.' }));
     const row = ui.h('div.row', { style: 'gap:8px;justify-content:flex-end;margin-top:8px' });
@@ -205,7 +205,7 @@ html.reduce-motion .ec-mark { animation:none; }`;
     const go = ui.h('button.btn.primary', { 'data-abordaje': 'go', onclick: () => { m.close(); audio.sfx('horn'); A.startAbordaje(ctx); } }, 'Defender el borde');
     row.append(later, go);
     wrap.append(row);
-    const m = ui.modal({ title: 'Velas en el cielo', icon: '⚔️', content: wrap, className: 'ab-modal', onClose: () => { cardOpen = false; } });
+    const m = ui.modal({ title: 'Velas en el cielo', icon: 'fight', content: wrap, className: 'ab-modal', onClose: () => { cardOpen = false; } });
   }
   offs.push(bus.on('abordaje:panel', () => openAbordaje()));
   // después de la escena de llegada, la tarjeta se abre sola

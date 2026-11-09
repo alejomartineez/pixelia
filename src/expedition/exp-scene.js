@@ -265,7 +265,7 @@ export default function create(ctx) {
     if (c.content === 'recurso') return MATERIALS[c.sub]?.icon;
     if (c.content === 'peligro') return HAZARDS[c.sub]?.icon;
     if (c.content === 'enemigo') return CONTENT.enemigo.icon;
-    if (c.content === 'objetivo') return '🚩';
+    if (c.content === 'objetivo') return 'flag';
     return CONTENT[c.content]?.icon || null;
   }
   function clearCellObj(o) {
@@ -337,7 +337,7 @@ export default function create(ctx) {
     }
     if (c.drops) {
       const mats = Object.keys(c.drops);
-      o.drop = badge(MATERIALS[mats[0]]?.icon || '📦', 0.32);
+      o.drop = badge(MATERIALS[mats[0]]?.icon || 'crate', 0.32);
       o.drop.position.set(pos.x + 0.3, ty + 0.35, pos.z + 0.3);
       world.add(o.drop);
     }
@@ -388,7 +388,7 @@ export default function create(ctx) {
     }
     if (!o.cell && o.hint) {
       const p = cellPos(o.hint[0], o.hint[1]);
-      const fl = badge('🚩', 0.5);
+      const fl = badge('flag', 0.5);
       fl.position.set(p.x, 1.05, p.z); fl.renderOrder = 11;
       hintGroup.add(fl);
     }
@@ -887,7 +887,7 @@ export default function create(ctx) {
     const wrap = ui.h('div.ec-card');
     wrap.append(ui.h('p', { html: `<i>${ui.esc(e.line)}</i>` }));
     wrap.append(ui.h('p.ec-note', { html: page ? `${iconHtml('quest', 16)} Página nueva del diario: <b>${ui.esc(page.title)}</b>.` : `${iconHtml('quest', 16)} Queda anotado en el Diario de la Bitácora.` }));
-    ui.modal({ title: e.title, icon: '🌙', content: wrap, className: 'ec-modal' });
+    ui.modal({ title: e.title, icon: 'moon', content: wrap, className: 'ec-modal' });
   }
   function onUp(e) {
     if (!down) return;

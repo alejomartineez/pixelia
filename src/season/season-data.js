@@ -10,14 +10,14 @@ export const BONUS_EVERY = 600;          // después del nivel 30: un cofre de m
 // ---------- Temas (rotan por índice de temporada) ----------
 // accent: color principal, dark: sombra/borde, light: fondo suave, sky: degradé del encabezado
 export const THEMES = [
-  { id: 'primavera', name: 'Primavera en Flor', emoji: '🌸', accent: '#ee8a5c', dark: '#c8673d', light: '#f9f3e9', sky: ['#f6e2c0', '#faf4eb'], phrase: 'Florece todo, hasta lo que nadie plantó.' },
-  { id: 'carnaval', name: 'Carnaval de Pixelia', emoji: '🎭', accent: '#7f9ee8', dark: '#5a78c4', light: '#faf4eb', sky: ['#aabeeb', '#fbf5ed'], phrase: 'Máscaras, papel picado y música en cada esquina.' },
-  { id: 'noche', name: 'Noche Estrellada', emoji: '🌙', accent: '#7f8cff', dark: '#5562d6', light: '#faf4eb', sky: ['#8e9bff', '#f9f3e9'], phrase: 'Noches largas, cielo limpio y alguna estrella fugaz.' },
-  { id: 'helado', name: 'Verano de Helado', emoji: '🍦', accent: '#3fd1a6', dark: '#2aa883', light: '#d9f8ee', sky: ['#8debd0', '#e3fbf3'], phrase: 'Calor, pileta y helado de frutilla.' },
-  { id: 'bosque', name: 'Bosque Encantado', emoji: '🍄', accent: '#5cc46e', dark: '#3c9a50', light: '#e2f6e4', sky: ['#9fe0a8', '#eaf9ec'], phrase: 'Hongos, luciérnagas y caminos que nadie marcó.' },
-  { id: 'cristal', name: 'Feria de Inventos', emoji: '🔭', accent: '#4fb6f0', dark: '#2f8fcc', light: '#dff3ff', sky: ['#9fdcff', '#e8f7ff'], phrase: 'Cohetes, robots y experimentos que brillan.' },
-  { id: 'otono', name: 'Otoño', emoji: '🍂', accent: '#ff9a62', dark: '#e0743a', light: '#ffeadc', sky: ['#ffc39e', '#fff0e4'], phrase: 'Hojas secas, chocolate caliente y una manta.' },
-  { id: 'corazones', name: 'Temporada de Visitas', emoji: '🤝', accent: '#c47a68', dark: '#a35a4b', light: '#f4e2db', sky: ['#e3bfb2', '#faf5ed'], phrase: 'Para pasar por la ciudad de alguien y dejar algo.' },
+  { id: 'primavera', name: 'Primavera en Flor', emoji: 'flower', accent: '#ee8a5c', dark: '#c8673d', light: '#f9f3e9', sky: ['#f6e2c0', '#faf4eb'], phrase: 'Florece todo, hasta lo que nadie plantó.' },
+  { id: 'carnaval', name: 'Carnaval de Pixelia', emoji: 'mask', accent: '#7f9ee8', dark: '#5a78c4', light: '#faf4eb', sky: ['#aabeeb', '#fbf5ed'], phrase: 'Máscaras, papel picado y música en cada esquina.' },
+  { id: 'noche', name: 'Noche Estrellada', emoji: 'moon', accent: '#7f8cff', dark: '#5562d6', light: '#faf4eb', sky: ['#8e9bff', '#f9f3e9'], phrase: 'Noches largas, cielo limpio y alguna estrella fugaz.' },
+  { id: 'helado', name: 'Verano de Helado', emoji: 'icecream', accent: '#3fd1a6', dark: '#2aa883', light: '#d9f8ee', sky: ['#8debd0', '#e3fbf3'], phrase: 'Calor, pileta y helado de frutilla.' },
+  { id: 'bosque', name: 'Bosque Encantado', emoji: 'mushroom', accent: '#5cc46e', dark: '#3c9a50', light: '#e2f6e4', sky: ['#9fe0a8', '#eaf9ec'], phrase: 'Hongos, luciérnagas y caminos que nadie marcó.' },
+  { id: 'cristal', name: 'Feria de Inventos', emoji: 'lookout', accent: '#4fb6f0', dark: '#2f8fcc', light: '#dff3ff', sky: ['#9fdcff', '#e8f7ff'], phrase: 'Cohetes, robots y experimentos que brillan.' },
+  { id: 'otono', name: 'Otoño', emoji: 'leaf', accent: '#ff9a62', dark: '#e0743a', light: '#ffeadc', sky: ['#ffc39e', '#fff0e4'], phrase: 'Hojas secas, chocolate caliente y una manta.' },
+  { id: 'corazones', name: 'Temporada de Visitas', emoji: 'handshake', accent: '#c47a68', dark: '#a35a4b', light: '#f4e2db', sky: ['#e3bfb2', '#faf5ed'], phrase: 'Para pasar por la ciudad de alguien y dejar algo.' },
 ];
 
 // ---------- Costo de cada nivel (chispas) ----------
@@ -88,16 +88,16 @@ export const POINTS = {
 export const POINT_SOURCES = [
   { ic: 'quest', text: 'Cobrar una misión diaria', pts: POINTS.dailyQuest },
   { ic: 'gift', text: 'Completar las 3 diarias (bonus)', pts: POINTS.dailyBonus },
-  { ic: 'crown', text: 'Cobrar una misión principal', pts: POINTS.mainQuest },
-  { ic: '🧭', text: 'Terminar una expedición', pts: `${POINTS.expedition} +${POINTS.perStar}/★` },
-  { ic: '🗺️', text: 'Explorar una zona', pts: POINTS.zone },
-  { ic: '⛈️', text: 'Pasar una amenaza (más cuanto más salvás)', pts: '40–100' },
+  { ic: 'medal', text: 'Cobrar una misión principal', pts: POINTS.mainQuest },
+  { ic: 'expedition', text: 'Terminar una expedición', pts: `${POINTS.expedition} +${POINTS.perStar}/★` },
+  { ic: 'map', text: 'Explorar una zona', pts: POINTS.zone },
+  { ic: 'bolt', text: 'Pasar una amenaza (más cuanto más salvás)', pts: '40–100' },
   { ic: 'up', text: 'Terminar una mejora', pts: POINTS.upgraded },
   { ic: 'up', text: 'Renovar un edificio a la época nueva', pts: POINTS.renovated },
   { ic: 'build', text: 'Reparar un edificio', pts: POINTS.repaired },
   { ic: 'people', text: 'Ayudar o hacerle un regalo a alguien', pts: POINTS.helped },
   { ic: 'build', text: 'Terminar una construcción', pts: POINTS.built },
-  { ic: '🃏', text: 'Encontrar un hallazgo nuevo', pts: POINTS.newSticker },
+  { ic: 'finding', text: 'Encontrar un hallazgo nuevo', pts: POINTS.newSticker },
   { ic: 'coin', text: `Cobrar un edificio (hasta ${POINTS.collectDailyMax} por día)`, pts: POINTS.collect },
 ];
 
@@ -115,29 +115,29 @@ export const WELCOME = {
 // keys válidas de mult: production, chestDrop (cofre de las salidas de 3★), stickers (hallazgos al volver),
 // expMats (materiales de todas las expediciones), region_<id> (materiales de las salidas a esa región)
 export const EVENT_TEMPLATES = {
-  doble_prod: { short: 'Producción ×2', title: 'Finde de Doble Producción', emoji: '🧺', color: '#ffd166', dark: '#e8a93a', days: [4, 6],
+  doble_prod: { short: 'Producción ×2', title: 'Finde de Doble Producción', emoji: 'basket', color: '#ffd166', dark: '#e8a93a', days: [4, 6],
     desc: 'Todos tus negocios producen el doble. Conviene pasar a cobrar seguido.', mult: { production: 2 } },
-  lluvia_cofres: { short: 'Cofres ×2', title: 'Lluvia de Cofres', emoji: '🎁', color: '#ff9a62', dark: '#e0743a', days: [3, 6],
+  lluvia_cofres: { short: 'Cofres ×2', title: 'Lluvia de Cofres', emoji: 'chest', color: '#ff9a62', dark: '#e0743a', days: [3, 6],
     desc: 'Las salidas de 3★ tienen el doble de chances de traer un cofre.', mult: { chestDrop: 2 } },
-  fiebre_figus: { short: 'Hallazgos ×2', title: 'Fin de semana de Hallazgos', emoji: '🃏', color: '#7f9ee8', dark: '#5a78c4', days: [3, 6],
+  fiebre_figus: { short: 'Hallazgos ×2', title: 'Fin de semana de Hallazgos', emoji: 'pack', color: '#7f9ee8', dark: '#5a78c4', days: [3, 6],
     desc: 'Cada hallazgo que traés de una expedición viene con otro de regalo.', mult: { stickers: 2 } },
   // semanas de región (reemplazan a las de los minijuegos; los ids viejos quedan por compatibilidad de calendario)
-  joyas: { short: 'Bosque ×1,5', title: 'Semana del Bosque del Arroyo', emoji: '🌲', color: '#8fbf6a', dark: '#5f8f3c', days: [0, 6],
+  joyas: { short: 'Bosque ×1,5', title: 'Semana del Bosque del Arroyo', emoji: 'forest', color: '#8fbf6a', dark: '#5f8f3c', days: [0, 6],
     desc: 'Las salidas al Bosque del Arroyo traen 50% más de materiales toda la semana.', mult: { region_bosque: 1.5 } },
-  bloques: { short: 'Sierras ×1,5', title: 'Semana de las Sierras Bajas', emoji: '⛰️', color: '#c9a77a', dark: '#9c7b4e', days: [0, 6],
+  bloques: { short: 'Sierras ×1,5', title: 'Semana de las Sierras Bajas', emoji: 'mountain', color: '#c9a77a', dark: '#9c7b4e', days: [0, 6],
     desc: 'Las salidas a las Sierras Bajas traen 50% más de materiales toda la semana.', mult: { region_sierras: 1.5 } },
-  parking: { short: 'Bañado ×1,5', title: 'Semana del Bañado de los Juncos', emoji: '🪷', color: '#6fbfb0', dark: '#3f8f80', days: [0, 6],
+  parking: { short: 'Bañado ×1,5', title: 'Semana del Bañado de los Juncos', emoji: 'marsh', color: '#6fbfb0', dark: '#3f8f80', days: [0, 6],
     desc: 'Las salidas al Bañado de los Juncos traen 50% más de materiales toda la semana.', mult: { region_banado: 1.5 } },
-  paseo: { short: 'Expediciones ×1,25', title: 'Semana de Expediciones', emoji: '🧭', color: '#ffb38a', dark: '#e0743a', days: [0, 6],
+  paseo: { short: 'Expediciones ×1,25', title: 'Semana de Expediciones', emoji: 'expedition', color: '#ffb38a', dark: '#e0743a', days: [0, 6],
     desc: 'Todas las expediciones traen 25% más de materiales toda la semana.', mult: { expMats: 1.25 } },
-  estrellas: { short: 'Meta de estrellas', title: 'Carrera de Estrellas', emoji: '⭐', color: '#ffd166', dark: '#e8a93a', days: [0, 6],
+  estrellas: { short: 'Meta de estrellas', title: 'Carrera de Estrellas', emoji: 'star', color: '#ffd166', dark: '#e8a93a', days: [0, 6],
     desc: 'Juntá estrellas en tus expediciones: hay 3 escalones con premio. Es una meta tuya, sin apuro.', mult: {},
     race: [
       { goal: 9, reward: { coins: 300, stickers: { n: 1 } } },
       { goal: 21, reward: { gems: 5, stickers: { n: 2 } } },
       { goal: 39, reward: { gems: 12, chest: 'plata' } },
     ] },
-  dorada: { short: 'Todo ×1,25', title: 'Semana Dorada', emoji: '🏆', color: '#ffd166', dark: '#e8a93a', days: [0, 6], golden: true,
+  dorada: { short: 'Todo ×1,25', title: 'Semana Dorada', emoji: 'trophy', color: '#ffd166', dark: '#e8a93a', days: [0, 6], golden: true,
     desc: 'Una vez por mes: expediciones con 25% más de materiales, producción ×1,25 y se pueden intercambiar hallazgos de 5★.',
     mult: { production: 1.25, expMats: 1.25 },
     flags: { trade5: true } },

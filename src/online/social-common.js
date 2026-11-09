@@ -256,10 +256,10 @@ export function payloadChips(p = {}, size = 18) {
   if (p.stickers && !p.stickers.n) for (const [id, n] of Object.entries(p.stickers)) {
     if (typeof n !== 'number') continue;
     const d = stickerDef(id);
-    out.push(`<span class="soc-chip">${icon(d?.emoji || '🃏', size)}${n > 1 ? '×' + n : ''}<em>${esc(d?.name || 'Hallazgo')} ${'★'.repeat(d?.stars || 0)}</em></span>`);
+    out.push(`<span class="soc-chip">${icon(d?.emoji || 'finding', size)}${n > 1 ? '×' + n : ''}<em>${esc(d?.name || 'Hallazgo')} ${'★'.repeat(d?.stars || 0)}</em></span>`);
   }
   if (p.stickers?.n) out.push(`<span class="soc-chip">${packIcon(size + 4)}×${p.stickers.n}<em>hallazgos</em></span>`);
-  if (p.minutes) out.push(`<span class="soc-chip">${icon('⏳', size)}-${p.minutes} min</span>`);
+  if (p.minutes) out.push(`<span class="soc-chip">${icon('hourglass', size)}-${p.minutes} min</span>`);
   return out.join('');
 }
 /** Carta de hallazgo en miniatura (owned por defecto). */

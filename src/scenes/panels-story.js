@@ -73,7 +73,7 @@ function injectStyle() {
 }
 
 const TABS = [
-  { id: 'historia', label: 'Historia', ic: '📖' },
+  { id: 'historia', label: 'Historia', ic: 'journal' },
   { id: 'diario', label: 'Diario', ic: 'quest' },
   { id: 'progreso', label: 'Progreso', ic: 'star' },
   { id: 'manual', label: 'Manual', ic: 'info' },
@@ -87,7 +87,7 @@ export function manualChapters(s) {
 
 export function openStory(ctx, params = {}) {
   injectStyle();
-  const sh = openShell(ctx, 'story', { title: 'Bitácora', ic: '📖', sheet: true, className: 'pnl-flex pnl-story' });
+  const sh = openShell(ctx, 'story', { title: 'Bitácora', ic: 'journal', sheet: true, className: 'pnl-flex pnl-story' });
   if (!sh) return;
   const { ui, audio, quests, economy } = ctx;
   const { h, esc, progressHtml } = ui;
@@ -131,7 +131,7 @@ export function openStory(ctx, params = {}) {
         : goalAction(ctx, q.goal, () => sh.close());
       if (act) box.append(h('button.btn.sky.block.st-go', { html: `${icon(act.ic, 22)} ${esc(act.label)}`, onclick: () => { audio.sfx('tap'); act.run(); } }));
       wrap.append(box);
-    } else wrap.append(h('div.st-next', { html: `<span class="st-next-ic">${icon('crown', 36)}</span><b>La ciudad es tuya</b><small>${esc(info.chapter.goal)}</small>` }));
+    } else wrap.append(h('div.st-next', { html: `<span class="st-next-ic">${icon('medal', 36)}</span><b>La ciudad es tuya</b><small>${esc(info.chapter.goal)}</small>` }));
     // escenas vistas
     const seen = story.seenScenes(s);
     wrap.append(h('div.st-h', { html: `${icon('play', 18)} Lo que pasó` }));
@@ -187,7 +187,7 @@ export function openStory(ctx, params = {}) {
     // ecos de noche (L6): los que ya se vieron, con su línea
     const echoes = seenEchoes(s);
     if (echoes.length) {
-      wrap.append(h('div.st-h', { html: `${icon('🌙', 18)} Ecos de noche · ${echoes.length}/${ECHOES.length}` }));
+      wrap.append(h('div.st-h', { html: `${icon('moon', 18)} Ecos de noche · ${echoes.length}/${ECHOES.length}` }));
       for (const e of echoes) wrap.append(h('div.st-page', { 'data-echo': e.id, html: `<b>${esc(e.title)}</b><p><i>${esc(e.line)}</i></p>` }));
     }
     // logros (antes, los trofeos de Mi Casa): los cumplidos con su fecha y los que faltan
@@ -232,7 +232,7 @@ export function openStory(ctx, params = {}) {
       if (!qn || /tecl|atajo|control|compu/.test(qn)) {
         any = true;
         const k = (id) => `<kbd>${esc(keyLabel(codeFor(id)))}</kbd>`;
-        list.append(h('h3.st-man-h', { html: `${icon('🖱️', 22)}<span>En la compu</span>` }));
+        list.append(h('h3.st-man-h', { html: `${icon('mouse', 22)}<span>En la compu</span>` }));
         list.append(h('div.st-keys', { html: [
           `${k('build')}Construir`, `${k('journal')}Bitácora`, `${k('expedition')}Expedición`, `${k('collect')}Cobrar todo`,
           `${k('up')}${k('left')}${k('down')}${k('right')}Cámara`, `${k('rotL')}${k('rotR')}Girar`, `${k('themes')}Estilo`, `${k('settings')}Ajustes`,

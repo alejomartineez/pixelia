@@ -17,7 +17,7 @@ const COLORS = {
   crecida: ['#9fd3ea', '#5aa9d6', '#3d86b8'], sequia: ['#ecd9a0', '#d9b46a', '#b8904a'], incendio: ['#ffc07a', '#ff8a3d', '#e0542a'],
   tormenta: ['#ffd77a', '#ffb347', '#ff7a3d'], helada: ['#f2fbff', '#d8f0ff', '#b6dcf2'],
 };
-const LOOK_ICON = { crecida: '💧', sequia: '🍂', incendio: '💨', tormenta: '⛺', helada: '❄️' };
+const LOOK_ICON = { crecida: 'drop', sequia: 'drought', incendio: 'smoke', tormenta: 'storm', helada: 'frost' };
 const TINT = {
   crecida: 'linear-gradient(rgba(90,110,140,0.22), rgba(90,110,140,0.04))', tormenta: 'linear-gradient(rgba(50,58,80,0.32), rgba(50,58,80,0.08))',
   incendio: 'linear-gradient(rgba(190,120,80,0.20), rgba(190,120,80,0.03))', sequia: 'linear-gradient(rgba(230,190,110,0.22), rgba(230,190,110,0.04))',
@@ -57,7 +57,7 @@ export function createCoverage(api) {
       for (const uid of cov) {
         const e = entries.get(uid);
         if (!e || badges.has(uid)) continue;
-        badges.set(uid, ov.add(Object.assign(document.createElement('div'), { className: 'th-badge cov', innerHTML: `${icon('🛡️', 14)}cubierto` }), api.topPos(e, 0.25).clone()));
+        badges.set(uid, ov.add(Object.assign(document.createElement('div'), { className: 'th-badge cov', innerHTML: `${icon('shield', 14)}cubierto` }), api.topPos(e, 0.25).clone()));
       }
     },
     dispose() { r.scene.remove(mesh); geo.dispose(); mat.dispose(); mesh.dispose?.(); for (const it of badges.values()) ov.remove(it); badges.clear(); },
@@ -98,7 +98,7 @@ export function createDecor(api) {
       const b = e.b;
       const has = marks.get(b.uid);
       if (b.damaged && e.root.visible) {
-        if (!has) marks.set(b.uid, ov.add(Object.assign(document.createElement('div'), { className: 'th-dmg', innerHTML: icon(LOOK_ICON[b.damagedBy] || '🔧', 26) }), api.topPos(e, 0.1).clone()));
+        if (!has) marks.set(b.uid, ov.add(Object.assign(document.createElement('div'), { className: 'th-dmg', innerHTML: icon(LOOK_ICON[b.damagedBy] || 'wrench', 26) }), api.topPos(e, 0.1).clone()));
         else has.pos.copy(api.topPos(e, 0.1));
       } else if (has) { ov.remove(has); marks.delete(b.uid); }
     }
@@ -188,7 +188,7 @@ export function attach(api, threatId) {
       let it = badges.get(t.uid);
       if (!it) { it = ov.add(Object.assign(document.createElement('div'), { className: 'th-badge' }), api.topPos(e, 0.25).clone()); badges.set(t.uid, it); }
       const dead = d.damaged.includes(t.uid), hits = d.hits[t.uid] || 0;
-      const html = dead ? `${icon('🔧', 14)}dañado` : `${t.eff > 0 ? icon('🛡️', 14) + Math.round(t.eff * 100) + '% · ' : ''}${'●'.repeat(hits)}${'○'.repeat(Math.max(0, 2 - hits))}`;
+      const html = dead ? `${icon('wrench', 14)}dañado` : `${t.eff > 0 ? icon('shield', 14) + Math.round(t.eff * 100) + '% · ' : ''}${'●'.repeat(hits)}${'○'.repeat(Math.max(0, 2 - hits))}`;
       if (it.el.innerHTML !== html) it.el.innerHTML = html;
       it.el.className = 'th-badge' + (dead ? ' dead' : hits ? ' hit' : t.eff > 0 ? ' cov' : '');
     }
@@ -196,7 +196,7 @@ export function attach(api, threatId) {
     rayIcons.length = 0;
     if (type === 'tormenta') for (const i of d.nextRays || []) {
       const [x, z] = tileXZ(d, i);
-      rayIcons.push(ov.add(Object.assign(document.createElement('div'), { className: 'th-ray', innerHTML: icon('⚡', 26) }), new THREE.Vector3(wx(x), 1.6, wx(z))));
+      rayIcons.push(ov.add(Object.assign(document.createElement('div'), { className: 'th-ray', innerHTML: icon('bolt', 26) }), new THREE.Vector3(wx(x), 1.6, wx(z))));
     }
   }
   let anim = 0;
@@ -230,7 +230,7 @@ export function attach(api, threatId) {
   const msg = ui.h('div.th-msg');
   const bCrew = ui.h('button.btn.sky.on', { html: icon('people', 18) + 'Cuadrilla' });
   const resName = { crecida: 'Bolsas', sequia: 'Tinajas', incendio: 'Baldes', tormenta: 'Lonas', helada: 'Leña' }[type];
-  const bRes = ui.h('button.btn.sky', { html: icon({ crecida: '🧱', sequia: '🏺', incendio: '🪣', tormenta: '⛺', helada: '🪵' }[type], 18) + resName });
+  const bRes = ui.h('button.btn.sky', { html: icon({ crecida: 'sandbags', sequia: 'jars', incendio: 'buckets', tormenta: 'tarp', helada: 'firewood' }[type], 18) + resName });
   const bEnd = ui.h('button.btn.primary', { html: 'Terminar turno' });
   const bOut = ui.h('button.btn', { html: 'Seguir después', title: 'Podés retomarla hoy' });
   bar.append(title, msg, ui.h('div.th-btns', {}, bCrew, bRes, bEnd), ui.h('div.th-btns', {}, bOut));
@@ -242,7 +242,7 @@ export function attach(api, threatId) {
   function syncBar() {
     title.innerHTML = `<span>${icon(THREAT_TYPES[type].icon, 20)}${ui.esc(T.threatName({ id: d.id, type }))}</span><span>Turno ${Math.min(d.turn, d.turns)}/${d.turns}</span>`;
     bCrew.innerHTML = icon('people', 18) + `Cuadrillas ${d.crewsLeft}/${d.K}`;
-    bRes.innerHTML = icon({ crecida: '🧱', sequia: '🏺', incendio: '🪣', tormenta: '⛺', helada: '🪵' }[type], 18) + `${resName} ${d.reservesLeft}`;
+    bRes.innerHTML = icon({ crecida: 'sandbags', sequia: 'jars', incendio: 'buckets', tormenta: 'tarp', helada: 'firewood' }[type], 18) + `${resName} ${d.reservesLeft}`;
     bCrew.classList.toggle('on', mode === 'crew'); bRes.classList.toggle('on', mode === 'res');
     if (!msg.dataset.lock) msg.textContent = mode === 'res'
       ? 'Hacé clic en una casilla para cerrarla hasta el final.'

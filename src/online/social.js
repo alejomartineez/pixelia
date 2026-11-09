@@ -48,7 +48,7 @@ export const RANK_CATS = [
   { id: 'stars', name: 'Estrellas de expedición', icon: 'star', short: 'Estrellas' },
   { id: 'exps', name: 'Salidas de la semana', icon: 'map', short: 'Salidas' },
   { id: 'botin', name: 'Botín de las Expediciones del día', icon: 'trophy', short: 'Botín' },
-  { id: 'def', name: 'Mejor defensa (% salvado)', icon: '🛡️', short: 'Defensa', unit: '%' },
+  { id: 'def', name: 'Mejor defensa (% salvado)', icon: 'shield', short: 'Defensa', unit: '%' },
   { id: 'charm', name: 'Ciudad con más Encanto', icon: 'sparkle', short: 'Encanto' },
 ];
 const WEEK_KEYS = ['stars', 'exps', 'botin', 'def'];   // los que cuentan para "mejor marca personal"
@@ -466,7 +466,7 @@ export function dailyStatus() {
 export function friendThreat(id, now = Date.now()) {
   const t = cache.profiles[id]?.stats?.threat;
   if (!t?.id || typeof t.end !== 'number' || t.end <= now) return null;
-  return { ...t, name: threats.THREAT_TYPES[t.type]?.name || 'Amenaza', icon: threats.THREAT_TYPES[t.type]?.icon || '🌊' };
+  return { ...t, name: threats.THREAT_TYPES[t.type]?.name || 'Amenaza', icon: threats.THREAT_TYPES[t.type]?.icon || 'flood' };
 }
 /** "hoy" / "mañana" / "en 3 días" hasta que llega. */
 export function threatWhen(t, now = Date.now()) {
@@ -513,10 +513,10 @@ async function syncCrews() {
 
 // ---------- Pedidos de ayuda ----------
 export const REQUEST_KINDS = {
-  sticker: { name: 'Hallazgo que me falta', icon: '🃏' },
-  item: { name: 'Un objeto', icon: '🔨' },
+  sticker: { name: 'Hallazgo que me falta', icon: 'finding' },
+  item: { name: 'Un objeto', icon: 'hammer' },
   coins: { name: 'Monedas', icon: 'coin' },
-  speedup: { name: 'Acelerá mi obra', icon: '⏳' },
+  speedup: { name: 'Acelerá mi obra', icon: 'hourglass' },
 };
 export const SPEEDUP_MINUTES = 30;
 export function requestCoinOptions() { return [150, 400, 800].map(c => round5(c * scale())); }

@@ -28,24 +28,24 @@ const colorList = (list) => list.map(c => ({ id: c.id, hex: c.hex, name: COLOR_N
 const AVATAR_CATS = [
   { id: 'type', label: () => 'Pueblo', icon: 'sparkle', types: true },
   { id: 'build', label: () => 'Cuerpo', icon: 'dress', kind: 'build', list: BUILDS, frame: 'body' },
-  { id: 'skin', label: (t) => (t.id === 'zorro' ? 'Pelaje' : 'Piel'), icon: '🖐️', colors: (t) => t.skins.map((hex, i) => ({ id: i, hex, name: `Tono ${i + 1}` })) },
-  { id: 'hair', label: (t) => (t.id === 'anuro' ? 'Marcas' : 'Peinado'), icon: 'ribbon', kind: 'hair', list: HAIR_STYLES, frame: 'head' },
+  { id: 'skin', label: (t) => (t.id === 'zorro' ? 'Pelaje' : 'Piel'), icon: 'hand', colors: (t) => t.skins.map((hex, i) => ({ id: i, hex, name: `Tono ${i + 1}` })) },
+  { id: 'hair', label: (t) => (t.id === 'anuro' ? 'Marcas' : 'Peinado'), icon: 'hair', kind: 'hair', list: HAIR_STYLES, frame: 'head' },
   { id: 'hairColor', label: (t) => (t.id === 'anuro' ? 'Color de marcas' : 'Color de pelo'), icon: 'palette', colors: () => HAIR_COLORS.map(c => ({ id: c.id, hex: c.hex, name: HAIR_NAMES[c.id] || c.id })) },
-  { id: 'face', label: () => 'Cara', icon: '🧔', kind: 'face', list: FACES, frame: 'head' },
+  { id: 'face', label: () => 'Cara', icon: 'beard', kind: 'face', list: FACES, frame: 'head' },
   { id: 'dress', label: () => 'Ropa', icon: 'dress', kind: 'dress', list: DRESS_STYLES, frame: 'body' },
-  { id: 'dressColor', label: () => 'Color de ropa', icon: '🎨', colors: () => OUTFIT_COLORS.map(c => ({ id: c.id, hex: clothHex(c.id), name: clothName(c.id) })) },
-  { id: 'crown', label: () => 'Cabeza', icon: 'crown', kind: 'crown', list: CROWNS, frame: 'head' },
-  { id: 'acc', label: () => 'Equipo', icon: 'wand', kind: 'acc', list: ACCESSORIES, frame: 'body' },
+  { id: 'dressColor', label: () => 'Color de ropa', icon: 'palette', colors: () => OUTFIT_COLORS.map(c => ({ id: c.id, hex: clothHex(c.id), name: clothName(c.id) })) },
+  { id: 'crown', label: () => 'Cabeza', icon: 'wardrobe', kind: 'crown', list: CROWNS, frame: 'head' },
+  { id: 'acc', label: () => 'Equipo', icon: 'bag', kind: 'acc', list: ACCESSORIES, frame: 'body' },
 ];
 // encuadres de las miniaturas: lo que va en la espalda, lo alto y lo que llega al pecho o al piso
 const BACK_ITEMS = new Set(['mochila', 'capa_viaje']);
 const TALL_ITEMS = new Set(['sombrero_mago', 'yelmo', 'piluso', 'galera']);
 const BODY_ITEMS = new Set(['barba_larga', 'barba_trenzada', 'lanza', 'baston', 'arco', 'farolito', 'escudo', 'buho']);
 const CAR_CATS = [
-  { id: 'body', label: 'Casco', icon: 'car', kind: 'body', list: CAR_BODIES, frame: 'car', stats: true },
+  { id: 'body', label: 'Casco', icon: 'skiff', kind: 'body', list: CAR_BODIES, frame: 'car', stats: true },
   { id: 'color', label: 'Pintura', icon: 'palette', colors: colorList(OUTFIT_COLORS) },
-  { id: 'wheels', label: 'Aparejo', icon: 'car', kind: 'wheels', list: CAR_WHEELS, frame: 'wheel' },
-  { id: 'topper', label: 'Proa', icon: 'car', kind: 'topper', list: CAR_TOPPERS, frame: 'car' },
+  { id: 'wheels', label: 'Aparejo', icon: 'skiff', kind: 'wheels', list: CAR_WHEELS, frame: 'wheel' },
+  { id: 'topper', label: 'Proa', icon: 'skiff', kind: 'topper', list: CAR_TOPPERS, frame: 'car' },
 ];
 // ángulo del escenario que mejor muestra cada pieza
 const FOCUS = {
@@ -200,7 +200,7 @@ export default function create(ctx) {
       <div class="wd-panel">
         <div class="wd-seg">
           <button class="wd-segbtn" data-mode="avatar"></button>
-          <button class="wd-segbtn" data-mode="car">${icon('car', 24)}Esquife</button>
+          <button class="wd-segbtn" data-mode="car">${icon('skiff', 24)}Esquife</button>
         </div>
         <div class="tabs wd-cats"></div>
         <div class="wd-list scroll"></div>
@@ -269,7 +269,7 @@ export default function create(ctx) {
       if (b.dataset.mode === 'car') {
         const locked = !garageOk();
         b.classList.toggle('locked', locked);
-        b.innerHTML = `${icon('car', 24)}Esquife${locked ? icon('lock', 18) : ''}`;
+        b.innerHTML = `${icon('skiff', 24)}Esquife${locked ? icon('lock', 18) : ''}`;
       }
     }
   }

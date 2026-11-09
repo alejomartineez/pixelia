@@ -22,7 +22,7 @@ function storageToast(parts) {
   if (!where.length) return;
   const p = where[0];
   const dest = p.kind === 'chest' ? 'a tus cofres' : p.kind === 'item' ? 'a tu mochila' : p.kind === 'equip' ? 'para tus expediciones' : p.kind === 'stickers' ? 'para tus Hallazgos' : p.kind === 'mats' ? 'para tus obras' : 'a tu Equipaje';
-  toast(`¡${partLabel(p)} ${dest}!`, { icon: p.kind === 'cosmetic' ? 'dress' : p.kind === 'stickers' ? '🃏' : 'gift', type: 'good' });
+  toast(`¡${partLabel(p)} ${dest}!`, { icon: p.kind === 'cosmetic' ? 'dress' : p.kind === 'stickers' ? 'finding' : 'gift', type: 'good' });
 }
 const partsLine = (parts, size = 22) => `<span class="ssn-parts">${parts.map(p => partChip(p, size)).join('')}</span>`;
 

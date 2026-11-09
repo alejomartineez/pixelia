@@ -38,21 +38,21 @@ export function dayPhase(hour) {
 // sat: saturación (×) · dark: cuánto baja la luz (0..1) · fog: niebla extra (0..1) · fogColor · sky: color al que va el cielo
 // fx: partículas { kind, rate (0..1), wind } · flash: relámpagos · exp: efecto en la expedición (siempre a la vista)
 export const WEATHER = {
-  despejado: { id: 'despejado', name: 'Despejado', icon: '☀️', sat: 1, dark: 0, fog: 0, fx: null },
-  nublado: { id: 'nublado', name: 'Nublado', icon: '☁️', sat: 0.85, dark: 0.18, fog: 0.08, fogColor: '#9aa3a8', sky: '#8e979c', fx: null },
-  lluvia: { id: 'lluvia', name: 'Lluvia', icon: '🌧️', sat: 0.78, dark: 0.3, fog: 0.16, fogColor: '#7d8a94', sky: '#6f7b86', fx: { kind: 'rain', rate: 0.6, wind: 0.25 } },
-  tormenta: { id: 'tormenta', name: 'Tormenta', icon: '⛈️', sat: 0.62, dark: 0.5, fog: 0.22, fogColor: '#4f5866', sky: '#3c4452', fx: { kind: 'rain', rate: 1, wind: 0.8 }, flash: true,
+  despejado: { id: 'despejado', name: 'Despejado', icon: 'sun', sat: 1, dark: 0, fog: 0, fx: null },
+  nublado: { id: 'nublado', name: 'Nublado', icon: 'cloud', sat: 0.85, dark: 0.18, fog: 0.08, fogColor: '#9aa3a8', sky: '#8e979c', fx: null },
+  lluvia: { id: 'lluvia', name: 'Lluvia', icon: 'rain', sat: 0.78, dark: 0.3, fog: 0.16, fogColor: '#7d8a94', sky: '#6f7b86', fx: { kind: 'rain', rate: 0.6, wind: 0.25 } },
+  tormenta: { id: 'tormenta', name: 'Tormenta', icon: 'storm', sat: 0.62, dark: 0.5, fog: 0.22, fogColor: '#4f5866', sky: '#3c4452', fx: { kind: 'rain', rate: 1, wind: 0.8 }, flash: true,
     exp: { vision: -1, step: 1, guard: 'lona', text: 'Visión −1, y colinas, bañados y rocas cuestan 1 provisión más (la Lona lo evita).' } },
-  niebla: { id: 'niebla', name: 'Niebla', icon: '🌫️', sat: 0.7, dark: 0.15, fog: 0.55, fogColor: '#b9c0c0', sky: '#aab2b3', fx: null,
+  niebla: { id: 'niebla', name: 'Niebla', icon: 'fog', sat: 0.7, dark: 0.15, fog: 0.55, fogColor: '#b9c0c0', sky: '#aab2b3', fx: null,
     exp: { vision: -1, text: 'La niebla tapa las casillas: visión −1.' } },
-  nieve: { id: 'nieve', name: 'Nieve', icon: '🌨️', sat: 0.75, dark: 0.12, fog: 0.2, fogColor: '#dfe6ec', sky: '#c9d3dc', fx: { kind: 'snow', rate: 0.7, wind: 0.2 },
+  nieve: { id: 'nieve', name: 'Nieve', icon: 'snow', sat: 0.75, dark: 0.12, fog: 0.2, fogColor: '#dfe6ec', sky: '#c9d3dc', fx: { kind: 'snow', rate: 0.7, wind: 0.2 },
     exp: { step: 1, guard: 'lona', text: 'La nieve frena: colinas, bañados y rocas cuestan 1 provisión más (la Lona lo evita).' } },
-  ceniza: { id: 'ceniza', name: 'Ceniza', icon: '🌋', sat: 0.6, dark: 0.32, fog: 0.3, fogColor: '#7a6f68', sky: '#5e534e', fx: { kind: 'ash', rate: 0.7, wind: 0.3 },
+  ceniza: { id: 'ceniza', name: 'Ceniza', icon: 'ash', sat: 0.6, dark: 0.32, fog: 0.3, fogColor: '#7a6f68', sky: '#5e534e', fx: { kind: 'ash', rate: 0.7, wind: 0.3 },
     exp: { vision: -1, text: 'La ceniza no deja ver: visión −1.' } },
   // las de las amenazas (J4: "las Amenazas se ven")
-  humo: { id: 'humo', name: 'Humo', icon: '🔥', sat: 0.72, dark: 0.22, fog: 0.26, fogColor: '#8a7466', sky: '#a0715a', tint: [1.06, 0.95, 0.86], fx: { kind: 'ember', rate: 0.7, wind: 0.4 } },
-  helada: { id: 'helada', name: 'Helada', icon: '❄️', sat: 0.7, dark: 0.1, fog: 0.18, fogColor: '#d6e6f2', sky: '#b9cfe0', tint: [0.94, 0.99, 1.08], frost: 1, fx: { kind: 'snow', rate: 0.35, wind: 0.1 } },
-  sequia: { id: 'sequia', name: 'Sequía', icon: '☀️', sat: 0.82, dark: 0, fog: 0.12, fogColor: '#d9c39a', sky: '#e2c891', tint: [1.07, 1.0, 0.86], fx: { kind: 'dust', rate: 0.4, wind: 0.6 } },
+  humo: { id: 'humo', name: 'Humo', icon: 'smoke', sat: 0.72, dark: 0.22, fog: 0.26, fogColor: '#8a7466', sky: '#a0715a', tint: [1.06, 0.95, 0.86], fx: { kind: 'ember', rate: 0.7, wind: 0.4 } },
+  helada: { id: 'helada', name: 'Helada', icon: 'frost', sat: 0.7, dark: 0.1, fog: 0.18, fogColor: '#d6e6f2', sky: '#b9cfe0', tint: [0.94, 0.99, 1.08], frost: 1, fx: { kind: 'snow', rate: 0.35, wind: 0.1 } },
+  sequia: { id: 'sequia', name: 'Sequía', icon: 'drought', sat: 0.82, dark: 0, fog: 0.12, fogColor: '#d9c39a', sky: '#e2c891', tint: [1.07, 1.0, 0.86], fx: { kind: 'dust', rate: 0.4, wind: 0.6 } },
 };
 /** Cómo se ve cada amenaza en las 48 h de señales y el día que llega. */
 export const THREAT_WEATHER = { crecida: 'lluvia', tormenta: 'tormenta', incendio: 'humo', helada: 'helada', sequia: 'sequia' };

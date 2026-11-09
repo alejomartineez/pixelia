@@ -33,7 +33,7 @@ function pickFriend(ctx, { title = '¿Con quién?', hint = () => '' } = {}) {
     const m = edModal(title, 'people', box, () => resolve(chosen));
     const friends = await ensureFriends();
     if (!friends.length) {
-      box.innerHTML = emptyHtml('🌷', 'Todavía no tenés contactos', 'Sumá gente con su código en la pestaña Contactos y después intercambian.');
+      box.innerHTML = emptyHtml('flower', 'Todavía no tenés contactos', 'Sumá gente con su código en la pestaña Contactos y después intercambian.');
       return;
     }
     box.replaceChildren(...friends.map(f => h('button', {
@@ -73,8 +73,8 @@ export async function openTradeEditor(ctx, opts = {}) {
 
   const body = h('div');
   const err = h('div.soc-err');
-  const send = h('button.btn.second', { html: `${icon('🔄', 20)} Proponer` });
-  const m = edModal(`Cambiar con ${friend.name}`, '🔄', body);
+  const send = h('button.btn.second', { html: `${icon('trade', 20)} Proponer` });
+  const m = edModal(`Cambiar con ${friend.name}`, 'trade', body);
   const foot = h('div.modal-foot');
   foot.append(h('button.btn.ghost', { html: 'Cancelar', onclick: () => { audio.sfx('close'); m.close(); } }), send);
   m.el.append(foot);
@@ -90,7 +90,7 @@ export async function openTradeEditor(ctx, opts = {}) {
 
   function drawSeg() {
     seg.innerHTML = '';
-    for (const [id, label, ic] of [['stickers', 'Hallazgos', '🃏'], ['res', 'Monedas y más', 'coin']]) {
+    for (const [id, label, ic] of [['stickers', 'Hallazgos', 'finding'], ['res', 'Monedas y más', 'coin']]) {
       seg.append(h('button' + (mode === id ? '.on' : ''), { html: `${icon(ic, 18)}${label}`, onclick: () => { if (mode !== id) { audio.sfx('tap'); mode = id; draw(); } } }));
     }
   }
@@ -124,7 +124,7 @@ export async function openTradeEditor(ctx, opts = {}) {
     const regionOf = (id) => SET_BY_ID[stickerDef(id)?.set]?.region || 'bosque';
     const groups = REGION_ORDER.map(r => [r, list.filter(it => regionOf(it.id) === r)]).filter(([, l]) => l.length);
     for (const [r, items] of groups) {
-      g.append(h('h4.soc-pick-region', { 'data-region': r, html: `${icon('🧭', 14)} ${esc(regionName(r))}` }));
+      g.append(h('h4.soc-pick-region', { 'data-region': r, html: `${icon('expedition', 14)} ${esc(regionName(r))}` }));
       for (const it of items) pickBtn(g, it, sel, onPick, mark);
     }
     return g;
@@ -145,9 +145,9 @@ export async function openTradeEditor(ctx, opts = {}) {
     const mine = dups.map(d => ({ id: d.id, cnt: d.count, off: d.stars === 5 && !rules.fiveOk }));
     const gg = stickerGrid(mine, offerSt, id => { offerSt = id; if (askSt && stickerPairProblem(offerSt, askSt, friend)?.includes('parecidas')) askSt = null; draw(); },
       it => (fal && !fal[it.id] ? '¡Le falta!' : ''));
-    gBox.append(gg || h('div', { html: emptyHtml('🃏', 'No tenés repetidos', 'Abrí cofres y sobres: los repetidos se pueden cambiar con tus contactos.') }));
+    gBox.append(gg || h('div', { html: emptyHtml('finding', 'No tenés repetidos', 'Abrí cofres y sobres: los repetidos se pueden cambiar con tus contactos.') }));
     // lo que recibo
-    const rBox = h('div.soc-pane-box.get', { html: `<h5>${icon('🃏', 20)} Vos recibís <small>${fal ? `repetidas de ${esc(friend.name)}` : 'una que te falte'}</small></h5>` });
+    const rBox = h('div.soc-pane-box.get', { html: `<h5>${icon('finding', 20)} Vos recibís <small>${fal ? `repetidas de ${esc(friend.name)}` : 'una que te falte'}</small></h5>` });
     let cand = fal
       ? Object.entries(fal).filter(([, n]) => n >= 2).map(([id]) => id)
       : STICKERS.filter(s => stickerCount(s.id) === 0).map(s => s.id);
@@ -158,9 +158,9 @@ export async function openTradeEditor(ctx, opts = {}) {
       return { id, owned: true, missing: stickerCount(id) === 0, off: bad, stars: d.stars, n: d.n };
     }).sort((a, b) => (a.off - b.off) || (b.missing - a.missing) || (b.stars - a.stars) || (a.n - b.n));
     const rg = stickerGrid(cand, askSt, id => { askSt = id; draw(); }, it => (it.missing ? '¡Te falta!' : ''));
-    rBox.append(rg || h('div', { html: emptyHtml('🙈', `${friend.name} no tiene repetidos todavía`, 'Probá con monedas y objetos, o hacé un pedido.') }));
+    rBox.append(rg || h('div', { html: emptyHtml('finding', `${friend.name} no tiene repetidos todavía`, 'Probá con monedas y objetos, o hacé un pedido.') }));
     const rulesEl = h('div.soc-rules', {
-      html: `<span>${icon('🃏', 14)} 1 por lado</span><span>${icon('star', 14)} estrellas parecidas (±1)</span><span>${rules.fiveOk ? `${icon('check', 14)} 5★ habilitadas${rules.golden ? ' (Semana Dorada)' : ''}` : `${icon('lock', 14)} 5★ con 14 días de amistad`}</span>`,
+      html: `<span>${icon('finding', 14)} 1 por lado</span><span>${icon('star', 14)} estrellas parecidas (±1)</span><span>${rules.fiveOk ? `${icon('check', 14)} 5★ habilitadas${rules.golden ? ' (Semana Dorada)' : ''}` : `${icon('lock', 14)} 5★ con 14 días de amistad`}</span>`,
     });
     area.replaceChildren(gBox, rBox, rulesEl);
   }
@@ -197,7 +197,7 @@ export async function openTradeEditor(ctx, opts = {}) {
     const mineIds = TRADE_ITEMS.filter(id => itemCount(id) > 0);
     if (mineIds.length) gBox.append(itemChips(give, mineIds, mineMax));
     else gBox.append(h('small.soc-muted', { html: 'Tu mochila no tiene objetos para dar.' }));
-    const rBox = h('div.soc-pane-box.get', { html: `<h5>${icon('🎁', 20)} Vos pedís</h5>` });
+    const rBox = h('div.soc-pane-box.get', { html: `<h5>${icon('gift', 20)} Vos pedís</h5>` });
     rBox.append(stepper('Monedas', 'coin', get, 'coins', 99999, coinStep), stepper('Gemas', 'gem', get, 'gems', 999, gemStep));
     rBox.append(itemChips(get, TRADE_ITEMS, () => 3));
     area.replaceChildren(gBox, rBox);
@@ -217,7 +217,7 @@ export async function openTradeEditor(ctx, opts = {}) {
     const r = await proposeTrade(friend, offer, request);
     if (r?.error) { audio.sfx('error'); err.textContent = r.error; return null; }
     audio.sfx('swoosh');
-    toast(`¡Propuesta enviada a ${friend.name}! Te avisamos en el buzón`, { icon: '🔄', type: 'good' });
+    toast(`¡Propuesta enviada a ${friend.name}! Te avisamos en el buzón`, { icon: 'trade', type: 'good' });
     m.close();
     opts.onDone?.();
     return r;
@@ -233,8 +233,8 @@ export async function openRequestCreator(ctx, opts = {}) {
   let item = null, coins = null, uid = null;
   const body = h('div');
   const err = h('div.soc-err');
-  const send = h('button.btn.primary', { html: `${icon('🤝', 20)} Publicar pedido` });
-  const m = edModal('Pedí una mano', '🤝', body);
+  const send = h('button.btn.primary', { html: `${icon('handshake', 20)} Publicar pedido` });
+  const m = edModal('Pedí una mano', 'handshake', body);
   const foot = h('div.modal-foot');
   foot.append(h('button.btn.ghost', { html: 'Cancelar', onclick: () => { audio.sfx('close'); m.close(); } }), send);
   m.el.append(foot);
@@ -243,7 +243,7 @@ export async function openRequestCreator(ctx, opts = {}) {
   body.append(h('p.soc-muted', { html: 'Tus contactos ven tu pedido durante 24 horas. Quien ayude primero te lo manda a tu buzón.' }), kindsEl, area, err);
   if (opts.sticker) {
     body.append(h('button.btn.ghost.small', {
-      html: `${icon('🔄', 18)} O proponé un intercambio por este hallazgo`,
+      html: `${icon('trade', 18)} O proponé un intercambio por este hallazgo`,
       onclick: () => { audio.sfx('tap'); m.close(); openTradeEditor(ctx, { askSticker: opts.sticker }); },
     }));
   }
@@ -267,12 +267,12 @@ export async function openRequestCreator(ctx, opts = {}) {
   }
   function drawArea() {
     area.innerHTML = '';
-    if (!kind) { area.innerHTML = `<div class="soc-muted" style="text-align:center;padding:16px">Elegí qué necesitás 👆</div>`; return; }
+    if (!kind) { area.innerHTML = `<div class="soc-muted" style="text-align:center;padding:16px">Elegí qué necesitás</div>`; return; }
     if (kind === 'sticker') {
-      area.append(h('h5', { html: `${icon('🃏', 18)} ¿Qué hallazgo te falta? <small>los que tienen tus contactos, primero</small>` }));
+      area.append(h('h5', { html: `${icon('finding', 18)} ¿Qué hallazgo te falta? <small>los que tienen tus contactos, primero</small>` }));
       const miss = STICKERS.filter(s => stickerCount(s.id) === 0).map(s => ({ id: s.id, who: friendsWith(s.id), s }))
         .sort((a, b) => (b.who.length > 0) - (a.who.length > 0) || a.s.n - b.s.n);
-      if (!miss.length) { area.append(h('div', { html: emptyHtml('🏆', '¡No te falta ninguno!', 'Completaste Hallazgos. No queda nada por pegar.') })); return; }
+      if (!miss.length) { area.append(h('div', { html: emptyHtml('trophy', '¡No te falta ninguno!', 'Completaste Hallazgos. No queda nada por pegar.') })); return; }
       const g = h('div.soc-pickgrid');
       for (const it of miss) {
         const b = h('button.soc-pick' + (sticker === it.id ? '.on' : ''), { 'aria-label': `Hallazgo ${it.s.n}` });
@@ -287,7 +287,7 @@ export async function openRequestCreator(ctx, opts = {}) {
         area.append(h('small.soc-muted', { html: `Elegiste el <b>#${d.n}</b> de ${esc(d.setName)} (${'★'.repeat(d.stars)}). Te lo puede dar alguien que lo tenga repetido.` }));
       }
     } else if (kind === 'item') {
-      area.append(h('h5', { html: `${icon('🔨', 18)} ¿Qué objeto?` }));
+      area.append(h('h5', { html: `${icon('hammer', 18)} ¿Qué objeto?` }));
       const w = h('div.soc-items');
       for (const id of TRADE_ITEMS) {
         w.append(h('button.soc-item' + (item === id ? '.on' : ''), { title: ITEMS[id].desc || '', html: `${itemIcon(id, 22)}${esc(ITEMS[id].name)}`, onclick: () => { audio.sfx('tap'); item = id; draw(); } }));
@@ -300,7 +300,7 @@ export async function openRequestCreator(ctx, opts = {}) {
       for (const c of requestCoinOptions()) w.append(h('button.soc-item' + (coins === c ? '.on' : ''), { html: `${icon('coin', 22)}${fmtNum(c)}`, onclick: () => { audio.sfx('tap'); coins = c; draw(); } }));
       area.append(w);
     } else {
-      area.append(h('h5', { html: `${icon('⏳', 18)} ¿Qué obra? <small>-${SPEEDUP_MINUTES} min</small>` }));
+      area.append(h('h5', { html: `${icon('hourglass', 18)} ¿Qué obra? <small>-${SPEEDUP_MINUTES} min</small>` }));
       const w = h('div.soc-items');
       for (const b of busyB) {
         const d = BUILDING_BY_ID[b.id];
@@ -326,7 +326,7 @@ export async function openRequestCreator(ctx, opts = {}) {
     const r = await createHelpRequest(kind, p);
     if (r?.error) { audio.sfx('error'); err.textContent = r.error; return null; }
     audio.sfx('swoosh');
-    toast('Pedido publicado. Tus contactos lo van a ver', { icon: '🤝', type: 'good' });
+    toast('Pedido publicado. Tus contactos lo van a ver', { icon: 'handshake', type: 'good' });
     m.close();
     opts.onDone?.();
     return r;

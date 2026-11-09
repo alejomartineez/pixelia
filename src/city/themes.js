@@ -63,7 +63,7 @@ const GLASS = ['#bfe8ff', '#93d0f2', '#ffffff'];
 // litWindows: los vidrios pasan a la capa sin luz (brillan de noche)
 export const THEMES = [
   {
-    id: 'pueblo', name: 'Pueblo Acogedor', emoji: '🏡', desc: 'Techos de teja, jardines verdes y cielo claro.',
+    id: 'pueblo', name: 'Pueblo Acogedor', emoji: 'home', desc: 'Techos de teja, jardines verdes y cielo claro.',
     identity: true,
     swatch: ['#ee8a5c', '#7f9ee8', '#5fc46a', '#ffd166'],
     sky: 'linear-gradient(180deg, #a9daff 0%, #cdeaff 36%, #eef6f0 70%, #fdf0d4 100%)', stars: 0.4,
@@ -80,7 +80,7 @@ export const THEMES = [
   },
   {
     // Reemplaza a "Dulce Pastel" (id viejo 'pastel' → alias, ver THEME_ALIASES): ocres, terracotas apagadas y árboles rojizos.
-    id: 'otono', name: 'Otoño', emoji: '🍂', desc: 'Ocres, terracotas apagadas y árboles rojizos.',
+    id: 'otono', name: 'Otoño', emoji: 'leaf', desc: 'Ocres, terracotas apagadas y árboles rojizos.',
     swatch: ['#b8704a', '#c9923f', '#9a3f2c', '#8e9460'],
     sky: 'linear-gradient(180deg, #b9c9d0 0%, #d6d8cf 36%, #ead8bd 70%, #efcfa4 100%)', stars: 0.3,
     lights: { sky: 0xfff4e6, ground: 0xb89a70, hemi: 1.08, sun: 0xffe2bc, sunI: 2.36 },
@@ -107,7 +107,7 @@ export const THEMES = [
   },
   {
     // Reemplaza a "Bosque" (alias bosque → musgo).
-    id: 'musgo', name: 'Musgo', emoji: '🌿', desc: 'Piedra con musgo, maderas viejas y faroles cálidos.',
+    id: 'musgo', name: 'Musgo', emoji: 'forest', desc: 'Piedra con musgo, maderas viejas y faroles cálidos.',
     swatch: ['#8a5a3a', '#2f6b45', '#c8423a', '#ffc861'],
     sky: 'linear-gradient(180deg, #7f9c92 0%, #a3b8a6 38%, #cfcaa8 72%, #dcc49a 100%)', stars: 0.35,
     lights: { sky: 0xfff3d6, ground: 0x6f8f5a, hemi: 1.04, sun: 0xffe2b0, sunI: 2.32 },
@@ -134,7 +134,7 @@ export const THEMES = [
   },
   {
     // Reemplaza a "Ciudad Moderna" (alias moderna → ceniza): piedra volcánica, pizarra y brasas en las ventanas.
-    id: 'ceniza', name: 'Ceniza', emoji: '🌋', desc: 'Piedra volcánica, techos de pizarra y brasas en las ventanas.',
+    id: 'ceniza', name: 'Ceniza', emoji: 'ash', desc: 'Piedra volcánica, techos de pizarra y brasas en las ventanas.',
     swatch: ['#5d5a58', '#8a8580', '#d9653b', '#9a9a7a'],
     sky: 'linear-gradient(180deg, #7e8088 0%, #9d9b9a 40%, #c2b2a0 76%, #d39c76 100%)', stars: 0.25,
     lights: { sky: 0xf2ebe4, ground: 0x8a7f74, hemi: 1.0, sun: 0xffd6b0, sunI: 2.2 },
@@ -162,7 +162,7 @@ export const THEMES = [
   },
   {
     // Reemplaza a "Playa Tropical" (alias playa → bruma): la costa de los faros.
-    id: 'bruma', name: 'Bruma', emoji: '⚓', desc: 'Costa gris, bruma baja y faroles en el muelle.',
+    id: 'bruma', name: 'Bruma', emoji: 'anchor', desc: 'Costa gris, bruma baja y faroles en el muelle.',
     swatch: ['#8fa3ab', '#4f6470', '#c9b98f', '#6f8f7e'],
     sky: 'linear-gradient(180deg, #93a5ae 0%, #b3c1c5 40%, #ced6d4 72%, #ddd8cc 100%)', stars: 0.2,
     lights: { sky: 0xeef3f4, ground: 0xa0a9a4, hemi: 1.06, sun: 0xf3efe6, sunI: 2.1 },
@@ -188,7 +188,7 @@ export const THEMES = [
     },
   },
   {
-    id: 'ocaso', name: 'Ocaso', emoji: '🌇', desc: 'Cielo de brasas, sombras largas y ventanas que se prenden.',
+    id: 'ocaso', name: 'Ocaso', emoji: 'sunset', desc: 'Cielo de brasas, sombras largas y ventanas que se prenden.',
     swatch: ['#3a2f4f', '#c4643f', '#f0a35a', '#6d5a4a'],
     sky: 'linear-gradient(180deg, #2c2a48 0%, #5f4566 34%, #b8624a 70%, #eb9d58 100%)', stars: 0.6,
     lights: { sky: 0xffd2b0, ground: 0x5d4250, hemi: 0.96, sun: 0xffa968, sunI: 2.05 },
@@ -212,7 +212,7 @@ export const THEMES = [
   },
   {
     // Reemplaza a "Invierno Nevado" (alias invierno → escarcha).
-    id: 'escarcha', name: 'Escarcha', emoji: '❄️', desc: 'Escarcha en los techos, azules fríos y luces cálidas.',
+    id: 'escarcha', name: 'Escarcha', emoji: 'frost', desc: 'Escarcha en los techos, azules fríos y luces cálidas.',
     swatch: ['#f4f8ff', '#9cc6f0', '#3d5a8c', '#d8433f'],
     sky: 'linear-gradient(180deg, #9fb1c9 0%, #bfcbdc 40%, #dbe2ea 75%, #eef0f2 100%)', stars: 0.7,
     lights: { sky: 0xf4f8ff, ground: 0xb9c8e6, hemi: 1.15, sun: 0xf2f6ff, sunI: 2.32 },
@@ -239,7 +239,7 @@ export const THEMES = [
     },
   },
   {
-    id: 'noche', name: 'Luces de Noche', emoji: '🌙', desc: 'Azules profundos, estrellas y ventanas encendidas.',
+    id: 'noche', name: 'Luces de Noche', emoji: 'moon', desc: 'Azules profundos, estrellas y ventanas encendidas.',
     swatch: ['#1e2450', '#4d4fa0', '#ffd166', '#8fb4ff'],
     sky: 'linear-gradient(180deg, #0e1233 0%, #1f2458 40%, #3a3478 75%, #5a3f86 100%)', stars: 1,
     dark: true, // aro de luz bajo el personaje (city-life.js), que si no se pierde contra el piso

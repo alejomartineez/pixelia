@@ -112,14 +112,14 @@ export const SCENES = [
     ],
   },
   {
-    id: 'c_expedicion', contact: 'expedicion', who: 'cartografa', trigger: ['unlock:expedicion', 'built:casa_exp'], title: 'La expedición', art: ['🧭', 'map', '🍞'],
+    id: 'c_expedicion', contact: 'expedicion', who: 'cartografa', trigger: ['unlock:expedicion', 'built:casa_exp'], title: 'La expedición', art: ['expedition', 'map', 'prov'],
     lines: [
       'La Casa de Expediciones está lista. Cada paso afuera gasta provisiones, y el grupo se cansa: mirá el ánimo.',
       'La niebla tapa lo que todavía no conocés. Lo que traés solo cuenta si volvés: no te quedes sin provisiones para el regreso.',
     ],
   },
   {
-    id: 'c_taller', contact: 'taller', who: 'cartografa', trigger: ['built:taller'], title: 'El Taller', art: ['hammer', '🪢', '🔦'],
+    id: 'c_taller', contact: 'taller', who: 'cartografa', trigger: ['built:taller'], title: 'El Taller', art: ['hammer', 'rope', 'lantern'],
     lines: [
       'Con el Taller fabricás equipo para las salidas: cuerda, pala, lona, farol. Cada pieza sirve una vez por salida.',
       'Más adelante también hace reservas para aguantar las amenazas. Lo que falta, se fabrica.',
@@ -133,14 +133,14 @@ export const SCENES = [
     ],
   },
   {
-    id: 'c_amenazas', contact: 'amenazas', who: 'cartografa', trigger: ['unlock:amenazas', 'threat:announced'], title: 'Las amenazas', art: ['bolt', '🌊', '🔥'],
+    id: 'c_amenazas', contact: 'amenazas', who: 'cartografa', trigger: ['unlock:amenazas', 'threat:announced'], title: 'Las amenazas', art: ['bolt', 'flood', 'fire'],
     lines: [
       'Desde el Quiebre los elementos andan sueltos, y cada tanto se desbordan: crecidas, incendios, tormentas.',
       'La isla avisa con tiempo. Prepará defensas y reservas antes; si no estás, la ciudad se defiende sola con lo que tenga.',
     ],
   },
   {
-    id: 'c_combate', contact: 'combate', who: 'cartografa', trigger: ['combat:first'], title: 'El combate', art: ['⚔️', 'bolt', 'people'],
+    id: 'c_combate', contact: 'combate', who: 'cartografa', trigger: ['combat:first'], title: 'El combate', art: ['fight', 'bolt', 'people'],
     lines: [
       'Afuera no todo se deja pasar. Se pelea por turnos: primero mueve tu grupo, después ellos.',
       'Las casillas marcadas son las que van a atacar. Salí de ahí o hacé que les cueste.',
@@ -148,7 +148,7 @@ export const SCENES = [
     ],
   },
   {
-    id: 'c_elementos', contact: 'elementos', who: 'cartografa', trigger: ['element:first'], title: 'Los elementos', art: ['sparkle', 'diamond', 'heart'],
+    id: 'c_elementos', contact: 'elementos', who: 'cartografa', trigger: ['element:first'], title: 'Los elementos', art: ['sparkle', 'gem', 'heart'],
     lines: [
       'Esto es veta viva. Desde el Quiebre los elementos andan sueltos: por eso la isla se desborda.',
       'Atado a la ciudad, un elemento la protege. Atado a vos, te da algo que no tenías.',
@@ -351,10 +351,10 @@ export const PAGE_BY_ID = Object.fromEntries(PAGES.map(p => [p.id, p]));
 // ---------- Elementos (se descubren en la historia; cada uno da algo a la isla y algo al personaje) ----------
 // Los efectos se aplican en el Acto 1 completo (Raíz, paso 6) y en los actos que siguen.
 export const ELEMENTS = [
-  { id: 'raiz', name: 'Raíz', ic: '🌱', where: 'la mina del Cerro del Hierro', isle: 'Más resistencia a la sequía y la helada, y un edificio nuevo: el Invernadero de Raíz.', leader: 'Enredar: frena a un enemigo y levanta una pared en el campo.' },
-  { id: 'marea', name: 'Marea', ic: '🌊', where: 'el Bajo Mundo', isle: 'Menos daño por crecidas y el agua de la isla se ordena.', leader: 'Ola: empuja y apaga el fuego.' },
-  { id: 'brasa', name: 'Brasa', ic: '🔥', where: 'los volcanes del Bajo Mundo', isle: 'Hornos más rápidos y menos daño por incendios.', leader: 'Ascua: quema el terreno por unos turnos.' },
-  { id: 'cefiro', name: 'Céfiro', ic: '🌬️', where: 'lo sabe alguien que no lo dice', isle: 'La isla sube y se ve más lejos.', leader: 'Ráfaga: mueve a todo el grupo.' },
+  { id: 'raiz', name: 'Raíz', ic: 'el-raiz', where: 'la mina del Cerro del Hierro', isle: 'Más resistencia a la sequía y la helada, y un edificio nuevo: el Invernadero de Raíz.', leader: 'Enredar: frena a un enemigo y levanta una pared en el campo.' },
+  { id: 'marea', name: 'Marea', ic: 'el-marea', where: 'el Bajo Mundo', isle: 'Menos daño por crecidas y el agua de la isla se ordena.', leader: 'Ola: empuja y apaga el fuego.' },
+  { id: 'brasa', name: 'Brasa', ic: 'el-brasa', where: 'los volcanes del Bajo Mundo', isle: 'Hornos más rápidos y menos daño por incendios.', leader: 'Ascua: quema el terreno por unos turnos.' },
+  { id: 'cefiro', name: 'Céfiro', ic: 'el-cefiro', where: 'lo sabe alguien que no lo dice', isle: 'La isla sube y se ve más lejos.', leader: 'Ráfaga: mueve a todo el grupo.' },
 ];
 export const ELEMENT_BY_ID = Object.fromEntries(ELEMENTS.map(e => [e.id, e]));
 
@@ -369,7 +369,7 @@ export const MANUAL = [
       ['hammer', 'Construir', 'Abrí <b>Construir</b> (B), elegí algo y ubicalo en el pasto. Se puede girar (R) y mover cuando quieras.'],
       ['people', 'Población', 'Las casas traen gente. Muchos negocios piden un mínimo de población para abrir.'],
       ['smile', 'Felicidad', 'Árboles, plantas y deco hacen feliz a la ciudad, y todo produce hasta un 50 % más.'],
-      ['👷', 'Constructoras', 'Cada obra ocupa una constructora un rato. Si faltan menos de 5 segundos, se termina gratis.'],
+      ['build', 'Constructoras', 'Cada obra ocupa una constructora un rato. Si faltan menos de 5 segundos, se termina gratis.'],
       ['palette', 'Estilo y personaje', 'El botón de la paleta (T) cambia el estilo de la ciudad. El <b>Equipaje</b> cambia tu personaje y su ropa: lo comprado queda guardado.'],
     ],
   },
@@ -377,29 +377,29 @@ export const MANUAL = [
     id: 'misiones', name: 'Misiones y Bitácora', ic: 'quest', open: () => true,
     items: [
       ['quest', 'Misión principal', 'La tarjeta de la izquierda dice qué conviene hacer ahora. Las primeras veinte se cobran solas al cumplirlas.'],
-      ['📖', 'Bitácora', 'Con <b>J</b> o el botón del costado: el capítulo de la historia, qué sigue, las páginas del diario y este Manual.'],
+      ['journal', 'Bitácora', 'Con <b>J</b> o el botón del costado: el capítulo de la historia, qué sigue, las páginas del diario y este Manual.'],
       ['calendar', 'Diarias', 'Tres misiones por día. Si cumplís las tres se abre el cofre del día.'],
       ['trophy', 'Logros', 'Metas largas con estrellas: dan gemas a medida que avanzás.'],
     ],
   },
   {
-    id: 'expedicion', name: 'La expedición', ic: '🧭', open: (s, X) => X.isOpen('expedicion'),
+    id: 'expedicion', name: 'La expedición', ic: 'expedition', open: (s, X) => X.isOpen('expedicion'),
     items: [
-      ['🍞', 'Provisiones', 'Cada paso gasta provisiones. Salen de la Huerta y se guardan en el depósito, que tiene tope. Hay una salida corta gratis por día.'],
+      ['prov', 'Provisiones', 'Cada paso gasta provisiones. Salen de la Huerta y se guardan en el depósito, que tiene tope. Hay una salida corta gratis por día.'],
       ['heart', 'Ánimo', 'Baja con los peligros. Si llega a cero, el grupo vuelve antes y con la mitad de la carga. Descansar en un campamento lo sube.'],
       ['map', 'Niebla', 'Lo que no se ve está tapado. Moverte despeja las casillas vecinas; los miradores despejan más.'],
       ['home', 'Volver', 'Lo que traés cuenta recién al volver a la ciudad. Si las provisiones no alcanzan para el regreso, se llega con la mitad de la carga.'],
       ['star', 'Estrellas', 'Una por cumplir el objetivo, otra por volver con la carga llena y otra por volver con buen ánimo.'],
       ['people', 'Grupo y roles', 'Cada edificio del ciclo suma un rol: exploración, ingeniería, guía, sanidad y recolección. Cada rol resuelve peligros distintos.'],
-      ['🌙', 'Día y noche', 'Se sale al alba y cada paso es una hora. Desde las 20 es de noche: se ve una casilla menos, salvo que lleves el Farol.'],
-      ['⛈️', 'Clima', 'En la barra de arriba están la hora, el clima y lo que viene. La tormenta y la niebla tapan; con tormenta o nieve, colinas, bañados y rocas cuestan una provisión más, salvo con la Lona.'],
+      ['moon', 'Día y noche', 'Se sale al alba y cada paso es una hora. Desde las 20 es de noche: se ve una casilla menos, salvo que lleves el Farol.'],
+      ['storm', 'Clima', 'En la barra de arriba están la hora, el clima y lo que viene. La tormenta y la niebla tapan; con tormenta o nieve, colinas, bañados y rocas cuestan una provisión más, salvo con la Lona.'],
     ],
   },
   {
     id: 'taller', name: 'El Taller', ic: 'hammer', open: (s) => s.city.buildings.some(b => b.id === 'taller'),
     items: [
-      ['🪢', 'Equipo', 'Cuerda, pala, lona, farol: cada pieza se usa una vez por salida y se elige al prepararla.'],
-      ['🧱', 'Reservas', 'Desde el rango Caserío, el Taller fabrica reservas para las amenazas (bolsas de arena, baldes…).'],
+      ['rope', 'Equipo', 'Cuerda, pala, lona, farol: cada pieza se usa una vez por salida y se elige al prepararla.'],
+      ['sandbags', 'Reservas', 'Desde el rango Caserío, el Taller fabrica reservas para las amenazas (bolsas de arena, baldes…).'],
     ],
   },
   {
@@ -415,7 +415,7 @@ export const MANUAL = [
     id: 'amenazas', name: 'Las amenazas', ic: 'bolt', open: (s, X) => X.isOpen('amenazas'),
     items: [
       ['bolt', 'Aviso', 'Cada amenaza se anuncia con tiempo: el chip de la izquierda dice cuál viene y cuándo.'],
-      ['🧱', 'Preparación', 'Las defensas cubren un radio y las reservas del Taller suman. Mirá el porcentaje de preparación.'],
+      ['shield', 'Preparación', 'Las defensas cubren un radio y las reservas del Taller suman. Mirá el porcentaje de preparación.'],
       ['clock', 'Si no estás', 'Se resuelve sola con lo que tengas. Lo dañado se repara pagando o, con el tiempo, lo arregla la vecindad.'],
     ],
   },
@@ -430,7 +430,7 @@ export const MANUAL = [
     items: [
       ['fire', 'Racha', 'Entrar cada día da un premio. Un escudo por semana cuida la racha si faltás un día.'],
       ['gift', 'Cofres', 'Salen en las salidas de 3 estrellas, las amenazas, el Pase y algunas misiones. Lo que traen va a la mochila.'],
-      ['album', 'Hallazgos', 'Lo que se encuentra explorando, en colecciones por región. Completar una página da un premio grande; los repetidos se cambian por recortes.'],
+      ['finding', 'Hallazgos', 'Lo que se encuentra explorando, en colecciones por región. Completar una página da un premio grande; los repetidos se cambian por recortes.'],
       ['sparkle', 'Temporada', 'Cuatro semanas por temporada: todo lo que hacés suma chispas, y cada nivel del Pase trae premios.'],
     ],
   },
@@ -442,26 +442,26 @@ export const MANUAL = [
     ],
   },
   {
-    id: 'combate', name: 'El combate', ic: '⚔️', open: (s, X) => X.seen('c_combate'),
+    id: 'combate', name: 'El combate', ic: 'fight', open: (s, X) => X.seen('c_combate'),
     items: [
-      ['⚔️', 'Turnos', 'Primero mueve tu grupo y después los enemigos. Cada integrante se mueve y actúa una vez por turno.'],
+      ['sword', 'Turnos', 'Primero mueve tu grupo y después los enemigos. Cada integrante se mueve y actúa una vez por turno.'],
       ['bolt', 'Casillas marcadas', 'Antes de atacar, el enemigo marca dónde va a pegar. Salí de ahí o bloquealo.'],
-      ['crown', 'Jefes', 'Esperan en lugares de la historia: la bestia en la poza honda del Bañado, la capitana en el abordaje. Cada uno tiene dos fases y una mecánica propia.'],
+      ['medal', 'Jefes', 'Esperan en lugares de la historia: la bestia en la poza honda del Bañado, la capitana en el abordaje. Cada uno tiene dos fases y una mecánica propia.'],
       ['up', 'Revancha', 'Contra un jefe, cada derrota cuenta: en el intento siguiente el grupo tiene más vida y el jefe menos, hasta dos veces.'],
     ],
   },
   {
-    id: 'ecos', name: 'Ecos de noche', ic: '🌙', open: (s) => Object.keys(s.story?.echoes || {}).length > 0,
+    id: 'ecos', name: 'Ecos de noche', ic: 'moon', open: (s) => Object.keys(s.story?.echoes || {}).length > 0,
     items: [
-      ['🌙', 'Ecos', 'De noche, en el borde de la isla y en algunas ruinas de la expedición, se ven siluetas que repiten un momento de antes del Quiebre.'],
-      ['📖', 'Una sola vez', 'Hacé clic en un eco para escucharlo. Cada uno aparece una vez y queda anotado en el Diario de la Bitácora.'],
+      ['moon', 'Ecos', 'De noche, en el borde de la isla y en algunas ruinas de la expedición, se ven siluetas que repiten un momento de antes del Quiebre.'],
+      ['journal', 'Una sola vez', 'Hacé clic en un eco para escucharlo. Cada uno aparece una vez y queda anotado en el Diario de la Bitácora.'],
     ],
   },
   {
     id: 'elementos', name: 'Los elementos', ic: 'sparkle', open: (s) => (s.story?.elements || []).length > 0,
     items: [
       ['sparkle', 'Elementos', 'Raíz, Marea, Brasa y Céfiro. Cada uno da un efecto permanente a la isla y una habilidad a quien lidera.'],
-      ['🌱', 'Raíz', 'Más resistencia a la sequía y la helada, y el <b>Invernadero de Raíz</b>, que da hierbas. Rinde según cuánto le sacaste: sellada la mitad, exprimida el doble.'],
+      ['el-raiz', 'Raíz', 'Más resistencia a la sequía y la helada, y el <b>Invernadero de Raíz</b>, que da hierbas. Rinde según cuánto le sacaste: sellada la mitad, exprimida el doble.'],
       ['bolt', 'La Grieta', 'Sacarle de más a un elemento raja la isla (0 a 100). Con Grieta, las amenazas pegan más fuerte (desde 15) y llegan más seguido (desde 30). Se cose en el Invernadero, despacio y caro.'],
       ['map', 'Volver a la mina', 'En la Expedición, con el Cerro del Hierro elegido, se puede pedir que la próxima salida vaya a la mina para cambiar la extracción.'],
     ],
