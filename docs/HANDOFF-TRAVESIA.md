@@ -100,3 +100,7 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
   aparte (grillas propias en `src/art/`).
 - Si el 1a agrega campos al look (escudo aparte, armadura), sprite2d los ignora hasta sumarlos: ids que no conoce caen
   a 'viajero' (ropa) o a nada (arma).
+- `npm test` en esta rama: todo verde salvo dos cosas ajenas al 1d (el 1d solo suma archivos y nadie del juego importa
+  `src/art/`). `test-settings` falló por tiempo dentro de la cadena ("cámara al 200 %") y sola pasa 83/0.
+  `test-people` falla 2 de 31 también solo: la escena de llegada de Brígida sale sin texto (`txt: "SaltarSeguir"`).
+  Viene de antes; que lo mire el orquestador al integrar.
