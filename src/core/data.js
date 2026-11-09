@@ -28,10 +28,7 @@ export { PALETTE } from './palette.js';
 export const BUILDINGS = [
   // --- Especiales ---
   { id: 'castillo', name: 'Municipalidad', cat: 'especial', size: [4, 4], unlock: 1, cost: { coins: 0 }, time: 0, max: 1,
-    happy: 10, charm: 20, xp: 0, prod: { coins: 10, cycle: 300, cap: 8 }, eraArt: true, desc: 'El corazón de la ciudad. Mejorala para dar bonus a toda la ciudad.' },
-  // Mi Casa: aparece sola al llegar a nivel 2 (economy.ensureHome). Su nivel es el de la casa por dentro (home/furniture.js).
-  { id: 'mi_casa', name: 'Mi Casa', cat: 'especial', size: [2, 2], unlock: 1, cost: { coins: 0 }, time: 0, max: 1, auto: true, eraArt: true,
-    happy: 2, charm: 10, xp: 0, desc: 'Tu casa: entrá, decorala con muebles y ampliala.' },
+    happy: 10, charm: 35, xp: 0, prod: { coins: 10, cycle: 300, cap: 8 }, eraArt: true, desc: 'El corazón de la ciudad. Mejorala para dar bonus a toda la ciudad.' },
   { id: 'boutique_real', name: 'Sastrería', cat: 'especial', size: [2, 2], unlock: 2, cost: { coins: 250 }, time: 15, max: 1,
     happy: 4, xp: 20, game: 'wardrobe', desc: 'Ropa, peinados y sombreros: acá se arma tu Equipaje.' },
 

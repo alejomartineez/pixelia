@@ -49,12 +49,12 @@ const SFX_IDS = [...new Set(Object.values(SFX).flatMap(d => (d.s || []).flatMap(
 export function sceneIntensity({ place = 'city', light = 1, night = false, danger = 0 } = {}) {
   const base = {
     city: 0.2 + 0.55 * light, 'exp:cerca': 0.5, 'exp:medio': 0.38, 'exp:lejos': 0.26, mina: 0.35, faros: 0.4, bajo: 0.4,
-    home: 0.35, combat: 0.35 + 0.6 * danger, threat: 0.45 + 0.5 * danger,
+    combat: 0.35 + 0.6 * danger, threat: 0.45 + 0.5 * danger,
   }[place] ?? 0.4;
   return Math.max(0, Math.min(1, base - (night && place !== 'combat' ? 0.1 : 0)));
 }
 // pieza según el lugar (PLACES[...].music de ambience.js, con los nombres del compositor)
-export const PLACE_PIECE = { city: 'city', 'exp:cerca': 'expedition', 'exp:medio': 'expedition', 'exp:lejos': 'expedition_far', mina: 'mine', faros: 'coast', bajo: 'under', home: 'calm', combat: 'battle' };
+export const PLACE_PIECE = { city: 'city', 'exp:cerca': 'expedition', 'exp:medio': 'expedition', 'exp:lejos': 'expedition_far', mina: 'mine', faros: 'coast', bajo: 'under', combat: 'battle' };
 
 export function createEngine(ac, { base = 'assets/audio/', fetcher, seed = 7, maxVoices = 32 } = {}) {
   const mixer = createMixer(ac, { maxVoices });
@@ -93,7 +93,7 @@ export function createEngine(ac, { base = 'assets/audio/', fetcher, seed = 7, ma
       for (const g of groups) await sampler.loadGroup(g);
     },
     /**
-     * El lugar de ahora (lo llaman city-ambience, exp-ambience, home, combate): { place, light, night, weather, threat,
+     * El lugar de ahora (lo llaman city-ambience, exp-ambience, combate): { place, light, night, weather, threat,
      * population, indoor, danger }. Mueve el paisaje sonoro, la reverb, la intensidad y, si la pieza sigue al lugar,
      * la pieza.
      */

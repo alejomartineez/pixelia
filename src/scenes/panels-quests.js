@@ -143,7 +143,7 @@ export function openQuests(ctx, params = {}) {
       case 'upgrade': return 'Hacé clic en una casa o negocio y elegí Mejorar.';
       case 'collect': return 'Hacé clic en los edificios con monedas arriba para cobrar.';
       case 'earn': return 'Cobrá lo que producen tus edificios: también suma lo que ganes en misiones y cofres.';
-      case 'customize': case 'buy': return 'Abrí el Equipaje desde la Sastrería o el ropero de Mi Casa.';
+      case 'customize': case 'buy': return 'Abrí el Equipaje desde la Sastrería.';
       case 'level': return 'Ganás experiencia construyendo, cobrando y explorando.';
       case 'pop': return 'Construí casas: cada una trae vecinos.';
       case 'happy': return 'Árboles, flores y deco suben la felicidad.';

@@ -12,7 +12,7 @@ import {
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const NOT_TARGET = new Set(['camino', 'deco', 'monumento', 'defensa']);
-const NOT_TARGET_ID = new Set(['castillo', 'mi_casa']);
+const NOT_TARGET_ID = new Set(['castillo']);
 
 /** PRNG determinístico (mulberry32) con estado entero, para poder guardarlo en la defensa. */
 export function rngStep(state) {

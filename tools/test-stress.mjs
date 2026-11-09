@@ -1,4 +1,4 @@
-// Estrés de navegación: recorre todas las escenas (ciudad, visita, vestidor, Mi Casa, expedición) y todos los paneles
+// Estrés de navegación: recorre todas las escenas (ciudad, visita, vestidor, expedición) y todos los paneles
 // N veces y mide fugas: contextos WebGL vivos, canvas en el DOM, listeners de window/document, listeners del bus,
 // intervalos activos, <style> inyectados y modales abiertos. Compara cada vuelta contra la primera.
 //
@@ -148,7 +148,7 @@ const PANELS = [
   ['Temas', `import('/src/city/themes-ui.js').then(m => { m.openThemePicker(ctx); })`],
   ['Construir', `ctx.bus.emit('hud:build')`],
 ];
-const SCENES = [['onboarding'], ['wardrobe'], ['city', { visit: null }], ['wardrobe', { tab: 'car' }], ['home'], ['home', { visit: null }], ['expedition']];
+const SCENES = [['onboarding'], ['wardrobe'], ['city', { visit: null }], ['wardrobe', { tab: 'car' }], ['expedition']];
 
 await page.evaluate(() => window.__pixelia && null);
 await page.evaluate((s) => (0, eval)(`(${s})()`), MEASURE.toString()).catch(() => {});

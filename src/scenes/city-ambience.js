@@ -10,7 +10,7 @@ const qs = typeof location !== 'undefined' ? new URLSearchParams(location.search
 // ?hour=21 y ?weather=tormenta para las capturas y las pruebas (mandan sobre el reloj y el clima)
 const Q_HOUR = qs.has('hour') ? Number(qs.get('hour')) : null;
 const Q_WEATHER = qs.get('weather') && WEATHER[qs.get('weather')] ? qs.get('weather') : null;
-const SMOKY = new Set(['casa', 'mi_casa']);
+const SMOKY = new Set(['casa']);
 
 export function createCityAmbience(api) {
   const { ctx, r, lights, container, fx, entries } = api;

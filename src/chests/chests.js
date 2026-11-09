@@ -4,7 +4,6 @@ import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType, REGION_MATERIALS, MONUMENTS, MONUMENT_IDS, EQUIP_RECIPES, LEGACY_BOOSTERS } from '../core/data.js';
 import { stickerDropsForChest, grantStickers } from '../album/album.js';
-import { CHEST_FURNITURE, FURNITURE_BY_ID, giveFurniture } from '../home/furniture.js';
 
 const S = () => store.state;
 
@@ -40,7 +39,6 @@ export const PITY_LEGENDARY = 20;         // a lo sumo 20 cofres sin legendaria
 //  'equip'               — una pieza de equipo de expedición (va a state.equipment; pool: ids de EQUIP_RECIPES)
 //  'cosmetic'            — desbloquea una prenda o pieza del esquife que no tengas (pool: 'coins' o 'gems' según su precio)
 //  'build'               — una construcción gratis de esos edificios (pool), sin requisito de nivel
-//  'furniture'           — un mueble para Mi Casa (pool: CHEST_FURNITURE de home/furniture.js)
 //  'material'            — materiales de región (amount = [min,max]; elige el que más falta para tus obras)
 export const ITEMS = {
   coins_s: { name: 'Bolsa de monedas', rarity: 'comun', kind: 'coins', amount: [120, 220], icon: 'coin' },
@@ -56,7 +54,7 @@ export const ITEMS = {
 
   gems_m: { name: 'Bolsa de gemas', rarity: 'epica', kind: 'gems', amount: [3, 5], icon: 'gem' },
   potion_happy: { name: 'Perfume de Alegría', rarity: 'epica', kind: 'item', use: 'city', icon: '🌸', desc: 'Felicidad al máximo (+50% producción) durante 1 hora.', boost: { type: 'happy', minutes: 60 } },
-  furniture: { name: 'Mueble sorpresa', rarity: 'epica', kind: 'furniture', icon: 'home', desc: 'Un mueble especial para tu casa.' },
+  coins_l: { name: 'Arcón de monedas', rarity: 'epica', kind: 'coins', amount: [700, 1000], icon: 'coin' },   // antes, el mueble sorpresa (Mi Casa salió en el paso 1c)
   cosmetic_coins: { name: 'Prenda sorpresa', rarity: 'epica', kind: 'cosmetic', pool: 'coins', icon: '🎀', desc: 'Una prenda o pieza del esquife nueva, gratis.' },
   build_deco: { name: 'Deco sorpresa', rarity: 'epica', kind: 'build', pool: ['fuente', 'estatua', 'glorieta', 'arco_rosas', 'cerezo', 'macetas'], icon: '⛲', desc: 'Una decoración gratis para tu ciudad.' },
 
@@ -140,9 +138,6 @@ function resolveDrop(item) {
     if (!pool.length) return { ...d, kind: 'gems', amount: item.pool === 'gems' ? 35 : 12, name: 'Gemas (ya tenés todo)', icon: 'gem', converted: true };
     const c = pool[Math.floor(rand() * pool.length)];
     Object.assign(d, { amount: 1, target: c.kind, targetId: c.id, name: c.name, cosmeticKind: c.kind });
-  } else if (item.kind === 'furniture') {
-    const id = CHEST_FURNITURE[Math.floor(rand() * CHEST_FURNITURE.length)];
-    Object.assign(d, { amount: 1, furniture: id, name: FURNITURE_BY_ID[id]?.name || 'Mueble' });
   } else if (item.kind === 'material') {
     // en la Aldea y el Caserío todavía no hay monumentos: mejor monedas
     if (rankOf(S()) < 3) return { ...d, kind: 'coins', amount: Math.round(randInt(250, 450) * rewardScale(lvl)), name: 'Caja de monedas', icon: 'coin', converted: true };
@@ -196,7 +191,6 @@ function applyDrops(drops) {
     } else if (d.kind === 'build') c.freeBuilds[d.building] = (c.freeBuilds[d.building] || 0) + 1;
     else if (d.kind === 'material') store.grant({ mats: { [d.material]: d.amount } }, 'chest');
     else if (d.kind === 'equip') store.grant({ equip: { [d.equip]: d.amount } }, 'chest');
-    else if (d.kind === 'furniture') giveFurniture(d.furniture, 1, 'chest');
   }
   if (totals.coins || totals.gems || totals.xp) store.grant(totals, 'chest');
 }

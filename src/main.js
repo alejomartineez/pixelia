@@ -21,7 +21,7 @@ import * as season from './season/season.js';
 import * as events from './season/events.js';
 import { chestIcon, packIcon } from './season/season-ui-common.js';
 import { net } from './online/net.js';
-import * as home from './home/furniture.js';
+import * as achievements from './core/achievements.js';   // Logros de la Bitácora (antes, trofeos de Mi Casa)
 import * as expedition from './expedition/expedition.js';
 import * as threats from './threats/threats.js';   // Amenazas (Fase 3)
 import { initRaiz } from './core/raiz.js';   // Núcleo de Raíz y Grieta (PLAN-QUIEBRE L1)
@@ -40,7 +40,6 @@ const SCENES = {
   wardrobe: () => import('./scenes/wardrobe.js'),
   intro: () => import('./scenes/intro.js'),   // cinemática "El Quiebre" (PLAN-QUIEBRE §B): lo primero de una partida nueva
   onboarding: () => import('./scenes/onboarding.js'),   // primera vez: elegir personaje, nombre y ciudad
-  home: () => import('./scenes/home.js'),   // Mi Casa por dentro (también la de una amistad: {visit})
   expedition: () => import('./expedition/exp-scene.js'),   // Expedición (DESIGN-CORE.md §2)
   combat: () => import('./combat/combat-scene.js'),   // Combate táctico (DESIGN-COMBAT.md; ?scene=combat abre un encuentro de prueba)
 };
@@ -145,7 +144,7 @@ const openSeasonPass = lazyUi(() => season.openSeasonPass(ctx), 'No se pudo abri
 const openEvents = lazyUi(() => events.openEventsPanel(ctx), 'No se pudieron abrir los eventos');
 
 export const ctx = {
-  store, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats, story, act1,
+  store, bus, ui, audio, data, economy, quests, router, hud, achievements, expedition, threats, story, act1,
   get state() { return store.state; },
   desktop: isDesktop,
   openPanel,
@@ -300,19 +299,32 @@ function v3Lines() {
 // ---------- Migración v4: fuera lo tierno (El Quiebre, plan §J7) ----------
 const v4Only = () => { const v = store.state.v4; return !!v && !v.shown; };
 const v5Pending = () => { const v = store.state.v5; return !!v && !v.shown; };
-const v4Pending = () => v4Only() || v5Pending();
+const v6Pending = () => { const v = store.state.v6; return !!v && !v.shown; };
+const v4Pending = () => v4Only() || v5Pending() || v6Pending();
 const V4_THEMES = { moderna: 'Ciudad Moderna', playa: 'Playa Tropical', bosque: 'Bosque', invierno: 'Invierno Nevado' };
 const V4_ANIMALS = { gatito: 'el gato', zorrito: 'el zorro', conejito: 'el conejo', osito: 'el oso' };
 /** Lo que cuenta el aviso "La isla cambió" (va dentro de "Mientras no estabas…"). Lo da por visto. */
 function v4Lines() {
   const li = (ic, html) => `${icon(ic, 22)} <span>${html}</span>`;
   const lines = [], reward = {};
+  const v6 = store.state.v6;
+  if (v6Pending()) {   // v6: Mi Casa sale del juego (La Travesía, paso 1c)
+    v6.shown = 1;
+    lines.push(li('home', 'Mi Casa cerró sus puertas: la ciudad es el puerto desde donde salís de travesía, y no hace falta decorar una casa. La parcela quedó libre para construir.'));
+    if (v6.coins || v6.gems || v6.mats) {
+      lines.push(li('coin', 'Te devolvimos lo que pagaste por los muebles y las ampliaciones' + (v6.mats ? ', con sus materiales' : '') + '.'));
+      if (v6.coins) reward.coins = (reward.coins || 0) + v6.coins;
+      if (v6.gems) reward.gems = (reward.gems || 0) + v6.gems;
+      if (v6.mats) reward.mats = { ...v6.mats };
+    }
+    lines.push(li('sparkle', 'El Encanto que daba tu casa sigue contando: quedó como un bono fijo de la ciudad. Los trofeos pasaron a <b>Logros</b>, en el Diario de la Bitácora.'));
+  }
   const v5 = store.state.v5;
   if (v5Pending()) {   // v5: personajes serios y pueblos (plan §M)
     v5.shown = 1;
     lines.push(li('dress', 'Los personajes cambiaron: ahora hay <b>pueblos</b> (humanos, enanos, anuros, gente-zorro y orcos) y ropa de viaje. Tu ropa pasó a su equivalente; elegí tu pueblo en el <b>Equipaje</b>.'));
     if (v5.skiff) lines.push(li('car', 'Tu auto ahora es un <b>esquife</b> que flota con Céfiro y amarra en el muelle del Establo. Cada pieza pasó a la suya: casco, pintura, aparejo y proa.'));
-    if (v5.coins || v5.gems) { lines.push(li('coin', 'Algunas prendas ahora son la misma: te devolvimos lo que pagaste por las repetidas.')); if (v5.coins) reward.coins = v5.coins; if (v5.gems) reward.gems = v5.gems; }
+    if (v5.coins || v5.gems) { lines.push(li('coin', 'Algunas prendas ahora son la misma: te devolvimos lo que pagaste por las repetidas.')); if (v5.coins) reward.coins = (reward.coins || 0) + v5.coins; if (v5.gems) reward.gems = (reward.gems || 0) + v5.gems; }
   }
   if (!v4Only()) { store.save(); return { lines, reward }; }
   const v = store.state.v4;
@@ -356,7 +368,7 @@ function applyDebugParams() {
 
 function initProgression() {
   const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['raiz', initRaiz], ['act1', initAct1], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
-    ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds],
+    ['achievements', () => achievements.initAchievements({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds],
     ['story', () => story.initStory(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length, inCity: () => cityReady() && !document.body.classList.contains('no-hud') && !arrival && !flushing && !pendingLevelUps.length && !document.querySelector('.reward-modal') })],
     ['people', () => people.initPeople(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length && cityReady(),
       show: (sc) => import('./story/story-ui.js').then(m => m.showScene(ctx, sc)) })],
@@ -463,7 +475,7 @@ async function boot() {
     navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW', e));
   }
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__pixeliaInstallPrompt = e; });
-  window.__pixelia = { ctx, store, bus, economy, quests, data, chests, album, season, events, net, home };
+  window.__pixelia = { ctx, store, bus, economy, quests, data, chests, album, season, events, net, achievements };
 }
 
 boot();

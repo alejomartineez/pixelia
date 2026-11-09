@@ -5,7 +5,6 @@ import { thumbnail } from '../city/models.js';
 import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL, RANK_REQ_LABELS, MONUMENTS, ERAS } from '../core/data.js';
 import { cycleEffects, cycleUpgradeLines } from '../expedition/expedition.js';
 import * as RZ from '../core/raiz.js';
-import { HOME_LEVELS, homeLevelDef, comfortInfo } from '../home/furniture.js';
 import { icon } from '../core/icons.js';
 import * as chests from '../chests/chests.js';
 
@@ -386,7 +385,6 @@ export function openInfo(S, uid) {
   const d = E.def(b);
   const isCastle = b.id === 'castillo';
   const isMon = d.cat === 'monumento';
-  const isHome = b.id === 'mi_casa';
   const body = ui.h('div.cx-info');
   let sig = '';
   const refs = {};
@@ -423,15 +421,14 @@ export function openInfo(S, uid) {
       let st = '';
       const sz = E.maxLevel(b) > 5 ? 17 : 22;
       for (let i = 0; i < E.maxLevel(b); i++) st += icon(i < b.level ? 'star' : 'starOff', sz);
-      meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, isCastle ? `Rango ${b.level}: ${E.rankName(b.level)}` : isMon ? (b.level >= E.maxLevel(b) ? 'Terminado' : `Etapa ${b.level} de ${E.maxLevel(b)}`) : isHome ? `${homeLevelDef(b.level).name}` : `Nivel ${b.level}`));
+      meta.append(ui.h('div.cx-stars', { html: st }), ui.h('b', {}, isCastle ? `Rango ${b.level}: ${E.rankName(b.level)}` : isMon ? (b.level >= E.maxLevel(b) ? 'Terminado' : `Etapa ${b.level} de ${E.maxLevel(b)}`) : `Nivel ${b.level}`));
     } else meta.append(ui.h('span.chip', { html: icon(CAT_ICON[d.cat], 14) + (CATEGORIES.find(c => c.id === d.cat)?.name || '') }));
     const chips = [];
     if (d.pop) chips.push(`<span class="chip primary">${icon('people', 14)}${E.buildingPop(b)} habitantes</span>`);
     if (d.happy) chips.push(`<span class="chip mint">${icon('smile', 14)}+${E.buildingHappy(b)} felicidad</span>`);
     if (d.game === 'wardrobe') chips.push(`<span class="chip second">${icon('dress', 14)}Equipaje</span>`);
     if (isCastle) chips.push(`<span class="chip gold">${icon('sparkle', 14)}${E.fmtNum(E.cityCharm())} Encanto</span>`);
-    else if (isHome) { const ci = comfortInfo(); chips.push(`<span class="chip primary">${icon('heart', 14)}${E.fmtNum(ci.value)} Confort</span>`, `<span class="chip gold">${icon('sparkle', 14)}+${ci.charm} Encanto</span>`); }
-    else if (!building && !isHome) {
+    else if (!building) {
       // Encanto que aporta este edificio (sin contar la repetición: eso lo explica el panel "Tu ciudad")
       const ch = Math.round(E.charmBase(d) * E.charmLevelMult(d, b.level || 1));
       if (ch >= 1) chips.push(`<span class="chip gold" title="Suma Encanto a tu ciudad (menos si repetís el mismo)">${icon('sparkle', 14)}+${ch} Encanto</span>`);
@@ -444,7 +441,7 @@ export function openInfo(S, uid) {
     if (busy) {
       const total = building ? d.time * 1000 : (E.upgradeInfo(b)?.time || 1) * 1000;
       const box = ui.h('div.cx-box.' + (building ? 'busy' : 'up'));
-      box.append(ui.h('h4', { html: icon('hammer', 20) + (building ? 'En construcción' : isMon ? `Etapa ${b.level + 1}: ${MONUMENTS[d.id].stageNames[b.level] || ''}` : isHome ? `Ampliando: ${HOME_LEVELS[b.level]?.name || ''}` : b.renovating ? `Renovando a ${ERAS[b.renovating - 1]?.name || ''}` : `Mejorando a nivel ${b.level + 1}`) }));
+      box.append(ui.h('h4', { html: icon('hammer', 20) + (building ? 'En construcción' : isMon ? `Etapa ${b.level + 1}: ${MONUMENTS[d.id].stageNames[b.level] || ''}` : b.renovating ? `Renovando a ${ERAS[b.renovating - 1]?.name || ''}` : `Mejorando a nivel ${b.level + 1}`) }));
       refs.busyTime = ui.h('b');
       refs.busyBar = ui.h('div', { html: ui.progressHtml(0, building ? '' : 'xp') });
       box.append(ui.h('div.line', {}, ui.h('span.muted', {}, 'Falta'), refs.busyTime), refs.busyBar);
@@ -539,17 +536,12 @@ export function openInfo(S, uid) {
         else box.append(ui.h('h4', { html: icon('crown', 20) + 'Nivel máximo' }), ui.h('span.muted', {}, 'No hay más mejoras para este edificio.'));
       } else {
         const can = E.canUpgrade(b);
-        box.append(ui.h('h4', { html: icon('up', 20) + (isCastle ? `Subir a rango ${E.rankName(b.level + 1)}` : isMon ? `Etapa ${b.level + 1}: ${MONUMENTS[d.id].stageNames[b.level] || ''}` : isHome ? `Ampliar: ${HOME_LEVELS[b.level].name}` : `Mejorar a nivel ${b.level + 1}`) }));
+        box.append(ui.h('h4', { html: icon('up', 20) + (isCastle ? `Subir a rango ${E.rankName(b.level + 1)}` : isMon ? `Etapa ${b.level + 1}: ${MONUMENTS[d.id].stageNames[b.level] || ''}` : `Mejorar a nivel ${b.level + 1}`) }));
         const fx = [];
         if (isCastle) {
           fx.push(`+${Math.round(CASTLE_BONUS_PER_LEVEL * 100)}% producción en toda la ciudad`);
           const look = E.rankDef(b.level + 1).look;
           if (look) fx.push(`La Municipalidad estrena: ${look}`);
-        }
-        else if (isHome) {
-          const nx = HOME_LEVELS[b.level];
-          fx.push(`Cuarto de ${nx.size[0]}×${nx.size[1]} (ahora ${homeLevelDef(b.level).size.join('×')})`);
-          if (nx.look) fx.push(`Se estrena: ${nx.look}`);
         }
         else if (isMon) {
           const N = E.maxLevel(b);
@@ -588,7 +580,7 @@ export function openInfo(S, uid) {
         } else if (can.mats) {
           box.append(ui.h('div.req', { html: icon('monument', 14) + (d.cat === 'ciclo' ? 'Faltan materiales: los trae la expedición.' : 'Faltan materiales: se ganan jugando.') }));
         } else if (!can.ok && can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(can.locked ? 'lock' : 'info', 14) + (can.rank ? `Necesitás el rango ${ui.esc(E.rankName(can.rank))}` : can.era ? `Necesitás la ${ui.esc(can.reason.replace(/^É/, 'é'))}` : can.locked ? `Necesitás nivel ${info.reqLevel}` : ui.esc(can.reason)) }));
-        box.append(btn(isMon ? 'Avanzar obra' : isHome ? 'Ampliar' : 'Mejorar', 'second', 'up', () => {
+        box.append(btn(isMon ? 'Avanzar obra' : 'Mejorar', 'second', 'up', () => {
           const c = E.canUpgrade(b);
           if (!c.ok) { ctx.audio.sfx('error'); ui.toast(c.poor ? 'No te alcanza todavía' : c.reason, { icon: c.locked ? 'lock' : 'info' }); return; }
           const res = E.startUpgrade(b.uid);
@@ -685,7 +677,6 @@ export function openInfo(S, uid) {
     if (b.id === 'establo' && !building) acts.append(btn('Esquife', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
     if (isCastle) acts.append(btn('Tu ciudad', 'gold', 'castle', () => { m.close(); ctx.openPanel('rank'); }));
     if (isMon) acts.append(btn('Obras', 'gold', 'monument', () => { m.close(); ctx.openPanel('works', { focus: d.id }); }));
-    if (isHome) acts.append(btn('Entrar', 'primary', 'home', () => { m.close(); ctx.router.go('home'); }));
     if (isCastle) acts.append(btn('Equipaje', 'primary', 'dress', () => { m.close(); ctx.router.go('wardrobe'); }));
     acts.append(btn('Mover', 'ghost', 'move', () => { m.close(); S.startMove(b.uid); }));
     acts.append(btn('Rotar', 'ghost', 'rotate', () => { S.rotateBuilding(b.uid); }));

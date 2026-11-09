@@ -29,7 +29,7 @@ export const TIER_COST = Array.from({ length: MAX_TIER }, (_, i) => (i === 0 ? 6
 // coins: BASE (se multiplica por rewardScale(nivel de jugadora)); gems; chest: tipo; stickers: {n, minStars};
 // items: {id: cantidad} (objetos de la mochila, ver ITEMS de chests.js); equip: {id: cantidad} (equipo de expedición);
 // cosmetic: true (prenda premium gratis); mats: {material: cantidad} (madera, piedra, mineral, hierbas);
-// furniture: id de mueble para Mi Casa; planos: planos de época (niveles 10, 20 y 30, DESIGN-CORE.md §5.1).
+// planos: planos de época (niveles 10, 20 y 30, DESIGN-CORE.md §5.1).
 // special: true = nivel destacado (10/20/30).
 export const TIERS = [
   /* 1 */ { coins: 150 },
@@ -45,7 +45,7 @@ export const TIERS = [
   /* 11 */ { coins: 450, mats: { mineral: 5 } },
   /* 12 */ { stickers: { n: 2 }, mats: { hierbas: 4 } },
   /* 13 */ { items: { hourglass: 1 } },
-  /* 14 */ { gems: 8, furniture: 'globo' },
+  /* 14 */ { gems: 8, coins: 400 },
   /* 15 */ { chest: 'plata' },
   /* 16 */ { stickers: { n: 3, minStars: 2 } },
   /* 17 */ { equip: { pala: 1, farol: 1 } },
@@ -58,7 +58,7 @@ export const TIERS = [
   /* 24 */ { coins: 850, mats: { hierbas: 6, piedra: 6 } },
   /* 25 */ { coins: 900, mats: { mineral: 6 } },
   /* 26 */ { items: { potion_mega: 1 } },
-  /* 27 */ { gems: 10, furniture: 'telescopio' },
+  /* 27 */ { gems: 10, coins: 700 },
   /* 28 */ { stickers: { n: 5, minStars: 3 } },
   /* 29 */ { stickers: { n: 4, minStars: 3 }, mats: { piedra: 8 } },
   /* 30 */ { cosmetic: true, chest: 'real', planos: 1, special: true },

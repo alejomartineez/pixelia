@@ -5,7 +5,7 @@
   "scripts": {
     "serve": "node serve.mjs",
     "serve:lan": "node serve.mjs --lan",
-    "test": "node test-e2e.mjs && node test-migration.mjs && node test-place.mjs --no-shots && node test-stress.mjs && node test-visit.mjs && node test-mock.mjs && node test-social.mjs && node test-rank.mjs --no-shots && node test-works.mjs --no-shots && node test-home.mjs --no-shots && node test-expedition.mjs --no-shots && node test-cycle.mjs --no-shots && node test-threats.mjs --no-shots && node test-telemetry.mjs && node test-settings.mjs && node test-story.mjs --no-shots && node test-ambience.mjs && node test-audio.mjs && node test-combat.mjs && node test-combat-scene.mjs && node test-combat-exp.mjs && node test-classes.mjs && node test-people.mjs && node test-class-look.mjs && node test-raiz.mjs && node test-act1.mjs && node test-sql.mjs",
+    "test": "node test-e2e.mjs && node test-migration.mjs && node test-place.mjs --no-shots && node test-stress.mjs && node test-visit.mjs && node test-mock.mjs && node test-social.mjs && node test-rank.mjs --no-shots && node test-works.mjs --no-shots && node test-expedition.mjs --no-shots && node test-cycle.mjs --no-shots && node test-threats.mjs --no-shots && node test-telemetry.mjs && node test-settings.mjs && node test-story.mjs --no-shots && node test-ambience.mjs && node test-audio.mjs && node test-combat.mjs && node test-combat-scene.mjs && node test-combat-exp.mjs && node test-classes.mjs && node test-people.mjs && node test-class-look.mjs && node test-raiz.mjs && node test-act1.mjs && node test-sql.mjs",
     "test:combat": "node test-combat.mjs",
     "test:people": "node test-people.mjs",
     "test:class-look": "node test-class-look.mjs",

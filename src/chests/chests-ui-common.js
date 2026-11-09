@@ -61,14 +61,13 @@ export function dropNote(d) {
     case 'cosmetic': return CAR_KINDS.has(d.cosmeticKind) ? 'Pieza nueva · estrenala en el Equipaje' : 'Prenda nueva · estrenala en el Equipaje';
     case 'build': return 'Construcción gratis · colocala desde Construir';
     case 'material': return 'Material de región · para tus obras y el Taller';
-    case 'furniture': return 'Para tu casa · ponelo desde Decorar';
     case 'stickers': return d.fresh ? `¡${d.fresh === 1 ? 'Uno nuevo' : d.fresh + ' nuevos'} para tus Hallazgos!` : 'Repetidos · se cambian en Hallazgos';
     default: return '';
   }
 }
 /** Subtítulo corto del tipo de premio (arriba del nombre en la carta). */
 export function dropKindLabel(d) {
-  if (d.kind === 'cosmetic' || d.kind === 'build' || d.kind === 'furniture') return ITEMS[d.item]?.name || '';
+  if (d.kind === 'cosmetic' || d.kind === 'build') return ITEMS[d.item]?.name || '';
   return '';
 }
 

@@ -42,7 +42,7 @@ export const PIECES = {
     ],
     night: { bpm: 62, base: -0.15, rest: 0.55 },
   },
-  // Mi Casa y pantallas tranquilas: Fa mayor, lento, piano y colchón.
+  // Pantallas tranquilas: Fa mayor, lento, piano y colchón.
   calm: {
     gain: 1.1, root: 53, mode: 'ionian', meter: 4, bpm: 60, base: 0.4, motifs: ['isla'], motifP: 0.2, rest: 0.5, reverb: 'interior',
     form: ['A', 'B'], sections: { A: ['17', '67', '47', '5'], B: ['27', '47', '17', '5s4'] },
