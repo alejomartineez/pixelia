@@ -754,6 +754,7 @@ export default function create(ctx) {
     // la flecha se apaga cuando se abre lo que señalaba
     offs.push(bus.on('panel:open', ({ name } = {}) => guideDone(t => t.panel === name)));
     offs.push(bus.on('threat:panel', () => guideDone(t => t.panel === 'threat')));
+    offs.push(bus.on('leader:changed', () => { if (!disposed) life.rebuildPlayer(); }));   // la clase cambia el arma en la mano
     offs.push(bus.on('customize:changed', ({ target }) => {
       if (target === 'avatar') life.rebuildPlayer();
       else if (target === 'car') life.rebuildCar();

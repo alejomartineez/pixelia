@@ -355,7 +355,9 @@ export default function create(ctx) {
   function makeUnit(u) {
     let model;
     if (u.side === 'ally') {
-      model = avatarModel(lookFor(u), u.type === 'lider' ? { player: true } : { npc: true });
+      // con el equipo de su clase (paso 5b, tercera parte): el líder con la de b.leader, el resto con la suya
+      const cls = u.type === 'lider' ? (b?.leader?.cls || store.state.classes?.leader?.cls || null) : (u.cls || (u.type !== 'cautivo' ? u.type : null));
+      model = avatarModel(lookFor(u), u.type === 'lider' ? { player: true, cls } : { npc: true, cls });
       const k = u.type === 'lider' ? 0.92 : 0.84;
       model.scale.setScalar(k);
       model.userData.height = (model.userData.height || 1) * k;
@@ -927,6 +929,9 @@ export default function create(ctx) {
       tools: typeof p.tools === 'string' ? toolsParam(p.tools) : p.tools || {},
       equip: Array.isArray(p.equip) ? p.equip : listParam(p.equip),
       roleLevel: p.roleLevel || {}, attempt: Math.max(1, Number(p.attempt) || 1),
+      // clases (paso 5b): la del líder viene de la partida si no la manda quien abre la pelea
+      leader: p.leader || (() => { const L = store.state.classes?.leader; return L?.cls ? { cls: L.cls, sub: L.sub || null, picks: L.picks || [] } : null; })(),
+      classLevel: p.classLevel || null, picks: p.picks || {},
     });
   }
   function start(p) {
@@ -1024,6 +1029,8 @@ export default function create(ctx) {
         get playing() { return playing; },
         get anims() { return [...anims].map(a => [a.t, a.dur]); },
         get frames() { return frameN; },
+        // el look con que se armó cada unidad del grupo (tools/test-class-look.mjs)
+        get looks() { const o = {}; for (const [id, rec] of units) if (rec.side === 'ally') o[id] = { type: rec.type, look: rec.model?.userData?.look || rec.obj?.userData?.look || null }; return o; },
         cellScreen(x, y) { return r ? tileScreen(x, y, 0.05) : null; },
         unitScreen(id) { return r ? unitScreen(id, -0.3) : null; },
         click(x, y) { clickCell(x, y); },

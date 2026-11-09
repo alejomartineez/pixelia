@@ -7,6 +7,7 @@ import { REGION_MATERIALS, RESOURCES } from '../core/data.js';
 import { REGIONS, ROLES, ROLE_IDS, EQUIPMENT, MATERIALS as EXP_MATS } from '../expedition/exp-data.js';
 import * as K from '../core/classes.js';
 import { CLASSES as CLASSES_K } from '../combat/classes.js';
+import { openClassPicker } from './class-pick.js';
 import { openShell } from './panels-common.js';
 import * as RZ from '../core/raiz.js';
 
@@ -45,7 +46,7 @@ const CSS = `
 .pnl-ex .pnl-ex-role .ic { grid-row: span 2; }
 .pnl-ex .pnl-ex-role b { font-size: 16px; }
 .pnl-ex .pnl-ex-role small { font-size: 13px; color: var(--ink-l); }
-.pnl-ex .pnl-ex-role.lead { cursor: default; background: var(--sky-l); }
+.pnl-ex .pnl-ex-role.lead { cursor: pointer; background: var(--sky-l); }
 .pnl-ex .pnl-ex-eq { display: flex; flex-wrap: wrap; gap: 6px; }
 .pnl-ex .pnl-ex-eq button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border: 2px solid var(--edge); border-radius: 10px;
   background: var(--surface); font: inherit; font-size: 15px; color: inherit; cursor: pointer; }
@@ -176,7 +177,11 @@ export function openExpedition(ctx, params = {}) {
     el.append(h('h4.pnl-ex-h', { html: `${icon('people', 20)}<span>Grupo</span><small>${party.length}/${max} lugares + quien lidera</small>` }));
     const grid = h('div.pnl-ex-roles');
     const lead = K.leaderInfo(ctx.state);
-    grid.append(h('div.pnl-ex-role.lead', { 'data-leader-level': String(lead.level), html: `<span class="ic">${icon('🧑', 28)}</span><b>${esc(ctx.state.player.name)} · nivel ${lead.level}</b><small>Lidera el grupo${lead.cls ? ' · ' + esc(CLASSES_K[lead.cls].name) : ''}</small>` }));
+    // la ficha del líder: tocarla abre el selector de clase (paso 5b, tercera parte)
+    const leadBtn = h('button.pnl-ex-role.lead', { 'data-leader-level': String(lead.level), 'data-leader-class': lead.cls || '',
+      html: `<span class="ic">${icon('🧑', 28)}</span><b>${esc(ctx.state.player.name)} · nivel ${lead.level}</b><small>${lead.cls ? 'Lidera · ' + esc(CLASSES_K[lead.cls].name) + ' · cambiar' : 'Lidera el grupo · elegí su clase'}</small>` });
+    leadBtn.onclick = async () => { audio.sfx('tap'); if (await openClassPicker(ctx)) render(); };
+    grid.append(leadBtn);
     for (const id of ROLE_IDS) {
       const r = st.roles.find(x => x.id === id);
       const R = ROLES[id];

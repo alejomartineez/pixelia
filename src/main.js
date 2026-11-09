@@ -360,6 +360,7 @@ function initProgression() {
     ['story', () => story.initStory(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length, inCity: () => cityReady() && !document.body.classList.contains('no-hud') })],
     ['people', () => people.initPeople(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length && cityReady(),
       show: (sc) => import('./story/story-ui.js').then(m => m.showScene(ctx, sc)) })],
+    ['classpick', () => import('./scenes/class-pick.js').then(m => m.initClassNudge(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length && cityReady() }))],
     ['light', () => initWorldLight({ state: () => store.state, bus, rank: () => economy.townRank(store.state), markDirty: () => store.markDirty(),
       notify: (t) => setTimeout(() => toast(t, { icon: 'sparkle' }), 1800) })]];
   for (const [name, fn] of steps) { try { fn(); } catch (e) { console.error('[init] ' + name, e); } }

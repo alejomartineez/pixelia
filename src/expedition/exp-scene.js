@@ -399,12 +399,13 @@ export default function create(ctx) {
   function buildParty() {
     for (const p of party) { world.remove(p.obj); }
     party = [];
-    const lead = avatarModel(store.state.avatar, { player: true });
+    // con el equipo de su clase (paso 5b, tercera parte): quien lidera y cada integrante (run.party son clases)
+    const lead = avatarModel(store.state.avatar, { player: true, cls: run.mods?.leader?.cls || store.state.classes?.leader?.cls || null });
     lead.scale.setScalar(0.62);
     party.push({ obj: lead, off: [0, 0.08], delay: 0 });
     const offs2 = [[-0.26, 0.3], [0.26, 0.3], [0, 0.38]];
     run.party.forEach((role, k) => {
-      const f = avatarModel(randomLook(hashSeed('exp', role, store.state.created || 1) % 9973), { npc: true });
+      const f = avatarModel(randomLook(hashSeed('exp', role, store.state.created || 1) % 9973), { npc: true, cls: role });
       f.scale.setScalar(0.48);
       party.push({ obj: f, off: offs2[k] || [0, 0.3], delay: 0.06 * (k + 1) });
     });
@@ -1021,6 +1022,7 @@ export default function create(ctx) {
         get busy() { return busy; },
         get card() { return !!card; },
         get modal() { return !!modal; },
+        get looks() { return party.map(p => p.obj?.userData?.look || null); },   // tools/test-class-look.mjs
         cellScreen(x, y) { return r ? screenOf(x, y, 0.3) : null; },
         // para las pruebas (tools/test-cycle.mjs): los mismos caminos que el toque, el teclado y el botón Volver
         move(x, y) { tryMove(x, y); },

@@ -335,7 +335,14 @@ try {
   await sleep(500);
   await shot('onboarding-pueblo');
   await tap('.scene-onboarding .ob-next');
-  ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso 2: nombre del personaje y de la ciudad');
+  // paso de la clase (paso 5b, tercera parte): 6 tarjetas, el personaje se viste con la elegida
+  ok(await waitFor(`document.querySelectorAll('.scene-onboarding .cls-card').length === 6`, 4000), 'paso 2: las 6 clases');
+  ok(await tap('.scene-onboarding .cls-card[data-cls="cazador"]'), 'toqué Cazador');
+  await sleep(400);
+  ok(await ev(() => !!document.querySelector('.scene-onboarding .cls-card.on[data-cls="cazador"]') && /Cazador/.test(document.querySelector('.scene-onboarding .ob-title b')?.textContent || '')), 'Cazador queda elegido y en el título');
+  await shot('onboarding-clase');
+  await tap('.scene-onboarding .ob-next');
+  ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso 3: nombre del personaje y de la ciudad');
   await sleep(500);
   await tap('.scene-onboarding [data-f=name]');
   await sleep(250);
@@ -351,6 +358,7 @@ try {
   await tap('.scene-onboarding .ob-next', 'Empezar');
   // orden de entrada (El Quiebre §E7 y §M4): cinemática → personaje → nombre → llegada con Vera → estilo
   ok(await waitFor(`!!document.querySelector('.st-epic')`, 12000), 'al terminar llega Vera a pantalla completa');
+  ok(await ev(() => window.__pixelia.store.state.classes?.leader?.cls === 'cazador'), 'la clase elegida (Cazador) queda en la partida');
   ok(/Vera/.test(await ev(() => document.querySelector('.st-epic .st-head')?.textContent || '')), 'la cartógrafa se presenta');
   await sleep(1200);
   await shot('llegada-vera');

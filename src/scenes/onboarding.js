@@ -1,4 +1,5 @@
-// Primera vez (partida nueva): elegir tipo de personaje y colores, nombre del personaje y de la ciudad.
+// Primera vez (partida nueva): elegir tipo de personaje y colores, la clase (paso 5b, tercera parte: src/scenes/class-pick.js),
+// nombre del personaje y de la ciudad.
 // Arriba (o a la izquierda en PC) el personaje girando en 3D; abajo (o a la derecha) los pasos.
 // Al terminar marca state.onboarded, entra a la ciudad, pasa el prólogo de la historia (src/story/story.js) y abre el
 // selector de estilo de ciudad (openThemePicker de src/city/themes-ui.js, si existe).
@@ -9,6 +10,9 @@ import { AVATAR_TYPES, AVATAR_FAMILIES, HAIR_COLORS, OUTFIT_COLORS, SKIN_TONES, 
 import { avatarModel, normalizeLook } from '../avatar/avatar.js';
 import { clothHex, clothName, HAIR_NAMES } from '../avatar/avatar-kit.js';
 import { buildPlatform, thumbnail, hasThumb, disposeThumbs } from '../avatar/wardrobe-stage.js';
+import { classCardsHtml, loadClassThumbs, markClassCard, DEFAULT_CLASS } from './class-pick.js';
+import { CLASSES } from '../combat/classes.js';
+import * as K from '../core/classes.js';
 
 const NAMES = {
   fem: ['Luna', 'Mora', 'Olivia', 'Nina', 'Emma', 'Sofi', 'Cami', 'Abril', 'Lola', 'Pilar', 'Uma', 'Juli'],
@@ -102,6 +106,8 @@ export default function create(ctx) {
   const touched = new Set();
   // si la partida ya tenía nombres propios, se precargan (no se pisan)
   let name = isDefaultName(S().player.name) ? '' : clean(S().player.name);
+  // clase de quien lidera (se guarda al terminar con setLeaderClass); el personaje la muestra desde ese paso
+  let cls = K.classesState(S()).leader.cls || DEFAULT_CLASS;
   let city = !S().player.cityName || S().player.cityName === 'Pixelia' ? '' : clean(S().player.cityName);
   // sugerencias: lo que se ve en el campo vacío es lo que se guarda si no escribe nada
   const sugg = { name: '', kind: '', city: CITY_NAMES[Math.floor(Math.random() * CITY_NAMES.length)] };
@@ -142,7 +148,7 @@ export default function create(ctx) {
   }
   function rebuild(animate = true) {
     if (model) holder.remove(model);
-    model = avatarModel(look);
+    model = avatarModel(look, step >= 1 ? { cls } : {});
     holder.add(model);
     if (animate) { hopT = 0; burst(); }
   }
@@ -221,8 +227,8 @@ export default function create(ctx) {
     el.innerHTML = `<b>${big}</b>${small ? `<small>${small}</small>` : ''}`;
   }
   function renderDots() {
-    // 3 puntos: personaje, nombres y (ya en la ciudad) el estilo de la ciudad
-    root.querySelector('.ob-dots').innerHTML = [0, 1, 2].map(i => `<i class="${i === step ? 'on' : ''}"></i>`).join('');
+    // 4 puntos: personaje, clase, nombres y (ya en la ciudad) el estilo de la ciudad
+    root.querySelector('.ob-dots').innerHTML = [0, 1, 2, 3].map(i => `<i class="${i === step ? 'on' : ''}"></i>`).join('');
   }
   function swatches(list, cur, key) {
     return `<div class="ob-sw" data-key="${key}">${list.map(c => `<button class="${String(c.id) === String(cur) ? 'on' : ''}" data-id="${c.id}" style="background:${c.hex}" aria-label="${c.name}"></button>`).join('')}</div>`;
@@ -253,6 +259,12 @@ export default function create(ctx) {
       body.innerHTML = html;
       foot.innerHTML = `<button class="btn primary ob-next">Siguiente ${icon('play', 18)}</button>`;
       queueThumbs();
+    } else if (step === 1) {
+      setTitle(`${ui.esc(CLASSES[cls].name)}`, 'Tu clase: cómo peleás y cómo explorás. La cambiás desde la Bitácora.');
+      body.innerHTML = `<div class="ob-step ob-cls"><h2 class="ob-h">${icon('people', 20)} ¿Qué hacés mejor?</h2>${classCardsHtml(look, cls, ui.esc)}`
+        + `<p class="ob-hint" style="margin-top:10px">${ui.esc(CLASSES[cls].combat)} ${ui.esc(CLASSES[cls].exp)}</p></div>`;
+      foot.innerHTML = `<button class="btn ghost ob-back" aria-label="Volver">${icon('back', 20)}</button><button class="btn primary ob-next">Siguiente ${icon('play', 18)}</button>`;
+      loadClassThumbs(body, () => alive && step === 1);
     } else {
       setTitle(`¡Hola, ${ui.esc(name || suggestedName())}!`, 'Ponele nombre a tu personaje y a tu ciudad.');
       body.innerHTML = `<div class="ob-step">
@@ -302,7 +314,21 @@ export default function create(ctx) {
     body.scrollTop = y; // no saltar arriba si eligió un animal al fondo de la lista
   }
 
+  function chooseClass(id) {
+    if (!CLASSES[id]) return;
+    if (id === cls) { hopT = 0; audio.sfx('pop'); return; }
+    cls = id;
+    audio.sfx('combo', 2);
+    rebuild();
+    markClassCard(root, cls);
+    setTitle(`${ui.esc(CLASSES[cls].name)}`, 'Tu clase: cómo peleás y cómo explorás. La cambiás desde la Bitácora.');
+    const hint = root.querySelector('.ob-cls .ob-hint');
+    if (hint) hint.textContent = `${CLASSES[cls].combat} ${CLASSES[cls].exp}`;
+  }
+
   function onClick(e) {
+    const cc = e.target.closest('.cls-card');
+    if (cc) { chooseClass(cc.dataset.cls); return; }
     const ty = e.target.closest('[data-type]');
     if (ty) { chooseType(ty.dataset.type); return; }
     const sw = e.target.closest('.ob-sw button');
@@ -325,7 +351,7 @@ export default function create(ctx) {
       if (dice.dataset.dice === 'name') setTitle(`¡Hola, ${ui.esc(name)}!`, 'Ponele nombre a tu personaje y a tu ciudad.');
       return;
     }
-    if (e.target.closest('.ob-back')) { audio.sfx('close'); readInputs(); step = 0; renderStep(); return; }
+    if (e.target.closest('.ob-back')) { audio.sfx('close'); readInputs(); step = Math.max(0, step - 1); if (step === 0) rebuild(false); renderStep(); return; }
     if (e.target.closest('.ob-next')) next();
   }
   function readInputs() {
@@ -337,6 +363,13 @@ export default function create(ctx) {
     if (step === 0) {
       audio.sfx('swoosh');
       step = 1;
+      rebuild();   // el personaje se viste con la clase elegida
+      renderStep();
+      return;
+    }
+    if (step === 1) {
+      audio.sfx('swoosh');
+      step = 2;
       renderStep();
       setTimeout(() => { if (alive && innerWidth >= 700) root?.querySelector('[data-f=name]')?.focus(); }, 350);
       return;
@@ -354,6 +387,7 @@ export default function create(ctx) {
     s.player.cityName = city || sugg.city;
     // directo al estado (sin customize:changed: elegir el primer personaje no cuenta como misión de vestidor)
     s.avatar = { ...look };
+    try { K.setLeaderClass(cls, s); } catch (e) { console.warn('[onboarding] clase', e); }
     s.onboarded = true;
     ctx.bus.emit('onboarding:done', {});
     store.markDirty();
