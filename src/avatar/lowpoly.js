@@ -3,9 +3,11 @@
 // colores por vértice) y el contorno tinta de createPixelRenderer sale solo (salta la profundidad).
 //   const f = new Facets(); f.blob(...); f.box(...); f.limb(...); f.spike(...); mesh = f.mesh()
 // Cada triángulo lleva una variación chica de tono (se ven las facetas) y una oclusión falsa: más oscuro abajo.
+// Rampa por orientación (docs/ARTE-PERSONAJES.md §3): las caras que miran arriba van un paso de luz (más cálido) y las
+// que miran abajo un paso de sombra (más frío), así cada material tiene 3 tonos y la silueta se separa del piso oscuro.
 import * as THREE from 'three';
 import { voxelMaterial } from '../core/voxel.js';
-import { lightMat } from './avatar-kit.js';
+import { lightMat, ramp } from './avatar-kit.js';
 
 const hash = (a, b, c) => {
   let h = (Math.round(a * 997) * 374761393 + Math.round(b * 997) * 668265263 + Math.round(c * 997) * 2147483647) | 0;
@@ -13,7 +15,7 @@ const hash = (a, b, c) => {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-const _c = new THREE.Color();
+const _c = new THREE.Color(), _n = new THREE.Vector3(), _m = new THREE.Vector3();
 const ico = new Map();
 function icoVerts(detail) {
   if (!ico.has(detail)) ico.set(detail, new THREE.IcosahedronGeometry(1, detail).attributes.position.array);
@@ -21,11 +23,17 @@ function icoVerts(detail) {
 }
 
 export class Facets {
-  constructor({ ao = true, vary = 0.07 } = {}) { this.pos = []; this.col = []; this.ao = ao; this.vary = vary; }
+  constructor({ ao = true, vary = 0.07, tone = ao } = {}) { this.pos = []; this.col = []; this.ao = ao; this.vary = vary; this.tone = tone; }
   tri(a, b, c, color) {
     this.pos.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
     const k = 1 + (hash(a.x + b.x + c.x, a.y + b.y + c.y, a.z + b.z + c.z) - 0.5) * 2 * this.vary;
-    _c.set(typeof color === 'function' ? color((a.y + b.y + c.y) / 3, (a.x + b.x + c.x) / 3, (a.z + b.z + c.z) / 3) : color);
+    let col = typeof color === 'function' ? color((a.y + b.y + c.y) / 3, (a.x + b.x + c.x) / 3, (a.z + b.z + c.z) / 3) : color;
+    if (this.tone) {
+      _n.subVectors(b, a).cross(_m.subVectors(c, a));
+      const ny = _n.y / (_n.length() || 1);
+      if (ny > 0.55) col = ramp(col, 1); else if (ny < -0.35) col = ramp(col, -0.7);
+    }
+    _c.set(col);
     for (let i = 0; i < 3; i++) this.col.push(_c.r * k, _c.g * k, _c.b * k);
     return this;
   }

@@ -375,7 +375,7 @@ export const AVATAR_TYPES = [
   { id: 'orco', name: 'Orco de la Brasa', family: 'pueblos', emoji: '🔥', element: 'brasa',
     desc: 'De los volcanes del Bajo Mundo. Los que más perdieron con el Quiebre.',
     skins: ['#7a8658', '#68744c', '#86845e', '#5c6852', '#776a54', '#4c5642'],
-    look: { skin: 0, build: 'recio', hair: 'jopo', hairColor: 'negro', face: 'cicatriz', dress: 'cuero', dressColor: 'rojo', crown: 'ninguna', acc: 'hacha' } },
+    look: { skin: 0, build: 'recio', hair: 'jopo', hairColor: 'negro', face: 'cicatriz', dress: 'cuero', dressColor: 'negro', crown: 'ninguna', acc: 'hacha' } },
 ];
 export const AVATAR_TYPE_BY_ID = Object.fromEntries(AVATAR_TYPES.map(t => [t.id, t]));
 // pueblos que no son jugables (enemigos y gente rara de ver): solo los usan los modelos (src/avatar/figure-*.js)

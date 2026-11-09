@@ -57,6 +57,20 @@ if (set === 'pueblos') {
     ['Monje', { type: 'humano', build: 'recio', skin: 2, hair: 'rapado', hairColor: 'castano', face: 'barba_corta', dress: 'habito', dressColor: q.get('cm') || 'negro', crown: 'ninguna', acc: 'baston' }],
     ['Pirata gente-zorro', { type: 'zorro', build: 'esbelto', skin: 0, hair: 'corto', hairColor: 'pelirrojo', face: 'parche', dress: 'abrigo', dressColor: q.get('cf') || 'azul', crown: 'bandana', acc: 'espada' }],
   ];
+  // who=pueblos: el primer plano o el giro de cada pueblo (recio y esbelto, con su look de base) y un Vaciado
+  if (q.get('who') === 'pueblos') {
+    MUESTRAS.length = 0;
+    const ESB = { humano: { hair: 'coleta', face: 'ninguna', dress: 'jubon', dressColor: 'azul' }, enano: { hair: 'rodete', face: 'barba_trenzada', hairColor: 'rubio', dress: 'delantal' },
+      anuro: { hair: 'cresta_piel', dress: 'tunica', dressColor: 'durazno', skin: 3 }, zorro: { hair: 'largo', skin: 2, dress: 'cuero', dressColor: 'verde' },
+      orco: { hair: 'coleta', face: 'pintura', dress: 'pieles', dressColor: 'negro', skin: 3 } };
+    for (const t of AVATAR_TYPES) {
+      MUESTRAS.push([t.name.split(' ')[0] + ' recio', base(t.id)]);
+      MUESTRAS.push([t.name.split(' ')[0] + ' esbelto', base(t.id, { build: 'esbelto', ...ESB[t.id] })]);
+    }
+    MUESTRAS.push(['Vaciado', randomLook(3, { type: 'vaciado' })]);
+  }
+  // pick=orco,anuro: solo las muestras cuyo nombre lleva alguna de esas palabras
+  if (q.get('pick')) { const ks = q.get('pick').toLowerCase().split(','); for (let i = MUESTRAS.length - 1; i >= 0; i--) if (!ks.some(k => MUESTRAS[i][0].toLowerCase().includes(k))) MUESTRAS.splice(i, 1); }
   // caras: primer plano; view=f (frente), t (tres cuartos) o p (perfil); sin view, frente y tres cuartos
   const V = { f: ['frente', 0], t: ['tres cuartos', 0.6], p: ['perfil', Math.PI / 2] };
   const VIEWS = set === 'caras' ? (q.get('view') || 'ft').split('').map(k => V[k]) : [['frente', 0], ['tres cuartos', 0.75], ['espalda', Math.PI]];
@@ -66,6 +80,10 @@ if (set === 'pueblos') {
     if (set === 'caras') { obj.updateMatrixWorld(true); obj.userData.lift = 0.9 - obj.userData.parts.head.getWorldPosition(new THREE.Vector3()).y; }
     items.push({ obj, label: name + ' · ' + view, turn });
   }
+} else if (set === 'autos') {   // conductores sentados (car.js): que el cuerpo nuevo no atraviese el auto
+  const { carModel } = await import('../src/avatar/car.js');
+  const peoples = ['humano', 'enano', 'orco', 'anuro', 'zorro'];
+  peoples.forEach((t, i) => items.push({ obj: carModel({}, { driver: base(t, i % 2 ? { build: 'esbelto' } : {}) }), label: t }));
 } else if (set === 'enemigos') {
   for (const id of (q.get('ids') ? q.get('ids').split(',') : ENEMY_MODEL_TYPES)) items.push({ obj: enemyModel(id), label: id });
 }

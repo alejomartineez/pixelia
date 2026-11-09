@@ -16,12 +16,13 @@ import { Facets } from '../avatar/lowpoly.js';
 
 // ---------- paletas (terrosas, con ojos que brillan en la penumbra) ----------
 const P = {
-  wolf: '#4c4f54', wolf_d: '#35373b', wolf_l: '#66696e', wolf_eye: '#ffd56a',
-  old: '#6d6a64', old_d: '#4f4c47', old_l: '#8f8b83', old_eye: '#ff9a3d', scar: '#7a3b36',
-  stone: '#3b3631', stone_d: '#2a2622', stone_l: '#524b44', vein: '#5fe0d0', vein_d: '#2f9e94', bug_eye: '#ff5a4a',
+  // más claros que el piso de la grilla y con un vientre o lomo de otro valor: la silueta se lee contra lo oscuro
+  wolf: '#66625c', wolf_d: '#45423f', wolf_l: '#9a9286', wolf_eye: '#ffd56a',
+  old: '#7e7870', old_d: '#57534d', old_l: '#a59d8f', old_eye: '#ff9a3d', scar: '#8a3b34',
+  stone: '#5a5148', stone_d: '#3c3631', stone_l: '#7e7262', vein: '#5fe0d0', vein_d: '#2f9e94', bug_eye: '#ff5a4a',
   bone: '#cfc6b0', bone_d: '#a89f8a', ink: '#161210',
-  moss: '#33402c', moss_d: '#252e20', moss_l: '#4a5a3a', mud: '#3a3024', reed: '#6f6a3a', beast_eye: '#d6ff70',
-  rock: '#5a564e', rock_d: '#423f39', rock_l: '#77726a', root: '#4a3a28', rootL: '#6a5236', golem_eye: '#8ff0a0',
+  moss: '#4a5a34', moss_d: '#323d26', moss_l: '#728248', mud: '#54432e', reed: '#8a8044', beast_eye: '#d6ff70',
+  rock: '#7a7468', rock_d: '#54504a', rock_l: '#a19a8a', root: '#5e4630', rootL: '#86683e', golem_eye: '#8ff0a0', lichen: '#6e8a4a',
   orc: '#6c7a4e', orc_d: '#55613d', iron: '#4a4b4e', iron_d: '#333437', iron_l: '#6e7074', ember: '#ff8a3a', leather: '#4a3426',
 };
 const mix = (a, b, t) => new THREE.Color(a).lerp(new THREE.Color(b), t).getHex();
@@ -46,9 +47,9 @@ function assemble(def) {
 function wolf(c, o = {}) {
   const k = o.k || 1;
   const body = new Facets(), head = new Facets(), eyes = new Facets({ ao: false, vary: 0 });
-  const fur = (y) => (y > 0.5 * k ? c.d : c.base);
+  const fur = (y) => (y > 0.53 * k ? c.d : y < 0.34 * k ? c.l : c.base);   // lomo oscuro, vientre claro
   body.blob(0, 0.42 * k, -0.05, 0.2 * k, 0.17 * k, 0.4 * k, fur, { seed: 2 });
-  body.blob(0, 0.47 * k, 0.2 * k, 0.21 * k, 0.21 * k, 0.2 * k, c.base, { seed: 5 });   // pecho
+  body.blob(0, 0.47 * k, 0.2 * k, 0.21 * k, 0.21 * k, 0.2 * k, (y) => (y < 0.5 * k ? c.l : c.base), { seed: 5 });   // pecho claro
   if (o.mane) body.blob(0, 0.6 * k, 0.12 * k, 0.24 * k, 0.15 * k, 0.24 * k, c.l, { seed: 8, jit: 0.25 });
   for (const [x, z] of [[-0.11, 0.24], [0.11, 0.24], [-0.1, -0.3], [0.1, -0.3]]) {
     body.limb([x * k, 0.4 * k, z * k], [x * k, 0.18 * k, (z + 0.02) * k], 0.06 * k, 0.045 * k, c.d, 4);
@@ -58,7 +59,7 @@ function wolf(c, o = {}) {
   if (o.scar) body.limb([0.2 * k, 0.5 * k, 0.05], [0.18 * k, 0.4 * k, -0.15 * k], 0.012, 0.012, P.scar, 3);
   // cabeza (pivote en el cuello)
   head.blob(0, 0, 0.05 * k, 0.13 * k, 0.12 * k, 0.14 * k, c.base, { seed: 4, detail: 0 });
-  head.box(0, -0.03 * k, 0.2 * k, 0.11 * k, 0.09 * k, 0.18 * k, c.d, { taper: 0.75 });   // hocico
+  head.box(0, -0.03 * k, 0.2 * k, 0.11 * k, 0.09 * k, 0.18 * k, (y) => (y < -0.04 * k ? c.l : c.d), { taper: 0.75 });   // hocico, la quijada clara
   head.box(0, -0.075 * k, 0.29 * k, 0.04 * k, 0.03 * k, 0.03 * k, P.ink);
   for (const s of [-1, 1]) {
     head.spike([s * 0.07 * k, 0.07 * k, -0.02], [s * 0.1 * k, 0.21 * k, -0.03], 0.04 * k, c.d, 3);   // orejas
@@ -71,9 +72,9 @@ function wolf(c, o = {}) {
 // bicho de veta: caparazón de piedra, seis patas, mandíbulas y cristales que brillan (sin coraza si está roto)
 function bug(broken) {
   const body = new Facets(), glow = new Facets({ ao: false, vary: 0.15 });
-  body.blob(0, 0.2, 0, 0.32, 0.17, 0.36, (y) => (y > 0.28 ? (broken ? P.stone_d : P.stone_l) : P.stone), { seed: 7, flat: 0.5 });
+  body.blob(0, 0.2, 0, 0.32, 0.17, 0.36, (y) => (y > 0.28 ? (broken ? P.stone_d : P.stone_l) : y < 0.15 ? P.stone_d : P.stone), { seed: 7, flat: 0.5 });
   for (const z of [-0.18, 0.02, 0.22]) for (const s of [-1, 1]) {
-    body.limb([s * 0.26, 0.17, z], [s * 0.44, 0.22, z + 0.04], 0.03, 0.025, P.stone_d, 4);
+    body.limb([s * 0.26, 0.17, z], [s * 0.44, 0.22, z + 0.04], 0.03, 0.025, P.stone, 4);
     body.limb([s * 0.44, 0.22, z + 0.04], [s * 0.5, 0.0, z + 0.08], 0.025, 0.015, P.stone_d, 4);
   }
   for (const s of [-1, 1]) {
@@ -122,10 +123,12 @@ function golem() {
     body.limb([s * 0.4, 1.1, 0.25], [s * 0.2, 0.55, 0.27], 0.025, 0.02, P.root, 4);   // raíces que lo atan
   }
   body.limb([-0.3, 0.9, 0.26], [0.3, 0.6, 0.27], 0.022, 0.02, P.rootL, 4);
+  for (const s of [-1, 1]) body.blob(s * 0.56, 1.16, -0.02, 0.15, 0.05, 0.14, P.lichen, { seed: 30 + s, detail: 0, flat: 0.2 });   // liquen
   glow.box(0, 0.86, 0.255, 0.1, 0.18, 0.02, P.golem_eye, { rot: [0, 0, 0.3] });
   glow.box(0.12, 0.74, 0.255, 0.16, 0.03, 0.02, P.vein_d, { rot: [0, 0, -0.5] });
   head.box(0, 0.06, 0, 0.3, 0.24, 0.28, rock, { taper: 0.85, jit: 0.05, seed: 21 });
   head.box(0, 0.16, 0.12, 0.32, 0.05, 0.08, P.rock_d);   // ceño de piedra
+  head.blob(0.04, 0.19, -0.04, 0.12, 0.035, 0.11, P.lichen, { seed: 33, detail: 0, flat: 0.2 });
   for (const s of [-1, 1]) eyes.box(s * 0.07, 0.08, 0.145, 0.06, 0.03, 0.02, P.golem_eye);
   return assemble({ parts: { body: { f: body, glow }, head: { f: head, glow: eyes, at: [0, 1.16, 0.02] } } });
 }
@@ -169,7 +172,7 @@ const PEOPLE = {
   grumete: { look: { type: 'zorro', build: 'esbelto', skin: 1, hair: 'corto', hairColor: 'negro', face: 'cicatriz', dress: 'cuero', dressColor: 'rojo', crown: 'bandana', acc: 'espada' }, k: 0.86 },
   tirador: { look: { type: 'zorro', build: 'recio', skin: 3, hair: 'cortito', hairColor: 'gris', face: 'ninguna', dress: 'abrigo', dressColor: 'verde', crown: 'galera', acc: 'ninguno' }, gear: 'trabuco', k: 0.88 },
   capitana: { look: { type: 'zorro', build: 'esbelto', skin: 0, hair: 'trenzas', hairColor: 'blanco', face: 'parche', dress: 'abrigo', dressColor: 'fucsia', crown: 'galera', acc: 'espada' }, k: 0.98 },
-  vaciado: { look: { type: 'vaciado', build: 'esbelto', skin: 0, hair: 'despeinado', hairColor: 'gris', face: 'cicatriz', dress: 'minero', dressColor: 'negro', crown: 'ninguna', acc: 'ninguno' }, k: 0.88 },
+  vaciado: { look: { type: 'vaciado', build: 'esbelto', skin: 0, hair: 'despeinado', hairColor: 'negro', face: 'cicatriz', dress: 'cuero', dressColor: 'negro', crown: 'ninguna', acc: 'ninguno' }, k: 0.88 },
 };
 
 // ---------- tipos ----------

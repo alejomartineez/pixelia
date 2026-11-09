@@ -7,7 +7,7 @@
 //   buildHead(v, look, D, pal)  cabeza con cara, pelo, barba o cicatrices y lo que lleve puesto
 //   GEAR[id]             equipo en la mano, el cuerpo o el hombro (las clases de M3 lo cambian con classLook)
 // Ejes: +Z es el frente, y = 0 el piso. Cada parte se dibuja en su grilla local con el pivote en el origen.
-import { MAT, mix, shade, ramp, hsl, hexToInt, skinHex, hairHex, clothHex } from './avatar-kit.js';
+import { MAT, mix, shade, ramp, hsl, hash3, hexToInt, skinHex, hairHex, clothHex } from './avatar-kit.js';
 
 // ---------------- Medidas por pueblo ----------------
 // leg: alto/ancho/profundidad y separación de la cadera; boot: alto de la bota; H/W/D: torso; sh: hombros que salen
@@ -24,8 +24,8 @@ export const PEOPLE = {
     esbelto: base({ legH: 12, legW: 7, legD: 7, hip: 4, H: 15, W: 20, D: 11, sh: 1, armL: 14, armW: 6, hand: 7, hw: 12, hh: 12, hd: 11, neck: 0, headY: 1, boot: 5, slim: true }),
   },
   orco: {
-    recio: base({ legH: 14, legW: 8, legD: 8, hip: 5, H: 19, W: 26, D: 13, sh: 3, armL: 20, armW: 8, hand: 9, hw: 12, hh: 12, hd: 12, neck: 0, headY: 3, hunch: 0.12, headZ: 3, boot: 5 }),
-    esbelto: base({ legH: 15, legW: 7, legD: 7, hip: 4.5, H: 18, W: 22, D: 12, sh: 2, armL: 19, armW: 7, hand: 8, hw: 12, hh: 12, hd: 12, neck: 0, headY: 2, hunch: 0.1, headZ: 2, boot: 5, slim: true }),
+    recio: base({ legH: 14, legW: 8, legD: 8, hip: 5, H: 19, W: 26, D: 13, sh: 3, armL: 20, armW: 8, hand: 9, hw: 12, hh: 12, hd: 12, neck: 0, headY: 1, hunch: 0.12, headZ: 3, boot: 5 }),
+    esbelto: base({ legH: 15, legW: 7, legD: 7, hip: 4.5, H: 18, W: 22, D: 12, sh: 2, armL: 19, armW: 7, hand: 8, hw: 12, hh: 12, hd: 12, neck: 0, headY: 0, hunch: 0.1, headZ: 2, boot: 5, slim: true }),
   },
   anuro: {
     recio: base({ legH: 10, legW: 8, legD: 8, hip: 5, H: 14, W: 22, D: 14, sh: 1, armL: 15, armW: 5, hand: 7, hw: 18, hh: 8, hd: 14, neck: 0, headY: 1, hunch: 0.06, headZ: 1, boot: 0 }),
@@ -47,12 +47,18 @@ export const dimsOf = (type, build) => {
 };
 
 // ---------------- Paleta de un look ----------------
-const IRIS = { humano: 0x2a2220, enano: 0x2a2220, orco: 0x7a3a14, anuro: 0xc8a032, zorro: 0xc07a22, vaciado: 0x5fd0c4 };
+const luma = (c) => (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
+const IRIS = { humano: 0x2a2220, enano: 0x2a2220, orco: 0xd0842c, anuro: 0xc8a032, zorro: 0xc07a22, vaciado: 0x5fd0c4 };
 export function paletteOf(look) {
   const t = look.type;
   const skin = hexToInt(skinHex(t, look.skin));
   const hair = hexToInt(hairHex(look.hairColor));
-  const cloth = hexToInt(clothHex(look.dressColor));
+  // la ropa contrasta con la piel en valor, no solo en matiz (docs/ARTE-PERSONAJES.md §3, regla 3): si quedan a
+  // menos de un escalón, la tela baja hasta separarse (la piel es lo más claro cerca de la cara); con la piel muy
+  // oscura, la tela sube
+  let cloth = hexToInt(clothHex(look.dressColor));
+  const up = luma(skin) < 0.33 ? 0.8 : -0.7;
+  for (let i = 0; i < 3 && Math.abs(luma(cloth) - luma(skin)) < 0.1; i++) cloth = ramp(cloth, up);
   // rampas con cambio de matiz (docs/ARTE-PERSONAJES.md §3): la piel oscurece hacia el rojo (nunca al gris) y aclara
   // hacia el durazno; la tela y el pelo oscurecen hacia el violeta frío y aclaran hacia el ocre
   const SK = { hue: 7, val: 0.085, cool: t === 'anuro' || t === 'orco' ? 200 : 350, warm: 42 };
@@ -88,7 +94,8 @@ function strap(c, from = 4) {
   const xs = Math.round(-c.hw + 2 + t * (2 * c.hw - 6));
   return c.x === xs || c.x === xs + 1;
 }
-const chain = (x, y, z, P) => ((x + y) % 2 ? P.metal : P.metalD);
+// cota de malla en bandas de 3 (no damero: a esta distancia el damero es ruido)
+const chain = (x, y, z, P) => ((y + 99) % 3 === 0 ? P.metalD : P.metal);
 const boots = (h, P) => (y) => (y < h - 1 ? P.boot : y === h - 1 ? P.bootL : null);
 
 export const OUTFITS = {
@@ -176,7 +183,7 @@ export const OUTFITS = {
       return panel ? P.cloth : chain(c.x, c.y, c.z, P);
     },
     pauldron: (P) => P.metal,
-    sleeve: (r, L, P) => chain(r, 0, 1, P),
+    sleeve: (r, L, P) => chain(0, r, 0, P),
     glove: true,
     leg: (y, P) => boots(8, P)(y) ?? P.trouserD,
     skirt: { len: 7, col: (y, len, P, c) => ((c.front || c.back) && Math.abs(c.x + 0.5) <= c.hw - 3 ? (y === 0 ? P.clothD : P.cloth) : y >= len - 3 ? chain(c.x, y, c.z, P) : null) },
@@ -214,7 +221,7 @@ export const OUTFITS = {
   cota: {
     torso: (c, P) => belt(c, P) || (collar(c, 4) ? P.metalD : chain(c.x, c.y, c.z, P)),
     pauldron: (P) => P.metal,
-    sleeve: (r, L, P) => chain(r, 1, 0, P),
+    sleeve: (r, L, P) => chain(0, r, 0, P),
     glove: true,
     leg: (y, P) => boots(7, P)(y) ?? P.trouserD,
     skirt: { len: 6, col: (y, len, P, c) => (y === 0 ? P.metalD : chain(c.x, y, c.z, P)) },
@@ -262,7 +269,7 @@ export function drawTorso(v, look, D, P, gear) {
       const c = { x, y, z, hw: w, hd: hd + dz, H, front: z === hd + dz - 1, back: z === -hd, side: x === -w || x === w - 1 };
       let col = gear?.paint?.(c, P, look) ?? o.torso(c, P);
       if (col === 'skin') col = P.skin;
-      if (look.type === 'vaciado' && (x + y * 2) % 11 === 0 && c.front) col = P.veinD;   // la veta les come la ropa
+      if (look.type === 'vaciado' && c.front && y > BELT_Y && y < H - 1 && x === -2 + [0, 1, 1, 0, -1, -1][y % 6]) col = y > H - 5 ? P.vein : P.veinD;   // la grieta de veta
       v.set(x, y, z, lit(col, y >= H - 2 ? 1 : y <= 1 ? -1 : 0));
     }
   }
@@ -340,7 +347,7 @@ export function drawLeg(v, look, D, P) {
       if (bevel(x, z, l0 - e, l1 + e, d0 - e, d1 + e) && y > 1) continue;
       v.set(x, y - L, z, col);
     }
-    if (look.type === 'vaciado' && y > 6 && y % 5 === 0) v.set(l0, y - L, d1 - 1, P.veinD);
+    if (look.type === 'vaciado' && y > 9 && y < 14) v.set(l1 - 1, y - L, d1 - 1, P.veinD);
   }
   if (bare) {   // pie ancho y palmeado, con tres dedos
     v.box(l0 - 2, -L, d0, D.legW + 4, 2, D.legD + 1, P.skin);
@@ -438,7 +445,7 @@ export function eyeVoxels(look, D, P) {
   for (const s of [-1, 1]) {
     const xi = s < 0 ? -inner - 1 : inner, xo = s < 0 ? xi - 1 : xi + 1;
     if ((look.face === 'cicatriz_ojo' || look.face === 'parche') && s < 0) continue;
-    if (t === 'zorro') { out.push([xi, ey, fz, P.ink], [xo, ey, fz, P.iris]); continue; }   // ojo ámbar con la pupila adentro
+    if (t === 'zorro' || t === 'orco') { out.push([xi, ey, fz, P.ink], [xo, ey, fz, P.iris]); continue; }   // ojo ámbar con la pupila adentro
     out.push([xi, ey, fz, P.iris], [xo, ey, fz, t === 'vaciado' ? P.iris : P.lid]);
   }
   return out;
@@ -523,11 +530,17 @@ export function buildHead(v, look, D, P) {
       if (t === 'orco') { v.box(xe, 5, -2, 1, 3, 3, P.skin); for (let i = 1; i <= 3; i++) v.box(xe + s * i, 6 + (i >> 1), -2, 1, 2, 2, i === 3 ? P.skinD : P.skin); }
       else { v.box(xe, 3, -1, 1, 4, 3, P.skin); v.set(xe, 4, 0, P.skinD); v.set(xe, 5, 0, P.skinD); }
     }
-    if (t === 'orco') {   // frente pesada, mandíbula adelantada y colmillos que suben
-      v.box(-W + 1, ey + 1, fz + 1, 2 * W - 2, 2, 2, (x, y) => (y === ey + 2 ? P.skin : P.skinD));
-      v.box(-W + 1, 0, fz + 1, 2 * W - 2, 3, 2, (x, y) => (y === 2 ? P.skinD : P.skin));
-      v.box(-2, 4, fz + 1, 4, 2, 2, (x, y) => (y === 5 ? P.skin : P.skinD));
-      for (const x of [-4, 3]) v.box(x, 2, fz + 3, 1, 4, 1, (xx, y) => (y === 5 ? P.bone : ramp(P.bone, -1)));
+    if (t === 'orco') {
+      // frente pesada: una fila sobre las cejas que sale 1 (el ceño no sale 2: taparía el ojo desde la cámara)
+      for (let x = -W + 1; x < W - 1; x++) if (!v.has(x, ey + 2, fz + 1)) v.set(x, ey + 2, fz + 1, P.skin);
+      // nariz chata y ancha, con las fosas oscuras
+      v.box(-2, 3, fz + 1, 4, 2, 1, (x, y) => (y === 4 ? P.skinL : P.skin)); v.box(-1, 3, fz + 2, 2, 1, 1, P.skin);
+      v.set(-2, 3, fz + 1, P.skinDD); v.set(1, 3, fz + 1, P.skinDD);
+      // mandíbula adelantada: sale 2 abajo, con la boca como una línea oscura
+      v.box(-W + 1, 0, fz + 1, 2 * W - 2, 2, 2, (x, y, z) => (z === fz + 2 && y === 1 ? P.skinL : P.skin));
+      for (let x = -3; x < 3; x++) v.set(x, 2, fz + 1, P.lip);
+      v.set(-W + 1, 2, fz + 1, P.skinD); v.set(W - 2, 2, fz + 1, P.skinD);
+      for (const x of [-4, 3]) v.box(x, 2, fz + 2, 1, 3, 1, (xx, y) => (y === 4 ? P.bone : ramp(P.bone, -0.8)));   // colmillos
     }
   }
   // cuencas: los ojos van en otra malla (parpadean); atrás queda el párpado cerrado
@@ -566,7 +579,7 @@ function drawHair(v, look, D, P, g) {
   if (t === 'anuro') {
     if (h.spots) for (const [k, c] of v.map) {
       const [x, y, z] = k.split(',').map(Number);
-      if (skinish(c) && y >= 4 && ((x >> 2) + (z >> 2)) % 3 === 0 && ((x + z) & 3) < 2) v.map.set(k, P.hair);
+      if (skinish(c) && y >= 4 && hash3(Math.floor((x + 99) / 3), 0, Math.floor((z + 99) / 3)) < 0.28) v.map.set(k, mix(P.skin, P.hair, 0.5));
     }
     if (h.ridge) for (let z = zb + 1; z < fz - 3; z++) for (let y = hh; y < hh + (z < zb + 5 ? 2 : 1); y++) { v.set(-1, y, z, P.hair); v.set(0, y, z, P.hairD); }
     return;
@@ -663,7 +676,13 @@ function drawFace(v, look, D, P, g) {
   else if (f === 'bigote') { for (let x = -3; x < 3; x++) v.set(x, 2, fz + 2, bc(x, 3)); for (const x of [-4, 3]) { v.set(x, 1, fz + 1, P.hair); v.set(x, 0, fz + 1, P.hairD); } }
   else if (f === 'cicatriz') { for (let i = 0; i < 5; i++) v.set(W - 2 - (i >> 1), 1 + i, fz + (i === 2 ? 1 : 0), P.scar); }
   else if (f === 'cicatriz_ojo') { const x = look.type === 'orco' ? -3 : -2; for (let y = ey - 3; y <= ey + 3; y++) v.set(x, y, fz + (y === ey + 1 || y === ey + 2 ? 2 : 0), P.scar); v.set(x - 1, ey, fz, P.skinDD); v.set(x + 1, ey, fz, P.skinDD); }
-  else if (f === 'pintura') { for (const x of [-3, -2, 1, 2]) for (let y = ey - 3; y < ey; y++) v.set(x, y, fz, 0x2a2224); for (let x = -W + 1; x < W - 1; x++) if (!v.has(x, ey + 3, fz + 1)) v.set(x, ey + 3, fz, 0x5a2a22); }
+  else if (f === 'pintura') {
+    // pintura de guerra: una franja de ocre rojo de lado a lado justo debajo de los ojos y dos rayas que bajan por las
+    // mejillas (no manchas oscuras bajo el ojo, que se leen como otro par de ojos)
+    const PT = look.type === 'orco' || look.type === 'anuro' ? 0xb0a58a : 0x7a2e24;
+    for (let x = -W; x < W; x++) if (Math.abs(x + 0.5) > 1) v.set(x, ey - 1, x === -W || x === W - 1 ? fz - 1 : fz, PT);
+    for (const x of [-W + 1, W - 2]) for (let y = ey - 3; y < ey - 1; y++) v.set(x, y, fz, ramp(PT, -0.6));
+  }
   else if (f === 'parche') {
     const x = look.type === 'orco' ? -3 : -2;
     v.box(x - 1, ey, fz + 1, 2, 2, 1, P.ink); v.set(x - 1, ey - 1, fz + 1, P.leatherD);   // parche chico sobre el ojo
@@ -707,7 +726,7 @@ function drawHat(v, look, D, P, g) {
       // pañuelo de un solo color de acento (óxido) que se apoya arriba del ceño: no tapa la cara. Ruedo de lino,
       // nudo y dos puntas atrás. Si la ropa ya es roja, el pañuelo va carbón.
       {
-        const red = hsl(P.cloth)[0] < 25 || hsl(P.cloth)[0] > 340, B = red ? 0x34302e : 0x7c3226;
+        const [hc0, sc0] = hsl(P.cloth), red = (hc0 < 16 || hc0 > 340) && sc0 > 0.3, B = red ? 0x34302e : 0x7c3226;
         const y0 = (EYE[look.type] ?? 6) + 3;
         const yt = hh + 1;   // pegado al cráneo: una sola fila sobre la cabeza, aunque el pelo sea más alto
         shell(y0, yt + 1, (x, y) => (y === y0 ? ramp(B, -1) : y === yt ? ramp(B, 0.8) : B));

@@ -357,7 +357,7 @@ export function randomLook(seed = 0, opts = {}) {
     crown: r() < 0.55 ? 'ninguna' : pick(COMMON_HATS.filter(id => okHat.has(id))),
     acc: r() < 0.55 ? 'ninguno' : pick(COMMON_ACC.filter(id => okAcc.has(id))),
   };
-  if (type === 'vaciado') Object.assign(look, { dress: 'minero', hairColor: 'gris', crown: r() < 0.5 ? 'ninguna' : 'capucha', acc: 'ninguno', face: r() < 0.5 ? 'cicatriz' : 'ninguna' });
+  if (type === 'vaciado') Object.assign(look, { dress: 'cuero', dressColor: r() < 0.5 ? 'negro' : 'violeta', hairColor: r() < 0.5 ? 'negro' : 'chocolate', crown: r() < 0.5 ? 'ninguna' : 'capucha', acc: 'ninguno', face: r() < 0.5 ? 'cicatriz' : 'ninguna' });
   return opts.cls ? classLook(look, opts.cls) : look;
 }
 
