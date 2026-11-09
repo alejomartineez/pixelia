@@ -380,8 +380,8 @@ export const ENCOUNTERS = {
     // el rango 6 (líder 7, clases 5/4/3 con la curva del paso 5b cuarta parte, herramientas y dos consumibles del
     // depósito). city: no lo pelea el grupo del tutorial. foeHp, bossHp y foeDmg lo ponen a la altura de ese grupo
     // (paso 7, DESIGN-COMBAT §8; con las clases 10/10/9 de antes iba 1,35 / 1,45 / +3).
-    expected: { level: 7, size: 3, element: 'raiz', classLevel: [5, 4, 3], tools: { catalejo: 4, martillo: 2, cuerda: 4, botiquin: 5, farol: 1 }, equip: ['botiquin', 'farol'], city: true },
-    foeHp: 0.9, bossHp: 1.3, foeDmg: 2,
+    expected: { level: 6, size: 3, element: 'raiz', classLevel: [5, 4, 3], tools: { catalejo: 4, martillo: 5, cuerda: 5, botiquin: 5, farol: 1 }, equip: ['botiquin', 'farol'], city: true },
+    foeHp: 0.9, bossHp: 1.35, foeDmg: 2,
     reward: { xp: 100, mats: { mineral: 3, madera: 3, piedra: 2 }, page: 'p8', flag: 'capitana_vencida' },
     noMirrorJitter: true,
   },

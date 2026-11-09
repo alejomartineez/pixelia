@@ -270,6 +270,13 @@ siempre), pero el paso 7 lo mira.
   del jefe, encima) y `foeDmg` (golpe extra): la capitana va con 1,25, 1,45 y +3 (desde el rebalanceo §8.z de DESIGN-CORE, con el grupo nuevo). `expected.city` saca el abordaje de la
   prueba del grupo del tutorial (nunca lo pelea).
 - **Revancha:** el jefe pierde 25 % de vida por cada derrota (antes 20 %), hasta dos veces.
+- **La bestia deja leer el primer turno** (recorrido de la noche, F): al armar la pelea no marca el agua (`planIncoming(b,
+  ev, true)`); la primera franja se marca después del primer turno enemigo. La primera vez que se marca, en cualquier
+  pelea, Vera explica lo rayado (`oneTip('flood')` en `combat-scene`, de un solo uso en `state.tutorial.combatTips`).
+  Con el grupo esperado da 59,3 % al primer intento; en el rango 3, 55 % y 85,5 %.
+- **El abordaje con la curva de clases del 5b-4:** el grupo de la ciudad en el rango 6 es líder 6, clases 5/4/3, Catalejo 4,
+  Martillo 5, Cuerda 5, Botiquín 5 y Farol 1 (`sim:economy`, semilla 1). Con ese `expected` y `bossHp` 1,35 da
+  60,5 % al primer intento, 96,5 % al tercero y 10,9 turnos.
 - **"En la partida"** (sección nueva de `sim-combat`, `--no-real` la saltea): la bestia con el grupo que tiene la ciudad
   cuando se abre la poza.
 
@@ -1052,6 +1059,19 @@ pelea de la expedición y el abordaje traen la batalla armada y no pasan por ac�
 - el paso del onboarding, con los 4 puntos, el título, la explicación y la clase que se mantiene al volver.
 
 `test-e2e` elige Cazador en el onboarding y revisa que quede en la partida. `test-story` pasa por el paso nuevo.
+
+### 16.6 Quién es quién en el grupo (recorrido de la noche, A)
+El recorrido de jugador nuevo (`docs/RECORRIDO-NOCHE.md`) encontró que en el combate quien juega figuraba como "Líder"
+y, si elegía Cazador, había otro "Cazador" en el grupo: se leía como un duplicado.
+- **Combate** (`unitLabel` de `combat-ui.js`): quien juega va con su nombre y su clase ("Irene · Cazador" en la ficha;
+  "Irene Cazador", con la clase más chica, en la lista del turno). La ficha dice "Lidera el grupo. Si cae, el grupo se
+  repliega". El aviso de "le quedan acciones" y los carteles usan el mismo nombre (`dom.labelOf`). La lista del turno
+  pasa de 212 a 240 px para que entre todo (250 desde 1280 px, del recorrido). La vista del motor suma `leader.cls`.
+- **Quien del grupo tiene la clase de quien lidera** es otra persona de la ciudad: "Cazador de la ciudad" en el
+  combate, en la pestaña Progreso (El grupo) y en las tarjetas del panel de Expedición.
+- **Decisión:** se distingue y no se saca del grupo. Cada clase de la ciudad es una persona con su propio nivel; sacarla
+  cuando coincide con la clase de quien lidera achicaría los grupos y cambiaría el balance (§8) y las salidas.
+- `test-class-look` suma 4 (51 bien): la lista del turno, la ficha y la fila de Progreso.
 
 ## 17. Elegir las activas y la subclase (paso 5b, cuarta parte)
 `openKitPicker(ctx, who)` de `src/scenes/class-pick.js`: un modal para quien lidera (`who: 'leader'`) o para una clase de

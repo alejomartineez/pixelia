@@ -50,7 +50,7 @@ cada paso.
 | 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y el esquife volador | hecho e integrado (guía de arte en `docs/ARTE-PERSONAJES.md`; cabeza grande decidida de noche, revisar) | v39 |
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | hecho e integrado (detalle abajo, en "Paso 4") | 32c7672 |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
-| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | hecho e integrado, partes 1 a 4 (clases, nivel del líder, gente con herramienta, Vínculo, Progreso, clase en el onboarding, aspecto por clase, activas y subclase desde la ciudad, curva de clase y cazador en meta) | v36 + v39 + v42 + 1e21545 |
+| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | hecho e integrado, partes 1 a 4 (clases, nivel del líder, gente con herramienta, Vínculo, Progreso, clase en el onboarding, aspecto por clase, activas y subclase desde la ciudad, curva de clase y cazador en meta). Arreglo del recorrido (A): en el combate quien juega va con su nombre y su clase, y la clase repetida del grupo es "de la ciudad" (DESIGN-COMBAT §16.6), en `claude/nombres-grupo` | v36 + v39 + v42 + 1e21545 |
 | 6 | Acto 1 completo + E5–E6 | hecho e integrado: 6a, 6b y 6c (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche con figuras del 4a, E5, E6 con Vera en la primera salida, una sola bestia, dirigible visible) | ed2ba67 (v36) + v39 + 0c2afa8 (v40) |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | combate en metas, herramientas, telemetría, `release:check` y economía en verde en las semillas 1 a 12 (§8.z), integrados. Publicar lo hace el usuario (`npm run release:check`, después `npm run release`) | v42 + v44 |
 
@@ -261,6 +261,15 @@ tener que dar confirmaciones, le doy el si a todo".
   de la bestia con todo marcado (sesión de la Raíz).
 - **Decisión para el usuario:** la escala de interfaz por defecto en PC a 1080p (hoy 100 %; se propone 115–125 %),
   punto B del informe del recorrido.
+
+### Mañana del 9/11: corte por contexto
+- El usuario pidió cortar las sesiones que se habían pasado de contexto y abrir nuevas. Se cortaron quiebre-6a,
+  quiebre-5b-clases y quiebre-4a-detalle. Lo que tenían a medias quedó commiteado como WIP en sus ramas.
+- quiebre-6a había terminado antes del corte: nivel 3 escalonado, primer turno de la bestia legible y capitana
+  alineada con la economía real (271b6ad, v46). Integrado por el coordinador.
+- Sesiones nuevas: **quiebre-nombres** (desde `claude/nombres-grupo`: "Líder" y el Cazador duplicado en el combate y en
+  Progreso) y **quiebre-telemetria** (desde `claude/fix-telemetry-order`: `test-telemetry` falla en la cadena).
+- Las sesiones viejas quedan abiertas e idle. Se archivan si el usuario lo pide.
 
 ## Decisiones tomadas
 - Plataforma:
@@ -578,6 +587,12 @@ los primeros ecos, 7 balancea L1 y L5.
 - El abordaje se midió de nuevo con el grupo que da la economía nueva en el rango 6 (líder 6, clases 10/10/8): 51 % al
   primer intento, 96 % al tercero; con la tripulación un poco menos dura (foeHp 1,25, bossHp 1,45) queda en 53 % y 96 %, en 10,8 turnos.
 - No se tocaron `CLASS_XP`, `CLASS_GAIN` ni las pasivas de clase.
+
+**Ajustes del recorrido de la noche** (rama `claude/recorrido-ajustes`, desde v45)
+- E: desbloqueos del nivel 3 escalonados (`data.js`: Tambo, Fuente y Camino de Ladrillo al 4; vestuario del 3 al 7).
+- F: la bestia no marca el agua al empezar y Vera explica la franja la primera vez (`combat-rules`, `combat-scene`).
+- La capitana alineada con la economía real del rango 6 (líder 6, clases 5/4/3, Martillo 5, Cuerda 5; `bossHp` 1,35).
+- `sim:seeds` 1–12 y `sim:combat` con todas las metas.
 
 ## Pendiente o frágil
 - **`npm test` con la máquina cargada** (2026-11-09, otras sesiones corriendo tests a la vez): `test-mock`,

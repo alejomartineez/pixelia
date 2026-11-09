@@ -205,7 +205,7 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
   });
 
   const ev = [];
-  planIncoming(b, ev);
+  planIncoming(b, ev, true);
   return b;
 }
 
@@ -808,8 +808,12 @@ function planFlood(b, ev) {
   for (let y = best.y0; y < best.y0 + rows; y++) for (let x = 0; x < b.w; x++) if (lowAt(x, y)) b.floodNext.push(I(b, x, y));
   ev.push({ type: 'floodNext', tiles: b.floodNext.map(i => [i % b.w, (i / b.w) | 0]) });
 }
-/** Lo que llega en la próxima fase enemiga (se ve un turno antes). */
-function planIncoming(b, ev) {
+/**
+ * Lo que llega en la próxima fase enemiga (se ve un turno antes). start: al armar la pelea, la bestia todavía no marca
+ * el agua (recorrido de la noche: el campo arrancaba rayado entero y no se podía leer); la primera franja se marca
+ * después del primer turno enemigo.
+ */
+function planIncoming(b, ev, start = false) {
   b.incoming = [];
   const next = b.turn;                         // la fase enemiga de este turno
   const enc = ENCOUNTERS[b.enc];
@@ -832,7 +836,7 @@ function planIncoming(b, ev) {
       b.incoming.push({ kind: kinds[b.bridge.count % kinds.length], x, y, from: 'bridge' });
     }
   }
-  planFlood(b, ev);
+  if (start) b.floodNext = []; else planFlood(b, ev);
   if (b.incoming.length) ev.push({ type: 'incoming', list: b.incoming.map(s => ({ ...s })) });
 }
 function spawn(b, s, ev) {
@@ -1004,7 +1008,7 @@ export function view(b) {
     : o.boss ? `Vencé a ${ENEMIES[bossOf(b)?.type]?.name.toLowerCase() || 'el jefe'}` : 'Vencé a todos';
   return {
     enc: b.enc, name: enc.name, text: enc.text, kind: b.kind, turn: b.turn, maxTurns: b.maxTurns, phase: b.phase,
-    ended: b.ended, outcome: b.outcome, reason: b.reason, w: b.w, h: b.h, tiles, units,
+    ended: b.ended, outcome: b.outcome, reason: b.reason, w: b.w, h: b.h, tiles, units, leader: { cls: b.leader?.cls || null },
     objective: { type: o.type, text: objText, turns: o.turns || 0 },
     challenges: (enc.challenges || []).map(c => ({ id: c.id, name: CHALLENGES[c.id].name, text: CHALLENGES[c.id].text(c), done: challengeDone(b, c) })),
     items: { ...b.items }, bridge: b.bridge ? { hp: b.bridge.hp, max: b.bridge.max, cut: b.bridge.cut } : null,

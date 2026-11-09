@@ -553,7 +553,7 @@ export default function create(ctx) {
     if (s) dom.float(s.x, s.y, html, cls);
   }
   function floatTile(x, y, html, cls = '') { const s = tileScreen(x, y, 0.4); dom.float(s.x, s.y, html, cls); }
-  const unitName = (id) => { const u = C.unitById(b, id); return u ? (u.side === 'ally' ? (u.type === 'lider' ? 'Líder' : unitView(id)?.name || u.type) : ENEMIES[u.type]?.name) : ''; };
+  const unitName = (id) => { const u = C.unitById(b, id); return u ? (u.side === 'ally' ? (dom.labelOf(unitView(id)) || u.type) : ENEMIES[u.type]?.name) : ''; };
   const ABIL_SFX = { attack: 'bump', heal: 'pop', healArea: 'pop', mark: 'select', trap: 'place', wall: 'build', push: 'bump', swap: 'swoosh', root: 'place', disarm: 'coin', free: 'pop', dazzle: 'clear', cover: 'place', rope: 'swoosh' };
 
   async function playOne(e) {
@@ -621,6 +621,8 @@ export default function create(ctx) {
       case 'wallGone': syncProps(); break;
       case 'rockBroken': buildTile(e.at[1] * b.w + e.at[0]); audio.sfx('crash'); break;
       case 'flood': syncProps(); audio.sfx('swoosh'); dom.banner('El agua sube', '', 'water'); await wait(380); break;
+      // la primera vez que la bestia marca el agua, Vera explica qué es lo rayado (una sola vez, en cualquier pelea)
+      case 'floodNext': if (e.tiles?.length) oneTip('flood', 'Lo rayado en celeste se inunda en el próximo turno y tira 1 a quien quede abajo. Subí a lo alto o salí de la franja.'); break;
       case 'bridge': floatTile(b.bridge?.tiles?.[0] % b.w || 0, ((b.bridge?.tiles?.[0] || 0) / b.w) | 0, `Pasarela ${e.hp}`, 'act'); break;
       case 'bridgeCut': for (const i of b.bridge?.tiles || []) buildTile(i); audio.sfx('crash'); dom.banner('Cortaron la pasarela', 'No llegan más refuerzos.', 'good'); await wait(500); break;
       case 'cover': floatAt(e.id, 'Lona', 'act'); break;
@@ -763,7 +765,7 @@ export default function create(ctx) {
     if (busy || modal || !b || b.ended || b.phase !== 'player') return;
     const left = pendingAllies();
     if (!force && settings().confirmEnd !== false && left.length) {
-      modal = dom.confirmEnd(left.map(u => unitView(u.id)?.name || u.type), (ok) => { modal = null; if (ok) endTurn(true); });
+      modal = dom.confirmEnd(left.map(u => dom.labelOf(unitView(u.id)) || u.type), (ok) => { modal = null; if (ok) endTurn(true); });
       return;
     }
     const r1 = C.endTurn(b);
@@ -782,6 +784,18 @@ export default function create(ctx) {
     }
   }
   /** Muestra la pista de ese momento si la pelea es la guiada y todavía no se vio. Devuelve true si mostró una. */
+  /** Una línea de Vera de un solo uso fuera de la pelea guiada (state.tutorial.combatTips[id]). */
+  function oneTip(id, text) {
+    if (!dom || !b || b.ended) return false;
+    const st = store.state;
+    st.tutorial ||= {};
+    const tips = (st.tutorial.combatTips ||= {});
+    if (tips[id]) return false;
+    tips[id] = Date.now();
+    store.markDirty();
+    dom.guide(text);
+    return true;
+  }
   function guideOn(when) {
     if (!opts.guided || !dom || !b || b.ended) return false;
     const st = store.state;
