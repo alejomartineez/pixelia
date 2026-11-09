@@ -76,6 +76,41 @@ async function open(query, { live = false, emptyConfig = false, ua = null, statu
 const T = (page, fn, ...a) => page.evaluate(fn, ...a);
 const queueNames = page => T(page, () => window.__pixeliaTelemetry.queue.map(e => e.n));
 
+/**
+ * Toca el interruptor de métricas de Ajustes hasta que settings.telemetry quede en `want`. Solo toca si el interruptor
+ * es lo que está arriba en ese punto. Si no, cierra los modales y vuelve a abrir Ajustes. Hace falta porque los
+ * `level:up` que emite esta prueba abren el modal de verdad ("Subiste de nivel"): main.js lo encola y lo abre cuando la
+ * ciudad queda sin modales. Según cuándo se cierra el aviso de llegada (más tarde con la máquina cargada), puede caer
+ * justo encima de Ajustes y comerse el clic. También puede pasar con otro aviso que espera a la ciudad quieta.
+ */
+async function tapStatsSwitch(page, want) {
+  const state = () => T(page, () => window.__pixelia.store.state.settings.telemetry);
+  for (let i = 0; i < 6 && (await state()) !== want; i++) {
+    await T(page, () => document.querySelector('.a11y-stats')?.scrollIntoView({ block: 'center' }));
+    await sleep(250);
+    const cover = await T(page, () => {
+      const e = document.querySelector('.a11y-stats');
+      if (!e) return 'Ajustes cerrado';
+      const r = e.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      if (r.width > 0 && hit && (hit === e || e.contains(hit))) return null;
+      return hit?.closest('.modal')?.className || String(hit?.className?.baseVal ?? hit?.className ?? '') || 'nada';
+    });
+    if (cover) {
+      console.log(`  · el interruptor estaba tapado (${cover}): se cierran los modales y se abre Ajustes de nuevo`);
+      await T(page, () => window.__pixelia.ctx.ui.closeAllModals());
+      await sleep(600);
+      await T(page, () => { window.__pixelia.ctx.openPanel('settings', { tab: 'save' }); });
+      await page.waitForSelector('.a11y-stats', { timeout: 5000 }).catch(() => {});
+      await sleep(300);
+      continue;
+    }
+    await page.click('.a11y-stats');
+    await page.waitForFunction(w => window.__pixelia.store.state.settings.telemetry === w, { timeout: 2000 }, want).catch(() => {});
+  }
+  await sleep(300);   // Ajustes avisa a telemetry.js con un import() dinámico: la cola se vacía un momento después
+}
+
 try {
   // ---------------------------------------------------------------
   section('Modo mock: cola y tandas locales');
@@ -143,11 +178,7 @@ try {
   await P.waitForSelector('.a11y-stats');
   ok((await T(P, () => document.querySelector('.a11y-stats').getAttribute('aria-checked'))) === 'true', 'el interruptor arranca prendido');
   await T(P, () => window.__pixeliaTelemetry.track('antes_de_apagar'));
-  await T(P, () => document.querySelector('.a11y-stats').scrollIntoView({ block: 'center' })); await sleep(250);
-  console.log('DBG antes', JSON.stringify(await T(P, () => { const e = document.querySelector('.a11y-stats'); const r = e.getBoundingClientRect(); const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { r: [r.left, r.top, r.width, r.height].map(Math.round), hit: h ? h.tagName + '.' + h.className : null, mine: e === h || e.contains(h), modals: [...document.querySelectorAll('.modal')].map(m => m.className), anim: document.getAnimations().map(a => a.animationName || a.constructor.name).slice(0, 8), st: window.__pixelia.store.state.settings.telemetry }; })));
-  await P.click('.a11y-stats');
-  await sleep(300);
-  console.log('DBG despues', JSON.stringify(await T(P, () => ({ st: window.__pixelia.store.state.settings.telemetry, aria: document.querySelector('.a11y-stats')?.getAttribute('aria-checked') }))));
+  await tapStatsSwitch(P, false);
   ok((await T(P, () => window.__pixelia.store.state.settings.telemetry)) === false, 'tocarlo guarda settings.telemetry = false');
   ok((await T(P, () => window.__pixeliaTelemetry.queue.length)) === 0 && (await T(P, () => localStorage.getItem('pixelia.events.queue.v1'))) === null, 'apagarlo vacía la cola (memoria y localStorage)');
   await T(P, () => { window.__pixelia.bus.emit('level:up', { level: 5 }); window.__pixeliaTelemetry.track('x'); });
@@ -155,8 +186,7 @@ try {
   const before = (await T(P, () => JSON.parse(localStorage.getItem('pixelia.mock.events') || '[]'))).length;
   await T(P, () => window.__pixeliaTelemetry.flush());
   ok((await T(P, () => JSON.parse(localStorage.getItem('pixelia.mock.events') || '[]'))).length === before, 'apagado no se manda nada');
-  await T(P, () => document.querySelector('.a11y-stats').scrollIntoView({ block: 'center' })); await sleep(250); await P.click('.a11y-stats');
-  await sleep(200);
+  await tapStatsSwitch(P, true);
   ok((await T(P, () => window.__pixelia.store.state.settings.telemetry)) === true && (await T(P, () => window.__pixeliaTelemetry.track('de_vuelta'))), 'al prenderlo vuelve a registrar');
   await P.close();
 
