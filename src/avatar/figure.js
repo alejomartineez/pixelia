@@ -944,7 +944,7 @@ function drawHat(v, look, D, P, g) {
 // Regla de anclaje (plan de La Travesía, 1a): nada de lo que se sostiene pasa por el puño ni por el brazo. Lo que sale
 // hacia adelante arranca en front(D), la primera celda libre delante del puño; lo largo va parado delante del puño,
 // desde zf(D), que deja libre también el puño del guante y la manga ancha, y se inclina con su propia pose (grip: rx
-// hacia adelante, rz hacia afuera, en radianes, girando en el puño). Los largos salen del cuerpo (handUp, tallOf) y la
+// hacia adelante, ry gira la cara hacia afuera, rz inclina hacia afuera, en radianes, girando en el puño). Los largos salen del cuerpo (handUp, tallOf) y la
 // punta de abajo nunca llega al piso.
 const HY = (D) => -D.armL + 2;
 const front = (D) => Math.ceil(D.hand / 2);
@@ -1029,16 +1029,16 @@ export const GEAR = {
   }, pose: { lz: -0.2 } },
   arco: { off: (v, D) => {
     // arco parado en la mano: la empuñadura toca el puño, las palas se curvan hacia adelante y la cuerda va delante de
-    // todo, con luz entre la cuerda y la madera
-    const y0 = HY(D), z0 = zf(D), n = Math.min(Math.round(D.armL * 0.9), handUp(D) - 3);
+    // todo, con luz entre la cuerda y la madera. Gira hacia afuera (grip.ry) para que la curva se lea de frente
+    const y0 = HY(D), z0 = zf(D), n = Math.min(Math.round(D.armL * 0.95), handUp(D) - 4), k = 6;
     for (let i = -n; i <= n; i++) {
-      const t = Math.abs(i) / n, z = z0 + Math.round((1 - Math.cos(t * Math.PI / 2)) * 4);
-      v.box(-1, y0 + i, z, 2, 1, 1, Math.abs(i) < 3 ? MAT.leatherD : MAT.wood);
-      if (Math.abs(i) < n) v.set(0, y0 + i, z0 + 5, MAT.linenD);
+      const t = Math.abs(i) / n, z = z0 + Math.round((1 - Math.cos(t * Math.PI / 2)) * k);
+      v.box(-1, y0 + i, z, 2, 1, t > 0.5 ? 2 : 1, Math.abs(i) < 3 ? MAT.leatherD : t > 0.85 ? MAT.woodD : MAT.wood);
+      if (Math.abs(i) < n) v.set(0, y0 + i, z0 + k + 1, MAT.linen);
     }
-    v.box(-1, y0 - n, z0 + 4, 2, 1, 2, MAT.woodD); v.box(-1, y0 + n, z0 + 4, 2, 1, 2, MAT.woodD);   // las puntas atan la cuerda
+    v.box(-1, y0 - n, z0 + k, 2, 1, 2, MAT.woodD); v.box(-1, y0 + n, z0 + k, 2, 1, 2, MAT.woodD);   // las puntas atan la cuerda
     v.box(-1, y0 - 2, front(D), 2, 4, z0 - front(D), MAT.leatherD);
-  }, pose: { lz: -0.16 }, grip: { rx: 0, rz: -0.1 } },
+  }, pose: { lz: -0.16 }, grip: { rx: 0, ry: 0.85, rz: -0.08 } },
   farolito: { hand: (v, D) => {
     const y = HY(D) - 3, h = Math.max(4, Math.min(8, handUp(D) - 7));   // cuelga debajo del puño; en los bajos, más chico
     v.box(-1, y - 1, -1, 2, 2, 2, MAT.metalD);

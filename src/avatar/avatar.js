@@ -139,7 +139,7 @@ export function avatarModel(lookIn = {}, opts = {}) {
       const [gx, gy, gz] = gripAt(D);
       if (!grips[s]) {
         grips[s] = pivot(s * gx, gy, gz);
-        grips[s].rotation.set(gear.grip.rx || 0, 0, s * (gear.grip.rz || 0));
+        grips[s].rotation.set(gear.grip.rx || 0, s * (gear.grip.ry || 0), s * (gear.grip.rz || 0));
         arm.add(grips[s]);
       }
       host = grips[s];
