@@ -109,6 +109,10 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 - **Para el 1d**: no cambió ningún export de paletas (`paletteOf`, `PEOPLE`, `OUTFITS`, `dimsOf` siguen iguales, salvo
   `armX`). Se suman `GEAR[id].grip`, `zf`, `handUp`, `tallOf` y `gripAt` por si el sprite 2D quiere la misma pose del
   arma.
+- **Fuera del alcance, a propósito**: `tools/test-expedition.mjs` tenía una carrera. Después de "Retroceder" tocaba
+  la casilla otra vez mientras la tarjeta vieja todavía se iba. Con los modelos nuevos la escena tarda un poco más y la
+  carrera se perdía siempre (3 de 3; con `src/avatar` de antes pasaba). Ahora espera a que la tarjeta se cierre: 30/30
+  dos veces seguidas.
 - **Queda**:
   - en tres cuartos el arco se ve de canto (gira hacia afuera para leerse de frente);
   - el arco de los orcos sale chico (brazo largo y piernas cortas: el puño queda bajo);
