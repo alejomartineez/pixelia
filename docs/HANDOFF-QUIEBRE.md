@@ -271,6 +271,26 @@ tener que dar confirmaciones, le doy el si a todo".
   Progreso) y **quiebre-telemetria** (desde `claude/fix-telemetry-order`: `test-telemetry` falla en la cadena).
 - Las sesiones viejas quedan abiertas e idle. Se archivan si el usuario lo pide.
 
+### 9/11 a la tarde: Acto 1 listo para publicar (v52)
+- Integrados:
+  - nombres del grupo en el combate;
+  - escala de interfaz al 115 % en el juego de PC (la web sigue en 100 %);
+  - retoques del recorrido (C, D, G, H);
+  - prueba del instalador (`docs/INSTALADOR.md`): Windows anda; Mac abre en el runner, pero el 3D sale vacío en la VM;
+  - cuatro detalles de interfaz: Ajustes de alto fijo, carteles que se esconden bajo los avisos, contador de letras,
+    avisos que esperan al cartel de nivel;
+  - botones de resolución en dos renglones;
+  - arreglos de carreras en `test-telemetry`, `test-threats`, `test-e2e` y `test-migration`.
+- `npm test` en verde (26 de 27 en la cadena; `test-place` falló una vez con carga y pasó solo).
+- **Falta, del lado del usuario:**
+  - publicar con `npm run release:check` y después `npm run release`; el borrador se publica con
+    `gh release edit vN --draft=false`;
+  - con un release publicado, probar la actualización automática;
+  - el 3D en una Mac real;
+  - que jueguen dos o tres personas.
+- **Para revisar:** la cabeza grande, la bestia antes del Núcleo y el aviso a las partidas viejas sin clase.
+- **Siguiente gran paso:** el Acto 2, conviene después de la prueba con gente.
+
 ## Decisiones tomadas
 - Plataforma:
   - Tauri v2 para Windows y macOS.
