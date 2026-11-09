@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galería de sprites 2D</title>
+<link rel="icon" href="data:,">
+<script type="importmap">{ "imports": { "three": "../vendor/three.min.js" } }</script>
+<style>
+  html, body { margin: 0; background: #e9e4da; font: 12px sans-serif; color: #3d2f2a; }
+  body { padding: 10px; }
+  h2 { font-size: 13px; margin: 10px 0 4px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
+  figure { margin: 0; text-align: center; font-size: 10px; }
+  canvas, img { image-rendering: pixelated; display: block; }
+  .grid { background: #e9e4da; background-image: linear-gradient(#d8d1c4 1px, transparent 1px), linear-gradient(90deg, #d8d1c4 1px, transparent 1px); background-size: 16px 16px; padding: 6px; }
+  .side { display: flex; gap: 12px; align-items: flex-start; }
+  .lbl { width: 70px; font-size: 10px; text-align: right; padding-right: 6px; align-self: center; }
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script type="module">
+import { spriteFrame, frameCanvas, portrait, ANIMS, ANIM_IDS, ENEMY_LOOKS, FW, FH } from '../src/art/sprite2d.js';
+import { CHARACTERS } from '../src/story/story-data.js';
+import { AVATAR_TYPES } from '../src/core/data.js';
+import { CLASS_KIT } from '../src/avatar/figure.js';
+
+const q = new URLSearchParams(location.search);
+const view = q.get('view') || 'ref';
+const out = document.getElementById('out');
+const el = (t, cls, html) => { const e = document.createElement(t); if (cls) e.className = cls; if (html) e.innerHTML = html; return e; };
+const fig = (canvas, label) => { const f = el('figure'); f.append(canvas); if (label) f.append(el('div', '', label)); return f; };
+const scaled = (c, k) => { const d = document.createElement('canvas'); d.width = c.width * k; d.height = c.height * k; const x = d.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(c, 0, 0, d.width, d.height); return d; };
+// prueba de grises y de silueta: el mismo cuadro con la luminosidad sola, o en negro
+function variant(c, mode) {
+  const d = document.createElement('canvas'); d.width = c.width; d.height = c.height;
+  const x = d.getContext('2d'); x.drawImage(c, 0, 0);
+  const img = x.getImageData(0, 0, d.width, d.height), p = img.data;
+  for (let i = 0; i < p.length; i += 4) {
+    if (!p[i + 3]) continue;
+    const l = mode === 'sil' ? 20 : Math.round(0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]);
+    p[i] = p[i + 1] = p[i + 2] = l;
+  }
+  x.putImageData(img, 0, 0);
+  return d;
+}
+const PEOPLES = AVATAR_TYPES.map(t => t.id);
+const CLASSES = Object.keys(CLASS_KIT);
+const named = [...Object.values(CHARACTERS).filter(c => c.look).map(c => ({ name: c.name, look: c.look })),
+  ...Object.entries(ENEMY_LOOKS).map(([id, e]) => ({ name: id, look: e.look, gear: e.gear }))];
+const baseLook = (t) => ({ type: t, ...AVATAR_TYPES.find(a => a.id === t).look });
+
+if (view === 'ref') {
+  // la referencia al lado de una tanda de stickers del mismo tamaño
+  const side = el('div', 'side');
+  const img = new Image(); img.src = '../docs/ref/sprites-referencia.webp'; img.style.height = '760px'; img.style.imageRendering = 'auto';
+  side.append(img);
+  const box = el('div', 'grid');
+  const picks = [
+    { look: { ...baseLook('humano'), dressColor: 'azul' }, cls: 'guerrero' },
+    { look: { ...baseLook('humano'), build: 'esbelto', hair: 'largo', hairColor: 'rubio', face: 'ninguna', dressColor: 'verde' }, gear: 'farolito' },
+    { look: { ...baseLook('humano'), build: 'esbelto', face: 'ninguna', hair: 'coleta', hairColor: 'pelirrojo', dressColor: 'verde' }, cls: 'cazador' },
+    { look: { ...baseLook('zorro'), dressColor: 'durazno' }, cls: 'saqueador' },
+    { look: { ...baseLook('humano'), build: 'esbelto', face: 'ninguna', hair: 'largo', hairColor: 'pelirrojo', dress: 'vestido', dressColor: 'violeta', crown: 'sombrero_mago', acc: 'orbe' } },
+    { look: { ...baseLook('humano'), skin: 1, hair: 'largo', hairColor: 'blanco', face: 'barba_larga', dress: 'tunica', dressColor: 'azul', crown: 'sombrero_mago', acc: 'baston' } },
+    { look: { ...baseLook('enano'), acc: 'hacha', dressColor: 'rojo' } },
+    { look: { ...baseLook('anuro') }, cls: 'monje' },
+    { look: { ...baseLook('orco'), dressColor: 'durazno' }, cls: 'saqueador' },
+  ];
+  const r = el('div', 'row'); r.style.width = '760px'; r.style.gap = '18px';
+  for (const p of picks) r.append(fig(portrait(p.look, { ...p, full: true, sticker: true, scale: 6 })));
+  box.append(r); side.append(box); out.append(side);
+}
+if (view === 'grid') {
+  // pueblos × clases (y el look de cada pueblo sin clase), a 2× con la prueba de grises y de silueta abajo, y a 1×
+  for (const scale of [3]) {
+    for (const t of PEOPLES) {
+      const r = el('div', 'row'); r.append(el('div', 'lbl', t));
+      const looks = [{ look: baseLook(t) }, ...CLASSES.map(c => ({ look: baseLook(t), cls: c })), { look: { ...baseLook(t), build: baseLook(t).build === 'recio' ? 'esbelto' : 'recio' } }];
+      for (const L of looks) r.append(fig(frameCanvas(L.look, 'idle', 0, { ...L, scale }), L.cls || ''));
+      for (const L of looks.slice(0, 7)) r.append(fig(variant(frameCanvas(L.look, 'idle', 0, { ...L, scale: 1 }), 'gray')));
+      for (const L of looks.slice(0, 7)) r.append(fig(variant(frameCanvas(L.look, 'idle', 0, { ...L, scale: 2 }), 'sil')));
+      out.append(r);
+    }
+  }
+  const r = el('div', 'row'); r.append(el('div', 'lbl', 'con nombre'));
+  for (const n of named) r.append(fig(frameCanvas(n.look, 'idle', 0, { gear: n.gear, scale: 3 }), n.name));
+  for (const n of named) r.append(fig(frameCanvas(n.look, 'idle', 0, { gear: n.gear, scale: 1 })));
+  out.append(r);
+}
+if (view === 'anims') {
+  // cada animación cuadro a cuadro a 4× (y 1× al final de la fila)
+  const who = [
+    { look: baseLook('humano'), cls: 'guerrero' }, { look: baseLook('humano'), cls: 'cazador' },
+    { look: baseLook('enano'), cls: 'forjador' }, { look: baseLook('orco'), cls: 'monje' }, { look: ENEMY_LOOKS.tirador.look, gear: 'trabuco' },
+  ];
+  const k = Number(q.get('k') || 3);
+  for (const w of who) {
+    const r = el('div', 'row');
+    for (const a of ANIM_IDS) for (let f = 0; f < ANIMS[a].frames; f++) r.append(fig(frameCanvas(w.look, a, f, { ...w, scale: k, item: 'caja' }), f ? '' : a));
+    for (const a of ANIM_IDS) r.append(fig(frameCanvas(w.look, a, 0, { ...w, scale: 1, item: 'caja' })));
+    out.append(r);
+  }
+}
+if (view === 'parts') {
+  // pelos, barbas, sombreros y ropa de a uno, sobre el humano base
+  const L = baseLook('humano');
+  const lists = { hair: ['rapado', 'cortito', 'despeinado', 'coleta', 'largo', 'corto', 'flequillo', 'rodete', 'jopo', 'trenzas', 'rizos', 'colitas', 'ondas'],
+    face: ['ninguna', 'barba_corta', 'barba_larga', 'bigote', 'cicatriz', 'cicatriz_ojo', 'barba_trenzada', 'pintura', 'parche'],
+    crown: ['ninguna', 'capucha', 'gorro', 'vincha', 'gorra', 'sombrero_mago', 'bandana', 'piluso', 'casco', 'galera', 'yelmo'],
+    dress: ['viajero', 'jubon', 'vestido', 'minero', 'tunica', 'habito', 'delantal', 'cuero', 'vestido_noble', 'tabardo', 'capa_viaje', 'pieles', 'abrigo', 'cota', 'placas', 'archimago'],
+    acc: ['ninguno', 'mochila', 'espada', 'escudo', 'baston', 'libro', 'collar', 'bolso', 'farolito', 'hacha', 'orbe', 'catalejo', 'martillo', 'lanza', 'arco', 'buho'] };
+  for (const [kind, ids] of Object.entries(lists)) {
+    const r = el('div', 'row'); r.append(el('div', 'lbl', kind));
+    for (const id of ids) r.append(fig(frameCanvas({ ...L, face: kind === 'face' ? id : 'ninguna', [kind]: id }, 'idle', 0, { scale: 3 }), id));
+    out.append(r);
+  }
+  const r = el('div', 'row'); r.append(el('div', 'lbl', 'retratos'));
+  for (const n of named) r.append(fig(portrait(n.look, { gear: n.gear, sticker: true, scale: 3 }), n.name));
+  out.append(r);
+}
+window.__ready = true;
+</script>
+</body>
+</html>
