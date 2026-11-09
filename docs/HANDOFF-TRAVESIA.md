@@ -29,6 +29,13 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
   `npm test` y `smoke.mjs` usan SwiftShader, que va por CPU y no la carga.
 - **Criterio de arte.** Producir no alcanza: cada tanda se mira en captura, se compara con la referencia y se corrige
   antes de cerrar. Hay que aplicar la prueba de grises, la de silueta en negro y mirar a tamaño real.
+- **Detalle en las animaciones (pedido del usuario, 2026-11-09).** En cada animación, cinemática, viñeta 2D, sprite o
+  modelo con pose, los detalles van cuidados cuadro a cuadro:
+  - nada sobrepuesto: armas, utilería, ropa y personajes no se atraviesan ni se tapan mal entre sí, tampoco en los
+    cuadros de paso;
+  - nada que no se entienda: cada objeto o detalle tiene que leerse a tamaño real (qué es y quién lo tiene). Si no se
+    lee, se agranda, se simplifica o se saca;
+  - se revisa cuadro a cuadro (galería o capturas) antes de cerrar, no solo el cuadro quieto.
 - **Tono.** Español rioplatense, cálido y sobrio, sin diminutivos (Guía de tono de DESIGN.md).
 - **Idiomas.** Desde que se integra el 4a, todo texto nuevo va por `t()` con su clave en `src/i18n/es.js`. Nada de
   texto escrito directo en el código.
