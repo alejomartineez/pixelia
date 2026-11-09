@@ -30,6 +30,8 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 - **Criterio de arte.** Producir no alcanza: cada tanda se mira en captura, se compara con la referencia y se corrige
   antes de cerrar. Hay que aplicar la prueba de grises, la de silueta en negro y mirar a tamaño real.
 - **Tono.** Español rioplatense, cálido y sobrio, sin diminutivos (Guía de tono de DESIGN.md).
+- **Idiomas.** Desde que se integra el 4a, todo texto nuevo va por `t()` con su clave en `src/i18n/es.js`. Nada de
+  texto escrito directo en el código.
 
 ## Estado
 | Paso | Qué | Sesión | Estado | Rama o commit |
@@ -48,6 +50,8 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 3b | Cinemática "El Quiebre" nueva | — | después del 3a | |
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
+| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | — | junto con el 2a | |
+| 4b | Extraer el texto, glosario, traducir a 8 idiomas y revisar | — | después del Bloque 3 | |
 
 ## Cruces entre pasos del Bloque 1
 - El **1b y el 1c** se cruzan en `src/season/season-data.js`, `src/chests/chests.js` y `chests-ui-common.js`:

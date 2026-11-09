@@ -544,16 +544,107 @@ Se extrae de `intro.js` lo reusable:
 
 ---
 
+## Bloque 4: el juego en los idiomas más usados (pedido del usuario)
+Hoy todo el texto está escrito a mano en español dentro de `src/`. Solo los literales con tilde ya son unos 900, y el
+total se estima entre 3000 y 5000 textos. No hay nada de idiomas armado. La única fuente, Jersey 10, cubre solo el
+alfabeto latino.
+
+**Por qué en dos partes.** Traducir ahora sería tirar trabajo: el 2c retira la expedición de grilla y el 3b reescribe la
+intro. Por eso se hace así:
+- **4a, la base:** va junto con el 2a. Desde que se integra, todo texto nuevo del Bloque 2 y del 3 nace con clave.
+- **4b, extraer y traducir:** va al final, después del Bloque 3, cuando el texto ya no cambia.
+
+**Idiomas.** Se eligen por alcance y por lo que más se usa entre jugadores de PC (Steam):
+- **español**, el idioma fuente, que queda rioplatense para todos porque es la voz del juego;
+- **inglés**;
+- **chino simplificado**;
+- **ruso**;
+- **portugués de Brasil**;
+- **alemán**;
+- **francés**;
+- **japonés**;
+- **coreano**.
+
+Si la base aguanta bien, una segunda tanda suma polaco, turco e italiano.
+
+### 4a. Base de idiomas (con el 2a)
+- **`src/core/i18n.js`**
+  - `t(clave, vars)` para el texto y `tn(clave, n, vars)` para los plurales, con `Intl.PluralRules`.
+  - Números y fechas con `Intl.NumberFormat` y `Intl.DateTimeFormat`.
+  - Las claves tienen nombre estable, como `hud.zarpar` o `voyage.node.camp.name`.
+  - El texto fuente va en `src/i18n/es.js`, y cada idioma en `src/i18n/<código>.js`. Con `import()` se carga solo el
+    idioma elegido, así que no hay build ni dependencias.
+  - Si falta una clave, se muestra el español con un aviso en la consola, y el test falla.
+- **Datos.** `data.js`, `exp-data.js`, `story-data.js` y los demás guardan **claves**, no textos. Cada id de edificio,
+  isla o arma arma su clave (`building.<id>.name`).
+- **Elegir idioma.**
+  - Va en Ajustes → Idioma: `setSetting({ lang })` aplica en vivo con `settings:changed` y repinta el HUD y los paneles
+    abiertos.
+  - La primera vez se toma el idioma del sistema: `navigator.language` en la web y el locale del sistema operativo en
+    Tauri, por `src/core/desktop.js`.
+  - `?lang=en` en la URL manda sobre los Ajustes, como `?quality`.
+- **Fuentes por idioma.** Se verifican la licencia (OFL) y la cobertura antes de elegir.
+  - **Ruso:** una fuente pixel con cirílico que combine con Jersey (por ejemplo, Pixelify Sans).
+  - **Chino, japonés y coreano:** una fuente pixel CJK, como Fusion Pixel o Ark Pixel, o Galmuri para coreano.
+    - Un script de `tools/` la **recorta** a los caracteres que usa el juego.
+    - Solo se carga en ese idioma, y `sw.js` la suma al bump.
+  - **Texto en canvas.** Los tableros 2D, los carteles 3D y `createOverlays` también pasan por `t()` y por la fuente
+    del idioma.
+- **Interfaz que se estira.**
+  - El alemán ocupa cerca de un 30 % más y el CJK pide otro alto de línea.
+  - Ningún texto va en un ancho fijo: los botones y tarjetas crecen, o achican la letra hasta un tope.
+- **Lo que no se traduce:**
+  - nombres puestos por el jugador, notas de visitas y nombres de contactos;
+  - el perfil online, que guarda ids y no textos, así una visita se ve en el idioma de quien mira.
+- **Regla desde que se integra el 4a:** todo texto nuevo va por `t()` con su clave en `es.js`. Va en CLAUDE.md, en
+  DESIGN.md (Guía de tono) y en las reglas del HANDOFF.
+- **`tools/test-i18n.mjs`** (en `npm test`) revisa:
+  - que cada clave de `es` exista en cada idioma y que las variables `{x}` coincidan;
+  - que no aparezcan textos con tilde fuera de `src/i18n/` en los archivos ya pasados (con una lista que se achica en
+    el 4b hasta quedar vacía);
+  - capturas en `de` y `ja` sin texto cortado: se mide `scrollWidth > clientWidth` en botones, pestañas y tarjetas.
+- **Prueba de la base.** Se pasan a claves el HUD, los Ajustes y el menú de inicio, y se traducen esos textos al
+  inglés y al japonés para probar todo el camino, incluida la fuente CJK.
+
+### 4b. Extraer y traducir (después del Bloque 3)
+- **Extraer.** El texto que quede en `src/` pasa a `es.js` por carpetas, con una sesión por carpeta para no pisarse.
+  `test-i18n` termina sin excepciones.
+- **Glosario** (`docs/i18n/glosario.md`), que se cierra **antes** de traducir.
+  - No se traducen: Pixelia, Vera y los nombres de personas.
+  - La Veta, el Quiebre, Raíz, Marea, Brasa, Céfiro, la Cofradía, los Vaciados, la Marea del Quiebre, los Hallazgos y
+    los nombres de islas tienen un término fijo por idioma. Por ejemplo, en inglés: the Vein, the Sundering, Root,
+    Tide, Ember, Zephyr.
+- **Guía de tono por idioma** (`docs/i18n/tono.md`): cozy adulto, cálido y sobrio, sin diminutivos ni infantilizar.
+  Fija el tratamiento de cada idioma: "du" en alemán, "ты" en ruso, registro です/ます en japonés y 해요체 en coreano.
+- **Traducción.**
+  - La hacen las sesiones desde el español, con el glosario y la guía. Se traduce el sentido, no el voseo ni los
+    modismos al pie de la letra.
+  - Va un idioma por sesión, en paralelo, porque cada uno es un archivo distinto.
+- **Revisión.**
+  - Otra sesión retrotraduce una muestra del 10 % de cada idioma y marca lo que cambió de sentido.
+  - Lo dudoso queda anotado para que lo revise alguien nativo antes de publicar en tiendas.
+- **Voces.**
+  - Los subtítulos de las cinemáticas se traducen siempre.
+  - El narrador (Gemini TTS, 3a) se graba en español y en inglés, y Ajustes → Voz elige entre original e inglés.
+  - Los otros idiomas se graban si una muestra por idioma suena bien. Si no, van con subtítulos.
+- **Juego de PC.** El nombre, la descripción, los textos del instalador de Tauri y los avisos de actualización van en
+  cada idioma.
+- **Capturas por idioma.** Se sacan con `recorrido.mjs --lang <código>` y se miran a ojo, buscando texto cortado,
+  letras que faltan y cajas vacías ("tofu").
+
+---
+
 ## Orden y sesiones
 1. **Bloque 1:** 1a, 1b (tanda 1), 1c y 1d en paralelo, en cuatro sesiones con worktree. El 1d solo crea archivos
    nuevos (`src/art/`, `tools/sprites.html`); conectarlo al HUD es parte del 2b y del 3d. Tocan archivos distintos; 1b y 1c
    se cruzan en `season-data.js` y `chests.js`, así que 1c va primero en esos dos archivos y 1b rebasa. Después, la
    tanda 2 del 1b (Hallazgos).
-2. **2a**, y después **2b y 2c en paralelo** (2c es el más grande y puede necesitar dos sesiones: motor y sim, y después
-   escena y mapa). Con el 2c va el cambio de rumbo de la aldea, con "Zarpar" en el HUD y la vuelta a casa. Después, el
-   **2d** (elementos).
+2. **2a y 4a en paralelo** (el 4a solo toca `i18n`, Ajustes, fuentes y el HUD), y después **2b y 2c en paralelo** (2c
+   es el más grande y puede necesitar dos sesiones: motor y sim, y después escena y mapa). Con el 2c va el cambio de
+   rumbo de la aldea, con "Zarpar" en el HUD y la vuelta a casa. Después, el **2d** (elementos).
 3. **3a**, y después **3b, 3c y 3d** (3d puede arrancar con el 2c, porque solo necesita los ids de lo que señala).
-4. **Integración final:** recorrido de jugador nuevo con `tools/recorrido.mjs` (capturas e informe), `npm test`,
+4. **4b:** primero la extracción por carpetas y el glosario, después un idioma por sesión y al final la revisión.
+5. **Integración final:** recorrido de jugador nuevo con `tools/recorrido.mjs` (capturas e informe), `npm test`,
    `sim:voyage`, `sim:combat` y `sim:seeds 1-12`.
 
 ## Verificación
@@ -574,6 +665,10 @@ Se extrae de `intro.js` lo reusable:
   - `test-story` adaptado;
   - un recorrido de jugador nuevo de punta a punta, con la guía disparándose una sola vez por sistema;
   - GPU vigilada con `nvidia-smi` en cada prueba con preview.
+- **Bloque 4:**
+  - `test-i18n` en verde, sin excepciones al cerrar el 4b;
+  - capturas del recorrido en los 9 idiomas, revisadas a ojo;
+  - la retrotraducción de muestra sin cambios de sentido pendientes.
 - **Juego de PC:** al final de cada bloque, `npm run desktop:build` + `node test-desktop.mjs`.
 
 ## Archivos críticos
@@ -588,5 +683,9 @@ Se extrae de `intro.js` lo reusable:
 - **Bloque 3:**
   - nuevos: `src/cinema/*`, `src/story/spotlight.js`;
   - `src/scenes/intro.js`, `src/story/story-data.js`, `src/core/audio.js`, `src/audio/sampler.js`.
+- **Bloque 4:**
+  - nuevos: `src/core/i18n.js`, `src/i18n/*.js`, `fonts/` (pixel con cirílico y CJK recortada),
+    `tools/test-i18n.mjs`, `docs/i18n/*`;
+  - `src/core/settings.js`, `src/core/desktop.js`, `index.html`, `styles.css`, `sw.js` y todo `src/` en el 4b.
 - **Docs:** DESIGN-CORE (expedición → travesía, §8 metas), DESIGN-COMBAT (fuerza, maestría, escuadra), DESIGN-STORY
   (islas y cinemáticas), DESIGN.md (regla de íconos), CLAUDE.md (sin Mi Casa, escenas nuevas).
