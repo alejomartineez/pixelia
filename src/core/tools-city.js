@@ -8,7 +8,7 @@
 // Los números se balancearon con sim:economy (DESIGN-CORE §8): ver "Herramientas en la ciudad" en el reporte.
 export const TOOL_CITY = {
   martillo: { owner: 'brigida', discount: 0.02 },
-  farol: { owner: 'ramiro', prep: 0.04 },
+  farol: { owner: 'ramiro', prep: 0.05 },
 };
 const MAX = 5;
 

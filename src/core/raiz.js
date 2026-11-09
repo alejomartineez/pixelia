@@ -39,10 +39,10 @@ export const EXTRACTION = {
 export const EXTRACTION_IDS = ['sellar', 'medida', 'exprimir'];
 
 // ---------- Lo que hace la Grieta ----------
-/** Fuerza extra de las amenazas: +1 desde 25, +2 desde 50, +3 desde 75. */
-export const grietaPower = (g) => (g >= 75 ? 3 : g >= 50 ? 2 : g >= 25 ? 1 : 0);
-/** Amenazas extra por temporada: +1 desde 40, +2 desde 75 (los miércoles, EXTRA_DAYS de threat-data.js). */
-export const grietaExtra = (g) => (g >= 75 ? 2 : g >= 40 ? 1 : 0);
+/** Fuerza extra de las amenazas: +1 desde 15, +2 desde 35, +3 desde 60 (antes 25, 50 y 75; DESIGN-CORE §8.z). */
+export const grietaPower = (g) => (g >= 60 ? 3 : g >= 35 ? 2 : g >= 15 ? 1 : 0);
+/** Amenazas extra por temporada: +1 desde 30, +2 desde 60 (los miércoles, EXTRA_DAYS de threat-data.js). Umbrales del rebalanceo con varias semillas (antes 40 y 75; DESIGN-CORE §8.z). */
+export const grietaExtra = (g) => (g >= 60 ? 2 : g >= 30 ? 1 : 0);
 /** Resistencia de la Raíz (eficacia extra de la preparación) contra la sequía y la helada, con rinde ×1. */
 export const RESIST = { sequia: 0.1, helada: 0.1 };
 /** Obra de Raíz que cose la Grieta: lenta y cara, más cara cada vez. Pide el Invernadero de Raíz. */
@@ -74,8 +74,12 @@ export const raizFound = (s = S()) => !!raizState(s).found;
 export const extraction = (s = S()) => raizState(s).mode;
 /** Cuánto rinde la Raíz en la isla: 0 sin Núcleo o sin elegir, 0,5 / 1 / 2 según la extracción. */
 export const raizMult = (s = S()) => { const r = raizState(s); return r.found && r.mode ? EXTRACTION[r.mode].mult : 0; };
-/** Eficacia extra contra un tipo de amenaza (0 si no es sequía ni helada). */
-export const raizResist = (type, s = S()) => (RESIST[type] || 0) * raizMult(s);
+/**
+ * Eficacia extra contra un tipo de amenaza (0 si no es sequía ni helada). Es de la isla y no depende de la extracción
+ * (rebalanceo con varias semillas, DESIGN-CORE §8.z): si escalaba con el rinde, exprimir también defendía el doble y traía
+ * menos daño que sellar. La extracción cambia lo que da el Invernadero.
+ */
+export const raizResist = (type, s = S()) => { const r = raizState(s); return r.found && r.mode ? RESIST[type] || 0 : 0; };
 
 /**
  * Corre la Grieta hasta `now`: sube sola según la extracción y termina la obra de Raíz si ya está. Idempotente.

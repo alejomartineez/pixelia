@@ -944,9 +944,9 @@ construye el Invernadero apenas puede y hace la obra de Raíz cuando la Grieta p
 | La elección cuesta | exprimir da más bonus y trae más Grieta y no menos daño que sellar | sellar 39.500 · Grieta 0 · 3 dañados / exprimir 158.000 · Grieta 38 · 4 dañados |
 
 Números (src/core/raiz.js): sellar ×0,5 sin Grieta · con medida ×1, +4 al elegir y +0,15 por día hasta 15 · exprimir ×2,
-+15 al elegir y +0,9 por día. La Grieta da +1 de fuerza a las amenazas desde 25, +2 desde 50 y +3 desde 75 (el premio
-se calcula sin esa fuerza) y suma una amenaza por temporada desde 40 y dos desde 75 (los sábados que falten y después los
-miércoles 9 y 23). La Raíz da +0,1 × rinde de eficacia contra la sequía y la helada. El Invernadero (rango 5, 7.000
++15 al elegir y +0,9 por día. La Grieta da +1 de fuerza a las amenazas desde 15, +2 desde 35 y +3 desde 60 (desde el rebalanceo §8.z; antes 25/50/75) (el premio
+se calcula sin esa fuerza) y suma una amenaza por temporada desde 30 y dos desde 60 (los sábados que falten y después los
+miércoles 9 y 23). La Raíz da +0,1 de eficacia contra la sequía y la helada (fija, sin importar la extracción, desde §8.z). El Invernadero (rango 5, 7.000
 monedas, madera 6, hierbas 6, mineral 2) da 2 hierbas × rinde cada 3 h (guarda 2 tandas). La obra de Raíz cuesta 6.000
 monedas, madera 6, piedra 6 y hierbas 4 (+35 % cada vez), tarda 12 h y cose 12.
 ---
@@ -967,8 +967,50 @@ herramientas (con eso arma `sim-combat` su sección "En la partida").
 - **Se probó y no alcanzó:** sin los efectos de las herramientas en la expedición, sin que el bot gaste en la gente,
   experiencia por Vínculo (40 × Vínculo) y Martillo al 3 %. Ninguno lleva las cuatro semillas a verde: las metas de
   arriba están al borde con cualquier suerte.
-- **Pendiente:** un rebalanceo de la economía mirando varias semillas a la vez (`--runs 4`), no solo la 1: la
-  experiencia del jugador por rango y el saldo con el que se llega. Es trabajo para una sesión propia.
+- **Hecho en §8.z:** el rebalanceo con varias semillas.
+
+### 8.z Rebalanceo con varias semillas (paso 7b)
+`npm run sim:seeds` (`node sim-economy.mjs --seeds 1-6`) corre una partida completa por semilla en paralelo, cada una
+con sus metas (también la Raíz y los 4 ratos), y dice en cuántas pasa cada meta. `--seeds 13-24`, `--seeds 1,5,9` y
+`--days 90` también valen; los demás flags pasan igual. Tarda ~1 minuto para 12 semillas.
+
+**Resultado** (con la gente de la ciudad y sus herramientas):
+
+| Corrida | Antes (paso 7) | Ahora |
+|---|---|---|
+| 60 días, semillas 1–6 | 10 metas con alguna falla (monedas al llegar 0/6, "el último requisito es el nivel" 0/6) | **todas en las 6** |
+| 60 días, semillas 1–12 | — | **todas en las 12** |
+| 60 días, semillas 13–24 (fuera de muestra) | — | ver abajo |
+| 90 días, semillas 1–6 | — | rango 8 entre 70 y 90 en las 6; depósito al tope 5/6 |
+| semilla 1 sola (`npm run sim:economy`) | 18 ✔ · 4 ✘ | 22 ✔ · 0 ✘ |
+
+**Qué cambió en el juego** (solo números de economía y amenazas):
+- **Monumentos** (`MON_COIN = 0,75` en `data.js`): las etapas del Jardín, el Observatorio, el Estadio y el Museo cuestan
+  25 % menos monedas. Se pagaban en 3 o 4 ratos y se llegaba con menos de lo que se quería comprar. El Faro (el primero,
+  meta del día 10–14) y la Torre del Reloj quedan igual; la Torre, que marca el rango 8, pide 25 % más de materiales: con
+  los otros más baratos sobraba plata para comprárselos a las aldeas y la Capital llegaba el día 67.
+- **Nivel pedido por rango:** el rango 6 pasa de 23 a 21 y el 7 de 28 a 26 (con la gente, el rango llegaba antes que el
+  nivel en 2 o 3 de cada 6 subidas). El 5 y el 8 quedan igual.
+- **Rango 3:** Encanto 650 → 620 (la semilla lenta llegaba el día 7).
+- **Amenazas** (`threat-data.js`): la preparación pesa igual la cobertura y las reservas (0,5 y 0,5; antes 0,6 y 0,4) y
+  la resolución automática arranca de 40 (antes 35). El Cuartel de Bomberos ya no pide plano: sin planos no había nada
+  contra el incendio. El Farol de guardia suma 5 puntos por nivel (antes 4).
+- **La Raíz** (`raiz.js`): la Grieta pega desde 15/35/60 (fuerza +1/+2/+3) y trae amenazas de más desde 30/60. La
+  resistencia a la sequía y la helada ya no depende de la extracción (con el rinde, exprimir también defendía el doble).
+- **Gemas de E5:** las misiones del Acto 1 dan menos gemas (3, 4, 4 y 6; antes 5, 6, 6 y 10).
+
+**Qué cambió en el simulador** (que mida lo que dice la meta):
+- "Lo que se quería comprar" es lo que frenan las monedas o los materiales. Si lo frenan las constructoras ocupadas o un
+  plano, se le guardan monedas igual, pero no cuenta para la meta: el Granero con las constructoras ocupadas o una
+  renovación sin plano quedaban como "el gasto grande" con el saldo 10× o 600× arriba.
+- La meta de la Raíz pide que exprimir traiga más bonus, más Grieta y **amenazas más fuertes o más seguido** que sellar
+  (Σ de la fuerza de la Grieta en cada aviso, o más avisos). El daño se muestra pero no se pide: con el doble de bonus quien
+  exprime se defiende mejor, y el costo neto ya lo mide la meta del 15 %.
+- Se probaron y se descartaron: comprar en las aldeas con 2× o 3× (2,5× sigue siendo lo mejor), topes de comercio más
+  altos y monumentos al 70, 80 y 85 %.
+- **Queda:** a 90 días, en 1 de 6 semillas el depósito de provisiones pasa el 30 % de los ratos al tope desde el día 50
+  (entran 88 por día y tres salidas normales gastan ~72). Fuera de muestra (semillas 13–24) cada meta pasa en 10 u 11
+  de 12, con las fallas al borde: el ruido del bot.
 
 ## 9. Abierto (lo deciden las fases con el juego en la mano)
 - Fuerza, focos y turnos de amenaza: validar en la Fase 3 que con preparación media se llegue a ~90% jugando.

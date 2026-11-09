@@ -264,10 +264,10 @@ siempre), pero el paso 7 lo mira.
 
 **Paso 7: balance con la partida real** (`node sim-combat.mjs --n 20`, todas las metas ✔).
 - **El abordaje con la gente de la ciudad.** La capitana se pelea solo en el abordaje (paso 6b), así que su grupo esperado
-  pasó a ser el que da `sim:economy` en el rango 6: líder 7, clases 10/10/9, las herramientas de ese momento (Catalejo 4,
-  Martillo 2, Cuerda 4, Botiquín 5, Farol 1) y dos consumibles del depósito. Con el grupo viejo (clase 4) se ganaba el
+  pasó a ser el que da `sim:economy` en el rango 6: líder 6, clases 10/10/8 desde el rebalanceo §8.z (antes 7 y 10/10/9), las herramientas de ese momento (Catalejo 4,
+  Martillo 5, Cuerda 5, Botiquín 5, Farol 1) y dos consumibles del depósito. Con el grupo viejo (clase 4) se ganaba el
   100 % de las veces. El motor suma tres números por encuentro, `foeHp` (vida de todos los enemigos), `bossHp` (vida
-  del jefe, encima) y `foeDmg` (golpe extra): la capitana va con 1,35, 1,45 y +3. `expected.city` saca el abordaje de la
+  del jefe, encima) y `foeDmg` (golpe extra): la capitana va con 1,25, 1,45 y +3 (desde el rebalanceo §8.z de DESIGN-CORE, con el grupo nuevo). `expected.city` saca el abordaje de la
   prueba del grupo del tutorial (nunca lo pelea).
 - **Revancha:** el jefe pierde 25 % de vida por cada derrota (antes 20 %), hasta dos veces.
 - **"En la partida"** (sección nueva de `sim-combat`, `--no-real` la saltea): la bestia con el grupo que tiene la ciudad
@@ -279,7 +279,7 @@ siempre), pero el paso 7 lo mira.
 | Bestia, grupo esperado | 45–65 % / ≥ 85 % | 61,3 % / 93,8 % ✔ · 8,2 turnos | 61,3 % / 89,3 % |
 | Bestia, rango 3 (líder 2, clases 2/1/1, Catalejo 1, Martillo 1, Cuerda 3, Botiquín 1) | 45–65 % / ≥ 85 % | 52,0 % / 89,5 % ✔ · 8,8 turnos | — |
 | Bestia, rango 4 (dato, sin meta) | — | 86,5 % / 96,5 % · 6,6 turnos | — |
-| Capitana, grupo del abordaje | 45–65 % / ≥ 85 % | 59,8 % / 97,0 % ✔ · 10,7 turnos | 100 % (con este grupo) |
+| Capitana, grupo del abordaje | 45–65 % / ≥ 85 % | 52,8 % / 95,8 % ✔ · 10,8 turnos (§8.z) | 100 % (con este grupo) |
 
 - **Aporte por clase:** todas ≤ 35 % (cazador 34,1 %, monje 31,7 %; curandero 2,4 %, que aporta curando). Como líder,
   el cazador queda en 36,2 % (antes 38 %): no cuenta para la meta, porque el líder está siempre, pero queda anotado. El

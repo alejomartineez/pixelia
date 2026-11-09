@@ -9,6 +9,9 @@
 //   node tools/sim-economy.mjs --runs 4        además corre 4 semillas más (en procesos aparte) para las metas "por corrida"
 //   node tools/sim-economy.mjs --quiet         sin la tabla (fuentes, subidas y metas) · --goals: solo las metas
 //   node tools/sim-economy.mjs --json          resumen en JSON (lo usan --runs y el chequeo de 4 ratos)
+//   node tools/sim-economy.mjs --seeds 1-6     una corrida completa por semilla (en paralelo) y la tasa de cada meta:
+//                                              en cuántas semillas pasa. Sale con error si alguna meta falla en alguna
+//                                              (npm run sim:seeds). --seeds 1,3,7 también vale. Los demás flags pasan igual
 //   node tools/sim-economy.mjs --no-tools      sin la gente de la ciudad ni sus herramientas (como antes del paso 7)
 //     diagnóstico: --no-tool-city (sin Martillo ni Farol en la ciudad) · --no-tool-exp (sin sus efectos en la expedición)
 //     · --no-tool-buy (la gente llega, pero el bot no entrega encargos ni mejora herramientas)
@@ -43,7 +46,7 @@
 // le quedan ≥ 2,5× las monedas de la etapa (--trade-keep), los compra (hasta lo que tengan las aldeas en el día).
 //   perillas para explorar: --no-trade · --trade-keep 2 · --trade-price 1.5 · --mon-coins 0.8 (o faro=1,jardin=0.7…)
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
 import path from 'node:path';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -59,6 +62,38 @@ const JSON_OUT = args.includes('--json');
 const TRACE = args.includes('--trace');   // una línea por rato: monedas y próximo gasto grande
 const CHECK4 = !args.includes('--no-check4') && !JSON_OUT && NSESS === 2;
 const SESSION_MIN = Number(opt('min', 10));
+
+// ---------------------------------------------------------------- varias semillas (--seeds 1-6)
+// Cada semilla corre en su proceso (el juego es un singleton), con sus metas completas (también la Raíz y los 4 ratos),
+// y devuelve la lista de metas por --goals-json. Acá se cuentan.
+if (opt('seeds', false)) {
+  const spec = String(opt('seeds', '1-4'));
+  const seeds = spec.includes('-') ? (() => { const [a, b] = spec.split('-').map(Number); return Array.from({ length: b - a + 1 }, (_, i) => a + i); })() : spec.split(',').map(Number);
+  const pass = args.filter((a, i) => !['--seeds', '--seed'].includes(a) && !['--seeds', '--seed'].includes(args[i - 1]));
+  const t0 = Date.now();
+  const runOne = (sd) => new Promise(res => {
+    const ch = spawn(process.execPath, [fileURLToPath(import.meta.url), '--seed', String(sd), '--quiet', '--goals', '--goals-json', ...pass], { stdio: ['ignore', 'pipe', 'ignore'] });
+    let out = '';
+    ch.stdout.on('data', d => { out += d; });
+    ch.on('close', () => { const line = out.split('\n').find(l => l.startsWith('GOALS ')); try { res({ seed: sd, goals: JSON.parse(line.slice(6)) }); } catch { res({ seed: sd, goals: null }); } });
+  });
+  const results = await Promise.all(seeds.map(runOne));
+  const names = results.find(r => r.goals)?.goals.map(g => g.key) || [];
+  console.log(`Metas de balance (DESIGN-CORE.md §8) en ${seeds.length} semillas (${seeds.join(', ')}) · ${((Date.now() - t0) / 1000).toFixed(0)} s`);
+  let bad = 0;
+  for (const key of names) {
+    const per = results.map(r => r.goals?.find(g => g.key === key));
+    const measured = per.filter(g => g && g.ok != null);
+    const okN = measured.filter(g => g.ok).length;
+    const fails = results.filter((r, i) => per[i] && per[i].ok === false).map(r => r.seed);
+    if (fails.length) bad++;
+    const mk = !measured.length ? '·' : fails.length ? '✘' : '✔';
+    console.log(`  ${mk} ${String(okN).padStart(2)}/${measured.length}  ${key}${fails.length ? `  · falla en ${fails.join(', ')}: ${per.filter(g => g && g.ok === false).map(g => g.val).join(' | ')}` : ''}`);
+  }
+  for (const r of results) if (!r.goals) { console.log(`  ✘ la semilla ${r.seed} no terminó`); bad++; }
+  console.log(`  ${bad ? bad + ' meta(s) con alguna falla' : 'todas las metas en todas las semillas'}`);
+  process.exit(bad ? 1 : 0);
+}
 // L1 (PLAN-QUIEBRE): la extracción elegida en la mina. La sim encuentra el Núcleo al llegar a la mina o, si el bot no fue
 // al Cerro, 3 días después del rango 5 (como si hubiera ido).
 const RAIZ = ['sellar', 'medida', 'exprimir'].includes(opt('raiz', 'medida')) ? opt('raiz', 'medida') : 'medida';
@@ -216,7 +251,7 @@ bus.on('materials:changed', ({ delta, reason }) => {
   }
 });
 bus.on('production:collected', ({ b, amount, currency }) => { if (!rz.foundDay) return; if (currency === 'prov') rz.provIn += amount; if (b.id === 'invernadero') rz.invMats += amount; });
-bus.on('threat:resolved', ({ damaged }) => { if (rz.foundDay) { rz.threats++; rz.damaged += damaged.length; } });
+bus.on('threat:resolved', ({ damaged, g }) => { if (rz.foundDay) { rz.threats++; rz.damaged += damaged.length; rz.gSum = (rz.gSum || 0) + (g || 0); } });
 const monDone = {};
 bus.on('building:upgraded', ({ b }) => { if (D[b.id]?.cat === 'monumento' && b.level >= data.MONUMENTS[b.id].stages.length && !monDone[b.id]) monDone[b.id] = dayOf() + 1; });
 
@@ -329,10 +364,13 @@ let bigNext = null;
 // Para la meta de monedas, lo que espera materiales no es un gasto de monedas que se esté juntando (salvo la etapa de
 // monumento y la obra de rango): "el próximo gasto grande" (bigMetric) es el primero que no está frenado solo por materiales.
 let bigMetric = null;
-const noteBig = (what, cost) => {
+// metric: false cuando lo frena otra cosa que no son monedas ni materiales (constructoras ocupadas, un plano): se le
+// guardan monedas igual, pero no es "lo que se está juntando" (rebalanceo con varias semillas, DESIGN-CORE §8.z: el Granero
+// con las constructoras ocupadas quedaba como el gasto grande con el saldo 10× arriba)
+const noteBig = (what, cost, { metric = true } = {}) => {
   if (!(cost?.coins > 0)) return;
   if (!bigNext) { bigNext = { what, coins: cost.coins }; if (CUSHION) reserved.coins += cost.coins; }
-  if (bigMetric) return;
+  if (bigMetric || !metric) return;
   const id = what.split(' ')[1];
   const goal = id === 'castillo' || D[id]?.cat === 'monumento';
   if (!goal && cost.mats && !store.hasMats(addMats(cost.mats, reserved.mats))) return;
@@ -350,7 +388,7 @@ function build(id, { big = true, place = null, room = false } = {}) {
   if (!c.ok) {
     if (c.locked || c.reason === 'Ya lo tenés') return 'locked';
     if (c.mats) wantMats(cost.mats);
-    if (big) noteBig('construir ' + id, cost);
+    if (big) noteBig('construir ' + id, cost, { metric: !!(c.mats || c.poor) });
     return c.reason;
   }
   if (!c.free && !afford(cost)) { wantMats(cost.mats); if (big) noteBig('construir ' + id, cost); return 'reservado'; }
@@ -390,7 +428,7 @@ function upgrade(b, { big = true } = {}) {
   if (!c.ok) {
     if (c.locked || c.reason === 'Está en obra' || c.damaged) return 'locked';
     if (c.mats) wantMats(info.cost.mats);
-    if (big) noteBig('mejorar ' + b.id, info.cost);
+    if (big) noteBig('mejorar ' + b.id, info.cost, { metric: !!(c.mats || c.poor) });
     return c.reason;
   }
   if (!afford(info.cost)) { wantMats(info.cost.mats); if (big) noteBig('mejorar ' + b.id, info.cost); return 'reservado'; }
@@ -401,7 +439,7 @@ function renovate(b) {
   const info = E.renovateInfo(b);
   if (!info) return 'x';
   const c = E.canRenovate(b, s, T);
-  if (!c.ok) { if (c.mats) wantMats(info.cost.mats); if (!c.damaged && c.reason !== 'Está en obra') noteBig('renovar ' + b.id, info.cost); return c.reason; }
+  if (!c.ok) { if (c.mats) wantMats(info.cost.mats); if (!c.damaged && c.reason !== 'Está en obra') noteBig('renovar ' + b.id, info.cost, { metric: !!(c.mats || c.poor) }); return c.reason; }
   if (!afford(info.cost)) { wantMats(info.cost.mats); noteBig('renovar ' + b.id, info.cost); return 'reservado'; }
   const r = E.startRenovate(b.uid);
   return r.error || 'done';
@@ -960,7 +998,9 @@ const goals = [
   ['Otros', gemsPerDay >= 15 && gemsPerDay <= 25, `gemas 15–25 por día: ${f1(gemsPerDay)}`],
   ['Otros', inRange(firstMonumentDay, 10, 14), `primer monumento terminado entre los días 10 y 14: día ${firstMonumentDay ?? '—'}`],
   ['Raíz', raiz3 ? (raizAdv != null && raizAdv <= 0.15) : null, `ninguna extracción saca más de 15 % de ventaja neta a los ${Math.min(DAYS, 60)} días contando las amenazas: ${raizAdv != null ? f1(raizAdv * 100) + '%' : raiz3 ? '(falta el Núcleo en alguna)' : '(sin correr)'}`],
-  ['Raíz', raiz3 ? (() => { const [a, , c] = raiz3.map(x => x?.raiz); return !!(a && c && c.bonus > a.bonus && c.grieta > a.grieta && c.damaged >= a.damaged); })() : null, `exprimir da más bonus y trae más Grieta y no menos daño que sellar: ${raiz3 ? raiz3.map(x => `${x?.raiz?.mode} bonus ${x?.raiz?.bonus} · Grieta ${f1(x?.raiz?.grieta ?? 0)} · dañados ${x?.raiz?.damaged}`).join(' | ') : '(sin correr)'}`],
+  // L1: exprimir sube la Grieta y con ella la fuerza o la cantidad de amenazas (Σ g de cada aviso, o más avisos). El daño
+  // que queda depende de cómo se defiende quien juega (con el doble de bonus se defiende mejor): se muestra, no se pide.
+  ['Raíz', raiz3 ? (() => { const [a, , c] = raiz3.map(x => x?.raiz); return !!(a && c && c.bonus > a.bonus && c.grieta > a.grieta && ((c.gSum || 0) > (a.gSum || 0) || c.threats > a.threats)); })() : null, `exprimir da más bonus y trae más Grieta y amenazas más fuertes o más seguido que sellar: ${raiz3 ? raiz3.map(x => `${x?.raiz?.mode} bonus ${x?.raiz?.bonus} · Grieta ${f1(x?.raiz?.grieta ?? 0)} · amenazas ${x?.raiz?.threats} (fuerza de la Grieta +${x?.raiz?.gSum || 0}, dañados ${x?.raiz?.damaged})`).join(' | ') : '(sin correr)'}`],
   ['Otros', eraAll.length ? planosRunPct <= 30 : null, `los planos son lo último que falta para un cambio de época en ≤ 30% de las corridas: ${f1(planosRunPct)}% de ${runsAll.length} corrida(s) (${eraAll.filter(e => e.planosLast).length} de ${eraAll.length} cambios)`],
 ];
 console.log(`\nMetas de balance (DESIGN-CORE.md §8) · ${HOURS.length} ratos/día · ${DAYS} días · semilla ${SEED}${RUNS ? ` (+${RUNS} corridas)` : ''}`);
@@ -969,6 +1009,12 @@ if (others.length) console.log(`  corridas extra: ${others.map(o => `semilla ${o
 console.log(`  (info) nivel del líder: ${leaderLog.join(' · ')} — meta del paso 7: 6 o 7 al llegar a la Costa`);
 console.log(`  (info) en cada rango (líder · clases · herramientas)${NO_TOOLS ? ' · sin herramientas' : ''}: ${progLog.map(p => `r${p.rank} d${p.day}: nv ${p.leader} · cl ${p.classLevel.join('/') || '-'} · ${Object.entries(p.tools).filter(([, n]) => n).map(([k, n]) => k.slice(0, 3) + n).join(' ') || '-'}`).join(' | ')}`);
 if (!NO_TOOLS) { const tl = PE.toolLevels(s); console.log(`  (info) herramientas al final: ${Object.entries(tl).map(([k, n]) => `${k} ${n}`).join(' · ')} · monedas gastadas en mejorarlas ${toolSpend}`); }
+if (args.includes('--goals-json')) {
+  // para --seeds: la meta (grupo y texto hasta los dos puntos) y el valor medido (lo que sigue)
+  const out = goals.map(([g, ok, t]) => { const i = t.indexOf(': '); return { key: g + ' ' + (i > 0 ? t.slice(0, i) : t), ok, val: i > 0 ? t.slice(i + 2).slice(0, 220) : '' }; });
+  console.log('GOALS ' + JSON.stringify(out));
+  process.exit(0);
+}
 const failed = goals.filter(g => g[1] === false).length;
 console.log(`  ${goals.filter(g => g[1] === true).length} ✔ · ${failed} ✘ · ${goals.filter(g => g[1] == null).length} sin medir`);
 process.exit(0);

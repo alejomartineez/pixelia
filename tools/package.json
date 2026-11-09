@@ -22,6 +22,7 @@
     "sim:expedition": "node sim-expedition.mjs",
     "sim:threats": "node sim-threats.mjs",
     "sim:economy": "node sim-economy.mjs",
+    "sim:seeds": "node sim-economy.mjs --seeds 1-6",
     "bump": "node gen-sw-core.mjs --bump",
     "check": "node gen-sw-core.mjs --check",
     "desktop:dev": "npm --prefix ../desktop run dev",

@@ -176,14 +176,14 @@ try {
   const drift = await run(`const r = store.state.world.raiz; r.last -= 10 * 864e5; return RZ.syncGrieta();`);
   ok(drift > 23 && drift < 25, 'exprimida sube 0,9 por día (10 días: ~24)', drift);
   const thr = await run(`
-    store.state.world.grieta = 60; store.state.world.raiz.last = Date.now();
+    store.state.world.grieta = 45; store.state.world.raiz.last = Date.now();
     const s = CAL.seasonOf(Date.now()), rank = E.townRank();
-    const base = CAL.schedule(s, rank, { extra: 0 }).length, more = CAL.schedule(s, rank, { extra: RZ.grietaExtra(60) }).length;
+    const base = CAL.schedule(s, rank, { extra: 0 }).length, more = CAL.schedule(s, rank, { extra: RZ.grietaExtra(45) }).length;
     const days = CAL.schedule(s, 6, { extra: 2 }).map(t => t.i);
     store.state.threats.seen = {}; store.state.threats.results = {}; store.state.threats.sim = { at: 0, start: 0, end: 1, done: true };
     const t = TH.currentThreat();
-    return { power: RZ.grietaPower(60), extra: RZ.grietaExtra(60), base, more, days, f: t?.f, g: t?.g, rank };`);
-  ok(thr.power === 2 && thr.extra === 1, 'Grieta 60: +2 de fuerza y una amenaza más por temporada', thr);
+    return { power: RZ.grietaPower(45), extra: RZ.grietaExtra(45), base, more, days, f: t?.f, g: t?.g, rank };`);
+  ok(thr.power === 2 && thr.extra === 1, 'Grieta 45: +2 de fuerza y una amenaza más por temporada (umbrales 15/35/60 y 30/60)', thr);
   ok(thr.more === thr.base + 1, 'llegan más seguido (una más en la temporada)', thr);
   ok(thr.days.join() === '0,4,1,2,5,3', 'con el rango 6 las de más caen los miércoles 9 y 23', thr.days);
   ok(thr.f === thr.rank + 2 && thr.g === 2, 'pegan más fuerte: fuerza = rango + 2', thr);
@@ -197,7 +197,8 @@ try {
     const sq = TR.prepInfo('sequia', v, 0, 5), sq0 = TR.prepInfo('sequia', { ...v, mods: null }, 0, 5);
     const cr = TR.prepInfo('crecida', v, 0, 5), cr0 = TR.prepInfo('crecida', { ...v, mods: null }, 0, 5);
     return { mods: v.mods, sq: sq.c, sq0: sq0.c, cr: cr.c, cr0: cr0.c, n: sq.enRiesgo };`);
-  ok(res.mods?.eff?.sequia === 0.2 && res.mods?.eff?.helada === 0.2, 'la Raíz exprimida da +20 % de eficacia contra sequía y helada', res.mods);
+  // fija desde el rebalanceo con varias semillas (DESIGN-CORE §8.z): no depende de la extracción
+  ok(res.mods?.eff?.sequia === 0.1 && res.mods?.eff?.helada === 0.1, 'la Raíz da +10 % de eficacia contra sequía y helada (exprimida o no)', res.mods);
   ok(res.n === 0 || res.sq > res.sq0, 'la preparación contra la sequía sube con la Raíz', res);
   ok(res.cr === res.cr0, 'contra la crecida no cambia', res);
 

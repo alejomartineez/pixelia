@@ -52,7 +52,7 @@ cada paso.
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | hecho e integrado, partes 1 a 4 (clases, nivel del líder, gente con herramienta, Vínculo, Progreso, clase en el onboarding, aspecto por clase, activas y subclase desde la ciudad, curva de clase y cazador en meta) | v36 + v39 + v42 + 1e21545 |
 | 6 | Acto 1 completo + E5–E6 | hecho e integrado: 6a, 6b y 6c (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche con figuras del 4a, E5, E6 con Vera en la primera salida, una sola bestia, dirigible visible) | ed2ba67 (v36) + v39 + 0c2afa8 (v40) |
-| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | combate en metas, herramientas en la ciudad, telemetría y `release:check` integrados (v42). Rebalanceo de economía con varias semillas **en curso** (DESIGN-CORE §8.y). Publicar lo hace el usuario | bf95836 (v42) |
+| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | combate en metas, herramientas en la ciudad, telemetría y `release:check` integrados (v42). Rebalanceo de economía con varias semillas hecho en la rama `claude/economia-semillas`, sin mergear: todas las metas en las semillas 1–12 (DESIGN-CORE §8.z). Publicar lo hace el usuario | bf95836 (v42) |
 
 ### Plan nocturno (2026-11-09)
 El usuario se fue a dormir. Dijo, textual: "autorizo o autoriza de la forma que puedas que todo siga como va, sin yo
@@ -538,6 +538,17 @@ los primeros ecos, 7 balancea L1 y L5.
   mismo y recién ahí crea y sube el tag. No se corrió: publicar lo hace el usuario.
 - **Para la sesión de clases** (números de balance en sus archivos, no se tocaron): las clases de la ciudad llegan a 10/10/9
   en el rango 6 (`CLASS_XP`/`CLASS_GAIN`), y el cazador como líder hace 36,2 % del daño (pasiva Pulso).
+
+**Paso 7b: rebalanceo de la economía con varias semillas** (rama `claude/economia-semillas`; detalle en DESIGN-CORE §8.z)
+- `npm run sim:seeds` (`sim-economy --seeds 1-6`): una corrida por semilla en paralelo y la tasa de cada meta.
+- 60 días: todas las metas en las semillas 1 a 12 (antes del rebalanceo, 10 metas con fallas en 1–6). Semilla 1 sola:
+  22 ✔ · 0 ✘. 90 días: rango 8 en ventana en las 6; el depósito al tope falla en 1 de 6.
+- Números: monumentos medianos −25 % de monedas (`MON_COIN`), Torre del Reloj +25 % de materiales, nivel de los rangos 6
+  y 7 (21 y 26), Encanto del rango 3 (620), preparación 0,5/0,5, automática desde 40, Bomberos sin plano, Farol +5 por
+  nivel, umbrales de la Grieta (15/35/60 y 30/60), resistencia de la Raíz fija, gemas de E5.
+- El abordaje se midió de nuevo con el grupo que da la economía nueva en el rango 6 (líder 6, clases 10/10/8): 51 % al
+  primer intento, 96 % al tercero; con la tripulación un poco menos dura (foeHp 1,25, bossHp 1,45) queda en 53 % y 96 %, en 10,8 turnos.
+- No se tocaron `CLASS_XP`, `CLASS_GAIN` ni las pasivas de clase.
 
 ## Pendiente o frágil
 - **`npm test` con la máquina cargada** (2026-11-09, otras sesiones corriendo tests a la vez): `test-mock`,

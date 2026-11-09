@@ -462,7 +462,7 @@ export const MANUAL = [
     items: [
       ['sparkle', 'Elementos', 'Raíz, Marea, Brasa y Céfiro. Cada uno da un efecto permanente a la isla y una habilidad a quien lidera.'],
       ['🌱', 'Raíz', 'Más resistencia a la sequía y la helada, y el <b>Invernadero de Raíz</b>, que da hierbas. Rinde según cuánto le sacaste: sellada la mitad, exprimida el doble.'],
-      ['bolt', 'La Grieta', 'Sacarle de más a un elemento raja la isla (0 a 100). Con Grieta, las amenazas pegan más fuerte (desde 25) y llegan más seguido (desde 40). Se cose en el Invernadero, despacio y caro.'],
+      ['bolt', 'La Grieta', 'Sacarle de más a un elemento raja la isla (0 a 100). Con Grieta, las amenazas pegan más fuerte (desde 15) y llegan más seguido (desde 30). Se cose en el Invernadero, despacio y caro.'],
       ['map', 'Volver a la mina', 'En la Expedición, con el Cerro del Hierro elegido, se puede pedir que la próxima salida vaya a la mina para cambiar la extracción.'],
     ],
   },
