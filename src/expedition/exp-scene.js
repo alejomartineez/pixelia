@@ -15,6 +15,7 @@ import { avatarModel, randomLook } from '../avatar/avatar.js';
 import { EXP, REGIONS, MATERIALS, HAZARDS, CONTENT, ringOf } from './exp-data.js';
 import { hashSeed } from './exp-gen.js';
 import * as R from './exp-rules.js';
+import { createExpAmbience } from './exp-ambience.js';
 import { hasBase, startExpedition, finishExpedition, expeditionStatus } from './expedition.js';
 import { injectStyle, buildDom, openDecision, openResult, openMenu, openConfirmFail, matsHtml, provTxt, ICONS } from './exp-ui.js';
 
@@ -130,6 +131,7 @@ export default function create(ctx) {
   const camState = { angle: 0.14, pitch: 0.95, view: 12, target: new THREE.Vector3() };
   const anims = new Set();     // tweens: { t, dur, fn(k), done }
   let shownTips = {};
+  let expAmb = null;           // ambiente: hora, clima, niebla por distancia, polvo y huellas (exp-ambience.js)
 
   const music = audio.songs?.includes?.('expedition') ? 'expedition' : 'calm';
 
@@ -173,6 +175,9 @@ export default function create(ctx) {
       prov: kind === 'corta' ? EXP.kinds.corta.prov : P.prov,
       mods: { roleLevel: Object.fromEntries(P.party.map(id => [id, P.level])), cargoMax: P.cargoMax },
     });
+    // ?hour=21 en una práctica: la salida arranca a esa hora (capturas y pruebas de la noche, PLAN-QUIEBRE §J3)
+    const qh = new URLSearchParams(location.search).get('hour');
+    if (qh != null && nr.clock) nr.clock.start = Math.max(0, Math.min(23.9, Number(qh) || 0));
     bus.emit('expedition:started', { region, zone, kind, party: nr.party, equip: nr.equip, prov: nr.prov, prototype: true });   // práctica
     return nr;
   }
@@ -498,6 +503,8 @@ export default function create(ctx) {
     refreshHighlights(lastView);
     updateChips();
     tips(lastView);
+    const say = expAmb?.sync(run);
+    if (say && !lastView.ended) dom.hint(say, 6500);
   }
   function tips(v) {
     if (v.ended || v.pending || busy) return;
@@ -525,6 +532,7 @@ export default function create(ctx) {
           audio.sfx(e.cost >= 2 ? 'bump' : 'tap');
           buildCell(e.from[1] * run.w + e.from[0]);
           await walkParty(e.from[0], e.from[1], e.x, e.y, e.cost >= 3 ? 460 : e.cost >= 2 ? 400 : 330);
+          expAmb?.step(e.from, [e.x, e.y]);
           buildCell(e.y * run.w + e.x);
           break;
         }
@@ -762,6 +770,7 @@ export default function create(ctx) {
     for (const o of cellObjs) if (o) { clearCellObj(o); }
     cellObjs.length = 0;
     world.clear();
+    expAmb?.reset();
     shownTips = {};
     buildAll();
     buildParty();
@@ -808,9 +817,10 @@ export default function create(ctx) {
       dom = buildDom(root, { onHome: () => goHome(), onMenu: () => openEscMenu(), onItem: useItem, onChip: tryMove });
       const stage = root.querySelector('.ex-stage');
       r = createPixelRenderer(stage, { ortho: true, viewSize: 12, background: 0xd9e4dc, outline: true, idleFps: 30 });
-      const { sun } = addLights(r.scene, { shadowSize: 16, shadowRes: 1024 });
-      sun.position.set(6, 18, 10);
+      const lights = addLights(r.scene, { shadowSize: 16, shadowRes: 1024 });
+      lights.sun.position.set(6, 18, 10);
       r.scene.add(world);
+      expAmb = createExpAmbience({ ctx, r, lights, world, cellPos: (x, y) => cellPos(x, y), cellTop: (x, y) => cellTop(x, y) });
       start(params);
       if (!run) return;   // no se pudo salir: vuelve a la ciudad
       r.onFrame((dt, t) => {
@@ -826,6 +836,7 @@ export default function create(ctx) {
           o?.prop?.userData.update?.(dt, t);
         }
         updateChips();
+        expAmb?.update(dt, partyPos);
       });
       r.start();
       stage.addEventListener('pointerdown', onDown);
@@ -846,6 +857,10 @@ export default function create(ctx) {
         move(x, y) { tryMove(x, y); },
         choose(i) { card?.choose(i); },
         home(force = false) { goHome(force); },
+        // ambiente (PLAN-QUIEBRE §J3–J4): hora, noche, clima y pronóstico; ruinas para los ecos (L6)
+        get cond() { return run ? R.conditions(run) : null; },
+        get look() { return expAmb?.amb.look || null; },
+        echoSpots() { return run ? expAmb?.echoSpots(run) || [] : []; },
       };
     },
     unmount() {
@@ -855,6 +870,7 @@ export default function create(ctx) {
       anims.clear();
       if (card) { card = null; }
       if (modal) { modal.close(); modal = null; }
+      expAmb?.dispose(); expAmb = null;
       if (r) { r.stop(); r.dispose(); r = null; }
       for (const m of texCache.values()) { m.map?.dispose(); m.dispose(); }
       texCache.clear();

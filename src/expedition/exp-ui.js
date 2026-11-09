@@ -3,6 +3,7 @@
 // No toca three.js: la escena le pasa la vista del motor (view) y le dice dónde caen las casillas en pantalla.
 import { icon } from '../core/icons.js';
 import { esc } from '../core/ui.js';
+import { WEATHER } from '../core/ambience.js';
 import { MATERIALS, MAT_IDS, HAZARDS, REGIONS, CONTENT, OBJECTIVES, EXP, ringOf } from './exp-data.js';
 
 export const ICONS = {
@@ -38,6 +39,9 @@ const CSS = `
 .scene-expedition .ex-stat.low { background:var(--surface-2); }
 .scene-expedition .ex-stat.full { background:var(--gold-l); }
 .scene-expedition .ex-stat.bump { animation:exbump .35s; }
+.scene-expedition .ex-stat.ex-clock { flex:1.15; }
+.scene-expedition .ex-stat.ex-clock.night { background:color-mix(in srgb, var(--panel) 70%, #23305a); }
+.scene-expedition .ex-stat.ex-clock.warn em { color:var(--gold-t); }
 @keyframes exbump { 40% { transform:scale(1.08); } }
 .scene-expedition .ex-menu { flex:none; width:46px; display:grid; place-items:center; padding:0; }
 .scene-expedition .ex-goal { display:flex; align-items:center; gap:6px; max-width:560px; width:100%; padding:5px 10px; background:var(--panel); border:2px solid var(--edge);
@@ -135,6 +139,7 @@ export function buildDom(root, handlers) {
         <button class="ex-stat ex-menu icon-btn" data-ex="menu" aria-label="Menú">${icon('pause', 22)}</button>
         <div class="ex-stat" data-ex="prov" data-tip-title="Provisiones" data-tip="Cada paso gasta según el terreno. Guardá lo que cuesta volver: si no alcanza, el grupo llega con la mitad de la carga.">${I('prov', 22)}<span><b>0</b><em>provisiones</em></span></div>
         <div class="ex-stat" data-ex="morale" data-tip-title="Ánimo" data-tip="Baja con los peligros. Si llega a cero, el grupo vuelve con la mitad de la carga. Un campamento lo recupera.">${I('morale', 22)}<span><b>0</b><em>ánimo</em></span></div>
+ <div class="ex-stat ex-clock" data-ex="clock" data-tip-title="Hora y clima" data-tip=""><i class="exc-ic" style="display:contents">${icon('☀️', 22)}</i><span><b>06:00</b><em>despejado</em></span></div>
         <div class="ex-stat" data-ex="cargo" data-tip-title="Carga" data-tip="Lo que traés: materiales, planos y hallazgos. El Establo suma lugar. Volver con la carga llena da una estrella.">${I('cargo', 22)}<span><b>0</b><em>carga</em></span></div>
       </div>
       <div class="ex-goal" data-ex="goal"></div>
@@ -152,6 +157,28 @@ export function buildDom(root, handlers) {
   const chipEls = [];
   let last = {};
 
+  // hora y clima (PLAN-QUIEBRE §J3–J4): lo que pesa ahora y lo que viene, nunca de sorpresa
+  function clock(c) {
+    const e = $('clock');
+    if (!c) { e.hidden = true; return; }
+    const W = WEATHER[c.weather] || WEATHER.despejado;
+    const ic = c.weather !== 'despejado' ? W.icon : c.night ? '🌙' : c.hour < 8 ? '🌅' : c.hour >= 18 ? '🌇' : '☀️';
+    const f = c.forecast;
+    const sub = c.weather !== 'despejado' ? `${W.name.toLowerCase()}${f?.left ? ` · ${f.left} ${f.left === 1 ? 'paso' : 'pasos'}` : ''}`
+      : f && f.in > 0 && f.in <= 4 ? `${WEATHER[f.kind].name.toLowerCase()} en ${f.in}`
+        : c.night ? (c.farol ? 'noche · farol' : 'noche · visión −1') : c.nightIn != null && c.nightIn <= 3 ? `noche en ${c.nightIn}` : 'despejado';
+    e.querySelector('b').textContent = c.hourText;
+    e.querySelector('em').textContent = sub;
+    const box = e.querySelector('.exc-ic');
+    if (box.dataset.ic !== ic) { box.dataset.ic = ic; box.innerHTML = icon(ic, 22); }
+    e.classList.toggle('night', !!c.night);
+    e.classList.toggle('warn', !!(c.vision < 0 || c.step > 0 || (f && f.in > 0 && f.in <= 2)));
+    const tip = [...c.why];
+    if (f && f.in > 0) tip.push(`Se viene ${WEATHER[f.kind].name.toLowerCase()} en ${f.in} ${f.in === 1 ? 'paso' : 'pasos'} y dura ${f.len}. ${WEATHER[f.kind].exp?.text || 'No cambia el camino.'}`);
+    if (!c.night && c.nightIn != null) tip.push(`Cada paso es una hora. Se hace de noche en ${c.nightIn} ${c.nightIn === 1 ? 'paso' : 'pasos'}: visión −1${c.farol ? ', pero llevás el Farol' : ' si no llevás el Farol'}.`);
+    e.dataset.tip = tip.join(' ') || 'Despejado.';
+  }
+
   function bump(k) { const e = $(k); e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump'); }
 
   return {
@@ -166,6 +193,7 @@ export function buildDom(root, handlers) {
       st('prov', `${v.prov}`, { low: v.prov < v.returnCost + 2 && !v.ended });
       st('morale', `${v.morale}<small>/${v.moraleMax}</small>`, { low: v.morale <= 3 });
       st('cargo', `${v.cargoN}<small>/${v.cargoMax}</small>`, { full: v.cargoN >= v.cargoMax });
+      clock(v.cond);
       for (const k of ['prov', 'morale', 'cargo']) {
         const val = k === 'prov' ? v.prov : k === 'morale' ? v.morale : v.cargoN;
         if (last[k] !== undefined && last[k] !== val) bump(k);

@@ -105,11 +105,12 @@ const placed = await page.evaluate(async (cfg) => {
   store.save();
   return { n, total: s.city.buildings.length };
 }, cfg);
-await page.goto(BASE + '?scene=city&nosplash&nosw', { waitUntil: 'load' });
+// --q "&hour=21&weather=tormenta": hora y clima del ambiente (src/core/ambience.js) para las capturas
+await page.goto(BASE + '?scene=city&nosplash&nosw' + (opt('q', '') || ''), { waitUntil: 'load' });
 await page.waitForFunction('window.__pixelia && document.querySelector("#scene canvas")', { timeout: 60000 });
 await new Promise(r => setTimeout(r, Number(opt('wait', 5000))));
 // --nohud: esconde el HUD y los avisos para mirar solo la ciudad
-if (opt('nohud', false)) await page.addStyleTag({ content: '#hud, .modal, .modal-back, .toast, .cx-bubble, .cx-timer, .inst-card { display: none !important; }' });
+if (opt('nohud', false)) await page.addStyleTag({ content: '#hud, .modal, .modal-back, .toast, .cx-bubble, .cx-timer, .inst-card, .st-card, .st-bark, .cx-side { display: none !important; }' });
 const stats = await page.evaluate(async () => {
   const M = await import('/src/city/models.js');
   const { store } = window.__pixelia;

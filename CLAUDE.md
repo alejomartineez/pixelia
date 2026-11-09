@@ -30,13 +30,14 @@ adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
 - `npm run serve` → http://127.0.0.1:5173/ (`serve:lan` para abrirlo desde el celu en la misma Wi-Fi).
   También está la configuración `pixelia` en `.claude/launch.json` para la vista previa.
 - `npm test` → e2e, migración v2→v3, colocación, stress, visitas, mock online, social, rango, obras, Mi Casa, expedición,
-  ciclo, amenazas, telemetría, ajustes, historia y SQL (Chrome headless; tarda unos minutos).
+  ciclo, amenazas, telemetría, ajustes, historia, ambiente, combate y SQL (Chrome headless; tarda unos minutos).
 - `node smoke.mjs --scene city --device desktop --dpr 1.25 --shot ../shots/x.png` → captura rápida de una escena.
 - `npm run sim:economy` → simula 60 días de economía (2 ratos por día) y chequea las metas de DESIGN-CORE.md §8.
 - `npm run desktop:dev` abre la ventana del juego de PC en vivo. `npm run desktop:build` arma el `.exe`, y
   `node test-desktop.mjs` lo abre y lo revisa por CDP.
 - `npm run test:live` → prueba el Supabase real (crea dos cuentas `@example.com`).
-- Atajos de URL: `?cheat=15`, `?reset`, `?scene=expedition` (o `wardrobe`, `home`), `?mock=1&mockuser=ana`, `?outline=0|1`, `?quality=low|high`.
+- Atajos de URL: `?cheat=15`, `?reset`, `?scene=expedition` (o `wardrobe`, `home`), `?mock=1&mockuser=ana`, `?outline=0|1`, `?quality=low|high`,
+  `?hour=21.5` y `?weather=tormenta` (ambiente: hora y clima, `src/core/ambience.js`).
 - Ajustes: `src/core/settings.js` (`setSetting(patch)` guarda, aplica en vivo y emite `settings:changed`); los gráficos
   llegan a todos los renderers con `setGraphics` de `voxel.js` y las teclas salen de `src/core/keys.js`. `?quality`,
   `?outline` y `?fps=N` mandan sobre los Ajustes.

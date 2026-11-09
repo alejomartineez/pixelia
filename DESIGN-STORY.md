@@ -138,6 +138,10 @@ Misteriosos, no dan miedo. Algunos siembran L2 y L4 (por ejemplo, Vera joven dib
 **Cuándo se hace:** 3b deja la noche y los lugares para los ecos; 5b hace L5; 6 hace L1 con el Núcleo de Raíz, las pistas
 de L2 y L4 y los primeros ecos; 7 balancea L1 y L5.
 
+**Base lista (3b, `src/core/ambience.js`):** la noche va de 20 a 6 (`isNightHour`; la ciudad emite `ambience:night`). Los
+lugares salen de `cityEchoSpots(lado)` (tres puntos en el borde de la isla; `window.__pixelia.city.ambience.echoSpots()`)
+y de `expEchoSpots(run)` (ruinas ya pisadas, solo de noche: `__exp.echoSpots()`). `ECHO_RULES` dice cuántos por lugar.
+
 ## 7. Cómo funciona (código)
 - `src/story/story-data.js`: personajes, actos, escenas, contactos, líneas de la cartógrafa (t1–t20), páginas, elementos
   y el Manual.

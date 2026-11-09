@@ -27,6 +27,7 @@ export const SETTINGS_DEFAULTS = {
   winMode: 'window', winRes: 'auto', uiScale: 100,
   // juego
   textSpeed: 'normal', skipSeen: false, combatSpeed: 1, confirmEnd: true, hints: true, camSpeed: 1, edgeScroll: false,
+  dayNight: true,      // ciclo de día y noche de la ciudad (la expedición lo usa igual: es una regla)
   // controles: solo lo que se reasignó (acción → KeyboardEvent.code)
   keys: {},
   // accesibilidad
@@ -110,6 +111,7 @@ export function defaultState() {
     tutorial: {},   // flags libres para tips mostrados una vez: tutorial[key] = true
     // historia (src/story/story.js la completa en initStory): { v, seen, pages, elements, act, chapter, flags }
     story: {},
+    world: {},           // ambiente (src/core/ambience.js): light de 0 a 1, la luz como progreso
     // telemetry: métricas anónimas (online/telemetry.js) · textSize: 'normal'|'large'|'xlarge' · motion: 'auto'|'on'|'off'
     // (reducir movimiento: automático según el sistema, sí o no). Los saves viejos los reciben por deepFill.
     // el resto de los ajustes (gráficos, pantalla, volúmenes, juego, controles): SETTINGS_DEFAULTS, más abajo

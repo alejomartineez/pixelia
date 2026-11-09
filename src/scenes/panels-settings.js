@@ -173,6 +173,9 @@ export function openSettings(ctx, p = {}) {
           row('Velocidad de la cámara', slider('camSpeed', { min: 50, max: 200, step: 10, scale: 100, fmt: pct }), 'Con el teclado y con los bordes.'),
           sw('edgeScroll', 'Mover la cámara con los bordes', 'Llevá el mouse al borde de la ventana para desplazarte por la ciudad.'),
         ),
+        section('star', 'Ambiente',
+          sw('dayNight', 'Día y noche en la ciudad', 'Un día dura unos 20 minutos. Apagado, la ciudad queda siempre de día. En la expedición la noche sigue contando.'),
+        ),
       ];
     },
     keys() {

@@ -9,6 +9,7 @@ import { icon } from '../core/icons.js';
 import { BUILDING_BY_ID, DEFENSES } from '../core/data.js';
 import * as T from './threats.js';
 import { THREAT_TYPES } from './threat-data.js';
+import { THREAT_WEATHER } from '../core/ambience.js';
 import { tileXZ, tileIndex } from './threat-rules.js';
 import { ensureStyle, openThreatPanel, openResult } from './threat-ui.js';
 
@@ -88,7 +89,9 @@ export function createDecor(api) {
     // el estado de la amenaza (preparación de toda la ciudad) se recalcula cada 1,5 s o cuando algo cambia
     if (now - lastSt > 1500) { lastSt = now; try { st = T.threatStatus(); } catch (e) { console.warn('[threats] estado', e); st = null; } }
     const signs = st && (st.phase === 'señales' || st.phase === 'hoy');
+    // el cielo, la lluvia, el humo y la escarcha los pone el ambiente (city-ambience.js lee `weather`); acá queda un velo suave
     tint.style.background = signs ? TINT[st.type] : 'transparent';
+    tint.style.opacity = '0.45';
     api.world?.setStream?.(signs && st.type === 'crecida' ? 1 : st?.type === 'sequia' && signs ? -1 : 0);
     // marcas de daño
     for (const e of entries.values()) {
@@ -113,22 +116,18 @@ export function createDecor(api) {
       }
       if (signs && !ctx.ui.reducedMotion()) signParticles(st.type);
     }
-    if (signs && st.type === 'tormenta' && !ctx.ui.reducedMotion()) {
-      nextFlash -= dt;
-      if (nextFlash <= 0) { nextFlash = 4 + Math.random() * 6; flashT = 0.35; }
-      if (flashT > 0) { flashT -= dt; flash.style.opacity = String(Math.max(0, flashT) * 1.2); }
-    }
   }
   function signParticles(type) {
     const L = ctx.economy.landBounds();
     const rx = () => L.min + Math.random() * (L.max - L.min) - HALF;
-    if (type === 'crecida' || type === 'tormenta') for (let i = 0; i < 4; i++) fx.burst(rx(), 7, rx(), { n: 1, colors: ['#9fc3dd', '#c7deef'], speed: 0.1, up: -5, gravity: 6, size: 0.06, life: 1.1, spread: 0.2, drag: 0 });
-    else if (type === 'helada') for (let i = 0; i < 3; i++) fx.burst(rx(), 6, rx(), { n: 1, colors: ['#ffffff', '#e8f4ff'], speed: 0.3, up: -0.6, gravity: 0.6, size: 0.07, life: 4, spread: 0.3, drag: 0.5 });
-    else if (type === 'incendio') fx.burst(rx(), 0.3, L.min - HALF - 1.5, { n: 4, colors: ['#9a928a', '#bdb6aa', '#d8d2c8'], speed: 0.3, up: 1.6, gravity: -0.5, size: 0.18, life: 2.6, spread: 1.4, drag: 1 });
+    // la lluvia y la nieve las tira el ambiente; acá, el humo detrás del monte y el polvo de la sequía
+    if (type === 'incendio') fx.burst(rx(), 0.3, L.min - HALF - 1.5, { n: 4, colors: ['#9a928a', '#bdb6aa', '#d8d2c8'], speed: 0.3, up: 1.6, gravity: -0.5, size: 0.18, life: 2.6, spread: 1.4, drag: 1 });
     else if (type === 'sequia') fx.burst(rx(), 0.2, rx(), { n: 3, colors: ['#e3cf98', '#d9b46a'], speed: 0.8, up: 0.4, gravity: 0.3, size: 0.06, life: 1.2, spread: 0.6, drag: 1.5 });
   }
   return {
     sync, update,
+    /** Clima que trae la amenaza en las 48 h de señales y el día que llega (ambience.js, THREAT_WEATHER). */
+    get weather() { return st && (st.phase === 'señales' || st.phase === 'hoy') ? THREAT_WEATHER[st.type] || null : null; },
     dispose() { offs.forEach(f => f()); tint.remove(); flash.remove(); for (const it of marks.values()) ov.remove(it); marks.clear(); },
   };
 }

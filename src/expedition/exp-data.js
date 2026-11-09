@@ -37,6 +37,17 @@ export const EXP = {
     { id: 'ampolla', text: 'Una ampolla que no deja caminar tranquilo', morale: -1 },
     { id: 'niebla', text: 'Niebla cerrada: se perdieron un rato', prov: -1, morale: -1 },
   ],
+  // Día y noche, y clima (PLAN-QUIEBRE §J3–J4). Se sale al alba y cada paso es una hora: si la salida se alarga, se hace
+  // de noche (visión −1; el Farol la devuelve). Un frente de clima por salida a lo sumo, anunciado desde el principio.
+  dawn: 6, hoursPerStep: 1,
+  weather: {
+    bosque: { p: 0.25, kinds: [['lluvia', 55], ['niebla', 45]] },
+    sierras: { p: 0.35, kinds: [['niebla', 40], ['tormenta', 35], ['nieve', 25]] },
+    banado: { p: 0.4, kinds: [['niebla', 55], ['lluvia', 30], ['tormenta', 15]] },
+    cerro: { p: 0.35, kinds: [['ceniza', 55], ['tormenta', 45]] },
+    costa: { p: 0.4, kinds: [['tormenta', 50], ['niebla', 50]] },
+  },
+  weatherFrom: [3, 8], weatherLen: [2, 4],   // el frente llega entre el paso 3 y el 8 y dura de 2 a 4 pasos
   cargoStar: 1.0, moraleStar: 4,
   gemsAt3: 1, chestAt3: 0.10,          // cofre de madera en una salida de 3★ (Fase 5b: era 0,25; §8 ≤ 1,5 cofres por día)
   // Prototipo (Fase 1): sin ciudad. 3 roles fijos en nivel 1 y lo que daría una ciudad con Casa nivel 3 y Establo 3.

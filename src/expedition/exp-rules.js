@@ -11,6 +11,7 @@
 //   result(run)            → { stars, starCount, loot, reason, steps, objectiveDone, ... }
 import { EXP, TERRAIN, REGIONS, HAZARDS, MAT_IDS, ringOf, lootValue } from './exp-data.js';
 import { generateMap } from './exp-gen.js';
+import { WEATHER, NIGHT_FROM, isNightHour, hourText } from '../core/ambience.js';
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 
@@ -34,11 +35,59 @@ const hasEquip = (run, id) => run.equip.includes(id);
 
 export function stepCost(run, cell) {
   const t = TERRAIN[cell.terrain];
-  return hasRole(run, 'guia') ? t.guia : t.cost;
+  // la tormenta y la nieve frenan en lo difícil (colina, bañado, roca): el llano y el monte siguen igual
+  return (hasRole(run, 'guia') ? t.guia : t.cost) + (t.cost >= 2 ? conditions(run).step : 0);
 }
 
 function visionRadius(run) {
-  return (hasRole(run, 'exploracion') ? EXP.visionExploracion : EXP.vision) + (run.mods.vision || 0);
+  return Math.max(0, (hasRole(run, 'exploracion') ? EXP.visionExploracion : EXP.vision) + (run.mods.vision || 0) + conditions(run).vision);
+}
+
+// ---------- día y noche, y clima (PLAN-QUIEBRE §J3–J4) ----------
+// Con su propia suerte (no corre la de la salida: las mismas semillas dan los mismos mapas y peligros que antes).
+function skyRand(seed) {
+  let a = (seed ^ 0x51ed270b) | 0;
+  return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+/** El frente de clima de una salida (o null): { kind, from, len } en pasos. */
+export function makeFront(region, seed, kind = 'normal') {
+  const W = EXP.weather[region];
+  if (!W) return null;
+  const r = skyRand(seed >>> 0);
+  if (r() >= W.p) return null;
+  let x = r() * W.kinds.reduce((a, [, w]) => a + w, 0), k = W.kinds[0][0];
+  for (const [id, w] of W.kinds) { if (x < w) { k = id; break; } x -= w; }
+  const [f0, f1] = EXP.weatherFrom, [l0, l1] = EXP.weatherLen;
+  // en la salida corta llega antes (si no, casi nunca se vería)
+  const from = kind === 'corta' ? 2 + Math.floor(r() * 3) : f0 + Math.floor(r() * (f1 - f0 + 1));
+  return { kind: k, from, len: l0 + Math.floor(r() * (l1 - l0 + 1)) };
+}
+/** Hora del día después de `steps` pasos (las salidas de antes de la v33 no tienen reloj: mediodía). */
+export const hourOf = (run, steps = run.steps) => (run.clock ? (run.clock.start + steps * run.clock.per) % 24 : 12);
+export function weatherOf(run, steps = run.steps) {
+  const f = run.front;
+  return f && steps >= f.from && steps < f.from + f.len ? f.kind : 'despejado';
+}
+/**
+ * Lo que pesa ahora y lo que viene, todo a la vista: { hour, hourText, night, weather, vision (−), step (+ provisiones por
+ * paso), why: [textos], forecast: { kind, in, len } | null, nightIn (pasos hasta la noche o null), farol }.
+ */
+export function conditions(run) {
+  const hour = hourOf(run), night = !!run.clock && isNightHour(hour);
+  const weather = weatherOf(run);
+  const W = WEATHER[weather]?.exp || {};
+  const farol = hasEquip(run, 'farol');
+  let vision = 0, step = 0;
+  const why = [];
+  if (night) { if (farol) why.push('De noche: el Farol alumbra el camino.'); else { vision -= 1; why.push('De noche: visión −1 (el Farol la devuelve).'); } }
+  if (W.vision) vision += W.vision;
+  if (W.step) { if (W.guard && hasEquip(run, W.guard)) why.push(`${WEATHER[weather].name}: la ${W.guard === 'lona' ? 'Lona' : W.guard} los cubre.`); else step += W.step; }
+  if (W.text && !(W.step && !W.vision && W.guard && hasEquip(run, W.guard))) why.push(W.text);
+  const f = run.front;
+  const forecast = f && run.steps < f.from ? { kind: f.kind, in: f.from - run.steps, len: f.len } : f && weather !== 'despejado' ? { kind: f.kind, in: 0, left: f.from + f.len - run.steps } : null;
+  let nightIn = null;
+  if (run.clock && !night) { const per = run.clock.per || 1; nightIn = Math.max(1, Math.ceil(((NIGHT_FROM - hour + 24) % 24) / per)); }
+  return { hour, hourText: hourText(hour), night, weather, vision, step, why, forecast, nightIn, farol };
 }
 /** Abre la niebla a distancia ≤ radius (Manhattan; square = en cuadrado, como desde el mirador). */
 function reveal(run, cx, cy, radius, events, square = false) {
@@ -162,6 +211,7 @@ export function newRun({ region = 'bosque', zone = 1, kind = 'normal', seed = 1,
     steps: 0, party: party.slice(), equip: equip.slice(), roleLevel: roleLv, mods: { ...mods },
     used: {}, shield: sanidad,             // Sanidad: el primer peligro fallado baja 1 menos
     pending: null, ended: false, reason: null, objectiveDone: false, decisions: [], result: null,
+    clock: { start: EXP.dawn, per: EXP.hoursPerStep }, front: makeFront(map.region, seed, kind),
   };
   const b = cellAt(run, run.base[0], run.base[1]);
   b.visited = true; b.done = true;
@@ -195,7 +245,7 @@ export function view(run) {
     returnCost: rc, canReturn: run.prov >= rc, moves, pending: run.pending,
     objective: { type: o.type, name: o.name, mat: o.mat, n: o.n, hint: o.hint, cell: objCellKnown ? o.cell : null, done: run.objectiveDone },
     ended: run.ended, reason: run.reason, nextTired: EXP.tiredEvery - (run.steps % EXP.tiredEvery),
-    items: itemsAvailable(run),
+    items: itemsAvailable(run), cond: conditions(run),
   };
 }
 function itemsAvailable(run) {

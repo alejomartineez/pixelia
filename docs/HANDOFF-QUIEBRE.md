@@ -45,8 +45,8 @@ cada paso.
 | 2c | G: Ajustes completos, más el ajuste de la ventana al monitor | hecho | (commit v27) |
 | 2d | J6 interfaz oscura + J7 fuera lo tierno (solo personas, estilos nuevos, guardado v4) | hecho | 3ef5f83 (v29) |
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
-| 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | **siguiente**: la abre el usuario desde la app (brief `paso-3-hecho-brief-3b.md` en las notas compartidas) | |
-| 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | pendiente | |
+| 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
+| 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | **siguiente**: descargas aprobadas ("dale", set mínimo de `paso-3c-fuentes-audio.md`). La abre el usuario desde la app (brief `paso-3b-hecho-brief-3c.md` en las notas compartidas) | |
 | 4 | B: cinemática "El Quiebre" | pendiente | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | pendiente | |
 | 5b | L5: personas con nombre, Vínculo, herramientas, nivel del líder y pestaña Progreso | pendiente | |
@@ -251,6 +251,36 @@ cada paso.
   de Contactos con la fecha de hoy en UTC (estaba fija en 2026-W45 y fallaba cada lunes UTC).
 - **Decisión de canon**: los capítulos siguen el orden en que se abren las regiones (Bosque → Sierras → Bañado → Cerro →
   Costa → abordaje); el plan ponía el Cerro antes que el Bañado (ver DESIGN-STORY §4).
+
+**Paso 3b: ambiente** (detalle en DESIGN.md → "Ambiente: lugar, luz, día y noche, clima")
+- **`src/core/ambience.js`** (puro): lugares (`PLACES`: ciudad, expedición cerca / medio / lejos, mina, faros, Bajo Mundo),
+  climas (`WEATHER`, con los de las amenazas), reloj de la ciudad (`cityHour`, 20 min por día), `cityWeather` (clima del día),
+  `resolveLook` (lo que se ve), `lightFor` / `initWorldLight` (`state.world.light`, en `main.js`; avisa al subir de a
+  décimos), `combatConditions` para el paso 5 y la base de los ecos (`cityEchoSpots`, `expEchoSpots`, `ECHO_RULES`).
+- **`src/core/ambience-fx.js`** (three.js): luces, cielo, `r.setGrade` nuevo en `voxel.js` (saturación, tono y niebla por
+  profundidad en el pase final), ventanas de noche (`windowMaterial` + `setNightGlow`; `models.js` pone los vidrios en su
+  capa `win`), lluvia, nieve, ceniza, brasas y polvo, relámpagos (`ambience:thunder`). Vuelve todo a 0 al desmontar.
+- **Ciudad**: `src/scenes/city-ambience.js` (día y noche, clima del día, clima de la amenaza en señales vía `decor.weather`,
+  humo de chimeneas, casa nueva que prende la chimenea, hojas al cosechar, limpieza al reparar). `threat-scene.js` ya no
+  tira lluvia ni relámpagos propios (los pone el ambiente); quedan el velo suave, el humo del monte y el polvo.
+  Ajustes → Juego → "Día y noche en la ciudad" (`dayNight`). Emite `ambience:night` al cambiar.
+- **Expedición**: reglas en `exp-rules.js` (`clock`, `front`, `conditions`, `makeFront`, `hourOf`, `weatherOf`; la vista
+  trae `cond`). Se sale a las 6 y cada paso es una hora; desde las 20 visión −1 salvo con el Farol. Un frente por salida a lo
+  sumo (25–40 % según la región, dura 2–4 pasos, anunciado): tormenta (visión −1 y +1 en colina, bañado y roca; la Lona lo
+  evita), niebla y ceniza (visión −1), nieve (+1 en lo difícil), lluvia (solo se ve). Usa otra suerte: mapas y peligros
+  iguales. Salidas guardadas sin reloj siguen igual. `exp-ambience.js`: chip de hora y clima en la barra, avisos, niebla y
+  color por anillo, luz del Farol, polvo y huellas. Manual → La expedición suma "Día y noche" y "Clima".
+- **Pruebas**: `tools/test-ambience.mjs` (en `npm test`, 65 chequeos; `--shots` deja capturas). `era-city.mjs --q
+  "&hour=21&weather=tormenta"` y `?hour=` / `?weather=` en la URL (en una práctica de expedición `?hour=` también mueve el
+  reloj de la salida). Capturas en `shots/ambience/` (ciudad de día, atardecer, noche y tormenta; expedición de noche).
+- **Balance**: `sim:expedition` da los mismos ✘ que antes (regiones altas, ya pasaban de las metas) y el prototipo pasa
+  todo. `sim:economy` quedó 18 ✔ · 2 ✘ justo en el borde (monedas al llegar 73,3 % contra ≥ 75 %; automática 74,9 % contra
+  75–95 %; antes 20 ✔). El simulador es muy sensible al orden de compras: cualquier cambio en las salidas mueve qué defensa
+  se construye cuándo. Revisarlo en el paso 7.
+- **Para después**: los lugares de la historia (mina con vetas, faros con haces) están como perfiles pero ninguna escena los
+  usa todavía (paso 6 o el combate). El sonido de la lluvia, el trueno y la noche va en el 3c (`ambience:thunder`,
+  `ambience:night`, `look.weather`). El combate pide `combatConditions(cond)` (paso 5, segunda parte). Los ecos (L6) se
+  arman en el paso 6 sobre `echoSpots()` de la ciudad y de la expedición.
 
 **Sección L del plan (historia que se juega; c2f389d).** El usuario sumó L1 (elegir cuánto sacarle a un elemento y la
 Grieta), L2 (la culpa de Vera, pista falsa del traidor, se revela en el Acto 2), L4 (el giro: las Casas cavaron donde
