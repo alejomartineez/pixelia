@@ -47,11 +47,11 @@ cada paso.
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | 0bba507 (v34) |
-| 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y el esquife volador | **hecho** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`); falta que la integre el coordinador | |
-| 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
+| 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y el esquife volador | hecho e integrado (guía de arte en `docs/ARTE-PERSONAJES.md`; cabeza grande decidida de noche, revisar) | v39 |
+| 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | **en curso** (sesión quiebre-4a-detalle) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
-| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | primera parte hecha (6 clases con nivel 1–10, subclases de Raíz, nivel del líder 1–30, migración de roles; decisiones en DESIGN-COMBAT §8 y §14). Segunda parte (personajes de la ciudad, herramientas, Vínculo, nivel del líder visible y pestaña Progreso) **hecha** en `claude/progreso-5b2` (DESIGN-COMBAT §15; la parte de ciudad de las herramientas queda para el paso 7); la clase en el onboarding y el aspecto de cada clase esperan al 4a | ed2ba67 (v36) |
-| 6 | Acto 1 completo + E5–E6 | 6a (Núcleo de Raíz, extracción y Grieta, Invernadero, páginas p4–p8) hecho e integrado. 6b (jefes en sus lugares, faro, abordaje, ecos de noche L6, E5) hecho en la rama `claude/jefes-faro-6b`, sin mergear (detalle en DESIGN-STORY §5, "Estado (paso 6b…)") | ed2ba67 (v36) + 6b (v37) |
+| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | partes 1 y 2 hechas e integradas (clases, nivel del líder, gente de la ciudad con herramienta, Vínculo, Progreso; el efecto de las herramientas en la ciudad queda para el paso 7). Parte 3 (clase en el onboarding y aspecto por clase) **en curso** | ed2ba67 (v36) + v39 |
+| 6 | Acto 1 completo + E5–E6 | 6a y 6b hechos e integrados (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche, E5, `test-act1`). 6c (E6 expedición guiada, ecos con figuras del 4a, una sola bestia, dirigible visible) **en curso** | ed2ba67 (v36) + v39 |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
 ### Plan nocturno (2026-11-09)
@@ -180,6 +180,15 @@ tener que dar confirmaciones, le doy el si a todo".
     verifica que el martillo terminó antes de seguir. Bajo carga eran las 7 u 8 fallas en cadena.
 
 **Falta:** nada del 4a. Lo integra el coordinador (no se corrió `npm run bump`).
+
+### Noche, integración 2 (v39)
+- Mergeados 4a (guardado v5 y esquife), 6b y 5b-2, más el arreglo de `city.js` de quiebre-5-3: con la CPU trabada, un
+  toque corto levantaba el edificio. Eso causaba las fallas del e2e en el Pase.
+- En `migrate()`: primero `migrateV5`/`migrateSkiff` y después `migrateClasses`.
+- `npm test` en verde; `test-e2e` y `test-telemetry` fallan bajo carga y pasan solos.
+- Reparto: el paso 4 (cinemática y llegada con Vera) maneja `intro.js`, el prólogo de `src/story/` y el orden de
+  entrada de `main.js`; el 5b-3 maneja `onboarding.js` y las clases en `src/avatar/`; el 6c maneja E6, los ecos, la
+  bestia y el dirigible.
 
 ## Decisiones tomadas
 - Plataforma:
