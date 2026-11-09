@@ -189,6 +189,34 @@ desde el mentón:
 
 Las muestras se pueden recolorear con `cd`, `cm` y `cf`.
 
+## 5. Lectura del coordinador (sobre la segunda pasada) y cómo quedó
+
+1. **Paleta.**
+   - *El problema:* los tres iban de rojo y marrón y no se distinguían.
+   - *Cómo quedó:* cada uno tiene su color dominante y su acento.
+     - Pirata: índigo con el pañuelo óxido.
+     - Monje: carbón con lino y la piedra de veta.
+     - Enano: cuero con el cobre de la barba y el acero.
+2. **Zorro irreconocible.**
+   - *El problema:* el sombrero a rayas le tapaba la cabeza.
+   - *Cómo quedó:* el pañuelo va pegado al cráneo y arriba del ceño. Lo primero que se lee son el hocico y las orejas.
+3. **Brazos que flotan.**
+   - *El problema:* quedaban separados del torso a la altura del hombro.
+   - *Cómo quedó:* el pivote se mete 1 vóxel en el hombro (`armX`) y la pose en A baja de 0,22 a 0,14 rad.
+4. **Monje sin identidad.**
+   - *El problema:* tenía la cabeza grande y plana.
+   - *Cómo quedó:*
+     - el cráneo se redondea arriba;
+     - lleva una faja de lino con nudo al costado y dos puntas;
+     - cuentas de madera en V al cuello;
+     - sandalias con tira;
+     - mangas anchas.
+5. **"Todavía se ve a Minecraft."**
+   - *El problema:* faltaba carácter propio.
+   - *Cómo quedó:* se sigue con la silueta exagerada (manos, botas y hombros grandes), materiales en bloques limpios de
+     2 o 3 tonos sin ruido y caras con volumen. Cada personaje necesita **un distintivo de oficio** que se lea en la
+     silueta o en el pecho: el arma, las cuentas, el parche.
+
 ## Fuentes
 - [Veloren]: https://book.veloren.net/contributors/artists/voxel-models.html (escala de los modelos vóxel)
 - [Hytale 2025]: https://hytale.com/news/2025/12/an-introduction-to-making-models-for-hytale (geometría simple, sombras

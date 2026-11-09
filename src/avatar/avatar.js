@@ -118,7 +118,7 @@ export function avatarModel(lookIn = {}, opts = {}) {
     pv.add(m); upper.add(pv); arms.push(pv);
   }
   const [armL, armR] = arms;
-  const pose = { lx: 0, rx: 0, lz: -0.22, rz: 0.22, swing: 1 };   // pose en A: brazos separados del cuerpo
+  const pose = { lx: 0, rx: 0, lz: -0.14, rz: 0.14, swing: 1 };   // pose en A suave: el brazo sale del hombro, no flota
   if (seated) Object.assign(pose, { lx: -1.15, rx: -1.15, lz: 0.12, rz: -0.12, swing: 0 });
   else if (gear?.pose) Object.assign(pose, gear.pose);
   const glow = [];

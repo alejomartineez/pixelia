@@ -42,7 +42,8 @@ export const PEOPLE = {
 };
 export const dimsOf = (type, build) => {
   const D = (PEOPLE[type] || PEOPLE.humano)[build === 'esbelto' ? 'esbelto' : 'recio'];
-  return { ...D, armX: D.W / 2 + D.sh + D.armW / 2 };
+  // el brazo se mete 1 vóxel en el hombro: con la pose en A no queda una rendija entre brazo y torso
+  return { ...D, armX: D.W / 2 + D.sh + D.armW / 2 - 1 };
 };
 
 // ---------------- Paleta de un look ----------------
@@ -131,10 +132,17 @@ export const OUTFITS = {
     torso: (c, P) => (c.y === BELT_Y || c.y === BELT_Y - 1 ? (c.y === BELT_Y ? P.linen : P.linenD) : (c.front || c.back) && Math.abs(c.x + 0.5) <= 3 ? P.clothD : P.cloth),
     sleeve: (r, L, P) => (r >= L - 1 ? P.clothD : P.cloth),
     wide: 5,
-    leg: (y, P) => (y === 0 ? P.leather : y < 3 ? 'skin' : P.trouserD),
+    leg: (y, P) => (y === 0 ? P.leather : y === 2 ? P.leatherD : y < 3 ? 'skin' : P.trouserD),   // sandalias: suela y tira
     skirt: { long: true, gap: 4, flare: 8, col: (y, len, P) => (y === 0 ? P.clothDD : P.cloth) },
     hood: true,
-    extra: (v, D, P) => { const hd = Math.floor(D.D / 2); v.box(1, -1, hd, 1, 1, 1, P.linenD); v.box(1, -6, hd + 1, 1, 6, 1, P.linen); v.box(0, -7, hd + 1, 3, 1, 1, P.linenD); },   // cordón que cuelga
+    extra: (v, D, P) => {
+      const hd = Math.floor(D.D / 2), H = D.H;
+      // faja de lino con nudo al costado y dos puntas que cuelgan
+      v.box(2, BELT_Y - 1, hd, 3, 2, 1, P.linenD); v.box(2, BELT_Y - 8, hd + 1, 1, 7, 1, P.linen); v.box(4, BELT_Y - 6, hd + 1, 1, 5, 1, P.linenD);
+      // cuentas de madera al cuello: una V de cuentas claras con una más grande abajo
+      for (let i = 0; i < 5; i++) for (const s of [-1, 1]) v.set(s < 0 ? -1 - i : i, H - 1 - i, hd, i % 2 ? P.woodD : P.straw);
+      v.box(-1, H - 7, hd, 2, 2, 1, P.wood);
+    },
   },
   delantal: {
     torso: (c, P) => ((c.front && Math.abs(c.x + 0.5) <= c.hw - 2 && c.y < c.H - 2) || (c.front && c.y >= c.H - 2 && Math.abs(Math.abs(c.x + 0.5) - 3.5) < 1)
@@ -398,6 +406,7 @@ function headBox(v, D, P, look) {
     const cx = x === -W || x === W - 1, cz = z === zb || z === Dz - 1;
     if (cx && cz) continue;
     if (y === hh - 1 && (cx || cz)) continue;
+    if (y === hh - 1 && (x === -W + 1 || x === W - 2) && (z === zb + 1 || z === Dz - 2)) continue;   // cráneo redondeado, no una caja
     if (y === 0 && cx && (D.slim || t === 'zorro')) continue;
     if (t === 'anuro' && (y === hh - 1 || y === 0) && (x <= -W + 1 || x >= W - 2 || z <= zb + 1)) continue;
     let col = P.skin;
