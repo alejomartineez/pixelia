@@ -798,7 +798,106 @@ golpes finales van por clase (`lider` para el líder). El motor sigue siendo JSO
 - **Paso 7:** el líder cazador (38 % del daño), el curandero (el simulador gana menos con él) y la curva del líder en
   `sim:economy`.
 
+## 15. La gente de la ciudad, el Vínculo, las herramientas y la pestaña Progreso (paso 5b, segunda parte)
+Plan: L5 de `docs/PLAN-QUIEBRE.md`. La elección de clase en el onboarding y el aspecto de cada clase esperan al 4a
+(§14.10).
+
+| Archivo | Qué es |
+|---|---|
+| `src/core/people-data.js` | Personas, encargos, herramientas, costos y efectos en la expedición. Puro |
+| `src/core/people.js` | `state.people`: llegadas, Vínculo, encargos, nivel de cada herramienta y los eventos |
+| `src/scenes/panels-progress.js` | Pestaña "Progreso" de la Bitácora |
+| `tools/test-people.mjs` | Node y Chrome headless (§15.6) |
+
+### 15.1 Quiénes llegan
+| Persona | Llega | Herramienta | Material para mejorarla |
+|---|---|---|---|
+| Vera, cartógrafa | desde el inicio | Catalejo | mineral |
+| Brígida, herrera | rango 2 | Martillo | mineral |
+| Nahuel, subió del Bajo Mundo | la primera zona del Bosque explorada | Cuerda | madera |
+| Olga, curandera | rango 3 | Botiquín | hierbas |
+| Ramiro Ochoa, ex guardia de las Casas | rango 5 | Farol de guardia | madera |
+
+- **Al llegar** dicen 2 líneas y dejan un dato del mundo, con una escena de historia (`llega_<id>`). Sale cuando la
+  ciudad está tranquila, de a una, y después de las escenas de la historia. Si otra escena la tapa, vuelve a salir después
+  (`showNextArrival`). Vera ya está desde el prólogo: no tiene
+  escena.
+- **Retratos:** hoy usan el de Vera (`cartografa`) o la cara vacía. Los demás retratos serios los hace el 4a, con los
+  ids `brigida`, `nahuel`, `olga` y `ramiro` (`who` en `PEOPLE`).
+
+### 15.2 Vínculo 1 a 5 y encargos
+- Cada persona llega con Vínculo 1 y tiene 4 encargos, uno por nivel.
+- **Tipos de encargo:**
+  - volver de N salidas (de una región, si lo dice);
+  - explorar N zonas;
+  - ganar N peleas;
+  - aguantar N amenazas;
+  - entregar materiales (con el botón "Entregar" de Progreso);
+  - una marca de la historia (`bestia_vencida` o `capitana_vencida`).
+- **Decisión:** los encargos viven en `people.js` y no en la cadena de misiones, porque `src/core/quests.js` lo tiene
+  abierto la sesión de la Raíz (E5). Para sumarlos a la cadena hay que leer `currentTask(id)` desde `quests.js`.
+- Los encargos avanzan con los eventos `expedition:finished` (la práctica no cuenta), `expedition:zone`, `combat:won` y
+  `threat:resolved`. Las marcas de la historia se revisan con `quests:changed` y `reward:page`.
+
+### 15.3 Herramientas 0 a 5
+- Llegan en nivel 1 con su dueño. Cada nivel de Vínculo deja subir un nivel más.
+- **Se mejoran en el Taller** (hace falta tenerlo construido). Ir al nivel `n` cuesta `60 × n` monedas y `n + 1` de su
+  material: al nivel 2, 120 monedas y 3 de material; al 5, 300 y 6.
+- **Combate:** `b.tools` con las tablas que ya existían (`COMBAT.catalejo`, `trapBonus`, `climb`, `healBonus` y
+  `guard`, §6). La expedición las manda en `mods.tools`.
+- **Expedición** (`TOOL_EXP`; los simuladores no las usan, así que no cambian):
+  - Catalejo: +1 de visión desde el nivel 3, y +3 por nivel en "pasar en silencio" y en "revisar a fondo".
+  - Martillo: +4 por nivel en "despejar".
+  - Cuerda: +3 por nivel en "cruzar" y +4 en "trepar".
+  - Botiquín: ánimo máximo `+⌊nivel / 2⌋`.
+  - Farol: +3 por nivel en "seguir con tormenta".
+- **Ciudad: queda para el paso 7** (decisión de esta noche). El Martillo tiene que dar obras más baratas y el Farol más
+  preparación contra las amenazas. Las dos cosas tocan los costos de `economy.js` y la preparación de `src/threats`, y
+  hay que balancearlas con `sim:economy` y `sim:threats`.
+- **Ninguna herramienta es obligatoria:** las peleas comunes ya pasan del 85 % sin ninguna (§8).
+
+### 15.4 Pestaña "Progreso" de la Bitácora
+Cada fila dice qué falta para el próximo nivel:
+- **la ciudad:** rango y Época, con los requisitos que faltan;
+- **quien lidera:** nivel, barra de experiencia, clase y subclase, y el próximo nivel clave;
+- **el grupo:** nivel de cada clase, con el tope del edificio;
+- **la gente y sus herramientas:** el Vínculo, el encargo con su avance, el nivel de la herramienta y qué hace, y los
+  botones "Entregar" y "Mejorar". Quien todavía no llegó aparece cerrado, con cuándo llega;
+- **el mundo:** elementos, la Grieta y las páginas del diario.
+
+**El nivel del líder también se ve:**
+- en el panel de Expedición: "Nombre · nivel N", con la clase;
+- en un aviso cuando sube (`leader:levelup`).
+
+Hay avisos cuando sube un Vínculo o una herramienta. El Guerrero bloqueado ahora dice "Construí Casa de Expediciones
+nivel 2".
+
+### 15.5 Estado guardado
+```
+state.people = { v: 1, list: { [id]: { arrived, met, bond, n, tool } } }
+```
+`peopleState()` lo completa en una partida vieja, sin subir la versión del guardado. Una partida vieja recibe a quien
+ya cumple la condición de llegada (por ejemplo, a Brígida en el rango 2) y le muestra la escena.
+
+### 15.6 Pruebas
+`node test-people.mjs` (con `--quick`, solo Node): 31 bien, 0 mal. Cubre:
+- los datos y el tono;
+- los costos;
+- los efectos en la expedición y en el combate;
+- en el juego:
+  - Vera con su Catalejo desde el inicio;
+  - encargos de salida, de zona, de entrega y de historia;
+  - el Vínculo como tope de la herramienta y la mejora en el Taller;
+  - la llegada de Brígida y Olga con su escena;
+  - las herramientas y el nivel real del líder en la salida;
+  - la pestaña Progreso completa y mejorar desde ella;
+  - el nivel del líder en el panel de Expedición.
+
 ## Estado
+- **Paso 5b, segunda parte** (la gente de la ciudad, el Vínculo, las herramientas, el nivel del líder visible y la
+  pestaña Progreso, §15): **hecha** en la rama `claude/progreso-5b2`, sin mergear. Falta lo que espera al 4a (§14.10) y
+  la parte de ciudad de las herramientas (paso 7, §15.3). Para integrar: sumar `"test:people": "node test-people.mjs"` y
+  `node test-people.mjs` a `npm test`.
 - **Paso 5b, primera parte** (la lógica de clases, subclases y nivel del líder, §14): **hecha** en la rama
   `claude/clases-5b-7cbe71`, sin mergear. No sube la versión del guardado ni corre `npm run bump`.
   - Para integrar: sumar a `tools/package.json` el script `"test:classes": "node test-classes.mjs"` y

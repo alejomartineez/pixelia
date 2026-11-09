@@ -5,6 +5,8 @@
 import { icon } from '../core/icons.js';
 import { REGION_MATERIALS, RESOURCES } from '../core/data.js';
 import { REGIONS, ROLES, ROLE_IDS, EQUIPMENT, MATERIALS as EXP_MATS } from '../expedition/exp-data.js';
+import * as K from '../core/classes.js';
+import { CLASSES as CLASSES_K } from '../combat/classes.js';
 import { openShell } from './panels-common.js';
 import * as RZ from '../core/raiz.js';
 
@@ -173,13 +175,14 @@ export function openExpedition(ctx, params = {}) {
     const max = Math.max(0, st.partySlots - 1);
     el.append(h('h4.pnl-ex-h', { html: `${icon('people', 20)}<span>Grupo</span><small>${party.length}/${max} lugares + quien lidera</small>` }));
     const grid = h('div.pnl-ex-roles');
-    grid.append(h('div.pnl-ex-role.lead', { html: `<span class="ic">${icon('🧑', 28)}</span><b>${esc(ctx.state.player.name)}</b><small>Lidera el grupo</small>` }));
+    const lead = K.leaderInfo(ctx.state);
+    grid.append(h('div.pnl-ex-role.lead', { 'data-leader-level': String(lead.level), html: `<span class="ic">${icon('🧑', 28)}</span><b>${esc(ctx.state.player.name)} · nivel ${lead.level}</b><small>Lidera el grupo${lead.cls ? ' · ' + esc(CLASSES_K[lead.cls].name) : ''}</small>` }));
     for (const id of ROLE_IDS) {
       const r = st.roles.find(x => x.id === id);
       const R = ROLES[id];
       if (!r) {
         const bname = ctx.data.BUILDING_BY_ID[R.building]?.name || '';
-        grid.append(h('div.pnl-ex-role.off', { 'data-role': id, html: `<span class="ic">${icon(R.icon, 26)}</span><b>${esc(R.name)}</b><small>${icon('lock', 12)} Construí ${esc(bname)}</small>` }));
+        grid.append(h('div.pnl-ex-role.off', { 'data-role': id, html: `<span class="ic">${icon(R.icon, 26)}</span><b>${esc(R.name)}</b><small>${icon('lock', 12)} Construí ${esc(bname)}${R.minLevel ? ' nivel ' + R.minLevel : ''}</small>` }));
         continue;
       }
       const ch = X.roleChance(id, r.level);

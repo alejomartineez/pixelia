@@ -31,6 +31,7 @@ import * as unlocks from './core/unlocks.js';      // apertura escalonada (Fase 
 import { isDesktop, initDesktop } from './core/desktop.js';
 import { initSettings } from './core/settings.js';   // juego de PC (Tauri)
 import * as story from './story/story.js';
+import * as people from './core/people.js';
 import { initWorldLight } from './core/ambience.js';   // la luz como progreso (PLAN-QUIEBRE §J2)
 import { initTips } from './core/tips.js';   // pistas al pasar el mouse (data-tip)      // historia "El Quiebre" (DESIGN-STORY.md)
 
@@ -356,6 +357,8 @@ function initProgression() {
   const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['raiz', initRaiz], ['act1', initAct1], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
     ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds],
     ['story', () => story.initStory(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length, inCity: () => cityReady() && !document.body.classList.contains('no-hud') })],
+    ['people', () => people.initPeople(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length && cityReady(),
+      show: (sc) => import('./story/story-ui.js').then(m => m.showScene(ctx, sc)) })],
     ['light', () => initWorldLight({ state: () => store.state, bus, rank: () => economy.townRank(store.state), markDirty: () => store.markDirty(),
       notify: (t) => setTimeout(() => toast(t, { icon: 'sparkle' }), 1800) })]];
   for (const [name, fn] of steps) { try { fn(); } catch (e) { console.error('[init] ' + name, e); } }

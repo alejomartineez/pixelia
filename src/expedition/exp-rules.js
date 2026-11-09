@@ -23,6 +23,7 @@ import { WEATHER, NIGHT_FROM, isNightHour, hourText } from '../core/ambience.js'
 import { COMBAT, ENCOUNTERS, ELEMENTS as C_ELEMENTS, ITEMS } from '../combat/combat-data.js';
 import * as C from '../combat/combat-rules.js';
 import { toClass, LEADER } from '../combat/classes.js';
+import { toolOptionBonus, toolMorale, TOOLS } from '../core/people-data.js';
 import { TUTORIAL_PARTY } from '../combat/combat-data.js';
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
@@ -157,6 +158,8 @@ export function optionChance(run, hz, opt) {
     parts.push([bonus + EXP.roleStep * (lv - 1), CLASS_NAMES[cls] + (lv > 1 ? ' ' + lv : '')]);
   }
   for (const [eq, bonus] of Object.entries(opt.equip || {})) if (hasEquip(run, eq)) parts.push([bonus, EQUIP_NAMES[eq]]);
+  // las herramientas de la gente de la ciudad (L5): un poco por nivel
+  for (const [tool, lv] of Object.entries(run.mods?.tools || {})) { const b = toolOptionBonus({ [tool]: lv }, opt.id); if (b) parts.push([b, `${TOOLS[tool].name} ${lv}`]); }
   if (run.mods.regionBonus) parts.push([run.mods.regionBonus, 'hallazgos']);
   if (run.care) parts.push([run.care, 'con cuidado']);
   if (run.zone > 1) parts.push([-EXP.zonePenalty * (run.zone - 1), 'zona ' + run.zone]);
@@ -214,7 +217,7 @@ export function newRun({ region = 'bosque', zone = 1, kind = 'normal', seed = 1,
   const sanidad = party.includes('curandero');
   // quien lidera, cada 10 niveles, aguanta un poco más (L5: un bonus chico por nivel)
   const leaderMorale = Math.floor((mods.leader?.level || 1) / LEADER.moraleEvery);
-  const moraleMax = mods.moraleMax ?? EXP.morale + (sanidad ? EXP.moraleSanidad : 0) + leaderMorale;
+  const moraleMax = mods.moraleMax ?? EXP.morale + (sanidad ? EXP.moraleSanidad : 0) + leaderMorale + toolMorale(mods.tools);
   // la salida corta va con la mochila chica: la mitad de la carga
   const cargoMax = Math.max(3, Math.ceil((mods.cargoMax ?? EXP.cargoBase + (equip.includes('carreta') ? EXP.carreta : 0)) * (K.cargoFactor || 1)));
   const startProv = prov ?? (kind === 'corta' ? K.prov : EXP.prototype.prov);
