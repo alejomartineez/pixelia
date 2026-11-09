@@ -4,6 +4,10 @@ Plan completo y aprobado: [PLAN-QUIEBRE.md](PLAN-QUIEBRE.md). Este archivo dice 
 cada paso.
 
 ## Reglas de trabajo (vienen del usuario)
+- **Notificar** con PushNotification cada vez que se termina algo (un paso, un commit importante, al abrir la sesión
+  siguiente o al trabarse): un mensaje corto con lo que quedó hecho. Le llega al celular.
+- **Este archivo siempre al día**: qué paso está hecho, en qué commit y quién sigue (una sesión abierta fuera de la app
+  no le avisa a la sesión coordinadora).
 - **Autonomía total.** No hace falta pedir permiso: instalar Rust y las Build Tools, commit y push a `master`, tags,
   releases y secrets con `gh`. Siguen valiendo las reglas de CLAUDE.md: no tocar el otro proyecto de Supabase, nunca usar
   `service_role`, y `npm run bump` antes de cada commit que cambie archivos del juego.
@@ -11,7 +15,10 @@ cada paso.
   - Al pasar el 40–45 % de contexto: terminar la unidad en curso, hacer commit, actualizar este archivo y seguir en una
     **sesión nueva fresh** (no un fork).
   - El brief de esa sesión es: "leé `docs/PLAN-QUIEBRE.md` y `docs/HANDOFF-QUIEBRE.md`, seguí desde el paso N y aplicá
-    esta misma regla".
+    esta misma regla", con todas estas reglas copiadas. Se abre sin pedir OK: primero `start_session` (fresh); si la app
+    lo rechaza (pasa con Remote Control), una pestaña de terminal con `claude` en bypassPermissions. **Probado el
+    2026-11-09: la terminal de la app no ve `AppData\Roaming` ni la cuenta de Claude y pide iniciar sesión**, así que en
+    ese caso se deja el brief en las notas compartidas y se avisa al usuario para que la abra desde la app.
 - **Calidad.**
   - Guiar lo esencial, no todo.
   - Las mecánicas tienen que ser creativas, enganchantes y balanceadas: sección I del plan.
@@ -38,7 +45,7 @@ cada paso.
 | 2c | G: Ajustes completos, más el ajuste de la ventana al monitor | hecho | (commit v27) |
 | 2d | J6 interfaz oscura + J7 fuera lo tierno (solo personas, estilos nuevos, guardado v4) | hecho | 3ef5f83 (v29) |
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
-| 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | **siguiente** | |
+| 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | **siguiente**: la abre el usuario desde la app (brief `paso-3-hecho-brief-3b.md` en las notas compartidas) | |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | pendiente | |
 | 4 | B: cinemática "El Quiebre" | pendiente | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | pendiente | |
