@@ -58,10 +58,10 @@ ok(g1.armor === 1 && !g1.flags.guardAdj && K.memberKit('guerrero', 5).flags.guar
 ok(K.memberKit('monje', 1).flags.noStuck && K.memberKit('curandero', 1).flags.medic && K.memberKit('forjador', 1).flags.smith, 'las reglas viejas de cada rol son la pasiva de nivel 1');
 
 section('Nivel del líder (1 a 30)');
-ok(K.leaderLevelFromXp(0) === 1 && K.leaderLevelFromXp(49) === 1 && K.leaderLevelFromXp(50) === 2 && K.leaderLevelFromXp(125) === 3, 'curva: 50 + 25 por nivel', [K.leaderLevelFromXp(50), K.leaderLevelFromXp(125)]);
-ok(K.leaderLevelFromXp(K.leaderXpFor(30)) === 30 && K.leaderLevelFromXp(1e9) === 30 && K.leaderXpFor(30) === 11600, 'tope 30', K.leaderXpFor(30));
-const li = K.leaderXpInfo(60);
-ok(li.level === 2 && li.into === 10 && li.need === 75 && li.next.level === 5, 'lo que falta y el próximo nivel clave', li);
+ok(K.leaderLevelFromXp(0) === 1 && K.leaderLevelFromXp(99) === 1 && K.leaderLevelFromXp(100) === 2 && K.leaderLevelFromXp(250) === 3, 'curva: 100 + 50 por nivel', [K.leaderLevelFromXp(100), K.leaderLevelFromXp(250)]);
+ok(K.leaderLevelFromXp(K.leaderXpFor(30)) === 30 && K.leaderLevelFromXp(1e9) === 30 && K.leaderXpFor(30) === 23200, 'tope 30', K.leaderXpFor(30));
+const li = K.leaderXpInfo(120);
+ok(li.level === 2 && li.into === 20 && li.need === 150 && li.next.level === 5, 'lo que falta y el próximo nivel clave', li);
 const p1 = K.leaderPerks(1), p6 = K.leaderPerks(6), p12 = K.leaderPerks(12);
 ok(p1.classSlots === 0 && p1.subSlots === 1 && K.leaderPerks(5).subSlots === 2 && p6.classSlots === 1 && !K.leaderPerks(7).subPassive && K.leaderPerks(8).subPassive && p12.classSlots === 2,
   'niveles clave: 1 y 5 subclase, 6 y 12 clase, 8 pasiva de subclase');
@@ -235,10 +235,10 @@ if (!QUICK) {
     await sleep(800);
     let r = await run(`const i = K.leaderInfo(); return { lv: i.level, cls: i.cls, v: S.classes?.v, m: Object.keys(S.classes?.members || {}).length };`);
     ok(r.lv === 1 && r.cls === null && r.v === 1 && r.m === 6, 'partida nueva: líder nivel 1, sin clase, 6 clases', r);
-    r = await run(`let ev = null; P.bus.on('leader:levelup', p => { ev = p; }); const up = K.grantLeaderXp(130, 'test'); return { up, ev, lv: K.leaderLevel() };`);
+    r = await run(`let ev = null; P.bus.on('leader:levelup', p => { ev = p; }); const up = K.grantLeaderXp(250, 'test'); return { up, ev, lv: K.leaderLevel() };`);
     ok(r.lv === 3 && r.up?.to === 3 && r.ev?.level === 3, 'la experiencia sube el nivel del líder y avisa', r);
     r = await run(`const x0 = S.classes.leader.xp; P.bus.emit('threat:resolved', { id: 't1', type: 'crecida', pct: 80, mode: 'auto', damaged: [], reward: {} }); return S.classes.leader.xp - x0;`);
-    ok(r === 15 + 20, 'una amenaza aguantada da experiencia al líder (15 + 0,25 × %)', r);
+    ok(r === 10 + 8, 'una amenaza aguantada da experiencia al líder (10 + 0,1 × %)', r);
     r = await run(`return { a: K.setLeaderClass('guerrero'), b: K.setSubclass('guardian_raiz'), sub: K.leaderInfo().sub };`);
     ok(r.a && !r.b && r.sub === null, 'sin Raíz no hay subclase', r);
     r = await run(`S.story ||= {}; S.story.elements = ['raiz']; const i = K.leaderInfo(); const m = K.leaderMods(); return { sub: i.sub, subs: i.subclasses, m, set: K.setSubclass('guardian_raiz'), bad: K.setSubclass('acechador_raiz') };`);

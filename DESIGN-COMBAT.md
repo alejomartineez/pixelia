@@ -650,7 +650,7 @@ onboarding, la pestaña "Progreso" y los modelos por clase quedan para la segund
 - **Tope:** el edificio entrena hasta 2 × su nivel. Con el edificio al 5 se llega al 10. La experiencia de más se guarda:
   al mejorar el edificio, el nivel sube solo.
 - **De dónde sale:** cada pelea da su experiencia (20 a 100, `reward.xp` × resultado) a cada integrante que peleó,
-  escolta incluida. Cada salida da 2 × su experiencia (`EXP_XP`: 10 + 5 por estrella) a los que fueron.
+  escolta incluida. Cada salida da su experiencia (`EXP_XP`: 10 + 5 por estrella) a los que fueron.
 - **Qué da:** vida y ataque (§6), la 3.ª activa del grupo en el nivel 3, la 4.ª en el 6 y las pasivas en el 1, el 5 y
   el 9.
 
@@ -672,15 +672,16 @@ el Martillo).
 elegirlas es de la segunda parte.
 
 ### 14.4 El líder: nivel 1 a 30 (L5)
-- **Experiencia para pasar del nivel n al n + 1:** `50 + 25 × (n − 1)`. Para el nivel 3 hacen falta 125; para el 5,
-  350; para el 7, 675; para el 10, 1.350, y para el 30, 11.600.
+- **Experiencia para pasar del nivel n al n + 1:** `100 + 50 × (n − 1)`. Para el nivel 3 hacen falta 250; para el 5,
+  700; para el 7, 1.350; para el 10, 2.700, y para el 30, 23.200.
 - **De dónde sale:**
   - las peleas: su experiencia completa;
-  - las salidas: 3 × la experiencia de la salida (de 30 a 75);
-  - las amenazas aguantadas: `15 + 0,25 × %` (de 15 a 40), escuchando `threat:resolved`.
+  - las salidas: ½ de la experiencia de la salida (de 5 a 13);
+  - las amenazas aguantadas: `10 + 0,1 × %` (de 10 a 20), escuchando `threat:resolved`.
 
-  Con 2 ratos por día, el Acto 1 deja al líder entre los niveles 7 y 9 al llegar a la Costa. El encuentro espera 6 o 7.
-  El paso 7 lo ajusta en `sim:economy`.
+  La primera curva (`50 + 25 × (n − 1)` y 3 × la salida) llevaba al líder al nivel 11 el día 7 en `sim:economy`.
+  `sim:economy` ahora muestra el nivel del líder en los días 7, 25 y 60 (resultado en §14.9). El paso 7 lo ajusta: la
+  meta es llegar a la Costa con nivel 6 o 7.
 - **Bonus chico por nivel:** vida y ataque (§6) y +1 de ánimo máximo en la expedición cada 10 niveles.
 - **La clase del líder** sube sola con su nivel: nivel de clase `1 + ⌊(nivel − 1) / 3⌋` (1, 4, 7… → 1, 2, 3…; el 10
   llega en el 28). Con él se abren las pasivas y el grupo de 4 de su clase.
@@ -771,8 +772,13 @@ golpes finales van por clase (`lider` para el líder). El motor sigue siendo JSO
 - `node test-combat-exp.mjs`: 75 bien. `test-cycle`: 61. `test-migration`: 63. `test-expedition`: 30.
 - `sim:combat`: todas las metas (§8).
 - `sim:expedition`: las mismas metas en ✔ y en ✘ que en master, con los mismos números.
-- `sim:economy`: 19 ✔ y 1 ✘ (master: 18 ✔ y 2 ✘). La economía no cambia con las clases; las corridas se separan
-  porque las peleas usan el nivel real del líder.
+- `sim:economy` (semilla 1): 18 ✔ y 2 ✘, las mismas dos que ya fallaban en master ("preparación al llegar" y "la
+  automática daría"). Con las semillas 4 a 8 suma lo mismo que master: 84 ✔. Muestra el nivel del líder: 3 el día 7,
+  5 el día 25 y 9 el día 60. A la Costa (rango 6) se llega con nivel 5 o 6; el encuentro espera 6 o 7 (paso 7).
+- `test-e2e`: 89 bien y 7 mal, las mismas 7 del Pase de Temporada que fallan en master. `test-combat-scene` 29,
+  `test-threats` 79, `test-settings` 77, `test-stress` 15, `test-ambience` 65 y `test-telemetry` 67, sin fallas.
+- `test-story`: 94. La flecha de t14 a veces tarda más de 1 s: el test ahora la espera hasta 4 s en lugar de un
+  `sleep(900)` fijo.
 
 ### 14.10 Para la segunda parte del 5b (después del 4a)
 - **Onboarding:** elegir la clase del líder (`setLeaderClass`). En una partida vieja (`leader.cls === null`), la primera

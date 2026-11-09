@@ -86,7 +86,7 @@ export const CLASS_XP = [0, 30, 80, 150, 240, 350, 480, 640, 830, 1050];
 /** Nivel de clase que abre cada habilidad del grupo de 4 (las 2 primeras vienen de entrada). */
 export const POOL_UNLOCK = [1, 1, 3, 6];
 /** Experiencia de clase: la pelea da su xp a cada integrante que peleó; la salida, `expedition` × la xp de la salida. */
-export const CLASS_GAIN = { expedition: 2 };
+export const CLASS_GAIN = { expedition: 1 };
 /** Nivel de clase con esa experiencia (con tope: el edificio que la entrena deja llegar hasta 2 × su nivel). */
 export function classLevelFromXp(xp = 0, cap = CLASS_MAX) {
   let lv = 1;
@@ -107,7 +107,7 @@ export const classXpFor = (level) => CLASS_XP[Math.max(1, Math.min(CLASS_MAX, le
 export const LEADER = {
   max: 30,
   /** Experiencia que pide pasar del nivel n al n + 1. */
-  need: (n) => 50 + 25 * (n - 1),
+  need: (n) => 100 + 50 * (n - 1),
   /** Nivel de clase del líder: sube solo con su nivel (1, 4, 7, … → 1, 2, 3, …; tope 10 en el 28). */
   classLevel: (lv) => Math.min(CLASS_MAX, 1 + Math.floor((Math.max(1, lv) - 1) / 3)),
   /** Niveles clave: abren espacios de habilidad. clase: habilidades de su clase; sub: de su subclase; subPassive. */
@@ -115,7 +115,7 @@ export const LEADER = {
   /** Niveles clave que quedan para los actos 2 a 4 (otro elemento y habilidades del equipo). */
   reserved: [15, 20, 25, 30],
   /** De dónde sale la experiencia. fight: la xp de la pelea entera; expedition: × la xp de la salida; threat: base + por %. */
-  gain: { expedition: 3, threat: { base: 15, perPct: 0.25 } },
+  gain: { expedition: 0.5, threat: { base: 10, perPct: 0.1 } },
   /** Bonus chico por nivel en la expedición: +1 de ánimo máximo cada 10 niveles. */
   moraleEvery: 10,
 };
