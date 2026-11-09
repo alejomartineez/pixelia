@@ -10,6 +10,7 @@ import { openShell, goalIcon, goalAction, progressLabel } from './panels-common.
 import { ACTS, PAGES, ELEMENTS, MANUAL, CHARACTERS } from '../story/story-data.js';
 import * as story from '../story/story.js';
 import { portrait } from '../story/story-ui.js';
+import * as RZ from '../core/raiz.js';
 
 const CSS = `
 .pnl-story .st-chap { position: relative; padding: 14px 14px 12px; background: var(--panel-2); border: var(--line) solid var(--edge); border-radius: 14px; box-shadow: inset 0 0 0 2px var(--metal); }
@@ -165,6 +166,11 @@ export function openStory(ctx, params = {}) {
         : `${icon('lock', 30)}<b>${esc(e.name)}</b><small>Sin descubrir.</small>` }));
     }
     wrap.append(els);
+    // la Raíz y la Grieta (L1): cuánto se le saca y cómo está la isla
+    if (RZ.raizFound(s)) {
+      const rs = RZ.raizState(s), g = RZ.grieta(s), ex = RZ.EXTRACTION[rs.mode];
+      wrap.append(h('div.st-page', { 'data-grieta': String(Math.round(g)), html: `<b>${icon('bolt', 14)} La Grieta · ${Math.round(g)}/100</b><p>${esc(RZ.grietaText(g))} Raíz: ${esc(ex ? ex.name.toLowerCase() : 'sin elegir')}${rs.sutures ? ` · ${rs.sutures} ${rs.sutures === 1 ? 'obra de Raíz terminada' : 'obras de Raíz terminadas'}` : ''}.</p>` }));
+    }
     return wrap;
   }
 

@@ -13,6 +13,7 @@ import { HOME_LEVELS, comfortInfo } from '../home/furniture.js';
 export { monumentComplete, monumentsDone, monumentBonus };
 import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild, addFreeBuild } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
+import { raizFound, raizMult } from './raiz.js';
 
 const S = () => store.state;
 export const def = (b) => BUILDING_BY_ID[typeof b === 'string' ? b : b.id];
@@ -374,7 +375,7 @@ export const SIESTA_RATE = 0.08;
 export function storageCap(id) {
   const d = def(id);
   if (!d?.prod) return 0;
-  if (d.prod.gems || d.prod.prov) return d.prod.cap;   // gemas y provisiones no se estiran: guardan sus tandas
+  if (d.prod.gems || d.prod.prov || d.prod.mat) return d.prod.cap;   // gemas y provisiones no se estiran: guardan sus tandas
   const hours = STORAGE_HOURS[d.cat] || 3;
   return Math.max(d.prod.cap, Math.ceil(hours * 3600 / d.prod.cycle));
 }
@@ -408,6 +409,7 @@ export function canBuild(id, state = S(), now = Date.now()) {
   const free = freeBuildCount(id) > 0;
   if (!free && d.unlock > state.player.level) return { ok: false, reason: `Nivel ${d.unlock}`, locked: true };
   if (!free && d.rank && townRank(state) < d.rank) return { ok: false, reason: `Rango ${rankName(d.rank)}`, locked: true, rank: d.rank };
+  if (d.element === 'raiz' && !raizFound(state)) return { ok: false, reason: 'Hace falta el Núcleo de Raíz', locked: true, element: 'raiz' };
   if (d.max && countOf(id, state) >= d.max) return { ok: false, reason: 'Ya lo tenés' };
   if (!free && d.popReq && population(state, now) < d.popReq) return { ok: false, reason: `Necesita ${d.popReq} habitantes`, locked: true };
   if (d.time > 0 && buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };
@@ -472,7 +474,7 @@ export function removeBuilding(uid, state = S()) {
 export function producerStatus(b, now = Date.now(), state = S()) {
   const d = def(b);
   if (!d.prod) return { producer: false };
-  const currency = d.prod.gems ? 'gems' : d.prod.prov ? 'prov' : 'coins';
+  const currency = d.prod.gems ? 'gems' : d.prod.prov ? 'prov' : d.prod.mat || 'coins';
   const cap = storageCap(d.id);
   if (isBusy(b, now)) return { producer: true, currency, paused: true, ready: false, amount: 0, progress: 0, full: false, cap };
   // dañado por una amenaza: no produce hasta repararlo (src/threats/threats.js; al reparar se corre el reloj)
@@ -488,6 +490,7 @@ export function producerStatus(b, now = Date.now(), state = S()) {
   let per;
   if (currency === 'gems') per = d.prod.gems;
   else if (currency === 'prov') per = cycleValue(d.id, 'prov', b.level || 1, d.prod.prov);   // sin multiplicadores
+  else if (currency === d.prod.mat) per = matPerCycle(b, state);
   else {
     // sumados con tope (productionMult); el castillo no se da felicidad ni rango a sí mismo
     per = d.prod.coins * (1 + 0.5 * (b.level - 1)) * productionMult(d.id, state, now).total;
@@ -498,6 +501,12 @@ export function producerStatus(b, now = Date.now(), state = S()) {
     awakeCap: awake, siesta: siesta > 0, siestaRate: SIESTA_RATE,       // "durmiendo la siesta": junta más lento
     fullInSec: full ? 0 : Math.max(0, (cap * cycleMs - elapsed) / 1000),   // cuánto falta para llenarse
   };
+}
+/** Material por tanda de un productor de materiales (el Invernadero de Raíz: según el nivel y la extracción). */
+export function matPerCycle(b, state = S()) {
+  const d = def(b);
+  const base = cycleValue(d.id, 'mat', b.level || 1, d.prod.n || 1);
+  return d.element === 'raiz' ? Math.max(1, Math.round(base * (raizMult(state) || 0.5))) : base;
 }
 /** Cobra un edificio. Devuelve {amount, currency} o null. */
 export function collect(uid, state = S()) {
@@ -518,6 +527,12 @@ export function collect(uid, state = S()) {
     bus.emit('production:collected', { b, amount: got, currency: 'prov' });
     return { amount: got, currency: 'prov' };
   }
+  if (d.prod.mat && st.currency === d.prod.mat) {
+    b.lastCollect = st.full ? now : b.lastCollect + st.cycles * d.prod.cycle * 1000;
+    store.grant({ mats: { [d.prod.mat]: st.amount }, xp: Math.min(XP_COLLECT_MAX, Math.max(1, Math.round(Math.sqrt(st.cycles)))) }, 'collect');
+    bus.emit('production:collected', { b, amount: st.amount, currency: st.currency });
+    return { amount: st.amount, currency: st.currency };
+  }
   const before = st.currency === 'coins' ? masteryInfo(d.id, state).stars : 0;
   // conserva el progreso parcial del ciclo actual (si no estaba lleno)
   b.lastCollect = st.full ? now : b.lastCollect + st.cycles * d.prod.cycle * 1000;
@@ -534,7 +549,7 @@ export function collect(uid, state = S()) {
 }
 /** Cobra todo lo cobrable (botón "cobrar todo"). */
 export function collectAll(state = S()) {
-  const total = { coins: 0, gems: 0, prov: 0 };
+  const total = { coins: 0, gems: 0, prov: 0, hierbas: 0 };
   for (const b of state.city.buildings) {
     const r = collect(b.uid, state);
     if (r) total[r.currency] = (total[r.currency] || 0) + r.amount;

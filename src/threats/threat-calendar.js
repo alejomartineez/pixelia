@@ -2,7 +2,7 @@
 // (EPOCH de season-data.js, lunes 2026-11-02, hora local). Mismo calendario para todo el mundo.
 import { EPOCH, SEASON_DAYS } from '../season/season-data.js';
 import {
-  THREAT_DAYS, DAYS_BY_RANK, ORDER, THREAT_TYPES, OPEN_HOUR, WARN_DAYS, WARN_DAYS_OBSERVATORY, SIGNS_HOURS,
+  ALL_DAYS, daysFor, ORDER, THREAT_TYPES, OPEN_HOUR, WARN_DAYS, WARN_DAYS_OBSERVATORY, SIGNS_HOURS,
 } from './threat-data.js';
 
 const H = 3600e3;
@@ -29,14 +29,17 @@ export function typeFor(s, i, rank) {
 
 /** Arma la amenaza i de la temporada s (sin mirar si te toca). */
 export function makeThreat(s, i, rank, { observatory = false } = {}) {
-  const day = s * SEASON_DAYS + THREAT_DAYS[i];
+  const day = s * SEASON_DAYS + ALL_DAYS[i];
   const start = dayMs(day, OPEN_HOUR), end = dayMs(day + 1);
   const warn = observatory ? WARN_DAYS_OBSERVATORY : WARN_DAYS;
   return { id: `${s}-${i}`, s, i, day, type: typeFor(s, i, rank), announce: dayMs(day - warn, OPEN_HOUR), signs: start - SIGNS_HOURS * H, start, end };
 }
-/** Amenazas de la temporada s que le tocan a un rango (2–3: días 12 y 26; 4–5: 5, 12 y 26; 6+: los 4). */
+/**
+ * Amenazas de la temporada s que le tocan a un rango (2–3: días 12 y 26; 4–5: 5, 12 y 26; 6+: los 4).
+ * opts.extra: amenazas de más por la Grieta (L1): primero los sábados que falten, después los miércoles 9 y 23.
+ */
 export function schedule(seasonIndex, rank, opts) {
-  return DAYS_BY_RANK(rank).map(i => makeThreat(seasonIndex, i, rank, opts)).filter(t => t.type);
+  return daysFor(rank, opts?.extra || 0).map(i => makeThreat(seasonIndex, i, rank, opts)).filter(t => t.type);
 }
 /** Próxima amenaza que todavía no terminó (esta temporada o la siguiente). */
 export function nextThreat(now, rank, opts) {

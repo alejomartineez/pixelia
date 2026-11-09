@@ -53,6 +53,36 @@ function buildShape() {
   return { inIsland, depth };
 }
 
+/**
+ * Puntos del borde de la isla para las grietas que brillan (L1, city-grieta.js): columnas del borde con su normal hacia
+ * afuera y su profundidad, repartidos alrededor de la isla y siempre los mismos (la forma no depende del tema).
+ * Devuelve [{ x, z, nx, nz, depth }] en coordenadas de mundo (depth en unidades de mundo).
+ */
+let edgeCache = null;
+export function islandEdgeSpots(n = 6, seed = 7) {
+  if (!edgeCache) {
+    const { inIsland, depth } = buildShape();
+    const at = (i, k) => i >= 0 && k >= 0 && i < NC && k < NC && inIsland[i * NC + k];
+    edgeCache = [];
+    for (let i = 0; i < NC; i++) for (let k = 0; k < NC; k++) {
+      if (!at(i, k)) continue;
+      for (const d of DIRS) {
+        if (at(i + d.d[0], k + d.d[1])) continue;
+        const x = OFF + (i + 0.5) * VS, z = OFF + (k + 0.5) * VS;
+        edgeCache.push({ x: x + d.d[0] * VS / 2, z: z + d.d[1] * VS / 2, nx: d.d[0], nz: d.d[1], depth: depth[i * NC + k] * VS, ang: Math.atan2(z, x) });
+        break;
+      }
+    }
+    edgeCache.sort((a, b) => a.ang - b.ang);
+  }
+  const out = [], N = edgeCache.length;
+  for (let j = 0; j < n; j++) {
+    const f = ((j + hash2(j, seed, 41) * 0.6) / n + hash2(seed, 3, 9)) % 1;
+    out.push(edgeCache[Math.floor(f * N) % N]);
+  }
+  return out;
+}
+
 function layerColor(L, i, k, cl) {
   const wave = Math.round(Math.sin(i * 0.31) * 1.2 + Math.sin(k * 0.27) * 1.1);
   const h = hash2(i, k, L + 31);

@@ -148,8 +148,56 @@ export const SCENES = [
   { id: 'cap_banado', who: 'cartografa', trigger: ['chapter:banado'], title: 'El agua que respira', lines: ['En el Bañado de los Juncos el agua sube aunque no llueva. Eso es Marea suelta. Y algo se mueve abajo.'] },
   { id: 'cap_cerro', who: 'cartografa', trigger: ['chapter:cerro'], title: 'La mina sellada', lines: ['En el Cerro del Hierro hay una mina vieja de las Casas. Cavaron hasta el fondo, y algo quedó ahí abajo. Late.'] },
   { id: 'cap_costa', who: 'cartografa', trigger: ['chapter:costa'], title: 'Los faros apagados', lines: ['Los faros de la costa están apagados desde el Quiebre. Si encendemos uno, nos van a ver. No sé si eso es bueno.'] },
+
+  // --- La mina sellada y el Núcleo de Raíz (paso 6, L1) ---
+  // antes de bajar: el camino a la mina (al abrir el capítulo, cuando ya se puede ir al Cerro)
+  {
+    id: 'mina_camino', who: 'cartografa', trigger: ['chapter:cerro'], title: 'La mina sellada',
+    lines: [
+      'La entrada de la mina está en el fondo del Cerro del Hierro. La tapiaron las Casas, antes del Quiebre.',
+      'Salí con provisiones de sobra. La próxima salida al Cerro va derecho a la galería.',
+    ],
+  },
+  // al volver con el Núcleo: pantalla completa, y después la elección (story.js abre raiz-ui.js)
+  {
+    id: 'nucleo_1', who: 'narrador', epic: true, title: 'La galería honda', chain: ['nucleo_2'], trigger: ['raiz:found'], grant: { page: 'p6' },
+    lines: [
+      'Al fondo de la galería honda hay un muro tapiado con apuro. Detrás, la roca late.',
+      'Es una veta viva de Raíz, del tamaño de un corazón. Las Casas la dejaron a medio sacar.',
+      'Las paredes tienen marcas de agrimensor: líneas, números, una flecha que apunta hacia abajo.',
+    ],
+  },
+  {
+    id: 'nucleo_2', who: 'cartografa', epic: true, title: 'El Núcleo de Raíz',
+    lines: [
+      'Esto es lo que buscaban. Lo que quedó, mejor dicho.',
+      'Se le puede sacar mucho o poco. Lo que no se puede es hacer como que no lo vimos.',
+    ],
+  },
+  // el silencio de Vera cuando se habla de mapas (L2: pista, nunca confirmación)
+  {
+    id: 'mina_mapas', who: 'cartografa', trigger: ['raiz:chosen'], title: 'Las marcas de la pared',
+    lines: [
+      '¿Las marcas de la pared? Son de agrimensor. Alguien sabía muy bien por dónde iba la veta.',
+      '…',
+      'Hay que guardar el Núcleo antes de que oscurezca. Lo demás, otro día.',
+    ],
+  },
+  // la Grieta (L1): Vera la nota
+  { id: 'grieta_25', who: 'cartografa', trigger: ['grieta:25'], title: 'La Grieta', lines: ['Hay una fisura nueva en el borde, del lado del monte. De noche brilla. No me gusta cómo brilla.', 'Las amenazas la van a encontrar. Siempre encuentran lo que está flojo.'] },
+  { id: 'grieta_50', who: 'cartografa', trigger: ['grieta:50'], title: 'La Grieta', lines: ['La Grieta ya se ve desde la plaza. Y ahora la isla se desborda más seguido.', 'En el Invernadero se puede coser. Despacio y caro, como todo lo que vale.'] },
+  { id: 'grieta_75', who: 'cartografa', trigger: ['grieta:75'], title: 'La Grieta', lines: ['Así crujía el continente la última semana. Lo escuché una vez.', 'No quiero escucharlo de nuevo, {name}.'] },
+  { id: 'invernadero', who: 'cartografa', trigger: ['built:invernadero'], title: 'El Invernadero de Raíz', lines: ['La raíz ya está buscando la tierra de la ciudad. Lo que crezca acá aguanta la sequía y la helada.', 'Y si la isla se raja, desde acá se cose.'] },
 ];
 export const SCENE_BY_ID = Object.fromEntries(SCENES.map(s => [s.id, s]));
+/** Lo que dice Vera después de cada elección de extracción y cuando se cose la Grieta (líneas sueltas, L1). */
+export const RAIZ_LINES = {
+  sellar: 'Cerrada. Va a dar poco, pero la isla no se queja.',
+  medida: 'Lo justo. Si la isla se queja, la escuchamos.',
+  exprimir: 'Como quieras. Yo voy a mirar el borde todas las noches.',
+  sutura: 'La raíz cerró un tramo de la Grieta. Despacio, pero cerró.',
+  revisit: 'Mañana la salida al Cerro va a la mina. Pensá bien qué le vas a pedir.',
+};
 export const PROLOGUE = ['prologo_1', 'prologo_2'];
 export const CONTACT_IDS = ['ciudad', 'expedicion', 'combate', 'amenazas', 'elementos', 'rango', 'taller'];
 
@@ -179,17 +227,18 @@ export const QUEST_LINES = {
 };
 
 // ---------- Páginas del diario del último intendente (coleccionable) ----------
-// trigger: cuándo aparece (story.js); las que no tienen llegan con el Acto 1 completo (paso 6).
+// trigger: cuándo aparece (story.js). p4–p8 (paso 6): p4 al abrir La mina sellada, p5 al explorar una zona del Bañado,
+// p6 con el Núcleo de Raíz (la escena de la galería), p7 al abrir Los faros apagados y p8 al explorar una zona de la Costa.
 export const PAGES = [
   { id: 'p1', title: 'El día después', text: 'Escribo para que alguien sepa. Las Casas siguieron cavando hasta el último día, y nosotros robándoles hasta el último día. Cuando la tierra crujió, nadie soltó lo que tenía en la mano.' },
   { id: 'p2', title: 'Los lobos del arroyo', trigger: 'zone:bosque', text: 'Los lobos del arroyo no atacan por hambre. Les brillan los ojos como brillaba la veta. Algo los cambió, y no fue el miedo.' },
   { id: 'p3', title: 'El bote de abajo', trigger: 'rank:2', text: 'Hoy subió un bote desde abajo. Traía gente que no debería estar viva. Dicen que en el Bajo Mundo hay aldeas enteras, y que no nos perdonan.' },
-  { id: 'p4', title: 'Los permisos', text: 'La Cofradía de la Veta pagaba bien por cada piedra de Raíz. Yo firmé los permisos. Que conste.' },
+  { id: 'p4', title: 'Los permisos', trigger: 'chapter:cerro', text: 'La Cofradía de la Veta pagaba bien por cada piedra de Raíz. Yo firmé los permisos. Que conste.' },
   // p5–p8 siembran la culpa de Vera (L2, pista falsa) y el giro final (L4) sin revelarlos
-  { id: 'p5', title: 'El Bañado', text: 'El agua del Bañado sube de noche y baja de día. No es la luna: algo respira debajo. Los mapas del archivo ya lo marcaban, con una letra prolija que no era la mía.' },
+  { id: 'p5', title: 'El Bañado', trigger: 'zone:banado', text: 'El agua del Bañado sube de noche y baja de día. No es la luna: algo respira debajo. Los mapas del archivo ya lo marcaban, con una letra prolija que no era la mía.' },
   { id: 'p6', title: 'La galería honda', text: 'Las Casas no cavaban donde había más Raíz. Seguían una línea que solo ellas entendían, siempre debajo de sus tierras. Sellamos la galería honda por vergüenza, no por miedo.' },
-  { id: 'p7', title: 'El faro', text: 'Si alguien enciende el faro, que sepa que los barcos del cielo también lo ven. Y que no todos los que subieron lo hicieron por suerte.' },
-  { id: 'p8', title: 'La llave', text: 'Alguien sabe por qué subimos nosotros y no los de abajo. Vive entre la gente, sonríe y no lo dice. Le dejé la llave del archivo; ojalá me equivoque.' },
+  { id: 'p7', title: 'El faro', trigger: 'chapter:costa', text: 'Si alguien enciende el faro, que sepa que los barcos del cielo también lo ven. Y que no todos los que subieron lo hicieron por suerte.' },
+  { id: 'p8', title: 'La llave', trigger: 'zone:costa', text: 'Alguien sabe por qué subimos nosotros y no los de abajo. Vive entre la gente, sonríe y no lo dice. Le dejé la llave del archivo; ojalá me equivoque.' },
 ];
 export const PAGE_BY_ID = Object.fromEntries(PAGES.map(p => [p.id, p]));
 
@@ -297,6 +346,9 @@ export const MANUAL = [
     id: 'elementos', name: 'Los elementos', ic: 'sparkle', open: (s) => (s.story?.elements || []).length > 0,
     items: [
       ['sparkle', 'Elementos', 'Raíz, Marea, Brasa y Céfiro. Cada uno da un efecto permanente a la isla y una habilidad a quien lidera.'],
+      ['🌱', 'Raíz', 'Más resistencia a la sequía y la helada, y el <b>Invernadero de Raíz</b>, que da hierbas. Rinde según cuánto le sacaste: sellada la mitad, exprimida el doble.'],
+      ['bolt', 'La Grieta', 'Sacarle de más a un elemento raja la isla (0 a 100). Con Grieta, las amenazas pegan más fuerte (desde 25) y llegan más seguido (desde 40). Se cose en el Invernadero, despacio y caro.'],
+      ['map', 'Volver a la mina', 'En la Expedición, con el Cerro del Hierro elegido, se puede pedir que la próxima salida vaya a la mina para cambiar la extracción.'],
     ],
   },
 ];

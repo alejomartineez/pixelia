@@ -11,7 +11,8 @@
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 import { isOpen } from '../core/unlocks.js';
-import { SCENES, SCENE_BY_ID, ACTS, PAGES, PAGE_BY_ID, QUEST_LINES, AUTO_CLAIM, PROLOGUE, CHARACTERS } from './story-data.js';
+import { SCENES, SCENE_BY_ID, ACTS, PAGES, PAGE_BY_ID, QUEST_LINES, AUTO_CLAIM, PROLOGUE, CHARACTERS, RAIZ_LINES } from './story-data.js';
+import { raizState } from '../core/raiz.js';
 
 const S = () => store.state;
 let ctxRef = null, hooks = {};
@@ -19,6 +20,7 @@ let ui = null;               // story-ui.js (carga diferida)
 const queue = [];            // ids de escenas esperando
 const barks = [];            // {text, who}
 let playing = false, pumpTimer = 0;
+let raizUi = null;           // raiz-ui.js (la elección de extracción, carga diferida)
 
 // ---------- Estado ----------
 export function storyState(s = S()) {
@@ -138,12 +140,29 @@ async function pump() {
     try {
       markSeen(id);   // vista al aparecer: si se recarga a la mitad, no se repite
       if (sc.grant) store.grant(sc.grant, 'story');
-      const res = await (await loadUi()).showScene(ctxRef, sc);
+      let res;
+      if (sc.epic) {
+        // pantalla completa desde la cola (con las que encadena: sc.chain); la llegada espera mientras tanto
+        const list = [sc, ...(sc.chain || []).map(c => SCENE_BY_ID[c]).filter(Boolean)];
+        for (const c of list.slice(1)) { markSeen(c.id); if (c.grant) store.grant(c.grant, 'story'); }
+        epicOn = true;
+        try { res = await (await loadUi()).showEpic(ctxRef, list); } finally { epicOn = false; }
+      } else res = await (await loadUi()).showScene(ctxRef, sc);
       // se fue de la ciudad con la hoja abierta: vuelve a salir al regresar
       if (res === 'away') { delete storyState().seen[id]; queue.unshift(id); return; }
       bus.emit('story:scene', { id, result: res });
       if (res === 'action' && sc.action?.run === 'prologue') await playPrologue({ replay: true });
     } catch (e) { console.error('[story] escena', id, e); }
+    finally { playing = false; schedule(600); }
+    return;
+  }
+  // la elección de extracción en la mina (L1): después de las escenas, con la ciudad libre
+  if (!queue.length && choicePending() && (hooks.idle?.() ?? true) && !ui?.busy()) {
+    playing = true;
+    try {
+      raizUi ||= await import('./raiz-ui.js');
+      await raizUi.openExtraction(ctxRef, { first: !raizState().mode });
+    } catch (e) { console.error('[story] elección de la Raíz', e); }
     finally { playing = false; schedule(600); }
     return;
   }
@@ -153,7 +172,18 @@ async function pump() {
     try { (await loadUi()).bark(ctxRef, b); } catch (e) { console.warn('[story] bark', e); }
     barkUntil = Date.now() + Math.min(b.ms || 4000, 4000);
   }
-  if (queue.length || barks.length) schedule(queue.length ? 700 : Math.max(300, barkUntil - Date.now()));
+  if (queue.length || barks.length || choicePending()) schedule(queue.length || choicePending() ? 700 : Math.max(300, barkUntil - Date.now()));
+}
+/** Hay una elección de extracción abierta (se encontró el Núcleo o se volvió a la mina) y la escena del Núcleo ya pasó. */
+function choicePending() {
+  try { const r = raizState(); return !!(r.found && r.pending) && (!!r.mode || hasSeen('nucleo_1')); } catch { return false; }
+}
+/** Una línea suelta de la cartógrafa (no bloquea). */
+export function say(text, ms = 4800) {
+  if (!text) return;
+  barks.push({ who: 'cartografa', text: fill(text), ms: Math.max(ms, 3000 + text.length * 30) });
+  while (barks.length > 2) barks.shift();
+  schedule(300);
 }
 
 /**
@@ -266,13 +296,19 @@ export function initStory(ctx, h = {}) {
   bus.on('combat:lost', () => trigger('combat:first'));
   bus.on('quest:claimed', ({ id } = {}) => { questBark(id); trigger('quest:' + id); updateChapter(); });
   bus.on('quests:changed', () => setTimeout(autoClaim, 250));
+  // la Raíz (L1): el Núcleo, la elección, la Grieta que Vera nota y la obra que la cose
+  bus.on('raiz:found', ({ first } = {}) => { if (first) trigger('raiz:found'); else schedule(900); });
+  bus.on('raiz:choice', ({ mode, prev } = {}) => { if (!prev) trigger('raiz:chosen'); else if (mode !== prev) say(RAIZ_LINES[mode]); if (!prev) say(RAIZ_LINES[mode]); });
+  bus.on('world:grieta', ({ to } = {}) => { for (const t of [25, 50, 75]) if (to >= t) trigger('grieta:' + t); });
+  bus.on('raiz:sutura', () => say(RAIZ_LINES.sutura));
+  bus.on('raiz:revisit', ({ on } = {}) => { if (on) say(RAIZ_LINES.revisit); });
   bus.on('stats:changed', ({ key } = {}) => { if (key === 'threats') setTimeout(autoClaim, 250); });
   bus.on('scene:changed', ({ id, params } = {}) => {
     if (id === 'city' && !params?.visit) { setTimeout(autoClaim, 700); updateChapter(); schedule(1200); }
     else ui?.leave();   // la hoja de la cartógrafa es de la ciudad: no queda encima de otra escena
   });
   // red de seguridad: objetivos absolutos (población, rango) que cambian sin evento propio
-  setInterval(() => { autoClaim(); updateChapter(); }, 4000);
+  setInterval(() => { autoClaim(); updateChapter(); if (choicePending()) schedule(); }, 4000);
 }
 const safe = (fn) => { try { return !!fn(); } catch { return false; } };
 const rankOf = (s) => s.city?.buildings?.find(b => b.id === 'castillo')?.level || 1;

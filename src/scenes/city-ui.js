@@ -4,6 +4,7 @@ import { infoBoxes as threatInfoBoxes } from '../threats/threat-ui.js';
 import { thumbnail } from '../city/models.js';
 import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL, RANK_REQ_LABELS, MONUMENTS, ERAS } from '../core/data.js';
 import { cycleEffects, cycleUpgradeLines } from '../expedition/expedition.js';
+import * as RZ from '../core/raiz.js';
 import { HOME_LEVELS, homeLevelDef, comfortInfo } from '../home/furniture.js';
 import { icon } from '../core/icons.js';
 import * as chests from '../chests/chests.js';
@@ -472,7 +473,7 @@ export function openInfo(S, uid) {
     // ----- producción -----
     const ps = E.producerStatus(b, now);
     if (ps.producer && !busy && !ps.damaged) {   // dañado: lo explica la caja de amenazas (más abajo)
-      const cur = ps.currency === 'gems' ? 'gem' : ps.currency === 'prov' ? '🍞' : 'coin';
+      const cur = ps.currency === 'gems' ? 'gem' : ps.currency === 'prov' ? '🍞' : ps.currency === 'hierbas' ? '🌿' : 'coin';
       const box = ui.h('div.cx-box' + (ps.ready ? '.ready' : ''));
       box.append(ui.h('h4', { html: icon(cur, 20) + 'Producción' }));
       box.append(ui.h('div.line', { html: `<span>Cada <b>${E.fmtTime(ps.cycleSec)}</b></span><span class="cost">+${E.fmtNum(ps.perCycle)} ${icon(cur, 16)}</span>` }));
@@ -613,6 +614,32 @@ export function openInfo(S, uid) {
         ctx.audio.sfx('build');
         m.close();
       }, !cr.ok && !cr.poor));
+      body.append(box);
+    }
+
+    // ----- Invernadero de Raíz: extracción, Grieta y la obra de Raíz que la cose (L1) -----
+    if (d.id === 'invernadero' && !building) {
+      const ri = RZ.suturaInfo(ctx.state);
+      const rs = RZ.raizState(ctx.state);
+      const box = ui.h('div.cx-box.up');
+      box.append(ui.h('h4', { html: icon('🌱', 20) + 'La Raíz y la Grieta' }));
+      const ex = RZ.EXTRACTION[rs.mode];
+      box.append(ui.h('div.line', { html: `<span>${icon(ex?.ic || 'lock', 14)} Extracción: <b>${ui.esc(ex?.name || 'sin elegir')}</b> · rinde ×${String(RZ.raizMult(ctx.state)).replace('.', ',')}</span>` }));
+      box.append(ui.h('div.line', { html: `<span>${icon('bolt', 14)} Grieta <b>${Math.round(ri.grieta)}</b>/100: ${ui.esc(RZ.grietaText(ri.grieta))}</span>` }));
+      const pw = RZ.grietaPower(ri.grieta), xt = RZ.grietaExtra(ri.grieta);
+      if (pw || xt) box.append(ui.h('div.line', { html: `<span class="muted">Las amenazas llegan con +${pw} de fuerza${xt ? ` y hay ${xt} más por temporada` : ''}.</span>` }));
+      if (ri.active) box.append(ui.h('div.line', { html: `<span>${icon('clock', 14)} La raíz está cosiendo: −${ri.heal} de Grieta en ${E.fmtTime(Math.max(1, Math.round((ri.ends - Date.now()) / 1000)))}</span>` }));
+      else {
+        box.append(ui.h('div.line', { html: `<span>${icon('sparkle', 14)} Obra de Raíz: cose ${ri.heal} de Grieta</span><span class="cost">${ui.costHtml(ri.cost, 18)}</span><span class="muted">${icon('clock', 14)} ${ri.hours} h</span>` }));
+        if (!ri.can.ok && ri.can.reason !== 'No te alcanza') box.append(ui.h('div.req', { html: icon(ri.can.reason === 'Faltan materiales' ? 'monument' : 'info', 14) + ui.esc(ri.can.reason) }));
+        box.append(btn('Coser la Grieta', 'second', 'hammer', () => {
+          const res = RZ.startSutura(ctx.state);
+          if (res.error) { ctx.audio.sfx('error'); ui.toast(res.error, { icon: 'info' }); return; }
+          ctx.audio.sfx('build');
+          ui.toast('La raíz empezó a coser la Grieta', { icon: '🌱', type: 'good' });
+          m.close();
+        }, !ri.can.ok && ri.can.reason !== 'No te alcanza'));
+      }
       body.append(box);
     }
 

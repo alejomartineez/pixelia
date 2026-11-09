@@ -101,7 +101,8 @@ export function openThreatPanel(ctx, hooks = {}) {
   const when = t.id === 'sim'
     ? (st.phase === 'hoy' ? 'Llegó el simulacro: hoy podés enfrentarlo.' : `Un simulacro para practicar, ${st.when}.`)
     : st.phase === 'hoy' ? 'Llegó. Podés enfrentarla hasta las 23:59.' : `Llega el sábado, ${st.when}.`;
-  body.append(ui.h('p.th-when', { html: `${ui.esc(when)} Fuerza ${st.f}.` }));
+  body.append(ui.h('p.th-when', { html: `${ui.esc(when)} Fuerza ${st.f}${st.g ? ` (+${st.g} por la Grieta)` : ''}.` }));
+  if (info.list?.length && (st.type === 'sequia' || st.type === 'helada') && ctx.state.world?.raiz?.mode) body.append(ui.h('p.th-when', { html: `${icon('🌱', 14)} La Raíz ayuda contra ${st.type === 'sequia' ? 'la sequía' : 'la helada'}.` }));
   if (st.phase === 'señales' || st.phase === 'hoy') body.append(ui.h('p.th-tip', {}, def.sign));
   // preparación
   const prep = ui.h('div.cx-box.th-prep');

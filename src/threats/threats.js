@@ -3,7 +3,8 @@
 // premios y eventos del bus.
 //
 // Estado (state.threats):
-//   seen: { [id]: { type, f, start, end, at } }   avisos ya dados (fijan tipo y fuerza: no cambian si subís de rango)
+//   seen: { [id]: { type, f, g, start, end, at } }   avisos ya dados (fijan tipo y fuerza: no cambian si subís de rango)
+//                         g: la parte de la fuerza que pone la Grieta (L1, src/core/raiz.js); el premio usa f − g
 //   results: { [id]: { pct, mode, at, damaged:[uid], type, f } }   las últimas 12
 //   report: [id]          resueltas solas, pendientes de mostrar en "Mientras no estabas"
 //   mended: [uid]         arreglados por la vecindad (72 h), pendientes de contar
@@ -14,6 +15,7 @@
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 import * as E from '../core/economy.js';
+import { syncGrieta, grietaPower, grietaExtra, raizResist } from '../core/raiz.js';
 import { BUILDING_BY_ID, DEFENSES, REGION_MAT_IDS, RESERVES } from '../core/data.js';
 import * as Cal from './threat-calendar.js';
 import * as R from './threat-rules.js';
@@ -110,7 +112,12 @@ export function publicThreat(state = S(), now = nowMs()) {
 }
 const rank = (state = S()) => E.townRank(state);
 // Observatorio terminado (bonus threatWarn, DESIGN-CORE.md §5.4): el aviso sale 2 días antes (WARN_DAYS_OBSERVATORY)
-const calOpts = (state = S()) => ({ observatory: (() => { try { return E.monumentBonus('threatWarn', state) > 0; } catch { return false; } })() });
+// La Grieta (L1): suma amenazas por temporada (grietaExtra) y fuerza a cada una al avisarla (grietaPower)
+const grietaNow = (state = S(), now = nowMs()) => { try { return syncGrieta(state, now); } catch { return 0; } };
+const calOpts = (state = S()) => ({
+  observatory: (() => { try { return E.monumentBonus('threatWarn', state) > 0; } catch { return false; } })(),
+  extra: grietaExtra(grietaNow(state)),
+});
 
 // ---------- Vista plana de la ciudad (lo único que ven las reglas) ----------
 const TREES = new Set(['arbol', 'cerezo']);
@@ -134,7 +141,10 @@ export function cityView(state = S(), now = Date.now()) {
     return { uid: b.uid, id: b.id, x: b.x, z: b.z, w, d: dd, era, level: b.level || 1, cat: d.cat, prov: !!d.prod?.prov,
       wood: era === 1 && E.hasEra(b), tree: TREES.has(b.id), building: E.isConstructing(b, now), height: estHeight(b), damaged: !!b.damaged };
   });
-  return { bounds: { min: L.min, max: L.max }, buildings };
+  // la Raíz da resistencia a la sequía y a la helada (más con más extracción)
+  let mods = null;
+  try { const sq = raizResist('sequia', state), he = raizResist('helada', state); if (sq || he) mods = { eff: { sequia: sq, helada: he } }; } catch {}
+  return { bounds: { min: L.min, max: L.max }, buildings, mods };
 }
 
 // ---------- Calendario de esta partida ----------
@@ -142,7 +152,10 @@ export function cityView(state = S(), now = Date.now()) {
 function fixed(t, state = S()) {
   if (!t) return null;
   const s = ts(state).seen[t.id];
-  return s ? { ...t, type: s.type, f: s.f } : { ...t, f: t.id === 'sim' ? SIM.f : rank(state) };
+  if (s) return { ...t, type: s.type, f: s.f, g: s.g || 0 };
+  if (t.id === 'sim') return { ...t, f: SIM.f, g: 0 };
+  const g = grietaPower(grietaNow(state));
+  return { ...t, f: rank(state) + g, g };
 }
 function simThreat(state = S()) {
   const sim = ts(state).sim;
@@ -173,7 +186,7 @@ export function threatStatus(now = nowMs(), state = S()) {
   const info = R.prepInfo(t.type, cityView(state, now), state.reserves || {}, t.f);
   const st = ts(state);
   return {
-    t, phase, when: Cal.whenText(t, now), type: t.type, def: THREAT_TYPES[t.type], name: threatName(t), f: t.f, info,
+    t, phase, when: Cal.whenText(t, now), type: t.type, def: THREAT_TYPES[t.type], name: threatName(t), f: t.f, g: t.g || 0, info,
     active: st.active && st.active.id === t.id ? st.active : null,
     canFace: phase === 'hoy' && !st.results[t.id] && info.enRiesgo > 0, visible: phase !== 'lejos', help: helpFor(t.id, state),
     reserve: reserveFor(t.type), reserveName: RESERVES[reserveFor(t.type)]?.name,
@@ -184,9 +197,9 @@ export function threatStatus(now = nowMs(), state = S()) {
 function announce(t, state = S(), now = nowMs()) {
   const st = ts(state);
   if (st.seen[t.id]) return;
-  st.seen[t.id] = { type: t.type, f: t.f, start: t.start, end: t.end, at: now };
+  st.seen[t.id] = { type: t.type, f: t.f, g: t.g || 0, start: t.start, end: t.end, at: now };
   store.markDirty();
-  bus.emit('threat:announced', { id: t.id, type: t.type, day: t.day, at: t.start, f: t.f });
+  bus.emit('threat:announced', { id: t.id, type: t.type, day: t.day, at: t.start, f: t.f, g: t.g || 0 });
 }
 /** Simulacro del tutorial: se avisa al llegar a Caserío (una sola vez). */
 function ensureSim(state = S(), now = nowMs()) {
@@ -205,7 +218,7 @@ const pickMats = (type, n, rand = Math.random) => {
   for (let i = 0; i < n; i++) { const id = i < Math.ceil(n / 2) ? rep : REGION_MAT_IDS[Math.floor(rand() * REGION_MAT_IDS.length)]; out[id] = (out[id] || 0) + 1; }
   return out;
 };
-function applyResult({ id, type, f, pct, mode, damaged, enRiesgo }, state = S(), now = nowMs()) {
+function applyResult({ id, type, f, g = 0, pct, mode, damaged, enRiesgo }, state = S(), now = nowMs()) {
   const st = ts(state);
   if (st.results[id]) return st.results[id];
   for (const uid of damaged) {
@@ -216,8 +229,10 @@ function applyResult({ id, type, f, pct, mode, damaged, enRiesgo }, state = S(),
   }
   // premio (§3.7) y chispas del Pase. Una amenaza con menos blancos es más chica: el premio también (con nada en riesgo,
   // solo las 2 gemas de consuelo), así no conviene tener la ciudad vacía de lo que la amenaza golpea.
-  const rw = rewardFor(pct, Math.max(1, f));
-  const size = Math.max(0, Math.min(1, (enRiesgo ?? AT_RISK_BASE + f) / (AT_RISK_BASE + Math.max(1, f))));
+  // la fuerza que pone la Grieta (g) trae más daño, no más premio
+  const fr = Math.max(1, f - g);
+  const rw = rewardFor(pct, fr);
+  const size = Math.max(0, Math.min(1, (enRiesgo ?? AT_RISK_BASE + fr) / (AT_RISK_BASE + fr)));
   const reward = { gems: Math.max(2, Math.round(rw.gems * size)) };
   if (rw.coins && size > 0) reward.coins = Math.round(rw.coins * size);
   if (rw.mats && size > 0) reward.mats = pickMats(type, Math.max(1, Math.round(rw.mats * size)));
@@ -232,7 +247,7 @@ function applyResult({ id, type, f, pct, mode, damaged, enRiesgo }, state = S(),
   if (mode === 'jugada') store.inc('threatsPlayed');
   store.setMax('threatBest', pct);
   const help = helpFor(id, state).names;
-  const res = { pct, mode, at: now, damaged: [...damaged], type, f, reward, sparks, title, help };
+  const res = { pct, mode, at: now, damaged: [...damaged], type, f, g, reward, sparks, title, help };
   st.results[id] = res;
   // se guardan las últimas 12
   const ids = Object.keys(st.results).sort((a, b) => st.results[b].at - st.results[a].at);
@@ -241,7 +256,7 @@ function applyResult({ id, type, f, pct, mode, damaged, enRiesgo }, state = S(),
   if (id === 'sim' && st.sim) st.sim.done = true;
   if (st.active?.id === id) st.active = null;
   store.markDirty();
-  bus.emit('threat:resolved', { id, type, pct, mode, damaged: [...damaged], reward });
+  bus.emit('threat:resolved', { id, type, pct, mode, damaged: [...damaged], reward, g });
   bus.emit('quests:changed');
   return res;
 }
@@ -254,7 +269,7 @@ function resolveAuto(t, state = S(), now = nowMs()) {
   const a = R.autoResolve(Math.min(1, info.prep + helpFor(t.id, state).bonus), t.f, info.enRiesgo, Math.random, info.have);
   const resId = reserveFor(t.type);
   if (a.used && resId) store.spend({ reserves: { [resId]: a.used } }, 'threat');
-  return applyResult({ id: t.id, type: t.type, f: t.f, pct: a.pct, mode: 'auto', damaged: R.pickDamaged(info, a.damaged), enRiesgo: info.enRiesgo }, state, now);
+  return applyResult({ id: t.id, type: t.type, f: t.f, g: t.g || 0, pct: a.pct, mode: 'auto', damaged: R.pickDamaged(info, a.damaged), enRiesgo: info.enRiesgo }, state, now);
 }
 /** Al cargar y en cada tick: avisos, simulacro, resolución de lo que ya pasó y arreglos de la vecindad. */
 /** Registro de rangos ({r, at}) para saber qué amenazas te tocaban en cada momento. Sin registro, el rango actual. */
@@ -279,7 +294,7 @@ export function resolvePending(now = nowMs(), state = S()) {
   // las avisadas que ya terminaron
   for (const [id, s] of Object.entries(st.seen)) {
     if (id === 'sim' || st.results[id] || s.end > now) continue;
-    resolveAuto({ id, type: s.type, f: s.f, start: s.start, end: s.end }, state, now);
+    resolveAuto({ id, type: s.type, f: s.f, g: s.g || 0, start: s.start, end: s.end }, state, now);
   }
   // las que terminaron hace poco sin que se viera el aviso (la app estuvo cerrada toda la semana)
   logRank(state, now);
@@ -345,7 +360,7 @@ function finishDefense(state = S(), now = nowMs(), withBot = false) {
   const resId = reserveFor(d.type);
   if (d.reservesUsed && resId) store.spend({ reserves: { [resId]: Math.min(d.reservesUsed, state.reserves?.[resId] || 0) } }, 'threat');
   const t = st.seen[d.id] || {};
-  return applyResult({ id: d.id, type: d.type, f: d.f || t.f || 1, pct: res.pct, mode: 'jugada', damaged: res.damaged, enRiesgo: res.enRiesgo }, state, now);
+  return applyResult({ id: d.id, type: d.type, f: d.f || t.f || 1, g: t.g || 0, pct: res.pct, mode: 'jugada', damaged: res.damaged, enRiesgo: res.enRiesgo }, state, now);
 }
 /** Deja la defensa para después (se retoma el mismo día). */
 export function pauseDefense() { store.markDirty(); }

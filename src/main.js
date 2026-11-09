@@ -24,6 +24,7 @@ import { net } from './online/net.js';
 import * as home from './home/furniture.js';
 import * as expedition from './expedition/expedition.js';
 import * as threats from './threats/threats.js';   // Amenazas (Fase 3)
+import { initRaiz } from './core/raiz.js';   // Núcleo de Raíz y Grieta (PLAN-QUIEBRE L1)
 import * as unlocks from './core/unlocks.js';      // apertura escalonada (Fase 5b)
 import { isDesktop, initDesktop } from './core/desktop.js';
 import { initSettings } from './core/settings.js';   // juego de PC (Tauri)
@@ -341,7 +342,7 @@ function applyDebugParams() {
 }
 
 function initProgression() {
-  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
+  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['raiz', initRaiz], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
     ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds],
     ['story', () => story.initStory(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length, inCity: () => cityReady() && !document.body.classList.contains('no-hud') })],
     ['light', () => initWorldLight({ state: () => store.state, bus, rank: () => economy.townRank(store.state), markDirty: () => store.markDirty(),

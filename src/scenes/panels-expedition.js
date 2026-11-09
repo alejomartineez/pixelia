@@ -6,6 +6,7 @@ import { icon } from '../core/icons.js';
 import { REGION_MATERIALS, RESOURCES } from '../core/data.js';
 import { REGIONS, ROLES, ROLE_IDS, EQUIPMENT, MATERIALS as EXP_MATS } from '../expedition/exp-data.js';
 import { openShell } from './panels-common.js';
+import * as RZ from '../core/raiz.js';
 
 const CSS = `
 .pnl-ex .pnl-ex-sec { margin-top: 10px; }
@@ -108,6 +109,27 @@ export function openExpedition(ctx, params = {}) {
       + REGION_MATERIALS.map(m => `<span title="${esc(m.name)}">${icon(m.icon, 20)}${fmt(mats[m.id] || 0)}</span>`).join('')
       + `<span title="Planos">${icon(RESOURCES.planos.icon, 20)}${fmt(ctx.state.planos || 0)}</span>` }));
     el.append(h('p.pnl-ex-tip', { html: `${icon('info', 16)}<span>Las provisiones salen de la Huerta y los otros productores. Una salida normal lleva hasta ${st.provMax}; lo que sobra vuelve.</span>` }));
+    return el;
+  }
+
+  // la mina sellada del Cerro (L1): adónde va la salida normal y, con el Núcleo ya encontrado, volver a elegir
+  function mineCard() {
+    if (region !== 'cerro') return null;
+    const goal = RZ.mineObjective(ctx.state);
+    const rs = RZ.raizState(ctx.state);
+    if (!rs.found && !goal) return null;
+    const el = h('div.card.pnl-ex-sec', { 'data-ex': 'mina' });
+    el.append(h('h4.pnl-ex-h', { html: `${icon('🌱', 20)}<span>La mina sellada</span>${rs.found ? `<small>Raíz: ${esc(RZ.EXTRACTION[rs.mode]?.name || 'sin elegir')} · Grieta ${Math.round(RZ.grieta(ctx.state))}</small>` : ''}` }));
+    if (!rs.found) {
+      el.append(h('p.pnl-ex-tip', { html: `${icon('info', 16)}<span>La salida normal al Cerro va a la mina: en el fondo de la galería está lo que buscan todos.</span>` }));
+      return el;
+    }
+    el.append(h('p.pnl-ex-tip', { html: `${icon('info', 16)}<span>${rs.revisit ? 'La próxima salida normal al Cerro va a la mina: ahí se puede subir o bajar la extracción.' : 'Para cambiar cuánto le sacás a la Raíz hay que volver a la mina.'}</span>` }));
+    el.append(h('button.btn.small.' + (rs.revisit ? 'ghost' : 'second'), { html: rs.revisit ? 'No ir a la mina' : 'Volver a la mina', onclick: () => {
+      RZ.setRevisit(!rs.revisit, ctx.state);
+      audio.sfx('tap');
+      render();
+    } }));
     return el;
   }
 
@@ -231,7 +253,10 @@ export function openExpedition(ctx, params = {}) {
       a.append(b);
       body.append(a);
     }
-    body.append(walletCard(st), regionsCard(st), partyCard(st), equipCard(st));
+    body.append(walletCard(st), regionsCard(st));
+    const mc = mineCard();
+    if (mc) body.append(mc);
+    body.append(partyCard(st), equipCard(st));
     const ri = st.regions.find(r => r.id === region);
     const cargo = X.cargoMax(equip);
     const morale = 8 + (party.includes('sanidad') ? 2 : 0);
