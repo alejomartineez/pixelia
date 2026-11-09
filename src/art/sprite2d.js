@@ -143,7 +143,8 @@ function rigOf(anim, f, kind) {
   const r = { main: 'hold', off: 'down', wdir: 'up', eyes: 'open' };
   const set = (o) => Object.assign(r, o);
   if (anim === 'idle') { if (f === 1) set({ breath: 1 }); }
-  else if (anim === 'walk') set([{ lUp: 2, offDY: -1 }, { bob: -1 }, { rUp: 2, mainDY: -1 }, { bob: -1 }][f]);
+  // al caminar los brazos van al revés que las piernas: el de adelante sale y sube cuando pisa la pierna de atrás
+  else if (anim === 'walk') set([{ lUp: 2, main: 'swing', off: 'back', offDY: -1 }, { bob: -1 }, { rUp: 2, main: 'back', off: 'swing', mainDY: -1 }, { bob: -1 }][f]);
   else if (anim === 'attack') {
     const A = {
       melee: [{ main: 'up', wdir: 'raise' }, { main: 'strike', wdir: 'strike', dx: 1 }, { main: 'hold', wdir: 'up' }],
@@ -201,13 +202,16 @@ function drawWeapon(L, acc, dir, hx, hy, bow) {
   let x = hx, y = hy;
   let backRoom = room(-dx, -dy);
   for (const [c, n] of W.back || []) for (let k = 0; k < n && backRoom > 0; k++, backRoom--) { x -= dx; y -= dy; put(L, x, y, c); }
-  const total = W.shaft.reduce((a, [, n]) => a + n, 0), over = total - (room(dx, dy) - (W.head ? 3 : 0));
+  // la cabeza del arma tiene que entrar entera en el cuadro: el asta se acorta lo que haga falta (el martillo en el
+  // golpe perdía la cabeza contra el piso)
+  const Hd = W.head?.[dir], margin = Hd ? Math.max(3, Hd.rows.length + Math.min(0, Hd.oy || 0) + 1) : 0;
+  const total = W.shaft.reduce((a, [, n]) => a + n, 0), over = total - (room(dx, dy) - margin);
   const shaft = over > 0 ? W.shaft.map(([c, n], i) => [c, i === W.shaft.length - 1 ? Math.max(2, n - over) : n]) : W.shaft;
   x = hx - dx; y = hy - dy;
   for (const [c, n] of shaft) for (let k = 0; k < n; k++) {
     x += dx; y += dy;
     if (c === 'guard') { put(L, x, y, 'b'); put(L, x + px, y + py, '8'); put(L, x - px, y - py, 'B'); }
-    else if (c === 'blade') { put(L, x, y, 'M'); if (!(W.tip && k === n - 1)) put(L, x + px, y + py, '5'); }
+    else if (c === 'blade') { put(L, x, y, 'M'); if (!(W.tip && k === n - 1)) put(L, x + px, y + py, k % 4 === 3 ? '5' : 'm'); }
     else put(L, x, y, c);
   }
   const H = W.head?.[dir];

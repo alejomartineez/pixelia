@@ -165,6 +165,26 @@ durante 1,5 s.
   - originales de Freesound en calidad completa.
 - `assets/` entra al precache de `sw.js` (`gen-sw-core.mjs`) y al juego de PC (`desktop/stage.mjs`).
 
+## Pistas grabadas y narrador (La Travesía, paso 3a)
+- **`audio.track(id, { loop, fade, fallback })`** toca `track/<id>` del manifest (`.m4a`, categoría `music`) por el bus
+  de música, en loop, y frena la música compuesta mientras suena. Se baja durante el splash junto con lo demás.
+  `audio.track(null)` la corta con fundido y `audio.music(…)` vuelve a la compuesta. Si la pista todavía no existe,
+  devuelve `false` y toca el `fallback` (si se pasa). Así la música de Suno entra sin tocar código: se convierte con
+  `prepare.mjs` y se suma al manifest como `track/intro`.
+- **Narrador.** `tools/audio/narrate.mjs` pide cada línea de `src/cinema/narration.js` a Gemini TTS
+  (`gemini-3.8-flash-tts`, con respaldo en los 2.5) con notas de dirección: voz grave, épica y misteriosa, que
+  entusiasme, en rioplatense sobrio.
+  - Una indicación suelta delante del texto el modelo la lee en voz alta; el formato de perfil, escena, notas y
+    `TRANSCRIPT`, no. Por las dudas, cada toma se transcribe con `gemini-3.8-flash` y se repite si dice de más.
+  - `--samples` deja muestras en `shots/voice/`. `--script intro --voice <voz>` graba en
+    `assets/audio/voice/` con `prepare.mjs --voice`: recorta silencios, normaliza a −18 LUFS, mono, AAC 96 kbps y
+    entrada `voice/<id>` (categoría `voice`, con su duración) en el manifest.
+  - La clave sale de `GEMINI_API_KEY` (entorno o la línea del `.env` de SignBoox) y va solo en el encabezado
+    `x-goog-api-key`; nunca se imprime ni se guarda.
+- **`audio.voice(id)`** toca `voice/<id>` por el bus de voz (`volVoice`) y baja la música a 0,35 mientras habla.
+  `audio.voiceDur(id)` y `audio.prepareVoice(ids)` le dan al motor de cinemáticas la duración real para estirar los
+  subtítulos. Sin grabación (o sin audio habilitado) devuelve `null` y el subtítulo usa su tiempo de lectura.
+
 ## Pruebas y escucha
 - `node tools/test-audio.mjs` (está en `npm test`). Prueba:
   - la teoría y que las piezas estén bien formadas;

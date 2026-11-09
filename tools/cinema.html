@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galería de viñetas 2D</title>
+<link rel="icon" href="data:,">
+<script type="importmap">{ "imports": { "three": "../vendor/three.min.js" } }</script>
+<style>
+  html, body { margin: 0; background: #16151a; font: 12px sans-serif; color: #e8e0d2; }
+  body { padding: 10px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  figure { margin: 0; text-align: center; font-size: 11px; color: #b8ad9c; }
+  canvas { image-rendering: pixelated; display: block; }
+  #play canvas { width: 960px; height: 540px; }
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script type="module">
+// Galería de las viñetas en pixel art (src/cinema/pixel2d.js), para revisarlas cuadro a cuadro antes de usarlas:
+//   cinema.html?v=forcejeo                → la viñeta en vivo, a 3× (clic: vuelve a empezar)
+//   cinema.html?v=forcejeo&view=strip&k=2 → tira de cuadros cada 0,5 s (k: escala entera)
+//   cinema.html?v=forcejeo&t=3.2&k=4      → un instante a k×
+// Captura: GALLERY_PAGE=cinema.html node gallery-shot.mjs "v=forcejeo&view=strip&k=2" ../shots/vineta.png 1400 1200 600
+import { createVignette, VIGNETTES, W2D, H2D } from '../src/cinema/pixel2d.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('v') || 'forcejeo', view = q.get('view') || (q.has('t') ? 'still' : 'play'), k = Math.max(1, Number(q.get('k')) || 2);
+const out = document.getElementById('out');
+const big = (src, s) => { const c = document.createElement('canvas'); c.width = src.width * s; c.height = src.height * s; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0, c.width, c.height); return c; };
+
+if (view === 'strip') {
+  const v = createVignette(id);
+  const row = document.createElement('div'); row.className = 'row'; out.append(row);
+  const step = Number(q.get('step')) || 0.5;
+  for (let t = 0; t <= v.dur + 1e-6; t += step) {
+    v.seek(t); v.draw();
+    const f = document.createElement('figure');
+    f.append(big(v.canvas, k), `${t.toFixed(1)} s`);
+    row.append(f);
+  }
+} else if (view === 'still') {
+  const v = createVignette(id);
+  v.seek(Number(q.get('t')) || 0); v.draw();
+  out.append(big(v.canvas, k));
+} else {
+  const box = document.createElement('div'); box.id = 'play'; out.append(box);
+  let v = createVignette(id), last = performance.now();
+  box.append(v.canvas);
+  box.addEventListener('click', () => v.seek(0));
+  const loop = (now) => { v.update(Math.min(0.05, (now - last) / 1000)); last = now; if (v.t > v.dur + 1) v.seek(0); v.draw(); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  out.append(document.createTextNode(`${id} · ${W2D}×${H2D} · ${Object.keys(VIGNETTES).join(', ')}`));
+}
+window.__ready = true;
+</script>
+</body>
+</html>

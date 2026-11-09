@@ -46,7 +46,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
-| 3a | Motor de cinemáticas, viñetas 2D, narrador Gemini y `audio.track` | — | después del 2c | |
+| 3a | Motor de cinemáticas, viñetas 2D, narrador Gemini y `audio.track` | trav-3a | hecho, sin bump; **falta que el usuario elija la voz** | rama `claude/trav-3a-4f363c` |
 | 3b | Cinemática "El Quiebre" nueva | — | después del 3a | |
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
@@ -215,3 +215,55 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
   - **`test-people` da 29 bien y 2 mal** («la llegada se cuenta con una escena»): **falla igual en master** (`a335752`,
     con su propio servidor), no es del 1c. Queda para quien toque `people`/historia.
 - Captura del Diario con los Logros: bien (2 de 4 cumplidos, el de Joyas solo porque se ganó). Encanto de arranque 36.
+
+### 3a · Motor de cinemáticas (rama `claude/trav-3a-4f363c`, sin bump)
+Hecho:
+- **`src/cinema/timeline.js`** (sin three ni DOM; se prueba en node):
+  - cámara de varios puntos con curva Catmull-Rom y `fov`, ease por pista o por tramo; `travel()` es el travelling de
+    dos puntos de siempre;
+  - subtítulos `{ at, text | lines, voice }`: con voz grabada duran lo que el audio más 0,45 s y estiran el plano;
+    sin voz, el tiempo de lectura (2,6 palabras/s);
+  - fundidos de luz (`lights`), eventos (`sfx`, `stinger`, `voice`, `shake`, `label`, `run`) que se disparan una vez;
+  - `createTimeline` con `hold`, `tail` y `refit()` (cuando llega el manifest con las voces).
+- **`src/cinema/player.js`**: `createCinema(ctx, container, { r, shots, prefix, title, applyLight, onShot, onFinish,
+  shake, advanceSfx })`. Barras, fundido, subtítulos de varias líneas, título, puntos, Saltar, voz con la música baja,
+  carteles 3D, temblor y planos con `vignette` (canvas 2D encima). Los estilos van por prefijo: **`intro.js` usa `in`,
+  así siguen sus clases `.in-sub`, `.in-skip`, etc.**
+- **`intro.js` corre sobre el player** sin cambiar lo que se ve: los mismos 6 planos, la cámara que sigue a los que
+  roban (`camFn`), el temblor de la grieta y el título. `test-story` 107/0; capturas en `shots/intro-*.png`.
+- **`src/cinema/poses.js`**: `applyPose(model, nombre, { w, t, side, look, p })` después de `update`, para señalar,
+  cargar, empujar, pelear, caer, agarrar, entregar, mirar y arrodillarse (acepta alias sin tilde o en inglés);
+  `poseWeight`, `handOf`/`holdProp`/`dropProp` (las manos de los ecos) y `prop('cristal' | 'caja' | 'carta' | 'bolsa'
+  | 'farol' | 'pala')`.
+- **`src/cinema/labels.js`**: `createLabels(container, r).introduce(id, pos, nombre, línea)` con
+  `createOverlays`/`project`; lo ya presentado no se repite (`seen`, se puede pasar de afuera para guardarlo).
+- **`src/cinema/pixel2d.js`**: viñetas 320 × 180 sin suavizado. Capas con paralaje que se pintan una vez, capas
+  vivas, actores con los sprites de `sprite2d.js`, utilería con brillo, partículas (chispa, polvo, brillo), tweens,
+  guion con `at()` y cámara 2D (paneo, zoom entero, temblor). `seek(t)` es determinista. Pinceles: `skyBands`,
+  `rooftops`, `cobbles`, `halo`, `pixels`, `dither`.
+  - Demostración **`forcejeo`** (~8 s): de noche frente al depósito, alguien sale con un cristal de veta, el guardia
+    le cierra el paso, forcejean a 3×, el cristal cambia de mano y quien robaba cae. Galería: `tools/cinema.html`
+    (`?view=strip&k=1`, `?t=4.6&k=3`); capturas `shots/vineta-4.png` y `shots/vineta-46.png`.
+- **Retoques de sprites** (comparados con la referencia): armas más grandes y claras (espada 11, hacha y martillo con
+  cabeza grande, lanza 14, bastón alto con gema grande); el asta se acorta para que la cabeza entre siempre (el martillo
+  en `strike`); casco y yelmo más arriba, sin nasal y con carrilleras finas, así la cara se lee; al caminar los brazos
+  se balancean (`swing`/`back`). `test-sprite2d` 14/0.
+- **Audio**: `audio.track(id)` (pistas `track/<id>`, categoría `music`, se bajan en el splash), `audio.voice(id)`,
+  `audio.voiceDur(id)` y `audio.prepareVoice(ids)`. Detalle en DESIGN-AUDIO.md → "Pistas grabadas y narrador".
+- **Narrador**: `tools/audio/narrate.mjs` (`--models`, `--samples`, `--script intro --voice X`) y `prepare.mjs --voice`.
+  Con una indicación suelta delante, Gemini la leía en voz alta (salían 30 s); con notas de dirección (perfil, escena,
+  notas, TRANSCRIPT) lee solo la línea, y cada toma se transcribe para comprobarlo. Guion en `src/cinema/narration.js`.
+  - **Se mandaron 3 muestras al usuario** (Charon, Algenib y Fenrir, `gemini-3.8-flash-tts`) de "Antes del cielo hubo
+    una sola tierra. Y por dentro, estaba viva." (`shots/voice/muestra-*.m4a`). **No se grabó nada más: falta que
+    elija.**
+- **`tools/test-cinema.mjs`** (en `npm test` después de test-sprite2d, y `npm run test:cinema`): 52 ok.
+
+Queda:
+- Que el usuario elija la voz; el 3b graba sus líneas con `npm run narrate -- --script intro --voice <voz>` después
+  de escribirlas en `narration.js` y las pone en los planos con `subs: [{ at, text, voice: 'intro/NN' }]`.
+- El cuadro tendido de `caer` sigue saliendo de girar la figura (se ve en el forcejeo); conviene dibujarlo.
+- Las bestias (lobos, etc.) no tienen sprite.
+- Cuando entre el 4a, los subtítulos y carteles nuevos van con `t()`. Este paso no escribió textos de juego nuevos,
+  salvo la línea de apertura en `narration.js` (es la de siempre) y los de la demostración, que van en el código de
+  la viñeta y de la prueba.
+
