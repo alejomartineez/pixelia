@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
 const OUT = join(HERE, 'dist');
-const ITEMS = ['index.html', 'styles.css', 'manifest.webmanifest', 'src', 'vendor', 'fonts', 'icons'];
+const ITEMS = ['index.html', 'styles.css', 'manifest.webmanifest', 'src', 'vendor', 'fonts', 'icons', 'assets'];
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });

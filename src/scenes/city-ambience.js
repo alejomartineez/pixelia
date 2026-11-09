@@ -3,7 +3,8 @@
 // cosechas que se mecen, reparaciones que limpian.
 // api = { ctx, r, lights, container, fx, cam, entries, getTheme(), threatWeather() }
 import { createAmbience } from '../core/ambience-fx.js';
-import { cityHour, cityWeather, isNightHour, hourText, WEATHER, cityEchoSpots } from '../core/ambience.js';
+import { cityHour, cityWeather, isNightHour, hourText, WEATHER, cityEchoSpots, THREAT_WEATHER } from '../core/ambience.js';
+import { audio } from '../core/audio.js';
 
 const qs = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams();
 // ?hour=21 y ?weather=tormenta para las capturas y las pruebas (mandan sobre el reloj y el clima)
@@ -38,6 +39,13 @@ export function createCityAmbience(api) {
     return { hour: h, weather: weather(), light: ctx.state.world?.light ?? 1, place: 'city' };
   }
   amb.set(want(), { now: true });
+  // el sonido sigue al mismo ambiente (K4): lugar, noche, clima, luz, población y la amenaza que se ve
+  function soundSync() {
+    const w = want(), th = api.threatWeather?.();
+    audio.setScene({ place: 'city', night: isNightHour(w.hour), weather: w.weather, light: w.light, indoor: false,
+      population: Math.min(1, (entries?.size ?? entries?.length ?? 0) / 40), threat: th ? Object.keys(THREAT_WEATHER).find(k => THREAT_WEATHER[k] === th) || null : null });
+  }
+  soundSync();
 
   // ---------- J5: lo que hace el jugador cambia el entorno ----------
   const topOf = (e) => ({ x: e.root.position.x, y: (e.height || 1), z: e.root.position.z });
@@ -56,6 +64,7 @@ export function createCityAmbience(api) {
       const e = b && entries.get(b.uid);
       if (!e) return;
       const c = e.root.position;
+      audio.sfx('repair');
       fx.dust(c.x, 0.08, c.z, 0.6);
       setTimeout(() => entries.get(b.uid) === e && fx.sparkle(c.x, e.height * 0.6, c.z, ['#ffffff', '#c4f7e8', '#ffd166']), 250);
     }),
@@ -65,6 +74,7 @@ export function createCityAmbience(api) {
       if (!e) return;
       // la cosecha: el cultivo se mece (el salto lo pone city.js) y vuelan unas hojas
       const c = e.root.position;
+      audio.sfx('harvest');
       fx.burst(c.x, 0.35, c.z, { n: 8, colors: ['#7fb46a', '#9ccf7a', '#c8d98a'], speed: 0.9, up: 1.4, gravity: 2.2, size: 0.07, life: 1.1, spread: 0.8, drag: 1.4 });
     }),
   ];
@@ -95,6 +105,7 @@ export function createCityAmbience(api) {
       if (acc >= 1) {
         acc = 0;
         amb.set(want());
+        soundSync();
         const n = isNightHour(hour());
         if (n !== wasNight) {
           if (wasNight !== null) bus.emit('ambience:night', { place: 'city', night: n });

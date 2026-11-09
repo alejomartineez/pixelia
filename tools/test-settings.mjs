@@ -198,7 +198,7 @@ try {
   ok(s.volMaster === 0.5 && s.volMusic === 0 && s.volSfx === 0.4 && s.volAmb === 0.2, 'los deslizadores guardan 0..1', s);
   ok(s.music === false && s.sfx === true, 'música en 0 = música apagada (el sí/no de siempre)');
   const lv = await run(`return { m: A.level('master'), mu: A.level('music'), sfx: A.level('sfx'), amb: A.level('amb'), ui: A.level('ui') };`);
-  ok(Math.abs(lv.m - 0.4375) < 1e-6 && lv.mu === 0 && Math.abs(lv.sfx - 0.275) < 1e-6 && Math.abs(lv.amb - 0.1) < 1e-6 && Math.abs(lv.ui - 0.6 * 0.55 / 0.8) < 1e-6, 'el audio aplica los volúmenes por canal (también interfaz)', lv);
+  ok(Math.abs(lv.m - 0.4375) < 1e-6 && lv.mu === 0 && Math.abs(lv.sfx - 0.4) < 1e-6 && Math.abs(lv.amb - 0.2 * 0.7 / 0.6) < 1e-6 && Math.abs(lv.ui - 0.6 * 0.6 / 0.8) < 1e-6, 'el audio aplica los volúmenes por canal (también interfaz)', lv);
   await slide('volMusic', 70);
   ok((await settings()).music === true, 'subir la música la vuelve a prender');
   await click('.set-switch[data-key="muteBg"]');

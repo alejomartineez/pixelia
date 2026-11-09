@@ -12,6 +12,7 @@ import {
 import * as E from '../core/economy.js';
 import { EXP, REGIONS, REGION_IDS, ROLES, ROLE_IDS, EQUIPMENT, HAZARDS, ringOf } from './exp-data.js';
 import { hashSeed } from './exp-gen.js';
+import { ENCOUNTERS } from '../combat/combat-data.js';
 import * as R from './exp-rules.js';
 import { eventMult } from '../season/events.js';
 import { comfortInfo } from '../home/furniture.js';
@@ -168,16 +169,77 @@ export function expeditionBadge(state = S()) {
 
 // ---------- salir ----------
 /** Modificadores del motor que salen de la ciudad (exp-rules newRun mods). */
-function cityMods(party, equip, state = S()) {
+function cityMods(party, equip, state = S(), { region, kind, tutorial, daily } = {}) {
   let stars = 0;
   try { stars = E.rankStatus(state).stars; } catch {}
-  return {
-    roleLevel: Object.fromEntries(party.map(id => [id, Math.max(1, E.roleLevel(id, state))])),
+  const cb = combatState(state);
+  // escolta para la pelea: roles que hay en la ciudad y no salieron (los de nivel más alto primero)
+  const escort = cityRoles(state).filter(r => !party.includes(r.id)).sort((a, b) => b.level - a.level).map(r => r.id);
+  const mods = {
+    roleLevel: Object.fromEntries([...party, ...escort].map(id => [id, Math.max(1, E.roleLevel(id, state))])),
     cargoMax: cargoMax(equip, state),
     encantoStars: stars,
     vision: (() => { try { return E.monumentBonus('vision', state); } catch { return 0; } })(),   // Faro (+1)
+    combatWins: { ...cb.wins }, escort, elements: (state.story?.elements || []).slice(),
   };
+  // la primera pelea es guiada: la de los lobos del Bosque del Arroyo, en la primera salida normal al Bosque (E6)
+  if (kind === 'normal' && region === 'bosque' && !daily && !tutorial && !cb.guided && !cb.fights) mods.firstFight = FIRST_FIGHT;
+  return mods;
 }
+
+// ---------- combate (El Quiebre, paso 5; DESIGN-COMBAT.md §13) ----------
+/** La primera pelea, guiada (plan §E6): los lobos de ojos brillantes del Bosque del Arroyo. */
+export const FIRST_FIGHT = 'bosque_claro';
+/** Página del diario que deja la primera victoria contra un encuentro común (los jefes traen la suya en reward.page). */
+export const FIGHT_PAGES = { bosque_claro: 'p2' };
+/**
+ * state.combat = { wins: {enc: n}, losses: {enc: n}, retreats: {enc: n}, fights, quick, xp, guided } (idempotente).
+ * xp: experiencia de quien lidera (la usa el paso 5b para el nivel). guided: ya se jugó la primera pelea guiada.
+ */
+export function combatState(state = S()) {
+  if (!state.combat || typeof state.combat !== 'object') state.combat = {};
+  const c = state.combat;
+  for (const k of ['wins', 'losses', 'retreats']) if (!c[k] || typeof c[k] !== 'object') c[k] = {};
+  for (const k of ['fights', 'quick', 'xp']) c[k] = Math.max(0, Number(c[k]) || 0);
+  c.guided = !!c.guided;
+  return c;
+}
+/**
+ * Acredita una pelea apenas termina (la expedición sigue): cuenta victorias, derrotas y retiradas, suma la experiencia
+ * de quien lidera, da la página y la marca de historia, y emite combat:won · combat:lost · combat:retreat (la historia
+ * y la telemetría escuchan). El botín ya está en la carga de la salida. Idempotente por pelea (fight.credited).
+ */
+export function creditFight(run, fight, state = S()) {
+  if (!fight || fight.credited) return null;
+  fight.credited = true;
+  const cb = combatState(state);
+  const enc = fight.enc;
+  const first = !cb.fights;
+  cb.fights++;
+  cb.xp += fight.xp || 0;
+  if (fight.quick) cb.quick++;
+  cb.guided = true;   // la guía es una sola: la primera pelea, sea cual sea
+  const bag = fight.outcome === 'win' ? cb.wins : fight.outcome === 'lose' ? cb.losses : cb.retreats;
+  const firstWin = fight.outcome === 'win' && !cb.wins[enc];
+  bag[enc] = (bag[enc] || 0) + 1;
+  const grant = {};
+  const page = fight.page || (firstWin ? FIGHT_PAGES[enc] : null);
+  if (page && !state.story?.pages?.[page]) grant.page = page;
+  if (Object.keys(grant).length) store.grant(grant, 'combat');
+  if (fight.flag) { state.story ||= {}; state.story.flags ||= {}; state.story.flags[fight.flag] = Date.now(); }
+  store.inc('combats');
+  if (fight.outcome === 'win') store.inc('combatWins');
+  store.markDirty();
+  const ev = fight.outcome === 'win' ? 'combat:won' : fight.outcome === 'lose' ? 'combat:lost' : 'combat:retreat';
+  const payload = {
+    enc, region: run?.region, kind: ENCOUNTERS[enc]?.kind || 'comun', outcome: fight.outcome, reason: fight.reason, turns: fight.turns || 0,
+    stars: fight.stars || 0, quick: !!fight.quick, guided: !!fight.guided, attempt: fight.attempt || 1, combos: fight.combos || 0,
+    downs: fight.downs || 0, first, page: grant.page || null,
+  };
+  bus.emit(ev, payload);
+  return payload;
+}
+
 /**
  * Arma la salida: descuenta provisiones (normal) o usa la vianda del día (corta), gasta el equipo y guarda el run en
  * state.expedition.active. Devuelve { run } o { error }.
@@ -219,7 +281,7 @@ export function startExpedition({ region = 'bosque', kind = 'normal', party = nu
     if (tutorial) e.tutorialShort = true;
   }
   if (equip.length) store.spend({ equip: Object.fromEntries(equip.map(id => [id, 1])) }, 'expedition');
-  const run = R.newRun({ region, zone, kind, seed, party, equip, prov, mods: cityMods(party, equip, state) });
+  const run = R.newRun({ region, zone, kind, seed, party, equip, prov, mods: cityMods(party, equip, state, { region, kind, tutorial, daily: !!dInfo }) });
   run.city = { recorrido: recorrido && !dInfo, tutorial, at: now, daily: dInfo ? dInfo.day : null };
   e.active = run;
   e.party = party.slice();
@@ -249,6 +311,8 @@ export function finishExpedition(run, state = S()) {
   const now = Date.now();
   run.city = run.city || {};
   const L = res.loot;
+  // peleas que no se acreditaron al terminar (volver en medio de una pelea cuenta como retirada)
+  for (const f of run.fights || []) if (!f.credited) creditFight(run, f, state);
   // eventos de región y monumentos (reemplazan a los de los minijuegos, Fase 5): materiales ×, cofre de 3★ con segunda
   // tirada en "Lluvia de Cofres", hallazgos dobles en su fin de semana, Museo (+50% de chance de un hallazgo más) y la
   // experiencia de la salida con el Observatorio y el confort de Mi Casa

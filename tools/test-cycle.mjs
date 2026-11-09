@@ -133,7 +133,8 @@ function plan(r, from, to) {
       const nx = x + dx, ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= r.w || ny >= r.h) continue;
       const c = r.cells[key(nx, ny)];
-      const nd = d + cost[c.terrain] + (c.content === 'peligro' && !c.done ? 6 : 0);
+      // los peligros pesan más; las peleas (casilla enemigo, test-combat-exp.mjs) se rodean
+      const nd = d + cost[c.terrain] + (c.content === 'peligro' && !c.done ? 6 : 0) + (c.content === 'enemigo' && !c.done ? 60 : 0);
       if (nd < (dist.get(key(nx, ny)) ?? Infinity)) { dist.set(key(nx, ny), nd); prev.set(key(nx, ny), [x, y]); open.push([nd, nx, ny]); }
     }
   }

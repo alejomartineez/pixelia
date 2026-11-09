@@ -1,0 +1,1011 @@
+{
+ "files": {
+  "piano/Fs2": {
+   "file": "inst/piano_Fs2.m4a",
+   "cat": "inst",
+   "dur": 4.5,
+   "inst": "piano",
+   "note": 42,
+   "src": "piano"
+  },
+  "piano/B2": {
+   "file": "inst/piano_B2.m4a",
+   "cat": "inst",
+   "dur": 4.5,
+   "inst": "piano",
+   "note": 47,
+   "src": "piano"
+  },
+  "piano/Ds3": {
+   "file": "inst/piano_Ds3.m4a",
+   "cat": "inst",
+   "dur": 4.5,
+   "inst": "piano",
+   "note": 51,
+   "src": "piano"
+  },
+  "piano/Fs3": {
+   "file": "inst/piano_Fs3.m4a",
+   "cat": "inst",
+   "dur": 4.5,
+   "inst": "piano",
+   "note": 54,
+   "src": "piano"
+  },
+  "piano/A3": {
+   "file": "inst/piano_A3.m4a",
+   "cat": "inst",
+   "dur": 4.236,
+   "inst": "piano",
+   "note": 57,
+   "src": "piano"
+  },
+  "piano/C4": {
+   "file": "inst/piano_C4.m4a",
+   "cat": "inst",
+   "dur": 4.5,
+   "inst": "piano",
+   "note": 60,
+   "src": "piano"
+  },
+  "piano/Ds4": {
+   "file": "inst/piano_Ds4.m4a",
+   "cat": "inst",
+   "dur": 4.5,
+   "inst": "piano",
+   "note": 63,
+   "src": "piano"
+  },
+  "piano/Fs4": {
+   "file": "inst/piano_Fs4.m4a",
+   "cat": "inst",
+   "dur": 4.203,
+   "inst": "piano",
+   "note": 66,
+   "src": "piano"
+  },
+  "piano/A4": {
+   "file": "inst/piano_A4.m4a",
+   "cat": "inst",
+   "dur": 2.959,
+   "inst": "piano",
+   "note": 69,
+   "src": "piano"
+  },
+  "piano/C5": {
+   "file": "inst/piano_C5.m4a",
+   "cat": "inst",
+   "dur": 3.47,
+   "inst": "piano",
+   "note": 72,
+   "src": "piano"
+  },
+  "piano/Ds5": {
+   "file": "inst/piano_Ds5.m4a",
+   "cat": "inst",
+   "dur": 3.158,
+   "inst": "piano",
+   "note": 75,
+   "src": "piano"
+  },
+  "piano/Fs5": {
+   "file": "inst/piano_Fs5.m4a",
+   "cat": "inst",
+   "dur": 1.967,
+   "inst": "piano",
+   "note": 78,
+   "src": "piano"
+  },
+  "piano/A5": {
+   "file": "inst/piano_A5.m4a",
+   "cat": "inst",
+   "dur": 2.839,
+   "inst": "piano",
+   "note": 81,
+   "src": "piano"
+  },
+  "piano/C6": {
+   "file": "inst/piano_C6.m4a",
+   "cat": "inst",
+   "dur": 2.21,
+   "inst": "piano",
+   "note": 84,
+   "src": "piano"
+  },
+  "piano/Ds6": {
+   "file": "inst/piano_Ds6.m4a",
+   "cat": "inst",
+   "dur": 1.836,
+   "inst": "piano",
+   "note": 87,
+   "src": "piano"
+  },
+  "flute/C3": {
+   "file": "inst/flute_C3.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 60,
+   "src": "vsco"
+  },
+  "flute/E3": {
+   "file": "inst/flute_E3.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 64,
+   "src": "vsco"
+  },
+  "flute/A3": {
+   "file": "inst/flute_A3.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 69,
+   "src": "vsco"
+  },
+  "flute/C4": {
+   "file": "inst/flute_C4.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 72,
+   "src": "vsco"
+  },
+  "flute/E4": {
+   "file": "inst/flute_E4.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 76,
+   "src": "vsco"
+  },
+  "flute/A4": {
+   "file": "inst/flute_A4.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 81,
+   "src": "vsco"
+  },
+  "flute/C5": {
+   "file": "inst/flute_C5.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 84,
+   "src": "vsco"
+  },
+  "flute/E5": {
+   "file": "inst/flute_E5.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 88,
+   "src": "vsco"
+  },
+  "flute/A5": {
+   "file": "inst/flute_A5.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 93,
+   "src": "vsco"
+  },
+  "flute/C6": {
+   "file": "inst/flute_C6.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "flute",
+   "note": 96,
+   "src": "vsco"
+  },
+  "pizz/G2": {
+   "file": "inst/pizz_G2.m4a",
+   "cat": "inst",
+   "dur": 1.6,
+   "inst": "pizz",
+   "note": 55,
+   "src": "vsco"
+  },
+  "pizz/A2": {
+   "file": "inst/pizz_A2.m4a",
+   "cat": "inst",
+   "dur": 1.062,
+   "inst": "pizz",
+   "note": 57,
+   "src": "vsco"
+  },
+  "pizz/B2": {
+   "file": "inst/pizz_B2.m4a",
+   "cat": "inst",
+   "dur": 1.021,
+   "inst": "pizz",
+   "note": 59,
+   "src": "vsco"
+  },
+  "pizz/D3": {
+   "file": "inst/pizz_D3.m4a",
+   "cat": "inst",
+   "dur": 1.6,
+   "inst": "pizz",
+   "note": 62,
+   "src": "vsco"
+  },
+  "pizz/Fs3": {
+   "file": "inst/pizz_Fs3.m4a",
+   "cat": "inst",
+   "dur": 0.89,
+   "inst": "pizz",
+   "note": 66,
+   "src": "vsco"
+  },
+  "pizz/A3": {
+   "file": "inst/pizz_A3.m4a",
+   "cat": "inst",
+   "dur": 1.1,
+   "inst": "pizz",
+   "note": 69,
+   "src": "vsco"
+  },
+  "pizz/C4": {
+   "file": "inst/pizz_C4.m4a",
+   "cat": "inst",
+   "dur": 1.046,
+   "inst": "pizz",
+   "note": 72,
+   "src": "vsco"
+  },
+  "pizz/E4": {
+   "file": "inst/pizz_E4.m4a",
+   "cat": "inst",
+   "dur": 0.832,
+   "inst": "pizz",
+   "note": 76,
+   "src": "vsco"
+  },
+  "pizz/G4": {
+   "file": "inst/pizz_G4.m4a",
+   "cat": "inst",
+   "dur": 1.043,
+   "inst": "pizz",
+   "note": 79,
+   "src": "vsco"
+  },
+  "pizz/B4": {
+   "file": "inst/pizz_B4.m4a",
+   "cat": "inst",
+   "dur": 0.603,
+   "inst": "pizz",
+   "note": 83,
+   "src": "vsco"
+  },
+  "pizz/D5": {
+   "file": "inst/pizz_D5.m4a",
+   "cat": "inst",
+   "dur": 0.642,
+   "inst": "pizz",
+   "note": 86,
+   "src": "vsco"
+  },
+  "timp/1": {
+   "file": "inst/timp_1.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "timp",
+   "note": 29.8,
+   "src": "vsco"
+  },
+  "timp/2": {
+   "file": "inst/timp_2.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "timp",
+   "note": 34.4,
+   "src": "vsco"
+  },
+  "timp/3": {
+   "file": "inst/timp_3.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "timp",
+   "note": 37.3,
+   "src": "vsco"
+  },
+  "timp/4": {
+   "file": "inst/timp_4.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "timp",
+   "note": 40,
+   "src": "vsco"
+  },
+  "timp/5": {
+   "file": "inst/timp_5.m4a",
+   "cat": "inst",
+   "dur": 4,
+   "inst": "timp",
+   "note": 30.2,
+   "src": "vsco"
+  },
+  "choir/aah": {
+   "file": "inst/choir_aah.m4a",
+   "cat": "inst",
+   "dur": 7.2,
+   "inst": "choir",
+   "note": 45,
+   "src": "fs:211494"
+  },
+  "amb/wind": {
+   "file": "amb/amb_wind.m4a",
+   "cat": "amb",
+   "dur": 26,
+   "loop": 26,
+   "src": "fs:697217"
+  },
+  "amb/sea": {
+   "file": "amb/amb_sea.m4a",
+   "cat": "amb",
+   "dur": 28,
+   "loop": 28,
+   "src": "fs:531015"
+  },
+  "amb/forest": {
+   "file": "amb/amb_forest.m4a",
+   "cat": "amb",
+   "dur": 28,
+   "loop": 28,
+   "src": "fs:275690"
+  },
+  "amb/crickets": {
+   "file": "amb/amb_crickets.m4a",
+   "cat": "amb",
+   "dur": 24,
+   "loop": 24,
+   "src": "fs:171823"
+  },
+  "amb/rain": {
+   "file": "amb/amb_rain.m4a",
+   "cat": "amb",
+   "dur": 24,
+   "loop": 24,
+   "src": "fs:242889"
+  },
+  "amb/fire": {
+   "file": "amb/amb_fire.m4a",
+   "cat": "amb",
+   "dur": 17,
+   "loop": 17,
+   "src": "fs:363092"
+  },
+  "amb/cave": {
+   "file": "amb/amb_cave.m4a",
+   "cat": "amb",
+   "dur": 28,
+   "loop": 28,
+   "src": "fs:38963"
+  },
+  "amb/town": {
+   "file": "amb/amb_town.m4a",
+   "cat": "amb",
+   "dur": 28,
+   "loop": 28,
+   "src": "fs:578072"
+  },
+  "sfx/thunder": {
+   "file": "sfx/sfx_thunder.m4a",
+   "cat": "sfx",
+   "dur": 5.45,
+   "src": "fs:193170"
+  },
+  "sfx/owl": {
+   "file": "sfx/sfx_owl.m4a",
+   "cat": "sfx",
+   "dur": 4.3,
+   "src": "fs:465697"
+  },
+  "sfx/birds1": {
+   "file": "sfx/sfx_birds1.m4a",
+   "cat": "sfx",
+   "dur": 2.2,
+   "src": "fs:182502"
+  },
+  "sfx/birds2": {
+   "file": "sfx/sfx_birds2.m4a",
+   "cat": "sfx",
+   "dur": 2.2,
+   "src": "fs:182502"
+  },
+  "sfx/anvil1": {
+   "file": "sfx/sfx_anvil1.m4a",
+   "cat": "sfx",
+   "dur": 1.6,
+   "src": "fs:363169"
+  },
+  "sfx/anvil2": {
+   "file": "sfx/sfx_anvil2.m4a",
+   "cat": "sfx",
+   "dur": 1.6,
+   "src": "fs:363169"
+  },
+  "ui/click1": {
+   "file": "sfx/ui_click1.m4a",
+   "cat": "sfx",
+   "dur": 0.1,
+   "src": "kenney:interface"
+  },
+  "ui/click2": {
+   "file": "sfx/ui_click2.m4a",
+   "cat": "sfx",
+   "dur": 0.015,
+   "src": "kenney:interface"
+  },
+  "ui/click3": {
+   "file": "sfx/ui_click3.m4a",
+   "cat": "sfx",
+   "dur": 0.01,
+   "src": "kenney:interface"
+  },
+  "ui/select1": {
+   "file": "sfx/ui_select1.m4a",
+   "cat": "sfx",
+   "dur": 0.043,
+   "src": "kenney:interface"
+  },
+  "ui/select2": {
+   "file": "sfx/ui_select2.m4a",
+   "cat": "sfx",
+   "dur": 0.043,
+   "src": "kenney:interface"
+  },
+  "ui/open1": {
+   "file": "sfx/ui_open1.m4a",
+   "cat": "sfx",
+   "dur": 0.148,
+   "src": "kenney:interface"
+  },
+  "ui/open2": {
+   "file": "sfx/ui_open2.m4a",
+   "cat": "sfx",
+   "dur": 0.313,
+   "src": "kenney:interface"
+  },
+  "ui/close1": {
+   "file": "sfx/ui_close1.m4a",
+   "cat": "sfx",
+   "dur": 0.148,
+   "src": "kenney:interface"
+  },
+  "ui/close2": {
+   "file": "sfx/ui_close2.m4a",
+   "cat": "sfx",
+   "dur": 0.314,
+   "src": "kenney:interface"
+  },
+  "ui/error4": {
+   "file": "sfx/ui_error4.m4a",
+   "cat": "sfx",
+   "dur": 0.107,
+   "src": "kenney:interface"
+  },
+  "ui/error6": {
+   "file": "sfx/ui_error6.m4a",
+   "cat": "sfx",
+   "dur": 0.481,
+   "src": "kenney:interface"
+  },
+  "ui/confirmation1": {
+   "file": "sfx/ui_confirmation1.m4a",
+   "cat": "sfx",
+   "dur": 0.29,
+   "src": "kenney:interface"
+  },
+  "ui/confirmation2": {
+   "file": "sfx/ui_confirmation2.m4a",
+   "cat": "sfx",
+   "dur": 0.539,
+   "src": "kenney:interface"
+  },
+  "ui/drop2": {
+   "file": "sfx/ui_drop2.m4a",
+   "cat": "sfx",
+   "dur": 0.191,
+   "src": "kenney:interface"
+  },
+  "ui/scroll2": {
+   "file": "sfx/ui_scroll2.m4a",
+   "cat": "sfx",
+   "dur": 1,
+   "src": "kenney:interface"
+  },
+  "ui/toggle2": {
+   "file": "sfx/ui_toggle2.m4a",
+   "cat": "sfx",
+   "dur": 0.139,
+   "src": "kenney:interface"
+  },
+  "ui/pluck1": {
+   "file": "sfx/ui_pluck1.m4a",
+   "cat": "sfx",
+   "dur": 0.102,
+   "src": "kenney:interface"
+  },
+  "ui/glass1": {
+   "file": "sfx/ui_glass1.m4a",
+   "cat": "sfx",
+   "dur": 0.278,
+   "src": "kenney:interface"
+  },
+  "ui/tick2": {
+   "file": "sfx/ui_tick2.m4a",
+   "cat": "sfx",
+   "dur": 0.023,
+   "src": "kenney:interface"
+  },
+  "ui/kclick3": {
+   "file": "sfx/ui_kclick3.m4a",
+   "cat": "sfx",
+   "dur": 0.086,
+   "src": "kenney:uisfx"
+  },
+  "ui/kswitch7": {
+   "file": "sfx/ui_kswitch7.m4a",
+   "cat": "sfx",
+   "dur": 0.175,
+   "src": "kenney:uisfx"
+  },
+  "ui/kswitch22": {
+   "file": "sfx/ui_kswitch22.m4a",
+   "cat": "sfx",
+   "dur": 0.359,
+   "src": "kenney:uisfx"
+  },
+  "ui/krollover2": {
+   "file": "sfx/ui_krollover2.m4a",
+   "cat": "sfx",
+   "dur": 0.038,
+   "src": "kenney:uisfx"
+  },
+  "act/footstep00": {
+   "file": "sfx/act_footstep00.m4a",
+   "cat": "sfx",
+   "dur": 0.238,
+   "src": "kenney:rpg"
+  },
+  "act/footstep01": {
+   "file": "sfx/act_footstep01.m4a",
+   "cat": "sfx",
+   "dur": 0.28,
+   "src": "kenney:rpg"
+  },
+  "act/footstep02": {
+   "file": "sfx/act_footstep02.m4a",
+   "cat": "sfx",
+   "dur": 0.242,
+   "src": "kenney:rpg"
+  },
+  "act/footstep03": {
+   "file": "sfx/act_footstep03.m4a",
+   "cat": "sfx",
+   "dur": 0.26,
+   "src": "kenney:rpg"
+  },
+  "act/footstep04": {
+   "file": "sfx/act_footstep04.m4a",
+   "cat": "sfx",
+   "dur": 0.299,
+   "src": "kenney:rpg"
+  },
+  "act/footstep05": {
+   "file": "sfx/act_footstep05.m4a",
+   "cat": "sfx",
+   "dur": 0.276,
+   "src": "kenney:rpg"
+  },
+  "act/bookFlip1": {
+   "file": "sfx/act_bookFlip1.m4a",
+   "cat": "sfx",
+   "dur": 0.699,
+   "src": "kenney:rpg"
+  },
+  "act/bookFlip2": {
+   "file": "sfx/act_bookFlip2.m4a",
+   "cat": "sfx",
+   "dur": 0.43,
+   "src": "kenney:rpg"
+  },
+  "act/bookOpen": {
+   "file": "sfx/act_bookOpen.m4a",
+   "cat": "sfx",
+   "dur": 0.154,
+   "src": "kenney:rpg"
+  },
+  "act/bookClose": {
+   "file": "sfx/act_bookClose.m4a",
+   "cat": "sfx",
+   "dur": 0.231,
+   "src": "kenney:rpg"
+  },
+  "act/cloth1": {
+   "file": "sfx/act_cloth1.m4a",
+   "cat": "sfx",
+   "dur": 0.642,
+   "src": "kenney:rpg"
+  },
+  "act/cloth3": {
+   "file": "sfx/act_cloth3.m4a",
+   "cat": "sfx",
+   "dur": 0.465,
+   "src": "kenney:rpg"
+  },
+  "act/creak1": {
+   "file": "sfx/act_creak1.m4a",
+   "cat": "sfx",
+   "dur": 0.602,
+   "src": "kenney:rpg"
+  },
+  "act/creak2": {
+   "file": "sfx/act_creak2.m4a",
+   "cat": "sfx",
+   "dur": 0.824,
+   "src": "kenney:rpg"
+  },
+  "act/chop": {
+   "file": "sfx/act_chop.m4a",
+   "cat": "sfx",
+   "dur": 0.24,
+   "src": "kenney:rpg"
+  },
+  "act/metalClick": {
+   "file": "sfx/act_metalClick.m4a",
+   "cat": "sfx",
+   "dur": 0.446,
+   "src": "kenney:rpg"
+  },
+  "act/metalLatch": {
+   "file": "sfx/act_metalLatch.m4a",
+   "cat": "sfx",
+   "dur": 0.261,
+   "src": "kenney:rpg"
+  },
+  "act/handleCoins": {
+   "file": "sfx/act_handleCoins.m4a",
+   "cat": "sfx",
+   "dur": 0.796,
+   "src": "kenney:rpg"
+  },
+  "act/handleCoins2": {
+   "file": "sfx/act_handleCoins2.m4a",
+   "cat": "sfx",
+   "dur": 0.318,
+   "src": "kenney:rpg"
+  },
+  "act/doorOpen1": {
+   "file": "sfx/act_doorOpen1.m4a",
+   "cat": "sfx",
+   "dur": 0.919,
+   "src": "kenney:rpg"
+  },
+  "act/doorClose1": {
+   "file": "sfx/act_doorClose1.m4a",
+   "cat": "sfx",
+   "dur": 0.675,
+   "src": "kenney:rpg"
+  },
+  "act/dropLeather": {
+   "file": "sfx/act_dropLeather.m4a",
+   "cat": "sfx",
+   "dur": 0.415,
+   "src": "kenney:rpg"
+  },
+  "act/metalPot1": {
+   "file": "sfx/act_metalPot1.m4a",
+   "cat": "sfx",
+   "dur": 1.391,
+   "src": "kenney:rpg"
+  },
+  "act/knifeSlice": {
+   "file": "sfx/act_knifeSlice.m4a",
+   "cat": "sfx",
+   "dur": 0.523,
+   "src": "kenney:rpg"
+  },
+  "act/drawKnife1": {
+   "file": "sfx/act_drawKnife1.m4a",
+   "cat": "sfx",
+   "dur": 0.318,
+   "src": "kenney:rpg"
+  }
+ },
+ "instruments": {
+  "piano": [
+   {
+    "id": "piano/Fs2",
+    "note": 42
+   },
+   {
+    "id": "piano/B2",
+    "note": 47
+   },
+   {
+    "id": "piano/Ds3",
+    "note": 51
+   },
+   {
+    "id": "piano/Fs3",
+    "note": 54
+   },
+   {
+    "id": "piano/A3",
+    "note": 57
+   },
+   {
+    "id": "piano/C4",
+    "note": 60
+   },
+   {
+    "id": "piano/Ds4",
+    "note": 63
+   },
+   {
+    "id": "piano/Fs4",
+    "note": 66
+   },
+   {
+    "id": "piano/A4",
+    "note": 69
+   },
+   {
+    "id": "piano/C5",
+    "note": 72
+   },
+   {
+    "id": "piano/Ds5",
+    "note": 75
+   },
+   {
+    "id": "piano/Fs5",
+    "note": 78
+   },
+   {
+    "id": "piano/A5",
+    "note": 81
+   },
+   {
+    "id": "piano/C6",
+    "note": 84
+   },
+   {
+    "id": "piano/Ds6",
+    "note": 87
+   }
+  ],
+  "flute": [
+   {
+    "id": "flute/C3",
+    "note": 60
+   },
+   {
+    "id": "flute/E3",
+    "note": 64
+   },
+   {
+    "id": "flute/A3",
+    "note": 69
+   },
+   {
+    "id": "flute/C4",
+    "note": 72
+   },
+   {
+    "id": "flute/E4",
+    "note": 76
+   },
+   {
+    "id": "flute/A4",
+    "note": 81
+   },
+   {
+    "id": "flute/C5",
+    "note": 84
+   },
+   {
+    "id": "flute/E5",
+    "note": 88
+   },
+   {
+    "id": "flute/A5",
+    "note": 93
+   },
+   {
+    "id": "flute/C6",
+    "note": 96
+   }
+  ],
+  "pizz": [
+   {
+    "id": "pizz/G2",
+    "note": 55
+   },
+   {
+    "id": "pizz/A2",
+    "note": 57
+   },
+   {
+    "id": "pizz/B2",
+    "note": 59
+   },
+   {
+    "id": "pizz/D3",
+    "note": 62
+   },
+   {
+    "id": "pizz/Fs3",
+    "note": 66
+   },
+   {
+    "id": "pizz/A3",
+    "note": 69
+   },
+   {
+    "id": "pizz/C4",
+    "note": 72
+   },
+   {
+    "id": "pizz/E4",
+    "note": 76
+   },
+   {
+    "id": "pizz/G4",
+    "note": 79
+   },
+   {
+    "id": "pizz/B4",
+    "note": 83
+   },
+   {
+    "id": "pizz/D5",
+    "note": 86
+   }
+  ],
+  "timp": [
+   {
+    "id": "timp/1",
+    "note": 29.8
+   },
+   {
+    "id": "timp/5",
+    "note": 30.2
+   },
+   {
+    "id": "timp/2",
+    "note": 34.4
+   },
+   {
+    "id": "timp/3",
+    "note": 37.3
+   },
+   {
+    "id": "timp/4",
+    "note": 40
+   }
+  ],
+  "choir": [
+   {
+    "id": "choir/aah",
+    "note": 45
+   }
+  ]
+ },
+ "version": 1,
+ "credits": [
+  {
+   "name": "Upright Piano KW (small)",
+   "author": "FreePats (Roberto y Gonzalo)",
+   "license": "CC0 1.0",
+   "url": "https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html"
+  },
+  {
+   "name": "VSCO 2 Community Edition",
+   "author": "Versilian Studios (Sam Gossner)",
+   "license": "CC0 1.0",
+   "url": "https://github.com/sgossner/VSCO-2-CE"
+  },
+  {
+   "name": "choir_aah",
+   "author": "Diboz",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/211494/"
+  },
+  {
+   "name": "Looping Gentle Wind Ambience on an Open Desert Plain",
+   "author": "dhallcomposer",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/697217/"
+  },
+  {
+   "name": "Ocean Waves",
+   "author": "Noted451",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/531015/"
+  },
+  {
+   "name": "Singing Birds",
+   "author": "lorenzgillner",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/275690/"
+  },
+  {
+   "name": "crickets_creek",
+   "author": "rhapsodize",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/171823/"
+  },
+  {
+   "name": "Rain from Indoors - Perfect loop",
+   "author": "samesamesame",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/242889/"
+  },
+  {
+   "name": "Fire Crackle and Flames 002",
+   "author": "TheWoodlandNomad",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/363092/"
+  },
+  {
+   "name": "archi_soundscape_cavern3",
+   "author": "ElanHickler",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/38963/"
+  },
+  {
+   "name": "medieval_village_atmosphere",
+   "author": "ramonmineiro",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/578072/"
+  },
+  {
+   "name": "thunder",
+   "author": "netaj",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/193170/"
+  },
+  {
+   "name": "Owl Hoot",
+   "author": "Breviceps",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/465697/"
+  },
+  {
+   "name": "Birds Chirping 02",
+   "author": "swiftoid",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/182502/"
+  },
+  {
+   "name": "Hammering on Anvil",
+   "author": "SamsterBirdies",
+   "license": "CC0 1.0",
+   "url": "https://freesound.org/s/363169/"
+  },
+  {
+   "name": "Interface Sounds 1.0",
+   "author": "Kenney",
+   "license": "CC0 1.0",
+   "url": "https://kenney.nl/assets/interface-sounds"
+  },
+  {
+   "name": "UI SFX Set",
+   "author": "Kenney",
+   "license": "CC0 1.0",
+   "url": "https://kenney.nl"
+  },
+  {
+   "name": "RPG Audio",
+   "author": "Kenney",
+   "license": "CC0 1.0",
+   "url": "https://kenney.nl/assets/rpg-audio"
+  }
+ ]
+}

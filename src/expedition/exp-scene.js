@@ -6,6 +6,9 @@
 //   router.go('expedition', { resume: true })        retoma la salida en curso (o arma una con region/kind si no hay)
 //   ?scene=expedition                práctica (o la salida en curso) · &short=1 salida corta
 //   &region=sierras&zone=2           otra región o zona · &new=1 descarta la salida guardada · &seed=123 semilla fija
+// Casilla `enemigo` (DESIGN-COMBAT.md §13): Pelear pasa el control a la escena `combat` con la pelea guardada en
+// state.expedition.active.battle; al cerrar el resultado vuelve acá (router.go('expedition', { resume, fight })) y se
+// anima lo que dejó: el botín o la vuelta a la casilla anterior. Una salida guardada en medio de una pelea la retoma.
 import { actionFor } from '../core/keys.js';
 import * as THREE from 'three';
 import { createPixelRenderer, addLights, setIsoCamera, disposeObject, shade } from '../core/voxel.js';
@@ -16,7 +19,9 @@ import { EXP, REGIONS, MATERIALS, HAZARDS, CONTENT, ringOf } from './exp-data.js
 import { hashSeed } from './exp-gen.js';
 import * as R from './exp-rules.js';
 import { createExpAmbience } from './exp-ambience.js';
-import { hasBase, startExpedition, finishExpedition, expeditionStatus } from './expedition.js';
+import { hasBase, startExpedition, finishExpedition, expeditionStatus, creditFight, combatState } from './expedition.js';
+import { ENCOUNTERS, ENEMIES } from '../combat/combat-data.js';
+import { expPlace } from '../core/ambience.js';
 import { injectStyle, buildDom, openDecision, openResult, openMenu, openConfirmFail, matsHtml, provTxt, ICONS } from './exp-ui.js';
 
 // ---------------------------------------------------------------- arte de las casillas
@@ -113,6 +118,24 @@ const PROPS = {
   mineral(m, y) { const v = m.v; v.box(2, y, 2, 4, 3, 4, '#6f675c'); v.set(3, y + 3, 3, '#c7ccd1'); v.set(5, y + 2, 4, '#d98b4a'); v.set(2, y + 1, 5, '#c7ccd1'); v.set(4, y + 3, 5, '#d98b4a'); },
   hierbas(m, y) { const v = m.v; for (const [x, z] of [[1, 2], [4, 1], [2, 5], [5, 4], [6, 6]]) { v.box(x, y, z, 2, 2, 2, '#6f9a52'); v.set(x, y + 2, z, (x + z) % 2 ? '#e6d8c3' : '#c98a52'); } },
 };
+// casilla `enemigo`: lo que se ve de lejos según quién espera (lobos, bichos de veta, piratas)
+PROPS.enemigo = function (m, y, enc) {
+  const v = m.v, foes = ENCOUNTERS[enc]?.enemies || ['lobo'];
+  const kind = foes.includes('bicho') ? 'bicho' : foes.some(t => /grumete|tirador|capitana/.test(t)) ? 'pirata' : 'lobo';
+  // estaca con trapo rojo: acá hay pelea
+  v.box(6, y, 6, 1, 8, 1, '#5a4632'); v.box(6, y + 6, 5, 1, 2, 1, '#a8492f'); v.set(6, y + 7, 4, '#a8492f');
+  if (kind === 'lobo') {
+    const wolf = (x, z, c) => { v.box(x, y + 1, z, 2, 2, 4, c); v.box(x, y + 2, z + 4, 2, 2, 2, c); v.set(x, y + 4, z + 4, c); v.set(x + 1, y + 4, z + 4, c);
+      v.set(x, y, z, '#3b3b3b'); v.set(x + 1, y, z + 3, '#3b3b3b'); v.box(x, y + 2, z - 1, 1, 1, 1, c); };
+    wolf(0, 0, '#6f747a'); wolf(3, 2, '#585d63');
+    m.light.set(0, y + 3, 6, '#ffd166'); m.light.set(3, y + 3, 7, '#ffd166');
+  } else if (kind === 'bicho') {
+    for (const [x, z] of [[0, 1], [3, 3], [1, 5]]) { v.box(x, y, z, 2, 2, 2, '#6f675c'); m.light.set(x, y + 2, z, '#8fd3ff'); }
+  } else {
+    v.box(1, y, 2, 2, 4, 2, '#3f342c'); v.box(1, y + 4, 2, 2, 2, 2, '#c99a72'); v.box(1, y + 6, 2, 2, 1, 2, '#a8492f');
+    v.box(4, y, 3, 1, 5, 1, '#c7ccd1');
+  }
+};
 const PROP_KEY = (cell) => (cell.content === 'recurso' ? cell.sub : cell.content === 'peligro' ? cell.sub : cell.content);
 
 // ---------------------------------------------------------------- escena
@@ -148,6 +171,8 @@ export default function create(ctx) {
   const cityRun = () => !!run?.city;
   function persist() {
     const e = expState();
+    // peleas que terminaron sin pasar por la escena del combate (la resolución rápida): se acreditan acá
+    if (run) for (const f of run.fights || []) if (!f.credited) { try { creditFight(run, f); } catch (err) { console.error('[expedition] pelea', err); } }
     // la salida de la ciudad se acredita apenas termina (aunque la app se cierre antes de ver el resultado)
     if (run && run.ended && cityRun() && !run.city.summary) { try { finishExpedition(run); } catch (err) { console.error('[expedition] acreditar', err); } }
     e.active = run && !run.ended ? run : null;
@@ -214,6 +239,7 @@ export default function create(ctx) {
     if (!c.seen || c.done) return null;
     if (c.content === 'recurso') return MATERIALS[c.sub]?.icon;
     if (c.content === 'peligro') return HAZARDS[c.sub]?.icon;
+    if (c.content === 'enemigo') return CONTENT.enemigo.icon;
     if (c.content === 'objetivo') return '🚩';
     return CONTENT[c.content]?.icon || null;
   }
@@ -265,9 +291,10 @@ export default function create(ctx) {
       world.add(o.prop);
     } else {
       const pk = PROP_KEY(c);
-      const showProp = pk && PROPS[pk] && !(c.done && (c.content === 'recurso' || c.content === 'peligro')) && pk !== 'rio';
+      const showProp = pk && PROPS[pk] && !(c.done && (c.content === 'recurso' || c.content === 'peligro' || c.content === 'enemigo')) && pk !== 'rio';
       if (showProp) {
-        o.prop = voxelModel(`exp:p:${pk}`, 8, 8, (m) => PROPS[pk](m, 0));
+        const sub = pk === 'enemigo' ? c.sub : '';
+        o.prop = voxelModel(`exp:p:${pk}${sub ? ':' + sub : ''}`, 8, 8, (m) => PROPS[pk](m, 0, sub));
         // el objeto va hacia el fondo de la casilla: adelante queda lugar para el grupo
         o.prop.position.set(pos.x - 0.12, ty, pos.z - 0.16);
         o.prop.scale.setScalar(0.72);
@@ -426,7 +453,7 @@ export default function create(ctx) {
     dom.chips(v.moves.map(m => {
       const s = screenOf(m.x, m.y, 0.55);
       const c = run.cells[m.y * run.w + m.x];
-      return { x: m.x, y: m.y, sx: s.x, sy: s.y, cost: m.cost, ok: m.ok, safe: m.safe, hz: !c.done && (c.content === 'peligro' || c.content === 'ruina') };
+      return { x: m.x, y: m.y, sx: s.x, sy: s.y, cost: m.cost, ok: m.ok, safe: m.safe, hz: !c.done && (c.content === 'peligro' || c.content === 'ruina' || c.content === 'enemigo') };
     }));
   }
 
@@ -602,6 +629,29 @@ export default function create(ctx) {
           await wait(700);
           break;
         }
+        case 'combat': break;     // la pelea la abre enterCombat al final
+        case 'combatQuick': {
+          const p = partyScreen();
+          float(p.x, p.y - 30, `${ui.icon('star', 22)} Resuelto rápido`);
+          audio.sfx('select');
+          await wait(250);
+          break;
+        }
+        case 'combatEnd': {
+          const f = e.fight, name = ENCOUNTERS[f.enc]?.name || 'La pelea';
+          if (f.outcome === 'win') dom.hint(f.quick ? `${ui.esc(name)}: resuelto sin pelear. Menos botín, pero no cuesta nada más.` : `${ui.esc(name)}: ganaron. El botín va a la carga.`, 5000);
+          else dom.hint(f.outcome === 'lose' ? `${ui.esc(name)}: perdieron. Vuelven a la casilla anterior y el ánimo baja.` : `Se retiraron de ${ui.esc(name.toLowerCase())}. Los enemigos siguen ahí.`, 5500);
+          buildCell(run.pos[1] * run.w + run.pos[0]);
+          await wait(200);
+          break;
+        }
+        case 'pushBack': {
+          placeParty(e.from[0], e.from[1], 0);
+          buildCell(e.from[1] * run.w + e.from[0]);
+          await walkParty(e.from[0], e.from[1], e.x, e.y, 420);
+          buildCell(e.y * run.w + e.x);
+          break;
+        }
         case 'decision': break;   // la abre showPending al final
         case 'end': break;
         default: break;
@@ -611,6 +661,7 @@ export default function create(ctx) {
     persist();
     refresh();
     if (run.ended) { queued = null; await wait(450); showResult(); return; }
+    if (run.pending?.kind === 'combate') { queued = null; await wait(250); enterCombat(); return; }
     if (run.pending) { queued = null; showPending(); return; }
     if (queued) { const q = queued; queued = null; tryMove(run.pos[0] + q[0], run.pos[1] + q[1]); }
   }
@@ -633,7 +684,8 @@ export default function create(ctx) {
     audio.sfx('open');
     dom.clearChips();
     const depth = run.cells[pd.y * run.w + pd.x].depth;
-    const cardRef = card = openDecision(root, pd, { depth }, (id) => {
+    const fightInfo = pd.kind === 'enemigo' ? { fightParty: R.fightParty(run), party: run.party.slice() } : {};
+    const cardRef = card = openDecision(root, pd, { depth, ...fightInfo }, (id) => {
       if (!card || busy) return;
       const c = card; card = null;
       const res = R.choose(run, id);
@@ -646,6 +698,43 @@ export default function create(ctx) {
     });
     setTimeout(() => { if (card === cardRef && alive) fitCamera(cardRef.el.offsetHeight, true); }, 30);
   }
+  // ---------- combate (DESIGN-COMBAT.md §13) ----------
+  /** Pasa el control a la escena combat con la pelea guardada; al cerrar el resultado vuelve acá con lo que dejó. */
+  let entering = false;
+  function enterCombat() {
+    if (!alive || entering || !run || run.pending?.kind !== 'combate') return;
+    const b = R.activeBattle(run);
+    const runRef = run;
+    // pelea rota o ya terminada (se cerró el juego en la pantalla de resultado): se acredita sin volver a abrirla
+    if (!b || b.ended) { finishFight(runRef, null); return; }
+    entering = true;
+    persist();
+    const pd = run.pending;
+    const c = R.conditions(run), here = run.cells[pd.y * run.w + pd.x];
+    let first = false;
+    try { first = !combatState().fights; } catch {}
+    bus.emit('expedition:combat', { region: run.region, enc: pd.encounter, guided: !!pd.guided || first });
+    Promise.resolve(ctx.router.go('combat', {
+      battle: b, expedition: true, guided: !!pd.guided || first,
+      conditions: { hour: c.hour, night: c.night, weather: c.weather, place: expPlace(ringOf(here?.depth || 0)) },
+      // la pelea es el mismo objeto que state.expedition.active.battle: alcanza con guardar
+      onSave: () => { store.markDirty(); try { store.save(); } catch {} },
+      onEnd: (res) => finishFight(runRef, res),
+    })).finally(() => { entering = false; });
+  }
+  /** Cierra la pelea en el motor, la acredita en la ciudad y vuelve a la expedición animando lo que dejó. */
+  function finishFight(runRef, res) {
+    const out = R.endCombat(runRef, res);
+    if (out.ok) { try { creditFight(runRef, out.fight); } catch (err) { console.error('[expedition] pelea', err); } }
+    const e = expState();
+    if (runRef.ended && runRef.city && !runRef.city.summary) { try { finishExpedition(runRef); } catch (err) { console.error('[expedition] acreditar', err); } }
+    e.active = runRef.ended ? null : runRef;
+    store.markDirty();
+    try { store.save(); } catch {}
+    if (alive && run === runRef) { playEvents(out.events || []); return; }
+    ctx.router.go('expedition', { resume: true, fightEvents: out.events || [], endedRun: runRef.ended ? runRef : null });
+  }
+
   function goHome(force = false) {
     if (busy || !run || run.ended) return;
     const v = R.view(run);
@@ -761,7 +850,7 @@ export default function create(ctx) {
   function start(p) {
     const e = expState();
     if ((p.new === '1' || p.new === true) && !(e.active && e.active.city)) e.active = null;   // la de la ciudad no se descarta
-    run = e.active && !e.active.ended && e.active.v === 1 ? e.active : newRun(p);
+    run = p.endedRun || (e.active && !e.active.ended && e.active.v === 1 ? e.active : newRun(p));
     if (!run) { setTimeout(() => alive && ctx.router.go('city'), 0); return; }
     persist();
     const RG = REGIONS[run.region];
@@ -777,6 +866,9 @@ export default function create(ctx) {
     buildGround();
     fitCamera();
     refresh();
+    if (p.fightEvents?.length) { const evs = p.fightEvents; p.fightEvents = null; params.fightEvents = null; params.endedRun = null; setTimeout(() => alive && playEvents(evs), 350); return; }
+    if (run.ended) { setTimeout(() => alive && showResult(), 350); return; }
+    if (run.pending?.kind === 'combate') { setTimeout(() => alive && enterCombat(), 400); return; }
     if (run.pending) showPending();
     if (run.steps === 0) dom.hint(`${ui.esc(meta.regionName)}: ${ui.esc(dom.$('goal').querySelector('.t span').textContent)}. Hacé clic en una casilla vecina para avanzar.`, 7000);
   }
@@ -855,6 +947,7 @@ export default function create(ctx) {
         cellScreen(x, y) { return r ? screenOf(x, y, 0.3) : null; },
         // para las pruebas (tools/test-cycle.mjs): los mismos caminos que el toque, el teclado y el botón Volver
         move(x, y) { tryMove(x, y); },
+        raw() { return run; },
         choose(i) { card?.choose(i); },
         home(force = false) { goHome(force); },
         // ambiente (PLAN-QUIEBRE §J3–J4): hora, noche, clima y pronóstico; ruinas para los ecos (L6)

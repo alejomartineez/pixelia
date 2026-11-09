@@ -17,6 +17,7 @@ const port = Number(args.find(a => /^\d+$/.test(a))) || 5173;
 const lan = args.includes('--lan');
 
 const MIME = {
+  '.m4a': 'audio/mp4',
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ico': 'image/x-icon', '.md': 'text/plain; charset=utf-8',

@@ -55,6 +55,9 @@ const CHECK4 = !args.includes('--no-check4') && !JSON_OUT && NSESS === 2;
 const SESSION_MIN = Number(opt('min', 10));
 const HOURS = NSESS >= 4 ? [8, 12, 17, 21] : NSESS === 3 ? [9, 14, 20] : NSESS === 1 ? [20] : [9, 20];
 const STEP_SEC = 12;                 // segundos por paso de expedición (≈ 3–6 min por salida normal)
+// peleas de la casilla `enemigo` (DESIGN-COMBAT.md §13): jugada ≈ 4 min (el plan dice 3–6), resuelta rápido ≈ 10 s.
+// El bot juega como mucho una por salida y solo si el rato tiene tiempo; las demás las rodea o las resuelve rápido.
+const FIGHT_SEC = 240, QUICK_SEC = 10;
 
 // ---------------------------------------------------------------- entorno: reloj controlado, localStorage y DOM mínimos
 let T = new Date(2026, 10, 2, HOURS[0], 0, 0).getTime();   // día 0 = lunes 2026-11-02 = inicio de la temporada 1
@@ -603,6 +606,7 @@ function equipFor() {
   }
 }
 let budget = 0;   // segundos que quedan en el rato
+const fightStats = { played: 0, quick: 0, won: 0, mats: 0 };   // peleas de la expedición en los 60 días
 let provUsed = 14; // provisiones netas por salida normal (lo que se lleva menos lo que vuelve), promedio móvil
 function expedition(kind) {
   const st = X.expeditionStatus();
@@ -615,10 +619,13 @@ function expedition(kind) {
   const prov0 = s.prov || 0;
   const r = X.startExpedition({ region, kind });
   if (r.error) return false;
-  const res = BOTS.play(r.run, 'medio', expSeed++);
+  const res = BOTS.play(r.run, 'medio', expSeed++, { maxFights: kind === 'normal' && budget >= 200 + FIGHT_SEC + 120 ? 1 : 0 });
   X.finishExpedition(r.run);
   if (kind === 'normal') provUsed = 0.8 * provUsed + 0.2 * Math.max(0, prov0 - (s.prov || 0));   // lo que de verdad gasta una salida
-  const sec = res.steps * STEP_SEC + 40;
+  const played = (res.fights || []).filter(f => !f.quick).length, quick = (res.fights || []).filter(f => f.quick).length;
+  fightStats.played += played; fightStats.quick += quick; fightStats.won += (res.fights || []).filter(f => f.outcome === 'win' && !f.quick).length;
+  for (const f of res.fights || []) for (const n of Object.values(f.mats || {})) fightStats.mats += n;
+  const sec = res.steps * STEP_SEC + 40 + played * FIGHT_SEC + quick * QUICK_SEC;
   budget -= sec;
   T += sec * 1000;
   return true;
@@ -794,6 +801,7 @@ if (!args.includes('--goals')) {
   console.log('monumentos:', data.MONUMENT_IDS.map(id => { const st = E.monumentStatus(id); return `${id} ${st.stagesDone}/${st.N}${monDone[id] ? ' (día ' + monDone[id] + ')' : ''}`; }).join(' · '));
   const lo = S2.filter(x => x.ratio != null && x.ratio < 1).length;
   console.log(`saldo / próximo gasto grande al final de cada rato (días 2–60): p10 ${f1(q(S2.map(x => x.ratio ?? 0), 0.1))} · p50 ${f1(q(S2.map(x => x.ratio ?? 0), 0.5))} · p90 ${f1(q(S2.map(x => x.ratio ?? 0), 0.9))} · < 1× en ${lo} ratos, > 3× en ${ratioHigh}`);
+  console.log(`peleas de la expedición: ${fightStats.played} jugadas (${fightStats.won} ganadas) y ${fightStats.quick} resueltas rápido en ${DAYS} días · ${fightStats.mats} materiales de botín (${f1(fightStats.mats / d60)} por día)`);
   console.log(`comercio con las aldeas: ${tradeLog.length} compras, ${tradeUnits} materiales por ${tradeCoins} monedas (${f1(tradeCoins / d60)} por día)`);
 }
 function q(a, p) { const t = a.slice().sort((x, y) => x - y); return t.length ? t[Math.min(t.length - 1, Math.floor(p * t.length))] : 0; }

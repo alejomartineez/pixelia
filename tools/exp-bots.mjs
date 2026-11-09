@@ -2,8 +2,31 @@
 // Los usan tools/sim-expedition.mjs (distribuciones por bot) y tools/sim-economy.mjs (salidas dentro de la economía).
 //   play(run, bot, seed, opts) → R.result(run)   bot: prudente | medio | codicioso | azar
 import { EXP } from '../src/expedition/exp-data.js';
-import { rng } from '../src/expedition/exp-gen.js';
+import { rng, hashSeed } from '../src/expedition/exp-gen.js';
 import * as R from '../src/expedition/exp-rules.js';
+import { ENCOUNTERS, COMBAT } from '../src/combat/combat-data.js';
+
+// Peleas (casilla `enemigo`): el bot no juega la pelea táctica (eso lo mide sim-combat.mjs). Usa lo que da ese
+// simulador con el grupo esperado: ~90 % de las comunes ganadas, y peor con el grupo cansado. Las estrellas siguen la
+// misma proporción que en sim-combat (1 por ganar y ~50 % cada desafío).
+export const FIGHT_WIN = { prudente: 0.9, medio: 0.88, codicioso: 0.86, azar: 0.65 };
+export function simFight(run, bot) {
+  const pd = run.pending, enc = ENCOUNTERS[pd.encounter];
+  // su propia suerte: la pelea no corre la del bot (lo demás de la salida sigue igual)
+  const r = rng(hashSeed(run.seed, pd.x, pd.y, (run.fights || []).length, 'simFight'));
+  const pWin = FIGHT_WIN[bot] - (run.battle?.tired ? 0.15 : 0);
+  const outcome = r() < pWin ? 'win' : r() < 0.25 ? 'retreat' : 'lose';
+  const stars = outcome === 'win' ? 1 + (r() < 0.55) + (r() < 0.4) : 0;
+  const mats = {};
+  if (outcome === 'win') for (const [k, n] of Object.entries(enc.reward.mats || {})) mats[k] = Math.max(1, Math.round(n * COMBAT.lootByStars[stars]));
+  return {
+    enc: enc.id, kind: enc.kind, outcome, reason: outcome === 'win' ? 'derrota' : outcome === 'lose' ? 'lider' : 'retirada',
+    turns: 6 + Math.floor(r() * 4), stars, loot: { mats },
+    xp: Math.round((enc.reward.xp || 0) * (outcome === 'win' ? 1 : outcome === 'lose' ? 0.3 : 0.2)),
+    morale: outcome === 'lose' ? COMBAT.morale.lose : outcome === 'retreat' ? COMBAT.morale.retreat : 0,
+    combos: [], comboCount: 0, downs: 0, page: null, flag: null, attempt: 1,
+  };
+}
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 function cellsOf(v) { return v.cells; }
@@ -31,6 +54,12 @@ function targetValue(v, c, bot, mem) {
     case 'aldea': val += !v.objective.cell && v.objective.type !== 'juntar' && !v.objective.done ? 8 : 2.5; break;
     case 'campamento': val += v.morale <= v.moraleMax - 4 ? 5 : 0; break;
     case 'mirador': val += 2; break;
+    case 'enemigo': {
+      // botín de la pelea (va a la carga) contra el riesgo: el prudente casi no las busca
+      const loot = Object.values(ENCOUNTERS[c.sub]?.reward.mats || {}).reduce((a, n) => a + n, 0);
+      val += Math.min(room, loot) * (bot === 'prudente' ? 0.2 : bot === 'codicioso' ? 0.8 : 0.3);
+      break;
+    }
     default: break;
   }
   return val;
@@ -57,6 +86,7 @@ function paths(v, mem) {
       if (mem.blocked.has(nx + ',' + ny)) continue;
       let cost = guia ? (c.terrain === 'roca' ? 2 : 1) : TC[c.terrain];
       if (!c.done && c.content === 'peligro') cost += mem.bot === 'codicioso' ? 0.5 : 1.2;
+      if (!c.done && c.content === 'enemigo') cost += mem.bot === 'codicioso' ? 1 : 2;
       if (dist[u] + cost < dist[i]) { dist[i] = dist[u] + cost; prev[i] = u; }
     }
   }
@@ -131,6 +161,7 @@ export function decide(run, bot, mem, r) {
   const target = at(v, step[0], step[1]);
   let extra = 0;
   if (!target.done && target.content === 'peligro' && bot !== 'codicioso') extra = 1;
+  if (!target.done && target.content === 'enemigo') extra = EXP.enemy.fightProv;
   if (v.prov - mv.cost - extra < margin(bot, mv.returnAfter)) {
     // otro vecino que sí deje volver (el codicioso lo intenta todo antes de volver)
     if (bot === 'codicioso') {
@@ -160,6 +191,17 @@ export function pickOption(run, bot, mem, r) {
     if (bot === 'codicioso' && can('comerciar') && v.cargoN >= v.cargoMax - 1) return 'comerciar';
     return 'colonos';
   }
+  if (pd.kind === 'enemigo') {
+    const ret = R.returnCostFrom(run, pd.x, pd.y, pd.y * run.w + pd.x);
+    const opts = pd.options.filter(o => o.can && run.prov - pd.step - o.prov >= (bot === 'codicioso' || bot === 'azar' ? ret : margin(bot, ret)));
+    const back = () => { mem.blocked.add(pd.x + ',' + pd.y); return 'retroceder'; };
+    if (!opts.length) return back();
+    if (bot === 'azar') return r() < 0.3 ? back() : opts[Math.floor(r() * opts.length)].id;
+    if (bot !== 'codicioso' && opts.some(o => o.quick)) return 'resolver';
+    if (mem.maxFights != null && mem.fights >= mem.maxFights) return back();   // sin tiempo para otra pelea en el rato
+    const minMorale = bot === 'prudente' ? 6 : bot === 'medio' ? 4 : 2;
+    return v.morale >= minMorale ? 'pelear' : back();
+  }
   // peligro o ruina: cada opción con su costo; las que no dejan volver con la reserva quedan afuera
   const ret = R.returnCostFrom(run, pd.x, pd.y, pd.y * run.w + pd.x);
   const opts = pd.options.filter(o => o.can && run.prov - pd.step - o.prov >= (bot === 'codicioso' || bot === 'azar' ? ret : margin(bot, ret)));
@@ -180,9 +222,10 @@ export function pickOption(run, bot, mem, r) {
 
 export function play(run, bot, seed, opts = {}) {
   const r = rng(seed ^ 0x5bd1e995);
-  const mem = { blocked: new Set(), party: run.party, wander: 0, bot };
+  const mem = { blocked: new Set(), party: run.party, wander: 0, bot, fights: 0, maxFights: opts.maxFights ?? null };
   let guard = 0, homeAt = null;
   while (!run.ended && guard++ < 400) {
+    if (run.pending?.kind === 'combate') { const pd = run.pending, res = simFight(run, bot); mem.fights++; R.endCombat(run, res); if (res.outcome !== 'win') mem.blocked.add(pd.x + ',' + pd.y); continue; }
     if (run.pending) { R.choose(run, pickOption(run, bot, mem, r)); continue; }
     const a = decide(run, bot, mem, r);
     if (a.home) {

@@ -24,6 +24,21 @@ import * as C from './combat-rules.js';
 import { ENCOUNTERS, ENEMIES, ABILITIES, ITEMS, COMBAT, TUTORIAL_PARTY } from './combat-data.js';
 import { enemyModel } from './enemy-models.js';
 import { buildCombatUi } from './combat-ui.js';
+import { SCENE_BY_ID } from '../story/story-data.js';
+import { markSeen } from '../story/story.js';
+
+// ---------------------------------------------------------------- primera pelea guiada (plan §E6)
+// Pistas de un solo uso (state.tutorial.combatTips) con la voz de Vera: el contacto del combate (c_combate) repartido
+// en los momentos en que sirve, más lo justo para jugar el primer turno. when: start | moved | acted | wave | marks | roles.
+const CONTACT = SCENE_BY_ID.c_combate?.lines || [];
+export const GUIDE_TIPS = [
+  { id: 'intro', when: 'start', text: `${CONTACT[0] || 'Se pelea por turnos: primero mueve tu grupo, después ellos.'} Elegí a alguien del grupo (clic o Tab) y movelo a una casilla azul.` },
+  { id: 'act', when: 'moved', text: 'Después de moverse, cada uno actúa una vez. Con un clic en un lobo que esté al alcance, le pega. Las habilidades están abajo, con su número.' },
+  { id: 'end', when: 'acted', text: 'Cuando el grupo termine, Fin de turno (Espacio). Después juegan ellos.' },
+  { id: 'wave', when: 'wave', text: 'Viene otro lobo: la casilla rayada que dice "Llega" marca por dónde entra. Mejor no estar ahí.' },
+  { id: 'marks', when: 'marks', text: CONTACT[1] || 'Las casillas marcadas son las que van a atacar. Salí de ahí o hacé que les cueste.' },
+  { id: 'roles', when: 'roles', text: `${CONTACT[2] || 'Cada integrante tiene habilidades según su rol.'} Exploración marca a un lobo y el próximo golpe le hace +3.` },
+];
 
 // ---------------------------------------------------------------- arte del campo
 // Cada región con su paleta oscura (plan §J1): monte de noche, mina, bañado con bruma y costa de dirigibles.
@@ -702,6 +717,7 @@ export default function create(ctx) {
   function doMove(x, y) {
     const res = C.move(b, sel.id, x, y);
     if (!res.ok) { dom.hint(res.why); audio.sfx('error'); return false; }
+    guideOn('moved');
     const u = C.unitById(b, sel.id);
     sel.mode = 'ability'; sel.ability = u ? defaultAbility(u) : null;
     if (!sel.ability) sel.mode = 'move';
@@ -711,6 +727,7 @@ export default function create(ctx) {
   function doAct(id, x, y) {
     const res = C.act(b, sel.id, id, x, y);
     if (!res.ok) { dom.hint(res.why); audio.sfx('error'); return false; }
+    guideOn('acted');
     sel.mode = 'move'; sel.ability = null;
     play(res.events);
     return true;
@@ -753,7 +770,27 @@ export default function create(ctx) {
     const r2 = C.enemyTurn(b);
     if (!r2.ok) { busy = false; refresh(); return; }
     await play(r2.events);
-    if (!b.ended) { autoSelect(); refresh(); }
+    if (!b.ended) {
+      autoSelect(); refresh();
+      // después del turno enemigo, la pista que toca: lo que llega, las casillas marcadas o los roles
+      if (b.incoming?.length) guideOn('wave');
+      else if (C.view(b).units.some(u => u.intent && !u.intent.hidden)) guideOn('marks') || (b.turn >= 3 && guideOn('roles'));
+    }
+  }
+  /** Muestra la pista de ese momento si la pelea es la guiada y todavía no se vio. Devuelve true si mostró una. */
+  function guideOn(when) {
+    if (!opts.guided || !dom || !b || b.ended) return false;
+    const st = store.state;
+    st.tutorial ||= {};
+    const tips = (st.tutorial.combatTips ||= {});
+    const g = GUIDE_TIPS.find(t => t.when === when && !tips[t.id]);
+    if (!g) return false;
+    tips[g.id] = Date.now();
+    store.markDirty();
+    dom.guide(g.text);
+    // el contacto del combate se cuenta acá: la Bitácora lo muestra y la ciudad no lo repite
+    if (g.id === 'intro') { try { markSeen('c_combate'); } catch {} }
+    return true;
   }
   function retreat() {
     const res = C.retreat(b);
@@ -763,7 +800,9 @@ export default function create(ctx) {
     const res = C.result(b);
     audio.sfx(res.outcome === 'win' ? 'win' : 'lose');
     if (modal) modal.close?.();
-    modal = dom.openResult(res, { boss: b.kind === 'jefe', bossName: ENEMIES[b.units.find(u => u.side === 'enemy' && ENEMIES[u.type].boss)?.type]?.name, test: !opts.onEnd }, (a) => {
+    dom.guide(null);
+    // en la expedición no hay reintento: perder ya cuesta ánimo y la casilla sigue ahí para volver a probar
+    modal = dom.openResult(res, { boss: b.kind === 'jefe', bossName: ENEMIES[b.units.find(u => u.side === 'enemy' && ENEMIES[u.type].boss)?.type]?.name, test: !opts.onEnd, noRetry: !!opts.expedition }, (a) => {
       modal = null;
       if (a === 'retry') { start({ ...opts, battle: null, attempt: res.outcome === 'lose' && b.kind === 'jefe' ? (b.attempt || 1) + 1 : b.attempt || 1, seed: (b.seed + 1) >>> 0 }); return; }
       if (opts.onEnd) opts.onEnd(res, b);
@@ -909,6 +948,7 @@ export default function create(ctx) {
     fitCamera();
     placeTags();
     if (b.turn === 1 && b.phase === 'player') dom.banner(ENCOUNTERS[b.enc].name, ENCOUNTERS[b.enc].text, 'intro', 2600);
+    if (opts.guided) setTimeout(() => { if (alive && b && !b.ended) guideOn('start') || (b.turn >= 3 && guideOn('roles')); }, b.turn === 1 ? 2400 : 400);
     opts.onSave?.(b);
   }
 
@@ -989,6 +1029,9 @@ export default function create(ctx) {
         ability(id) { chooseAbility(id); },
         endTurn(force = false) { return endTurn(force); },
         rules: C,
+        get guided() { return !!opts.guided; },
+        get guide() { const el = root?.querySelector('.cb-guide'); return el && !el.classList.contains('gone') ? el.querySelector('p')?.textContent || '' : ''; },
+        get expedition() { return !!opts.expedition; },
         raw() { return b; },
       };
     },

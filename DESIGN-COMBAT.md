@@ -1,8 +1,8 @@
 # Combate táctico por turnos (El Quiebre, paso 5)
 
 Plan: [docs/PLAN-QUIEBRE.md](docs/PLAN-QUIEBRE.md), §C (combate), §I (principios y balance) y §L5 (herramientas y nivel
-del líder). Cubre el motor puro (§1–§10) y la escena con su interfaz (§11). La casilla `enemigo` de la expedición y el
-traspaso entre las dos escenas quedan pendientes (§12).
+del líder). Cubre el motor puro (§1–§10), la escena con su interfaz (§11) y el combate dentro de la expedición: la
+casilla `enemigo`, el traspaso entre las dos escenas y la primera pelea guiada (§13). Lo que falta está en §12.
 
 | Archivo | Qué es |
 |---|---|
@@ -14,6 +14,7 @@ traspaso entre las dos escenas quedan pendientes (§12).
 | `src/combat/combat-ui.js` | Interfaz DOM: objetivo, orden del turno, fichas, barra de acciones, vista previa, menú y resultado |
 | `src/combat/enemy-models.js` | Modelos vóxel de los enemigos del Acto 1 |
 | `tools/test-combat-scene.mjs` | La escena en Chrome headless (SwiftShader): teclado, mouse, turno enemigo y una victoria |
+| `tools/test-combat-exp.mjs` | Combate ↔ expedición: la casilla `enemigo`, el traspaso, guardar a mitad, ganar, perder, retirarse y la guía (§13) |
 
 Los dos scripts corren desde `tools/` sin `node_modules`. Todavía no están en `package.json`: se suman al integrar.
 
@@ -436,30 +437,182 @@ cloneBattle(b)
 `alto-contraste`, `jefe`, `jefe-noche-lluvia` y `resultado`.
 
 ## 12. Pendiente
-- **Casilla `enemigo` y traspaso con la expedición:**
-  - `CONTENT` en `exp-data.js` y `exp-gen.js`, en las bandas media y lejana;
-  - `exp-scene` guarda `active.battle` y llama a `router.go('combat', { battle, conditions: combatConditions(…), onSave,
-    onEnd })`;
-  - `onEnd` vuelve a `router.go('expedition', { resume: true })`;
-  - si perdiste, volvés a la casilla anterior y el ánimo baja según `result.morale`;
-  - el botín entra a la carga.
-- **Resolución rápida:** el botón va en la tarjeta de la casilla `enemigo`, antes de entrar (`canQuickResolve`).
 - **Integrar:**
-  - sumar `test-combat-scene` a `npm test` y un script `test:combat-scene` en `tools/package.json`;
+  - sumar `test-combat-scene` y `test-combat-exp` a `npm test`, con los scripts `test:combat-scene` y `test:combat-exp`
+    en `tools/package.json`;
   - correr `npm run bump`.
 - **Sonido** (paso 3c): hoy usa los `sfx` que hay (`bump`, `crash`, `horn`, `combo`…) y la música `threat`. El 3c puede
   sumar golpes propios y una pista de combate.
-- **Telemetría** (paso 7): victoria, derrota, turnos y retirada. Escuchar `combat:end`.
-- **Paso 5b, L5:** de dónde salen `tools`, `level` y `element`:
-  - `tools` sale de los Vínculos;
-  - `level` sale de la experiencia del líder;
-  - `element` sale de los elementos encontrados.
+- **Paso 5b, L5:** de dónde salen `tools`, `level` y `element`. Hoy la expedición los pasa así (§13):
+  - `tools` sale de `mods.tools`, vacío hasta que estén los Vínculos;
+  - `level` sale de `mods.leaderLevel` y, mientras no exista, del `expected.level` del encuentro. Cuando exista, saldrá de
+    `state.combat.xp`, que ya se junta;
+  - `element` sale de los elementos encontrados (`state.story.elements`).
+- **Paso 6 (E5):** el paso "primer combate" de la cadena del tutorial, después de t5. El tipo de misión `combat` ya tiene
+  pista y flecha, pero `quests.js` todavía no lo cuenta: tiene que escuchar `combat:won`. Los jefes van en lugares de la
+  historia, no en casillas al azar.
 - **Paso 7:**
   - revisar que la Cuerda no quede obligatoria contra la bestia;
-  - meter el botín de combate en `sim:economy`.
+  - ajustar con los datos de la telemetría de combate (`combat:won`, `combat:lost` y `combat:retreat`).
+
+## 13. Combate en la expedición (paso 5, tercera parte)
+**La casilla `enemigo`** (`CONTENT.enemigo`, ícono ⚔️). `sub` es el id del encuentro.
+- Solo aparece en la salida normal, en las bandas media y lejana (profundidad 4 o más), nunca en la barrera del río.
+- La salida corta no tiene enemigos, ni la del tutorial ni la Expedición del día.
+- `placeEnemies` en `exp-gen.js` las tira al final, con su propia suerte, y solo sobre casillas vacías: el resto del mapa
+  queda igual que antes.
+- Chance por casilla vacía: `EXP.enemy.chance` = 7 % en la banda media y 13 % en la lejana, con un tope de 2 por mapa.
+  En promedio sale una por salida normal y un 62 % de los mapas tiene al menos una.
+- La tirada de encuentro va por región, con su peso, en `REGIONS[r].enemies`:
+
+  | Región | Encuentros |
+  |---|---|
+  | Bosque | Ojos en el monte 55 · La manada 45 |
+  | Sierras | La manada 60 · La veta despierta 40 |
+  | Bañado | Aguantar en el juncal 65 · La manada 35 |
+  | Cerro | La veta despierta 55 · El minero atrapado 45 |
+  | Costa | Saqueo en el muelle 100 |
+
+- En el mapa se ve con una estaca con trapo rojo y lo que espera: lobos, bichos de veta o un pirata.
+
+**La tarjeta** (al entrar, como un peligro).
+- Muestra el encuentro, quiénes esperan (y si llegan más o hay que aguantar o rescatar) y quiénes pelean.
+- Si el ánimo está en 3 o menos, avisa que llegan cansados: el grupo pelea con 2 de vida menos cada uno.
+- **Pelear:** cuesta el paso más 1 provisión (`EXP.enemy.fightProv`). Dice qué se gana y qué cuesta perder o retirarse.
+- **Resolver rápido:** solo para un encuentro común ya ganado (`canQuickResolve`, contando las victorias de antes y las de
+  esta salida). Mismo costo, sin jugar: 1 estrella y el botín reducido (§6).
+- **Retroceder:** gratis, como en los peligros.
+
+**El grupo que pelea** (`fightParty`). Son los que salieron y, si son menos de 3, la **escolta**: roles que hay en la
+ciudad y no salieron, primero los de nivel más alto (`mods.escort`). Si la ciudad no tiene a nadie, se completa con los
+roles del tutorial. Con la Casa de Expediciones en nivel 1 o 2, el grupo es quien lidera y uno más, y así pierde casi
+siempre: con el simulador, quien lidera con 1 rol gana entre el 0 y el 12 % de las comunes, con 2 entre el 43 y el 85 % y
+con 3 más del 90 %.
+
+**Consumibles** (`fightItems`). Llega el equipo del Taller que se llevó, con un uso por pelea. El Botiquín es el mismo de
+la salida: si se usó en el camino, no llega, y si se usa en la pelea, ya no está para el camino.
+
+**El traspaso.**
+1. Pelear da el paso, cobra la pelea y arma la batalla en `run.battle` con `makeBattle`: el grupo, la escolta, los
+   consumibles, el nivel de rol, el ánimo y el elemento.
+2. Queda `run.pending = { kind: 'combate' }`, y todo se guarda en `state.expedition.active`.
+3. `exp-scene` llama a `router.go('combat', { battle, expedition: true, guided, conditions, onSave, onEnd })`.
+   - `conditions` lleva la hora, la noche, el clima y la banda de la casilla.
+   - La escena juega sobre el mismo objeto que está guardado en la salida, así que `onSave` solo guarda la partida.
+     Lo hace después de cada acción y de cada turno.
+4. Al cerrar el resultado, `onEnd` llama a `endCombat(run, result)`, acredita la pelea en la ciudad (`creditFight`) y
+   vuelve con `router.go('expedition', { resume: true, fightEvents })`.
+5. La expedición anima lo que dejó: el botín que entra a la carga, o el grupo que vuelve caminando a la casilla anterior.
+
+**Resultados.**
+- **Ganar:** la casilla queda hecha y el botín entra a la carga. Si no entra todo, el resto queda en la casilla, como
+  siempre.
+- **Perder:** −3 de ánimo. El grupo vuelve a la casilla de la que vino y los enemigos se quedan ahí, para volver a probar.
+- **Retirarse:** −1 de ánimo y también vuelve.
+- Volver a la ciudad en medio de una pelea cuenta como retirada (`goHome`).
+- En la expedición no hay "Reintentar" (`noRetry`): la casilla sigue ahí, pero cada intento cuesta.
+- Si el ánimo llega a 0, la salida termina como siempre (`sin_animo`).
+
+**Guardado y retomar.**
+- La pelea vive en `state.expedition.active.battle`. Al abrir la expedición con una pelea en curso, se vuelve a la escena
+  del combate en el mismo turno.
+- Si se cerró en la pantalla de resultado, la pelea se acredita sin volver a abrirla.
+
+**La ciudad** (`expedition.js`):
+- `state.combat = { wins, losses, retreats, fights, quick, xp, guided }`, con victorias, derrotas y retiradas por encuentro.
+  `xp` es la experiencia de quien lidera (para el paso 5b): no se suma a la del jugador.
+- `creditFight` cuenta la pelea y da la página. La primera victoria contra los lobos da "Los lobos del arroyo" (p2); los
+  jefes, la de `reward.page` y su marca.
+- `creditFight` emite `combat:won`, `combat:lost` o `combat:retreat` con `{ enc, region, kind, outcome, reason, turns,
+  stars, quick, guided, attempt, combos, downs, first, page }`. La historia escucha `combat:won` y `combat:lost`.
+- `cityMods` pasa a la salida `combatWins`, `escort`, `elements` y `firstFight`.
+- `stats.combats` y `stats.combatWins` llevan la cuenta.
+
+**Primer combate guiado** (plan §E6).
+- La primera salida normal al Bosque, si nunca se peleó, trae garantizada la pelea de los lobos (`FIRST_FIGHT =
+  'bosque_claro'`) en la banda media (`EXP.enemy.firstDepth`).
+- La primera pelea, sea cual sea, va guiada: la escena recibe `guided` y Vera habla en un panel abajo a la derecha, con su
+  retrato.
+- Son pistas de un solo uso (`GUIDE_TIPS` en `combat-scene.js`, anotadas en `state.tutorial.combatTips`):
+  1. al empezar, cómo se pelea y cómo mover;
+  2. después de mover, cómo actuar;
+  3. después de actuar, el fin de turno;
+  4. después del turno enemigo, las casillas marcadas;
+  5. más adelante, los roles y los combos;
+  6. cuando se anuncia uno, el refuerzo que llega.
+- Las líneas del contacto `c_combate` se reparten entre esas pistas, y el contacto queda visto, así que la ciudad no lo
+  repite.
+
+**Telemetría.** `TRACKED_EVENTS` registra `combat:won`, `combat:lost` y `combat:retreat`: encuentro, región, tipo, motivo,
+turnos, estrellas, intento, si fue rápida o guiada, si fue la primera, combos y caídos. Además, `expedition:combat` sale al
+entrar a una pelea.
+
+**Balance.**
+- `exp-bots.mjs` no juega la pelea táctica, que la mide `sim-combat`. `simFight` usa lo que da ese simulador:
+  - gana el 90 % de las veces el bot prudente, el 88 % el medio, el 86 % el codicioso y el 65 % el azar, con 15 puntos
+    menos si el grupo está cansado;
+  - las estrellas siguen la misma proporción.
+- Los bots resuelven rápido lo ya ganado (salvo el codicioso), pelean si el ánimo alcanza y, si no, rodean.
+- `sim-economy` cobra 4 minutos por pelea jugada y 10 s por la rápida. El bot juega una pelea por salida como mucho, y
+  solo si el rato de 10 minutos tiene tiempo.
+- Los resultados están en el Estado, al final.
+
+**Pruebas.** `node tools/test-combat-exp.mjs`. Con `--node` corre solo la primera parte, en unos segundos.
+1. **En Node:**
+   - el generador: bandas, tope, encuentros de la región, solo sobre casillas vacías, nada en la corta, la misma semilla
+     y la pelea guiada garantizada;
+   - la tarjeta;
+   - Pelear con el grupo, la escolta y los consumibles;
+   - guardar a mitad de la pelea con JSON y retomar;
+   - ganar, perder y retirarse;
+   - la resolución rápida;
+   - el grupo cansado;
+   - volver a la ciudad en medio de una pelea.
+2. **En Chrome headless:**
+   - la casilla en el mapa y la tarjeta;
+   - la entrada a la escena de combate, con la misma pelea guardada;
+   - la guía de Vera y sus pistas;
+   - guardar a mitad y recargar el juego;
+   - ganar y volver con el botín, la página y el evento;
+   - perder y retirarse;
+   - la resolución rápida;
+   - la telemetría.
+
+**Capturas** en `shots/combate-exp/` (la carpeta no se sube):
+- `1-casilla-en-el-mapa`;
+- `2-tarjeta-enemigo`;
+- `3-entrada-al-combate`;
+- `4-primer-combate-guiado`;
+- `5-casillas-marcadas-guia`;
+- `6-vuelta-con-botin`;
+- `7-vuelta-tras-derrota`.
 
 ## Estado
 - **Paso 5, primera parte** (motor puro, tests, simulador y este documento): **hecho** e integrado en v32.
 - **Paso 5, segunda parte** (escena, interfaz, modelos de enemigos, prueba headless y capturas): **hecha** en la rama
   `claude/combat-scene-02dc34`, sin mergear. Ya trae master (v33, con el 3b) adentro.
-- **Falta:** la casilla `enemigo` y el traspaso con la expedición (§12).
+- **Paso 5, tercera parte** (casilla `enemigo`, traspaso, primera pelea guiada, telemetría y balance, §13): **hecha** en la
+  rama `claude/combate-expedicion-ed9cb7`, que sale de la segunda parte y trae master. Sin mergear.
+  - `node test-combat-exp.mjs`: 75 bien, 0 mal (35 en Node y 40 en Chrome headless).
+  - Siguen bien, cada una corrida sola: `test-combat-scene` 29, `test-combat --quick` 92, `test-expedition` 30,
+    `test-cycle` 61, `test-telemetry` 67 y `test-story` 94.
+  - `test-cycle` ahora rodea las casillas `enemigo` en su camino.
+  - `test-story` falla una vez cada tanto, también en la rama sin cambios (una flecha o el premio del día, según la
+    corrida).
+- **Balance con el combate** (las mismas metas que antes, comparado contra la rama sin cambios):
+  - **`sim:expedition`:** las mismas metas en ✔ y en ✘ que antes. La única que cambia es "medio saca 3★ en 25–40 %" del
+    prototipo, que pasa de 39,2 % a 40,4 % con 500 salidas. Es ruido: con 2000 salidas da 34,3 % sin combate y 35,3 %
+    con combate.
+  - **`sim:economy`** (semilla 1): 18 ✔ y 2 ✘, igual que antes. Las dos que fallan ya fallaban: "monedas al llegar" y
+    "la automática daría".
+  - **Con 8 semillas:**
+    - los materiales de la expedición quedan iguales: 57,4 por día sin combate y 57,5 con combate;
+    - el botín de combate es chico: de 0 a 0,3 materiales por día, con 0 a 3 peleas jugadas en 60 días, porque cada una
+      cuesta 4 minutos del rato;
+    - la preparación ante las amenazas baja unos 3 puntos (de 70 % a 67 %). Esa meta ya fallaba en la mitad de las
+      semillas, y la diferencia sale de dónde el bot de la ciudad pone las defensas: las corridas se separan desde el
+      día 1.
+- **Para integrar:**
+  - sumar a `tools/package.json` el script `"test:combat-exp": "node test-combat-exp.mjs"`;
+  - sumar `node test-combat-exp.mjs` a `npm test`, con la escena;
+  - correr `npm run bump`.

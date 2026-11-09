@@ -147,8 +147,9 @@ export function openSettings(ctx, p = {}) {
         vol('volMaster', 'General', null, () => audio.sfx('select')),
         vol('volMusic', 'Música', null),
         vol('volSfx', 'Efectos', 'Monedas, botones, obras.', () => audio.sfx('coin')),
-        vol('volAmb', 'Ambiente', 'Brisa y pájaros en la ciudad, viento en la expedición.'),
+        vol('volAmb', 'Ambiente', 'Viento, mar, lluvia, pájaros y grillos según el lugar y la hora.'),
         vol('volUi', 'Interfaz', 'Clics, menús y pestañas.', () => audio.sfx('select')),
+        vol('volVoice', 'Voces', 'Las voces de la historia.'),
         sw('muteBg', 'Silenciar en segundo plano', 'Cuando la ventana del juego queda atrás.'),
       )];
     },
@@ -299,9 +300,19 @@ export function openSettings(ctx, p = {}) {
       h('div.set-dz', { html: DEZ_MARK, 'aria-hidden': 'true' }),
       h('b.pnl-credits-title', {}, 'Pixelia'),
       h('p', { html: 'Un juego de <b>Dezings</b>' }),
-      h('p.small.muted', {}, 'Diseño, código, arte vóxel y música: Dezings · Música y sonidos sintetizados en el momento · Tipografía Jersey 10 (OFL) · Gráficos 3D con three.js · Juego de PC con Tauri'),
+      h('p.small.muted', {}, 'Diseño, código, arte vóxel y música: Dezings · La música se compone en el momento con instrumentos grabados · Tipografía Jersey 10 (OFL) · Gráficos 3D con three.js · Juego de PC con Tauri'),
+      soundCredits(),
       h('button.btn.mint.small', { html: `${icon('info', 18)} Manual`, onclick: () => { sh.close(); setTimeout(() => ctx.openPanel('story', { tab: 'manual' }), 240); } }),
       ver);
+  }
+  // créditos de los sonidos (assets/audio/LICENSES.md, todo CC0): se arman desde el manifest
+  function soundCredits() {
+    const box = h('details.set-sound-credits', {}, h('summary.small', {}, 'Sonidos e instrumentos'));
+    audio.credits().then(list => {
+      if (!list.length) { box.remove(); return; }
+      box.append(h('p.small.muted', {}, list.map(c => `${c.name} · ${c.author} (${c.license})`).join(' · ')));
+    });
+    return box;
   }
   function dangerZone() {
     const resetBtn = h('button.btn.block.pnl-danger', { html: `${icon('trash', 20)} Borrar partida` });

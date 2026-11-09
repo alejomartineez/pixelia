@@ -3,7 +3,8 @@
 // huellas al caminar. Las reglas (visión, costo) viven en exp-rules.js (conditions); acá solo se dibuja y se avisa.
 import * as THREE from 'three';
 import { createAmbience } from '../core/ambience-fx.js';
-import { expPlace, expEchoSpots, WEATHER } from '../core/ambience.js';
+import { expPlace, expEchoSpots, WEATHER, isNightHour } from '../core/ambience.js';
+import { audio } from '../core/audio.js';
 import { createParticles } from '../scenes/city-fx.js';
 import { ringOf } from './exp-data.js';
 import * as R from './exp-rules.js';
@@ -25,7 +26,9 @@ export function createExpAmbience({ ctx, r, lights, world, cellPos, cellTop }) {
   const prints = [];
   const printGeo = new THREE.PlaneGeometry(0.07, 0.11);
   const printMat = new THREE.MeshBasicMaterial({ color: 0x3a2e24, transparent: true, opacity: 0.35, depthWrite: false });
-  let last = null, area = { x: 5, z: 6 };
+  let last = null, area = { x: 5, z: 6 }, lastRun = null;
+  // pasos según el terreno (K4): llano y monte = pasto, colina y roca = piedra, bañado = agua
+  const SURF = { llano: 'pasto', bosque: 'pasto', colina: 'piedra', roca: 'piedra', pantano: 'agua' };
 
   function sync(run) {
     if (!run) return null;
@@ -33,6 +36,8 @@ export function createExpAmbience({ ctx, r, lights, world, cellPos, cellTop }) {
     const here = run.cells[run.pos[1] * run.w + run.pos[0]];
     amb.set({ hour: Q_HOUR ?? c.hour, weather: Q_WEATHER ?? c.weather, place: expPlace(ringOf(here?.depth || 0)), region: run.region, light: ctx.state.world?.light ?? 1 },
       { now: !last });
+    lastRun = run;
+    audio.setScene({ place: expPlace(ringOf(here?.depth || 0)), night: isNightHour(Q_HOUR ?? c.hour), weather: Q_WEATHER ?? c.weather, light: ctx.state.world?.light ?? 1, indoor: false });
     area = { x: run.w / 2 + 2, z: run.h / 2 + 2 };
     amb.setArea(area.x, area.z, 6);
     // avisos de lo que cambia (una vez por cambio)
@@ -52,6 +57,9 @@ export function createExpAmbience({ ctx, r, lights, world, cellPos, cellTop }) {
   function step(from, to) {
     const a = cellPos(from[0], from[1]), b = cellPos(to[0], to[1]);
     const ya = cellTop(from[0], from[1]);
+    const cell = lastRun?.cells?.[to[1] * lastRun.w + to[0]];
+    const surf = last?.weather === 'nieve' ? 'nieve' : SURF[cell?.terrain] || 'pasto';
+    audio.step(surf); setTimeout(() => audio.step(surf), 260);
     fx.dust(b.x, cellTop(to[0], to[1]) + 0.05, b.z, 0.25);
     const dx = b.x - a.x, dz = b.z - a.z, ang = Math.atan2(dx, dz);
     for (let i = 0; i < 2; i++) {
