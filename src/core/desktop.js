@@ -29,7 +29,8 @@ async function toggleFullscreen() { await setFullscreen(!(await isFullscreen()))
 
 const dpi = () => T()?.dpi || T()?.window || {};
 
-/** { w, h, scale, x, y } del monitor donde está la ventana (w y h lógicos), o null fuera del juego de PC. */
+/** { w, h, scale, x, y, aw, ah, ax, ay } del monitor donde está la ventana (w, h, aw y ah lógicos; aw/ah/ax/ay = área útil,
+ *  sin barra de tareas ni Dock), o null fuera del juego de PC. */
 export async function monitorInfo() {
   const cm = T()?.window?.currentMonitor;
   if (!cm) return null;
@@ -39,7 +40,8 @@ export async function monitorInfo() {
     const sc = m.scaleFactor || 1;
     const area = m.workArea || { size: m.size, position: m.position };
     return { w: Math.round(m.size.width / sc), h: Math.round(m.size.height / sc), scale: sc, x: m.position.x, y: m.position.y,
-      pw: m.size.width, ph: m.size.height, aw: Math.round(area.size.width / sc), ah: Math.round(area.size.height / sc) };
+      pw: m.size.width, ph: m.size.height, aw: Math.round(area.size.width / sc), ah: Math.round(area.size.height / sc),
+      ax: area.position?.x ?? m.position.x, ay: area.position?.y ?? m.position.y, apw: area.size.width, aph: area.size.height };
   } catch (e) { console.warn('[desktop] monitor', e); return null; }
 }
 
@@ -51,7 +53,12 @@ async function sizeWindow(w, W, H) {
   if (!LogicalSize) return;
   if (m) { W = Math.min(W, Math.floor(m.aw * 0.94)); H = Math.min(H, Math.floor((m.ah - 34) * 0.96)); }
   await w.setSize(new LogicalSize(W, H));
-  await w.center();
+  // centrada a mano en el área útil: en macOS center() justo después de setSize todavía ve el tamaño anterior
+  const { PhysicalPosition } = dpi();
+  if (m && PhysicalPosition) {
+    const pw = Math.round(W * m.scale), ph = Math.round(H * m.scale);
+    await w.setPosition(new PhysicalPosition(m.ax + Math.max(0, Math.round((m.apw - pw) / 2)), m.ay + Math.max(0, Math.round((m.aph - ph) / 2))));
+  } else await w.center();
 }
 
 /** Aplica settings.winMode ('window' | 'fullscreen' | 'borderless') y settings.winRes ('auto' | '1600x900'…). */

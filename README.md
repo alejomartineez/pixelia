@@ -22,6 +22,9 @@ todavía no están firmadas:
 - **Mac**: la primera vez, hacé **clic derecho en Pixelia → Abrir → Abrir**. Si dice que "está dañada", corré en la
   Terminal `xattr -cr /Applications/Pixelia.app`.
 
+**Desinstalar.** La partida queda guardada aparte y vuelve si reinstalás. Si en el desinstalador marcás *Borrar los
+datos de la aplicación*, también se borra la partida.
+
 **Pasar la partida de la web.** Usá la cuenta online o, en Ajustes, *Exportar* en la web e *Importar* en la app.
 
 **Compilar** (desde `tools/`):
