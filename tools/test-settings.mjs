@@ -123,7 +123,7 @@ try {
   section('Panel: pestañas');
   ok(await openSettings('gfx'), 'Ajustes abre en Gráficos');
   const tabs = await page.evaluate(() => [...document.querySelectorAll('.set-tab')].map(b => b.textContent.trim()));
-  ok(tabs.join('|') === 'Gráficos|Pantalla|Sonido|Juego|Controles|Accesibilidad|Partida', 'siete pestañas', tabs);
+  ok(tabs.join('|') === 'Gráficos|Pantalla|Sonido|Juego|Idioma|Controles|Accesibilidad|Partida', 'ocho pestañas (con Idioma, paso 4a)', tabs);
   for (const t of ['screen', 'sound', 'game', 'keys', 'a11y', 'save', 'gfx']) {
     await click(`.set-tab[data-tab="${t}"]`);
     ok(await waitFor(`document.querySelector('.set-tab.on')?.dataset.tab === '${t}' && document.querySelector('.set-pane .pnl-sec')`, 2000), `pestaña ${t} se arma`);

@@ -38,7 +38,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 |---|---|---|---|---|
 | — | Plan, handoff y referencia de sprites (`docs/ref/`) | orquestador | hecho | (este commit) |
 | 1a | Armas y armaduras fuera del cuerpo, `test-gear-fit` y galería de clases | trav-1a-armas | integrado | master |
-| 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | trav-1b-iconos | hecho, falta integrar | rama `claude/trav-1b-e6ea29` |
+| 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | trav-1b-iconos | integrado | master |
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
@@ -50,7 +50,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 3b | Cinemática "El Quiebre" nueva | — | después del 3a | |
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
-| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas | en curso | rama `trav-4a` |
+| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas | base integrada; falta pasar el HUD a claves | master |
 | 4b | Extraer el texto, glosario, traducir a 8 idiomas y revisar | — | después del Bloque 3 | |
 
 ## Claves externas (nunca copiarlas al repo, a los logs ni a la salida de comandos)
@@ -274,3 +274,59 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
 - **Para después:**
   - Tanda 2: las 108 láminas de Hallazgos (`album*.js`), que todavía usan emojis.
   - Ícono propio para "líder" (hoy `settlers`), "jefes" (hoy `medal`) y "accesorio" (hoy `bag`).
+### 4a · Base de idiomas (rama `claude/trav-4a-b849e1`)
+**Hecho** (commit sin bump; `npm run bump` regenera `sw.js` con las fuentes nuevas de `fonts/`):
+- **`src/core/i18n.js`**: `t(clave, vars)`, `tn(clave, n, vars)` con `Intl.PluralRules` (plurales como objetos
+  `{ one, other }`), `fmtNum`, `fmtDate`, `canvasFont(px)` para el texto en canvas, `translateDom(el)` para
+  `data-i18n` / `data-i18n-html` / `data-i18n-attr`, `matchLang` y `pickSystemLang`.
+  - Diccionarios en `src/i18n/<código>.js` (`export default { clave: texto }`), cargados con `import()`.
+  - Si falta una clave, muestra el español, avisa una vez y la anota en `missing`.
+  - Al cambiar `settings.lang` carga el diccionario y la fuente, y recién ahí emite **`lang:changed`**: los paneles y el
+    HUD repintan con ese evento, no con `settings:changed`. `main.js` ya llama `hud.refresh()` con él.
+- **Idiomas.** Hay 224 claves en es, en y ja (Ajustes completo, splash y comunes). zh-CN, ru, pt-BR, de, fr y ko están
+  vacíos y caen al español hasta el 4b.
+- **Elegir idioma.**
+  - Nuevo `settings.lang` (`''` = sin elegir) y pestaña **Ajustes → Idioma** con los 9 idiomas, cada uno en su nombre.
+  - La primera vez toma el idioma del sistema y lo guarda: `navigator.languages`, y en Tauri `systemLocales()` de
+    `desktop.js`. WebView2 y WKWebView ya dan el locale del sistema operativo; si algún día se suma `tauri-plugin-os`,
+    su `locale()` va primero solo. Si el sistema está en un idioma que el juego no tiene, va inglés.
+  - **Navegadores de prueba** (`navigator.webdriver`): arrancan en español, para que los tests escritos en español
+    sigan andando.
+  - `?lang=xx` manda sobre los Ajustes sin guardarse. `?pseudo=1` estira cada texto ~35 % para probar el alemán.
+- **Splash.** El script inline de `index.html` adivina el idioma (?lang, el guardado o el del sistema). Si no es
+  español, esconde los textos (`html.i18n-wait`) hasta que `main.js` los traduce con `__boot.lang()`. Si el arranque
+  falla, los avisos salen en inglés.
+- **Fuentes.**
+  - Pixelify Sans se descartó: le faltan la О y la П cirílicas en mayúscula, verificado con fontTools.
+  - Se eligió **Fusion Pixel 12px proporcional** (OFL 1.1, TakWolf, versión 2026.10.25). Es una sola familia para el
+    cirílico y el CJK, con variantes ja, zh_hans y ko. Jersey 10 sigue para todo el latín, incluidos ß, ç, ã y œ, que
+    verifiqué.
+  - `tools/subset-fonts.mjs` baja la fuente a `tools/.cache/` (ignorada) y arma `fonts/pixel-ja.woff2` (21 KB),
+    `pixel-cyr.woff2` (5 KB) y `pixel-names.woff2` (1 KB, los nombres de los idiomas para el selector, con
+    `unicode-range` en `styles.css`). zh-CN y ko se arman solos cuando su diccionario tenga texto. `--check` avisa si
+    falta un glifo.
+  - `i18n.js` carga la fuente del idioma con `FontFace` solo en ese idioma, y usa respaldo del sistema si falta.
+  - Las licencias están en `fonts/OFL-*.txt`. `gen-sw-core.mjs` ya lista todo `fonts/*.woff2`, así que el bump las suma.
+  - En CJK: `html[data-script=cjk]` sube el alto de línea.
+- **Interfaz flexible en Ajustes.** La columna de pestañas crece con el texto, y las opciones segmentadas bajan de
+  línea en vez de cortarse.
+- **`tools/test-i18n.mjs`** está en `npm test`; con capturas, en `shots/i18n/`. Revisa:
+  - claves, variables, etiquetas y formas de plural por idioma;
+  - la lista `PASSED` de archivos sin texto con tilde: `i18n.js`, `settings.js` y `panels-settings.js`;
+  - glifos de cada idioma contra su fuente (`tools/font-cmap.mjs`);
+  - unidades;
+  - cambio en vivo, `?lang` y splash en ja;
+  - pestañas de Ajustes en ja, de (pseudo) y en sin texto cortado.
+- **Docs.** La regla nueva está en CLAUDE.md y en DESIGN.md (Guía de tono).
+- **Dependencias de desarrollo nuevas en `tools/`:** `subset-font` y `fontverter`. Solo las usan las herramientas; el
+  juego no suma nada.
+
+**Falta (después de que entre el 1b):**
+- Rebasar sobre `master` y pasar a claves:
+  - los textos de `src/core/hud.js`;
+  - los de `city-ui.js` que son del HUD;
+  - el `aria-label` "Cerrar" de `ui.js`.
+- Sumar esos archivos a `PASSED`, traducirlos a en y ja, y correr `node tools/subset-fonts.mjs`.
+- Conflicto esperable: una línea de `panels-settings.js` (el ícono `map` del paso 1 de iOS). Hay que quedarse con
+  el `t('settings.install.ios1')` de esta rama y el ícono del 1b.
+

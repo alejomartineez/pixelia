@@ -46,10 +46,12 @@
     @font-face { font-family: 'JerseyBoot'; src: url('fonts/jersey10.woff2') format('woff2'); font-display: swap; size-adjust: 122%; }
     #splash { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 90; display: flex; align-items: center; justify-content: center;
       cursor: pointer; overflow: hidden; text-align: center; color: #ece4d6; letter-spacing: .02em;
-      font-family: 'JerseyBoot', 'Jersey', ui-rounded, system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+      font-family: 'JerseyBoot', var(--font-lang, 'Jersey'), ui-rounded, system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
       background: linear-gradient(#11131c, #1d2030 48%, #2e2621); transition: opacity .45s, transform .45s; }
     #splash.hide { opacity: 0; transform: scale(1.08); pointer-events: none; }
     #splash.passive { pointer-events: none; cursor: default; }
+    /* otro idioma: los textos esperan a que main.js los traduzca (src/core/i18n.js) */
+    html.i18n-wait #splash [data-i18n], html.i18n-wait .boot-tip { visibility: hidden; }
     .splash-sky { position: absolute; top: 0; right: 0; bottom: 0; left: 0; background-image:
       radial-gradient(circle at 20% 25%, #fff 0 3px, transparent 4px), radial-gradient(circle at 75% 15%, #fff 0 2px, transparent 3px),
       radial-gradient(circle at 85% 60%, #fff 0 3px, transparent 4px), radial-gradient(circle at 10% 70%, #fff 0 2px, transparent 3px),
@@ -135,6 +137,24 @@
       fail: ['No pudimos abrir Pixelia', 'Revisá tu conexión a internet y probá de nuevo.'],
       old: ['Tu navegador no es compatible', 'Pixelia necesita un navegador actualizado: Safari 16.4 o más nuevo, o Chrome, Edge o Firefox recientes.']
     };
+    // Idioma (src/core/i18n.js): ?lang=, el guardado en Ajustes o el del sistema. Si no es español, los textos del
+    // splash quedan ocultos (html.i18n-wait) hasta que main.js los traduce con __boot.lang(); si el arranque falla,
+    // los avisos salen en inglés.
+    var LANG = 'es', OPEN = '¡Abriendo las puertas!';
+    try {
+      var qp = /[?&]lang=([\w-]+)/.exec(location.search), sv = null;
+      if (!qp) { try { sv = JSON.parse(localStorage.getItem('pixelia.save.v1') || 'null'); } catch (e) {} }
+      var want = qp ? qp[1] : (sv && sv.settings && sv.settings.lang) || (navigator.webdriver ? 'es' : '') || (navigator.languages && navigator.languages[0]) || navigator.language || 'es';
+      LANG = String(want).toLowerCase().split(/[-_]/)[0] || 'es';
+    } catch (e) {}
+    if (LANG !== 'es') {
+      de.className += ' i18n-wait';
+      MSG = {
+        slow: ['This is taking longer than usual…', 'If your connection is slow, wait a bit longer or try again.'],
+        fail: ['Pixelia could not start', 'Check your internet connection and try again.'],
+        old: ['Your browser is not supported', 'Pixelia needs an up-to-date browser: Safari 16.4 or newer, or a recent Chrome, Edge or Firefox.']
+      };
+    }
     var got = {}, nMods = 0, phase = 'load', started = false, slowShown = false, wasReady = false;
     var t0 = +new Date(), tMark = t0, shown = 0, tipT = t0, tipI = 1 + Math.floor(Math.random() * (TIPS.length - 1));
     var cssDone = false, cssWait = [], lastNet = t0;
@@ -157,6 +177,7 @@
       box.getElementsByTagName('span')[0].textContent = MSG[kind][1];
       box.hidden = false;
       if (kind !== 'slow') cls('boot-fail');
+      de.className = de.className.replace(' i18n-wait', '');
     }
     function clearMsg() { var box = $('boot-err'); if (box) box.hidden = true; cls('', 'boot-fail'); }
     function paint() {
@@ -183,11 +204,19 @@
       mod: function () { nMods++; tick('mods', nMods / MODS); },
       started: function () { started = true; tick('mods'); if (phase === 'fail') { phase = 'load'; clearMsg(); } },
       ready: function () { if (phase === 'done') return; phase = 'ready'; wasReady = true; clearMsg(); paint(); },
-      start: function () { if (phase === 'done') return; phase = 'start'; if (!wasReady) return; clearMsg(); var tip = $('boot-tip'); if (tip) tip.textContent = '¡Abriendo las puertas!'; paint(); },
+      start: function () { if (phase === 'done') return; phase = 'start'; if (!wasReady) return; clearMsg(); var tip = $('boot-tip'); if (tip) tip.textContent = OPEN; paint(); },
       done: function () { phase = 'done'; clearMsg(); paint(); clearInterval(timer); },
       fail: function (kind) { if (phase === 'done') return; phase = 'fail'; cls('', 'ready'); msg(kind || 'fail'); },
       css: function () { if (cssDone) return; cssDone = true; tick('css'); for (var i = 0; i < cssWait.length; i++) cssWait[i](); cssWait = []; },
-      whenCss: function (cb) { if (cssDone) cb(); else cssWait.push(cb); }
+      whenCss: function (cb) { if (cssDone) cb(); else cssWait.push(cb); },
+      // main.js, con el idioma cargado: { tips: [...], slow: [t, x], fail: [t, x], open: '...' }
+      lang: function (o) {
+        if (o.tips && o.tips.length) { TIPS = o.tips; var tip = $('boot-tip'); if (tip && phase !== 'start') tip.textContent = TIPS[tipI % TIPS.length]; }
+        if (o.slow) MSG.slow = o.slow;
+        if (o.fail) MSG.fail = o.fail;
+        if (o.open) OPEN = o.open;
+        de.className = de.className.replace(' i18n-wait', '');
+      }
     };
     // error antes de que arranque main.js = algún módulo no cargó; si después arranca igual, el aviso se va solo
     window.addEventListener('error', function () { if (!started) setTimeout(function () { if (!started) window.__boot.fail(); }, 1500); });
@@ -286,16 +315,16 @@
       <div class="splash-inner">
         <!--logo-crown--><svg class="boot-crown" width="112" height="80" viewBox="0 0 14 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="#3d2f2a" d="M6 0h2v1h-2zM5 1h1v1h-1zM8 1h1v1h-1zM4 2h1v1h-1zM9 2h1v1h-1zM3 3h1v1h-1zM10 3h1v1h-1zM2 4h1v1h-1zM11 4h1v1h-1zM1 5h12v1h-12zM2 6h1v1h-1zM11 6h1v1h-1zM2 7h1v1h-1zM11 7h1v1h-1zM2 8h1v1h-1zM11 8h1v1h-1zM2 9h10v1h-10z"/><path fill="#ee8a5c" d="M6 1h1v1h-1zM5 2h2v1h-2zM4 3h3v1h-3zM3 4h4v1h-4z"/><path fill="#c8673d" d="M7 1h1v1h-1zM7 2h2v1h-2zM7 3h3v1h-3zM7 4h4v1h-4z"/><path fill="#fdf6e3" d="M3 6h1v1h-1zM6 6h1v1h-1zM9 6h2v1h-2zM3 7h1v1h-1zM6 7h1v1h-1zM9 7h2v1h-2zM3 8h4v1h-4zM9 8h2v1h-2z"/><path fill="#8fd3ff" d="M4 6h2v1h-2zM4 7h2v1h-2z"/><path fill="#8a5a3a" d="M7 6h2v1h-2zM7 7h2v1h-2zM7 8h1v1h-1z"/><path fill="#ffd166" d="M8 8h1v1h-1z"/></svg><!--/logo-crown-->
         <h1 class="boot-title"><!--logo-word--><svg class="boot-word" width="301" height="91" viewBox="0 0 43 13" shape-rendering="crispEdges" role="img" aria-label="Pixelia"><path fill="#c8673d" d="M0 1h12v1h-12zM27 1h8v1h-8zM0 2h12v1h-12zM27 2h8v1h-8zM0 3h12v1h-12zM27 3h8v1h-8zM0 4h15v1h-15zM16 4h26v1h-26zM0 5h15v1h-15zM16 5h27v1h-27zM0 6h43v1h-43zM0 7h43v1h-43zM0 8h43v1h-43zM0 9h4v1h-4zM8 9h35v1h-35zM0 10h4v1h-4zM8 10h35v1h-35zM0 11h4v1h-4zM8 11h7v1h-7zM16 11h27v1h-27zM0 12h4v1h-4zM8 12h7v1h-7zM16 12h11v1h-11zM28 12h15v1h-15z"/><path fill="#3d2f2a" d="M0 0h12v1h-12zM27 0h8v1h-8zM0 1h12v1h-12zM27 1h8v1h-8zM0 2h12v1h-12zM27 2h8v1h-8zM0 3h15v1h-15zM16 3h26v1h-26zM0 4h15v1h-15zM16 4h27v1h-27zM0 5h43v1h-43zM0 6h43v1h-43zM0 7h43v1h-43zM0 8h4v1h-4zM8 8h35v1h-35zM0 9h4v1h-4zM8 9h35v1h-35zM0 10h4v1h-4zM8 10h7v1h-7zM16 10h27v1h-27zM0 11h4v1h-4zM8 11h7v1h-7zM16 11h11v1h-11zM28 11h15v1h-15z"/><path fill="#fff" d="M1 1h6v1h-6zM9 1h2v1h-2zM28 1h2v1h-2zM32 1h2v1h-2zM1 2h7v1h-7zM9 2h2v1h-2zM28 2h2v1h-2zM32 2h2v1h-2zM1 3h2v1h-2zM6 3h2v1h-2zM28 3h2v1h-2zM1 4h2v1h-2zM6 4h2v1h-2zM9 4h2v1h-2zM12 4h2v1h-2zM17 4h2v1h-2zM21 4h5v1h-5zM28 4h2v1h-2zM32 4h2v1h-2zM36 4h5v1h-5zM1 5h7v1h-7zM9 5h2v1h-2zM12 5h2v1h-2zM17 5h2v1h-2zM20 5h2v1h-2zM25 5h2v1h-2zM28 5h2v1h-2zM32 5h2v1h-2zM40 5h2v1h-2zM1 6h6v1h-6zM9 6h2v1h-2zM13 6h2v1h-2zM16 6h2v1h-2zM20 6h2v1h-2zM25 6h2v1h-2zM28 6h2v1h-2zM32 6h2v1h-2zM36 6h6v1h-6zM1 7h2v1h-2zM9 7h2v1h-2zM14 7h3v1h-3zM20 7h7v1h-7zM28 7h2v1h-2zM32 7h2v1h-2zM35 7h2v1h-2zM40 7h2v1h-2z"/><path fill="#f9f3e9" d="M1 8h2v1h-2zM9 8h2v1h-2zM13 8h2v1h-2zM16 8h2v1h-2zM20 8h2v1h-2zM28 8h2v1h-2zM32 8h2v1h-2zM35 8h2v1h-2zM40 8h2v1h-2zM1 9h2v1h-2zM9 9h2v1h-2zM12 9h2v1h-2zM17 9h2v1h-2zM20 9h2v1h-2zM25 9h2v1h-2zM28 9h2v1h-2zM32 9h2v1h-2zM35 9h2v1h-2zM39 9h3v1h-3zM1 10h2v1h-2zM9 10h2v1h-2zM12 10h2v1h-2zM17 10h2v1h-2zM21 10h5v1h-5zM29 10h2v1h-2zM32 10h2v1h-2zM36 10h3v1h-3zM40 10h2v1h-2z"/></svg><!--/logo-word--></h1>
-        <p class="splash-sub">Reconstruí lo que quedó</p>
+        <p class="splash-sub" data-i18n="boot.sub">Reconstruí lo que quedó</p>
         <div class="boot-load">
-          <div class="boot-bar" role="progressbar" aria-label="Cargando" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="boot-fill"></i></div>
+          <div class="boot-bar" role="progressbar" aria-label="Cargando" data-i18n-attr="aria-label:boot.loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="boot-fill"></i></div>
           <p class="boot-tip" id="boot-tip" aria-live="polite">Plantando árboles…</p>
         </div>
-        <p class="splash-tap">Hacé clic para jugar</p>
-        <div class="boot-err" id="boot-err" role="alert" hidden><b></b><span></span><button type="button" onclick="event.stopPropagation();location.reload()">Reintentar</button></div>
+        <p class="splash-tap" data-i18n="boot.tap">Hacé clic para jugar</p>
+        <div class="boot-err" id="boot-err" role="alert" hidden><b></b><span></span><button type="button" onclick="event.stopPropagation();location.reload()" data-i18n="boot.retry">Reintentar</button></div>
         <noscript><p class="boot-noscript">Pixelia necesita JavaScript para funcionar.</p></noscript>
       </div>
-      <p class="splash-by">Un juego de Dezings</p>
+      <p class="splash-by" data-i18n="boot.by">Un juego de Dezings</p>
     </div>
   </div>
   <script nomodule>__boot.fail('old');</script>

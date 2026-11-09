@@ -5,31 +5,34 @@ import { openShell, askConfirm, art, flagArt, chestArt } from './panels-common.j
 import { setSetting, WIN_RES } from '../core/settings.js';
 import { isDesktop, isMac, monitorInfo } from '../core/desktop.js';
 import { KEY_ACTIONS, codeFor, keyLabel, assignKey } from '../core/keys.js';
+import { t, tn, LANGS, getLang, matchLang } from '../core/i18n.js';
 
 const isStandalone = () => !!(navigator.standalone || matchMedia?.('(display-mode: standalone)').matches);
 const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // Pestañas de Ajustes (docs/PLAN-QUIEBRE.md §G). Cada control escribe con setSetting (src/core/settings.js), que
 // guarda, aplica en vivo y avisa por el bus ('settings:changed').
+// [id, ícono]; el nombre sale de t('settings.tab.<id>')
 const TABS = [
-  ['gfx', 'sparkle', 'Gráficos'],
-  ['screen', 'home', 'Pantalla'],
-  ['sound', 'music', 'Sonido'],
-  ['game', 'castle', 'Juego'],
-  ['keys', 'key', 'Controles'],
-  ['a11y', 'smile', 'Accesibilidad'],
-  ['save', 'save', 'Partida'],
+  ['gfx', 'sparkle'],
+  ['screen', 'home'],
+  ['sound', 'music'],
+  ['game', 'castle'],
+  ['lang', 'map'],
+  ['keys', 'key'],
+  ['a11y', 'smile'],
+  ['save', 'save'],
 ];
 let lastTab = 'gfx';
 
 export function openSettings(ctx, p = {}) {
-  const sh = openShell(ctx, 'settings', { title: 'Ajustes', ic: 'gear', sheet: true, className: 'pnl-settings set-panel' });
+  const sh = openShell(ctx, 'settings', { title: t('settings.title'), ic: 'gear', sheet: true, className: 'pnl-settings set-panel' });
   if (!sh) return;
   const { ui, audio } = ctx;
   const { h } = ui;
   const s = () => ctx.state.settings;
   const set = (patch) => setSetting(patch);
-  const tabs = h('nav.set-tabs', { role: 'tablist', 'aria-label': 'Secciones de Ajustes' });
+  const tabs = h('nav.set-tabs', { role: 'tablist', 'aria-label': t('settings.tabsLabel') });
   const pane = h('div.set-pane', { role: 'tabpanel' });
   sh.body.append(h('div.set-wrap', {}, tabs, pane));
   let tab = TABS.some(t => t[0] === p.tab) ? p.tab : lastTab;
@@ -92,31 +95,31 @@ export function openSettings(ctx, p = {}) {
   // ---------- pestañas ----------
   const PANES = {
     gfx() {
-      const presetSeg = seg('gfxPreset', [['low', 'Baja'], ['medium', 'Media'], ['high', 'Alta'], ['custom', 'Personalizada']],
+      const presetSeg = seg('gfxPreset', ['low', 'medium', 'high', 'custom'].map(v => [v, t('settings.preset.' + v)]),
         { disabled: ['custom'], onPick: v => { set({ gfxPreset: v }); show('gfx'); } });
       const auto = s().gfxPreset === 'auto';
       return [
-        section('sparkle', 'Calidad',
-          row('Preset', presetSeg, auto ? 'Todavía no elegiste: en el primer rato en la ciudad medimos tu compu y elegimos uno.' : 'Cambia todo lo de abajo de una vez.'),
-          row('Escala de resolución', slider('renderScale', { min: 50, max: 200, step: 10, fmt: pct, live: false, onDone: () => show('gfx') }),
-            'Pixeles de dibujo por pixel de pantalla. Con 200 % se ve más nítido; con menos, la placa de video trabaja menos.'),
-          sw('aa', 'Suavizado de bordes', 'Antialias: bordes diagonales sin serrucho.', { onChange: () => show('gfx') }),
-          sw('shadows', 'Sombras', null, { onChange: () => show('gfx') }),
-          sw('outline', 'Contorno tinta', 'La línea oscura alrededor de cada cosa: es parte del estilo del juego.', { onChange: () => show('gfx') }),
-          row('Partículas', seg('particles', [['few', 'Pocas'], ['normal', 'Normales'], ['many', 'Muchas']], { onPick: v => { set({ particles: v }); show('gfx'); } }), 'Confeti, polvo y brillos.'),
+        section('sparkle', t('settings.gfx.quality'),
+          row(t('settings.gfx.preset'), presetSeg, t(auto ? 'settings.gfx.presetAuto' : 'settings.gfx.presetHelp')),
+          row(t('settings.gfx.scale'), slider('renderScale', { min: 50, max: 200, step: 10, fmt: pct, live: false, onDone: () => show('gfx') }),
+            t('settings.gfx.scaleHelp')),
+          sw('aa', t('settings.gfx.aa'), t('settings.gfx.aaHelp'), { onChange: () => show('gfx') }),
+          sw('shadows', t('settings.gfx.shadows'), null, { onChange: () => show('gfx') }),
+          sw('outline', t('settings.gfx.outline'), t('settings.gfx.outlineHelp'), { onChange: () => show('gfx') }),
+          row(t('settings.gfx.particles'), seg('particles', ['few', 'normal', 'many'].map(v => [v, t('settings.gfx.particles.' + v)]), { onPick: v => { set({ particles: v }); show('gfx'); } }), t('settings.gfx.particlesHelp')),
         ),
-        section('clock', 'Cuadros por segundo',
-          row('Límite de FPS', seg('maxFps', [[30, '30'], [60, '60'], [120, '120'], [144, '144'], [240, '240'], [0, 'Sin límite']], { onPick: v => set({ maxFps: v }) }),
-            'Con un monitor rápido, más FPS se ve más suave. Con 30 la compu trabaja menos.'),
-          row('Con la ventana atrás', seg('bgFps', [[10, '10'], [15, '15'], [30, '30'], [60, '60']]), 'Tope de FPS cuando estás en otra ventana.'),
-          sw('showFps', 'Mostrar contador de FPS', 'Un número discreto arriba a la izquierda.'),
-          hint('La sincronización vertical la maneja siempre el sistema, así que nunca vas a ver cortes en la imagen.'),
+        section('clock', t('settings.gfx.fps'),
+          row(t('settings.gfx.maxFps'), seg('maxFps', [[30, '30'], [60, '60'], [120, '120'], [144, '144'], [240, '240'], [0, t('settings.gfx.noLimit')]], { onPick: v => set({ maxFps: v }) }),
+            t('settings.gfx.maxFpsHelp')),
+          row(t('settings.gfx.bgFps'), seg('bgFps', [[10, '10'], [15, '15'], [30, '30'], [60, '60']]), t('settings.gfx.bgFpsHelp')),
+          sw('showFps', t('settings.gfx.showFps'), t('settings.gfx.showFpsHelp')),
+          hint(t('settings.gfx.vsync')),
         ),
       ];
     },
     screen() {
       const out = [];
-      const modes = isDesktop ? [['window', 'Ventana'], ['fullscreen', 'Pantalla completa'], ['borderless', 'Sin bordes']] : [['window', 'Ventana'], ['fullscreen', 'Pantalla completa']];
+      const modes = (isDesktop ? ['window', 'fullscreen', 'borderless'] : ['window', 'fullscreen']).map(v => [v, t('settings.screen.' + v)]);
       const resBox = h('div.set-resbox');
       const modeSeg = seg('winMode', modes, { onPick: v => { set({ winMode: v }); paintRes(); } });
       function paintRes() {
@@ -125,59 +128,75 @@ export function openSettings(ctx, p = {}) {
         monitorInfo().then(m => {
           if (sh.closed) return;
           const fits = WIN_RES.filter(([w, hh]) => !m || (w <= m.aw && hh <= m.ah));
-          const opts = [['auto', 'Automática'], ...fits.map(([w, hh]) => [`${w}x${hh}`, `${w}×${hh}`])];
+          const opts = [['auto', t('settings.preset.auto')], ...fits.map(([w, hh]) => [`${w}x${hh}`, `${w}×${hh}`])];
           resBox.innerHTML = '';
-          resBox.append(row('Resolución de la ventana', seg('winRes', opts), m ? `Tu monitor: ${m.w}×${m.h}. Automática ajusta la ventana al abrir el juego.` : null));
+          resBox.append(row(t('settings.screen.res'), seg('winRes', opts), m ? t('settings.screen.resHelp', { w: String(m.w), h: String(m.h) }) : null));
         });
       }
       paintRes();
       const fsKey = isMac ? 'Ctrl + Cmd + F' : 'F11';
-      out.push(section('home', 'Ventana',
-        row('Modo', modeSeg, isDesktop ? `<kbd>${fsKey}</kbd> pasa a pantalla completa y vuelve. Sin bordes ocupa todo el monitor sin cambiar de modo.` : 'En el navegador, Esc sale de la pantalla completa.'),
+      out.push(section('home', t('settings.screen.window'),
+        row(t('settings.screen.mode'), modeSeg, isDesktop ? t('settings.screen.modeHelpPc', { key: fsKey }) : t('settings.screen.modeHelpWeb')),
         resBox,
       ));
-      out.push(section('sparkle', 'Interfaz',
-        row('Escala de la interfaz', slider('uiScale', { min: 80, max: 150, step: 5, fmt: pct, live: false }), 'Agranda o achica botones, menús y textos. En monitores grandes, 120 % o más se lee mejor.'),
+      out.push(section('sparkle', t('settings.screen.ui'),
+        row(t('settings.screen.uiScale'), slider('uiScale', { min: 80, max: 150, step: 5, fmt: pct, live: false }), t('settings.screen.uiScaleHelp')),
       ));
       return out;
     },
     sound() {
       const vol = (key, label, help, test) => row(label, slider(key, { min: 0, max: 100, step: 5, scale: 100, fmt: pct, onDone: test }), help);
-      return [section('music', 'Volumen',
-        vol('volMaster', 'General', null, () => audio.sfx('select')),
-        vol('volMusic', 'Música', null),
-        vol('volSfx', 'Efectos', 'Monedas, botones, obras.', () => audio.sfx('coin')),
-        vol('volAmb', 'Ambiente', 'Viento, mar, lluvia, pájaros y grillos según el lugar y la hora.'),
-        vol('volUi', 'Interfaz', 'Clics, menús y pestañas.', () => audio.sfx('select')),
-        vol('volVoice', 'Voces', 'Las voces de la historia.'),
-        sw('muteBg', 'Silenciar en segundo plano', 'Cuando la ventana del juego queda atrás.'),
+      return [section('music', t('settings.sound.volume'),
+        vol('volMaster', t('settings.sound.master'), null, () => audio.sfx('select')),
+        vol('volMusic', t('settings.sound.music'), null),
+        vol('volSfx', t('settings.sound.sfx'), t('settings.sound.sfxHelp'), () => audio.sfx('coin')),
+        vol('volAmb', t('settings.sound.amb'), t('settings.sound.ambHelp')),
+        vol('volUi', t('settings.sound.ui'), t('settings.sound.uiHelp'), () => audio.sfx('select')),
+        vol('volVoice', t('settings.sound.voice'), t('settings.sound.voiceHelp')),
+        sw('muteBg', t('settings.sound.muteBg'), t('settings.sound.muteBgHelp')),
       )];
     },
     game() {
       return [
-        section('people', 'Vos y tu ciudad',
-          nameField('Nombre de tu personaje', 'people', () => ctx.state.player.name, v => { ctx.state.player.name = v; }, 'Pixelín', 16),
-          nameField('Nombre de la ciudad', 'castle', () => ctx.state.player.cityName, v => { ctx.state.player.cityName = v; }, 'Pixelia', 18),
+        section('people', t('settings.game.you'),
+          nameField(t('settings.game.charName'), 'people', () => ctx.state.player.name, v => { ctx.state.player.name = v; }, 'Pixelín', 16),
+          nameField(t('settings.game.cityName'), 'castle', () => ctx.state.player.cityName, v => { ctx.state.player.cityName = v; }, 'Pixelia', 18),
           h('div.pnl-acc-btns', {},
-            h('button.btn.primary.block', { html: `${icon('dress', 20)} Cambiar personaje`, onclick: () => { sh.close(); ctx.router.go('wardrobe', { tab: 'type' }); } }),
-            h('button.btn.second.block', { html: `${icon('palette', 20)} Estilo de la ciudad`, onclick: () => { sh.close(); import('../city/themes-ui.js').then(m => m.openThemePicker(ctx)).catch(e => console.warn('[ajustes] temas', e)); } })),
+            h('button.btn.primary.block', { html: `${icon('dress', 20)} ${t('settings.game.changeChar')}`, onclick: () => { sh.close(); ctx.router.go('wardrobe', { tab: 'type' }); } }),
+            h('button.btn.second.block', { html: `${icon('palette', 20)} ${t('settings.game.cityStyle')}`, onclick: () => { sh.close(); import('../city/themes-ui.js').then(m => m.openThemePicker(ctx)).catch(e => console.warn('[ajustes] temas', e)); } })),
         ),
         flagSection(),
-        section('quest', 'Historia y combate',
-          row('Velocidad de los diálogos', seg('textSpeed', [['slow', 'Lenta'], ['normal', 'Normal'], ['fast', 'Rápida'], ['instant', 'Al instante']])),
-          sw('skipSeen', 'Saltear las cinemáticas ya vistas', 'Igual las podés volver a ver desde la Bitácora.'),
-          row('Velocidad de las animaciones del combate', seg('combatSpeed', [[1, 'x1'], [2, 'x2'], [3, 'x3']])),
-          sw('confirmEnd', 'Confirmar el fin de turno', 'Pregunta antes si a alguien del grupo le quedan acciones.'),
-          sw('hints', 'Pistas de la guía', 'La flecha que señala el próximo paso de la misión.'),
+        section('quest', t('settings.game.story'),
+          row(t('settings.game.textSpeed'), seg('textSpeed', ['slow', 'normal', 'fast', 'instant'].map(v => [v, t('settings.game.textSpeed.' + v)]))),
+          sw('skipSeen', t('settings.game.skipSeen'), t('settings.game.skipSeenHelp')),
+          row(t('settings.game.combatSpeed'), seg('combatSpeed', [[1, 'x1'], [2, 'x2'], [3, 'x3']])),
+          sw('confirmEnd', t('settings.game.confirmEnd'), t('settings.game.confirmEndHelp')),
+          sw('hints', t('settings.game.hints'), t('settings.game.hintsHelp')),
         ),
-        section('rotate', 'Cámara',
-          row('Velocidad de la cámara', slider('camSpeed', { min: 50, max: 200, step: 10, scale: 100, fmt: pct }), 'Con el teclado y con los bordes.'),
-          sw('edgeScroll', 'Mover la cámara con los bordes', 'Llevá el mouse al borde de la ventana para desplazarte por la ciudad.'),
+        section('rotate', t('settings.game.camera'),
+          row(t('settings.game.camSpeed'), slider('camSpeed', { min: 50, max: 200, step: 10, scale: 100, fmt: pct }), t('settings.game.camSpeedHelp')),
+          sw('edgeScroll', t('settings.game.edgeScroll'), t('settings.game.edgeScrollHelp')),
         ),
-        section('star', 'Ambiente',
-          sw('dayNight', 'Día y noche en la ciudad', 'Un día dura unos 20 minutos. Apagado, la ciudad queda siempre de día. En la expedición la noche sigue contando.'),
+        section('star', t('settings.game.ambience'),
+          sw('dayNight', t('settings.game.dayNight'), t('settings.game.dayNightHelp')),
         ),
       ];
+    },
+    lang() {
+      const cur = getLang();
+      const forced = matchLang(new URLSearchParams(location.search).get('lang'));
+      const sys = matchLang(navigator.language);
+      const list = h('div.set-langs', { role: 'radiogroup', 'aria-label': t('settings.lang.title') });
+      for (const [code, name] of LANGS) {
+        const on = code === cur;
+        list.append(h('button.set-lang' + (on ? '.on' : ''), { role: 'radio', lang: code, 'data-lang': code, 'aria-checked': on ? 'true' : 'false',
+          onclick: () => { if (getLang() === code) return; audio.sfx('select'); set({ lang: code }); } }, name));
+      }
+      const notes = [hint(t('settings.lang.help'))];
+      if (sys) notes.push(hint(t('settings.lang.system', { name: LANGS.find(l => l[0] === sys)[1] })));
+      if (cur !== 'es') notes.push(hint(t('settings.lang.partial')));
+      if (forced) notes.push(hint(t('settings.lang.urlForced', { code: forced })));
+      return [section('map', t('settings.lang.title'), list, ...notes)];
     },
     keys() {
       const list = h('div.set-keys');
@@ -187,7 +206,7 @@ export function openSettings(ctx, p = {}) {
         let group = null;
         for (const a of KEY_ACTIONS) {
           if (a.group !== group) { group = a.group; list.append(h('h4.set-kgroup', {}, group)); }
-          const b = h('button.set-key', { 'data-act': a.id, 'aria-label': `${a.label}: ${keyLabel(codeFor(a.id))}. Clic para cambiar` }, h('kbd', {}, keyLabel(codeFor(a.id))));
+          const b = h('button.set-key', { 'data-act': a.id, 'aria-label': t('settings.keys.aria', { action: a.label, key: keyLabel(codeFor(a.id)) }) }, h('kbd', {}, keyLabel(codeFor(a.id))));
           b.onclick = () => listen(a, b);
           list.append(h('div.set-krow', {}, h('span', {}, a.label), b));
         }
@@ -196,19 +215,19 @@ export function openSettings(ctx, p = {}) {
         stop();
         audio.sfx('tap');
         b.classList.add('wait');
-        b.innerHTML = '<kbd>Apretá una tecla…</kbd>';
+        b.innerHTML = `<kbd>${t('settings.keys.press')}</kbd>`;
         const onKey = (e) => {
           e.preventDefault(); e.stopImmediatePropagation();
           if (e.key === 'Escape') { stop(); paint(); return; }
           if (['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight'].includes(e.code) && e.type !== 'keyup') return;
           const before = { ...s().keys };
           const next = assignKey(before, a.id, e.code);
-          if (!next) { audio.sfx('error'); ui.toast(`${keyLabel(e.code)} ya está reservada para el juego`, { icon: 'info' }); return; }
+          if (!next) { audio.sfx('error'); ui.toast(t('settings.keys.reserved', { key: keyLabel(e.code) }), { icon: 'info' }); return; }
           const swapped = KEY_ACTIONS.find(o => o.id !== a.id && (before[o.id] || o.def) === e.code);
           stop();
           set({ keys: next });
           audio.sfx('done');
-          if (swapped) ui.toast(`${swapped.label} pasó a ${keyLabel(codeFor(swapped.id))}`, { icon: 'rotate' });
+          if (swapped) ui.toast(t('settings.keys.swapped', { action: swapped.label, key: keyLabel(codeFor(swapped.id)) }), { icon: 'rotate' });
           paint();
         };
         listening = onKey;
@@ -217,24 +236,24 @@ export function openSettings(ctx, p = {}) {
       function stop() { if (listening) { removeEventListener('keydown', listening, true); listening = null; } }
       sh.onCleanup(stop);
       paint();
-      const reset = h('button.btn.second.block', { html: `${icon('rotate', 20)} Volver a las teclas de fábrica`, onclick: () => { stop(); set({ keys: {} }); audio.sfx('select'); paint(); } });
+      const reset = h('button.btn.second.block', { html: `${icon('rotate', 20)} ${t('settings.keys.reset')}`, onclick: () => { stop(); set({ keys: {} }); audio.sfx('select'); paint(); } });
       const fixed = h('div.set-fixed', { html: `
-        <div><kbd>Flechas</kbd><span>Mover y elegir (siempre andan)</span></div>
-        <div><kbd>Esc</kbd><span>Cerrar o pausa</span></div>
-        <div><kbd>Enter</kbd><span>Confirmar</span></div>
-        <div><kbd>${isMac ? 'Ctrl+Cmd+F' : 'F11'}</kbd><span>Pantalla completa</span></div>
-        <div><kbd>Arrastrar</kbd><span>Mover la cámara</span></div>
-        <div><kbd>Rueda</kbd><span>Zoom</span></div>
-        <div><kbd>1 – 4</kbd><span>Elegir opción en las cartas de la expedición</span></div>` });
-      return [section('key', 'Atajos de teclado', hint('Hacé clic en una tecla y apretá la nueva. Si ya la usaba otra acción, se intercambian.'), list, reset),
-        section('info', 'Fijas', fixed)];
+        <div><kbd>${t('settings.keys.arrows')}</kbd><span>${t('settings.keys.arrowsDo')}</span></div>
+        <div><kbd>Esc</kbd><span>${t('settings.keys.escDo')}</span></div>
+        <div><kbd>Enter</kbd><span>${t('settings.keys.enterDo')}</span></div>
+        <div><kbd>${isMac ? 'Ctrl+Cmd+F' : 'F11'}</kbd><span>${t('settings.keys.fsDo')}</span></div>
+        <div><kbd>${t('settings.keys.drag')}</kbd><span>${t('settings.keys.dragDo')}</span></div>
+        <div><kbd>${t('settings.keys.wheel')}</kbd><span>${t('settings.keys.wheelDo')}</span></div>
+        <div><kbd>1 – 4</kbd><span>${t('settings.keys.cardsDo')}</span></div>` });
+      return [section('key', t('settings.keys.title'), hint(t('settings.keys.help')), list, reset),
+        section('info', t('settings.keys.fixed'), fixed)];
     },
     a11y() {
-      return [section('smile', 'Accesibilidad',
-        row('Tamaño de texto', seg('textSize', [['normal', 'Normal'], ['large', 'Grande'], ['xlarge', 'Muy grande']])),
-        row('Reducir movimiento', seg('motion', [['auto', 'Automático'], ['on', 'Sí'], ['off', 'No']]), 'Automático hace lo que elegiste en tu sistema. Con “Sí” no hay sacudones, confeti ni cosas volando.'),
-        sw('subtitles', 'Subtítulos siempre', 'En las cinemáticas y las escenas de la historia.'),
-        sw('hiContrast', 'Alto contraste en el combate', 'Las casillas que marca el enemigo se ven con borde grueso y rayado.'),
+      return [section('smile', t('settings.a11y.title'),
+        row(t('settings.a11y.textSize'), seg('textSize', ['normal', 'large', 'xlarge'].map(v => [v, t('settings.a11y.textSize.' + v)]))),
+        row(t('settings.a11y.motion'), seg('motion', [['auto', t('common.auto')], ['on', t('common.yes')], ['off', t('common.no')]]), t('settings.a11y.motionHelp')),
+        sw('subtitles', t('settings.a11y.subtitles'), t('settings.a11y.subtitlesHelp')),
+        sw('hiContrast', t('settings.a11y.hiContrast'), t('settings.a11y.hiContrastHelp')),
       )];
     },
     save() {
@@ -256,7 +275,7 @@ export function openSettings(ctx, p = {}) {
     };
     for (const c of OUTFIT_COLORS) {
       swatches.append(h('button.swatch', {
-        'data-id': c.id, 'aria-label': 'Color ' + c.id, style: { background: c.hex },
+        'data-id': c.id, 'aria-label': t('settings.game.flagColor', { id: c.id }), style: { background: c.hex },
         onclick: () => {
           if (ctx.state.city.flagColor === c.id) return;
           ctx.state.city.flagColor = c.id;
@@ -269,7 +288,7 @@ export function openSettings(ctx, p = {}) {
       }));
     }
     paintFlag();
-    return section('castle', 'Bandera de la municipalidad', h('div.pnl-flag-row', {}, flagPrev, swatches));
+    return section('castle', t('settings.game.flag'), h('div.pnl-flag-row', {}, flagPrev, swatches));
   }
   function nameField(label, ic, get, put, fallback, max) {
     const input = h('input', { type: 'text', maxlength: String(max), value: get(), autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', 'aria-label': label });
@@ -289,25 +308,25 @@ export function openSettings(ctx, p = {}) {
     return h('label.pnl-field', {}, h('span.pnl-field-lbl', { html: `${icon(ic, 20)} ${label}` }), input);
   }
   function statsSection() {
-    return section('heart', 'Ayudanos a mejorar',
-      sw('telemetry', 'Enviar estadísticas anónimas de uso', null, { onChange: (on) => import('../online/telemetry.js').then(m => m.setEnabled(on)).catch(() => {}) }),
-      hint('Mandamos qué partes del juego usás (niveles, expediciones, menús), cuánto dura cada sesión y los errores, con un código al azar de este dispositivo. Nunca tu nombre, tu email ni tu ciudad.'));
+    return section('heart', t('settings.stats.title'),
+      sw('telemetry', t('settings.stats.send'), null, { onChange: (on) => import('../online/telemetry.js').then(m => m.setEnabled(on)).catch(() => {}) }),
+      hint(t('settings.stats.help')));
   }
   function creditsCard() {
-    const ver = h('span.chip.primary', { html: `${icon('sparkle', 14)} Versión …` });
-    gameVersion().then(v => { ver.innerHTML = `${icon('sparkle', 14)} Versión ${v}`; });
+    const ver = h('span.chip.primary', { html: `${icon('sparkle', 14)} ${t('settings.credits.version', { v: '…' })}` });
+    gameVersion().then(v => { ver.innerHTML = `${icon('sparkle', 14)} ${t('settings.credits.version', { v })}`; });
     return h('section.card.pnl-credits.set-credits', {},
       h('div.set-dz', { html: DEZ_MARK, 'aria-hidden': 'true' }),
       h('b.pnl-credits-title', {}, 'Pixelia'),
-      h('p', { html: 'Un juego de <b>Dezings</b>' }),
-      h('p.small.muted', {}, 'Diseño, código, arte vóxel y música: Dezings · La música se compone en el momento con instrumentos grabados · Tipografía Jersey 10 (OFL) · Gráficos 3D con three.js · Juego de PC con Tauri'),
+      h('p', { html: t('settings.credits.by') }),
+      h('p.small.muted', {}, t('settings.credits.text')),
       soundCredits(),
-      h('button.btn.mint.small', { html: `${icon('info', 18)} Manual`, onclick: () => { sh.close(); setTimeout(() => ctx.openPanel('story', { tab: 'manual' }), 240); } }),
+      h('button.btn.mint.small', { html: `${icon('info', 18)} ${t('settings.credits.manual')}`, onclick: () => { sh.close(); setTimeout(() => ctx.openPanel('story', { tab: 'manual' }), 240); } }),
       ver);
   }
   // créditos de los sonidos (assets/audio/LICENSES.md, todo CC0): se arman desde el manifest
   function soundCredits() {
-    const box = h('details.set-sound-credits', {}, h('summary.small', {}, 'Sonidos e instrumentos'));
+    const box = h('details.set-sound-credits', {}, h('summary.small', {}, t('settings.credits.sounds')));
     audio.credits().then(list => {
       if (!list.length) { box.remove(); return; }
       box.append(h('p.small.muted', {}, list.map(c => `${c.name} · ${c.author} (${c.license})`).join(' · ')));
@@ -315,11 +334,11 @@ export function openSettings(ctx, p = {}) {
     return box;
   }
   function dangerZone() {
-    const resetBtn = h('button.btn.block.pnl-danger', { html: `${icon('trash', 20)} Borrar partida` });
+    const resetBtn = h('button.btn.block.pnl-danger', { html: `${icon('trash', 20)} ${t('settings.reset.btn')}` });
     resetBtn.onclick = async () => {
-      const a = await askConfirm(ctx, { title: '¿Borrar partida?', html: 'Se borra <b>toda</b> tu ciudad, tus monedas y tus logros.', ok: 'Sí, borrar', cancel: 'No', okCls: 'pnl-danger', ic: 'trash' });
+      const a = await askConfirm(ctx, { title: t('settings.reset.q1'), html: t('settings.reset.q1Text'), ok: t('settings.reset.q1Ok'), cancel: t('common.no'), okCls: 'pnl-danger', ic: 'trash' });
       if (!a || sh.closed) return;
-      const b = await askConfirm(ctx, { title: '¿Seguro?', html: 'Esto <b>no se puede deshacer</b>. Si querés, antes guardá una copia en un archivo.', ok: 'Borrar todo', cancel: 'Me arrepentí', okCls: 'pnl-danger', ic: 'trash' });
+      const b = await askConfirm(ctx, { title: t('settings.reset.q2'), html: t('settings.reset.q2Text'), ok: t('settings.reset.q2Ok'), cancel: t('settings.reset.q2Cancel'), okCls: 'pnl-danger', ic: 'trash' });
       if (!b) return;
       ctx.store.reset();
       location.reload();
@@ -339,8 +358,8 @@ export function openSettings(ctx, p = {}) {
     pane.scrollTop = show.same === id ? keep : 0;
     show.same = id;
   }
-  for (const [id, ic, label] of TABS) {
-    tabs.append(h('button.set-tab', { role: 'tab', 'data-tab': id, html: `${icon(ic, 22)}<span>${label}</span>`, onclick: () => { if (tab !== id) { audio.sfx('tap'); show(id); } } }));
+  for (const [id, ic] of TABS) {
+    tabs.append(h('button.set-tab', { role: 'tab', 'data-tab': id, html: `${icon(ic, 22)}<span>${t('settings.tab.' + id)}</span>`, onclick: () => { if (tab !== id) { audio.sfx('tap'); show(id); } } }));
   }
   // flechas arriba/abajo (o izquierda/derecha) entre pestañas cuando el foco está en la lista
   tabs.addEventListener('keydown', (e) => {
@@ -356,6 +375,13 @@ export function openSettings(ctx, p = {}) {
   sh.on(ctx.bus, 'settings:changed', ({ keys } = {}) => {
     if (keys?.includes('winMode') && tab === 'screen') show('screen');
     if (keys?.includes('gfxPreset') && tab === 'gfx' && !document.activeElement?.closest?.('.set-pane')) show('gfx');
+  });
+  // idioma nuevo (i18n.js ya cargó el diccionario): se repintan el título, las pestañas y la pestaña abierta
+  sh.on(ctx.bus, 'lang:changed', () => {
+    const ttl = sh.el?.querySelector('.modal-head h2'); if (ttl) ttl.textContent = t('settings.title');
+    tabs.setAttribute('aria-label', t('settings.tabsLabel'));
+    for (const b of tabs.children) { const sp = b.querySelector('span'); if (sp) sp.textContent = t('settings.tab.' + b.dataset.tab); }
+    show(tab);
   });
   show(tab);
   return sh.done;
@@ -386,9 +412,9 @@ function backupSection(ctx, sh, section) {
     const name = `pixelia-${slug(ctx.state.player.cityName)}-${dateStr()}.json`;
     if (typeof window.showSaveFilePicker === 'function') {
       try {
-        const fh = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'Partida de Pixelia', accept: { 'application/json': ['.json'] } }] });
+        const fh = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: t('settings.backup.fileDesc'), accept: { 'application/json': ['.json'] } }] });
         const w = await fh.createWritable(); await w.write(payload); await w.close();
-        audio.sfx('done'); ui.toast('Partida guardada en el archivo', { icon: 'check', type: 'good' });
+        audio.sfx('done'); ui.toast(t('settings.backup.savedFile'), { icon: 'check', type: 'good' });
         return;
       } catch (e) { if (e?.name === 'AbortError') return; console.warn('[ajustes] guardar archivo', e); }
     }
@@ -397,22 +423,22 @@ function backupSection(ctx, sh, section) {
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
     audio.sfx('done');
-    ui.toast(`Listo: ${name} quedó en tu carpeta de descargas`, { icon: 'check', type: 'good' });
+    ui.toast(t('settings.backup.savedDownload', { name }), { icon: 'check', type: 'good' });
   }
 
   async function load(code) {
     code = String(code || '').replace(/[^A-Za-z0-9+/=]/g, '');
-    if (!code) { audio.sfx('error'); ui.toast('No encontramos una partida ahí', { icon: 'info' }); return; }
-    const ok = await askConfirm(ctx, { title: '¿Cargar partida?', html: 'Tu partida actual se va a reemplazar por esta.', ok: 'Cargar', cancel: 'Mejor no', ic: 'key' });
+    if (!code) { audio.sfx('error'); ui.toast(t('settings.backup.noGame'), { icon: 'info' }); return; }
+    const ok = await askConfirm(ctx, { title: t('settings.backup.loadQ'), html: t('settings.backup.loadQText'), ok: t('settings.backup.loadOk'), cancel: t('settings.backup.loadCancel'), ic: 'key' });
     if (!ok) return;
     try {
       store.importCode(code);
-      ui.toast('Partida cargada', { icon: 'check', type: 'good' });
+      ui.toast(t('settings.backup.loaded'), { icon: 'check', type: 'good' });
       setTimeout(() => location.reload(), 700);
     } catch (e) {
       console.warn('import', e);
       audio.sfx('error');
-      ui.toast('Esa partida no se pudo leer', { icon: 'close', type: 'bad' });
+      ui.toast(t('settings.backup.unreadable'), { icon: 'close', type: 'bad' });
     }
   }
   /** Lee un archivo de partida: el .json de Exportar, o un texto con el código suelto. */
@@ -420,20 +446,20 @@ function backupSection(ctx, sh, section) {
     try { const j = JSON.parse(txt); if (j && typeof j === 'object') return j.codigo || j.code || ''; } catch {}
     return txt;
   }
-  const fileInput = h('input.set-file', { type: 'file', accept: '.json,application/json,text/plain', 'aria-label': 'Archivo de partida' });
+  const fileInput = h('input.set-file', { type: 'file', accept: '.json,application/json,text/plain', 'aria-label': t('settings.backup.fileAria') });
   fileInput.addEventListener('change', async () => {
     const f = fileInput.files?.[0];
     fileInput.value = '';
     if (!f) return;
-    if (f.size > 8e6) { audio.sfx('error'); ui.toast('Ese archivo es demasiado grande para ser una partida', { icon: 'info' }); return; }
+    if (f.size > 8e6) { audio.sfx('error'); ui.toast(t('settings.backup.tooBig'), { icon: 'info' }); return; }
     load(codeFromText(await f.text()));
   });
 
   // código para copiar y pegar (como antes)
   const exportBox = h('div.col.hidden');
-  const exportArea = h('textarea.pnl-code', { readonly: true, rows: '3', 'aria-label': 'Código de tu partida' });
+  const exportArea = h('textarea.pnl-code', { readonly: true, rows: '3', 'aria-label': t('settings.backup.codeAria') });
   exportBox.append(exportArea);
-  const copyBtn = h('button.btn.sky.block', { html: `${icon('save', 20)} Copiar código` });
+  const copyBtn = h('button.btn.sky.block', { html: `${icon('save', 20)} ${t('settings.backup.copy')}` });
   copyBtn.onclick = async () => {
     store.save();
     const code = store.exportCode();
@@ -442,47 +468,47 @@ function backupSection(ctx, sh, section) {
     try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(code); ok = true; } } catch { ok = false; }
     exportBox.classList.remove('hidden');
     if (!ok) { exportArea.focus(); exportArea.select(); try { ok = document.execCommand('copy'); } catch { ok = false; } }
-    if (ok) { audio.sfx('done'); ui.toast('Código copiado', { icon: 'check', type: 'good' }); }
-    else { audio.sfx('select'); ui.toast('Copialo a mano desde el cuadro (Ctrl+C)', { icon: 'info' }); }
+    if (ok) { audio.sfx('done'); ui.toast(t('settings.backup.copied'), { icon: 'check', type: 'good' }); }
+    else { audio.sfx('select'); ui.toast(t('settings.backup.copyByHand'), { icon: 'info' }); }
   };
-  const importArea = h('textarea.pnl-code', { rows: '3', placeholder: 'Pegá acá un código de partida…', 'aria-label': 'Código para cargar', spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off' });
+  const importArea = h('textarea.pnl-code', { rows: '3', placeholder: t('settings.backup.pastePh'), 'aria-label': t('settings.backup.pasteAria'), spellcheck: 'false', autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off' });
   importArea.addEventListener('keydown', e => { if (e.key !== 'Escape') e.stopPropagation(); });
   const codeMore = h('details.set-more', {},
-    h('summary', {}, 'Con un código (para pegar en un chat)'),
+    h('summary', {}, t('settings.backup.withCode')),
     h('div.col.pnl-gap', {}, copyBtn, exportBox, importArea,
-      h('button.btn.second.block', { html: `${icon('key', 20)} Cargar código`, onclick: () => load(importArea.value) })));
+      h('button.btn.second.block', { html: `${icon('key', 20)} ${t('settings.backup.loadCode')}`, onclick: () => load(importArea.value) })));
 
   box.append(
-    h('p.small.muted', {}, 'Guardá tu partida en un archivo para pasarla de la web al juego de PC, a otra compu o para tener una copia.'),
+    h('p.small.muted', {}, t('settings.backup.help')),
     h('div.pnl-acc-btns', {},
-      h('button.btn.primary.block.set-export', { html: `${icon('save', 20)} Guardar en un archivo`, onclick: exportFile }),
-      h('button.btn.second.block.set-import', { html: `${icon('key', 20)} Cargar desde un archivo`, onclick: () => fileInput.click() })),
+      h('button.btn.primary.block.set-export', { html: `${icon('save', 20)} ${t('settings.backup.export')}`, onclick: exportFile }),
+      h('button.btn.second.block.set-import', { html: `${icon('key', 20)} ${t('settings.backup.import')}`, onclick: () => fileInput.click() })),
     fileInput, codeMore);
-  return section('save', 'Copia de seguridad', box);
+  return section('save', t('settings.backup.title'), box);
 }
 
 function installSection(ctx, section) {
   const { h } = ctx.ui;
   const install = h('div.col');
-  if (isStandalone()) install.append(h('div.pnl-note.good', { html: `${icon('check', 22)}<span>Pixelia ya está instalada. Abrila desde tu pantalla de inicio.</span>` }));
+  if (isStandalone()) install.append(h('div.pnl-note.good', { html: `${icon('check', 22)}<span>${t('settings.install.done')}</span>` }));
   else {
-    install.append(h('p.small.muted', {}, 'Así se abre a pantalla completa, como una app, y funciona sin internet. También hay un juego de PC para Windows y Mac.'));
+    install.append(h('p.small.muted', {}, t('settings.install.help')));
     const deferred = window.__pixeliaInstallPrompt;
     if (!isIOS() && deferred && typeof deferred.prompt === 'function') {
-      const btn = h('button.btn.second.block', { html: `${icon('plus', 20)} Instalar en esta compu` });
+      const btn = h('button.btn.second.block', { html: `${icon('plus', 20)} ${t('settings.install.btn')}` });
       btn.onclick = async () => { btn.disabled = true; try { await deferred.prompt(); } catch (e) { console.warn(e); } window.__pixeliaInstallPrompt = null; btn.remove(); };
       install.append(btn);
     } else if (isIOS()) {
       install.append(h('div.pnl-steps', { html: [
-        ['1', icon('map', 40), 'Abrí el juego en <b>Safari</b>'],
-        ['2', art('share', 40), 'Tocá <b>Compartir</b> (abajo)'],
-        ['3', art('addHome', 40), 'Elegí <b>Agregar a inicio</b>'],
+        ['1', icon('map', 40), t('settings.install.ios1')],
+        ['2', art('share', 40), t('settings.install.ios2')],
+        ['3', art('addHome', 40), t('settings.install.ios3')],
       ].map(([n, ic, t]) => `<div class="pnl-stepc"><i>${n}</i>${ic}<span>${t}</span></div>`).join('') }));
     } else {
-      install.append(h('p.pnl-note', { html: `${icon('info', 18)}<span>En Chrome o Edge, hacé clic en el botón de instalar a la derecha de la barra de direcciones.</span>` }));
+      install.append(h('p.pnl-note', { html: `${icon('info', 18)}<span>${t('settings.install.chrome')}</span>` }));
     }
   }
-  return section('home', 'Instalar como app', install);
+  return section('home', t('settings.install.title'), install);
 }
 
 // ---------- Cuenta y amigos (online) ----------
@@ -491,12 +517,11 @@ function agoText(t) {
   const ms = Date.now() - new Date(t).getTime();
   if (!isFinite(ms)) return '';
   const m = Math.round(ms / 60000);
-  if (m < 1) return 'recién';
-  if (m < 60) return `hace ${m} min`;
+  if (m < 1) return t('time.justNow');
+  if (m < 60) return t('time.minAgo', { n: m });
   const hh = Math.round(m / 60);
-  if (hh < 24) return `hace ${hh} h`;
-  const d = Math.round(hh / 24);
-  return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
+  if (hh < 24) return t('time.hoursAgo', { n: hh });
+  return tn('time.daysAgo', Math.round(hh / 24));
 }
 /** Carga social.js (lo hace otro módulo); si todavía no existe o falla, devuelve null. */
 async function loadSocial() {
@@ -507,7 +532,7 @@ function accountSection(ctx, sh, section) {
   const { ui, audio, bus } = ctx;
   const { h, esc } = ui;
   const box = h('div.col.pnl-acc');
-  const sec = section(icon('people', 24), 'Cuenta y amigos', box);
+  const sec = section(icon('people', 24), t('settings.acc.title'), box);
   let net = null, sync = null, loading = true, failed = false, unavailable = false;
   let code = null, codeFor = null, codeBusy = false;
 
@@ -541,14 +566,14 @@ function accountSection(ctx, sh, section) {
     if (typeof f !== 'function') {
       unavailable = true;
       paint();
-      ui.toast('La parte de amigos todavía se está preparando', { icon: 'heart' });
+      ui.toast(t('settings.acc.preparing'), { icon: 'heart' });
       return;
     }
     try {
       if (kind === 'account') await f(ctx);
       else if (kind === 'conflict') await f(ctx, sync?.getSyncStatus?.().conflictInfo);
       else await f(ctx, 'amigas');
-    } catch (e) { console.warn('[settings] social', e); ui.toast('Ups, no se pudo abrir', { icon: 'info' }); }
+    } catch (e) { console.warn('[settings] social', e); ui.toast(t('settings.acc.cantOpen'), { icon: 'info' }); }
     if (!sh.closed) paint();
   }
 
@@ -557,60 +582,60 @@ function accountSection(ctx, sh, section) {
     let ok = false;
     try { if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(code); ok = true; } } catch { ok = false; }
     if (!ok && navigator.share) {
-      try { await navigator.share({ text: `¡Sumame en Pixelia! Mi código de amistad es ${code}` }); ok = true; } catch { ok = false; }
+      try { await navigator.share({ text: t('settings.acc.shareText', { code }) }); ok = true; } catch { ok = false; }
     }
-    if (ok) { audio.sfx('done'); ui.toast('¡Código copiado! Pasáselo a tu gente', { icon: 'check', type: 'good' }); }
-    else { audio.sfx('select'); ui.toast(`Tu código es ${code}`, { icon: 'info' }); }
+    if (ok) { audio.sfx('done'); ui.toast(t('settings.acc.codeCopied'), { icon: 'check', type: 'good' }); }
+    else { audio.sfx('select'); ui.toast(t('settings.acc.yourCodeIs', { code }), { icon: 'info' }); }
   }
 
   function paint() {
     if (sh.closed) return;
     box.innerHTML = '';
-    if (loading) { box.append(h('p.small.muted', { html: `${icon('clock', 16)} Mirando tu conexión…` })); return; }
+    if (loading) { box.append(h('p.small.muted', { html: `${icon('clock', 16)} ${t('settings.acc.checking')}` })); return; }
     if (failed || !net) {
-      box.append(h('p.pnl-note', { html: `${icon('heart', 18)}<span>Por ahora no pudimos cargar lo online. ¡No pasa nada! Tu partida se guarda en este dispositivo.</span>` }));
+      box.append(h('p.pnl-note', { html: `${icon('heart', 18)}<span>${t('settings.acc.loadFail')}</span>` }));
       return;
     }
     const st = sync?.getSyncStatus?.() || {};
     const mode = net.mode;
     let chip, text;
     if (mode === 'off') {
-      chip = `<span class="chip">${icon('home', 14)} Sin conexión</span>`;
-      text = 'Tu partida se guarda en este dispositivo. Cuando el juego esté online vas a poder visitar a tus amigos y mandarles regalitos.';
+      chip = `<span class="chip">${icon('home', 14)} ${t('settings.acc.offline')}</span>`;
+      text = t('settings.acc.offlineText');
     } else if (!net.ready) {
-      chip = `<span class="chip sky">${icon('clock', 14)} Conectando…</span>`;
-      text = 'Un segundito…';
+      chip = `<span class="chip sky">${icon('clock', 14)} ${t('settings.acc.connecting')}</span>`;
+      text = t('settings.acc.connectingText');
     } else if (net.user) {
-      chip = net.online ? `<span class="chip mint">${icon('check', 14)} En línea</span>` : `<span class="chip gold">${icon('info', 14)} Sin internet</span>`;
-      const who = net.user.email ? `Entraste como <b>${esc(net.user.email)}</b>.` : 'Entraste con tu cuenta.';
-      const when = st.lastSync ? ` Guardado en la nube ${agoText(st.lastSync)}.` : '';
-      text = who + when + (net.online ? '' : ' Cuando vuelva internet se sincroniza sola.');
+      chip = net.online ? `<span class="chip mint">${icon('check', 14)} ${t('settings.acc.online')}</span>` : `<span class="chip gold">${icon('info', 14)} ${t('settings.acc.noInternet')}</span>`;
+      const who = net.user.email ? t('settings.acc.signedAs', { email: esc(net.user.email) }) : t('settings.acc.signed');
+      const when = st.lastSync ? t('settings.acc.synced', { ago: agoText(st.lastSync) }) : '';
+      text = who + when + (net.online ? '' : t('settings.acc.willSync'));
     } else {
-      chip = `<span class="chip second">${icon('people', 14)} Sin cuenta</span>`;
-      text = 'Creá tu cuenta para visitar las ciudades de tus amigos, mandarles regalos, intercambiar hallazgos y guardar tu partida en la nube.';
+      chip = `<span class="chip second">${icon('people', 14)} ${t('settings.acc.noAccount')}</span>`;
+      text = t('settings.acc.noAccountText');
     }
-    if (mode === 'mock') chip += ` <span class="chip primary">${icon('sparkle', 14)} Modo prueba</span>`;
+    if (mode === 'mock') chip += ` <span class="chip primary">${icon('sparkle', 14)} ${t('settings.acc.testMode')}</span>`;
     box.append(h('div.pnl-acc-status', { html: `<div class="pnl-chips">${chip}</div><p class="small muted">${text}</p>` }));
 
     if (net.user) {
       const codeBox = h('div.pnl-friendcode');
-      codeBox.innerHTML = `<span class="pnl-friendcode-l"><small>Tu código de amistad</small><b class="pnl-friendcode-txt">${code ? esc(code) : (codeFor ? '—' : '······')}</b></span>`;
-      if (code) codeBox.append(h('button.btn.sky.small', { html: `${icon('save', 18)} Copiar`, 'aria-label': 'Copiar código de amistad', onclick: copyCode }));
+      codeBox.innerHTML = `<span class="pnl-friendcode-l"><small>${t('settings.acc.yourCode')}</small><b class="pnl-friendcode-txt">${code ? esc(code) : (codeFor ? '—' : '······')}</b></span>`;
+      if (code) codeBox.append(h('button.btn.sky.small', { html: `${icon('save', 18)} ${t('settings.acc.copy')}`, 'aria-label': t('settings.acc.copyAria'), onclick: copyCode }));
       box.append(codeBox);
     }
     if (st.conflict) {
-      box.append(h('p.pnl-note', { html: `${icon('info', 18)}<span>Hay una partida distinta guardada en la nube. Elegí con cuál te quedás.</span>` }));
-      box.append(h('button.btn.gold.block', { html: `${icon('key', 20)} Elegir partida`, onclick: () => open('conflict') }));
+      box.append(h('p.pnl-note', { html: `${icon('info', 18)}<span>${t('settings.acc.conflict')}</span>` }));
+      box.append(h('button.btn.gold.block', { html: `${icon('key', 20)} ${t('settings.acc.pick')}`, onclick: () => open('conflict') }));
     }
     if (unavailable) {
-      box.append(h('p.pnl-note', { html: `${icon('heart', 18)}<span>La parte de amigos todavía se está preparando. ¡Muy pronto vas a poder jugar con tu gente!</span>` }));
+      box.append(h('p.pnl-note', { html: `${icon('heart', 18)}<span>${t('settings.acc.soon')}</span>` }));
     }
     const row = h('div.pnl-acc-btns');
     if (mode !== 'off') {
-      row.append(h('button.btn.second.block', { html: `${icon('key', 20)} ${net.user ? 'Mi cuenta' : 'Crear cuenta o entrar'}`, onclick: () => open('account') }));
-      if (net.user) row.append(h('button.btn.primary.block', { html: `${icon('people', 20)} Amigos`, onclick: () => open('social') }));
+      row.append(h('button.btn.second.block', { html: `${icon('key', 20)} ${t(net.user ? 'settings.acc.mine' : 'settings.acc.signIn')}`, onclick: () => open('account') }));
+      if (net.user) row.append(h('button.btn.primary.block', { html: `${icon('people', 20)} ${t('settings.acc.contacts')}`, onclick: () => open('social') }));
     } else {
-      row.append(h('button.btn.second.block', { html: `${icon('people', 20)} Cuenta y amigos`, onclick: () => open('account') }));
+      row.append(h('button.btn.second.block', { html: `${icon('people', 20)} ${t('settings.acc.title')}`, onclick: () => open('account') }));
     }
     box.append(row);
   }

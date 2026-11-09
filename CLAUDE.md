@@ -28,12 +28,19 @@ adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
   (vóxel nítido: 2× con antialias, oclusión ambiental y contorno tinta; nada de render a baja resolución);
   2D (íconos, tableros) en canvas de baja resolución sin suavizado.
 - Guardado local: `localStorage` `pixelia.save.v1`.
+- **Idiomas** (`src/core/i18n.js`, La Travesía 4a): todo texto nuevo va por `t('zona.cosa', vars)` o `tn(clave, n)` con
+  su clave en `src/i18n/es.js`; nada de texto escrito directo en el código. Los idiomas son `src/i18n/<código>.js`
+  (es, en, zh-CN, ru, pt-BR, de, fr, ja, ko) y se cargan con `import()`. Lo que falta cae al español con aviso.
+  Ajustes → Idioma usa `setSetting({ lang })` y después llega `lang:changed` por el bus: repintá ahí lo que esté abierto.
+  Nada de anchos fijos para texto (el alemán ocupa ~30 % más; el CJK es más alto). Después de traducir a ja, zh-CN, ko
+  o ru: `node subset-fonts.mjs` (recorta Fusion Pixel a los caracteres usados en `fonts/pixel-<idioma>.woff2`).
+  `?lang=xx` manda sobre los Ajustes y `?pseudo=1` estira los textos para probar la interfaz.
 
 ## Comandos (desde `tools/`, la primera vez `npm install`)
 - `npm run serve` → http://127.0.0.1:5173/ (`serve:lan` para abrirlo desde el celu en la misma Wi-Fi).
   También está la configuración `pixelia` en `.claude/launch.json` para la vista previa.
 - `npm test` → e2e, migración v2→v3, colocación, stress, visitas, mock online, social, rango, obras, expedición,
-  ciclo, amenazas, telemetría, ajustes, historia, ambiente, audio, combate y SQL (Chrome headless; tarda unos minutos).
+  ciclo, amenazas, telemetría, ajustes, historia, ambiente, audio, combate, idiomas y SQL (Chrome headless; tarda unos minutos).
 - `node smoke.mjs --scene city --device desktop --dpr 1.25 --shot ../shots/x.png` → captura rápida de una escena.
 - `npm run render:audio` → fragmentos `.wav` de cada lugar en `shots/audio/` (OfflineAudioContext, sin GPU).
 - `npm run sim:economy` → simula 60 días de economía (2 ratos por día) y chequea las metas de DESIGN-CORE.md §8.
@@ -41,7 +48,7 @@ adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
   `node test-desktop.mjs` lo abre y lo revisa por CDP.
 - `npm run test:live` → prueba el Supabase real (crea dos cuentas `@example.com`).
 - Atajos de URL: `?cheat=15`, `?reset`, `?scene=expedition` (o `wardrobe`), `?mock=1&mockuser=ana`, `?outline=0|1`, `?quality=low|high`,
-  `?hour=21.5` y `?weather=tormenta` (ambiente: hora y clima, `src/core/ambience.js`).
+  `?lang=ja`, `?pseudo=1`, `?hour=21.5` y `?weather=tormenta` (ambiente: hora y clima, `src/core/ambience.js`).
 - Ajustes: `src/core/settings.js` (`setSetting(patch)` guarda, aplica en vivo y emite `settings:changed`); los gráficos
   llegan a todos los renderers con `setGraphics` de `voxel.js` y las teclas salen de `src/core/keys.js`. `?quality`,
   `?outline` y `?fps=N` mandan sobre los Ajustes.

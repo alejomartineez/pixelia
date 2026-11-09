@@ -34,6 +34,11 @@ barrio, sin hablarle a un chico?
 - **Fuera lo tierno** (El Quiebre, §J7): personajes solo personas; nada de mascotas-avatar, tutús, orejitas ni "mimosos".
   Los Hallazgos se nombran como cosas que se encuentran en la isla ("Ancla Oxidada", "Pato del Bañado"), no como peluches.
 
+- **Idiomas** (La Travesía 4a): el español rioplatense es el texto fuente, en `src/i18n/es.js`. Todo texto nuevo va por
+  `t()` con su clave (`hud.zarpar`, `building.<id>.name`); nada de texto escrito en el código. Las traducciones siguen
+  esta guía en su idioma: cálido y sobrio, sin diminutivos ni infantilizar, y se traduce el sentido, no el voseo. La
+  interfaz no fija anchos para el texto: botones, pestañas y tarjetas crecen o bajan de línea. Fuentes: Jersey 10 para
+  el latín y Fusion Pixel 12px (OFL) para el cirílico y el CJK, recortada por `tools/subset-fonts.mjs`.
 - **Registro épico** (El Quiebre, [DESIGN-STORY.md](DESIGN-STORY.md)): solo en el prólogo, los jefes y las revelaciones.
   Frases cortas y concretas, sin mayúsculas, signos de más ni adjetivos grandes: "La tierra se vació por dentro y se
   partió", no "¡El cataclismo más terrible de la historia!". La ciudad sigue cálida y sobria.

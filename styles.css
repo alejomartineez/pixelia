@@ -1,6 +1,11 @@
 /* ============ Pixelia — estilos base ============ */
 /* Jersey 10 (OFL): fuente pixel muy legible. size-adjust la agranda para que ocupe lo mismo que una fuente normal. */
 @font-face { font-family: 'Jersey'; src: url('fonts/jersey10.woff2') format('woff2'); font-weight: 100 900; font-display: block; size-adjust: 122%; }
+/* Nombres de los idiomas en el selector de Ajustes (日本語, Русский…): recorte de Fusion Pixel (OFL) que arma
+   tools/subset-fonts.mjs. Con unicode-range el navegador la baja solo si esos caracteres aparecen en pantalla.
+   La fuente completa de cada idioma (ja, ru…) la carga src/core/i18n.js solo en ese idioma. */
+@font-face { font-family: 'PixelNames'; src: url('fonts/pixel-names.woff2') format('woff2'); font-display: swap;
+  unicode-range: U+420, U+438-43A, U+441, U+443, U+4E2D, U+4F53, U+6587, U+65E5, U+672C, U+7B80, U+8A9E, U+AD6D, U+C5B4, U+D55C; }
 
 :root {
   /* Interfaz oscura (El Quiebre, plan §J6): pizarra y madera oscura, bordes de metal gastado, texto claro y acentos
@@ -26,7 +31,7 @@
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-l: env(safe-area-inset-left, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
-  --font: 'Jersey', ui-rounded, system-ui, sans-serif;
+  --font: 'Jersey', 'PixelNames', ui-rounded, system-ui, sans-serif;   /* i18n.js la cambia en ru, ja, zh-CN y ko */
   color-scheme: dark;
 }
 
@@ -38,6 +43,9 @@ html, body {
   font-variant-ligatures: none; font-synthesis: none; letter-spacing: .02em; font-feature-settings: 'liga' 0, 'clig' 0;
 }
 body { position: fixed; inset: 0; touch-action: none; }
+/* chino, japonés y coreano: la fuente pixel CJK es más alta que Jersey y pide más aire entre líneas */
+html[data-script=cjk] body { line-height: 1.35; letter-spacing: 0; }
+html[data-script=cjk] small, html[data-script=cjk] p { line-height: 1.45; }
 button { font-family: inherit; color: inherit; cursor: pointer; }
 input, textarea { font-family: inherit; -webkit-user-select: text; user-select: text; }
 img.pi { image-rendering: pixelated; image-rendering: crisp-edges; vertical-align: middle; flex: none; pointer-events: none; }
