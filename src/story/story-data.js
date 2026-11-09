@@ -78,7 +78,7 @@ export const SCENES = [
     id: 'prologo_2', who: 'cartografa', epic: true, chapter: 'prologo', title: 'La cartógrafa', grant: { page: 'p1' },
     lines: [
       '{name}. Te esperaba hace rato. Soy Vera: hago los mapas de este pedazo de tierra.',
-      'Cuando la isla se vació, me quedé. Alguien tenía que anotar lo que se cayó y lo que sigue en pie.',
+      'Cuando la isla se vació, me quedé. Tengo algo que arreglar, y alguien tenía que anotar lo que sigue en pie.',
       '{city} va a ser tu ciudad, si la levantás. Lo que la isla esconde no te lo puedo contar: hay que salir a buscarlo.',
       'Tomá. Es una página del diario del último intendente. La encontré en la Municipalidad, abajo de una piedra.',
     ],
@@ -185,10 +185,11 @@ export const PAGES = [
   { id: 'p2', title: 'Los lobos del arroyo', trigger: 'zone:bosque', text: 'Los lobos del arroyo no atacan por hambre. Les brillan los ojos como brillaba la veta. Algo los cambió, y no fue el miedo.' },
   { id: 'p3', title: 'El bote de abajo', trigger: 'rank:2', text: 'Hoy subió un bote desde abajo. Traía gente que no debería estar viva. Dicen que en el Bajo Mundo hay aldeas enteras, y que no nos perdonan.' },
   { id: 'p4', title: 'Los permisos', text: 'La Cofradía de la Veta pagaba bien por cada piedra de Raíz. Yo firmé los permisos. Que conste.' },
-  { id: 'p5', title: 'El Bañado', text: 'El agua del Bañado sube de noche y baja de día. No es la luna. Es algo que respira debajo.' },
-  { id: 'p6', title: 'La galería honda', text: 'En el Cerro dejamos sellada la galería honda. No por miedo: por vergüenza de lo que sacamos de ahí.' },
-  { id: 'p7', title: 'El faro', text: 'Si alguien enciende el faro, que sepa que los barcos del cielo también lo ven.' },
-  { id: 'p8', title: 'La llave', text: 'Le dejé la llave del archivo a alguien de mi casa. Si leés esto, no confíes en todo el que sonríe.' },
+  // p5–p8 siembran la culpa de Vera (L2, pista falsa) y el giro final (L4) sin revelarlos
+  { id: 'p5', title: 'El Bañado', text: 'El agua del Bañado sube de noche y baja de día. No es la luna: algo respira debajo. Los mapas del archivo ya lo marcaban, con una letra prolija que no era la mía.' },
+  { id: 'p6', title: 'La galería honda', text: 'Las Casas no cavaban donde había más Raíz. Seguían una línea que solo ellas entendían, siempre debajo de sus tierras. Sellamos la galería honda por vergüenza, no por miedo.' },
+  { id: 'p7', title: 'El faro', text: 'Si alguien enciende el faro, que sepa que los barcos del cielo también lo ven. Y que no todos los que subieron lo hicieron por suerte.' },
+  { id: 'p8', title: 'La llave', text: 'Alguien sabe por qué subimos nosotros y no los de abajo. Vive entre la gente, sonríe y no lo dice. Le dejé la llave del archivo; ojalá me equivoque.' },
 ];
 export const PAGE_BY_ID = Object.fromEntries(PAGES.map(p => [p.id, p]));
 

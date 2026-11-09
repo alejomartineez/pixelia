@@ -42,6 +42,7 @@ cada paso.
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | pendiente | |
 | 4 | B: cinemática "El Quiebre" | pendiente | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | pendiente | |
+| 5b | L5: personas con nombre, Vínculo, herramientas, nivel del líder y pestaña Progreso | pendiente | |
 | 6 | Acto 1 completo + E5–E6 | pendiente | |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
@@ -243,6 +244,14 @@ cada paso.
   de Contactos con la fecha de hoy en UTC (estaba fija en 2026-W45 y fallaba cada lunes UTC).
 - **Decisión de canon**: los capítulos siguen el orden en que se abren las regiones (Bosque → Sierras → Bañado → Cerro →
   Costa → abordaje); el plan ponía el Cerro antes que el Bañado (ver DESIGN-STORY §4).
+
+**Sección L del plan (historia que se juega; c2f389d).** El usuario sumó L1 (elegir cuánto sacarle a un elemento y la
+Grieta), L2 (la culpa de Vera, pista falsa del traidor, se revela en el Acto 2), L4 (el giro: las Casas cavaron donde
+estaba el Céfiro a propósito; el traidor guarda el secreto y sale de la gente de tu ciudad), L5 (personas con nombre,
+Vínculo 1–5, herramientas, nivel del líder, pestaña Progreso) y L6 (ecos de noche). El canon ya está en DESIGN-STORY.md
+y los textos del paso 3 no lo contradicen: el prólogo dice "Tengo algo que arreglar" y las páginas p5–p8 siembran L2 y
+L4. **No está implementado**: 3b deja la noche y los lugares para los ecos, 5b hace L5, 6 hace L1, las pistas de L2/L4 y
+los primeros ecos, 7 balancea L1 y L5.
 
 ## Pendiente o frágil
 - **Del paso 3**: el contacto del combate y el de los elementos ya están escritos pero se disparan con `combat:won`/
