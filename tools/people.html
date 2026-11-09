@@ -51,8 +51,29 @@ if (set === 'pueblos') {
 } else if (set === 'clases') {
   AVATAR_TYPES.forEach((t, i) => { const cls = Object.keys(CLASS_KIT)[i % 6]; items.push({ obj: avatarModel(base(t.id), { cls }), label: `${t.id} · ${cls}` }); });
   items.push({ obj: avatarModel(base('humano'), { cls: 'saqueador' }), label: 'humano · saqueador' });
+} else if (set === 'giro') {   // hoja de giro de las muestras: frente, tres cuartos y espalda
+  const MUESTRAS = [
+    ['Enano con hacha', { type: 'enano', build: 'recio', skin: 1, hair: 'cortito', hairColor: 'pelirrojo', face: 'barba_trenzada', dress: 'cuero', dressColor: 'rojo', crown: 'casco', acc: 'hacha' }],
+    ['Monje', { type: 'humano', build: 'recio', skin: 3, hair: 'rapado', hairColor: 'castano', face: 'barba_corta', dress: 'habito', dressColor: 'durazno', crown: 'ninguna', acc: 'baston' }],
+    ['Pirata gente-zorro', { type: 'zorro', build: 'esbelto', skin: 0, hair: 'coleta', hairColor: 'blanco', face: 'parche', dress: 'abrigo', dressColor: 'rojo', crown: 'galera', acc: 'espada' }],
+  ];
+  for (const [name, look] of MUESTRAS) for (const [view, turn] of [['frente', 0], ['tres cuartos', 0.75], ['espalda', Math.PI]]) items.push({ obj: avatarModel(look), label: name + ' · ' + view, turn });
 } else if (set === 'enemigos') {
   for (const id of (q.get('ids') ? q.get('ids').split(',') : ENEMY_MODEL_TYPES)) items.push({ obj: enemyModel(id), label: id });
+}
+if (set === 'retratos') {   // retratos de la Bitácora (story-ui.js → portrait)
+  const { portrait } = await import('../src/story/story-ui.js');
+  const { CHARACTERS } = await import('../src/story/story-data.js');
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;inset:0;display:flex;gap:28px;align-items:center;justify-content:center;background:#1d1a18';
+  for (const id of Object.keys(CHARACTERS)) {
+    const cv = portrait(id, ''); if (!cv) continue;
+    cv.style.cssText = 'width:192px;height:192px;image-rendering:pixelated;border:3px solid #5a4c3e;border-radius:12px';
+    const fig = document.createElement('figure'); fig.style.cssText = 'margin:0;text-align:center;font:600 14px sans-serif;color:#e8dcc6';
+    fig.append(cv, Object.assign(document.createElement('figcaption'), { textContent: CHARACTERS[id].name + ' · ' + CHARACTERS[id].title }));
+    wrap.append(fig);
+  }
+  document.body.append(wrap);
 }
 const cols = Number(q.get('cols') || Math.min(items.length, 8));
 const rows = Math.ceil(items.length / cols);
@@ -64,7 +85,7 @@ ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; r.scene.add(groun
 items.forEach((it, i) => {
   const cx = (i % cols - (cols - 1) / 2) * gap, rz = Math.floor(i / cols) * rowGap;
   it.obj.position.set(cx, 0, -rz);
-  it.obj.rotation.y = Number(q.get('turn') || 0.45);
+  it.obj.rotation.y = it.turn ?? Number(q.get('turn') || 0.45);
   r.scene.add(it.obj);
 });
 setIsoCamera(r.camera, new THREE.Vector3(0, Number(q.get('ty') || 0.5), -(rows - 1) * rowGap / 2), Number(q.get('ang') || 0), 60, pitch);

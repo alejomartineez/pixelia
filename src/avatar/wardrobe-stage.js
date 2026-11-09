@@ -305,12 +305,12 @@ function fitOrtho(camera, obj, margin = 0.1) {
 
 /**
  * Devuelve el dataURL de una miniatura. spec:
- *  { type:'avatar' (o 'princess'), look, frame:'head'|'tall'|'body'|'tallbody'|'back' }
+ *  { type:'avatar' (o 'princess'), look, frame:'head'|'tall'|'bust'|'body'|'tallbody'|'back', cls?, raw? }
  *  { type:'car', car, frame:'car'|'wheel', driver? }
  */
 export function thumbnail(spec) {
   const key = JSON.stringify(spec);
-  if (thumbCache.has(key)) return thumbCache.get(key);
+  if (!spec.raw && thumbCache.has(key)) return thumbCache.get(key);
   const { renderer, scene, camera } = ensureThumbRenderer();
   let obj, fr = FRAMES[spec.frame] || FRAMES.body;
   if (spec.type === 'princess' || spec.type === 'avatar') {
@@ -320,7 +320,7 @@ export function thumbnail(spec) {
     obj.updateMatrixWorld(true);
     obj.userData.parts?.head?.getWorldPosition(hp);
     const h = obj.userData.height || 1, hy = hp.y || h * 0.75;
-    const AV = { head: [hy + 0.13, 0.5], tall: [hy + 0.2, 0.68], bust: [hy + 0.04, 0.6], body: [h * 0.5, h * 1.22], tallbody: [h * 0.52, h * 1.3], back: [h * 0.55, h * 1.25] };
+    const AV = { head: [hy + 0.13, 0.5], tall: [hy + 0.2, 0.68], bust: [hy + 0.07, 0.64], body: [h * 0.5, h * 1.22], tallbody: [h * 0.52, h * 1.3], back: [h * 0.55, h * 1.25] };
     const a = AV[spec.frame] || AV.body;
     fr = { ...fr, y: a[0], view: a[1], ang: spec.frame === 'back' ? 2.55 : spec.frame === 'bust' ? 0.3 : 0.45, elev: spec.frame === 'bust' ? 0.08 : 0.18 };
   }
@@ -342,8 +342,10 @@ export function thumbnail(spec) {
   else { camera.left = -fr.view / 2; camera.right = fr.view / 2; camera.top = fr.view / 2; camera.bottom = -fr.view / 2; }
   camera.updateProjectionMatrix();
   renderer.render(scene, camera);
-  const url = outlineCanvas(renderer.domElement, 3).toDataURL('image/png');
+  const cv = outlineCanvas(renderer.domElement, 3);
   scene.remove(obj);
+  if (spec.raw) return cv;   // spec.raw: devuelve el canvas (los retratos lo dibujan al toque, sin esperar una imagen)
+  const url = cv.toDataURL('image/png');
   thumbCache.set(key, url);
   if (thumbCache.size > MAX_THUMBS) thumbCache.delete(thumbCache.keys().next().value);
   return url;

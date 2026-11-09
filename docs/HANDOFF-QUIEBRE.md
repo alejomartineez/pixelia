@@ -53,6 +53,39 @@ cada paso.
 | 6 | Acto 1 completo + E5–E6 | pendiente | |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
+## Paso 4a (personajes serios y pueblos): en curso, rama `claude/personajes-4a-6b06a8`
+**Hecho (commits de esta rama, sin mergear):**
+- Catálogo nuevo en `src/core/data.js`: el tipo es el pueblo (`humano`, `enano`, `anuro`, `zorro`, `orco`), cada uno con
+  sus tonos de piel. Piezas serias. Categorías nuevas `face` (barbas, cicatrices, parche, pintura) y `build` (recio o
+  esbelto).
+- **Guardado v5** (`migrateV5` en `state.js`, `V5_TYPES`/`V5_ITEMS`/`v5Look` en `data.js`):
+  - chica y chico pasan a humano esbelto y recio;
+  - cada pieza vieja pasa a su equivalente; las repetidas o las que ahora son gratis se devuelven;
+  - lo que tenías puesto queda tuyo;
+  - el look del otro tipo queda en `s.v5.looks`;
+  - el aviso único va en `main.js`, y su caso está en `test-migration.mjs` (76 en verde).
+- Modelos:
+  - `src/avatar/figure.js`: vóxel a 1/48, medidas por pueblo, ropa, cabezas, pelo, caras, sombreros, equipo y
+    `CLASS_KIT`/`classLook`/`ROLE_CLASS` para el 5b;
+  - `src/avatar/avatar.js`: la misma API, más `opts.cls` y `opts.gear`;
+  - `src/avatar/lowpoly.js`: kit facetado;
+  - `src/combat/enemy-models.js`: rehecho, con la misma firma. Lobos, bichos, bestia, gólem y orco van en low-poly; los
+    piratas son gente-zorro y los Vaciados, vóxel.
+- Equipaje y onboarding con pueblos, telas apagadas (`clothHex`) y encuadres que siguen la cabeza real.
+- Retratos de la Bitácora: un busto 3D (`thumbnail` con `frame:'bust'`, `raw:true`) para Vera, Brígida (ahora enana),
+  Nahuel, Olga y Ramiro (`CHARACTERS` en `story-data.js`).
+- Galería en `tools/people.html`, con los sets pueblos, gente, ropa, cabeza, cara, equipo, clases, enemigos, retratos y giro.
+  Se captura con `GALLERY_PAGE=people.html node tools/gallery-shot.mjs ...`.
+
+**Falta:**
+- El usuario vio el primer pase y dijo que se veía feo. La segunda pasada de `figure.js` (silueta, tonos planos, caras
+  con volumen, pose en A) todavía no está aprobada.
+- Iterar las 3 muestras (`set=giro`) hasta que el usuario dé el OK, y recién ahí propagar.
+- Arreglar `test-story` (onboarding, paso del nombre).
+- Volver a correr `test-e2e`, `test-settings` y `test-stress`.
+- Capturas finales y docs (DESIGN.md arte y tono, DESIGN-STORY pueblos).
+- El brief completo para la sesión siguiente está en las notas compartidas: `paso-4a-estado-brief.md`.
+
 ## Decisiones tomadas
 - Plataforma:
   - Tauri v2 para Windows y macOS.

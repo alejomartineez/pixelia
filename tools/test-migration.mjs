@@ -11,6 +11,8 @@
 //   aparece sola), el mismo guardado entrando por importCode (la nube) y una partida nueva que no ve el aviso.
 //   v4: un guardado v3 con el oso (persona con sus colores, piezas retiradas devueltas, playa → bruma, aviso único,
 //   idempotente) y perfiles de contactos viejos que se ven como personas.
+//   v5 (personajes serios, PLAN-QUIEBRE §M): chica y chico pasan a humanos, las piezas a su equivalente (las repetidas y
+//   las que ahora son gratis se devuelven, lo puesto queda tuyo), el look del otro tipo se guarda, aviso único, idempotente.
 //
 //   node tools/test-migration.mjs
 import http from 'node:http';
@@ -134,7 +136,7 @@ try {
   const V2 = saveV2();
   const { page, errors } = await openWithSave(V2);
   const s1 = await snapshot(page);
-  ok(s1.v === 4, 'la partida queda en v4 (pasa por la v3)', s1.v);
+  ok(s1.v === 5, 'la partida queda en v5 (pasa por la v3 y la v4)', s1.v);
   ok(s1.name === 'Lu' && s1.city === 'Villa Sauce' && s1.level === 14 && s1.expansions === 2, 'nombre, ciudad, nivel y terreno intactos');
 
   // 1. materiales
@@ -189,8 +191,11 @@ try {
   ok(ach.length === 1 && ach[0].id === 'a_match3' && ach[0].tier === 2 && ach[0].memory && !ach[0].ready, 'el logro de Joyas queda como Recuerdo con sus 2 escalones (los no ganados no aparecen)', ach);
 
   // intactos
-  ok(JSON.stringify(s1.avatar) === JSON.stringify(V2.avatar) && JSON.stringify(s1.avatarLooks) === JSON.stringify(V2.avatarLooks), 'personaje y looks guardados intactos');
-  ok(JSON.stringify(s1.car) === JSON.stringify(V2.car) && Object.entries(V2.owned).every(([k, list]) => list.every(id => s1.owned[k]?.includes(id))), 'auto y ropa comprada intactos', { car: s1.car, owned: s1.owned });
+  const a1 = s1.avatar;
+  ok(a1.type === 'humano' && a1.build === 'esbelto' && a1.hair === 'coleta' && a1.dress === 'viajero' && a1.crown === 'gorra' && a1.acc === 'mochila' && a1.face === 'ninguna' && a1.skin === 3 && a1.dressColor === 'azul',
+    'la chica pasa a humana esbelta con su ropa traducida (v5)', a1);
+  const want = { hair: ['coleta', 'corto'], dress: ['viajero'], crown: ['ninguna', 'gorra'], acc: ['mochila', 'ninguno'], body: ['convertible', 'jeep'] };
+  ok(JSON.stringify(s1.car) === JSON.stringify(V2.car) && Object.entries(want).every(([k, list]) => list.every(id => s1.owned[k]?.includes(id))), 'auto y ropa comprada intactos (con sus ids nuevos)', { car: s1.car, owned: s1.owned });
   ok(s1.theme === 'musgo' && s1.flag === 'verde', 'el tema bosque pasa a musgo (v4) y la bandera queda intacta', { theme: s1.theme, flag: s1.flag });
   const hi = (list) => JSON.stringify((list || []).map(i => [i.id, i.x, i.z, i.rot || 0]));
   ok(hi(s1.home.items) === hi(V2.home.items) && s1.home.wall === 'menta' && s1.home.floor === 'nogal', 'Mi Casa por dentro intacta (muebles y trofeo)', s1.home);
@@ -216,7 +221,7 @@ try {
   const pick = (s) => JSON.stringify({ v: s.v, materials: s.materials, buildings: s.buildings, gems: s.gems, equipment: s.equipment, items: s.items, have: s.have, brillitos: s.brillitos, planos: s.planos, v3: s.v3, avatar: s.avatar, car: s.car, home: s.home, theme: s.theme });
   // entre las dos cargas se pegaron 8 hallazgos de prueba (Sierras): se comparan contra el estado ya guardado
   const s1b = { ...s1, have: (await run(page, `return S.album.have`)) };
-  ok(pick(s2) === pick(s1b), 'materiales, edificios, gemas, equipo, Hallazgos y recursos iguales en la segunda carga', { s1: pick(s1b).slice(0, 200), s2: pick(s2).slice(0, 200) });
+  ok(pick(s2) === pick(s1b), 'materiales, edificios, gemas, equipo, Hallazgos y recursos iguales en la segunda carga', Object.keys(JSON.parse(pick(s2))).filter(k => JSON.stringify(JSON.parse(pick(s2))[k]) !== JSON.stringify(JSON.parse(pick(s1b))[k])).map(k => [k, JSON.parse(pick(s1b))[k], JSON.parse(pick(s2))[k]]));
   ok(!(await page.evaluate(() => !!document.querySelector('.modal.v3-notice'))), 'el aviso no vuelve a salir');
   const again = await run(page, `const norm = (o) => JSON.stringify(o, (k, v) => v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.keys(v).sort().map(x => [x, v[x]])) : v);
     const before = JSON.parse(JSON.stringify(S)); P.store.importCode(P.store.exportCode()); const after = JSON.parse(JSON.stringify(P.store.state));
@@ -230,7 +235,7 @@ try {
     const { page: p2, context } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
     const r = await run(p2, `const code = btoa(unescape(encodeURIComponent(JSON.stringify(args[0])))); P.store.importCode(code); E.tick(); const T = P.store.state;
       return { v: T.v, mats: T.materials, ids: T.city.buildings.map(b => b.id), gems: T.gems, eq: T.equipment, threatGems: Object.values(T.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) };`, V2);
-    ok(r.v === 4 && r.mats.mineral === 7 && r.ids.includes('casa_exp') && !r.ids.includes('pista') && r.gems === 40 + gems + r.threatGems && r.eq.cuerda === 2, 'importCode migra igual que la carga local', r);
+    ok(r.v === 5 && r.mats.mineral === 7 && r.ids.includes('casa_exp') && !r.ids.includes('pista') && r.gems === 40 + gems + r.threatGems && r.eq.cuerda === 2, 'importCode migra igual que la carga local', r);
     await context.close();
   }
 
@@ -267,15 +272,15 @@ try {
       city: { ...base.city, theme: 'playa' } };
     delete V3.v4;
     const { page: p5, context, errors: e5 } = await openWithSave(V3);
-    const r = await run(p5, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, theme: S.city.theme, v4: S.v4,
+    const r = await run(p5, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, theme: S.city.theme, v4: S.v4, v5: S.v5,
       threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
-    ok(r.v === 4, 'la partida queda en v4', r.v);
-    ok(r.avatar.type === 'chico' && r.avatar.hairColor === 'castano' && r.avatar.dressColor === 'rojo', 'el oso pasa a ser un chico con el mismo color de pelo (el del pelaje) y de ropa', r.avatar);
+    ok(r.v === 5, 'la partida queda en v5', r.v);
+    ok(r.avatar.type === 'humano' && r.avatar.build === 'recio' && r.avatar.hairColor === 'castano' && r.avatar.dressColor === 'rojo', 'el oso pasa a ser un humano recio con el mismo color de pelo (el del pelaje) y de ropa', r.avatar);
     ok(r.avatar.hair !== 'medias' && r.avatar.dress !== 'capita' && r.avatar.crown !== 'orejitas' && r.avatar.acc === 'mochila', 'lo que no le sirve a una persona vuelve a lo de arranque; la mochila se queda', r.avatar);
-    ok(!('gatito' in r.looks) && r.looks.chica?.hair === 'trenzas', 'el look guardado del gato se va y el de la chica queda como estaba', r.looks);
+    ok(!('gatito' in r.looks) && !('chica' in r.looks) && r.v5?.looks?.chica?.hair === 'trenzas', 'el look guardado del gato se va y el de la chica queda guardado (v5.looks)', { looks: r.looks, v5: r.v5 });
     const RET = ['pancita', 'medias', 'brillitos', 'remerita', 'capita', 'frac', 'orejitas', 'lacito', 'alas_hada'];
-    ok(!Object.values(r.owned).flat().some(id => RET.includes(id)) && r.owned.hair.includes('trenzas') && r.owned.dress.includes('camisa'), 'las piezas retiradas salen de lo comprado; lo demás queda', r.owned);
-    ok(r.coins === 1000 + 250 + 700 + 900 && r.v4.coins === 1850, 'se devuelven 1.850 monedas (patas blancas, capa de héroe y orejas de gato)', { coins: r.coins, v4: r.v4 });
+    ok(!Object.values(r.owned).flat().some(id => RET.includes(id)) && r.owned.hair.includes('trenzas') && r.owned.dress.includes('jubon') && !r.owned.dress.includes('camisa'), 'las piezas retiradas salen de lo comprado; lo demás queda (la camisa ahora es el jubón)', r.owned);
+    ok(r.coins === 1000 + 250 + 700 + 900 + 450 && r.v4.coins === 1850 && r.v5.coins === 450, 'se devuelven 1.850 monedas (patas blancas, capa de héroe y orejas de gato) y 450 por la camisa, que ahora es gratis', { coins: r.coins, v4: r.v4, v5: r.v5 });
     ok(r.gems === 10 + 12 + 15 + r.threatGems && r.v4.gems === 27, 'y 27 gemas (pelaje con destellos y chaleco)', { gems: r.gems, v4: r.v4 });
     ok(r.theme === 'bruma' && r.v4.theme === 'playa' && r.v4.from === 'osito', 'el estilo playa pasa a bruma', r.v4);
     ok(await p5.waitForFunction(() => !!document.querySelector('.modal.v3-notice'), { timeout: 15000 }).then(() => true, () => false), 'aparece el aviso único');
@@ -296,8 +301,63 @@ try {
       const A = await import('/src/avatar/avatar.js'); const T = await import('/src/city/themes.js');
       return { a: A.normalizeLook({ type: 'zorrito', hairColor: 'pelirrojo', dress: 'pelito' }), t: T.currentThemeId({ city: { theme: 'invierno' } }) };
     });
-    ok(friend.a.type === 'chico' && friend.a.hairColor === 'pelirrojo' && friend.a.dress !== 'pelito' && friend.t === 'escarcha', 'un perfil de contacto viejo (zorro, invierno) se ve como persona y con Escarcha', friend);
+    ok(friend.a.type === 'humano' && friend.a.build === 'recio' && friend.a.hairColor === 'pelirrojo' && friend.a.dress !== 'pelito' && friend.t === 'escarcha', 'un perfil de contacto viejo (zorro, invierno) se ve como persona y con Escarcha', friend);
     ok(e5.length === 0, 'sin errores de página', e5);
+    await context.close();
+  }
+
+  // ===================================================================
+  section('Guardado v4 con ropa repetida → v5 (personajes serios y pueblos, plan §M)');
+  {
+    const { page: p0, context: c0 } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
+    const base = await run(p0, 'return JSON.parse(JSON.stringify(S))');
+    await c0.close();
+    const V4 = { ...base, v: 4, v4: { shown: 1 }, coins: 500, gems: 5, onboarded: true,
+      player: { ...base.player, level: 9, xp: 40 }, stats: { ...base.stats, coinsEarned: 9000 },
+      avatar: { type: 'chico', skin: 2, hair: 'barba', hairColor: 'negro', dress: 'capa_real', dressColor: 'rojo', crown: 'galera', acc: 'gatito' },
+      avatarLooks: { chica: { skin: 1, hair: 'ondas', hairColor: 'rubio', dress: 'sirena', dressColor: 'violeta', crown: 'flores', acc: 'bolso' } },
+      owned: { ...base.owned, hair: ['largo', 'coleta', 'cortito', 'despeinado', 'barba', 'ondas'],
+        dress: ['clasico', 'corto', 'buzo', 'remera', 'chaqueta', 'capa_real', 'gala', 'sirena', 'pollera', 'camisa', 'estrellas_p'],
+        crown: ['ninguna', 'vincha', 'laurel', 'gorra', 'gorro', 'flores', 'galera', 'sombrero_estrellas'], acc: ['ninguno', 'mochila', 'espada', 'gatito', 'buho', 'bolso'] } };
+    delete V4.v5;
+    const { page: p6, context, errors: e6 } = await openWithSave(V4);
+    const r = await run(p6, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, v5: S.v5,
+      threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
+    ok(r.v === 5, 'la partida queda en v5', r.v);
+    const a = r.avatar;
+    ok(a.type === 'humano' && a.build === 'recio' && a.face === 'barba_larga' && a.hair === 'cortito' && a.dress === 'capa_viaje' && a.crown === 'galera' && a.acc === 'buho',
+      'el chico pasa a humano recio: la barba de sabio es su cara, la capa de gala es la capa de viaje y el gato, el cuervo', a);
+    ok(!Object.keys(r.looks).length && r.v5.looks?.chica?.dress === 'vestido_noble' && r.v5.looks.chica.crown === 'vincha' && r.v5.looks.chica.build === 'esbelto',
+      'el look de la chica queda guardado, traducido', { looks: r.looks, v5: r.v5 });
+    const OLD = ['barba', 'clasico', 'corto', 'buzo', 'remera', 'chaqueta', 'capa_real', 'gala', 'sirena', 'pollera', 'camisa', 'estrellas_p', 'laurel', 'flores', 'sombrero_estrellas', 'gatito'];
+    const oldIn = (id) => ['dress', 'crown', 'acc'].some(k => r.owned[k].includes(id)) || (id === 'barba' && r.owned.hair.includes(id));
+    ok(['capa_viaje', 'vestido_noble', 'placas'].every(id => r.owned.dress.includes(id)) && r.owned.crown.includes('yelmo') && r.owned.crown.includes('galera')
+      && r.owned.acc.includes('buho') && r.owned.acc.includes('bolso') && r.owned.hair.includes('ondas') && !OLD.some(oldIn),
+      'lo comprado pasa a su equivalente y lo puesto queda tuyo (la capa de viaje, aunque ahora se paga)', r.owned);
+    ok(r.coins === 500 + 600 + 1000 + 300 + 450 + 400 && r.v5.coins === 2750, 'se devuelven 2.750 monedas: barba de sabio, el vestido largo repetido, pollera, camisa y flores', { coins: r.coins, v5: r.v5 });
+    ok(r.gems === 5 + 20 + r.threatGems && r.v5.gems === 20, 'y 20 gemas por el búho (el gato ya es el cuervo)', { gems: r.gems, v5: r.v5 });
+    ok(await p6.waitForFunction(() => !!document.querySelector('.modal.v3-notice'), { timeout: 15000 }).then(() => true, () => false), 'aparece el aviso único');
+    const txt = await p6.evaluate(() => document.querySelector('.modal.v3-notice')?.textContent.replace(/\s+/g, ' ') || '');
+    ok(/pueblos/.test(txt) && /devolvimos/.test(txt) && !/Bruma/.test(txt), 'el aviso cuenta lo de los pueblos y la devolución (y no repite lo de la v4)', txt.slice(0, 400));
+    await p6.evaluate(() => document.querySelector('.modal.v3-notice .modal-foot .btn')?.click());
+    await sleep(800);
+    ok(await run(p6, 'return S.v5.shown === 1'), 'el aviso queda marcado como visto');
+    await run(p6, 'P.store.save(); return true;');
+    await p6.reload({ waitUntil: 'load' });
+    await p6.waitForFunction(() => window.__pixelia?.store?.state && window.__pixelia.ctx.router.current === 'city', { timeout: 30000 });
+    await sleep(1500);
+    const r2 = await run(p6, 'return { avatar: S.avatar, coins: S.coins, owned: S.owned }');
+    ok(JSON.stringify(r2.avatar) === JSON.stringify(r.avatar) && JSON.stringify(r2.owned) === JSON.stringify(r.owned) && r2.coins < r.coins + 2750,
+      'la segunda carga no devuelve de nuevo ni cambia nada', { r2, coins: r.coins });
+    ok(!(await p6.evaluate(() => !!document.querySelector('.modal.v3-notice'))), 'el aviso no vuelve a salir');
+    const model = await p6.evaluate(async () => {
+      const A = await import('/src/avatar/avatar.js');
+      const m = A.avatarModel({ type: 'chica', hair: 'colitas', dress: 'estrellas', crown: 'sombrero_luna', acc: 'globo' });
+      return { look: m.userData.look, h: m.userData.height };
+    });
+    ok(model.look.type === 'humano' && model.look.dress === 'archimago' && model.look.crown === 'sombrero_mago' && model.look.acc === 'farolito' && model.h > 0.8 && model.h < 1.3,
+      'un perfil de contacto de antes de v5 se arma con las piezas nuevas', model);
+    ok(e6.length === 0, 'sin errores de página', e6);
     await context.close();
   }
 
@@ -305,8 +365,8 @@ try {
   section('Partida nueva: sin aviso ni compensación');
   {
     const { page: p4, context } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
-    const r = await run(p4, `return { v: S.v, v3: S.v3 || null, v4: S.v4 || null, mats: Object.keys(S.materials), games: S.games || null }`);
-    ok(r.v === 4 && !r.v3 && !r.v4 && !r.games && r.mats.join() === 'madera,piedra,mineral,hierbas', 'v4 de entrada, solo materiales de región y sin state.games', r);
+    const r = await run(p4, `return { v: S.v, v3: S.v3 || null, v4: S.v4 || null, v5: S.v5 || null, mats: Object.keys(S.materials), games: S.games || null }`);
+    ok(r.v === 5 && !r.v3 && !r.v4 && !r.v5 && !r.games && r.mats.join() === 'madera,piedra,mineral,hierbas', 'v5 de entrada, solo materiales de región y sin state.games', r);
     await sleep(2500);
     ok(!(await p4.evaluate(() => !!document.querySelector('.modal.v3-notice'))), 'no ve el aviso de los minijuegos');
     await context.close();

@@ -67,11 +67,12 @@ const geoCache = new Map();
 export function cacheGet(key) { return geoCache.get(key); }
 export function cacheSet(key, g) { geoCache.set(key, g); }
 /** Geometría cacheada por clave. build(v) dibuja en una grilla de vóxeles de tamaño S. */
+// sin ruido (jitter 0): materiales planos, de 2 o 3 tonos
 export function cachedGeo(key, build, scale = S) {
   if (geoCache.has(key)) return geoCache.get(key);
   const v = new Voxels();
   build(v);
-  const g = v.size ? v.toGeometry({ scale, jitter: 0.01 }) : null;
+  const g = v.size ? v.toGeometry({ scale, jitter: 0 }) : null;
   geoCache.set(key, g);
   return g;
 }

@@ -8,6 +8,7 @@
 //     group.userData.update(dt, moving)  — camina (piernas, brazos, capa, cola) o respira y parpadea
 //     opts.seated: sin piernas ni falda, con la cadera a 4 × AVATAR_VOXEL (para manejar el auto)
 //     opts.npc / opts.lowDetail: versión liviana (todo fusionado menos las piernas)
+//     opts.gear: equipo fuera del catálogo (GEAR de figure.js, p. ej. 'trabuco')
 //     opts.cls: clase (o rol de la expedición): cambia ropa, arma y casco (classLook, plan §M3)
 //   randomLook(seed, opts) -> look válido determinista (opts.type: pueblo, opts.cls: clase)
 //   normalizeLook(look) -> look completo y válido (traduce los looks viejos: chica/chico y las piezas de antes de v5)
@@ -72,7 +73,8 @@ export function avatarModel(lookIn = {}, opts = {}) {
   if ((opts.npc || opts.lowDetail) && !opts.seated) return lowDetailModel(look, opts);
   const seated = !!opts.seated;
   const D = dimsOf(look.type, look.build), P = paletteOf(look), o = outfitOf(look.dress);
-  const acc = seated && NOT_SEATED.has(look.acc) ? 'ninguno' : look.acc;
+  // opts.gear: equipo que no está en el catálogo (el trabuco de los piratas)
+  const acc = opts.gear || (seated && NOT_SEATED.has(look.acc) ? 'ninguno' : look.acc);
   const gear = GEAR[acc] || null;
   const K = `${look.type}|${look.build}|${look.skin}|${look.dress}|${look.dressColor}`;
   const hipY = seated ? 4 * AVATAR_VOXEL / S : D.legH;
@@ -110,13 +112,13 @@ export function avatarModel(lookIn = {}, opts = {}) {
   const armGeo = cachedGeo(`a|${K}`, (v) => drawArm(v, look, D, P));
   const arms = [];
   for (const s of [-1, 1]) {
-    const pv = pivot(s * (D.W / 2 + D.armW / 2), D.H - 1, 0);
+    const pv = pivot(s * D.armX, D.H - 2, 0);
     const m = meshOf(armGeo);
     if (s < 0) m.scale.x = -1;
     pv.add(m); upper.add(pv); arms.push(pv);
   }
   const [armL, armR] = arms;
-  const pose = { lx: 0, rx: 0, lz: -0.1, rz: 0.1, swing: 1 };
+  const pose = { lx: 0, rx: 0, lz: -0.22, rz: 0.22, swing: 1 };   // pose en A: brazos separados del cuerpo
   if (seated) Object.assign(pose, { lx: -1.15, rx: -1.15, lz: 0.12, rz: -0.12, swing: 0 });
   else if (gear?.pose) Object.assign(pose, gear.pose);
   const glow = [];
@@ -126,7 +128,7 @@ export function avatarModel(lookIn = {}, opts = {}) {
   if (gear?.offLight) { const m = meshOf(cachedGeo(`gk|${acc}|${look.type}|${look.build}`, (v) => gear.offLight(v, D, P)), lightMat()); m.castShadow = false; armL.add(m); glow.push(m); }
 
   // cabeza, ojos y pelo que se balancea
-  const head = pivot(0, D.H + D.neck, D.headZ);
+  const head = pivot(0, D.H + D.neck - D.headY, D.headZ);
   upper.add(head);
   head.add(meshOf(cachedGeo(`h|${lookKey(look)}`, (v) => buildHead(v, look, D, P))));
   const eyeList = eyeVoxels(look, D, P);
