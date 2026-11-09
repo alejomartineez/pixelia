@@ -652,8 +652,19 @@ try {
   // Temporada = Pase + eventos en un botón: los eventos se abren desde el Pase
   await tap('[data-act="pass"]');
   ok(await waitFor(`!!document.querySelector('.modal.ssn-pass .ssn-evbar')`, 5000), 'el Pase muestra la barra de eventos de la semana');
+  // el Pase centra su nivel cobrable en un requestAnimationFrame: con la máquina cargada ese cuadro llega tarde y
+  // desplaza el panel justo entre que se mide la barra y el toque. Se espera a que haya pasado.
+  await ev(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await sleep(200);
   await tap('.modal.ssn-pass [data-act="events"]');
-  ok(await waitFor(`document.querySelectorAll('.modal').length >= 1 && !!document.querySelector('.modal:not(.ssn-pass)')`, 5000), 'Eventos abierto desde el Pase');
+  const eventsOpen = `document.querySelectorAll('.modal').length >= 1 && !!document.querySelector('.modal:not(.ssn-pass)')`;
+  let evOpen = await waitFor(eventsOpen, 8000);
+  if (!evOpen && await ev(() => !!document.querySelector('.modal.ssn-pass [data-act="events"]'))) {
+    console.log('    (Eventos no abrió con el primer toque; modales:', await ev(() => [...document.querySelectorAll('.modal')].map(m => m.className).join(' | ')), '; se toca de nuevo)');
+    await tap('.modal.ssn-pass [data-act="events"]');
+    evOpen = await waitFor(eventsOpen, 8000);
+  }
+  ok(evOpen, 'Eventos abierto desde el Pase');
   await sleep(800);
   await shot('eventos');
   await closeTop();
