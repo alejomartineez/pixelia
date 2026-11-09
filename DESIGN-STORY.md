@@ -135,7 +135,7 @@ Al encontrar un elemento (el Núcleo de Raíz en el Acto 1) se elige cuánto sac
   con la obra de Raíz en la ficha del Invernadero (12 h, cara y cada vez más cara).
 - **Final del Acto 4:** `grietaLegacy()` devuelve la Grieta de hoy, el pico, la acumulada (Grieta × días), las obras y una
   lectura (`entera` ≤ 300, `remendada` ≤ 1.500, `partida`). El final lo escribe el Acto 4.
-- **Efectos de la Raíz en la isla:** +0,1 × rinde de eficacia contra la sequía y la helada (`city.mods.eff` en
+- **Efectos de la Raíz en la isla:** +0,1 de eficacia (fija desde el rebalanceo §8.z de DESIGN-CORE; antes × rinde) contra la sequía y la helada (`city.mods.eff` en
   `threat-rules`) y el **Invernadero de Raíz** (`data.js`, modelo en `src/city/models-raiz.js`: basalto, hierro negro,
   vidrio ahumado y una raíz con vetas que brillan; igual en todas las épocas). Da hierbas según la extracción.
 - **Pistas del Acto 1:** p4 (abrir La mina sellada), p5 (zona del Bañado), p6 (el Núcleo), p7 (abrir Los faros apagados),

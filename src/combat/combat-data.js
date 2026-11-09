@@ -374,10 +374,10 @@ export const ENCOUNTERS = {
     objective: { type: 'defeat', boss: true },
     challenges: [{ id: 'pasarela' }, { id: 'sinBajas' }],
     // se pelea en el abordaje (src/story/act1.js), con la gente de la ciudad: el grupo esperado es el que da sim:economy en
-    // el rango 6 (líder 7, clases 10/10/9, herramientas y dos consumibles del depósito). city: no lo pelea el grupo del
+    // el rango 6 (líder 6, clases 10/10/8, herramientas y dos consumibles del depósito; rebalanceo §8.z). city: no lo pelea el grupo del
     // tutorial. foeHp, bossHp y foeDmg lo ponen a la altura de ese grupo (paso 7, DESIGN-COMBAT §8).
-    expected: { level: 7, size: 3, element: 'raiz', classLevel: [10, 10, 9], tools: { catalejo: 4, martillo: 2, cuerda: 4, botiquin: 5, farol: 1 }, equip: ['botiquin', 'farol'], city: true },
-    foeHp: 1.35, bossHp: 1.45, foeDmg: 3,
+    expected: { level: 6, size: 3, element: 'raiz', classLevel: [10, 10, 8], tools: { catalejo: 4, martillo: 5, cuerda: 5, botiquin: 5, farol: 1 }, equip: ['botiquin', 'farol'], city: true },
+    foeHp: 1.25, bossHp: 1.45, foeDmg: 3,
     reward: { xp: 100, mats: { mineral: 3, madera: 3, piedra: 2 }, page: 'p8', flag: 'capitana_vencida' },
     noMirrorJitter: true,
   },

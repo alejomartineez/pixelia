@@ -13,6 +13,7 @@ import puppeteer from 'puppeteer-core';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const Cal = await import(pathToFileURL(join(ROOT, 'src/threats/threat-calendar.js')).href);
 const R = await import(pathToFileURL(join(ROOT, 'src/threats/threat-rules.js')).href);
+const D = await import(pathToFileURL(join(ROOT, 'src/threats/threat-data.js')).href);
 
 const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : d; };
@@ -52,9 +53,10 @@ section('Calendario y reglas (sin navegador)');
   city.buildings.push({ uid: 9, id: 'dique', cat: 'defensa', x: 17, z: 11, w: 3, d: 1, level: 1, era: 1 });
   const p1 = R.prepInfo('crecida', city, 1, 2);
   ok(p0.prep === 0 && p1.list.every(x => x.covered) && Math.abs(p1.c - 0.68) < 1e-9 && p1.r === 1, 'un Dique nivel 1 cubre a los dos (68%) y 1 bolsa alcanza', p1);
-  ok(Math.abs(p1.prep - (0.6 * 0.68 + 0.4)) < 1e-9, 'prep = 0,6 × c + 0,4 × r');
+  // los pesos y la base salen de threat-data (rebalanceo con varias semillas, DESIGN-CORE §8.z: 0,5 / 0,5 y base 40)
+  ok(Math.abs(p1.prep - (D.PREP_W_COVER * 0.68 + D.PREP_W_RESERVES)) < 1e-9, `prep = ${D.PREP_W_COVER} × c + ${D.PREP_W_RESERVES} × r`);
   const a = R.autoResolve(p1.prep, 2, 2);
-  ok(a.pct === Math.round(35 + 60 * p1.prep - 1), 'automática: 35 + 60 × prep − (f − 1)', a);
+  ok(a.pct === Math.round(D.AUTO.base + D.AUTO.perPrep * p1.prep - 1), `automática: ${D.AUTO.base} + ${D.AUTO.perPrep} × prep − (f − 1)`, a);
   ok(R.coverageTiles('dique', 17, 11, 0, { size: [3, 1] }).length > 20, 'coverageTiles dibuja el radio');
   const d = R.newDefense({ type: 'crecida', f: 2, city, reserves: 1, K: 2, seed: 7 });
   ok(d.turns === 6 && d.levels.some(v => v > 0), 'la defensa tiene 6 turnos y focos en el arroyo', { turns: d.turns });

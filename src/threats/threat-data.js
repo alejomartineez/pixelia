@@ -57,7 +57,7 @@ export const AT_RISK_BASE = 3;                           // enRiesgo = min(candi
 export const FLOOD_DIST = 4;                             // crecida: a ≤ 4 tiles del arroyo
 export const EFF_BASE = 0.6, EFF_PER_LEVEL = 0.08;       // eficacia de una defensa de nivel L
 export const HOSPITAL_BONUS = 0.1;
-export const PREP_W_COVER = 0.6, PREP_W_RESERVES = 0.4;
+export const PREP_W_COVER = 0.5, PREP_W_RESERVES = 0.5;   // antes 0,6 y 0,4 (rebalanceo con varias semillas, DESIGN-CORE §8.z)
 export const effOf = (level) => Math.min(1, EFF_BASE + EFF_PER_LEVEL * Math.max(1, level || 1));
 export const defenseRadius = (id, level = 1) => { const t = DEFENSES[id]?.radius; return t ? t[Math.max(1, Math.min(t.length, level || 1)) - 1] : 0; };
 export const reserveFor = (type) => THREAT_TYPES[type]?.reserve;
@@ -78,7 +78,7 @@ export const inflowFor = (f) => 2 + Math.floor(f / 2);
 export const INFLOW_LEVEL = 2;
 
 // ---------- Resolución automática (§3.5) ----------
-export const AUTO = { base: 35, perPrep: 60, min: 30, max: 95 };
+export const AUTO = { base: 40, perPrep: 60, min: 30, max: 95 };   // base 35 → 40 (rebalanceo con varias semillas, DESIGN-CORE §8.z)
 
 // ---------- Premios (§3.7) ----------
 export function rewardFor(pct, f) {

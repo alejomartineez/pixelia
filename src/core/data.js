@@ -98,7 +98,7 @@ export const BUILDINGS = [
     happy: 1, xp: 40, eraArt: true, desc: 'Estacas y tierra apisonada contra el arroyo. Cubre de la crecida lo que tiene cerca.' },
   { id: 'granero', name: 'Granero', cat: 'defensa', size: [2, 2], unlock: 1, rank: 2, cost: { coins: 800, mats: { madera: 3 } }, time: 40, max: 2,
     happy: 1, xp: 45, eraArt: true, desc: 'Agua y grano guardados para la sequía. Además agranda el depósito de provisiones.' },
-  { id: 'bomberos', name: 'Cuartel de Bomberos', cat: 'defensa', size: [2, 2], unlock: 1, rank: 3, cost: { coins: 2500, mats: { madera: 4 }, planos: 1 }, time: 90, max: 2,
+  { id: 'bomberos', name: 'Cuartel de Bomberos', cat: 'defensa', size: [2, 2], unlock: 1, rank: 3, cost: { coins: 2500, mats: { madera: 4 } }, time: 90, max: 2,
     happy: 2, xp: 80, eraArt: true, desc: 'Campana, bomba de mano y gente que no duerme. Cubre del incendio a su alrededor.' },
   { id: 'pararrayos', name: 'Pararrayos', cat: 'defensa', size: [1, 1], unlock: 1, rank: 3, cost: { coins: 600, mats: { mineral: 2 } }, firstPlanos: 1, time: 20, max: 6,
     happy: 0, xp: 25, eraArt: true, desc: 'Una punta de hierro bien alta. Los rayos de la tormenta van ahí y no al techo de al lado.' },
@@ -221,6 +221,11 @@ export const DEFENSE_IDS = Object.keys(DEFENSES);
 const ST4 = ['Cimientos', 'Paredes', 'Detalles', '¡Inauguración!'];
 const ST5 = ['Cimientos', 'Estructura', 'Paredes', 'Detalles', '¡Inauguración!'];
 const stg = (coins, mats, time, gems = 0) => ({ cost: gems ? { coins, gems, mats } : { coins, mats }, time });
+// rebalanceo con varias semillas (DESIGN-CORE §8.z): las etapas de los monumentos grandes se pagaban en 3 o 4 ratos y se
+// llegaba con menos de lo que se quería comprar; sus monedas van × MON_COIN (el Faro, el primero, y la Torre del Reloj,
+// la última, que marca el rango 8, quedan igual)
+export const MON_COIN = 0.75;
+const stgB = (coins, mats, time, gems = 0) => stg(Math.round(coins * MON_COIN / 500) * 500, mats, time, gems);
 // art: artículo del nombre ('el Faro', 'la Torre del Reloj') para armar frases.
 // bonus.type (DESIGN-CORE.md §5.4, atados al ciclo): vision (casillas de visión en la expedición) · happy (puntos de felicidad)
 //             threatWarn (días de aviso extra de las amenazas) · pass (chispas del Pase por expedición)
@@ -237,38 +242,40 @@ export const MONUMENTS = {
     name: 'Jardín Botánico', art: 'el', size: [4, 4], rank: 4, charm: 150, happy: 15, bonus: { type: 'happy', value: 0.25 }, bonusIcon: 'smile',
     bonusText: '+25% de felicidad en toda la ciudad', desc: 'Un invernadero gigante lleno de plantas. Terminado: +25% de felicidad.',
     stageNames: ST4, stages: [
-      stg(12000, { mineral: 22, madera: 14 }, 300), stg(20000, { mineral: 32, madera: 22 }, 600),
-      stg(32000, { mineral: 43, madera: 32 }, 1200), stg(48000, { mineral: 54, madera: 43 }, 1800, 5),
+      stgB(12000, { mineral: 22, madera: 14 }, 300), stgB(20000, { mineral: 32, madera: 22 }, 600),
+      stgB(32000, { mineral: 43, madera: 32 }, 1200), stgB(48000, { mineral: 54, madera: 43 }, 1800, 5),
     ] },
   observatorio: {
     name: 'Observatorio', art: 'el', size: [3, 3], rank: 5, charm: 170, happy: 10, bonus: { type: 'threatWarn', value: 2 }, bonusIcon: 'calendar',
     bonusText: 'Las amenazas se anuncian 2 días antes', desc: 'Para mirar las estrellas y el cielo que se viene. Terminado: cada amenaza se anuncia 2 días antes.',
     stageNames: ST5, stages: [
-      stg(21000, { mineral: 25, hierbas: 15 }, 600), stg(31500, { mineral: 35, hierbas: 25 }, 900), stg(45500, { mineral: 45, hierbas: 35 }, 1500),
-      stg(63000, { mineral: 55, hierbas: 45 }, 2400), stg(84000, { mineral: 65, hierbas: 55 }, 3600, 10),
+      stgB(21000, { mineral: 25, hierbas: 15 }, 600), stgB(31500, { mineral: 35, hierbas: 25 }, 900), stgB(45500, { mineral: 45, hierbas: 35 }, 1500),
+      stgB(63000, { mineral: 55, hierbas: 45 }, 2400), stgB(84000, { mineral: 65, hierbas: 55 }, 3600, 10),
     ] },
   estadio: {
     name: 'Estadio', art: 'el', size: [4, 4], rank: 5, charm: 190, happy: 14, bonus: { type: 'pass', value: 0.25 }, bonusIcon: 'sparkle',
     bonusText: '+25% de chispas del Pase en las expediciones', desc: '¡Que empiece el partido! Terminado: +25% de chispas del Pase en cada expedición.',
     stageNames: ST5, stages: [
-      stg(21000, { piedra: 30, madera: 20 }, 600), stg(30000, { piedra: 40, madera: 30 }, 900), stg(42000, { piedra: 50, madera: 40 }, 1500),
-      stg(57000, { piedra: 60, madera: 50 }, 2400), stg(78000, { piedra: 70, madera: 60 }, 3600, 10),
+      stgB(21000, { piedra: 30, madera: 20 }, 600), stgB(30000, { piedra: 40, madera: 30 }, 900), stgB(42000, { piedra: 50, madera: 40 }, 1500),
+      stgB(57000, { piedra: 60, madera: 50 }, 2400), stgB(78000, { piedra: 70, madera: 60 }, 3600, 10),
     ] },
   museo: {
     name: 'Museo', art: 'el', size: [4, 4], rank: 6, charm: 220, happy: 12, bonus: { type: 'stickers', value: 0.5 }, bonusIcon: '🃏',
     bonusText: '+50% de chance de un hallazgo más al volver', desc: 'Historia, arte ¡y un dinosaurio! Terminado: más hallazgos al volver de expedición.',
     stageNames: ST5, stages: [
-      stg(45000, { hierbas: 42, piedra: 35, mineral: 28 }, 1200), stg(66000, { hierbas: 56, piedra: 49, mineral: 42 }, 1800),
-      stg(90000, { hierbas: 70, piedra: 63, mineral: 56 }, 2700), stg(120000, { hierbas: 91, piedra: 77, mineral: 70 }, 3600),
-      stg(156000, { hierbas: 105, piedra: 98, mineral: 84 }, 5400, 15),
+      stgB(45000, { hierbas: 42, piedra: 35, mineral: 28 }, 1200), stgB(66000, { hierbas: 56, piedra: 49, mineral: 42 }, 1800),
+      stgB(90000, { hierbas: 70, piedra: 63, mineral: 56 }, 2700), stgB(120000, { hierbas: 91, piedra: 77, mineral: 70 }, 3600),
+      stgB(156000, { hierbas: 105, piedra: 98, mineral: 84 }, 5400, 15),
     ] },
   torre_reloj: {
     name: 'Torre del Reloj', art: 'la', size: [3, 3], rank: 7, charm: 260, happy: 12, bonus: { type: 'time', value: 0.10 }, bonusIcon: 'clock',
     bonusText: 'Obras y mejoras 10% más rápidas', desc: 'La más alta del pueblo, con campana. Terminada: todas las obras tardan 10% menos.',
+    // la última, que marca el rango 8: 25 % más de materiales (rebalanceo con varias semillas, §8.z: con los otros
+    // monumentos más baratos sobraba para comprarlos en las aldeas y la Capital llegaba antes del día 70)
     stageNames: ST5, stages: [
-      stg(90000, { madera: 63, hierbas: 54, piedra: 45, mineral: 45 }, 1800), stg(126000, { madera: 81, hierbas: 72, piedra: 63, mineral: 63 }, 2700),
-      stg(168000, { madera: 108, hierbas: 90, piedra: 81, mineral: 81 }, 3600), stg(225000, { madera: 135, hierbas: 117, piedra: 108, mineral: 108 }, 5400),
-      stg(300000, { madera: 162, hierbas: 144, piedra: 135, mineral: 135 }, 7200, 20),
+      stg(90000, { madera: 79, hierbas: 68, piedra: 56, mineral: 56 }, 1800), stg(126000, { madera: 101, hierbas: 90, piedra: 79, mineral: 79 }, 2700),
+      stg(168000, { madera: 135, hierbas: 113, piedra: 101, mineral: 101 }, 3600), stg(225000, { madera: 169, hierbas: 146, piedra: 135, mineral: 135 }, 5400),
+      stg(300000, { madera: 203, hierbas: 180, piedra: 169, mineral: 169 }, 7200, 20),
     ] },
 };
 export const MONUMENT_IDS = Object.keys(MONUMENTS);
@@ -302,14 +309,14 @@ export const TOWN_RANKS = [
   { rank: 2, name: 'Caserío', emoji: '🏡', look: 'galería de troncos y campanario', land: 2, cost: { coins: 800, gems: 2 }, time: 60, reqLevel: 3,
     req: { pop: 12, happy: 30, charm: 40, shops: 1 }, reward: { gems: 3, chest: 'madera' } },
   { rank: 3, name: 'Pueblo', emoji: '🏘️', look: 'muros de piedra y torre del reloj', land: 3, builders: 1, cost: { coins: 2500, gems: 5 }, time: 180, reqLevel: 7,
-    req: { pop: 120, happy: 40, charm: 650, shops: 4, planos: 3 }, reward: { gems: 5, chest: 'plata' } },
+    req: { pop: 120, happy: 40, charm: 620, shops: 4, planos: 3 }, reward: { gems: 5, chest: 'plata' } },
   { rank: 4, name: 'Villa', emoji: '⛲', look: 'soportales y fuentes en la plaza', land: 4, cost: { coins: 6000, gems: 10 }, time: 420, reqLevel: 12,
     req: { pop: 200, happy: 45, charm: 900, shops: 6, monuments: 1 }, reward: { gems: 8, chest: 'oro' } },
   { rank: 5, name: 'Ciudad', emoji: '🏙️', look: 'ladrillo, balcones y cúpula de tejas', land: 5, cost: { coins: 14000, gems: 20 }, time: 900, reqLevel: 18,
     req: { pop: 340, happy: 50, charm: 1350, shops: 8, monuments: 2, planos: 6 }, reward: { gems: 12, chest: 'oro' } },
-  { rank: 6, name: 'Gran Ciudad', emoji: '🌆', look: 'cúpula de hierro y faroles a gas', land: 7, builders: 1, cost: { coins: 30000, gems: 30 }, time: 1800, reqLevel: 23,
+  { rank: 6, name: 'Gran Ciudad', emoji: '🌆', look: 'cúpula de hierro y faroles a gas', land: 7, builders: 1, cost: { coins: 30000, gems: 30 }, time: 1800, reqLevel: 21,
     req: { pop: 460, happy: 52, charm: 1750, shops: 9, monuments: 3, planos: 10 }, reward: { gems: 18, chest: 'oro' } },
-  { rank: 7, name: 'Metrópolis', emoji: '🌃', look: 'torre de hierro y banderas', land: 7, cost: { coins: 60000, gems: 45 }, time: 3600, reqLevel: 28,
+  { rank: 7, name: 'Metrópolis', emoji: '🌃', look: 'torre de hierro y banderas', land: 7, cost: { coins: 60000, gems: 45 }, time: 3600, reqLevel: 26,
     req: { pop: 580, happy: 60, charm: 2400, shops: 10, monuments: 5 }, reward: { gems: 25, chest: 'real' } },
   { rank: 8, name: 'Capital', emoji: '🏛️', look: 'torre de vidrio con terrazas verdes', land: 7, cost: { coins: 120000, gems: 60 }, time: 7200, reqLevel: 33,
     req: { pop: 700, happy: 65, charm: 2800, shops: 11, monuments: 6, planos: 15 }, reward: { gems: 40, chest: 'real' } },
@@ -643,16 +650,16 @@ export const MAIN_QUESTS = [
   { id: 'm20', title: 'Leyenda de Pixelia', text: 'Llegá al nivel 12.', goal: { type: 'level', count: 12 }, reward: { gems: 5, xp: 0, chest: 'oro' } },
   { id: 'm21', title: 'Una Villa hecha y derecha', text: 'Subí la ciudad al rango Villa.', goal: { type: 'castle', count: 4 }, reward: { gems: 7, xp: 300 } },
   // Acto 1 (E5, paso 6b): la bestia del Bañado, que espera desde el rango 3
-  { id: 'q_bestia', title: 'El agua que respira', text: 'Vencé a la bestia del Bañado: espera en la poza honda, al fondo de la salida normal.', goal: { type: 'combat', enc: 'banado_bestia', count: 1 }, reward: { gems: 6, xp: 400, mats: { hierbas: 4 } } },
+  { id: 'q_bestia', title: 'El agua que respira', text: 'Vencé a la bestia del Bañado: espera en la poza honda, al fondo de la salida normal.', goal: { type: 'combat', enc: 'banado_bestia', count: 1 }, reward: { gems: 4, xp: 400, mats: { hierbas: 4 } } },
   { id: 'm22', title: 'Gran Metrópolis', text: 'Llegá a 150 de población.', goal: { type: 'pop', count: 150 }, reward: { gems: 8, xp: 400 } },
   { id: 'm23', title: 'Un pueblo encantador', text: 'Llegá a 300 de Encanto (deco variada y edificios mejorados).', goal: { type: 'charm', count: 300 }, reward: { gems: 4, xp: 300 } },
   { id: 'm24', title: '¡Ya somos Ciudad!', text: 'Subí la Municipalidad al rango Ciudad.', goal: { type: 'castle', count: 5 }, reward: { gems: 8, xp: 500, chest: 'oro' } },
   // Acto 1 (E5, paso 6b): el Núcleo de Raíz en la mina del Cerro
-  { id: 'q_nucleo', title: 'La mina sellada', text: 'Salí al Cerro del Hierro: la salida normal va a la mina vieja. Encontrá el Núcleo de Raíz.', goal: { type: 'element', id: 'raiz', count: 1 }, reward: { gems: 5, xp: 300, mats: { mineral: 3 } } },
+  { id: 'q_nucleo', title: 'La mina sellada', text: 'Salí al Cerro del Hierro: la salida normal va a la mina vieja. Encontrá el Núcleo de Raíz.', goal: { type: 'element', id: 'raiz', count: 1 }, reward: { gems: 3, xp: 300, mats: { mineral: 3 } } },
   { id: 'm25', title: 'Encanto puro', text: 'Llegá a 600 de Encanto.', goal: { type: 'charm', count: 600 }, reward: { gems: 5, xp: 600 } },
-  { id: 'm26', title: 'Gran Ciudad', text: 'Subí la Municipalidad al rango Gran Ciudad.', goal: { type: 'castle', count: 6 }, reward: { gems: 10, xp: 800, chest: 'oro' } },
+  { id: 'm26', title: 'Gran Ciudad', text: 'Subí la Municipalidad al rango Gran Ciudad.', goal: { type: 'castle', count: 6 }, reward: { gems: 6, xp: 800, chest: 'oro' } },
   // Cierre del Acto 1: el faro de la Costa y el primer abordaje
-  { id: 'q_faro', title: 'Los faros apagados', text: 'Salí a la Costa de los Faros y encendé el faro viejo, al fondo de la salida normal.', goal: { type: 'flag', flag: 'faro', count: 1 }, reward: { gems: 6, xp: 500 } },
+  { id: 'q_faro', title: 'Los faros apagados', text: 'Salí a la Costa de los Faros y encendé el faro viejo, al fondo de la salida normal.', goal: { type: 'flag', flag: 'faro', count: 1 }, reward: { gems: 4, xp: 500 } },
   { id: 'q_abordaje', title: 'Velas en el cielo', text: 'Resistí el primer abordaje de los piratas del cielo: cortales la pasarela.', goal: { type: 'combat', enc: 'costa_capitana', count: 1 }, reward: { gems: 10, xp: 800, chest: 'oro' } },
   { id: 'm27', title: 'Luces de Metrópolis', text: 'Subí la Municipalidad al rango Metrópolis.', goal: { type: 'castle', count: 7 }, reward: { gems: 13, xp: 1000, chest: 'real' } },
   { id: 'm28', title: 'Capital de Pixelia', text: 'Llevá tu ciudad al rango Capital.', goal: { type: 'castle', count: 8 }, reward: { gems: 20, xp: 1500, chest: 'real' } },
