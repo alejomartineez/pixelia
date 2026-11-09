@@ -141,10 +141,13 @@ desde el mentón:
 | `skin` | 0 | base |
 | `skinD` | −1 | sombra |
 | `skinDD` | −2,4 | hendijas |
-| `lid` | −1,6 | párpado y cuenca |
+| `lid` | −2,4 mezclado 60 % con tinta | párpado y cuenca: oscuro y apagado. Con −1,6 salía rojo vivo y los ojos se veían colorados |
 | `lip` | | boca, un poco más roja |
 
 - La sombra gira hacia el **rojo** (350°), nunca al gris; en anuros y orcos, hacia el verde azulado (200°).
+- La sombra de la piel **pierde** saturación al bajar (`sat: 0.16` por paso). Si la gana, las aletas y las mejillas
+  salen anaranjadas y se leen como rubor.
+- Las cejas van un poco más oscuras y apagadas que el pelo: un cobre vivo pegado al ojo parece un párpado colorado.
 - Giro de 7° por paso.
 
 **Tela y pelo:** sombra en −1,2, sombra honda en −2,2 y luz en +1,2, con 8° de giro por paso.
