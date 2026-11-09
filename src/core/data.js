@@ -351,10 +351,11 @@ export const CASTLE_BONUS_PER_LEVEL = 0.08; // +8% producción global por nivel 
 export function rewardScale(playerLevel) { return 1 + (playerLevel - 1) * 0.15; }
 
 // ---------------- NIVELES ----------------
-export const MAX_LEVEL = 40;
-export function xpForLevel(level) { // xp necesaria para pasar de `level` a `level+1`
-  return Math.round(40 * Math.pow(level, 1.55) + 20);
-}
+// Maestría: umbrales de la de edificios (monedas cobradas → estrellas, economy.js) y base de la curva de las armas
+// y los objetos del Taller (arsenal.js, MASTERY_CURVE).
+export const MASTERY_STEPS = [500, 2000, 8000, 25000, 80000];
+// El Nivel (1..50) y su curva viven en src/combat/classes.js (NIVEL): desde el guardado v7 es uno solo, el de
+// state.classes.leader. Acá queda el premio de cada Nivel.
 export function levelUpReward(newLevel) {
   return { coins: 100 * newLevel, gems: 1 + Math.floor(newLevel / 8) };   // Fase 5b: eran 3 + nivel/3 (§8: 15–25 gemas por día)
 }

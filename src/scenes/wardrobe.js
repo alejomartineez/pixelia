@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { icon } from '../core/icons.js';
+import { levelOf } from '../core/state.js';
 import { fmtNum } from '../core/economy.js';
 import {
   HAIR_STYLES, HAIR_COLORS, SKIN_TONES, DRESS_STYLES, OUTFIT_COLORS, CROWNS, ACCESSORIES,
@@ -296,7 +297,7 @@ export default function create(ctx) {
   function itemFoot(c, item, owned, equipped) {
     if (equipped) return `<span class="chip mint">Puesto</span>`;
     if (owned) return `<span class="chip">Tuyo</span>`;
-    if ((item.unlock || 1) > S().player.level) return `<span class="chip second">${icon('lock', 12)}Nivel ${item.unlock}</span>`;
+    if ((item.unlock || 1) > levelOf(S())) return `<span class="chip second">${icon('lock', 12)}Nivel ${item.unlock}</span>`;
     return ui.costHtml(item.price || {}, 16);
   }
 
@@ -351,7 +352,7 @@ export default function create(ctx) {
         const owned = store.owns(c.kind, item.id);
         const equipped = S()[t][c.id] === item.id;
         const trying = pv[t][c.id] === item.id && !owned;
-        const locked = !owned && (item.unlock || 1) > S().player.level;
+        const locked = !owned && (item.unlock || 1) > levelOf(S());
         const spec = thumbSpec(c, item);
         const cached = hasThumb(spec);
         html += `<button class="wd-card${equipped ? ' on' : ''}${trying ? ' trying' : ''}${locked ? ' locked' : ''}" data-id="${item.id}">
@@ -396,7 +397,7 @@ export default function create(ctx) {
     bar.hidden = false;
     bar.querySelector('.wd-buy-info b').textContent = item.name + (pending.length > 1 ? ` (+${pending.length - 1})` : '');
     const btn = bar.querySelector('.wd-buybtn');
-    const lockLv = (item.unlock || 1) > S().player.level ? item.unlock : 0;
+    const lockLv = (item.unlock || 1) > levelOf(S()) ? item.unlock : 0;
     btn.disabled = !!lockLv;
     btn.innerHTML = lockLv ? `${icon('lock', 18)}Nivel ${lockLv}` : `Comprar ${ui.costHtml(item.price || {}, 18)}`;
   }
@@ -481,7 +482,7 @@ export default function create(ctx) {
     if (!p) return;
     const item = itemOf(p);
     const price = item.price || {};
-    if ((item.unlock || 1) > S().player.level) { audio.sfx('error'); ui.toast(`Se desbloquea en nivel ${item.unlock}`, { icon: 'lock' }); return; }
+    if ((item.unlock || 1) > levelOf(S())) { audio.sfx('error'); ui.toast(`Se desbloquea en nivel ${item.unlock}`, { icon: 'lock' }); return; }
     if (!store.canAfford(price)) {
       audio.sfx('error');
       const miss = price.gems && S().gems < price.gems ? `${price.gems - S().gems} gemas` : `${fmtNum((price.coins || 0) - S().coins)} monedas`;

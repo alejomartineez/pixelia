@@ -21,6 +21,7 @@
 // empujan, su golpe se corre con él.
 import { COMBAT, TILES, MAP_CHARS, ABILITIES, ITEMS, UNITS, ENEMIES, CHALLENGES, ENCOUNTERS } from './combat-data.js';
 import { memberKit, leaderKit, toClass } from './classes.js';
+import { recPower, foeScale } from '../core/power.js';
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const RING8 = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
@@ -144,9 +145,10 @@ function makeUnit(b, side, type, x, y, extra = {}) {
   // un encuentro puede traer enemigos más duros que los de siempre (paso 7: el abordaje, contra la gente de la ciudad):
   // enc.foeHp multiplica la vida de todos y enc.bossHp la del jefe (encima de foeHp)
   const enc = ENCOUNTERS[b.enc] || {};
-  const hp = side === 'enemy' ? Math.round(d.hp * (enc.foeHp || 1) * (d.boss ? enc.bossHp || 1 : 1)) : d.hp;
+  // la Fuerza (paso 2a): b.foe escala la vida y el ataque de los enemigos cuando el grupo pasa la recomendada
+  const hp = side === 'enemy' ? Math.round(d.hp * (enc.foeHp || 1) * (d.boss ? enc.bossHp || 1 : 1) * (b.foe?.hp || 1)) : d.hp;
   const u = {
-    id: 'u' + b.nextId++, side, type, x, y, hp, maxHp: hp, mv: d.mv, atk: d.atk || 0, armor: d.armor || 0,
+    id: 'u' + b.nextId++, side, type, x, y, hp, maxHp: hp, mv: d.mv, atk: (d.atk || 0) + (side === 'enemy' && d.atk ? b.foe?.atk || 0 : 0), armor: d.armor || 0,
     abilities: (d.abilities || []).slice(), cd: {}, moved: false, acted: false, alive: true, safe: false,
     root: 0, marked: 0, hurt: false, intent: null, dir: [0, side === 'ally' ? -1 : 1], phase: 0, ...extra,
   };
@@ -155,7 +157,7 @@ function makeUnit(b, side, type, x, y, extra = {}) {
 }
 
 export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], level = 1, element = null, elements = null, leader = null,
-  classLevel = null, picks = {}, roleLevel = null, tools = {}, equip = [], attempt = 1 } = {}) {
+  classLevel = null, picks = {}, roleLevel = null, tools = {}, equip = [], attempt = 1, gear = null, power = null, itemPlus = null, foeExtra = 0 } = {}) {
   const enc = ENCOUNTERS[encounter];
   if (!enc) throw new Error('encuentro desconocido: ' + encounter);
   const map = buildMap(enc, seed >>> 0);
@@ -170,6 +172,9 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
     objective: { ...enc.objective },
     tools: { catalejo: 0, martillo: 0, cuerda: 0, botiquin: 0, farol: 0, ...tools }, ropeItem: false,
     items: {}, level, element, attempt, intentPlus: 0, lootWin: 0,
+    // paso 2a: Fuerza del grupo, la recomendada del encuentro y cuánto se escalan los enemigos; +efecto de los objetos
+    power: power ?? null, rec: power != null ? recPower(enc.id) : null, foe: power != null ? foeScale(power, recPower(enc.id), foeExtra) : null,
+    itemPlus: { ...(itemPlus || {}) },
     stats: { dmg: {}, kills: {}, combos: [], downs: 0, stolen: 0 },
   };
   for (const id of equip) if (ITEMS[id]) b.items[id] = 1;
@@ -180,14 +185,14 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
   const els = elements || (element ? [element] : []);
   const lk = leaderKit({ cls: leader?.cls || null, sub: leader?.sub || null, picks: leader?.picks || [], level, elements: els });
   b.leader = { cls: lk.cls, sub: lk.sub, classLevel: lk.classLevel };
-  applyKit(b, makeUnit(b, 'ally', 'lider', map.lead[0], map.lead[1]), lk, revHp);
+  applyGear(b, applyKit(b, makeUnit(b, 'ally', 'lider', map.lead[0], map.lead[1]), lk, revHp), gear?.lider);
   // nivel de clase de cada integrante; un roleLevel viejo (1..5, nivel del edificio) vale 2 × nivel − 1
   const cl = { ...Object.fromEntries(Object.entries(roleLevel || {}).map(([k, v]) => [toClass(k), 2 * Math.max(1, v | 0) - 1])), ...(classLevel || {}) };
   party.map(toClass).slice(0, 3).forEach((cls, i) => {
     const p = map.allies[i];
     const kit = memberKit(cls, cl[cls] || 1, picks?.[cls] || []);
     if (!p || !kit) return;
-    applyKit(b, makeUnit(b, 'ally', cls, p[0], p[1]), kit, revHp);
+    applyGear(b, applyKit(b, makeUnit(b, 'ally', cls, p[0], p[1]), kit, revHp), gear?.[cls]);
   });
   if (map.captive && enc.objective.type === 'rescue') makeUnit(b, 'ally', 'cautivo', map.captive[0], map.captive[1], { captive: true, freed: false, mv: 0 });
 
@@ -221,7 +226,26 @@ function applyKit(b, u, kit, revHp = 0) {
   b.lootWin += u.f.lootWin || 0;
   return u;
 }
+/**
+ * Suma lo que lleva cada uno (paso 2a, arsenal.js gearMods): arma, maestría y talentos. { hp, atk, armor, flags,
+ * affinity: [elementos], type }. La afinidad suma 1 de daño a las habilidades de ese elemento (u.aff).
+ */
+function applyGear(b, u, g) {
+  if (!u || !g) return u;
+  u.maxHp += g.hp || 0; u.hp += g.hp || 0;
+  u.atk += g.atk || 0; u.armor = (u.armor || 0) + (g.armor || 0);
+  for (const [k, n] of Object.entries(g.flags || {})) {
+    u.f[k] = (u.f[k] || 0) + n;
+    if (k === 'intentPlus') b.intentPlus += n;
+    if (k === 'lootWin') b.lootWin += n;
+  }
+  if (g.affinity?.length) u.aff = g.affinity.slice();
+  if (g.type) u.weapon = g.type;
+  return u;
+}
 const flag = (u, k) => (u && u.f ? u.f[k] || 0 : 0);
+/** Afinidad elemental del arma: +1 de daño con las habilidades de su elemento. */
+const elemPlus = (u, def) => (def?.element && u?.aff?.includes(def.element) ? 1 : 0);
 
 // ---------- movimiento ----------
 /** Costo de entrar a una casilla. Para el grupo: los enemigos tapan, los aliados se atraviesan. */
@@ -446,7 +470,7 @@ export function act(b, unitId, abilityId, x, y) {
   const av = abilitiesOf(b, unitId).find(a => a.id === abilityId);
   if (!av) return { ok: false, why: 'No tiene esa habilidad', events: [] };
   if (!av.ready) return { ok: false, why: `Falta${av.cd > 1 ? 'n' : ''} ${av.cd} turno${av.cd > 1 ? 's' : ''}`, events: [] };
-  const def = av.def;
+  const def = av.item ? itemWithMastery(b, av.def) : av.def;
   if (!canTarget(b, u, def, x, y)) return { ok: false, why: 'No se puede ahí', events: [] };
   const ev = [{ type: 'act', id: u.id, ability: abilityId, at: [x, y] }];
   if (x !== u.x || y !== u.y) u.dir = Math.abs(x - u.x) >= Math.abs(y - u.y) ? [Math.sign(x - u.x), 0] : [0, Math.sign(y - u.y)];
@@ -459,7 +483,15 @@ export function act(b, unitId, abilityId, x, y) {
 }
 
 function attackDmg(u, def) {
-  return (def.dmg === 'atk' ? u.atk : def.dmg || 0) + (def.plus || 0);
+  return (def.dmg === 'atk' ? u.atk : def.dmg || 0) + (def.plus || 0) + elemPlus(u, def);
+}
+/** Un objeto del Taller con su maestría (b.itemPlus): cura, daño, cobertura o radio +n. */
+function itemWithMastery(b, def) {
+  const n = b.itemPlus?.[def.id] || 0;
+  if (!n) return def;
+  const d = { ...def };
+  for (const k of ['heal', 'dmg', 'cover', 'radius']) if (typeof d[k] === 'number') d[k] += n;
+  return d;
 }
 function resolve(b, u, def, x, y, ev) {
   const o = unitAt(b, x, y);
@@ -490,7 +522,7 @@ function resolve(b, u, def, x, y, ev) {
       break;
     }
     case 'mark':
-      hurt(b, o, def.dmg, { side: 'ally', unit: u, by, high }, ev);
+      hurt(b, o, def.dmg + elemPlus(u, def), { side: 'ally', unit: u, by, high }, ev);
       if (onBoard(o)) { o.marked = COMBAT.markBonus + flag(u, 'markPlus'); ev.push({ type: 'mark', id: o.id }); }
       break;
     case 'trap': {
@@ -517,7 +549,7 @@ function resolve(b, u, def, x, y, ev) {
       break;
     }
     case 'disarm':
-      hurt(b, o, def.dmg, { side: 'ally', unit: u, by, high }, ev);
+      hurt(b, o, def.dmg + elemPlus(u, def), { side: 'ally', unit: u, by, high }, ev);
       if (onBoard(o) && cancelIntent(b, o, ev)) { b.stats.stolen++; ev.push({ type: 'stolen', id: o.id }); }
       if (def.rootHit && onBoard(o)) { o.root = Math.max(o.root, def.rootHit); ev.push({ type: 'root', id: o.id }); }
       break;
@@ -530,7 +562,7 @@ function resolve(b, u, def, x, y, ev) {
       break;
     }
     case 'root': {
-      hurt(b, o, def.dmg, { side: 'ally', unit: u, by, high }, ev);
+      hurt(b, o, def.dmg + elemPlus(u, def), { side: 'ally', unit: u, by, high }, ev);
       if (!onBoard(o)) break;
       if (!def.noCancel) cancelIntent(b, o, ev);
       o.root = Math.max(o.root, def.root);

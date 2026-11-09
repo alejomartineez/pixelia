@@ -2,6 +2,7 @@
 // el próximo rango (checklist con barras), qué desbloquea y el botón para mejorar la Municipalidad.
 // Con params.celebrate (número de rango) abre en modo festejo: emblema con rayos, premio y lo que se desbloqueó.
 import { icon } from '../core/icons.js';
+import { levelOf } from '../core/state.js';
 import { BUILDINGS, TOWN_RANKS, RANK_REQ_LABELS, CASTLE_BONUS_PER_LEVEL, eraOfRank, eraDef } from '../core/data.js';
 import { openShell, burst, rewardHtml } from './panels-common.js';
 
@@ -146,7 +147,7 @@ export function openRank(ctx, params = {}) {
       const [label, ic] = RANK_REQ_LABELS[r.key] || [r.key, 'info'];
       card.append(reqRow(r.key, r.have, r.need, r.ok, label, ic));
     }
-    card.append(reqRow('level', ctx.state.player.level, nx.reqLevel, st.levelOk, 'Tu nivel', 'xp'));
+    card.append(reqRow('level', levelOf(ctx.state), nx.reqLevel, st.levelOk, 'Tu nivel', 'xp'));
     if (st.reqs.some(r => r.key === 'monuments' && !r.ok)) {
       card.append(h('button.btn.second.block', { html: `${icon('monument', 20)} Ver las Obras`, onclick: () => { audio.sfx('tap'); sh.close(); ctx.openPanel('works'); } }));
     }

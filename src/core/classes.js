@@ -14,7 +14,7 @@ import { store } from './state.js';
 import { bus } from './bus.js';
 import * as E from './economy.js';
 import {
-  CLASSES, CLASS_IDS, CLASS_GAIN, CLASS_CURVE, remapClassXp, LEADER, classLevelFromXp, classXpInfo, leaderLevelFromXp, leaderXpInfo, leaderPerks,
+  CLASSES, CLASS_IDS, CLASS_GAIN, CLASS_CURVE, remapClassXp, LEADER, classLevelFromXp, classXpInfo, leaderLevelFromXp, leaderXpInfo, leaderPerks, combatLevel, NIVEL,
   availableSubclasses, resolveSubclass, unlockedPool, validPicks, classPassives, SUBCLASSES,
 } from '../combat/classes.js';
 
@@ -114,29 +114,30 @@ export function leaderInfo(state = S()) {
   const info = leaderXpInfo(L.xp);
   const els = elementsOf(state);
   const sub = L.cls ? resolveSubclass(L.cls, L.sub, els) : null;
-  const perks = leaderPerks(info.level);
+  const perks = leaderPerks(info.combat);
   return {
-    level: info.level, xp: info, perks, cls: L.cls, sub: sub?.id || null, next: info.next,
+    level: info.level, combat: info.combat, paragon: info.paragon, xp: info, perks, cls: L.cls, sub: sub?.id || null, next: info.next,
     subclasses: L.cls ? availableSubclasses(L.cls, els).map(s => s.id) : [],
     picks: L.cls ? validPicks(L.cls, perks.classLevel, L.picks, perks.classSlots) : [],
   };
 }
-/** Lo que la expedición y el combate necesitan del líder: { level, cls, sub, picks }. */
+/**
+ * Lo que la expedición y el combate necesitan del líder: { level, nivel, cls, sub, picks }. level es el nivel de
+ * combate (combatLevel del Nivel, escala 1..30 de LEADER); nivel, el Nivel de verdad.
+ */
 export function leaderMods(state = S()) {
   const i = leaderInfo(state);
-  return { level: i.level, cls: i.cls, sub: i.sub, picks: i.picks.slice() };
+  return { level: i.combat, nivel: i.level, cls: i.cls, sub: i.sub, picks: i.picks.slice() };
 }
-/** Suma experiencia al líder. Devuelve { from, to } o null si no subió. */
+/**
+ * Suma experiencia de pelea, salida o amenaza al Nivel (× NIVEL.fightRate: venía en la escala chica del líder).
+ * Pasa por store.addXp, que reparte los premios y avisa 'level:up' y 'leader:levelup'. Devuelve { from, to } o null.
+ */
 export function grantLeaderXp(xp = 0, source = '', state = S()) {
-  const L = classesState(state).leader;
-  const n = Math.max(0, Math.round(xp));
+  classesState(state);
+  const n = Math.max(0, Math.round(xp * NIVEL.fightRate));
   if (!n) return null;
-  const from = leaderLevelFromXp(L.xp);
-  L.xp += n;
-  const to = leaderLevelFromXp(L.xp);
-  store.markDirty();
-  if (to > from) { bus.emit('leader:levelup', { level: to, from, source }); return { from, to }; }
-  return null;
+  return store.addXp(n, source || 'combat');
 }
 /** Experiencia del líder por una amenaza aguantada (pct 0..100). */
 export const threatXp = (pct = 0) => Math.round(LEADER.gain.threat.base + LEADER.gain.threat.perPct * Math.max(0, Math.min(100, pct)));
@@ -164,7 +165,7 @@ export function setSubclass(id, state = S()) {
 export function setLeaderPicks(picks = [], state = S()) {
   const L = classesState(state).leader;
   if (!L.cls) return false;
-  const p = leaderPerks(leaderLevel(state));
+  const p = leaderPerks(combatLevel(leaderLevel(state)));
   L.picks = validPicks(L.cls, p.classLevel, picks, Math.max(p.classSlots, 2));
   store.markDirty();
   return true;

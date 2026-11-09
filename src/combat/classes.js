@@ -142,23 +142,64 @@ export const LEADER = {
    */
   rangedAtkDelay: 6,
 };
-/** Experiencia total para llegar a un nivel del líder. */
-export function leaderXpFor(level) {
-  let xp = 0;
-  for (let n = 1; n < Math.min(LEADER.max, level); n++) xp += LEADER.need(n);
-  return xp;
-}
-export function leaderLevelFromXp(xp = 0) {
+/** Nivel del líder con la curva vieja (100 + 50 por nivel, tope 30): solo para la migración v7. */
+export function leaderLevelV6(xp = 0) {
   let lv = 1, acc = 0;
   while (lv < LEADER.max && (xp || 0) >= acc + LEADER.need(lv)) { acc += LEADER.need(lv); lv++; }
   return lv;
 }
-/** { level, xp, into, need, max, next } — next: el próximo nivel clave y lo que abre. */
+
+// ---------- el Nivel (La Travesía, paso 2a) ----------
+/**
+ * Un solo Nivel de jugador (1..50). Sube con todo: la ciudad (store.addXp), las peleas, las salidas y las amenazas
+ * (grantLeaderXp × NIVEL.fightRate). La curva es la del nivel de la ciudad de antes, así los rangos llegan igual.
+ * El combate no usa el Nivel crudo: usa combatLevel(Nivel), la escala del líder de antes (LEADER, 1..30), para que cada
+ * pelea del Acto 1 quede como estaba balanceada. Pasado el 50, la experiencia sigue juntando puntos de paragon.
+ */
+export const NIVEL = {
+  max: 50,
+  /**
+   * Experiencia que pide pasar del Nivel n al n + 1: la curva del nivel de la ciudad de antes del v7 (40·n^1,55 + 20)
+   * con exponente 1,6 desde el balance del 2a (sim:economy): con la experiencia de las peleas sumada, el Nivel 18
+   * llegaba el día 15–16 y el rango 5 antes del día 18. En total pide 7 % más hasta el Nivel 7, 13 % más hasta el 18
+   * y 15 % más hasta el 26.
+   */
+  need: (n) => Math.round(40 * Math.pow(n, 1.6) + 20),
+  /** Las peleas, salidas y amenazas daban xp en la escala chica del líder: se multiplica al pasar al Nivel. */
+  fightRate: 2,
+  /** Experiencia por punto de paragon pasado el Nivel 50. */
+  paragonStep: 8000,
+  /** Niveles que quedan para los actos 2 a 4 (otro elemento y habilidades del equipo). */
+  reserved: [30, 36, 42, 48],
+};
+let nivelTable = null;
+/** Experiencia total para llegar a un Nivel. */
+export function leaderXpFor(level) {
+  if (!nivelTable) { nivelTable = [0, 0]; for (let n = 1; n < NIVEL.max; n++) nivelTable.push(nivelTable[n] + NIVEL.need(n)); }
+  return nivelTable[Math.max(1, Math.min(NIVEL.max, level | 0))];
+}
+export function leaderLevelFromXp(xp = 0) {
+  let lv = 1;
+  while (lv < NIVEL.max && (xp || 0) >= leaderXpFor(lv + 1)) lv++;
+  return lv;
+}
+/** Puntos de paragon: uno cada NIVEL.paragonStep de experiencia pasado el Nivel 50. */
+export const paragonPoints = (xp = 0) => Math.max(0, Math.floor(((xp || 0) - leaderXpFor(NIVEL.max)) / NIVEL.paragonStep));
+/** Nivel de combate del líder (la escala de LEADER, 1..30) que corresponde a un Nivel: 4 → 1, 18 → 5, 32 → 9, 50 → 14. */
+export const combatLevel = (nivel) => Math.max(1, Math.min(LEADER.max, Math.round(((nivel | 0 || 1) + 0.5) / 3.5)));
+/** El Nivel más bajo con ese nivel de combate (para decir "abre en el Nivel N"). */
+export function nivelFor(clv) {
+  for (let n = 1; n <= NIVEL.max; n++) if (combatLevel(n) >= clv) return n;
+  return NIVEL.max;
+}
+/** { level, xp, into, need, max, next, paragon, paragonInto, paragonNeed } — next: el próximo Nivel clave y lo que abre. */
 export function leaderXpInfo(xp = 0) {
   const level = leaderLevelFromXp(xp);
-  const max = level >= LEADER.max;
+  const max = level >= NIVEL.max;
   const base = leaderXpFor(level);
-  return { level, xp, into: max ? 0 : xp - base, need: max ? 0 : LEADER.need(level), max, next: nextKeyLevel(level) };
+  const over = max ? Math.max(0, xp - base) : 0;
+  return { level, xp, into: max ? 0 : xp - base, need: max ? 0 : NIVEL.need(level), max, next: nextKeyLevel(level),
+    combat: combatLevel(level), paragon: paragonPoints(xp), paragonInto: over % NIVEL.paragonStep, paragonNeed: NIVEL.paragonStep };
 }
 /** Lo que da cada nivel del líder (combate): vida y ataque (COMBAT.leader) y lo que abre. */
 export function leaderPerks(level) {
@@ -169,9 +210,10 @@ export function leaderPerks(level) {
     subPassive: level >= s.subPassive, morale: Math.floor(level / LEADER.moraleEvery),
   };
 }
+/** Próximo Nivel clave (los espacios de LEADER.slots pasados a Nivel con nivelFor). */
 function nextKeyLevel(level) {
-  const keys = [...LEADER.slots.clase.map(l => [l, 'una habilidad de clase']), ...LEADER.slots.sub.map(l => [l, 'una habilidad de subclase']),
-    [LEADER.slots.subPassive, 'la pasiva de la subclase'], ...LEADER.reserved.map(l => [l, 'un espacio para los actos que vienen'])]
+  const keys = [...LEADER.slots.clase.map(l => [nivelFor(l), 'una habilidad de clase']), ...LEADER.slots.sub.map(l => [nivelFor(l), 'una habilidad de subclase']),
+    [nivelFor(LEADER.slots.subPassive), 'la pasiva de la subclase'], ...NIVEL.reserved.map(l => [l, 'un espacio para los actos que vienen'])]
     .filter(([l]) => l > level).sort((a, b) => a[0] - b[0]);
   return keys.length ? { level: keys[0][0], text: keys[0][1] } : null;
 }

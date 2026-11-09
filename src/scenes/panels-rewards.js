@@ -1,8 +1,17 @@
 // Paneles festivos: premio diario (login) y subida de nivel.
 import { icon } from '../core/icons.js';
+import { levelOf } from '../core/state.js';
 import { BUILDINGS, CUSTOM_CATALOG, TOWN_RANKS, LOGIN_REWARDS, MAX_EXPANSIONS, fitsType, avatarType } from '../core/data.js';
 import { openShell, rewardFx, rewardHtml, chestArt, chestList } from './panels-common.js';
 import { CHESTS, chestCount, levelUpChests } from '../chests/chests.js';
+import { talentPoints } from '../core/talents.js';
+
+/** Los textos nuevos juntos (paso 2a: el punto de talento de cada Nivel; el paso de idiomas los pasa a t()). */
+const TXT = {
+  talent: (n) => n > 1 ? `Tenés ${n} puntos de talento` : 'Tenés un punto de talento',
+  paragon: (n) => n > 1 ? `Tenés ${n} puntos de paragon` : 'Tenés un punto de paragon',
+  toTalents: 'Ver talentos',
+};
 
 // ---------- Premio diario ----------
 export function openLogin(ctx) {
@@ -140,10 +149,10 @@ function nextUnlock(level) {
 export function openLevelUp(ctx, params = {}) {
   const { ui, audio } = ctx;
   const { h, esc, costHtml } = ui;
-  const level = Number(params.level) || ctx.state.player.level;
+  const level = Number(params.level) || levelOf(ctx.state);
   const reward = params.reward || {};
   // si subió varios niveles de golpe, las ventanas salen de a una: el botón avisa que viene otra
-  const more = ctx.state.player.level > level;
+  const more = levelOf(ctx.state) > level;
   // cofres que se ganaron por subir a este nivel (ya están en el inventario: los suma chests.js al escuchar level:up)
   let chests = [];
   try { chests = (levelUpChests(level) || []).filter(t => CHESTS[t]); } catch (e) { console.warn('levelUpChests', e); }
@@ -193,6 +202,20 @@ export function openLevelUp(ctx, params = {}) {
     wrap.append(h('div.pnl-lv-empty', { html: `${icon('castle', 40)}<span>${nx ? 'Cada nivel trae más premios.' : 'Ya desbloqueaste todos los edificios. Queda mejorar y decorar.'}</span>` }));
   }
   if (nx) wrap.append(h('p.pnl-lv-next', { html: `${icon('sparkle', 16)}<span>Próximamente, en el <b>nivel ${nx.level}</b>: ${nx.names.map(esc).join(', ')}</span>` }));
+  // cada Nivel da un punto de talento (paso 2a); con el árbol lleno o pasado el 50, de paragon. Acceso a Talentos.
+  try {
+    const tp = talentPoints(ctx.state);
+    const txt = tp.free ? TXT.talent(tp.free) : tp.paragon.free ? TXT.paragon(tp.paragon.free) : '';
+    if (txt) {
+      const go = h('button.btn.small.sky', { 'data-levelup-talents': '1', html: `${icon('star', 18)} ${esc(TXT.toTalents)}` });
+      go.onclick = () => {
+        audio.sfx('tap');
+        sh.close();
+        setTimeout(() => ctx.openPanel?.('story', { tab: 'progreso', section: 'talentos' }), 120);
+      };
+      wrap.append(h('div.pnl-lv-talent', { html: `${icon('sparkle', 20)}<b>${esc(txt)}</b>` }, go));
+    }
+  } catch (e) { console.warn('[levelup] talentos', e); }
   sh.body.append(wrap);
 
   async function loadThumbs(grid) {

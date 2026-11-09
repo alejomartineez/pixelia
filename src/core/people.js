@@ -10,6 +10,16 @@ import { store } from './state.js';
 import { bus } from './bus.js';
 import * as E from './economy.js';
 import { PEOPLE, PEOPLE_IDS, BOND_MAX, TOOL_MAX, TOOLS, toolCost } from './people-data.js';
+import { WEAPON_TYPES, weaponName, masteryUnlock, ITEM_MASTERY_PLUS_AT } from './arsenal.js';
+import { ITEMS } from '../combat/combat-data.js';
+
+/** Los textos nuevos juntos (paso 2a: avisos del arsenal y la maestría; el paso de idiomas los pasa a t()). */
+export const TXT = {
+  masteryUp: (name, lv, what) => `Maestría de ${name} ${lv}${what ? ': ' + what : ''}`,
+  itemPlus: '+1 a su efecto',
+  found: (name) => `Encontraste: ${name}`,
+  foundAuto: (name) => `${name}: se desarmó sola`,
+};
 
 const S = () => store.state;
 
@@ -188,7 +198,20 @@ export function initPeople(ctx, { idle = () => true, show = null } = {}) {
   bus.on('quests:changed', checkFlags);
   bus.on('people:bond', ({ id, bond }) => toast(`${PEOPLE[id].name}: Vínculo ${bond}. Ya se puede mejorar su ${TOOLS[PEOPLE[id].tool].name.toLowerCase()}.`, 'people'));
   bus.on('people:tool', ({ id, level }) => toast(`${TOOLS[PEOPLE[id].tool].name} nivel ${level}`, 'hammer'));
-  bus.on('leader:levelup', ({ level }) => toast(`Quien lidera sube al nivel ${level}`, 'star'));
+  // arsenal (paso 2a): la maestría que sube y el arma que se encuentra. La subida de Nivel ya abre su panel
+  // ('level:up' → openPanel('levelup')), por eso 'leader:levelup' no lleva toast acá.
+  bus.on('mastery:up', ({ kind, id, level } = {}) => {
+    if (kind === 'objeto') {
+      const it = ITEMS[id];
+      if (it) toast(TXT.masteryUp(it.name, level, ITEM_MASTERY_PLUS_AT.includes(level) ? TXT.itemPlus : ''), 'hammer');
+      return;
+    }
+    const T = WEAPON_TYPES[id];
+    if (T) toast(TXT.masteryUp(T.name, level, masteryUnlock(id, level)?.name || ''), 'star');
+  });
+  bus.on('arsenal:drop', ({ weapon, auto } = {}) => {
+    if (weapon) toast(auto ? TXT.foundAuto(weaponName(weapon)) : TXT.found(weaponName(weapon)), auto ? 'hammer' : 'gift');
+  });
   // las llegadas se muestran de a una, cuando la ciudad está tranquila (las que llegaron y todavía no se vieron)
   showFn = show; idleFn = idle;
   setInterval(() => { showNextArrival(); }, 1500);

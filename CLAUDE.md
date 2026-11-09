@@ -40,7 +40,7 @@ adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
 - `npm run serve` → http://127.0.0.1:5173/ (`serve:lan` para abrirlo desde el celu en la misma Wi-Fi).
   También está la configuración `pixelia` en `.claude/launch.json` para la vista previa.
 - `npm test` → e2e, migración v2→v3, colocación, stress, visitas, mock online, social, rango, obras, expedición,
-  ciclo, amenazas, telemetría, ajustes, historia, ambiente, audio, combate, cinemáticas, idiomas y SQL (Chrome headless; tarda unos minutos).
+  ciclo, amenazas, telemetría, ajustes, historia, ambiente, audio, combate, arsenal, cinemáticas, idiomas y SQL (Chrome headless; tarda unos minutos).
 - `node smoke.mjs --scene city --device desktop --dpr 1.25 --shot ../shots/x.png` → captura rápida de una escena.
 - Cinemáticas (`src/cinema/`: línea de tiempo, poses, carteles 3D, reproductor y viñetas 2D en pixel art):
   `tools/cinema.html?v=forcejeo&view=strip` revisa una viñeta cuadro a cuadro; `npm run narrate -- --samples` arma

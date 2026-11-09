@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Voxels, disposeObject } from '../core/voxel.js';
 import { avatarModel, randomLook } from '../avatar/avatar.js';
+import { heldGear } from '../core/gear.js';
 import { skiffModel } from '../avatar/skiff.js';
 import { themeOf } from '../city/themes.js';
 import { footprint, def, isConstructing, landBounds } from '../core/economy.js';
@@ -163,7 +164,8 @@ export function createLife(r, ctx) {
     let prevPos = null;
     if (player) { prevPos = [player.fx, player.fz]; group.remove(player.obj); disposeObject(player.obj); }
     // con el arma o la herramienta de su clase en la mano (paso 5b, tercera parte); la ropa es la del Equipaje
-    const obj = avatarModel(ctx.state.avatar, { player: true, clsGear: ctx.state.classes?.leader?.cls || null });
+    // y el arma equipada del Arsenal (paso 2a), si tiene una: manda sobre la de su clase
+    const obj = avatarModel(ctx.state.avatar, { player: true, clsGear: ctx.state.classes?.leader?.cls || null, gear: heldGear('lider', ctx.state) || undefined });
     // aro de luz bajo los pies: en los temas oscuros el personaje no se pierde contra el piso
     const glow = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.62, depthWrite: false }));
     glow.rotation.x = -Math.PI / 2; glow.position.y = 0.012; glow.renderOrder = -1;

@@ -14,7 +14,8 @@ import * as THREE from 'three';
 import { createPixelRenderer, addLights, setIsoCamera, disposeObject, shade } from '../core/voxel.js';
 import { iconUrl } from '../core/icons.js';
 import { voxelModel, natureModel } from '../city/models.js';
-import { avatarModel, randomLook } from '../avatar/avatar.js';
+import { avatarModel, randomLook, classLook } from '../avatar/avatar.js';
+import { heldGear } from '../core/gear.js';
 import { EXP, REGIONS, MATERIALS, HAZARDS, CONTENT, ringOf } from './exp-data.js';
 import { hashSeed } from './exp-gen.js';
 import * as R from './exp-rules.js';
@@ -400,12 +401,16 @@ export default function create(ctx) {
     for (const p of party) { world.remove(p.obj); }
     party = [];
     // con el equipo de su clase (paso 5b, tercera parte): quien lidera y cada integrante (run.party son clases)
-    const lead = avatarModel(store.state.avatar, { player: true, cls: run.mods?.leader?.cls || store.state.classes?.leader?.cls || null });
+    // y el arma equipada del Arsenal que llevan en esta salida (paso 2a, run.mods.gear), si tienen una
+    const gearOf = (who) => run.mods?.gear ? heldGear(who, store.state, run.mods.gear[who] || {}) : heldGear(who, store.state);
+    const lead = avatarModel(store.state.avatar, { player: true, cls: run.mods?.leader?.cls || store.state.classes?.leader?.cls || null, gear: gearOf('lider') || undefined });
     lead.scale.setScalar(0.62);
     party.push({ obj: lead, off: [0, 0.08], delay: 0 });
     const offs2 = [[-0.26, 0.3], [0.26, 0.3], [0, 0.38]];
     run.party.forEach((role, k) => {
-      const f = avatarModel(randomLook(hashSeed('exp', role, store.state.created || 1) % 9973), { npc: true, cls: role });
+      const look = randomLook(hashSeed('exp', role, store.state.created || 1) % 9973), g = gearOf(role);
+      // las figuras de bajo detalle toman el arma del look (no de opts.gear): se arma con la clase y se le cambia el arma
+      const f = g ? avatarModel({ ...classLook(look, role), acc: g }, { npc: true }) : avatarModel(look, { npc: true, cls: role });
       f.scale.setScalar(0.48);
       party.push({ obj: f, off: offs2[k] || [0, 0.3], delay: 0.06 * (k + 1) });
     });

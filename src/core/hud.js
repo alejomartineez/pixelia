@@ -50,7 +50,7 @@ function render() {
   root.innerHTML = `
     <div class="hud-top">
       <button class="hud-profile" data-act="settings" aria-label="${a('hud.profile.aria')}" title="${a('hud.profile.title')}">
-        <span class="lvl-star">${icon('star', 40)}<b data-hud="level">${xp.level}</b></span>
+        <span class="lvl-star" data-hud="lvlstar" title="${a('city.info.level', { n: xp.level })}" role="img" aria-label="${a('city.info.level', { n: xp.level })}">${icon('star', 40)}<b data-hud="level">${xp.level}</b></span>
         <span class="hud-name">
           <b data-hud="name">${esc(s.player.name)}</b>
           <span class="hud-xp" data-hud="xp">${progressHtml(xp.pct, 'xp')}</span>
@@ -255,7 +255,11 @@ function refreshDynamic() {
   refreshGates();
   refreshExpedition();
   const xp = store.xpProgress();
-  const lv = root.querySelector('[data-hud="level"]'); if (lv && lv.textContent !== String(xp.level)) lv.textContent = xp.level;
+  const lv = root.querySelector('[data-hud="level"]'); if (lv && lv.textContent !== String(xp.level)) {
+    lv.textContent = xp.level;
+    const star = root.querySelector('[data-hud="lvlstar"]');   // el Nivel único (paso 2a): "Nivel N" al pasar el mouse y para lectores de pantalla
+    if (star) { const lv = t('city.info.level', { n: xp.level }); star.title = lv; star.setAttribute('aria-label', lv); }
+  }
   const nm = root.querySelector('[data-hud="name"]'); if (nm && nm.textContent !== s.player.name) nm.textContent = s.player.name;
   const bar = root.querySelector('[data-hud="xp"] .progress i'); if (bar) bar.style.width = (xp.pct * 100).toFixed(1) + '%';
   const q = mainQuest();

@@ -51,7 +51,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
-| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a-nivel | en curso | rama `trav-2a` |
+| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a | **cortado por contexto**: falta el balance de `sim:economy` (ver notas) | rama `claude/trav-2a-e5cfa6` |
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
@@ -450,3 +450,43 @@ Queda:
   salvo la línea de apertura en `narration.js` (es la de siempre) y los de la demostración, que van en el código de
   la viñeta y de la prueba.
 
+### 2a · Nivel único, talentos, arsenal, maestría y Fuerza (rama `claude/trav-2a-e5cfa6`, sin bump) · **CORTADO, sigue otra sesión**
+Diseño completo de las APIs: `side-session-notes/…/2a-diseno.md`; balance: `…/2a-balance.md`. Docs: DESIGN-COMBAT.md §18 y
+DESIGN-CORE.md §7.4 (guardado v7).
+
+Hecho:
+- **Nivel único** (`NIVEL` en `src/combat/classes.js`, tope 50, `need = 40·n^1,6 + 20`, `fightRate` 2, paragon cada 8000).
+  La xp vive en `state.classes.leader.xp`; `store.addXp` reparte premios y avisa `level:up` / `leader:levelup` / `paragon:up`;
+  `levelOf(s)` en state.js para cualquier partida o perfil (también los v6 online). El combate usa `combatLevel(Nivel)` (la escala
+  vieja del líder), así el Acto 1 queda balanceado igual. `player.level/xp` ya no existen en `src/` (grep limpio).
+- **Guardado v7** (`migrateV7`, después de `migrateClasses`): el más alto de los dos niveles con su fracción; `s.v7`. `test-migration` 105 ✔.
+- **Arsenal** (`src/core/arsenal.js` puro + `src/core/gear.js`): 7 tipos, 5 rarezas, 1–2 rasgos, afinidad elemental como rasgo de
+  rareza (+1 de daño a habilidades de su elemento), contador de suerte, tope 40, equipar/sacar/rehacer/desarmar/filtro. Caen al ganar
+  (jefe siempre) desde `creditFightGear` en `expedition.creditFight`.
+- **Maestría** 1–20 por tipo (curva de `MASTERY_STEPS`, ahora en data.js), técnicas en 3/6/10, vida en 2/5/8, marcos 4…20; objetos
+  del Taller 1–10 (+1 efecto en 4 y 8, `itemPlus` en newBattle).
+- **Talentos** (`src/core/talents.js`): 3 ramas, 16 talentos (36 puntos), lo que sobra y el paragon a una línea por rama.
+- **Fuerza** (`src/core/power.js`): `powerOf`, `recPower`, `foeScale` (la mitad de lo que sobra sobre la recomendada); `newBattle({ gear,
+  power, itemPlus, foeExtra })`.
+- **Interfaz**: Progreso ordenada Nivel · Talentos · Maestrías · Fuerza (`panels-progress.js`), panel `panels-arsenal.js` (desde Progreso y
+  el Taller), avisos de maestría y de arma (`people.js`), punto de talento en el panel de subida, HUD "Nivel N", arma equipada en el
+  modelo (`gear.heldGear`, ciudad/expedición/combate). Capturas `shots/2a-*.png`; en la del modelo las 5 armas se leen sin cruzar el
+  cuerpo (son piezas de GEAR que ya cubre `test-gear-fit`; rareza y rasgos no cambian la forma ni el color).
+- **Pruebas** (cada una sola): `test-arsenal` 122 ✔ (nueva, en `npm test` y `test:arsenal`), `test-migration` 105, `test-classes` 81,
+  `test-combat` 100, `test-e2e` 104, `test-mock` 91, `test-people` 31 (arreglado de paso lo de la llegada de Brígida), `test-class-look` 51,
+  `test-telemetry` 67 (arreglado `install-card.js`). **`npm test` entero sin correr.**
+- **sim:combat** (`--n 20`): sección "Fuerza" nueva, todo ✔ (recomendada 86–92 % en los comunes; menos da menos; más gana igual o más).
+
+**Falta (lo que sigue la sesión nueva):**
+1. **`sim:economy` semillas 1–12 en verde.** Hoy, sin contar la meta nueva, solo 2, 9 y 10 dan ✔; las otras fallan por poco en metas al
+   borde (Nivel como último requisito 33 % en 1 y 6; primer monumento día 8–9 en 3, 4 y 6; monedas al llegar 69–73 % en 5, 8 y 11;
+   rango 2 el día 2 en 7 y 8; rango 5 el día 17 en 12). Master tras el 1c daba 2 fallas en 1–12. Sospechas: el bot nuevo (resuelve rápido,
+   camina a buscar peleas, desarma) cambia el ritmo de monedas y materiales; probar `--no-farm` / `--no-gear` para separar qué mueve cada
+   meta, y el exponente de `NIVEL.need` (1,6) con `fightRate` (2).
+2. **Meta "al menos un avance por rato"** (nueva en sim-economy): da 51–63 % contra 90 %. Armas y maestría salen solo de peleas y hay
+   0–2 por salida normal en ratos de 10 min. Decidir: medirla con ratos de 20 min (el plan dice "un rato de 20 min"; da ~63 %), sumar
+   casillas enemigo (`EXP.enemy` en exp-data), dar maestría/armas también fuera de la pelea (botín de la salida, cofres: `gear.dropWeapon`
+   con `source: 'cofre'` ya existe), o dejar la meta para el 2c (rutas con pelea segura). Mientras tanto `--seeds` sale con error.
+3. DESIGN-CORE.md §8: anotar el balance final del 2a (no está escrito). Correr `npm test` entero.
+4. Rebasar sobre `master` cuando entre el 1b (íconos) y, si ya está el 4a, pasar los `TXT` de arsenal.js, talents.js, gear.js,
+   panels-progress.js y panels-arsenal.js a `t()`.

@@ -390,7 +390,7 @@ try {
   ok(await waitFor(`[...document.querySelectorAll('#toast-root .toast')].some(t => /primer día/.test(t.textContent))`, 9000), 'aviso del premio de tu primer día');
   ok(await waitFor(`[...document.querySelectorAll('#toast-root .toast')].some(t => /Mañana se abre: el Pase de Temporada/.test(t.textContent))`, 4000), 'y que mañana se abre el Pase');
   ok(!(await ev(() => !!document.querySelector('.modal.arrival-modal'))), 'sin modal de llegada en la primera sesión');
-  ok(await run(`return !Q.mainQuest() ? false : Q.mainQuest().id === 't1' && store.state.player.level === 1`), 'nivel 1 y misión t1');
+  ok(await run(`return !Q.mainQuest() ? false : Q.mainQuest().id === 't1' && store.level() === 1`), 'Nivel 1 y misión t1');
   ok(await run(`return Q.loginStatus() === null`), 'premio diario cobrado');
   // la cartógrafa presenta la ciudad (no bloquea)
   ok(await waitFor(`!!document.querySelector('.st-card[data-scene="c_ciudad"]')`, 9000), 'la cartógrafa presenta la ciudad');
@@ -676,7 +676,7 @@ try {
   await shot('ciudad-final');
   await checkBadges('final');
   console.log('    social:', JSON.stringify(await run(`return { badge: ctx.social?.socialBadge?.(), tabs: ctx.social?.tabCounts?.() }`)));
-  const fin = await run(`return { level: store.state.player.level, main: Q.mainQuest()?.id, coins: store.state.coins, gems: store.state.gems, chests: C.chestCount(), stickers: Object.keys(store.state.album?.have || {}).length, season: SE.seasonInfo().level }`);
+  const fin = await run(`return { level: store.level(), main: Q.mainQuest()?.id, coins: store.state.coins, gems: store.state.gems, chests: C.chestCount(), stickers: Object.keys(store.state.album?.have || {}).length, season: SE.seasonInfo().level }`);
   console.log('    final:', JSON.stringify(fin));
   ok(fin.main === 't11', 'tutorial t1–t10 completo (sigue t11)', fin.main);
 

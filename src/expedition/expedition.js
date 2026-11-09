@@ -12,6 +12,7 @@ import {
 import * as E from '../core/economy.js';
 import { EXP, REGIONS, REGION_IDS, CLASSES, EQUIPMENT, HAZARDS, ringOf } from './exp-data.js';
 import * as K from '../core/classes.js';
+import * as G from '../core/gear.js';
 import * as PE from '../core/people.js';
 import { toolVision } from '../core/people-data.js';
 import { toClass } from '../combat/classes.js';
@@ -192,6 +193,8 @@ function cityMods(party, equip, state = S(), { region, kind, tutorial, daily } =
     combatWins: { ...cb.wins }, escort, elements: (state.story?.elements || []).slice(),
     bossLosses: { ...cb.losses },   // revancha contra los jefes (DESIGN-COMBAT §6): cada derrota de antes suma un intento
   };
+  // paso 2a: armas, maestría y talentos de cada uno, la Fuerza (escala a los enemigos) y el ánimo de los talentos
+  try { Object.assign(mods, G.fightMods(party, state, { tools: mods.tools })); } catch (err) { console.warn('[expedition] arsenal', err); }
   // la primera pelea es guiada: la de los lobos del Bosque del Arroyo, en la primera salida normal al Bosque (E6)
   if (kind === 'normal' && region === 'bosque' && !daily && !tutorial && !cb.guided && !cb.fights) mods.firstFight = FIRST_FIGHT;
   return mods;
@@ -229,6 +232,8 @@ export function creditFight(run, fight, state = S()) {
   cb.xp += fight.xp || 0;
   // la pelea da su experiencia al líder y a cada clase que peleó (paso 5b)
   try { K.creditFightXp(run ? R.fightParty(run) : [], fight.xp || 0, state); } catch (err) { console.warn('[expedition] xp de clase', err); }
+  // paso 2a: maestría de las armas y los objetos usados, y quizás un arma nueva
+  try { G.creditFightGear(run, fight, run ? R.fightParty(run) : [], state); } catch (err) { console.warn('[expedition] arsenal', err); }
   if (fight.quick) cb.quick++;
   cb.guided = true;   // la guía es una sola: la primera pelea, sea cual sea
   const bag = fight.outcome === 'win' ? cb.wins : fight.outcome === 'lose' ? cb.losses : cb.retreats;
@@ -572,6 +577,7 @@ let inited = false;
 export function initExpedition() {
   expState();
   K.initClasses();
+  G.initGear();
   if (inited) return;
   inited = true;
   // primera cosecha: la primera Huerta arranca con dos tandas listas (el tutorial pide 4 provisiones enseguida)

@@ -5,7 +5,7 @@
 // Estado: state.unlocks = { open: { id: ms } }. Las partidas de antes de esta versión arrancan con todo lo que ya cumplen
 // abierto, sin aviso (initUnlocks).
 import { bus } from './bus.js';
-import { store } from './state.js';
+import { store, levelOf } from './state.js';
 import { townRank } from './economy.js';
 
 const DAY = 86400e3;
@@ -29,7 +29,7 @@ export const FEATURES = [
   { id: 'hallazgos', kind: 'play', name: 'los Hallazgos', ok: (s) => Object.values(s.album?.have || {}).some(n => n > 0) },
   { id: 'cofres', kind: 'play', name: 'los cofres', ok: (s) => (s.stats?.chestsOpened || 0) > 0 || Object.values(s.chests?.inv || {}).some(n => n > 0) },
   { id: 'pase', kind: 'day', name: 'el Pase de Temporada', icon: 'sparkle', ok: (s, now) => playDay(s, now) >= 2 || rk(s) >= 2, days: 2 },
-  { id: 'contactos', kind: 'day', name: 'Contactos', icon: 'people', ok: (s, now) => playDay(s, now) >= 2 && (s.player.level || 1) >= 4, days: 2, level: 4 },
+  { id: 'contactos', kind: 'day', name: 'Contactos', icon: 'people', ok: (s, now) => playDay(s, now) >= 2 && levelOf(s) >= 4, days: 2, level: 4 },
   { id: 'eventos', kind: 'day', name: 'los eventos de la semana', icon: 'calendar', ok: (s, now) => playDay(s, now) >= 3, days: 3 },
 ];
 const BY_ID = Object.fromEntries(FEATURES.map(f => [f.id, f]));
@@ -92,7 +92,7 @@ export function initUnlocks(state = S(), now = Date.now()) {
   const u = us(state);
   if (u.v) return;
   u.v = 1;
-  const veteran = (state.player.level || 1) >= 3 || rk(state) >= 2 || playDay(state, now) >= 3 || !!state.v3;
+  const veteran = levelOf(state) >= 3 || rk(state) >= 2 || playDay(state, now) >= 3 || !!state.v3;
   if (veteran) for (const f of FEATURES) if (safeOk(f, state, now)) u.open[f.id] = u.open[f.id] || now;
   store.markDirty();
 }

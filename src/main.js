@@ -7,6 +7,7 @@
 // premio del día y la función que se abre hoy (apertura escalonada, core/unlocks.js). Después, las subidas de nivel.
 import { bus } from './core/bus.js';
 import { store, todayStr } from './core/state.js';
+import { leaderXpFor, NIVEL } from './combat/classes.js';
 import * as data from './core/data.js';
 import * as economy from './core/economy.js';
 import * as quests from './core/quests.js';
@@ -33,6 +34,7 @@ import { initSettings } from './core/settings.js';
 import { initI18n, translateDom, t } from './core/i18n.js';   // idiomas (Bloque 4 de La Travesía)   // juego de PC (Tauri)
 import * as story from './story/story.js';
 import * as people from './core/people.js';
+import * as gear from './core/gear.js';   // arsenal, talentos y Fuerza (La Travesía, paso 2a)
 import { initWorldLight } from './core/ambience.js';   // la luz como progreso (PLAN-QUIEBRE §J2)
 import { initTips } from './core/tips.js';   // pistas al pasar el mouse (data-tip)      // historia "El Quiebre" (DESIGN-STORY.md)
 
@@ -361,7 +363,7 @@ function applyDebugParams() {
     const s = store.state;
     s.coins += 100000; s.gems += 1000;
     const lv = Number(params.get('cheat')) || 0;
-    if (lv > s.player.level) s.player.level = Math.min(data.MAX_LEVEL, lv);
+    if (lv > store.level()) { s.classes ||= {}; s.classes.leader ||= { cls: null, sub: null, xp: 0, picks: [] }; s.classes.leader.xp = leaderXpFor(Math.min(NIVEL.max, lv)); }
     store.markDirty();
     unlocks._openAll();   // atajo de pruebas: Pase, Contactos y Eventos abiertos desde el principio
   }
@@ -487,7 +489,9 @@ async function boot() {
     navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW', e));
   }
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); window.__pixeliaInstallPrompt = e; });
-  window.__pixelia = { ctx, store, bus, economy, quests, data, chests, album, season, events, net, achievements };
+  window.__pixelia = { ctx, store, bus, economy, quests, data, chests, album, season, events, net, achievements, gear };
+  // atajo de pruebas: con ?cheat, `gear.dropWeapon({ source: 'jefe' })` desde la consola
+  if (params.has('cheat')) window.gear = gear;
 }
 
 boot();

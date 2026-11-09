@@ -23,6 +23,7 @@ import { createVisit } from './city-visit.js';
 import { activeBoosts } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
 import { t } from '../core/i18n.js';
+import { heldGear } from '../core/gear.js';
 // Amenazas (Fase 3): capa de defensa por turnos, cartel/señales/daño y radio al colocar una defensa
 import { attach as attachDefense, createDecor, createCoverage, openPanel as openThreatPanel } from '../threats/threat-scene.js';
 // ícono de lo que produce cada edificio (globito y cobro): monedas, gemas o provisiones (Huerta, Tambo…)
@@ -770,6 +771,9 @@ export default function create(ctx) {
     offs.push(bus.on('panel:open', ({ name } = {}) => guideDone(t => t.panel === name)));
     offs.push(bus.on('threat:panel', () => guideDone(t => t.panel === 'threat')));
     offs.push(bus.on('leader:changed', () => { if (!disposed) life.rebuildPlayer(); }));   // la clase cambia el arma en la mano
+    // el arma equipada del Arsenal también (paso 2a): solo si cambió la que lleva quien lidera
+    let heldNow = heldGear('lider', ctx.state);
+    offs.push(bus.on('arsenal:changed', () => { const g = heldGear('lider', ctx.state); if (!disposed && g !== heldNow) { heldNow = g; life.rebuildPlayer(); } }));
     offs.push(bus.on('customize:changed', ({ target }) => {
       if (target === 'avatar') life.rebuildPlayer();
       else if (target === 'car') life.rebuildCar();

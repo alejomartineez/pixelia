@@ -852,6 +852,16 @@ Las visitas ignoran el `city.home` de los perfiles viejos.
 
 ---
 
+### 7.4 Guardado v7: un solo Nivel (`state.js`, `VERSION = 7`, La Travesía paso 2a)
+`migrateV7` corre una sola vez, después de `migrateClasses` (necesita `state.classes.leader`):
+1. El nivel de la ciudad (`player.level`, tope 40) y el del líder (`classes.leader.xp` con la curva vieja de 100 + 50 por
+   nivel, tope 30) pasan a ser **el Nivel** (tope 50, curva de la ciudad, DESIGN-COMBAT.md §18.1).
+2. Se toma **el más alto de los dos** y lo juntado dentro de ese nivel en la misma proporción: nadie baja.
+3. `player.level` y `player.xp` se borran; queda `s.v7 = { player, leader, level }`.
+4. Lo que pedía `player.level` pide el Nivel con `levelOf(state)`, que también lee los perfiles online de antes.
+
+`state.arsenal` y `state.talents` arrancan vacíos y se completan solos (`arsenalState`, `talentsState`).
+
 ## 8. Metas de balance
 
 Las mide el `tools/sim-economy.mjs` nuevo (Fase 5) con el perfil **2 ratos por día** (9:00 y 20:00, ~10 min) salvo que

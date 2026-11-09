@@ -275,6 +275,8 @@ export const PANEL_CSS = `
 .pnl-unlock-txt b { font-size: 15px; line-height: 1.1; }
 .pnl-thumb { width: 48px; height: 48px; }
 .pnl-lv-empty { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 10px 12px; text-align: left; font-size: 15px; background: var(--mint-l); border: 2px solid var(--edge); border-radius: 12px; }
+.pnl-lv-talent { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 10px; margin: 12px 0 0; padding: 8px 12px; background: var(--surface); border: 2px solid var(--edge); border-radius: 12px; font-size: 16px; }
+.pnl-lv-talent b { color: var(--gold-t); }
 .pnl-lv-next { display: flex; align-items: center; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 10px 0 0; font-size: 14px; color: var(--ink-l); }
 
 /* ---------- Rango de la ciudad ("Tu ciudad") ---------- */

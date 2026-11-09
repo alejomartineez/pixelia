@@ -2,7 +2,7 @@
 // Contrato: DESIGN-RETENTION.md → "Temporada". UI en season-ui.js (openSeasonPass, openWelcomeBack).
 // Estado en store.state.season. Todas las funciones con fecha aceptan `now` opcional (ms o Date) para pruebas.
 import { bus } from '../core/bus.js';
-import { store, todayStr } from '../core/state.js';
+import { store, todayStr, levelOf } from '../core/state.js';
 import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType, MATERIAL_BY_ID } from '../core/data.js';
 import { monumentBonus } from '../core/monuments.js';
 import { toast } from '../core/ui.js';
@@ -115,7 +115,7 @@ function cosmeticPlan(index, claimed) {
  */
 function resolveTier(n, index, plan) {
   const t = TIERS[n - 1];
-  const lvl = S().player.level;
+  const lvl = levelOf(S());
   const parts = [];
   if (t.cosmetic) {
     const c = plan[n];
@@ -341,7 +341,7 @@ export function welcomeBackStatus(now) {
   if (days < WELCOME.minDays || z.welcome.from === awayFrom) return null;
   const counted = Math.min(days, WELCOME.maxDays);
   const big = days >= WELCOME.bigDays;
-  const reward = { coins: Math.round(WELCOME.coinsPerDay * counted * rewardScale(S().player.level)), gems: big ? WELCOME.bigGems : 0 };
+  const reward = { coins: Math.round(WELCOME.coinsPerDay * counted * rewardScale(levelOf(S()))), gems: big ? WELCOME.bigGems : 0 };
   const name = S().player.name || 'Pixelín';
   const message = days >= 14 ? `${name}, tanto tiempo. El vecindario cuidó tu ciudad mientras no estabas y te juntó un regalo.`
     : days >= 7 ? `Volviste, ${name}. En el barrio regaron las flores y te guardaron algo.`

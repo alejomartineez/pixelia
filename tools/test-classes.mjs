@@ -64,11 +64,12 @@ const g1 = K.memberKit('guerrero', 1), g9 = K.memberKit('guerrero', 9);
 ok(g1.armor === 1 && !g1.flags.guardAdj && K.memberKit('guerrero', 5).flags.guardAdj === 1 && g9.hp === UNITS.guerrero.hp + 4 + 3, 'pasivas en los niveles 1, 5 y 9 (guerrero)', { g1, g9: g9.hp });
 ok(K.memberKit('monje', 1).flags.noStuck && K.memberKit('curandero', 1).flags.medic && K.memberKit('forjador', 1).flags.smith, 'las reglas viejas de cada rol son la pasiva de nivel 1');
 
-section('Nivel del líder (1 a 30)');
-ok(K.leaderLevelFromXp(0) === 1 && K.leaderLevelFromXp(99) === 1 && K.leaderLevelFromXp(100) === 2 && K.leaderLevelFromXp(250) === 3, 'curva: 100 + 50 por nivel', [K.leaderLevelFromXp(100), K.leaderLevelFromXp(250)]);
-ok(K.leaderLevelFromXp(K.leaderXpFor(30)) === 30 && K.leaderLevelFromXp(1e9) === 30 && K.leaderXpFor(30) === 23200, 'tope 30', K.leaderXpFor(30));
-const li = K.leaderXpInfo(120);
-ok(li.level === 2 && li.into === 20 && li.need === 150 && li.next.level === 5, 'lo que falta y el próximo nivel clave', li);
+section('Nivel (1 a 50) y nivel de combate del líder (1 a 30)');
+ok(K.leaderLevelV6(0) === 1 && K.leaderLevelV6(99) === 1 && K.leaderLevelV6(100) === 2 && K.leaderLevelV6(250) === 3 && K.leaderLevelV6(1e9) === 30, 'curva vieja del líder (solo migración): 100 + 50 por nivel, tope 30', [K.leaderLevelV6(100), K.leaderLevelV6(250)]);
+ok(K.leaderXpFor(2) === K.NIVEL.need(1) && K.leaderLevelFromXp(K.leaderXpFor(2) - 1) === 1 && K.leaderLevelFromXp(K.leaderXpFor(2)) === 2, 'el Nivel usa la curva NIVEL.need', K.leaderXpFor(2));
+ok(K.leaderLevelFromXp(K.leaderXpFor(50)) === 50 && K.leaderLevelFromXp(1e9) === 50, 'tope 50', K.leaderXpFor(50));
+const li = K.leaderXpInfo(K.leaderXpFor(2) + 20);
+ok(li.level === 2 && li.into === 20 && li.need === K.NIVEL.need(2) && li.combat === 1 && li.next.level === K.nivelFor(5), 'lo que falta y el próximo Nivel clave (la subclase del nivel de combate 5)', li);
 const p1 = K.leaderPerks(1), p6 = K.leaderPerks(6), p12 = K.leaderPerks(12);
 ok(p1.classSlots === 0 && p1.subSlots === 1 && K.leaderPerks(5).subSlots === 2 && p6.classSlots === 1 && !K.leaderPerks(7).subPassive && K.leaderPerks(8).subPassive && p12.classSlots === 2,
   'niveles clave: 1 y 5 subclase, 6 y 12 clase, 8 pasiva de subclase');
@@ -242,14 +243,15 @@ if (!QUICK) {
     await sleep(800);
     let r = await run(`const i = K.leaderInfo(); return { lv: i.level, cls: i.cls, v: S.classes?.v, m: Object.keys(S.classes?.members || {}).length };`);
     ok(r.lv === 1 && r.cls === null && r.v === 1 && r.m === 6, 'partida nueva: líder nivel 1, sin clase, 6 clases', r);
-    r = await run(`let ev = null; P.bus.on('leader:levelup', p => { ev = p; }); const up = K.grantLeaderXp(250, 'test'); return { up, ev, lv: K.leaderLevel() };`);
-    ok(r.lv === 3 && r.up?.to === 3 && r.ev?.level === 3, 'la experiencia sube el nivel del líder y avisa', r);
+    r = await run(`let ev = null; P.bus.on('leader:levelup', p => { ev = p; }); const x0 = S.classes.leader.xp; const up = K.grantLeaderXp(250, 'test'); return { up, ev, lv: K.leaderLevel(), x0, xp: S.classes.leader.xp, store: P.store.level() };`);
+    const lvUp = K.leaderLevelFromXp(r.x0 + 250 * K.NIVEL.fightRate);
+    ok(r.xp - r.x0 === 250 * K.NIVEL.fightRate && r.lv === lvUp && lvUp > 1 && r.up?.to === lvUp && r.ev?.level === lvUp && r.store === lvUp, 'la experiencia de pelea (× fightRate) sube el Nivel por store.addXp y avisa', { r, lvUp });
     r = await run(`const x0 = S.classes.leader.xp; P.bus.emit('threat:resolved', { id: 't1', type: 'crecida', pct: 80, mode: 'auto', damaged: [], reward: {} }); return S.classes.leader.xp - x0;`);
-    ok(r === 10 + 8, 'una amenaza aguantada da experiencia al líder (10 + 0,1 × %)', r);
+    ok(r === (10 + 8) * K.NIVEL.fightRate, 'una amenaza aguantada da experiencia al Nivel ((10 + 0,1 × %) × fightRate)', r);
     r = await run(`return { a: K.setLeaderClass('guerrero'), b: K.setSubclass('guardian_raiz'), sub: K.leaderInfo().sub };`);
     ok(r.a && !r.b && r.sub === null, 'sin Raíz no hay subclase', r);
-    r = await run(`S.story ||= {}; S.story.elements = ['raiz']; const i = K.leaderInfo(); const m = K.leaderMods(); return { sub: i.sub, subs: i.subclasses, m, set: K.setSubclass('guardian_raiz'), bad: K.setSubclass('acechador_raiz') };`);
-    ok(r.sub === 'guardian_raiz' && r.subs.join() === 'guardian_raiz' && r.set && !r.bad && r.m.cls === 'guerrero' && r.m.level === 3, 'con Raíz, Guardián de Raíz; la de otra clase no', r);
+    r = await run(`S.story ||= {}; S.story.elements = ['raiz']; const i = K.leaderInfo(); const m = { ...K.leaderMods(), xp: S.classes.leader.xp }; return { sub: i.sub, subs: i.subclasses, m, set: K.setSubclass('guardian_raiz'), bad: K.setSubclass('acechador_raiz') };`);
+    ok(r.sub === 'guardian_raiz' && r.subs.join() === 'guardian_raiz' && r.set && !r.bad && r.m.cls === 'guerrero' && r.m.nivel === K.leaderLevelFromXp(r.m.xp) && r.m.level === K.combatLevel(r.m.nivel), 'con Raíz, Guardián de Raíz; la de otra clase no', r);
     r = await run(`S.expedition.active = { ended: false }; const a = K.setLeaderClass('cazador'); S.expedition.active = null; return a;`);
     ok(r === false, 'la clase se cambia en la ciudad, no con una salida en curso');
     r = await run(`S.city.buildings.push({ uid: 9901, id: 'taller', x: 1, z: 1, level: 2 }, { uid: 9902, id: 'casa_exp', x: 3, z: 1, level: 2 });
@@ -260,7 +262,7 @@ if (!QUICK) {
     r = await run(`const ex = P.ctx.expedition || await import('./src/expedition/expedition.js'); const x0 = S.classes.leader.xp, c0 = S.classes.members.cazador.xp;
       const run = { party: ['cazador'], fights: [] }; ex.creditFight(run, { enc: 'bosque_claro', outcome: 'win', xp: 20, turns: 5, stars: 2 });
       return { leader: S.classes.leader.xp - x0, cazador: S.classes.members.cazador.xp - c0, forjador: S.classes.members.forjador.xp };`);
-    ok(r.leader === 20 && r.cazador === 20, 'una pelea da su experiencia al líder y a quien peleó', r);
+    ok(r.leader === 20 * K.NIVEL.fightRate && r.cazador === 20, 'una pelea da su experiencia al Nivel (× fightRate) y a quien peleó', r);
     // partida vieja con roles: se migra al cargar
     const json = await page.evaluate(() => JSON.stringify(window.__pixelia.store.state));
     await page.goto(BASE + 'tools/no-existe.html', { waitUntil: 'load' });   // misma página sin el juego: no pisa el guardado

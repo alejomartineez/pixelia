@@ -1,7 +1,7 @@
 // Sistema de cofres: tipos de cofre, rarezas, objetos, sorteo con "racha de suerte", inventario y efectos activos.
 // UI en chests-ui.js. Los premios {chest:'plata'} en store.grant llegan acá vía el evento 'reward:chest'.
 import { bus } from '../core/bus.js';
-import { store } from '../core/state.js';
+import { store, levelOf } from '../core/state.js';
 import { CUSTOM_CATALOG, BUILDING_BY_ID, rewardScale, fitsType, REGION_MATERIALS, MONUMENTS, MONUMENT_IDS, EQUIP_RECIPES, LEGACY_BOOSTERS } from '../core/data.js';
 import { stickerDropsForChest, grantStickers } from '../album/album.js';
 
@@ -127,7 +127,7 @@ function neededMaterial() {
 }
 /** Arma un premio concreto a partir de un tipo de objeto (resuelve montos, prenda, edificio). */
 function resolveDrop(item) {
-  const lvl = S().player.level;
+  const lvl = levelOf(S());
   const d = { item: item.id, rarity: item.rarity, name: item.name, icon: item.icon, kind: item.kind };
   if (item.kind === 'coins') d.amount = Math.round(randInt(...item.amount) * rewardScale(lvl));
   else if (item.kind === 'gems') d.amount = randInt(...item.amount);

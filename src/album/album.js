@@ -4,7 +4,7 @@
 // Datos + lógica. UI en album-ui.js, arte de las cartas en album-art.js.
 // Estado: state.album = { have:{id:count}, claimedSets:[], brillitos, seen:[], done:[], since5, albumDone, title }
 import { bus } from '../core/bus.js';
-import { store } from '../core/state.js';
+import { store, levelOf } from '../core/state.js';
 import { rewardScale } from '../core/data.js';
 import { REGIONS } from '../expedition/exp-data.js';
 export { renderStickerCard, renderPack } from './album-art.js';
@@ -206,7 +206,7 @@ export function setReward(setId) {
   const a = A();
   const k = a.claimedSets.includes(setId) ? Math.max(0, a.claimedSets.indexOf(setId)) : a.claimedSets.length;
   const m = 1 + k * 0.12;
-  const lvl = store.state?.player?.level || 1;
+  const lvl = levelOf(store.state);
   return {
     gems: Math.round(set.starSum * 0.15 * m),   // Fase 5b: era × 0,5 (§8: 15–25 gemas por día)
     coins: Math.round(set.starSum * 25 * m * rewardScale(lvl) / 10) * 10,

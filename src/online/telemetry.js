@@ -11,6 +11,7 @@
 //
 // Uso: initTelemetry(ctx) una vez (main.js); track(name, props) desde cualquier lado.
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config.js';
+import { leaderLevelFromXp } from '../combat/classes.js';
 
 const ID_KEY = 'pixelia.anon.v1';
 const QUEUE_KEY = 'pixelia.events.queue.v1';
@@ -232,7 +233,7 @@ function startSession() {
 function trackStart() {
   if (!session || session.started) return;
   session.started = track('session_start', {
-    days: daysSinceInstall(), level: ctx?.state?.player?.level || 1,
+    days: daysSinceInstall(), level: leaderLevelFromXp(ctx?.state?.classes?.leader?.xp || 0),
     standalone: isStandalone(), touch: (navigator.maxTouchPoints || 0) > 0,
   });
 }
