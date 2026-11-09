@@ -13,6 +13,7 @@ import { createLife } from './city-life.js';
 import { createParticles, createOverlays } from './city-fx.js';
 import { createCityAmbience } from './city-ambience.js';
 import { createCityGrieta } from './city-grieta.js';
+import { createCityAct1 } from './city-act1.js';
 import { STYLE, openBuildMenu, openInfo, openExpand, questBuildIds, setThumbTheme } from './city-ui.js';
 import { createPlacer, PLACE_STYLE, LONG_PRESS_MS } from './city-place.js';
 import { currentThemeId, themeOf } from '../city/themes.js';
@@ -55,6 +56,7 @@ export default function create(ctx) {
   let placer = null;
   let visit = null;
   let cityAmb = null;                             // ambiente: día y noche, clima, luz (city-ambience.js)
+  let act1 = null;                                // ecos de noche y el dirigible del abordaje (city-act1.js, paso 6b)
   let grietaFx = null;                            // la Grieta que brilla en el borde de la isla (city-grieta.js, L1)
   let defense = null, decor = null, TA = null;   // amenazas: defensa en curso, decoración y API para su capa
   let syncAcc = 0, disposed = false, batchCollect = false;
@@ -311,6 +313,7 @@ export default function create(ctx) {
     const be = hitBubble(x, y);
     if (be) { E.collect(be.b.uid); return; }
     if (hitSign(x, y)) { audio.sfx('tap'); openExpand(S); return; }
+    if (act1?.hit(x, y)) return;
     if (hitWalker(life.player, x, y, 30)) {
       audio.sfx('pop');
       ui.floatText(x, y - 34, 'Voy a cambiarme.', 'say');
@@ -563,12 +566,12 @@ export default function create(ctx) {
   }
   function clearWorldTip() { if (worldTip) { ov.remove(worldTip.item); worldTip = null; } }
   // ---------- Flecha guiada (plan §E3): señala lo que pide la misión actual ----------
-  const EXP_GOALS = ['expedition', 'zone', 'expStars', 'expFar', 'combat'];
+  const EXP_GOALS = ['expedition', 'zone', 'expStars', 'expFar', 'combat', 'element', 'flag'];
   const entryOf = (id) => [...entries.values()].find(e => e.b.id === id && !e.b.buildEnd);
   /** A dónde apunta la flecha para la misión q: {el, side, text, panel} (botón del HUD), {entry, text} (edificio) o {sign}. */
   function guideTarget(q) {
     const t = q.goal.type;
-    if (EXP_GOALS.includes(t) && entryOf('casa_exp')) return { el: '[data-act="expedition"]', side: 'left', panel: 'expedition', text: `${icon('🧭', 20)}Misión: salí de <b>Expedición</b>` };
+    if (EXP_GOALS.includes(t) && !(t === 'combat' && q.goal.enc === 'costa_capitana') && entryOf('casa_exp')) return { el: '[data-act="expedition"]', side: 'left', panel: 'expedition', text: `${icon('🧭', 20)}Misión: salí de <b>Expedición</b>` };
     if (t === 'craft' && entryOf('taller')) return { entry: 'taller', panel: 'workshop', text: `${icon('hammer', 18)}Hacé clic en el <b>Taller</b>` };
     if (t === 'prov' && entryOf('huerta')) return { entry: 'huerta', text: `${icon('🍞', 18)}Cosechá la <b>Huerta</b>` };
     if (t === 'castle' || t === 'rank') return { el: '.hud-rank', side: 'right', panel: 'rank', text: `${icon('castle', 20)}Mirá el <b>expediente</b> del rango` };
@@ -838,12 +841,13 @@ export default function create(ctx) {
     fx.update(dt);
     cityAmb?.update(dt);
     grietaFx?.update(dt);
+    act1?.update(dt);
     decor?.update(dt); defense?.update(dt);
     placer.frame(dt, t);
     hoverT += dt;
     if (hoverDirty && hoverT > 0.08 && !placer.active && !cam.dragging) {
       hoverDirty = false; hoverT = 0; // el raycast contra toda la ciudad es caro: ~12 veces por segundo alcanza
-      const hv = hoverPos && (hitBubble(hoverPos.x, hoverPos.y) || hitSign(hoverPos.x, hoverPos.y) || hitWalker(life.player, hoverPos.x, hoverPos.y, 30) || raycastBuilding(hoverPos.x, hoverPos.y) != null);
+      const hv = hoverPos && (hitBubble(hoverPos.x, hoverPos.y) || hitSign(hoverPos.x, hoverPos.y) || act1?.hover(hoverPos.x, hoverPos.y) || hitWalker(life.player, hoverPos.x, hoverPos.y, 30) || raycastBuilding(hoverPos.x, hoverPos.y) != null);
       r.canvas.style.cursor = hv ? 'pointer' : '';
     }
     syncAcc += dt;
@@ -1013,6 +1017,7 @@ export default function create(ctx) {
       cityAmb = createCityAmbience({ ctx, r, lights, container, fx, cam, entries, getTheme: () => themeOf(themeId),
         threatWeather: () => decor?.weather || null, hidden: () => !!placer?.active });
       grietaFx = createCityGrieta({ ctx, r });
+      act1 = createCityAct1({ ctx, r, container, cam, screenOf, night: () => !!cityAmb?.night });
       // radio de cobertura al colocar o mover una defensa (Fase 3 sobre el gancho de city-place.js)
       let cov = null;
       const dropCov = () => { cov?.dispose(); cov = null; };
@@ -1032,7 +1037,7 @@ export default function create(ctx) {
       r.onFrame(frame);
       r.start();
       // gancho de depuración para pruebas headless (tools/smoke.mjs)
-      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placer?.state || null; }, get placer() { return placer; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; }, get coverage() { return cov; }, get ambience() { return cityAmb; }, get grieta() { return grietaFx; } };
+      if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placer?.state || null; }, get placer() { return placer; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; }, get coverage() { return cov; }, get ambience() { return cityAmb; }, get grieta() { return grietaFx; }, get act1() { return act1; } };
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },
     unmount() {
@@ -1043,6 +1048,7 @@ export default function create(ctx) {
       decor?.dispose(); decor = null;
       cityAmb?.dispose(); cityAmb = null;
       grietaFx?.dispose(); grietaFx = null;
+      act1?.dispose(); act1 = null;
       offs.forEach(f => f()); offs.length = 0;
       removeEventListener('keydown', onKey);
       removeEventListener('keyup', onKey);

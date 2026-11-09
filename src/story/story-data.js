@@ -52,6 +52,7 @@ export const ACTS = [
       { id: 'cerro', name: 'La mina sellada', goal: 'Bajá a la mina vieja del Cerro del Hierro.', when: (s) => rankOf(s) >= 5 },
       { id: 'costa', name: 'Los faros apagados', goal: 'Reencendé un faro de la Costa de los Faros.', when: (s) => rankOf(s) >= 6 },
       { id: 'abordaje', name: 'Velas en el cielo', goal: 'Resistí el primer abordaje.', when: (s) => !!s.story?.flags?.faro },
+      { id: 'cierre', name: 'Las islas te vieron', goal: 'Ya saben que estás. Lo que viene sigue en el Acto 2, Las islas vecinas.', when: (s) => !!s.story?.flags?.capitana_vencida },
     ],
   },
   { id: 2, name: 'Las islas vecinas', text: 'Otros pedazos, otras ciudades. No todas te van a recibir bien.', chapters: [] },
@@ -188,6 +189,91 @@ export const SCENES = [
   { id: 'grieta_50', who: 'cartografa', trigger: ['grieta:50'], title: 'La Grieta', lines: ['La Grieta ya se ve desde la plaza. Y ahora la isla se desborda más seguido.', 'En el Invernadero se puede coser. Despacio y caro, como todo lo que vale.'] },
   { id: 'grieta_75', who: 'cartografa', trigger: ['grieta:75'], title: 'La Grieta', lines: ['Así crujía el continente la última semana. Lo escuché una vez.', 'No quiero escucharlo de nuevo, {name}.'] },
   { id: 'invernadero', who: 'cartografa', trigger: ['built:invernadero'], title: 'El Invernadero de Raíz', lines: ['La raíz ya está buscando la tierra de la ciudad. Lo que crezca acá aguanta la sequía y la helada.', 'Y si la isla se raja, desde acá se cose.'] },
+
+  // --- La bestia del Bañado (paso 6b): espera en la poza honda desde que se encontró el Núcleo de Raíz ---
+  {
+    id: 'poza', who: 'cartografa', trigger: ['lair:banado_bestia'], title: 'La poza honda',
+    lines: [
+      'Al fondo del Bañado hay una poza que no se seca nunca. Lo que respira abajo está despierto.',
+      'Cuando suba el agua, buscá lo alto: ahí no te alcanza. Y no la empujes, que no se mueve.',
+    ],
+  },
+  {
+    id: 'bestia_1', who: 'narrador', epic: true, title: 'La bestia del Bañado', chain: ['bestia_2'], trigger: ['boss:banado_bestia'],
+    lines: [
+      'La bestia se hunde en la poza y el agua se queda quieta. Por primera vez en años, el Bañado baja.',
+      'En los pilotes de la orilla hay tallas de ranas con lanzas. Alguien la cuidaba, o le rezaba.',
+    ],
+  },
+  {
+    id: 'bestia_2', who: 'cartografa', epic: true, title: 'La Madre del Agua',
+    lines: [
+      'Los Anuros la llamaban la Madre del Agua. Cuando se soltó la Marea, la Madre se quedó sin cauce y se volvió loca de sed.',
+      'No la matamos, {name}. La dormimos. Algún día alguien va a venir a preguntar por ella.',
+    ],
+  },
+  { id: 'bestia_lost', who: 'cartografa', trigger: ['bosslost:banado_bestia'], title: 'La poza honda', lines: ['Se volvió a hundir con hambre. La próxima vez va a estar más cansada que vos: eso juega a favor.', 'Lo alto, {name}. Desde lo alto el agua no llega y se pega más fuerte.'] },
+
+  // --- El faro viejo de la Costa (paso 6b) ---
+  {
+    id: 'faro_camino', who: 'cartografa', trigger: ['lair:faro'], title: 'El faro viejo',
+    lines: [
+      'El faro más alto está al fondo de la costa. Si lo prendemos, nos van a ver desde todas las islas.',
+      'Está en todos los mapas viejos. En los míos también.',
+      '…',
+    ],
+  },
+  {
+    id: 'faro_1', who: 'narrador', epic: true, title: 'El faro', chain: ['faro_2'], trigger: ['story:faro'],
+    lines: [
+      'La lámpara vieja tose humo negro y después prende. El haz barre el mar de nubes.',
+      'Lejos, entre las nubes, se prende otra luz. Y otra más. Te contestan.',
+    ],
+  },
+  {
+    id: 'faro_2', who: 'cartografa', epic: true, title: 'Nos vieron',
+    lines: [
+      'Ya saben que estamos. Los que comercian y los que saquean.',
+      'Esta noche dormí con las botas puestas, {name}.',
+    ],
+  },
+
+  // --- El primer abordaje: cierre del Acto 1 (paso 6b) ---
+  {
+    id: 'abordaje_1', who: 'narrador', epic: true, title: 'Velas en el cielo', chain: ['abordaje_2'], trigger: ['abordaje:arrive'],
+    lines: [
+      'Una sombra larga tapa el sol. Un dirigible de velas remendadas se arrima al borde de la isla.',
+      'Tiran garfios. Una pasarela de tablones cae sobre el pasto.',
+    ],
+  },
+  {
+    id: 'abordaje_2', who: 'cartografa', epic: true, title: 'La capitana',
+    lines: [
+      'Es la capitana del Viento Sur. Vende lo que roba y roba lo que no le venden.',
+      'Si se lleva el depósito, no pasamos el invierno. Cortales la pasarela y no llega nadie más.',
+    ],
+  },
+  { id: 'abordaje_lost', who: 'cartografa', trigger: ['bosslost:costa_capitana'], title: 'Velas en el cielo', lines: ['Se quedaron en el borde, mirando. No se van a ir solos.', 'Juntá a la gente y salimos de nuevo. Ella también se cansa.'] },
+  {
+    id: 'acto1_1', who: 'narrador', epic: true, title: 'Tu fragmento', chain: ['acto1_2', 'acto1_3'], trigger: ['boss:costa_capitana'],
+    lines: [
+      'La capitana suelta el sable y se ríe con la boca partida. "Ya te vio todo el cielo, intendente."',
+      'El dirigible se suelta de los garfios y se pierde entre las nubes, hacia las islas grandes.',
+      'En la pasarela quedó un mapa. Tiene tu isla marcada con tinta fresca y un sello que no es de piratas.',
+    ],
+  },
+  {
+    id: 'acto1_2', who: 'cartografa', epic: true, title: 'El sello',
+    lines: [
+      'Es el sello de la Cofradía de la Veta. Les pagan a los piratas por encontrar islas con elementos.',
+      '…',
+      'Alguien les dijo dónde buscar.',
+    ],
+  },
+  {
+    id: 'acto1_3', who: 'narrador', epic: true, title: 'Fin del Acto 1',
+    lines: ['Las islas vecinas ya te vieron. Algunas van a venir a comerciar, y otras, a ver qué tenés.'],
+  },
 ];
 export const SCENE_BY_ID = Object.fromEntries(SCENES.map(s => [s.id, s]));
 /** Lo que dice Vera después de cada elección de extracción y cuando se cose la Grieta (líneas sueltas, L1). */
@@ -202,13 +288,14 @@ export const PROLOGUE = ['prologo_1', 'prologo_2'];
 export const CONTACT_IDS = ['ciudad', 'expedicion', 'combate', 'amenazas', 'elementos', 'rango', 'taller'];
 
 // ---------- La cartógrafa al cumplir el tutorial (cobro automático de t1–t20) ----------
-export const AUTO_CLAIM = ['t1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20'];
+export const AUTO_CLAIM = ['t1', 't2', 't3', 't4', 't5', 'q_combate', 't6', 't7', 't8', 't9', 't10', 't11', 't12', 't13', 't14', 't15', 't16', 't17', 't18', 't19', 't20'];
 export const QUEST_LINES = {
   t1: 'Una casa con la luz prendida. De lejos, eso ya parece un pueblo.',
   t2: 'Sin comida no se sale a ningún lado. La Huerta es lo primero que levantó todo el que se quedó.',
   t3: 'Cuatro provisiones. Alcanza para una salida corta y para no pasar hambre esta noche.',
   t4: 'Ahí van a vivir mis mapas. Están incompletos: para eso estás vos.',
   t5: 'Volviste con madera y con barro hasta las rodillas. Así se empieza.',
+  q_combate: 'Primera pelea y volvieron todos. Los lobos del arroyo ya saben que acá hay alguien.',
   t6: 'Con un Taller dejamos de juntar lo que hay y empezamos a hacer lo que falta.',
   t7: 'Una cuerda buena vale más que un mapa bueno. Te lo dice alguien que dibuja mapas.',
   t8: 'Quince personas. Ya hay quien discute por el agua: buena señal.',
@@ -228,7 +315,8 @@ export const QUEST_LINES = {
 
 // ---------- Páginas del diario del último intendente (coleccionable) ----------
 // trigger: cuándo aparece (story.js). p4–p8 (paso 6): p4 al abrir La mina sellada, p5 al explorar una zona del Bañado,
-// p6 con el Núcleo de Raíz (la escena de la galería), p7 al abrir Los faros apagados y p8 al explorar una zona de la Costa.
+// p6 con el Núcleo de Raíz (la escena de la galería), p7 al abrir Los faros apagados. Sin trigger (paso 6b): p8 la deja la
+// capitana al ganar el abordaje (reward.page de costa_capitana), p9 la bestia del Bañado y p10 el eco de la mesa del archivo.
 export const PAGES = [
   { id: 'p1', title: 'El día después', text: 'Escribo para que alguien sepa. Las Casas siguieron cavando hasta el último día, y nosotros robándoles hasta el último día. Cuando la tierra crujió, nadie soltó lo que tenía en la mano.' },
   { id: 'p2', title: 'Los lobos del arroyo', trigger: 'zone:bosque', text: 'Los lobos del arroyo no atacan por hambre. Les brillan los ojos como brillaba la veta. Algo los cambió, y no fue el miedo.' },
@@ -238,8 +326,12 @@ export const PAGES = [
   { id: 'p5', title: 'El Bañado', trigger: 'zone:banado', text: 'El agua del Bañado sube de noche y baja de día. No es la luna: algo respira debajo. Los mapas del archivo ya lo marcaban, con una letra prolija que no era la mía.' },
   { id: 'p6', title: 'La galería honda', text: 'Las Casas no cavaban donde había más Raíz. Seguían una línea que solo ellas entendían, siempre debajo de sus tierras. Sellamos la galería honda por vergüenza, no por miedo.' },
   { id: 'p7', title: 'El faro', trigger: 'chapter:costa', text: 'Si alguien enciende el faro, que sepa que los barcos del cielo también lo ven. Y que no todos los que subieron lo hicieron por suerte.' },
-  { id: 'p8', title: 'La llave', trigger: 'zone:costa', text: 'Alguien sabe por qué subimos nosotros y no los de abajo. Vive entre la gente, sonríe y no lo dice. Le dejé la llave del archivo; ojalá me equivoque.' },
+  { id: 'p8', title: 'La llave', text: 'Alguien sabe por qué subimos nosotros y no los de abajo. Vive entre la gente, sonríe y no lo dice. Le dejé la llave del archivo; ojalá me equivoque.' },
 ];
+PAGES.push(
+  { id: 'p9', title: 'La Madre del Agua', text: 'Los del agua no nos dejaron cruzar el Bañado. Dicen que la Madre duerme mientras el agua corra, y que fuimos nosotros los que le cortamos el cauce. No supe qué contestarles.' },
+  { id: 'p10', title: 'La mesa del archivo', text: 'La muchacha de los mapas trabajaba de noche, para las Casas. Dibujaba lo que le pedían y nunca preguntó para qué. Yo tampoco le pregunté. Ahora es tarde para los dos.' },
+);
 export const PAGE_BY_ID = Object.fromEntries(PAGES.map(p => [p.id, p]));
 
 // ---------- Elementos (se descubren en la historia; cada uno da algo a la isla y algo al personaje) ----------
@@ -340,6 +432,15 @@ export const MANUAL = [
     items: [
       ['⚔️', 'Turnos', 'Primero mueve tu grupo y después los enemigos. Cada integrante se mueve y actúa una vez por turno.'],
       ['bolt', 'Casillas marcadas', 'Antes de atacar, el enemigo marca dónde va a pegar. Salí de ahí o bloquealo.'],
+      ['crown', 'Jefes', 'Esperan en lugares de la historia: la bestia en la poza honda del Bañado, la capitana en el abordaje. Cada uno tiene dos fases y una mecánica propia.'],
+      ['up', 'Revancha', 'Contra un jefe, cada derrota cuenta: en el intento siguiente el grupo tiene más vida y el jefe menos, hasta dos veces.'],
+    ],
+  },
+  {
+    id: 'ecos', name: 'Ecos de noche', ic: '🌙', open: (s) => Object.keys(s.story?.echoes || {}).length > 0,
+    items: [
+      ['🌙', 'Ecos', 'De noche, en el borde de la isla y en algunas ruinas de la expedición, se ven siluetas que repiten un momento de antes del Quiebre.'],
+      ['📖', 'Una sola vez', 'Hacé clic en un eco para escucharlo. Cada uno aparece una vez y queda anotado en el Diario de la Bitácora.'],
     ],
   },
   {

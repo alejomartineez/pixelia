@@ -25,6 +25,8 @@ import * as home from './home/furniture.js';
 import * as expedition from './expedition/expedition.js';
 import * as threats from './threats/threats.js';   // Amenazas (Fase 3)
 import { initRaiz } from './core/raiz.js';   // Núcleo de Raíz y Grieta (PLAN-QUIEBRE L1)
+import { initAct1 } from './story/act1.js';   // jefes, faro y abordaje del Acto 1 (paso 6b)
+import * as act1 from './story/act1.js';
 import * as unlocks from './core/unlocks.js';      // apertura escalonada (Fase 5b)
 import { isDesktop, initDesktop } from './core/desktop.js';
 import { initSettings } from './core/settings.js';   // juego de PC (Tauri)
@@ -141,7 +143,7 @@ const openSeasonPass = lazyUi(() => season.openSeasonPass(ctx), 'No se pudo abri
 const openEvents = lazyUi(() => events.openEventsPanel(ctx), 'No se pudieron abrir los eventos');
 
 export const ctx = {
-  store, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats, story,
+  store, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats, story, act1,
   get state() { return store.state; },
   desktop: isDesktop,
   openPanel,
@@ -342,7 +344,7 @@ function applyDebugParams() {
 }
 
 function initProgression() {
-  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['raiz', initRaiz], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
+  const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['raiz', initRaiz], ['act1', initAct1], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
     ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds],
     ['story', () => story.initStory(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length, inCity: () => cityReady() && !document.body.classList.contains('no-hud') })],
     ['light', () => initWorldLight({ state: () => store.state, bus, rank: () => economy.townRank(store.state), markDirty: () => store.markDirty(),

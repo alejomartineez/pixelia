@@ -350,7 +350,7 @@ export function goalIcon(goal, size = 32) {
     build: 'hammer', upgrade: 'up', collect: 'coin', earn: 'coin',
     customize: 'dress', buy: 'shop', level: 'xp', pop: 'people', happy: 'smile', expand: 'map', castle: 'castle', charm: 'sparkle', rank: 'castle',
     sticker: '🃏', stickers: '🃏', album: '🃏', season: 'sparkle', friend: 'people', friends: 'people', help: 'heart', gift: 'gift', visit: 'home',
-    prov: '🍞', craft: 'hammer', expedition: '🧭', zone: 'map', expStars: 'star', expFar: 'map', threat: 'bolt', repair: 'hammer', combat: '⚔️', story: '📖',
+    prov: '🍞', craft: 'hammer', expedition: '🧭', zone: 'map', expStars: 'star', expFar: 'map', threat: 'bolt', repair: 'hammer', combat: '⚔️', story: '📖', element: 'sparkle', flag: 'map',
   };
   return icon(map[goal.type] || 'quest', size);
 }
@@ -393,7 +393,18 @@ export function goalAction(ctx, goal, close) {
     case 'prov': return has('huerta') ? { label: 'Ver la Huerta', ic: '🍞', run: () => { close(); ctx.bus.emit('city:highlight', { id: 'huerta' }); } } : buildFocus('huerta');
     case 'craft': return has('taller') ? { label: 'Taller', ic: 'hammer', run: () => later(() => ctx.openPanel('workshop')) } : buildFocus('taller');
     case 'expedition': case 'zone': return toExpedition(goal.region);
-    case 'expStars': case 'expFar': case 'combat': return toExpedition();
+    case 'expStars': case 'expFar': return toExpedition();
+    // E5: la pelea pedida (el abordaje se pelea en la ciudad), el Núcleo en el Cerro y el faro en la Costa
+    case 'combat': {
+      if (goal.enc === 'costa_capitana') {
+        let st2 = 'none';
+        try { st2 = ctx.act1?.abordajeStatus?.() || 'none'; } catch {}
+        return st2 === 'ready' ? { label: 'Defender el borde', ic: '⚔️', run: () => { close(); ctx.bus.emit('abordaje:panel'); } } : null;
+      }
+      return toExpedition(goal.enc === 'banado_bestia' ? 'banado' : goal.enc ? undefined : 'bosque');
+    }
+    case 'element': return toExpedition('cerro');
+    case 'flag': return toExpedition(goal.flag === 'faro' ? 'costa' : undefined);
     case 'expand': return { label: 'Ver el cartel', ic: 'map', run: () => { close(); ctx.bus.emit('city:sign'); } };
     case 'threat': {
       let visible = false;

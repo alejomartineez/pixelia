@@ -51,7 +51,7 @@ cada paso.
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | primera parte (lógica de clases y nivel del líder) **en curso** en la rama `claude/clases-5b-*` | |
-| 6 | Acto 1 completo + E5–E6 | primera parte (Núcleo de Raíz, extracción y Grieta, Invernadero, páginas p4–p8) **en curso** en la rama `claude/raiz-grieta-6a-*` | |
+| 6 | Acto 1 completo + E5–E6 | 6a (Núcleo de Raíz, extracción y Grieta, Invernadero, páginas p4–p8) hecho e integrado. 6b (jefes en sus lugares, faro, abordaje, ecos de noche L6, E5) hecho en la rama `claude/jefes-faro-6b`, sin mergear (detalle en DESIGN-STORY §5, "Estado (paso 6b…)") | ed2ba67 (v36) + 6b (v37) |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
 ### Plan nocturno (2026-11-09)
@@ -337,6 +337,22 @@ Vínculo 1–5, herramientas, nivel del líder, pestaña Progreso) y L6 (ecos de
 y los textos del paso 3 no lo contradicen: el prólogo dice "Tengo algo que arreglar" y las páginas p5–p8 siembran L2 y
 L4. **No está implementado**: 3b deja la noche y los lugares para los ecos, 5b hace L5, 6 hace L1, las pistas de L2/L4 y
 los primeros ecos, 7 balancea L1 y L5.
+
+**Paso 6b: el Acto 1 se cierra** (detalle en DESIGN-STORY §5, "Estado (paso 6b…)")
+- `src/story/act1.js`: la bestia en la poza honda del Bañado (rango 3), el faro viejo de la Costa (rango 6), el abordaje
+  15 min después del faro (pelea en la ciudad con la gente de la ciudad), revancha por derrotas guardadas.
+- `src/combat/boss-models.js`: la bestia y la capitana en low-poly facetado, con fase 2. Kit propio: al integrar el 4a
+  puede pasar a `src/avatar/lowpoly.js` (el 4a también tiene una bestia low-poly en su `enemy-models.js`: elegir una).
+- `src/story/echoes.js` + `echo-fx.js` + `src/scenes/city-act1.js`: cinco ecos de noche (tres en el borde de la isla,
+  dos en ruinas de la expedición), el dirigible amarrado y la tarjeta del abordaje.
+- E5 en `data.js` y `quests.js`: `q_combate` (después de t5), `q_bestia`, `q_nucleo`, `q_faro`, `q_abordaje`, con
+  tipos absolutos `combat` / `element` / `flag`.
+- Páginas: p8 la deja la capitana (ya no la zona de la Costa), p9 la bestia, p10 un eco. Capítulo 8 "Las islas te vieron".
+- Pruebas: `tools/test-act1.mjs` (`--shots` → `shots/act1/`). Para integrar: sumarlo al `npm test` y
+  `"test:act1": "node test-act1.mjs"` en `tools/package.json`.
+- **Queda para después:** E6 (la primera expedición guiada con pistas de un uso; la primera pelea guiada ya está desde el
+  paso 5); ecos con las siluetas de los personajes del 4a (hoy son bloques); el balance de la bestia desde el rango 3 en
+  `sim-combat` (paso 7).
 
 ## Pendiente o frágil
 - **`npm test` con la máquina cargada** (2026-11-09, otras sesiones corriendo tests a la vez): `test-mock`,

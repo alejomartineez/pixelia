@@ -333,7 +333,7 @@ export const ENCOUNTERS = {
     objective: { type: 'defeat', boss: true },
     challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 8 }],
     expected: { level: 5, size: 3, element: 'raiz', classLevel: 3 },
-    reward: { xp: 80, mats: { hierbas: 4, madera: 3 }, page: 'p3', flag: 'bestia_vencida' },
+    reward: { xp: 80, mats: { hierbas: 4, madera: 3 }, page: 'p9', flag: 'bestia_vencida' },
     noMirrorJitter: true,
   },
   costa_muelle: {

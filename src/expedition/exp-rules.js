@@ -478,6 +478,12 @@ function enemyOptions(run, enc, stepC) {
       ok: quick ? { mats: { ...quick.loot.mats } } : null },
   ];
 }
+/** Contra un jefe, cada derrota de antes (en la ciudad y en esta salida) suma un intento de revancha, hasta 3. */
+function bossAttempt(run, enc) {
+  if (ENCOUNTERS[enc]?.kind !== 'jefe') return 1;
+  const before = (run.mods.bossLosses?.[enc] || 0) + (run.fights || []).filter(f => f.enc === enc && f.outcome === 'lose').length;
+  return 1 + Math.min(COMBAT.revancha?.max ?? 2, before);
+}
 /** Arma la pelea de la casilla con el grupo, los consumibles y el ánimo de la salida. */
 export function makeBattle(run, enc, x, y) {
   const def = ENCOUNTERS[enc];
@@ -490,7 +496,7 @@ export function makeBattle(run, enc, x, y) {
     leader: run.mods.leader ? { cls: run.mods.leader.cls, sub: run.mods.leader.sub, picks: run.mods.leader.picks || [] } : null,
     element: elements.find(id => !!C_ELEMENTS[id]) || null, elements: elements.filter(id => !!C_ELEMENTS[id]),
     classLevel: fightClassLevels(run), picks: { ...(run.mods.picks || {}) },
-    tools: { ...(run.mods.tools || {}) }, equip: fightItems(run), attempt: 1,
+    tools: { ...(run.mods.tools || {}) }, equip: fightItems(run), attempt: bossAttempt(run, enc),
   });
   if (tiredFight(run)) {
     // con el ánimo por el piso el grupo llega cansado: un poco menos de vida (se ve en la tarjeta antes de entrar)

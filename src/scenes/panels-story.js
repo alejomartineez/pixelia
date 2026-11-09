@@ -11,6 +11,7 @@ import { ACTS, PAGES, ELEMENTS, MANUAL, CHARACTERS } from '../story/story-data.j
 import * as story from '../story/story.js';
 import { portrait } from '../story/story-ui.js';
 import * as RZ from '../core/raiz.js';
+import { seenEchoes, ECHOES } from '../story/echoes.js';
 
 const CSS = `
 .pnl-story .st-chap { position: relative; padding: 14px 14px 12px; background: var(--panel-2); border: var(--line) solid var(--edge); border-radius: 14px; box-shadow: inset 0 0 0 2px var(--metal); }
@@ -170,6 +171,12 @@ export function openStory(ctx, params = {}) {
     if (RZ.raizFound(s)) {
       const rs = RZ.raizState(s), g = RZ.grieta(s), ex = RZ.EXTRACTION[rs.mode];
       wrap.append(h('div.st-page', { 'data-grieta': String(Math.round(g)), html: `<b>${icon('bolt', 14)} La Grieta · ${Math.round(g)}/100</b><p>${esc(RZ.grietaText(g))} Raíz: ${esc(ex ? ex.name.toLowerCase() : 'sin elegir')}${rs.sutures ? ` · ${rs.sutures} ${rs.sutures === 1 ? 'obra de Raíz terminada' : 'obras de Raíz terminadas'}` : ''}.</p>` }));
+    }
+    // ecos de noche (L6): los que ya se vieron, con su línea
+    const echoes = seenEchoes(s);
+    if (echoes.length) {
+      wrap.append(h('div.st-h', { html: `${icon('🌙', 18)} Ecos de noche · ${echoes.length}/${ECHOES.length}` }));
+      for (const e of echoes) wrap.append(h('div.st-page', { 'data-echo': e.id, html: `<b>${esc(e.title)}</b><p><i>${esc(e.line)}</i></p>` }));
     }
     return wrap;
   }

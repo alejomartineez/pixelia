@@ -23,6 +23,7 @@ import { avatarModel, randomLook } from '../avatar/avatar.js';
 import * as C from './combat-rules.js';
 import { ENCOUNTERS, ENEMIES, ABILITIES, ITEMS, COMBAT, TUTORIAL_PARTY } from './combat-data.js';
 import { enemyModel } from './enemy-models.js';
+import { bossModel } from './boss-models.js';
 import { buildCombatUi } from './combat-ui.js';
 import { SCENE_BY_ID } from '../story/story-data.js';
 import { markSeen } from '../story/story.js';
@@ -359,7 +360,8 @@ export default function create(ctx) {
       model.scale.setScalar(k);
       model.userData.height = (model.userData.height || 1) * k;
     } else {
-      model = enemyModel(u.type, { broken: u.type === 'bicho' && u.armor === 0 });
+      // los jefes en low-poly facetado (boss-models.js, plan §M1); el resto, vóxel
+      model = bossModel(u.type, { phase: u.phase || 0 }) || enemyModel(u.type, { broken: u.type === 'bicho' && u.armor === 0 });
     }
     const obj = new THREE.Group();
     obj.add(model);
@@ -635,7 +637,7 @@ export default function create(ctx) {
         break;
       }
       case 'combo': dom.banner('Combo', comboName(e.id), 'combo'); audio.sfx('combo', 2); await wait(420); break;
-      case 'phase': dom.banner(unitName(e.id), e.text, 'boss'); audio.sfx('horn'); await wait(900); break;
+      case 'phase': units.get(e.id)?.model.userData.setPhase?.(e.phase); dom.banner(unitName(e.id), e.text, 'boss'); audio.sfx('horn'); await wait(900); break;
       case 'free': floatAt(e.id, 'Libre', 'heal'); syncUnits(false); break;
       case 'rescued': floatAt(e.id, '¡A salvo!', 'heal'); break;
       case 'enemyPhase': dom.banner('Turno enemigo', '', 'enemy'); await wait(500); break;
@@ -802,7 +804,7 @@ export default function create(ctx) {
     if (modal) modal.close?.();
     dom.guide(null);
     // en la expedición no hay reintento: perder ya cuesta ánimo y la casilla sigue ahí para volver a probar
-    modal = dom.openResult(res, { boss: b.kind === 'jefe', bossName: ENEMIES[b.units.find(u => u.side === 'enemy' && ENEMIES[u.type].boss)?.type]?.name, test: !opts.onEnd, noRetry: !!opts.expedition }, (a) => {
+    modal = dom.openResult(res, { boss: b.kind === 'jefe', bossName: ENEMIES[b.units.find(u => u.side === 'enemy' && ENEMIES[u.type].boss)?.type]?.name, test: !opts.onEnd, noRetry: !!opts.expedition || !!opts.noRetry }, (a) => {
       modal = null;
       if (a === 'retry') { start({ ...opts, battle: null, attempt: res.outcome === 'lose' && b.kind === 'jefe' ? (b.attempt || 1) + 1 : b.attempt || 1, seed: (b.seed + 1) >>> 0 }); return; }
       if (opts.onEnd) opts.onEnd(res, b);

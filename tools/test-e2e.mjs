@@ -265,7 +265,7 @@ async function buildUI(id, n = 1) {
  */
 /** Anota en la página cada misión cobrada (también las del cobro automático de t1–t20, El Quiebre §E4). */
 const installClaimLog = () => run(`if (!window.__claimLog) { window.__claimLog = []; window.__claimRead = 0; ctx.bus.on('quest:claimed', (e) => window.__claimLog.push(e.id)); } return true;`);
-const isTutorial = (id) => /^t\d+$/.test(id) && Number(id.slice(1)) <= 20;
+const isTutorial = (id) => (/^t\d+$/.test(id) && Number(id.slice(1)) <= 20) || id === 'q_combate';   // AUTO_CLAIM (story-data.js)
 async function claimMainUI() {
   await installClaimLog();
   // t1–t20 se cobran solas al cumplirse: se toma la próxima cobrada que la prueba todavía no contó
@@ -457,6 +457,11 @@ try {
   await drainOverlays();
   ok(await claimMainUI() === 't5', 't5 cobrada (trae madera)');
   await drainOverlays({ shots: { levelup: 'subida-nivel-4' } });
+  // E5 (paso 6b): la primera pelea va entre la salida corta y el Taller (la pelea real se prueba en test-combat-exp)
+  ok(await run(`return Q.mainQuest()?.id === 'q_combate'`), 'sigue la primera pelea (E5)');
+  await run(`const c = store.state.combat ||= {}; c.wins ||= {}; c.wins.bosque_claro = 1; ctx.bus.emit('quests:changed'); return true;`);
+  ok(await claimMainUI() === 'q_combate', 'la primera pelea, cobrada');
+  await drainOverlays();
 
   // ===================================================================
   section('t6–t7: Taller y Cuerda');

@@ -21,7 +21,11 @@ import * as R from './exp-rules.js';
 import { createExpAmbience } from './exp-ambience.js';
 import { hasBase, startExpedition, finishExpedition, expeditionStatus, creditFight, combatState } from './expedition.js';
 import { ENCOUNTERS, ENEMIES } from '../combat/combat-data.js';
-import { expPlace } from '../core/ambience.js';
+import { expPlace, expEchoSpots } from '../core/ambience.js';
+import { createEcho } from '../story/echo-fx.js';
+import { expEcho, seeEcho } from '../story/echoes.js';
+import { PAGE_BY_ID } from '../story/story-data.js';
+import { icon as iconHtml } from '../core/icons.js';
 import { injectStyle, buildDom, openDecision, openResult, openMenu, openConfirmFail, matsHtml, provTxt, ICONS } from './exp-ui.js';
 
 // ---------------------------------------------------------------- arte de las casillas
@@ -121,7 +125,14 @@ const PROPS = {
 // casilla `enemigo`: lo que se ve de lejos según quién espera (lobos, bichos de veta, piratas)
 PROPS.enemigo = function (m, y, enc) {
   const v = m.v, foes = ENCOUNTERS[enc]?.enemies || ['lobo'];
-  const kind = foes.includes('bicho') ? 'bicho' : foes.some(t => /grumete|tirador|capitana/.test(t)) ? 'pirata' : 'lobo';
+  const kind = foes.includes('bestia') ? 'bestia' : foes.includes('bicho') ? 'bicho' : foes.some(t => /grumete|tirador|capitana/.test(t)) ? 'pirata' : 'lobo';
+  if (kind === 'bestia') {
+    // la poza honda: agua negra, juncos y cuatro ojos que miran desde abajo
+    v.box(0, y, 0, 8, 1, 8, (xx, yy, zz) => ((xx === 0 || xx === 7 || zz === 0 || zz === 7) ? '#3a3024' : '#16232a'));
+    for (const [x, z, h] of [[0, 1, 4], [1, 7, 3], [7, 2, 5], [6, 7, 3], [0, 5, 3]]) v.box(x, y + 1, z, 1, h, 1, '#6f6a3a');
+    for (const [x, z] of [[2, 4], [3, 4], [5, 4], [6, 4]]) m.light.set(x, y + 1, z, '#d8ff7a');
+    return;
+  }
   // estaca con trapo rojo: acá hay pelea
   v.box(6, y, 6, 1, 8, 1, '#5a4632'); v.box(6, y + 6, 5, 1, 2, 1, '#a8492f'); v.set(6, y + 7, 4, '#a8492f');
   if (kind === 'lobo') {
@@ -136,7 +147,18 @@ PROPS.enemigo = function (m, y, enc) {
     v.box(4, y, 3, 1, 5, 1, '#c7ccd1');
   }
 };
-const PROP_KEY = (cell) => (cell.content === 'recurso' ? cell.sub : cell.content === 'peligro' ? cell.sub : cell.content);
+// el faro viejo de la Costa (paso 6b): torre de piedra gastada, la linterna apagada (encendida si ya se cumplió)
+PROPS.faro = function (m, y, sub) {
+  const v = m.v, st = '#8f8a80', st_d = '#6f6a62', rust = '#7a4a32';
+  v.box(1, y, 1, 6, 2, 6, st_d);
+  for (let k = 0; k < 9; k++) { const w = k < 3 ? 4 : k < 6 ? 3 : 2, o = (8 - w) / 2; v.box(o, y + 2 + k, o, w, 1, w, (xx, yy) => ((yy + xx) % 5 === 0 ? st_d : k % 3 === 2 ? '#a8a296' : st)); }
+  v.box(2, y + 11, 2, 4, 1, 4, rust);
+  v.box(3, y + 12, 3, 2, 2, 2, sub === 'lit' ? '#ffd166' : '#3a3f45');
+  if (sub === 'lit') { m.light.set(3, y + 13, 3, '#ffe9a8'); m.light.set(4, y + 12, 4, '#ffd166'); }
+  v.box(3, y + 14, 3, 2, 1, 2, rust);
+  v.box(4, y, 6, 1, 2, 1, '#3b2f26');
+};
+const PROP_KEY = (cell) => (cell.content === 'recurso' ? cell.sub : cell.content === 'peligro' ? cell.sub : cell.content === 'objetivo' && cell.faro ? 'faro' : cell.content);
 
 // ---------------------------------------------------------------- escena
 export default function create(ctx) {
@@ -155,6 +177,7 @@ export default function create(ctx) {
   const anims = new Set();     // tweens: { t, dur, fn(k), done }
   let shownTips = {};
   let expAmb = null;           // ambiente: hora, clima, niebla por distancia, polvo y huellas (exp-ambience.js)
+  let echo = null;             // eco de noche en una ruina ya pisada (L6, paso 6b): { fx, id, x, y }
 
   const music = audio.songs?.includes?.('expedition') ? 'expedition' : 'calm';
 
@@ -293,7 +316,7 @@ export default function create(ctx) {
       const pk = PROP_KEY(c);
       const showProp = pk && PROPS[pk] && !(c.done && (c.content === 'recurso' || c.content === 'peligro' || c.content === 'enemigo')) && pk !== 'rio';
       if (showProp) {
-        const sub = pk === 'enemigo' ? c.sub : '';
+        const sub = pk === 'enemigo' ? c.sub : pk === 'faro' && c.done ? 'lit' : '';
         o.prop = voxelModel(`exp:p:${pk}${sub ? ':' + sub : ''}`, 8, 8, (m) => PROPS[pk](m, 0, sub));
         // el objeto va hacia el fondo de la casilla: adelante queda lugar para el grupo
         o.prop.position.set(pos.x - 0.12, ty, pos.z - 0.16);
@@ -815,11 +838,50 @@ export default function create(ctx) {
   }
   let down = null, queued = null;
   function onDown(e) { down = { x: e.clientX, y: e.clientY, t: performance.now() }; }
+  // ---------- ecos de noche (L6) ----------
+  const echoQ = new URLSearchParams(location.search).get('echo') === '1';
+  function syncEcho(t) {
+    if (!run || run.prototype) return;
+    let want = null;
+    try {
+      const night = echoQ || R.conditions(run).night;
+      const e = night ? expEcho(store.state, run.region) : null;
+      const spots = e ? expEchoSpots(run) : [];
+      if (e && spots.length) { const sp = spots[hashSeed(e.id, run.seed) % spots.length]; want = { e, x: sp.x, y: sp.y }; }
+    } catch {}
+    if (echo && !echo.fx.leaving && (!want || want.e.id !== echo.id)) echo.fx.leave();
+    if (!echo && want) {
+      const fx = createEcho(want.e.scene, { scale: 0.72 });
+      const p = cellPos(want.x, want.y);
+      fx.group.position.set(p.x + 0.18, cellTop(want.x, want.y), p.z + 0.2);
+      fx.group.rotation.y = 0.6;
+      world.add(fx.group);
+      echo = { fx, id: want.e.id, x: want.x, y: want.y };
+    }
+    if (echo && echo.fx.update(t) === false) { echo.fx.dispose(); echo = null; }
+  }
+  function hitEcho(x, y) {
+    if (!echo || echo.fx.leaving || !r) return false;
+    const s = screenOf(echo.x, echo.y, 0.35);
+    return (s.x - x) ** 2 + (s.y - y) ** 2 < 40 * 40;
+  }
+  function openEcho() {
+    const e = seeEcho(echo.id);
+    echo.fx.leave();
+    if (!e) return;
+    audio.sfx('page');
+    const page = e.page ? PAGE_BY_ID[e.page] : null;
+    const wrap = ui.h('div.ec-card');
+    wrap.append(ui.h('p', { html: `<i>${ui.esc(e.line)}</i>` }));
+    wrap.append(ui.h('p.ec-note', { html: page ? `${iconHtml('quest', 16)} Página nueva del diario: <b>${ui.esc(page.title)}</b>.` : `${iconHtml('quest', 16)} Queda anotado en el Diario de la Bitácora.` }));
+    ui.modal({ title: e.title, icon: '🌙', content: wrap, className: 'ec-modal' });
+  }
   function onUp(e) {
     if (!down) return;
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
     down = null;
     if (moved > 12 || modal || card) return;
+    if (hitEcho(e.clientX, e.clientY)) { openEcho(); return; }
     const c = cellAtScreen(e.clientX, e.clientY);
     if (c) tryMove(c[0], c[1]);
   }
@@ -929,6 +991,7 @@ export default function create(ctx) {
         }
         updateChips();
         expAmb?.update(dt, partyPos);
+        syncEcho(t);
       });
       r.start();
       stage.addEventListener('pointerdown', onDown);
@@ -954,6 +1017,7 @@ export default function create(ctx) {
         get cond() { return run ? R.conditions(run) : null; },
         get look() { return expAmb?.amb.look || null; },
         echoSpots() { return run ? expAmb?.echoSpots(run) || [] : []; },
+        get echo() { return echo ? { id: echo.id, x: echo.x, y: echo.y, leaving: echo.fx.leaving } : null; },
       };
     },
     unmount() {
@@ -964,6 +1028,7 @@ export default function create(ctx) {
       if (card) { card = null; }
       if (modal) { modal.close(); modal = null; }
       expAmb?.dispose(); expAmb = null;
+      echo?.fx.dispose(); echo = null;
       if (r) { r.stop(); r.dispose(); r = null; }
       for (const m of texCache.values()) { m.map?.dispose(); m.dispose(); }
       texCache.clear();
