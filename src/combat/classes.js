@@ -81,8 +81,25 @@ export const PASSIVE_FLAGS = ['noStuck', 'medic', 'smith', 'guardAdj', 'markPlus
 
 // ---------- nivel de clase (integrantes) ----------
 export const CLASS_MAX = 10;
-/** Experiencia total para llegar a cada nivel de clase (índice = nivel − 1). */
-export const CLASS_XP = [0, 30, 80, 150, 240, 350, 480, 640, 830, 1050];
+/**
+ * Experiencia total para llegar a cada nivel de clase (índice = nivel − 1). Paso 5b, cuarta parte: la curva de antes
+ * (CLASS_XP_V1) dejaba a las clases de la ciudad en 10/10/9 en el rango 6; con esta quedan cerca de 5/4/3 al llegar a
+ * la Costa y el 10 queda para los actos que vienen (DESIGN-COMBAT §14.2).
+ */
+export const CLASS_XP = [0, 200, 600, 1200, 2000, 3000, 4200, 5600, 7200, 9000];
+/** La curva de antes del paso 5b, cuarta parte: los guardados que la usaban se pasan con remapClassXp. */
+export const CLASS_XP_V1 = [0, 30, 80, 150, 240, 350, 480, 640, 830, 1050];
+/** Versión de la curva (state.classes.curve). */
+export const CLASS_CURVE = 2;
+/** Experiencia de la curva vieja → la nueva, con el mismo nivel y lo mismo juntado dentro del nivel (nadie baja). */
+export function remapClassXp(xp = 0) {
+  const x = Math.max(0, Number(xp) || 0);
+  let lv = 1;
+  while (lv < CLASS_MAX && x >= CLASS_XP_V1[lv]) lv++;
+  if (lv >= CLASS_MAX) return CLASS_XP[CLASS_MAX - 1] + (x - CLASS_XP_V1[CLASS_MAX - 1]);
+  const f = (x - CLASS_XP_V1[lv - 1]) / (CLASS_XP_V1[lv] - CLASS_XP_V1[lv - 1]);
+  return Math.round(CLASS_XP[lv - 1] + f * (CLASS_XP[lv] - CLASS_XP[lv - 1]));
+}
 /** Nivel de clase que abre cada habilidad del grupo de 4 (las 2 primeras vienen de entrada). */
 export const POOL_UNLOCK = [1, 1, 3, 6];
 /** Experiencia de clase: la pelea da su xp a cada integrante que peleó; la salida, `expedition` × la xp de la salida. */
@@ -118,6 +135,12 @@ export const LEADER = {
   gain: { expedition: 0.5, threat: { base: 10, perPct: 0.1 } },
   /** Bonus chico por nivel en la expedición: +1 de ánimo máximo cada 10 niveles. */
   moraleEvery: 10,
+  /**
+   * Quien lidera y pega a distancia (el Cazador) recibe el ataque por nivel 6 niveles después: +1 en el 10 y +2 en el 16,
+   * en vez del 4 y el 10. Pega seguro desde lejos, y con el ataque de los demás llegaba a 36 % del daño (DESIGN-COMBAT §8,
+   * paso 5b cuarta parte).
+   */
+  rangedAtkDelay: 6,
 };
 /** Experiencia total para llegar a un nivel del líder. */
 export function leaderXpFor(level) {
@@ -227,7 +250,8 @@ export function leaderKit({ cls = null, sub = null, level = 1, picks = [], eleme
   }
   const C = CLASSES[cls], U = UNITS[cls];
   const cl = perks.classLevel;
-  const kit = { ...base, cls, classLevel: cl, hp: base.hp + (U.hp - 10), mv: U.mv, atk: Math.max(2, U.atk) + perks.atk, abilities: [C.basic, ...validPicks(cls, cl, picks, perks.classSlots)] };
+  const atkUp = ABILITIES[C.basic]?.ranged ? COMBAT.leader.atk(Math.max(1, lv - LEADER.rangedAtkDelay)) : perks.atk;
+  const kit = { ...base, cls, classLevel: cl, hp: base.hp + (U.hp - 10), mv: U.mv, atk: Math.max(2, U.atk) + atkUp, abilities: [C.basic, ...validPicks(cls, cl, picks, perks.classSlots)] };
   applyPassives(kit, classPassives(cls, cl));
   const S = resolveSubclass(cls, sub, els);
   if (S) {

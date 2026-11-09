@@ -7,10 +7,11 @@ import * as K from '../core/classes.js';
 import * as PE from '../core/people.js';
 import { BOND_MAX, TOOL_MAX, TOOLS } from '../core/people-data.js';
 import { CLASSES, SUBCLASSES, LEADER } from '../combat/classes.js';
+import { ABILITIES } from '../combat/combat-data.js';
 import { eraDef } from '../core/data.js';
 import { PAGES, ELEMENTS } from '../story/story-data.js';
 import * as RZ from '../core/raiz.js';
-import { openClassPicker } from './class-pick.js';
+import { openClassPicker, openKitPicker } from './class-pick.js';
 
 const CSS = `
 .pnl-story .pg-row { display: grid; grid-template-columns: 44px 1fr auto; gap: 2px 12px; align-items: center; padding: 10px 12px; background: var(--surface); border: 2px solid var(--edge); border-radius: 12px; }
@@ -65,6 +66,12 @@ export function progressPane(ctx, rerender) {
   const cb = h('button.btn.small' + (li.cls ? '' : '.primary'), { 'data-pick-class': '1', html: `${icon('people', 18)} ${li.cls ? 'Cambiar clase' : 'Elegir clase'}` });
   cb.onclick = async () => { audio.sfx('tap'); if (await openClassPicker(ctx)) rerender(); };
   la.append(cb);
+  // las activas y la subclase (paso 5b, cuarta parte)
+  if (li.cls) {
+    const kb = h('button.btn.small', { 'data-kit': 'leader', html: `${icon('star', 18)} Habilidades` });
+    kb.onclick = async () => { audio.sfx('tap'); if (await openKitPicker(ctx, 'leader')) rerender(); };
+    la.append(kb);
+  }
   lead.append(la);
   wrap.append(lead);
 
@@ -75,8 +82,15 @@ export function progressPane(ctx, rerender) {
     for (const c of cc) {
       const m = K.memberInfo(c.id, s);
       const capTxt = m.level >= m.cap && m.cap < 10 ? `Tope del edificio: mejoralo para pasar del nivel ${m.cap}.` : '';
-      wrap.append(row('people', esc(m.name), `Nivel ${m.level}`, (m.xp.max ? '' : bar(m.xp.into, m.xp.need, `${m.xp.into}/${m.xp.need}`))
-        + `<small>${esc(CLASSES[c.id].combat)} ${capTxt}</small>`, '', { 'data-pg': 'clase', 'data-cls': c.id }));
+      const picks = m.picks.map(id => ABILITIES[id]?.name || id).join(' y ');
+      const mr = row('people', esc(m.name), `Nivel ${m.level}`, (m.xp.max ? '' : bar(m.xp.into, m.xp.need, `${m.xp.into}/${m.xp.need}`))
+        + `<small>${esc(CLASSES[c.id].combat)} Activas: ${esc(picks)}. ${capTxt}</small>`, '', { 'data-pg': 'clase', 'data-cls': c.id, 'data-picks': m.picks.join(',') });
+      const ma = h('div.pg-acts');
+      const kb = h('button.btn.small', { 'data-kit': c.id, html: `${icon('star', 18)} Habilidades` });
+      kb.onclick = async () => { audio.sfx('tap'); if (await openKitPicker(ctx, c.id)) rerender(); };
+      ma.append(kb);
+      mr.append(ma);
+      wrap.append(mr);
     }
   }
 

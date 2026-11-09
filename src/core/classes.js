@@ -6,6 +6,7 @@
 //   v: 1,
 //   leader: { cls, sub, xp, picks },     // cls null: todavía no eligió (partida vieja o nueva antes del onboarding nuevo)
 //   members: { [clase]: { xp, picks } }, // una persona por clase, como antes un rol por edificio
+//   curve: 2,                            // versión de CLASS_XP (la 1 se pasa sola con remapClassXp)
 // }
 //
 // Eventos: 'class:levelup' { cls, level } · 'leader:levelup' { level, from } · 'leader:changed' { cls, sub }
@@ -13,7 +14,7 @@ import { store } from './state.js';
 import { bus } from './bus.js';
 import * as E from './economy.js';
 import {
-  CLASSES, CLASS_IDS, CLASS_GAIN, LEADER, classLevelFromXp, classXpInfo, leaderLevelFromXp, leaderXpInfo, leaderPerks,
+  CLASSES, CLASS_IDS, CLASS_GAIN, CLASS_CURVE, remapClassXp, LEADER, classLevelFromXp, classXpInfo, leaderLevelFromXp, leaderXpInfo, leaderPerks,
   availableSubclasses, resolveSubclass, unlockedPool, validPicks, classPassives, SUBCLASSES,
 } from '../combat/classes.js';
 
@@ -38,11 +39,14 @@ export function classesState(state = S()) {
   L.xp = Math.max(0, Number(L.xp) || 0);
   if (!Array.isArray(L.picks)) L.picks = [];
   if (!c.members || typeof c.members !== 'object') c.members = {};
+  // la curva de clase cambió en el paso 5b, cuarta parte: lo juntado con la vieja se pasa sin bajar de nivel
+  const remap = c.curve !== CLASS_CURVE;
   for (const id of CLASS_IDS) {
     const m = c.members[id];
     if (!m || typeof m !== 'object') c.members[id] = { xp: 0, picks: [] };
-    else { m.xp = Math.max(0, Number(m.xp) || 0); if (!Array.isArray(m.picks)) m.picks = []; }
+    else { m.xp = Math.max(0, Number(m.xp) || 0); if (remap) m.xp = remapClassXp(m.xp); if (!Array.isArray(m.picks)) m.picks = []; }
   }
+  c.curve = CLASS_CURVE;
   return c;
 }
 

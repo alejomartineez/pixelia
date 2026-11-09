@@ -8,7 +8,7 @@
 //    amenazas que ya hizo. Su clase queda sin elegir: la elige la primera vez que abre la ciudad (segunda parte del 5b).
 // 3. Una salida o una pelea guardadas a medias pasan sus roles a clases (el grupo, la escolta, los niveles y las
 //    unidades de la pelea, con sus pasivas de nivel 1).
-import { ROLE_CLASS, toClass, classXpFor, LEADER, CLASS_IDS } from '../combat/classes.js';
+import { ROLE_CLASS, toClass, classXpFor, LEADER, CLASS_IDS, CLASS_CURVE } from '../combat/classes.js';
 
 const BUILDING = { cazador: 'casa_exp', forjador: 'taller', monje: 'establo', curandero: 'dispensario', saqueador: 'huerta', guerrero: 'casa_exp' };
 const BUILDING_MIN = { guerrero: 2 };
@@ -65,7 +65,7 @@ export function migrateClasses(s) {
   }
   const st = s.stats || {};
   const xp = Math.max(0, Number(s.combat?.xp) || 0) + MIGRATE_XP.expedition * Math.max(0, st.expeditions || 0) + MIGRATE_XP.threat * Math.max(0, st.threats || 0);
-  s.classes = { v: 1, leader: { cls: null, sub: null, xp: Math.round(xp), picks: [] }, members, migrated: { from: 'roles', at: Date.now(), maxLevel: LEADER.max } };
+  s.classes = { v: 1, curve: CLASS_CURVE, leader: { cls: null, sub: null, xp: Math.round(xp), picks: [] }, members, migrated: { from: 'roles', at: Date.now(), maxLevel: LEADER.max } };
   const e = s.expedition;
   if (e && typeof e === 'object') {
     if (Array.isArray(e.party)) e.party = mapList(e.party);

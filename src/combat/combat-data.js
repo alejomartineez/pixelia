@@ -113,8 +113,8 @@ export const ABILITIES = {
   // Subclases de Raíz del líder (SUBCLASSES en src/combat/classes.js)
   abrazo_raiz: { id: 'abrazo_raiz', name: 'Abrazo de raíz', kind: 'root', range: [1, 1], dmg: 2, root: 1, wallTurns: 2, cd: 3, element: 'raiz',
     text: 'Lo agarra de cerca: 2 de daño, pierde el golpe marcado, no se mueve y sale una pared de raíz a su lado.' },
-  espina: { id: 'espina', name: 'Espina', kind: 'attack', range: [2, 4], dmg: 'atk', plus: 1, rootHit: 1, cd: 2, ranged: true, element: 'raiz',
-    text: 'Tiro de espina: +1 y lo frena un turno.' },
+  espina: { id: 'espina', name: 'Espina', kind: 'attack', range: [2, 4], dmg: 'atk', rootHit: 1, cd: 2, ranged: true, element: 'raiz',
+    text: 'Tiro de espina: llega a 4 y lo frena un turno.' },
   zarza: { id: 'zarza', name: 'Zarza', kind: 'trap', range: [1, 3], dmg: 3, root: 2, cd: 2, element: 'raiz',
     text: 'Hace crecer una zarza: 3 de daño y lo frena 2 turnos.' },
   savia: { id: 'savia', name: 'Savia', kind: 'healArea', range: [0, 0], radius: 2, heal: 3, cd: 3, element: 'raiz',
@@ -353,7 +353,10 @@ export const ENCOUNTERS = {
     waves: [{ turn: 3, kinds: ['grumete'] }],
     objective: { type: 'defeat' },
     challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 6 }],
-    expected: { level: 6, size: 3, element: 'raiz', classLevel: 4 },
+    // paso 5b, cuarta parte: el grupo esperado es el de la ciudad al llegar a la Costa (sim:economy, rango 6: líder 6,
+    // clases 5/4/3 y las herramientas de ese momento). Con eso salía 99 %: foeHp lo deja en la meta (DESIGN-COMBAT §8).
+    expected: { level: 6, size: 3, element: 'raiz', classLevel: [5, 4, 3], tools: { catalejo: 4, martillo: 2, cuerda: 4, botiquin: 5, farol: 1 } },
+    foeHp: 1.35,
     reward: { xp: 45, mats: { madera: 2, mineral: 2, piedra: 2 } },
   },
   costa_capitana: {
@@ -374,10 +377,11 @@ export const ENCOUNTERS = {
     objective: { type: 'defeat', boss: true },
     challenges: [{ id: 'pasarela' }, { id: 'sinBajas' }],
     // se pelea en el abordaje (src/story/act1.js), con la gente de la ciudad: el grupo esperado es el que da sim:economy en
-    // el rango 6 (líder 7, clases 10/10/9, herramientas y dos consumibles del depósito). city: no lo pelea el grupo del
-    // tutorial. foeHp, bossHp y foeDmg lo ponen a la altura de ese grupo (paso 7, DESIGN-COMBAT §8).
-    expected: { level: 7, size: 3, element: 'raiz', classLevel: [10, 10, 9], tools: { catalejo: 4, martillo: 2, cuerda: 4, botiquin: 5, farol: 1 }, equip: ['botiquin', 'farol'], city: true },
-    foeHp: 1.35, bossHp: 1.45, foeDmg: 3,
+    // el rango 6 (líder 7, clases 5/4/3 con la curva del paso 5b cuarta parte, herramientas y dos consumibles del
+    // depósito). city: no lo pelea el grupo del tutorial. foeHp, bossHp y foeDmg lo ponen a la altura de ese grupo
+    // (paso 7, DESIGN-COMBAT §8; con las clases 10/10/9 de antes iba 1,35 / 1,45 / +3).
+    expected: { level: 7, size: 3, element: 'raiz', classLevel: [5, 4, 3], tools: { catalejo: 4, martillo: 2, cuerda: 4, botiquin: 5, farol: 1 }, equip: ['botiquin', 'farol'], city: true },
+    foeHp: 0.9, bossHp: 1.3, foeDmg: 2,
     reward: { xp: 100, mats: { mineral: 3, madera: 3, piedra: 2 }, page: 'p8', flag: 'capitana_vencida' },
     noMirrorJitter: true,
   },

@@ -38,10 +38,17 @@ ok(K.subclassFor('guerrero', 'raiz')?.name === 'Guardián de Raíz', 'Guerrero +
 ok(K.availableSubclasses('cazador', []).length === 0 && K.availableSubclasses('cazador', ['raiz'])[0].id === 'acechador_raiz', 'la subclase se abre con el elemento');
 
 section('Nivel de clase (1 a 10)');
-ok(K.classLevelFromXp(0) === 1 && K.classLevelFromXp(29) === 1 && K.classLevelFromXp(30) === 2 && K.classLevelFromXp(1050) === 10 && K.classLevelFromXp(99999) === 10, 'curva de experiencia');
-ok(K.classLevelFromXp(1050, 4) === 4, 'el edificio pone el tope (2 × su nivel)');
-const ci = K.classXpInfo(100);
-ok(ci.level === 3 && ci.into === 20 && ci.need === 70 && !ci.max, 'cuánto falta para el próximo nivel', ci);
+ok(K.classLevelFromXp(0) === 1 && K.classLevelFromXp(199) === 1 && K.classLevelFromXp(200) === 2 && K.classLevelFromXp(9000) === 10 && K.classLevelFromXp(99999) === 10, 'curva de experiencia');
+ok(K.classLevelFromXp(9000, 4) === 4, 'el edificio pone el tope (2 × su nivel)');
+// la curva de antes (paso 5b, cuarta parte): lo juntado se pasa a la nueva con el mismo nivel
+{
+  const v1lv = (x) => { let l = 1; while (l < 10 && x >= K.CLASS_XP_V1[l]) l++; return l; };
+  const xs = [0, 29, 30, 55, 149, 150, 349, 350, 829, 1049, 1050, 1300];
+  ok(xs.every(x => K.classLevelFromXp(K.remapClassXp(x)) === v1lv(x)), 'remapClassXp: nadie cambia de nivel con la curva nueva', xs.map(x => [x, v1lv(x), K.remapClassXp(x)]));
+  ok(K.remapClassXp(55) === 400 && K.remapClassXp(1300) === 9250, 'y lo juntado dentro del nivel se mantiene en proporción');
+}
+const ci = K.classXpInfo(700);
+ok(ci.level === 3 && ci.into === 100 && ci.need === 600 && !ci.max, 'cuánto falta para el próximo nivel', ci);
 const c1 = K.memberKit('cazador', 1), c3 = K.memberKit('cazador', 3), c5 = K.memberKit('cazador', 5);
 ok(c1.abilities.join() === 'tiro,marcar,tiro_pie', 'nivel 1: ataque básico y las 2 primeras del grupo', c1.abilities);
 ok(K.unlockedPool('cazador', 1).length === 2 && K.unlockedPool('cazador', 3).length === 3 && K.unlockedPool('cazador', 6).length === 4, 'el grupo de 4 se abre en los niveles 1, 3 y 6');
@@ -189,7 +196,7 @@ const save = {
 };
 migrateClasses(save);
 const mc = save.classes;
-ok(mc.v === 1 && mc.leader.cls === null && mc.leader.xp === 120 + 4 * 30 + 2 * 20, 'el líder junta la xp de peleas, salidas y amenazas; elige clase después', mc.leader);
+ok(mc.v === 1 && mc.curve === K.CLASS_CURVE && mc.leader.cls === null && mc.leader.xp === 120 + 4 * 30 + 2 * 20, 'el líder junta la xp de peleas, salidas y amenazas; elige clase después', mc.leader);
 ok(mc.members.cazador.xp === K.classXpFor(3) && mc.members.forjador.xp === K.classXpFor(5) && mc.members.monje.xp === K.classXpFor(1) && mc.members.curandero.xp === 0, 'cada clase con la xp del nivel de su edificio (2 × n − 1)', mc.members);
 ok(K.classLevelFromXp(mc.members.forjador.xp, 6) === 5, 'el forjador del Taller 3 queda en nivel de clase 5');
 const A = save.expedition.active;
@@ -246,7 +253,7 @@ if (!QUICK) {
     r = await run(`S.expedition.active = { ended: false }; const a = K.setLeaderClass('cazador'); S.expedition.active = null; return a;`);
     ok(r === false, 'la clase se cambia en la ciudad, no con una salida en curso');
     r = await run(`S.city.buildings.push({ uid: 9901, id: 'taller', x: 1, z: 1, level: 2 }, { uid: 9902, id: 'casa_exp', x: 3, z: 1, level: 2 });
-      const before = K.memberLevel('forjador'); const ups = K.grantClassXp(['forjador'], 200); const cl = K.cityClasses().map(c => c.id + ':' + c.level + ':' + c.classLevel);
+      const before = K.memberLevel('forjador'); const ups = K.grantClassXp(['forjador'], 1200); const cl = K.cityClasses().map(c => c.id + ':' + c.level + ':' + c.classLevel);
       return { before, after: K.memberLevel('forjador'), ups, cl, info: K.memberInfo('forjador') };`);
     ok(r.before === 1 && r.after === 4 && r.ups[0]?.to === 4, 'la clase sube con la experiencia hasta el tope del edificio (Taller 2 → nivel 4)', r);
     ok(r.cl.includes('forjador:2:4') && r.cl.includes('guerrero:1:1') && r.cl.includes('cazador:2:1'), 'las clases de la ciudad (el Guerrero con la Casa de Expediciones 2)', r.cl);
