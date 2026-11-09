@@ -706,4 +706,16 @@ export default {
   'power.tools': 'Herramientas de la gente',
   'power.nivel': 'Nivel {n}',
   'power.noParty': 'Sin grupo todavía: sale quien lidera.',
+  // avisos del arsenal y la maestría (src/core/people.js), el Taller y el punto de talento al subir (panels-rewards.js)
+  'arsenal.toast.mastery': 'Maestría de {name} {n}',
+  'arsenal.toast.masteryWhat': 'Maestría de {name} {n}: {what}',
+  'arsenal.toast.itemPlus': '+1 a su efecto',
+  'arsenal.toast.found': 'Encontraste: {name}',
+  'arsenal.toast.foundAuto': '{name}: se desarmó sola',
+  'arsenal.workshopHelp': 'Las armas que se trajeron: equipar, rehacer rasgos y desarmar.',
+  'talents.levelup.points': { one: 'Tenés un punto de talento', other: 'Tenés {n} puntos de talento' },
+  'talents.levelup.paragon': { one: 'Tenés un punto de paragon', other: 'Tenés {n} puntos de paragon' },
+  'talents.levelup.go': 'Ver talentos',
+  // elementos del líder (src/combat/combat-data.js ELEMENTS)
+  'element.raiz': 'Raíz',
 };

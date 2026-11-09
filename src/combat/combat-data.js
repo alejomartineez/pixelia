@@ -3,6 +3,7 @@
 //
 // Unidades del grupo (el líder y los roles de la expedición), habilidades con recarga, habilidades de elemento del
 // líder, consumibles del Taller, enemigos del Acto 1 y encuentros (mapas de 8×8, objetivos y desafíos).
+import { t } from '../core/i18n.js';
 
 export const COMBAT = {
   w: 8, h: 8,
@@ -127,7 +128,7 @@ export const ABILITIES = {
 
 // Elementos: cada uno suma habilidades al líder, en el orden en que se abren los espacios (COMBAT.leader.slots).
 export const ELEMENTS = {
-  raiz: { id: 'raiz', name: 'Raíz', abilities: ['enredar', 'muro_raiz'] },
+  raiz: { id: 'raiz', get name() { return t('element.raiz'); }, abilities: ['enredar', 'muro_raiz'] },
   // marea, brasa y céfiro llegan en los actos 2 a 4
 };
 

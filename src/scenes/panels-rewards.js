@@ -5,12 +5,13 @@ import { BUILDINGS, CUSTOM_CATALOG, TOWN_RANKS, LOGIN_REWARDS, MAX_EXPANSIONS, f
 import { openShell, rewardFx, rewardHtml, chestArt, chestList } from './panels-common.js';
 import { CHESTS, chestCount, levelUpChests } from '../chests/chests.js';
 import { talentPoints } from '../core/talents.js';
+import { t, tn } from '../core/i18n.js';
 
-/** Los textos nuevos juntos (paso 2a: el punto de talento de cada Nivel; el paso de idiomas los pasa a t()). */
+/** El punto de talento de cada Nivel (paso 2a), por t(). */
 const TXT = {
-  talent: (n) => n > 1 ? `Tenés ${n} puntos de talento` : 'Tenés un punto de talento',
-  paragon: (n) => n > 1 ? `Tenés ${n} puntos de paragon` : 'Tenés un punto de paragon',
-  toTalents: 'Ver talentos',
+  talent: (n) => tn('talents.levelup.points', n),
+  paragon: (n) => tn('talents.levelup.paragon', n),
+  get toTalents() { return t('talents.levelup.go'); },
 };
 
 // ---------- Premio diario ----------

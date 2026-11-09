@@ -12,13 +12,14 @@ import * as E from './economy.js';
 import { PEOPLE, PEOPLE_IDS, BOND_MAX, TOOL_MAX, TOOLS, toolCost } from './people-data.js';
 import { WEAPON_TYPES, weaponName, masteryUnlock, ITEM_MASTERY_PLUS_AT } from './arsenal.js';
 import { ITEMS } from '../combat/combat-data.js';
+import { t } from './i18n.js';
 
-/** Los textos nuevos juntos (paso 2a: avisos del arsenal y la maestría; el paso de idiomas los pasa a t()). */
+/** Avisos del arsenal y la maestría (paso 2a), por t(). */
 export const TXT = {
-  masteryUp: (name, lv, what) => `Maestría de ${name} ${lv}${what ? ': ' + what : ''}`,
-  itemPlus: '+1 a su efecto',
-  found: (name) => `Encontraste: ${name}`,
-  foundAuto: (name) => `${name}: se desarmó sola`,
+  masteryUp: (name, n, what) => what ? t('arsenal.toast.masteryWhat', { name, n, what }) : t('arsenal.toast.mastery', { name, n }),
+  get itemPlus() { return t('arsenal.toast.itemPlus'); },
+  found: (name) => t('arsenal.toast.found', { name }),
+  foundAuto: (name) => t('arsenal.toast.foundAuto', { name }),
 };
 
 const S = () => store.state;

@@ -5,9 +5,10 @@ import { EQUIP_RECIPES, RESERVES, REGION_MATERIALS, RESERVES_RANK, RESERVE_CAP }
 import { EQUIPMENT } from '../expedition/exp-data.js';
 import { openShell } from './panels-common.js';
 import { arsenalState } from '../core/arsenal.js';
+import { t } from '../core/i18n.js';
 
 /** Los textos nuevos juntos (paso 2a; el paso de idiomas los pasa a t()). */
-const TXT = { arsenal: 'Arsenal', arsenalHelp: 'Las armas que se trajeron: equipar, rehacer rasgos y desarmar.' };
+const TXT = { get arsenal() { return t('arsenal.title'); }, get arsenalHelp() { return t('arsenal.workshopHelp'); } };
 
 const CSS = `
 .pnl-ws .pnl-ws-sec { margin-top: 10px; }

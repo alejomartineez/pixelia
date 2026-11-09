@@ -164,8 +164,12 @@ export const NIVEL = {
    * iba un nivel adelante los días 2–7 y adelantaba monumento, Pase y rango 5.
    */
   need: (n) => Math.round(40 * Math.pow(n, 1.58) + 20),
-  /** Las peleas, salidas y amenazas daban xp en la escala chica del líder: se multiplica al pasar al Nivel. */
-  fightRate: 1,
+  /**
+   * Las peleas, salidas y amenazas daban xp en la escala chica del líder: se multiplica al pasar al Nivel. Con 1 el
+   * Nivel iba lento y las compras quedaban bloqueadas (monedas al llegar > 3× en 8 de 36 semillas); con 2, adelantado.
+   * 1,5 es lo mejor de lo probado (1, 1,25, 1,5, 1,75 y la curva 1,56/1,59; ver DESIGN-CORE.md §8.v).
+   */
+  fightRate: 1.5,
   /** Experiencia por punto de paragon pasado el Nivel 50. */
   paragonStep: 8000,
   /** Niveles que quedan para los actos 2 a 4 (otro elemento y habilidades del equipo). */
