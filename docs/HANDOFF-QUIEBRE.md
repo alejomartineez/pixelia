@@ -117,7 +117,7 @@ cada paso.
   - hacha parada que se lee de frente;
   - enano a ~3 cabezas (cabeza de 14 × 13, manos de 9);
   - todo es genérico en `figure.js`, así que ya está propagado a todos los pueblos y a la gente de la ciudad.
-- **Tests:** `test-e2e` 96 OK, `test-stress` 15 OK sin fugas y `test-migration` 80 OK (el tope de alto del perfil
+- **Tests (con el esquife, `4bae6a3`):** `test-e2e` 96 OK, `test-stress` 15 OK sin fugas, `test-visit` 20 OK y `test-migration` 80 OK (el tope de alto del perfil
   viejo subió a 1,4: los humanos más altos de la tercera pasada miden 1,33 con el sombrero de mago).
 - **Capturas finales** en `shots/personajes/final-*.png` (vestuario, ciudad, expedición, combate, jefe y retratos),
   enviadas al usuario.
@@ -133,6 +133,11 @@ cada paso.
   - textos: pase, cofres, recompensas, ficha del Establo y álbum (la colección "Vehículos" pasa a "Navegación", con los
     mismos ids); el ícono `car` ahora es el esquife;
   - galería: `tools/people.html?set=esquifes&part=casco|vela|proa&driver=1`; capturas en `shots/personajes/esquife-*.png`.
+
+- **Ojo con `test-e2e` bajo carga:** con otras sesiones corriendo tests a la vez, las fallas cambian de una corrida a
+  la otra (t2–t6, o el Pase, porque la ficha del martillo no abría y quedaba algo encima). El paso del martillo ahora
+  espera la ficha y, si el toque cae en alguien que pasa, la abre por el bus. Si vuelve a fallar algo suelto, correrlo
+  solo antes de buscar un error.
 
 **Falta:** nada del 4a. Lo integra el coordinador (no se corrió `npm run bump`).
 
