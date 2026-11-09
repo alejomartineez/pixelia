@@ -78,7 +78,8 @@ const M = JSON.parse(readFileSync(join(ROOT, 'assets/audio/manifest.json'), 'utf
   ok(['piano', 'flute', 'pizz', 'timp', 'choir'].every(k => M.instruments[k]?.length), 'están los cinco instrumentos', Object.keys(M.instruments));
   const pn = M.instruments.piano.map(s => s.note);
   ok(pn.every((n, i) => !i || n - pn[i - 1] <= 5), 'el piano tiene una muestra cada pocos semitonos', pn);
-  ok(M.credits.length >= 10 && M.credits.every(c => /CC0/.test(c.license) && c.author && c.author !== '?'), 'los créditos son todos CC0 y tienen autor', M.credits.length);
+  // la voz del narrador (Gemini TTS, La Travesía 3a) se generó para el juego: no es CC0, pero lleva su crédito
+  ok(M.credits.length >= 10 && M.credits.every(c => (/CC0/.test(c.license) || c.name === 'Narrador') && c.author && c.author !== '?'), 'los créditos son todos CC0 (o la voz generada) y tienen autor', M.credits.length);
   const lic = readFileSync(join(ROOT, 'assets/audio/LICENSES.md'), 'utf8');
   ok(files.every(([, f]) => lic.includes(f.file)), 'LICENSES.md anota cada archivo con su origen');
   ok(!/sonniss/i.test(lic) && !/CC.BY|NC|ND/.test(lic.replace(/CC0/g, '')), 'no hay Sonniss ni licencias con atribución obligatoria, NC o ND');

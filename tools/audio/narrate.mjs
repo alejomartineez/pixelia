@@ -4,7 +4,7 @@
 //
 //   node tools/audio/narrate.mjs --samples [--voices Charon,Algenib,Fenrir] [--text "…"]
 //        → muestras de una línea en shots/voice/ para elegir la voz (no toca assets/)
-//   node tools/audio/narrate.mjs --script intro --voice Charon [--only intro/01] [--model …]
+//   node tools/audio/narrate.mjs --script intro [--voice Fenrir] [--only intro/01] [--model …]
 //        → graba las líneas de NARRATION[script] (src/cinema/narration.js) en assets/audio/voice/
 //   node tools/audio/narrate.mjs --models     → lista los modelos con TTS que ofrece la cuenta
 //
@@ -19,6 +19,8 @@ import { spawnSync } from 'node:child_process';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const ENV_FILE = 'C:\\cursor-laburo\\signboox-remotion\\.env';
 const API = 'https://generativelanguage.googleapis.com/v1beta';
+// la voz que eligió el usuario (2026-11-09, entre Charon, Algenib y Fenrir)
+export const VOICE = 'Fenrir';
 const MODELS = ['gemini-3.8-flash-tts', 'gemini-2.5-pro-preview-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-flash-preview-tts'];
 const arg = (k, d = null) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const has = (k) => process.argv.includes(k);
@@ -72,7 +74,7 @@ function wav(pcm, rate = 24000) {
 }
 
 /** Una línea → Buffer .wav. Prueba los modelos en orden hasta que uno responda. */
-export async function speak(text, { voice = 'Charon', model = null, style = STYLE } = {}) {
+export async function speak(text, { voice = VOICE, model = null, style = STYLE } = {}) {
   const models = model ? [model] : MODELS;
   let last = null;
   for (const m of models) {
@@ -140,7 +142,7 @@ async function samples() {
 }
 
 async function record() {
-  const name = arg('--script'), voice = arg('--voice', 'Charon'), only = arg('--only');
+  const name = arg('--script'), voice = arg('--voice', VOICE), only = arg('--only');
   const { NARRATION } = await import(pathToFileURL(join(ROOT, 'src/cinema/narration.js')).href);
   const lines = NARRATION[name];
   if (!lines) throw new Error(`No hay guion "${name}" en src/cinema/narration.js`);

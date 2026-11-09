@@ -176,7 +176,7 @@ durante 1,5 s.
   entusiasme, en rioplatense sobrio.
   - Una indicación suelta delante del texto el modelo la lee en voz alta; el formato de perfil, escena, notas y
     `TRANSCRIPT`, no. Por las dudas, cada toma se transcribe con `gemini-3.8-flash` y se repite si dice de más.
-  - `--samples` deja muestras en `shots/voice/`. `--script intro --voice <voz>` graba en
+  - La voz es **Fenrir** (la eligió el usuario). `--samples` deja muestras en `shots/voice/`; `--script intro` graba en
     `assets/audio/voice/` con `prepare.mjs --voice`: recorta silencios, normaliza a −18 LUFS, mono, AAC 96 kbps y
     entrada `voice/<id>` (categoría `voice`, con su duración) en el manifest.
   - La clave sale de `GEMINI_API_KEY` (entorno o la línea del `.env` de SignBoox) y va solo en el encabezado

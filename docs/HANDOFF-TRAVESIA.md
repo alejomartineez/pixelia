@@ -46,7 +46,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
-| 3a | Motor de cinemáticas, viñetas 2D, narrador Gemini y `audio.track` | trav-3a | hecho, sin bump; **falta que el usuario elija la voz** | rama `claude/trav-3a-4f363c` |
+| 3a | Motor de cinemáticas, viñetas 2D, narrador Gemini y `audio.track` | trav-3a | hecho, sin bump (voz: Fenrir) | rama `claude/trav-3a-4f363c` |
 | 3b | Cinemática "El Quiebre" nueva | — | después del 3a | |
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
@@ -254,13 +254,17 @@ Hecho:
   Con una indicación suelta delante, Gemini la leía en voz alta (salían 30 s); con notas de dirección (perfil, escena,
   notas, TRANSCRIPT) lee solo la línea, y cada toma se transcribe para comprobarlo. Guion en `src/cinema/narration.js`.
   - **Se mandaron 3 muestras al usuario** (Charon, Algenib y Fenrir, `gemini-3.8-flash-tts`) de "Antes del cielo hubo
-    una sola tierra. Y por dentro, estaba viva." (`shots/voice/muestra-*.m4a`). **No se grabó nada más: falta que
-    elija.**
-- **`tools/test-cinema.mjs`** (en `npm test` después de test-sprite2d, y `npm run test:cinema`): 52 ok.
+    una sola tierra. Y por dentro, estaba viva." (`shots/voice/muestra-*.m4a`). **Eligió Fenrir** (2026-11-09):
+    queda como `VOICE` por defecto en `narrate.mjs` y la línea de apertura está grabada en
+    `assets/audio/voice/intro/01.m4a` (7,6 s). LICENSES.md suma la sección "Narrador" (no es CC0; `test-audio` lo
+    acepta solo para ese crédito).
+- **`tools/test-cinema.mjs`** (en `npm test` después de test-sprite2d, y `npm run test:cinema`): 54 ok, con la línea
+  grabada sonando por el bus de voz y la música baja. `test-audio` 72/0.
 
 Queda:
-- Que el usuario elija la voz; el 3b graba sus líneas con `npm run narrate -- --script intro --voice <voz>` después
-  de escribirlas en `narration.js` y las pone en los planos con `subs: [{ at, text, voice: 'intro/NN' }]`.
+- El 3b escribe sus líneas en `narration.js`, las graba con `npm run narrate -- --script intro` (Fenrir por defecto)
+  y las pone en los planos con `subs: [{ at, text, voice: 'intro/NN' }]`.
+- El bump (orquestador) tiene que sumar `assets/audio/voice/` al `sw.js`.
 - El cuadro tendido de `caer` sigue saliendo de girar la figura (se ve en el forcejeo); conviene dibujarlo.
 - Las bestias (lobos, etc.) no tienen sprite.
 - Cuando entre el 4a, los subtítulos y carteles nuevos van con `t()`. Este paso no escribió textos de juego nuevos,

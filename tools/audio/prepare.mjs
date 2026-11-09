@@ -27,6 +27,9 @@ const ff = (args, opts = {}) => {
 };
 const probeDur = (f) => Number(String(spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f]).stdout).trim());
 
+// sección del narrador en LICENSES.md (la arma --voice y también la pasada completa)
+const NARRATOR_MD = (files) => '## Narrador\n- Autor: voz generada con Gemini TTS (Google) para Pixelia, con `tools/audio/narrate.mjs`\n' +
+  '- Licencia: generada para el juego (no es CC0)\n- Archivos: ' + files.map(f => '`' + f + '`').join(', ') + '\n';
 // Voz del narrador (PLAN-TRAVESIA §3a): `--voice <lista.json>` con [{ id: 'voice/intro/01', wav }] que arma
 // narrate.mjs. Saca el silencio de las puntas, normaliza a −18 LUFS (la voz va adelante de la música), pasa a mono y a
 // AAC, y suma cada una al manifest con categoría 'voice' y su duración real (los subtítulos se estiran a eso).
@@ -47,6 +50,9 @@ if (VOICE) {
   }
   if (!manifest.credits.some(c => c.name === 'Narrador')) manifest.credits.push({ name: 'Narrador', author: 'Voz generada con Gemini TTS (Google)', license: 'Generada para Pixelia', url: '' });
   writeFileSync(mpath, JSON.stringify(manifest, null, 1));
+  const lpath = join(OUT, 'LICENSES.md'), voiceFiles = Object.values(manifest.files).filter(f => f.cat === 'voice').map(f => f.file);
+  const lic = readFileSync(lpath, 'utf8').replace(/\n## Narrador\n[\s\S]*?(?=\n## |$)/, '').trimEnd();
+  writeFileSync(lpath, lic + '\n\n' + NARRATOR_MD(voiceFiles));
   process.exit(0);
 }
 if (!SRC || !existsSync(SRC)) { console.error('Falta --src <carpeta de descargas>'); process.exit(1); }
@@ -164,5 +170,6 @@ for (const [k, ids] of Object.entries(by)) {
   const o = ORIGINS[k] || { name: k, author: '?', url: '', license: '?' };
   md += `## ${o.name}\n- Autor: ${o.author}\n- Licencia: ${o.license}\n- Fuente: ${o.url}${o.file && o.file !== o.url ? `\n- Descarga: ${o.file}` : ''}\n- Archivos: ${ids.map(i => '`' + manifest.files[i].file + '`').join(', ')}\n\n`;
 }
+if (by.gemini) md += NARRATOR_MD(by.gemini.map(i => manifest.files[i].file));
 writeFileSync(join(OUT, 'LICENSES.md'), md);
 console.log(`\n${list.length} archivos · ${(total / 1048576).toFixed(2)} MB`);

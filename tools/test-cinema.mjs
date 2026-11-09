@@ -205,6 +205,30 @@ ok(pl.tr === false && pl.trackId === null, 'audio.track de una pista que no est�
 ok(pl.vd === null || typeof pl.vd === 'number', 'audio.voiceDur responde (null sin manifest cargado)');
 ok(pl.vo === null, 'audio.voice sin audio habilitado no suena (el subtítulo sigue con su tiempo)');
 
+// la línea grabada suena por el bus de voz y baja la música (con el audio habilitado)
+// (en una página aparte con la URL en la raíz, como el juego: el sampler pide assets/audio/ relativo)
+const page2 = await browser.newPage();
+page2.on('pageerror', e => errors.push('PAGEERROR: ' + (e.stack || e.message)));
+await page2.goto(BASE + 'tools/cinema.html?v=forcejeo&t=0&k=1', { waitUntil: 'load' });
+await page2.waitForFunction('window.__ready === true', { timeout: 30000 });
+const vz = await page2.evaluate(async () => {
+  history.replaceState(null, '', '/');
+  const { audio } = await import('/src/core/audio.js');
+  audio.unlock();
+  for (let i = 0; i < 50 && audio.debug().ctx !== 'running'; i++) await new Promise(r => setTimeout(r, 100));
+  await audio.prepareVoice(['intro/01']);
+  const dur = audio.voiceDur('intro/01');
+  const v = audio.voice('intro/01');
+  await new Promise(r => setTimeout(r, 400));
+  const ducked = audio.engine.mixer.ducked;
+  v?.stop();
+  return { ctx: audio.debug().ctx, dur, played: !!v, vdur: v?.dur, ducked };
+});
+if (vz.ctx === 'running') {
+  ok(vz.dur > 3 && vz.played && Math.abs(vz.vdur - vz.dur) < 0.3, 'la línea de apertura grabada suena con su duración real', vz);
+  ok(vz.ducked < 0.6, 'mientras habla el narrador la música baja', vz);
+} else console.log('  (sin audio en este Chrome: no se prueba la voz grabada)', vz.ctx);
+
 // ---------- el narrador: la clave nunca se escribe en el repo ----------
 console.log('\nNarrador');
 const narr = readFileSync(join(ROOT, 'tools/audio/narrate.mjs'), 'utf8');

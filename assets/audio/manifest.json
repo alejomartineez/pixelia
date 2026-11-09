@@ -715,6 +715,12 @@
    "cat": "sfx",
    "dur": 0.318,
    "src": "kenney:rpg"
+  },
+  "voice/intro/01": {
+   "file": "voice/intro/01.m4a",
+   "cat": "voice",
+   "dur": 7.6,
+   "src": "gemini"
   }
  },
  "instruments": {
@@ -1006,6 +1012,12 @@
    "author": "Kenney",
    "license": "CC0 1.0",
    "url": "https://kenney.nl/assets/rpg-audio"
+  },
+  {
+   "name": "Narrador",
+   "author": "Voz generada con Gemini TTS (Google)",
+   "license": "Generada para Pixelia",
+   "url": ""
   }
  ]
 }
