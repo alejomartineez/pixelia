@@ -1,8 +1,8 @@
 # Combate táctico por turnos (El Quiebre, paso 5)
 
 Plan: [docs/PLAN-QUIEBRE.md](docs/PLAN-QUIEBRE.md), §C (combate), §I (principios y balance) y §L5 (herramientas y nivel
-del líder). Este documento cubre el **motor puro**. La escena 3D, la interfaz y la casilla `enemigo` van en el paso 5b
-(ver §11).
+del líder). Este documento cubre el **motor puro**. La escena 3D, la interfaz y la casilla `enemigo` van en la segunda parte
+del paso 5 (ver §11).
 
 | Archivo | Qué es |
 |---|---|
@@ -297,7 +297,7 @@ cloneBattle(b)
 - **Guardado.** `b` es JSON puro, con la suerte en `b.rs`. Se guarda tal cual en `state.expedition.active`, por ejemplo
   en `active.battle`, después de cada acción o de cada turno.
 
-## 11. Pendiente para el paso 5b
+## 11. Pendiente para el paso 5, segunda parte
 - **`combat-scene.js`**:
   - cámara ortográfica como `exp-scene.js`;
   - el grupo con `avatarModel`;
