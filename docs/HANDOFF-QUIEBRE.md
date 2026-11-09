@@ -52,7 +52,7 @@ cada paso.
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | hecho e integrado, partes 1 a 4 (clases, nivel del líder, gente con herramienta, Vínculo, Progreso, clase en el onboarding, aspecto por clase, activas y subclase desde la ciudad, curva de clase y cazador en meta) | v36 + v39 + v42 + 1e21545 |
 | 6 | Acto 1 completo + E5–E6 | hecho e integrado: 6a, 6b y 6c (Núcleo, Grieta, jefes, faro, abordaje, ecos de noche con figuras del 4a, E5, E6 con Vera en la primera salida, una sola bestia, dirigible visible) | ed2ba67 (v36) + v39 + 0c2afa8 (v40) |
-| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | combate en metas, herramientas en la ciudad, telemetría y `release:check` integrados (v42). Rebalanceo de economía con varias semillas hecho en la rama `claude/economia-semillas`, sin mergear: todas las metas en las semillas 1–12 (DESIGN-CORE §8.z). Publicar lo hace el usuario | bf95836 (v42) |
+| 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | combate en metas, herramientas, telemetría, `release:check` y economía en verde en las semillas 1 a 12 (§8.z), integrados. Publicar lo hace el usuario (`npm run release:check`, después `npm run release`) | v42 + v44 |
 
 ### Plan nocturno (2026-11-09)
 El usuario se fue a dormir. Dijo, textual: "autorizo o autoriza de la forma que puedas que todo siga como va, sin yo
@@ -250,6 +250,17 @@ tener que dar confirmaciones, le doy el si a todo".
   `test-telemetry` falla siempre en la cadena completa (4 fallas) y pasa solo: conviene mirar si es por el orden.
 - En curso: rebalanceo de economía (quiebre-6a), 5b parte 4 (quiebre-5b-clases) y un recorrido de jugador nuevo con
   capturas e informe en `docs/RECORRIDO-NOCHE.md` (quiebre-4a-detalle).
+
+### Noche, integración 4 (v45)
+- Integrados el 5b-4 (activas y subclase en la ciudad, curva de clases, cazador ≤ 35 %), el rebalanceo de la economía
+  (`sim:economy --seeds 1-12`: todas las metas) y el recorrido de jugador nuevo (`docs/RECORRIDO-NOCHE.md`, 55 capturas
+  en el worktree de personajes, arreglos chicos de HUD, pistas, Construir y combate).
+- En `combat-data.js` chocaron los `expected` de la capitana; quedó el del 5b-4 (líder 7, clases 5/4/3). Con eso
+  sim:combat cumple todas las metas.
+- En curso: "Líder" y el Cazador duplicado en el combate (sesión de clases); el nivel 3 que abre 11 cosas y el turno 1
+  de la bestia con todo marcado (sesión de la Raíz).
+- **Decisión para el usuario:** la escala de interfaz por defecto en PC a 1080p (hoy 100 %; se propone 115–125 %),
+  punto B del informe del recorrido.
 
 ## Decisiones tomadas
 - Plataforma:
