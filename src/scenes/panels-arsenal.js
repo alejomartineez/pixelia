@@ -10,29 +10,33 @@ import * as T from '../core/talents.js';
 import { CLASSES } from '../combat/classes.js';
 import { ELEMENTS } from '../combat/combat-data.js';
 import { openShell } from './panels-common.js';
+import { t } from '../core/i18n.js';
 
-/** Los textos nuevos juntos (paso 2a; el paso de idiomas los pasa a t()). */
+/** Los textos (claves arsenal.* de src/i18n/es.js): getters y funciones, se resuelven al dibujar. */
 const TXT = {
-  title: 'Arsenal',
-  count: (n, max) => `${n}/${max} armas`,
-  all: 'Todas',
-  filter: 'Desarme automático',
-  filterHelp: 'Lo que llegue con esa rareza o menos se desarma solo y da materiales. Lo equipado nunca.',
-  filters: [[-1, 'Apagado'], [0, 'Comunes'], [1, 'Hasta poco comunes'], [2, 'Hasta raras']],
-  who: 'Quién lleva qué', lider: 'Quien lidera',
-  classWeapon: (name) => `La de su clase: ${name}`, noWeapon: 'Sin arma',
-  list: 'Armas', power: 'Fuerza', carriedBy: (who) => `La lleva: ${who}`,
-  gives: 'Da', nothing: 'Nada más que el tipo de arma',
-  stats: { hp: (n) => `+${n} de vida`, atk: (n) => `+${n} de ataque`, armor: (n) => `+${n} de coraza` },
-  traits: 'Rasgos', reroll: 'Rehacer', rerolled: (name) => `Nuevo rasgo: ${name}`, noMoney: 'No alcanza: faltan monedas o materiales',
-  equipTo: 'Equipar a', equipped: (w, who) => `${w}: la lleva ${who}`,
-  unequip: 'Sacar', unequipped: (who) => `${who} quedó con el arma de su clase`,
-  scrap: 'Desarmar', scrapTitle: 'Desarmar el arma', scrapText: (name, mats) => `${name} se desarma y da ${mats}. No se puede deshacer.`,
-  scrapOk: 'Desarmar', scrapNo: 'Cancelar', scrapped: 'Desarmada: los materiales van al depósito', scrapLocked: 'Está equipada: sacala antes',
-  empty: 'Todavía no hay armas. Salen de las peleas ganadas, y los jefes dejan siempre una.',
-  emptyType: 'No hay armas de ese tipo.',
-  less: 'Cerrar',
-  affinity: (el) => `Afín (${el})`,
+  get title() { return t('arsenal.title'); },
+  count: (n, max) => t('arsenal.count', { n, max }),
+  get all() { return t('arsenal.all'); },
+  get filter() { return t('arsenal.filter'); },
+  get filterHelp() { return t('arsenal.filterHelp'); },
+  get filters() { return [[-1, t('arsenal.filter.off')], [0, t('arsenal.filter.common')], [1, t('arsenal.filter.uncommon')], [2, t('arsenal.filter.rare')]]; },
+  get who() { return t('arsenal.who'); }, get lider() { return t('arsenal.leader'); },
+  classWeapon: (name) => t('arsenal.classWeapon', { name }), get noWeapon() { return t('arsenal.noWeapon'); },
+  get list() { return t('arsenal.list'); }, get power() { return t('power.name'); }, carriedBy: (who) => t('arsenal.carriedBy', { who }),
+  get gives() { return t('arsenal.gives'); }, get nothing() { return t('arsenal.nothing'); },
+  stats: { hp: (n) => t('arsenal.stat.hp', { n }), atk: (n) => t('arsenal.stat.atk', { n }), armor: (n) => t('arsenal.stat.armor', { n }) },
+  get traits() { return t('arsenal.traits'); }, get reroll() { return t('arsenal.reroll'); }, rerolled: (name) => t('arsenal.rerolled', { name }),
+  get noMoney() { return t('gear.noMoney'); },
+  get equipTo() { return t('arsenal.equipTo'); }, equipped: (weapon, who) => t('arsenal.equipped', { weapon, who }),
+  get unequip() { return t('arsenal.unequip'); }, unequipped: (who) => t('arsenal.unequipped', { who }),
+  get scrap() { return t('arsenal.scrap'); }, get scrapTitle() { return t('arsenal.scrapTitle'); },
+  scrapText: (name, mats) => t('arsenal.scrapText', { name, mats }),
+  get scrapOk() { return t('arsenal.scrap'); }, get scrapNo() { return t('common.cancel'); },
+  get scrapped() { return t('arsenal.scrapped'); }, get scrapLocked() { return t('arsenal.equippedLocked'); },
+  get empty() { return t('arsenal.empty'); },
+  get emptyType() { return t('arsenal.emptyType'); },
+  get less() { return t('arsenal.close'); },
+  affinity: (el) => t('arsenal.affinity', { el }),
 };
 
 const CSS = `
@@ -97,7 +101,7 @@ export function openArsenal(ctx, params = {}) {
   const { ui, audio, bus } = ctx;
   const { h, esc, costHtml } = ui;
   injectStyle();
-  const sh = openShell(ctx, 'arsenal', { title: TXT.title, ic: '⚔️', sheet: true, className: 'pnl-flex pnl-ars' });
+  const sh = openShell(ctx, 'arsenal', { title: TXT.title, ic: 'sword', sheet: true, className: 'pnl-flex pnl-ars' });
   if (!sh) return;
   const s = ctx.state;
   let type = params.type && A.WEAPON_TYPES[params.type] ? params.type : 'all';
@@ -163,7 +167,7 @@ export function openArsenal(ctx, params = {}) {
     // lo que da
     const st = A.weaponStats(w);
     const gives = [st.hp && TXT.stats.hp(st.hp), st.atk && TXT.stats.atk(st.atk), st.armor && TXT.stats.armor(st.armor)].filter(Boolean);
-    body.append(h('div.ars-gives', { html: `<b>${esc(TXT.gives)}:</b>${esc(gives.length ? gives.join(', ') : TXT.nothing)}.` }));
+    body.append(h('div.ars-gives', { html: `<b>${esc(TXT.gives)}</b>${esc(gives.length ? gives.join(', ') : TXT.nothing)}.` }));
     // rasgos (con rehacer)
     const cost = G.rerollCostOf(w.uid);
     w.traits.forEach((t, i) => {
@@ -172,7 +176,7 @@ export function openArsenal(ctx, params = {}) {
       const rb = h('button.btn.small.ghost', { 'data-reroll': String(i), title: TXT.reroll, html: `<span>${icon('rotate', 14)} ${esc(TXT.reroll)}</span><span class="ars-cost">${costHtml(cost, 13)}</span>` });
       rb.onclick = () => {
         const r = G.reroll(w.uid, i);
-        if (!r.ok) return fail(r, r.why === 'No alcanza' ? TXT.noMoney : r.why);
+        if (!r.ok) return fail(r);
         audio.sfx('buy');
         ui.toast(TXT.rerolled(traitName(r.trait)), { icon: 'rotate', type: 'good' });
       };
@@ -189,7 +193,7 @@ export function openArsenal(ctx, params = {}) {
         const r = G.equip(who, w.uid);
         if (!r.ok) return fail(r);
         audio.sfx('select');
-        ui.toast(TXT.equipped(A.weaponName(w), whoName(who)), { icon: '⚔️' });
+        ui.toast(TXT.equipped(A.weaponName(w), whoName(who)), { icon: 'sword' });
       };
       eq.append(b);
     }
@@ -241,7 +245,7 @@ export function openArsenal(ctx, params = {}) {
     const wg = h('div.ars-who');
     for (const who of A.WIELDERS) wg.append(whoCard(who));
     pane.append(wg);
-    pane.append(h('div.ars-h', { html: `${icon('⚔️', 18)} ${esc(TXT.list)}` }));
+    pane.append(h('div.ars-h', { html: `${icon('sword', 18)} ${esc(TXT.list)}` }));
     const list = h('div.ars-list');
     const eqd = new Set(Object.values(a.equipped));
     const items = a.items.filter(w => type === 'all' || w.type === type)

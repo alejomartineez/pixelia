@@ -247,6 +247,28 @@ function gearUp() {
   for (const w of loose.slice(4)) G.scrap(w.uid);
   // todos los que pelean llevan algo mejor que una común: lo que caiga común se desarma solo
   if (a.filter < 0 && who.every(w => (A.equippedOn(s, w)?.rarity || 0) >= 1)) G.setFilter(0);
+  rerollUp(who);
+}
+// Rehacer rasgos (PLAN-TRAVESIA: lo farmeado tiene dónde ir): en un arma equipada poco común o mejor, el rasgo que no
+// es de los que el bot busca se rehace. Una vez por día y hasta 3 por arma; paga con lo mismo que el monumento
+// (mineral y madera), como haría quien juega. --no-reroll lo apaga.
+const REROLL = !args.includes('--no-reroll');
+const REROLL_WANT = new Set(['temple', 'hallazgo', 'vida2', 'coraza', 'afinidad']);
+const rerollStats = { n: 0, coins: 0, mats: 0, day: -1, by: new Map() };
+function rerollUp(who) {
+  const day = Math.floor((T - day0) / DAY);
+  if (!REROLL || rerollStats.day === day) return;
+  for (const w of who) {
+    const x = A.equippedOn(s, w);
+    if (!x || x.rarity < 1 || (rerollStats.by.get(x.uid) || 0) >= 3) continue;
+    const idx = x.traits.findIndex(t => !REROLL_WANT.has(t.id));
+    if (idx < 0) continue;
+    const r = G.reroll(x.uid, idx);
+    if (!r.ok) continue;
+    rerollStats.n++; rerollStats.day = day; rerollStats.coins += r.cost.coins; rerollStats.mats += Object.values(r.cost.mats).reduce((p, n) => p + n, 0);
+    rerollStats.by.set(x.uid, (rerollStats.by.get(x.uid) || 0) + 1);
+    return;
+  }
 }
 // avances por rato (meta "al menos un avance por rato"): subir de Nivel, una maestría (arma u objeto) o un arma nueva
 const advLog = [];
@@ -1059,11 +1081,18 @@ const autoAvg = prepSeen.length ? prepSeen.reduce((a, x) => a + x.auto, 0) / pre
 const real = threatLog.filter(x => x.id !== 'sim');
 const dmgAvg = real.length ? real.reduce((a, x) => a + x.damaged, 0) / real.length : null;
 // avances por rato (paso 2a): días 1–60
-const ADV = advLog.filter(x => x.day < 60);
-const advAny = ADV.filter(x => x.level + x.mastery + x.item + x.drop > 0).length;
+// La meta es por rato de 20 min (PLAN-TRAVESIA.md, 2a): los ratos seguidos se juntan hasta sumar 20 min (con 2 ratos de
+// 10 min, un bloque por día; con --min 20, cada rato). La tasa por rato suelto se muestra aparte.
+const ADV_MIN = 20;
+const ADV1 = advLog.filter(x => x.day < 60);
+const ADV = [];
+{ let cur = null; for (const x of ADV1) { if (!cur) cur = { day: x.day, min: 0, level: 0, mastery: 0, item: 0, drop: 0, fights: 0 }; for (const k of ['level', 'mastery', 'item', 'drop', 'fights']) cur[k] += x[k] || 0; cur.min += SESSION_MIN; if (cur.min >= ADV_MIN) { ADV.push(cur); cur = null; } } }
+const anyAdv = (x) => x.level + x.mastery + x.item + x.drop > 0;
+const advAny = ADV.filter(anyAdv).length;
 const advPct = pct(advAny, ADV.length);
+const adv1Pct = pct(ADV1.filter(anyAdv).length, ADV1.length);
 const advBy = (k) => f1(pct(ADV.filter(x => x[k] > 0).length, ADV.length));
-if (args.includes('--adv') && !JSON_OUT) { console.log(`avances por rato (+ con avance, − sin; peleas; c corta, n normal), ${advBy('fights')}% de los ratos con pelea:`, Array.from({ length: 60 }, (_, d) => ADV.filter(x => x.day === d).map(x => (x.level + x.mastery + x.item + x.drop > 0 ? '+' : '-') + (x.fights || 0) + (x.ex || '')).join('/')).join(' ')); }
+if (args.includes('--adv') && !JSON_OUT) { console.log(`avances por rato (+ con avance, − sin; peleas; c corta, n normal), ${advBy('fights')}% de los ratos con pelea:`, Array.from({ length: 60 }, (_, d) => ADV1.filter(x => x.day === d).map(x => (x.level + x.mastery + x.item + x.drop > 0 ? '+' : '-') + (x.fights || 0) + (x.ex || '')).join('/')).join(' ')); }
 const summary = {
   seed: SEED, sessions: NSESS, days: DAYS, advPct,
   ratioPct: pct(ratioOk, S2.filter(x => x.ratio != null).length), ratioLow, ratioHigh,
@@ -1159,7 +1188,7 @@ const goals = [
   // L1: exprimir sube la Grieta y con ella la fuerza o la cantidad de amenazas (Σ g de cada aviso, o más avisos). El daño
   // que queda depende de cómo se defiende quien juega (con el doble de bonus se defiende mejor): se muestra, no se pide.
   ['Raíz', raiz3 ? (() => { const [a, , c] = raiz3.map(x => x?.raiz); return !!(a && c && c.bonus > a.bonus && c.grieta > a.grieta && ((c.gSum || 0) > (a.gSum || 0) || c.threats > a.threats)); })() : null, `exprimir da más bonus y trae más Grieta y amenazas más fuertes o más seguido que sellar: ${raiz3 ? raiz3.map(x => `${x?.raiz?.mode} bonus ${x?.raiz?.bonus} · Grieta ${f1(x?.raiz?.grieta ?? 0)} · amenazas ${x?.raiz?.threats} (fuerza de la Grieta +${x?.raiz?.gSum || 0}, dañados ${x?.raiz?.damaged})`).join(' | ') : '(sin correr)'}`],
-  ['Avance', ADV.length ? advPct >= 90 : null, `al menos un avance por rato (subir de Nivel, una maestría de arma u objeto o un arma nueva; días 1–60) en ≥ 90 %: ${f1(advPct)}% (${ADV.length - advAny} ratos sin nada · con Nivel ${advBy('level')}%, maestría de arma ${advBy('mastery')}%, de objeto ${advBy('item')}%, arma ${advBy('drop')}%)`],
+  ['Avance', ADV.length ? advPct >= 90 : null, `al menos un avance cada ${ADV_MIN} min de juego (subir de Nivel, una maestría de arma u objeto o un arma nueva; días 1–60) en ≥ 90 %: ${f1(advPct)}% (${ADV.length - advAny} de ${ADV.length} sin nada · con Nivel ${advBy('level')}%, maestría de arma ${advBy('mastery')}%, de objeto ${advBy('item')}%, arma ${advBy('drop')}% · por rato de ${SESSION_MIN} min ${f1(adv1Pct)}%)`],
   ['Otros', eraAll.length ? planosRunPct <= 30 : null, `los planos son lo último que falta para un cambio de época en ≤ 30% de las corridas: ${f1(planosRunPct)}% de ${runsAll.length} corrida(s) (${eraAll.filter(e => e.planosLast).length} de ${eraAll.length} cambios)`],
 ];
 console.log(`\nMetas de balance (DESIGN-CORE.md §8) · ${HOURS.length} ratos/día · ${DAYS} días · semilla ${SEED}${RUNS ? ` (+${RUNS} corridas)` : ''}`);
@@ -1170,6 +1199,7 @@ console.log(`  (info) en cada rango (líder · clases · herramientas)${NO_TOOLS
 {
   const a = A.arsenalState(s), eq = A.WIELDERS.map(w => [w, A.equippedOn(s, w)]).filter(([, w]) => w);
   console.log(`  (info) armas: ${f1(weaponsIn / d60)} por día (${weaponsIn} en ${d60} días; ${fightStats.played} peleas jugadas y ${fightStats.quick} resueltas rápido) · en el arsenal ${a.items.length}, filtro ${a.filter} · equipadas: ${eq.map(([w, x]) => `${w} ${x.type} ${A.RARITIES[x.rarity].id}`).join(', ') || '-'}`);
+  console.log(`  (info) rasgos rehechos: ${rerollStats.n} (${f1(rerollStats.mats / d60)} materiales y ${Math.round(rerollStats.coins / d60)} monedas por día)`);
   console.log(`  (info) maestría más alta: ${masteryLog.join(' · ')} · por tipo al final: ${Object.entries(a.mastery).map(([k, x]) => `${k} ${A.masteryLevel(x)}`).join(' · ')} · objetos: ${Object.entries(a.itemMastery).map(([k, x]) => `${k} ${A.masteryLevel(x, A.ITEM_MASTERY_MAX)}`).join(' · ') || '-'}`);
   const tp = TL.talentPoints(s);
   console.log(`  (info) talentos: ${tp.spent}/${tp.total} puntos (${Object.entries(tp.byBranch).map(([b, n]) => `${b} ${n}`).join(' · ')}), paragon ${tp.paragon.spent}`);

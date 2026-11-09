@@ -1,12 +1,17 @@
 // Talentos (La Travesía, paso 2a): un punto por cada Nivel ganado, en un árbol corto de 3 ramas, y puntos de paragon
 // pasado el Nivel 50. Puro: sin DOM, sin store ni bus. El estado vive en state.talents = { ranks: { id: n },
 // paragon: { mando: n, … } }; los puntos se calculan del Nivel (no se guardan). Diseño: DESIGN-COMBAT.md §18.3.
-import { leaderLevelFromXp, paragonPoints } from '../combat/classes.js';
+import { leaderLevelFromXp, paragonPoints, NIVEL } from '../combat/classes.js';
+import { t, tn } from './i18n.js';
 
+/** Los textos (claves talents.* de src/i18n/es.js): getters y funciones, para que salgan en el idioma de ese momento. */
 export const TXT = {
-  noPoints: 'No te quedan puntos', maxed: 'Ya está al máximo', needBranch: (n, b) => `Pide ${n} puntos en ${b}`,
-  noParagon: 'Los puntos de paragon llegan con el árbol lleno y pasado el Nivel 50',
+  get noPoints() { return t('talents.noPoints'); }, get maxed() { return t('talents.maxed'); },
+  needBranch: (n, b) => tn('talents.needBranch', n, { branch: b }),
+  get noParagon() { return t('talents.noParagon', { max: NIVEL.max }); },
 };
+/** Getter de texto (enumerable) que se resuelve al leerlo: las tablas se arman antes de elegir idioma. */
+const textProp = (o, field, key) => Object.defineProperty(o, field, { get: () => t(key), enumerable: true, configurable: true });
 
 /**
  * Ramas. Cada talento: max rangos, need = puntos que pide gastados antes en la rama, y lo que da por rango.
@@ -14,32 +19,38 @@ export const TXT = {
  * maestría, hallazgo de armas) y el Taller (desarmar, rehacer rasgos, rareza del arma del jefe).
  */
 export const BRANCHES = {
-  mando: { id: 'mando', name: 'Mando', text: 'Quien lidera y cómo lo sigue el grupo.', paragon: { name: 'Temple', text: '+2 % de maestría por punto.', mastery: 0.02 } },
-  supervivencia: { id: 'supervivencia', name: 'Supervivencia', text: 'Aguantar la travesía y volver.', paragon: { name: 'Aguante', text: '+1 de vida a quien lidera cada 5 puntos.', hpEvery: 5 } },
-  oficio: { id: 'oficio', name: 'Oficio', text: 'Sacarle provecho a lo que se trae.', paragon: { name: 'Ojo de hallazgo', text: '+0,5 % de chance de arma por punto (tope 15 %).', find: 0.005, findMax: 0.15 } },
+  mando: { id: 'mando', paragon: { mastery: 0.02 } },
+  supervivencia: { id: 'supervivencia', paragon: { hpEvery: 5 } },
+  oficio: { id: 'oficio', paragon: { find: 0.005, findMax: 0.15 } },
 };
+// talents.branch.<id>.name, .text, .paragon y .paragonText
+for (const B of Object.values(BRANCHES)) {
+  textProp(B, 'name', `talents.branch.${B.id}.name`); textProp(B, 'text', `talents.branch.${B.id}.text`);
+  textProp(B.paragon, 'name', `talents.branch.${B.id}.paragon`); textProp(B.paragon, 'text', `talents.branch.${B.id}.paragonText`);
+}
 export const BRANCH_IDS = Object.keys(BRANCHES);
 export const TALENTS = {
   // Mando
-  mando_vida: { id: 'mando_vida', branch: 'mando', name: 'Presencia', max: 3, need: 0, text: '+1 de vida a quien lidera por rango.', lider: { hp: 1 } },
-  mando_maestria: { id: 'mando_maestria', branch: 'mando', name: 'Escuela', max: 5, need: 0, text: '+10 % de maestría de armas por rango.', mastery: 0.1 },
-  mando_voz: { id: 'mando_voz', branch: 'mando', name: 'Voz de mando', max: 3, need: 4, text: '+1 de vida a cada integrante por rango.', squad: { hp: 1 } },
-  mando_filo: { id: 'mando_filo', branch: 'mando', name: 'Filo', max: 1, need: 8, text: '+1 de ataque a quien lidera.', lider: { atk: 1 } },
-  mando_muro: { id: 'mando_muro', branch: 'mando', name: 'Línea firme', max: 1, need: 12, text: 'Las paredes y barreras de quien lidera duran 1 turno más.', lider: { flags: { wallPlus: 1 } } },
+  mando_vida: { id: 'mando_vida', branch: 'mando', max: 3, need: 0, lider: { hp: 1 } },
+  mando_maestria: { id: 'mando_maestria', branch: 'mando', max: 5, need: 0, mastery: 0.1 },
+  mando_voz: { id: 'mando_voz', branch: 'mando', max: 3, need: 4, squad: { hp: 1 } },
+  mando_filo: { id: 'mando_filo', branch: 'mando', max: 1, need: 8, lider: { atk: 1 } },
+  mando_muro: { id: 'mando_muro', branch: 'mando', max: 1, need: 12, lider: { flags: { wallPlus: 1 } } },
   // Supervivencia
-  sup_animo: { id: 'sup_animo', branch: 'supervivencia', name: 'Buen ánimo', max: 2, need: 0, text: '+1 de ánimo máximo en la travesía por rango.', morale: 1 },
-  sup_cuero: { id: 'sup_cuero', branch: 'supervivencia', name: 'Cuero duro', max: 3, need: 0, text: '+1 de vida a quien lidera por rango.', lider: { hp: 1 } },
-  sup_vigia: { id: 'sup_vigia', branch: 'supervivencia', name: 'Vigía', max: 1, need: 4, text: 'Se ve la intención de un enemigo más.', lider: { flags: { intentPlus: 1 } } },
-  sup_curas: { id: 'sup_curas', branch: 'supervivencia', name: 'Vendas limpias', max: 2, need: 5, text: 'Las curas de quien lidera dan +1 por rango.', lider: { flags: { healPlus: 1 } } },
-  sup_coraza: { id: 'sup_coraza', branch: 'supervivencia', name: 'Coraza', max: 1, need: 10, text: '+1 de coraza a quien lidera.', lider: { armor: 1 } },
-  sup_botin: { id: 'sup_botin', branch: 'supervivencia', name: 'Mochila llena', max: 1, need: 12, text: 'Al ganar una pelea, 1 material más.', lider: { flags: { lootWin: 1 } } },
+  sup_animo: { id: 'sup_animo', branch: 'supervivencia', max: 2, need: 0, morale: 1 },
+  sup_cuero: { id: 'sup_cuero', branch: 'supervivencia', max: 3, need: 0, lider: { hp: 1 } },
+  sup_vigia: { id: 'sup_vigia', branch: 'supervivencia', max: 1, need: 4, lider: { flags: { intentPlus: 1 } } },
+  sup_curas: { id: 'sup_curas', branch: 'supervivencia', max: 2, need: 5, lider: { flags: { healPlus: 1 } } },
+  sup_coraza: { id: 'sup_coraza', branch: 'supervivencia', max: 1, need: 10, lider: { armor: 1 } },
+  sup_botin: { id: 'sup_botin', branch: 'supervivencia', max: 1, need: 12, lider: { flags: { lootWin: 1 } } },
   // Oficio
-  of_desarme: { id: 'of_desarme', branch: 'oficio', name: 'Desarmador', max: 3, need: 0, text: 'Desarmar da 1 material más por rango.', scrap: 1 },
-  of_hallazgo: { id: 'of_hallazgo', branch: 'oficio', name: 'Buen ojo', max: 3, need: 0, text: '+3 % de chance de que una pelea deje un arma por rango.', find: 0.03 },
-  of_rehacer: { id: 'of_rehacer', branch: 'oficio', name: 'Mano de herrero', max: 3, need: 4, text: 'Rehacer un rasgo cuesta 10 % menos por rango.', reroll: 0.1 },
-  of_taller: { id: 'of_taller', branch: 'oficio', name: 'Práctica', max: 3, need: 4, text: '+20 % de maestría de los objetos del Taller por rango.', itemMastery: 0.2 },
-  of_jefe: { id: 'of_jefe', branch: 'oficio', name: 'Botín de jefe', max: 1, need: 12, text: 'El arma de un jefe sale rara como mínimo.', bossRarity: 2 },
+  of_desarme: { id: 'of_desarme', branch: 'oficio', max: 3, need: 0, scrap: 1 },
+  of_hallazgo: { id: 'of_hallazgo', branch: 'oficio', max: 3, need: 0, find: 0.03 },
+  of_rehacer: { id: 'of_rehacer', branch: 'oficio', max: 3, need: 4, reroll: 0.1 },
+  of_taller: { id: 'of_taller', branch: 'oficio', max: 3, need: 4, itemMastery: 0.2 },
+  of_jefe: { id: 'of_jefe', branch: 'oficio', max: 1, need: 12, bossRarity: 2 },
 };
+for (const T of Object.values(TALENTS)) { textProp(T, 'name', `talents.${T.id}.name`); textProp(T, 'text', `talents.${T.id}.text`); }
 export const TALENT_IDS = Object.keys(TALENTS);
 /** Puntos que da el árbol entero (el resto, y el paragon, van al paragon de cada rama). */
 export const TREE_POINTS = TALENT_IDS.reduce((a, id) => a + TALENTS[id].max, 0);

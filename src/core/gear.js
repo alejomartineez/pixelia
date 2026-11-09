@@ -10,6 +10,7 @@ import { powerOf } from './power.js';
 import { classesState, classCap } from './classes.js';
 import { CLASS_IDS, toClass } from '../combat/classes.js';
 import { ENCOUNTERS } from '../combat/combat-data.js';
+import { t } from './i18n.js';
 
 const S = () => store.state;
 /** Veta de cada región (el 2c la pone en el mapa): la afinidad que más sale en sus armas. */
@@ -108,7 +109,7 @@ export function reroll(uid, idx, state = S()) {
   const w = A.weaponByUid(state, uid);
   if (!w || !w.traits[idx]) return { ok: false, why: A.TXT.noTrait };
   const cost = rerollCostOf(uid, state);
-  if (!store.spend(cost, 'rehacer')) return { ok: false, why: 'No alcanza', cost };
+  if (!store.spend(cost, 'rehacer')) return { ok: false, why: t('gear.noMoney'), noMoney: true, cost };
   const r = A.rerollTrait(state, uid, idx, rng);
   store.inc('traitsRerolled');
   changed();

@@ -90,6 +90,13 @@ const PASSED = {
   'src/core/ui.js': [],
   'src/scenes/city-ui.js': [],
   'src/scenes/city.js': [],
+  // 2a: arsenal, talentos, maestría y Fuerza (panels-progress.js todavía no: solo sus secciones del 2a están en claves;
+  // el resto, rango, clases de la ciudad, gente y mundo, se pasa en el 4b)
+  'src/core/arsenal.js': ['leñador'],   // id de una técnica (arsenal.tech.leñador.*), no es texto
+  'src/core/talents.js': [],
+  'src/core/gear.js': [],
+  'src/core/power.js': [],
+  'src/scenes/panels-arsenal.js': [],
 };
 console.log('Archivos pasados a claves');
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');

@@ -22,31 +22,39 @@ import { eraDef } from '../core/data.js';
 import { PAGES, ELEMENTS } from '../story/story-data.js';
 import * as RZ from '../core/raiz.js';
 import { openClassPicker, openKitPicker } from './class-pick.js';
+import { t, tn } from '../core/i18n.js';
 
-/** Los textos nuevos juntos (paso 2a; el paso de idiomas los pasa a t()). */
+/**
+ * Los textos de las secciones del 2a (claves progress.*, talents.*, power.* y arsenal.* de src/i18n/es.js): getters y
+ * funciones, se resuelven al dibujar. El resto del archivo (rango, clases de la ciudad, gente, mundo) todavía tiene el
+ * texto escrito en el código: se pasa a claves en el 4b.
+ */
 const TXT = {
-  nav: { nivel: 'Nivel', talentos: 'Talentos', maestrias: 'Maestrías', fuerza: 'Fuerza', ciudad: 'La ciudad' },
-  nivel: 'Nivel', nivelMax: 'Nivel máximo', combat: (n) => `nivel de combate ${n}`,
-  nextKey: (lv, txt) => `En el nivel ${lv}: ${txt}.`,
-  xpFrom: 'Experiencia de salidas, peleas y amenazas aguantadas.',
-  paragon: 'Paragon', paragonText: (n) => `${n} ${n === 1 ? 'punto ganado' : 'puntos ganados'} pasado el Nivel ${NIVEL.max}. Uno cada ${NIVEL.paragonStep} de experiencia.`,
-  arsenal: 'Arsenal',
-  talents: 'Talentos', free: (n) => `${n} ${n === 1 ? 'punto libre' : 'puntos libres'}`,
-  talentsHelp: (tot) => `Un punto por cada Nivel ganado. El árbol entero pide ${tot}; lo que pase va al paragon.`,
-  spent: (n) => `${n} ${n === 1 ? 'punto' : 'puntos'}`,
-  learn: 'Subir', reset: 'Devolver puntos', resetTitle: 'Devolver los puntos',
-  resetText: 'Vuelven todos los puntos de talento y de paragon para repartirlos de nuevo. Es gratis.',
-  resetOk: 'Devolver', resetNo: 'Cancelar', resetDone: 'Puntos devueltos',
-  paragonFree: (n) => `${n} de paragon`, paragonAdd: '+1',
-  paragonLocked: `Pasado el Nivel ${NIVEL.max}, o con el árbol lleno, llegan los puntos de paragon.`,
+  get nav() { return { nivel: t('progress.nav.nivel'), talentos: t('progress.nav.talentos'), maestrias: t('progress.nav.maestrias'), fuerza: t('progress.nav.fuerza'), ciudad: t('progress.nav.ciudad') }; },
+  get nivel() { return t('progress.level'); }, get nivelMax() { return t('progress.levelMax'); }, combat: (n) => t('progress.combat', { n }),
+  nextKey: (lv, text) => t('progress.nextKey', { lv, text }),
+  get xpFrom() { return t('progress.xpFrom'); },
+  get noClass() { return t('progress.noClass'); }, get noClassYet() { return t('progress.noClassYet'); },
+  get pickClass() { return t('progress.pickClass'); }, get changeClass() { return t('progress.changeClass'); },
+  get abilities() { return t('progress.abilities'); },
+  get paragon() { return t('progress.paragon'); }, paragonText: (n) => tn('progress.paragonText', n, { max: NIVEL.max, step: NIVEL.paragonStep }),
+  get arsenal() { return t('arsenal.title'); },
+  get talents() { return t('progress.nav.talentos'); }, free: (n) => tn('progress.free', n),
+  talentsHelp: (tot) => t('progress.talentsHelp', { n: tot }),
+  spent: (n) => tn('progress.spent', n),
+  get learn() { return t('progress.learn'); }, get reset() { return t('progress.reset'); }, get resetTitle() { return t('progress.resetTitle'); },
+  get resetText() { return t('progress.resetText'); },
+  get resetOk() { return t('progress.resetOk'); }, get resetNo() { return t('common.cancel'); }, get resetDone() { return t('progress.resetDone'); },
+  paragonFree: (n) => t('progress.paragonFree', { n }), paragonAdd: '+1',
+  get paragonLocked() { return t('progress.paragonLocked', { max: NIVEL.max }); },
   learned: (name, r) => `${name} ${r}`,
-  mastery: 'Maestrías', masteryHelp: 'Cada pelea suma maestría al tipo de arma de cada uno que pelea.',
-  weapons: 'Armas', items: 'Objetos del Taller', itemsHelp: 'Suben al usarlos en las peleas.',
-  next: (lv, txt) => `En maestría ${lv}: ${txt}`, maxed: 'Maestría completa', uses: 'La usa quien lidera',
-  itemNext: (lv) => `En maestría ${lv}: +1 a su efecto`, itemFrame: (lv) => `En maestría ${lv}: marco del objeto`,
-  power: 'Fuerza', powerHelp: 'Con el grupo que sale por defecto en la Expedición. Los enemigos se ajustan a la Fuerza recomendada de cada pelea.',
-  leader: 'Quien lidera', tools: 'Herramientas de la gente', nivelPart: (n) => `Nivel ${n}`,
-  noParty: 'Sin grupo todavía: sale quien lidera.',
+  get mastery() { return t('progress.nav.maestrias'); }, get masteryHelp() { return t('progress.masteryHelp'); },
+  get weapons() { return t('progress.weapons'); }, get items() { return t('progress.items'); }, get itemsHelp() { return t('progress.itemsHelp'); },
+  next: (lv, text) => t('progress.next', { lv, text }), get maxed() { return t('progress.maxed'); }, get uses() { return t('progress.uses'); },
+  itemNext: (lv) => t('progress.itemNext', { lv }), itemFrame: (lv) => t('progress.itemFrame', { lv }),
+  get power() { return t('power.name'); }, get powerHelp() { return t('power.help'); },
+  get leader() { return t('arsenal.leader'); }, get tools() { return t('power.tools'); }, nivelPart: (n) => t('power.nivel', { n }),
+  get noParty() { return t('power.noParty'); }, get noClassLow() { return t('power.noClass'); },
 };
 
 const CSS = `
@@ -175,14 +183,14 @@ export function progressPane(ctx, rerender, opts = {}) {
   // ---------- Nivel (y quien lidera) ----------
   sec('star', TXT.nav.nivel, 'nivel');
   const li = K.leaderInfo(s);
-  const cls = li.cls ? CLASSES[li.cls].name : 'Sin clase';
+  const cls = li.cls ? CLASSES[li.cls].name : TXT.noClass;
   const sub = li.sub ? SUBCLASSES[li.sub].name : '';
   const nextKey = li.next ? TXT.nextKey(li.next.level, li.next.text) : '';
   const lead = h('div.pg-hero', { 'data-pg': 'lider', 'data-level': String(li.level), 'data-cls': li.cls || '', html:
     `<div class="pg-big"><small>${esc(TXT.nivel)}</small><b>${li.level}</b></div>`
-    + `<b class="pg-who">${esc(s.player?.name || 'Quien lidera')} · ${esc(cls)}${sub ? ' · ' + esc(sub) : ''} <small>(${esc(TXT.combat(li.combat))})</small></b>`
+    + `<b class="pg-who">${esc(s.player?.name || TXT.leader)} · ${esc(cls)}${sub ? ' · ' + esc(sub) : ''} <small>(${esc(TXT.combat(li.combat))})</small></b>`
     + (li.xp.max ? `<small>${esc(TXT.nivelMax)}.</small>` : bar(li.xp.into, li.xp.need, `${fmt(li.xp.into)}/${fmt(li.xp.need)}`))
-    + `<small>${li.cls ? '' : 'Todavía no tiene clase: elegila acá abajo. '}${esc(TXT.xpFrom)}</small>` });
+    + `<small>${li.cls ? '' : esc(TXT.noClassYet) + ' '}${esc(TXT.xpFrom)}</small>` });
   if (nextKey) lead.append(h('div.pg-key', { html: `${icon('sparkle', 18)}<span>${esc(nextKey)}</span>` }));
   if (li.xp.max) {
     lead.append(h('div.pg-key.paragon', { 'data-pg': 'paragon', html: `${icon('star', 18)}<span>${esc(TXT.paragon)} ${li.xp.paragon}</span>`
@@ -191,11 +199,11 @@ export function progressPane(ctx, rerender, opts = {}) {
   }
   // elegir o cambiar la clase (paso 5b, tercera parte), las activas y la subclase (cuarta parte) y el Arsenal (2a)
   const la = h('div.pg-acts');
-  const cb = h('button.btn.small' + (li.cls ? '' : '.primary'), { 'data-pick-class': '1', html: `${icon('people', 18)} ${li.cls ? 'Cambiar clase' : 'Elegir clase'}` });
+  const cb = h('button.btn.small' + (li.cls ? '' : '.primary'), { 'data-pick-class': '1', html: `${icon('people', 18)} ${esc(li.cls ? TXT.changeClass : TXT.pickClass)}` });
   cb.onclick = async () => { audio.sfx('tap'); if (await openClassPicker(ctx)) rerender(); };
   la.append(cb);
   if (li.cls) {
-    const kb = h('button.btn.small', { 'data-kit': 'leader', html: `${icon('star', 18)} Habilidades` });
+    const kb = h('button.btn.small', { 'data-kit': 'leader', html: `${icon('star', 18)} ${esc(TXT.abilities)}` });
     kb.onclick = async () => { audio.sfx('tap'); if (await openKitPicker(ctx, 'leader')) rerender(); };
     la.append(kb);
   }
@@ -296,7 +304,7 @@ export function progressPane(ctx, rerender, opts = {}) {
     const pw = G.currentPower(party, s, { tools: PE.toolLevels(s) });
     const lw = A.equippedOn(s, 'lider');
     const items = [
-      [`${esc(TXT.leader)} <small>· ${esc(li.cls ? CLASSES[li.cls].name : 'sin clase')}${lw ? ' · ' + esc(A.weaponName(lw)) : ''}</small>`, Math.round(pw.leader)],
+      [`${esc(TXT.leader)} <small>· ${esc(li.cls ? CLASSES[li.cls].name : TXT.noClassLow)}${lw ? ' · ' + esc(A.weaponName(lw)) : ''}</small>`, Math.round(pw.leader)],
       ...pw.members.map(m => { const w = A.equippedOn(s, m.cls); return [`${esc(CLASSES[m.cls]?.name || m.cls)}${w ? ` <small>· ${esc(A.weaponName(w))}</small>` : ''}`, Math.round(m.power)]; }),
       [esc(TXT.tools), Math.round(pw.tools)],
       [esc(TXT.nivelPart(pw.nivel)), POWER_W.nivel * pw.nivel],
@@ -390,7 +398,7 @@ export function progressPane(ctx, rerender, opts = {}) {
 
   function arsenalButton(primary = false) {
     const n = A.arsenalState(s).items.length;
-    const b = h('button.btn.small' + (primary ? '.sky' : ''), { 'data-open-arsenal': '1', html: `${icon('⚔️', 18)} ${esc(TXT.arsenal)}${n ? ` <small>(${n})</small>` : ''}` });
+    const b = h('button.btn.small' + (primary ? '.sky' : ''), { 'data-open-arsenal': '1', html: `${icon('sword', 18)} ${esc(TXT.arsenal)}${n ? ` <small>(${n})</small>` : ''}` });
     b.onclick = async () => { audio.sfx('tap'); await ctx.openPanel('arsenal'); rerender(); };
     return b;
   }

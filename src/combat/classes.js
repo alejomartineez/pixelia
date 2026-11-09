@@ -160,13 +160,12 @@ export const NIVEL = {
   max: 50,
   /**
    * Experiencia que pide pasar del Nivel n al n + 1: la curva del nivel de la ciudad de antes del v7 (40·n^1,55 + 20)
-   * con exponente 1,6 desde el balance del 2a (sim:economy): con la experiencia de las peleas sumada, el Nivel 18
-   * llegaba el día 15–16 y el rango 5 antes del día 18. En total pide 7 % más hasta el Nivel 7, 13 % más hasta el 18
-   * y 15 % más hasta el 26.
+   * con exponente 1,58 desde el balance del 2a (sim:economy, 36 semillas): con fightRate 2 y la curva 1,6 el Nivel
+   * iba un nivel adelante los días 2–7 y adelantaba monumento, Pase y rango 5.
    */
-  need: (n) => Math.round(40 * Math.pow(n, 1.6) + 20),
+  need: (n) => Math.round(40 * Math.pow(n, 1.58) + 20),
   /** Las peleas, salidas y amenazas daban xp en la escala chica del líder: se multiplica al pasar al Nivel. */
-  fightRate: 2,
+  fightRate: 1,
   /** Experiencia por punto de paragon pasado el Nivel 50. */
   paragonStep: 8000,
   /** Niveles que quedan para los actos 2 a 4 (otro elemento y habilidades del equipo). */

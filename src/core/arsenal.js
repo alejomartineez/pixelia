@@ -13,12 +13,26 @@
 import { MASTERY_STEPS, REGION_MAT_IDS } from './data.js';
 import { ITEM_IDS, ELEMENTS } from '../combat/combat-data.js';
 import { CLASS_IDS } from '../combat/classes.js';
+import { t } from './i18n.js';
 
-/** Los textos nuevos juntos (el paso 4a los pasa a t()). */
+/** Los textos (claves arsenal.* de src/i18n/es.js): getters, para que salgan en el idioma de ese momento. */
 export const TXT = {
-  noWeapon: 'Sin arma', locked: 'Esa clase no usa ese tipo de arma', notFound: 'No está en el arsenal',
-  equipped: 'Está equipada: sacala antes', noTrait: 'Ese rasgo no existe',
+  get noWeapon() { return t('arsenal.noWeapon'); }, get locked() { return t('arsenal.locked'); },
+  get notFound() { return t('arsenal.notFound'); }, get equipped() { return t('arsenal.equippedLocked'); },
+  get noTrait() { return t('arsenal.noTrait'); },
 };
+/**
+ * Pone getters de texto en cada dato de una tabla (name → `${prefix}.${id}.name`, …): las tablas se arman al cargar el
+ * módulo, antes de elegir idioma, así que el texto se resuelve al leerlo. Enumerables: un spread copia el texto.
+ */
+function withText(table, prefix, fields = { name: 'name', text: 'text' }) {
+  for (const o of Object.values(table)) {
+    for (const [field, sub] of Object.entries(fields)) {
+      Object.defineProperty(o, field, { get: () => t(sub ? `${prefix}.${o.id}.${sub}` : `${prefix}.${o.id}`), enumerable: true, configurable: true });
+    }
+  }
+  return table;
+}
 
 // ---------- tipos, rarezas y rasgos ----------
 /**
@@ -26,35 +40,38 @@ export const TXT = {
  * (el líder lleva cualquiera). techs: la técnica propia que abre la maestría en el 3, el 6 y el 10.
  */
 export const WEAPON_TYPES = {
-  espada: { id: 'espada', name: 'Espada', gear: 'espada', classes: ['guerrero', 'saqueador'], techs: [
-    { id: 'guardia_alta', name: 'Guardia alta', text: 'Los del grupo que están a su lado reciben 1 menos.', flag: 'guardAdj' },
-    { id: 'estocada', name: 'Estocada', text: '+1 de ataque.', atk: 1 },
-    { id: 'parada', name: 'Parada', text: '+1 de coraza.', armor: 1 }] },
-  hacha: { id: 'hacha', name: 'Hacha', gear: 'hacha', classes: ['guerrero', 'saqueador', 'forjador'], techs: [
-    { id: 'tala', name: 'Tala', text: 'Cada enemigo que liquida suma 1 de botín.', flag: 'lootKill' },
-    { id: 'hachazo', name: 'Hachazo', text: '+1 de ataque.', atk: 1 },
-    { id: 'leñador', name: 'Brazo de leñador', text: '+3 de vida.', hp: 3 }] },
-  arco: { id: 'arco', name: 'Arco', gear: 'arco', classes: ['cazador', 'saqueador'], techs: [
-    { id: 'ojo_largo', name: 'Ojo largo', text: 'Se ve la intención de un enemigo más.', flag: 'intentPlus' },
-    { id: 'tiro_marcado', name: 'Tiro marcado', text: 'Sus marcas hacen +1.', flag: 'markPlus' },
-    { id: 'cuerda_tensa', name: 'Cuerda tensa', text: '+1 de ataque.', atk: 1 }] },
-  baston: { id: 'baston', name: 'Bastón', gear: 'baston', classes: ['monje', 'curandero'], techs: [
-    { id: 'pulso', name: 'Pulso sereno', text: 'Sus curas dan +1.', flag: 'healPlus' },
-    { id: 'paso_firme', name: 'Paso firme', text: 'No se traba al lado de un enemigo.', flag: 'noStuck' },
-    { id: 'raiz_honda', name: 'Raíz honda', text: '+3 de vida.', hp: 3 }] },
-  martillo: { id: 'martillo', name: 'Martillo', gear: 'martillo', classes: ['forjador', 'guerrero'], techs: [
-    { id: 'remache', name: 'Remache', text: 'Sus trampas hacen +1.', flag: 'trapPlus' },
-    { id: 'apuntalar', name: 'Apuntalar', text: 'Sus barreras y paredes duran 1 turno más.', flag: 'wallPlus' },
-    { id: 'mazazo', name: 'Mazazo', text: '+1 de ataque.', atk: 1 }] },
-  lanza: { id: 'lanza', name: 'Lanza', gear: 'lanza', classes: ['guerrero', 'monje', 'cazador'], techs: [
-    { id: 'distancia', name: 'Distancia', text: 'No se traba al lado de un enemigo.', flag: 'noStuck' },
-    { id: 'punta', name: 'Punta fina', text: 'Sus marcas hacen +1.', flag: 'markPlus' },
-    { id: 'embestida', name: 'Embestida', text: '+1 de ataque.', atk: 1 }] },
-  escudo: { id: 'escudo', name: 'Escudo', gear: 'escudo', classes: ['guerrero', 'forjador', 'curandero'], techs: [
-    { id: 'muralla', name: 'Muralla', text: 'Los del grupo que están a su lado reciben 1 menos.', flag: 'guardAdj' },
-    { id: 'bloqueo', name: 'Bloqueo', text: '+1 de coraza.', armor: 1 },
-    { id: 'aguante', name: 'Aguante', text: '+3 de vida.', hp: 3 }] },
+  espada: { id: 'espada', gear: 'espada', classes: ['guerrero', 'saqueador'], techs: [
+    { id: 'guardia_alta', flag: 'guardAdj' },
+    { id: 'estocada', atk: 1 },
+    { id: 'parada', armor: 1 }] },
+  hacha: { id: 'hacha', gear: 'hacha', classes: ['guerrero', 'saqueador', 'forjador'], techs: [
+    { id: 'tala', flag: 'lootKill' },
+    { id: 'hachazo', atk: 1 },
+    { id: 'leñador', hp: 3 }] },
+  arco: { id: 'arco', gear: 'arco', classes: ['cazador', 'saqueador'], techs: [
+    { id: 'ojo_largo', flag: 'intentPlus' },
+    { id: 'tiro_marcado', flag: 'markPlus' },
+    { id: 'cuerda_tensa', atk: 1 }] },
+  baston: { id: 'baston', gear: 'baston', classes: ['monje', 'curandero'], techs: [
+    { id: 'pulso', flag: 'healPlus' },
+    { id: 'paso_firme', flag: 'noStuck' },
+    { id: 'raiz_honda', hp: 3 }] },
+  martillo: { id: 'martillo', gear: 'martillo', classes: ['forjador', 'guerrero'], techs: [
+    { id: 'remache', flag: 'trapPlus' },
+    { id: 'apuntalar', flag: 'wallPlus' },
+    { id: 'mazazo', atk: 1 }] },
+  lanza: { id: 'lanza', gear: 'lanza', classes: ['guerrero', 'monje', 'cazador'], techs: [
+    { id: 'distancia', flag: 'noStuck' },
+    { id: 'punta', flag: 'markPlus' },
+    { id: 'embestida', atk: 1 }] },
+  escudo: { id: 'escudo', gear: 'escudo', classes: ['guerrero', 'forjador', 'curandero'], techs: [
+    { id: 'muralla', flag: 'guardAdj' },
+    { id: 'bloqueo', armor: 1 },
+    { id: 'aguante', hp: 3 }] },
 };
+// name: arsenal.type.<id>; cada técnica, arsenal.tech.<id>.name y .text
+withText(WEAPON_TYPES, 'arsenal.type', { name: null });
+for (const T of Object.values(WEAPON_TYPES)) withText(T.techs, 'arsenal.tech');
 export const WEAPON_IDS = Object.keys(WEAPON_TYPES);
 /** El arma que cada clase lleva cuando no tiene una equipada (la de su kit, CLASS_KIT de figure.js). */
 export const CLASS_WEAPON = { guerrero: 'espada', cazador: 'arco', forjador: 'martillo', curandero: 'baston', monje: 'baston', saqueador: 'hacha' };
@@ -67,12 +84,13 @@ export const WIELDERS = ['lider', ...CLASS_IDS];
  * monumentos en sim:economy).
  */
 export const RARITIES = [
-  { id: 'comun', name: 'Común', color: '#a39a8c', stats: {}, traits: 1, affinity: 0, scrap: 1 },
-  { id: 'poco_comun', name: 'Poco común', color: '#6f9a5b', stats: { hp: 1 }, traits: 1, affinity: 0, scrap: 2 },
-  { id: 'rara', name: 'Rara', color: '#4f7fb0', stats: { hp: 2 }, traits: 2, affinity: 0.5, scrap: 4 },
-  { id: 'epica', name: 'Épica', color: '#8a5ab0', stats: { hp: 2, atk: 1 }, traits: 2, affinity: 1, scrap: 7 },
-  { id: 'reliquia', name: 'Reliquia', color: '#c99a3a', stats: { hp: 3, atk: 1 }, traits: 2, affinity: 1, scrap: 12 },
+  { id: 'comun', color: '#a39a8c', stats: {}, traits: 1, affinity: 0, scrap: 1 },
+  { id: 'poco_comun', color: '#6f9a5b', stats: { hp: 1 }, traits: 1, affinity: 0, scrap: 2 },
+  { id: 'rara', color: '#4f7fb0', stats: { hp: 2 }, traits: 2, affinity: 0.5, scrap: 4 },
+  { id: 'epica', color: '#8a5ab0', stats: { hp: 2, atk: 1 }, traits: 2, affinity: 1, scrap: 7 },
+  { id: 'reliquia', color: '#c99a3a', stats: { hp: 3, atk: 1 }, traits: 2, affinity: 1, scrap: 12 },
 ];
+withText(RARITIES, 'arsenal.rarity', { name: null });
 /** Chances de rareza (en %) según de dónde sale. */
 export const DROP_ODDS = {
   pelea: [62, 27, 8, 2.5, 0.5],
@@ -93,16 +111,17 @@ export const ARSENAL_CAP = 40;
  * habilidades de su elemento (combat-rules: affinity). La maestría del arma con su elemento abre la reacción en el 2d.
  */
 export const TRAITS = {
-  vida: { id: 'vida', name: 'Recia', text: '+1 de vida.', hp: 1 },
-  vida2: { id: 'vida2', name: 'Robusta', text: '+2 de vida.', hp: 2, minRarity: 2 },
-  coraza: { id: 'coraza', name: 'Templada', text: '+1 de coraza.', armor: 1, minRarity: 3 },
-  vigia: { id: 'vigia', name: 'Atenta', text: 'Se ve la intención de un enemigo más.', flag: 'intentPlus' },
-  curas: { id: 'curas', name: 'Bendita', text: 'Sus curas dan +1.', flag: 'healPlus' },
-  botin: { id: 'botin', name: 'Afortunada', text: 'Al ganar, 1 material más.', flag: 'lootWin' },
-  temple: { id: 'temple', name: 'Dócil', text: '+25 % de maestría con este tipo de arma.', mastery: 0.25 },
-  hallazgo: { id: 'hallazgo', name: 'Buscadora', text: '+5 % de chance de que una pelea deje un arma.', find: 0.05 },
-  afinidad: { id: 'afinidad', name: 'Afín', text: '+1 de daño con las habilidades de su elemento.', affinity: true, rarityOnly: true },
+  vida: { id: 'vida', hp: 1 },
+  vida2: { id: 'vida2', hp: 2, minRarity: 2 },
+  coraza: { id: 'coraza', armor: 1, minRarity: 3 },
+  vigia: { id: 'vigia', flag: 'intentPlus' },
+  curas: { id: 'curas', flag: 'healPlus' },
+  botin: { id: 'botin', flag: 'lootWin' },
+  temple: { id: 'temple', mastery: 0.25 },
+  hallazgo: { id: 'hallazgo', find: 0.05 },
+  afinidad: { id: 'afinidad', affinity: true, rarityOnly: true },
 };
+withText(TRAITS, 'arsenal.trait');   // arsenal.trait.<id>.name y .text
 export const TRAIT_POOL = Object.values(TRAITS).filter(t => !t.rarityOnly).map(t => t.id);
 
 // ---------- azar (las funciones reciben rng: () => [0, 1)) ----------
@@ -202,11 +221,11 @@ export function weaponPower(w) {
 export function weaponName(w) {
   if (!w) return TXT.noWeapon;
   const T = WEAPON_TYPES[w.type], r = RARITIES[w.rarity] || RARITIES[0];
-  const fem = ['espada', 'hacha', 'lanza'].includes(w.type);
-  const adj = { comun: 'común', poco_comun: 'poco común', rara: fem ? 'rara' : 'raro', epica: fem ? 'épica' : 'épico', reliquia: 'de reliquia' }[r.id];
-  const aff = (w.traits || []).find(t => t.id === 'afinidad' && t.el);
+  // el adjetivo concuerda con el género del tipo en cada idioma (arsenal.gender.<tipo>: f o m)
+  const adj = t(`arsenal.adj.${t(`arsenal.gender.${w.type}`)}.${r.id}`);
+  const aff = (w.traits || []).find(x => x.id === 'afinidad' && x.el);
   const el = aff ? ELEMENTS[aff.el]?.name : null;
-  return `${T.name} ${adj}${el ? `, afín a ${el}` : ''}`;
+  return el ? t('arsenal.weaponNameEl', { type: T.name, adj, el }) : t('arsenal.weaponName', { type: T.name, adj });
 }
 
 // ---------- equipar, desarmar, rehacer ----------
@@ -324,11 +343,12 @@ export function masteryXpInfo(xp = 0, max = MASTERY_MAX) {
 }
 /** Marcos del arma (cosméticos): el último que alcanzó la maestría. */
 export const MASTERY_FRAMES = [
-  { lv: 4, id: 'bronce', name: 'Marco de bronce' }, { lv: 8, id: 'plata', name: 'Marco de plata' },
-  { lv: 10, id: 'oro', name: 'Marco de oro' }, { lv: 12, id: 'grabado', name: 'Hoja grabada' },
-  { lv: 14, id: 'brillo', name: 'Brillo de veta' }, { lv: 16, id: 'estela', name: 'Estela al golpear' },
-  { lv: 18, id: 'aura', name: 'Aura del oficio' }, { lv: 20, id: 'nombre', name: 'Nombre propio en la hoja' },
+  { lv: 4, id: 'bronce' }, { lv: 8, id: 'plata' },
+  { lv: 10, id: 'oro' }, { lv: 12, id: 'grabado' },
+  { lv: 14, id: 'brillo' }, { lv: 16, id: 'estela' },
+  { lv: 18, id: 'aura' }, { lv: 20, id: 'nombre' },
 ];
+withText(MASTERY_FRAMES, 'arsenal.frame', { name: null });   // arsenal.frame.<id>
 /** Vida que da la maestría (nivel 2, 5 y 8). */
 export const MASTERY_HP_AT = [2, 5, 8];
 /** Técnicas: niveles que abren las 3 técnicas del tipo. */
@@ -339,9 +359,9 @@ export function masteryUnlock(type, lv) {
   if (!T) return null;
   const ti = MASTERY_TECH_AT.indexOf(lv);
   if (ti >= 0) return { kind: 'tech', ...T.techs[ti] };
-  if (MASTERY_HP_AT.includes(lv)) return { kind: 'hp', name: '+1 de vida', text: '+1 de vida a quien la lleva.' };
+  if (MASTERY_HP_AT.includes(lv)) return { kind: 'hp', name: t('arsenal.unlock.hp'), text: t('arsenal.unlock.hpText') };
   const fr = MASTERY_FRAMES.find(f => f.lv === lv);
-  if (fr) return { kind: 'frame', ...fr, text: fr.name + ' para esta clase de arma.' };
+  if (fr) return { kind: 'frame', ...fr, text: t('arsenal.unlock.frameText', { name: fr.name }) };
   return null;
 }
 /** { hp, atk, armor, flags, techs, frame } que da la maestría de un tipo a quien lo usa. */

@@ -51,7 +51,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
-| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a | **cortado por contexto**: falta el balance de `sim:economy` (ver notas) | rama `claude/trav-2a-e5cfa6` |
+| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a → trav-2a2 | **rebasado sobre master; cortado por contexto otra vez**: falta cerrar `sim:economy` y `npm test` (ver notas) | rama `claude/trav-2a2-7cba92` |
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
@@ -490,3 +490,36 @@ Hecho:
 3. DESIGN-CORE.md §8: anotar el balance final del 2a (no está escrito). Correr `npm test` entero.
 4. Rebasar sobre `master` cuando entre el 1b (íconos) y, si ya está el 4a, pasar los `TXT` de arsenal.js, talents.js, gear.js,
    panels-progress.js y panels-arsenal.js a `t()`.
+
+### 2a, segunda sesión (rama `claude/trav-2a2-7cba92`, sin bump) · **CORTADO por contexto, sigue otra sesión**
+Hecho:
+- **Rebase sobre `master`** (con 1a, 1b, 1c, 1d y 4a): los 3 commits del 2a se juntaron en uno (respaldo de la rama vieja:
+  `backup-trav-2a-pre-rebase`). Conflictos: `package.json` (test-arsenal en `npm test` junto a icons e i18n), `test-people`
+  (la versión de master), `panels-progress.js` (la navegación del 2a; «La ciudad» con el ícono `castle`), CLAUDE.md, este archivo.
+  Emojis `⚔️` del 2a → id `sword`. **`test-icons` OK.**
+- **Idiomas:** todo el texto de `arsenal.js`, `talents.js`, `gear.js`, `panels-arsenal.js` y lo nuevo de `panels-progress.js`
+  pasó a `t()`/`tn()` (234 claves `arsenal.*`, `talents.*`, `gear.*`, `progress.*`; getters, así cambia en vivo), traducido a en y
+  ja, `fonts/pixel-ja.woff2` regenerada. Los 5 archivos nuevos están en `PASSED` (panels-progress no: tiene texto viejo).
+  **`test-i18n` 69 ✔ / 0 ✘, `test-arsenal` 122 ✔** (antes del cambio de fightRate/curva). Falta: `people.js` (avisos de maestría y
+  arma), `panels-workshop.js` (`arsenal`, `arsenalHelp`), `panels-rewards.js` (`talent`, `paragon`) y los nombres de `ELEMENTS`.
+- **Meta de Avance, decidida:** se mide por **cada 20 min de juego** (los ratos seguidos se juntan hasta 20 min: con 2 ratos
+  de 10, uno por día), como dice el plan; la tasa por rato de 10 min se muestra aparte. Y en el juego: **arma del camino**
+  (`EXP.weaponFind` en exp-data: una salida normal con ≥ 1★ en la que ninguna pelea dejó arma trae una con 30 %, rareza de pelea
+  común, `source: 'camino'`; `summary.weapon`). Con eso Avance da 32–35/36 semillas (fallan con 86–88 %).
+- **Bot de sim-economy:** rehace rasgos (`rerollUp`, uno por día, hasta 3 por arma; `--no-reroll`) para que lo farmeado tenga
+  dónde ir (lo pide el plan); gasta ~4 materiales y ~600 monedas por día.
+- **Balance (36 semillas, `--seeds 1-36`):** la causa sistemática era que con `fightRate` 2 el Nivel iba 1 adelante los días 2–7
+  (desbloqueos y premios antes → monumento, Pase y rango 5 temprano). Quedó **`fightRate` 1 y `need = 40·n^1,58 + 20`**.
+  - Master sin el 2a: ~12 fallas semilla-meta en 36 (Monedas al llegar 4, Pase 2, rango 5 2, etc.).
+  - 2a con fightRate 2 y curva 1,6 + reroll: 45. **Con fightRate 1 y 1,58 + reroll: 33** — Monedas al llegar 8/36, Avance 4,
+    Pase 4 ratos 4, Pase 3, Monedas al irse 3, el resto 1–2. Sin reroll, la misma curva daba rango 5 temprano en 11/36.
+  - Ojo: las metas están al borde y el azar es uno solo (cualquier tirada extra corre todo); comparar siempre con 24–36 semillas.
+  - Herramienta: `scratchpad`… no queda; para probar, `NIVEL_NEED`/`NIVEL_FR` se sacaron del código.
+
+**Falta (la sesión que siga):**
+1. Bajar las fallas de Monedas al llegar (8/36; la causa probable: el Nivel ahora más lento deja compras bloqueadas). Probar
+   `need` 1,58 con constante 40–60 o `fightRate` 1,5; seguir comparando con 36 semillas contra master (~12).
+2. Correr `test-classes`, `test-combat`, `test-act1`, `test-arsenal` (cambió fightRate) y después `npm test` entero, de a una
+   las que fallen por tiempo. `sim:combat` no depende de fightRate (usa niveles fijos), pero conviene una corrida corta.
+3. DESIGN-CORE.md §8 y DESIGN-COMBAT.md §18: anotar el balance final y la meta de Avance por 20 min; `sim:seeds` del
+   package.json corre 1–6.
