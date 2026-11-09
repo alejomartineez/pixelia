@@ -21,7 +21,7 @@ const CSS = `
 .rz-choice .rz-opt.now { box-shadow: inset 0 0 0 2px var(--gold-d), 0 3px 0 var(--shade); }
 .rz-choice .rz-opt h3 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 20px; color: var(--gold-t); }
 .rz-choice .rz-opt h3 small { margin-left: auto; font-size: 12px; color: var(--ink-l); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.rz-choice .rz-opt .rz-row { font-size: 15px; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
+.rz-choice .rz-opt .rz-row { font-size: 15px; line-height: 1.3; display: block; white-space: normal; overflow-wrap: break-word; }
 .rz-choice .rz-opt .rz-row b { color: var(--ink); }
 .rz-choice .rz-opt .rz-row.cost { color: var(--ink-l); }
 .rz-choice .rz-opt blockquote { margin: 2px 0 4px; padding: 6px 8px; border: 1px solid var(--rule); background: var(--surface-2);
@@ -47,7 +47,7 @@ function costLine(id, g, cur) {
   const parts = [];
   if (up && E.add) parts.push(`Grieta +${E.add} al elegir`);
   if (E.perDay) parts.push(`+${String(E.perDay).replace('.', ',')} por día${E.cap < 100 ? ` hasta ${E.cap}` : ''}`);
-  if (!parts.length) parts.push('la Grieta no sube');
+  if (!parts.length) parts.push('La Grieta no sube');
   const in30 = Math.min(Math.max(now, E.cap ? Math.min(E.cap, now + E.perDay * 30) : now), 100);
   const fx = [];
   if (grietaPower(in30) > grietaPower(g)) fx.push(`amenazas +${grietaPower(in30)} de fuerza`);

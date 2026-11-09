@@ -94,7 +94,8 @@ async function waitStory(sel, ms = 15000) {
   while (Date.now() - t0 < ms) {
     if (await has(sel)) return true;
     if (!sel.includes('st-epic') && await has('.st-epic')) { await page.keyboard.press('Escape'); await sleep(400); continue; }
-    if (await has('.st-card:not(.out):not(.bark)')) await page.evaluate(() => document.querySelector('.st-card:not(.out):not(.bark) .st-skip')?.click());
+    // solo se saltea una hoja que no es la buscada (si la buscada aparece entre dos chequeos, no se la pierde)
+    await page.evaluate((sel) => { const c = document.querySelector('.st-card:not(.out):not(.bark)'); if (c && !c.matches(sel)) c.querySelector('.st-skip')?.click(); }, sel);
     await closeModals();
     await sleep(250);
   }
