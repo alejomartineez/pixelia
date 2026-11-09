@@ -10,8 +10,8 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
   - nunca usar `service_role`;
   - correr `npm run bump` antes de cada commit que cambie archivos del juego. Lo hace el orquestador al integrar; las
     ramas de los pasos no bumpean.
-- **Regla del 50 % de contexto:**
-  - Una sesión que pasa el **50 %** de contexto **para en ese mismo momento**: commitea lo que tenga como WIP en su
+- **Regla del 40 % de contexto (era 50 %; cambio del usuario, 2026-11-09):**
+  - Una sesión que pasa el **40 %** de contexto **para en ese mismo momento**: commitea lo que tenga como WIP en su
     rama, anota acá exactamente dónde quedó y qué falta, avisa con PushNotification y termina.
   - El orquestador abre enseguida una **sesión nueva fresh** (nunca un fork) que sigue lo mismo desde ese punto.
   - Antes de darle una tarea nueva a una sesión existente, el orquestador mira su uso con `get_usage`.

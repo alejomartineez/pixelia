@@ -80,7 +80,7 @@ nunca se cablearon: `regionBonus`, `findMult` y `miradorBonus`. Las regiones sol
 - **Sesiones.** Una por paso, en su worktree. Esta sesión es la **orquestadora**: arma los briefs, integra cada rama
   (`npm run bump`, `npm test`, commit, push) y abre las sesiones siguientes.
 - **Regla de contexto nueva (pedido del usuario):**
-  - Una sesión que pasa el **50 %** de contexto para en ese mismo momento.
+  - Una sesión que pasa el **40 %** de contexto para en ese mismo momento.
   - Antes de parar commitea lo que tenga como WIP en su rama y anota en el HANDOFF dónde quedó.
   - El orquestador abre enseguida **una sesión nueva fresh** que sigue lo mismo desde ese punto.
   - Antes de asignarle algo nuevo a una sesión, el orquestador mira su uso con `get_usage`.
