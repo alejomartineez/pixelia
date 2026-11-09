@@ -1,20 +1,14 @@
-// Herramientas compartidas de los modelos de personaje (avatar.js y sus piezas):
-// colores, caché de geometrías, pivotes y la pintura de pelaje de los animalitos.
+// Herramientas compartidas de los modelos de personaje (figure.js y avatar.js): grilla fina, colores terrosos,
+// caché de geometrías y pivotes. Estilo "mezcla" de El Quiebre (plan §M1): la gente es vóxel detallado, con el doble
+// de resolución que el personaje tierno de antes (1/48 de unidad por vóxel en vez de 1/24).
 import * as THREE from 'three';
 import { Voxels, voxelMaterial, shade, hexToInt } from '../core/voxel.js';
-import { SKIN_TONES, HAIR_COLORS, OUTFIT_COLORS } from '../core/data.js';
+import { HAIR_COLORS, OUTFIT_COLORS, avatarType } from '../core/data.js';
 
-/** Tamaño de un vóxel del personaje en unidades de mundo (la cara usa medio vóxel). */
+/** Vóxel de los personajes en unidades de mundo. */
+export const S = 1 / 48;
+/** Unidad vieja (1/24): car.js la usa para sentar al conductor (la cadera queda a 4 × AVATAR_VOXEL del asiento). */
 export const AVATAR_VOXEL = 1 / 24;
-export const S = AVATAR_VOXEL;
-
-export const INK = 0x3b2340;
-export const WHITE = 0xfff7fb;
-export const GOLD = 0xffd166, GOLD_D = 0xe8a93a, GOLD_L = 0xfff0c2;
-export const SILVER = 0xe3dff0, SILVER_D = 0xa99fbf, SILVER_L = 0xf8f6ff;
-export const TIE = 0xff6fae;
-export const DENIM = 0x5f86d6, DENIM_D = 0x4a6bb8, DENIM_L = 0x8fb0ee;
-export const BOOT = 0x6a4256, BOOT_L = 0x8a5a70;
 export { shade, hexToInt };
 
 export function mix(a, b, t) {
@@ -31,83 +25,62 @@ export const hash3 = (x, y, z) => {
 };
 export const byId = (list, id) => list.find(i => i.id === id) || list[0];
 export const hairHex = (id) => byId(HAIR_COLORS, id).hex;
-export const outfitHex = (id) => byId(OUTFIT_COLORS, id).hex;
-export const skinHex = (i) => SKIN_TONES[Math.max(0, Math.min(SKIN_TONES.length - 1, i | 0))] || SKIN_TONES[0];
 
-export function hairPal(hex) {
-  return { b: hexToInt(hex), m: shade(hex, -0.09), d: shade(hex, -0.2), l: shade(hex, 0.22), ll: shade(hex, 0.4) };
-}
+// Ropa: los ids de OUTFIT_COLORS (los comparte con el auto y la bandera) pasan a telas teñidas, apagadas.
+export const CLOTH = {
+  rosa: ['#8a5a5c', 'Rosa viejo'], fucsia: ['#6e3440', 'Granate'], lila: ['#6c6478', 'Lavanda gris'], violeta: ['#4e3e5c', 'Ciruela'],
+  celeste: ['#62788a', 'Azul niebla'], azul: ['#3c4a66', 'Índigo'], menta: ['#5a7a6c', 'Verde agua'], verde: ['#4c5e3a', 'Musgo'],
+  dorado: ['#9a7a3a', 'Ocre'], durazno: ['#8a5e44', 'Arcilla'], rojo: ['#7a3428', 'Óxido'], blanco: ['#b8ad96', 'Lino'], negro: ['#2e2a2c', 'Carbón'],
+};
+export const clothHex = (id) => (CLOTH[id] || CLOTH[OUTFIT_COLORS[0].id])[0];
+export const clothName = (id) => (CLOTH[id] || [0, id])[1];
+// Nombres de los colores de pelo en el estilo nuevo
+export const HAIR_NAMES = {
+  castano: 'Castaño', negro: 'Negro', rubio: 'Rubio ceniza', pelirrojo: 'Cobre', rosa: 'Vino', lila: 'Ceniza',
+  celeste: 'Plata', menta: 'Gris verdoso', blanco: 'Blanco', chocolate: 'Chocolate', gris: 'Canas',
+};
+
+// Pueblos que no se eligen (enemigos): tonos propios
+const NPC_SKINS = { vaciado: ['#7f7b72', '#6e6a62', '#8a857a', '#5e5a54', '#77736a', '#4e4a46'] };
+export const skinHex = (type, i) => {
+  const list = NPC_SKINS[type] || avatarType(type).skins;
+  return list[Math.max(0, Math.min(list.length - 1, i | 0))] || list[0];
+};
+
+// Materiales fijos (cuero, metal, lino...). Todo terroso: nada de colores caramelo (plan §J7 y §M1).
+export const MAT = {
+  leather: 0x5a4030, leatherD: 0x3e2c22, leatherL: 0x6e5240,
+  metal: 0x76787b, metalD: 0x505256, metalL: 0x9c9fa2,
+  brass: 0x9a7a3e, brassD: 0x6e5628,
+  linen: 0xb2a58a, linenD: 0x938870,
+  trouser: 0x463e36, trouserD: 0x36302a,
+  boot: 0x2e2420, bootL: 0x43352c,
+  fur: 0x7a6650, furD: 0x5a4a3a, furL: 0x93806a,
+  straw: 0xae9458, strawD: 0x86703e,
+  wood: 0x5c4632, woodD: 0x40301f,
+  bone: 0xcbc2ac, ink: 0x161210, crow: 0x1f1d22,
+  vein: 0x4fc4b8, veinD: 0x2e7f78,
+};
 
 // ---------------- Caché de geometrías ----------------
 const geoCache = new Map();
 export function cacheGet(key) { return geoCache.get(key); }
 export function cacheSet(key, g) { geoCache.set(key, g); }
-/** Geometría cacheada por clave. build(v) dibuja en una grilla; after(g) la ajusta. scale: tamaño del vóxel. */
-export function cachedGeo(key, build, after, scale = S) {
+/** Geometría cacheada por clave. build(v) dibuja en una grilla de vóxeles de tamaño S. */
+export function cachedGeo(key, build, scale = S) {
   if (geoCache.has(key)) return geoCache.get(key);
   const v = new Voxels();
   build(v);
-  let g = null;
-  if (v.size) {
-    g = v.toGeometry({ scale, jitter: 0.012 }); // poco ruido: con píxeles chicos el jitter se ve como estática
-    after?.(g);
-  }
+  const g = v.size ? v.toGeometry({ scale, jitter: 0.01 }) : null;
   geoCache.set(key, g);
   return g;
 }
-export function meshOf(geo) {
-  const m = new THREE.Mesh(geo, voxelMaterial());
+export function meshOf(geo, mat) {
+  const m = new THREE.Mesh(geo, mat || voxelMaterial());
   m.castShadow = true; m.receiveShadow = true;
   return m;
 }
+let _glow = null;
+/** Material que no recibe luz (ojos de los Vaciados, piedras de veta, la llama del farol). */
+export function lightMat() { return _glow || (_glow = new THREE.MeshBasicMaterial({ vertexColors: true })); }
 export function pivot(x, y, z) { const g = new THREE.Group(); g.position.set(x * S, y * S, z * S); return g; }
-
-// ---------------- Pelaje de animalitos ----------------
-/**
- * Paleta de pelaje. Las piezas del cuerpo se dibujan con el color "piel" (p.skin) y después se repintan
- * con el diseño elegido (pancita, manchas, rayas...). Ver paintFur.
- */
-export function furPal(look) {
-  const b = hexToInt(hairHex(look.hairColor));
-  const lum = (((b >> 16) & 255) * 0.3 + ((b >> 8) & 255) * 0.59 + (b & 255) * 0.11) / 255;
-  return {
-    b,
-    d: shade(b, lum > 0.8 ? -0.16 : -0.24),
-    l: shade(b, 0.18),
-    cream: lum > 0.85 ? 0xfff0f6 : mix(b, 0xfff6ec, 0.72),
-    pink: 0xffa3c4,
-    pattern: look.hair,
-  };
-}
-/**
- * Repinta en v los vóxeles de color `skin` con el pelaje. part: 'torso' | 'arm' | 'leg' | 'head'.
- * Coordenadas: torso x[-3,3) y[4,10); brazo y[-5,0) (mano y=-5); pierna y[-4,0); cabeza x[-6,6) y[0,10).
- */
-export function paintFur(v, skin, f, part) {
-  skin = hexToInt(skin);
-  const pat = f.pattern;
-  for (const [k, c] of v.map) {
-    if (c !== skin) continue;
-    const [x, y, z] = k.split(',').map(Number);
-    let col = f.b;
-    const r = hash3(x + 31, y * 3 + (part === 'head' ? 70 : 0), z);
-    const belly = pat !== 'liso';
-    if (part === 'torso') {
-      if (belly && z >= 1 && x >= -2 && x <= 1 && y >= 4 && y <= 8) col = f.cream;
-      else if (pat === 'rayas' && ((y >> 1) & 1) === 0 && z <= 0) col = f.d;
-    } else if (part === 'arm') {
-      if (y <= -5) col = pat === 'medias' ? 0xfff7fb : f.l;
-      else if (pat === 'rayas' && (((y + 8) >> 1) & 1)) col = f.d;
-    } else if (part === 'leg') {
-      if (y <= -4 || (pat === 'medias' && y <= -3)) col = pat === 'medias' ? 0xfff7fb : f.l;
-      else if (pat === 'rayas' && !(((y + 8) >> 1) & 1)) col = f.d;
-    } else if (part === 'head') {
-      if (pat === 'rayas' && y >= 7 && z <= 3 && (x === -3 || x === -1 || x === 0 || x === 2) && y <= 9) col = f.d;
-    }
-    // manchas de 2×2×2 (las de 1 vóxel se ven como ruido con píxeles chicos)
-    const blob = hash3(((x + 40) >> 1) + 7, ((y + 40) >> 1) + (part === 'head' ? 50 : part === 'leg' ? 90 : 0), (z + 40) >> 1);
-    if (pat === 'manchas' && col === f.b && blob < 0.24) col = f.d;
-    if (pat === 'brillitos' && col !== f.cream && r < 0.04) col = GOLD;
-    v.map.set(k, col);
-  }
-}

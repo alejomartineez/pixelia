@@ -347,145 +347,184 @@ export function levelUpReward(newLevel) {
 }
 
 // ---------------- PERSONALIZACIÓN DEL PERSONAJE ----------------
-// Cada jugador elige su tipo de personaje (gratis y cambiable en el Equipaje). Cada pieza dice para qué
-// tipos sirve (types). price: {coins|gems}, unlock: nivel. Los marcados free:true se tienen desde el inicio
-// (cada tipo tiene al menos 2 piezas gratis por categoría, además de "Nada").
-// Solo personas (El Quiebre, plan §J7): los animales se fueron en el guardado v4 (ver RETIRED_ITEMS y LEGACY_TYPES).
+// El tipo de personaje es el pueblo (El Quiebre, plan §M2): humanos, enanos de la Veta, anuros del Bañado, gente-zorro
+// del Céfiro y orcos de la Brasa. Gratis y cambiable en el Equipaje. Cada pieza dice para qué pueblos sirve (types).
+// price: {coins|gems}, unlock: nivel. Los free:true se tienen desde el inicio. Estilo serio y terroso (plan §M1):
+// los modelos están en src/avatar/ (figure-*.js). Las piezas de antes del guardado v5 se traducen con V5_ITEMS.
 export const AVATAR_FAMILIES = [
-  { id: 'casual', name: 'Gente', emoji: '🧢' },
+  { id: 'pueblos', name: 'Pueblos', emoji: '🧭' },
 ];
-// look: look inicial al elegir el tipo (todo gratis)
+// look: look inicial al elegir el pueblo (todo gratis). skins: tonos de piel (o pelaje) propios del pueblo.
 export const AVATAR_TYPES = [
-  { id: 'chica', name: 'Chica', family: 'casual', emoji: '👧', desc: 'Buzos, vestidos, jeans, gorras y zapatillas.',
-    look: { skin: 2, hair: 'coleta', hairColor: 'pelirrojo', dress: 'buzo', dressColor: 'verde', crown: 'ninguna', acc: 'mochila' } },
-  { id: 'chico', name: 'Chico', family: 'casual', emoji: '👦', desc: 'Remeras, camisas, jeans, gorras y mochila.',
-    look: { skin: 3, hair: 'despeinado', hairColor: 'negro', dress: 'remera', dressColor: 'celeste', crown: 'gorra', acc: 'ninguno' } },
+  { id: 'humano', name: 'Humano', family: 'pueblos', emoji: '🧭', element: null,
+    desc: 'De las islas y los reinos. Hay de todo: soldados, cartógrafos, desertores.',
+    skins: ['#e6c4a8', '#d9ac8a', '#c6936e', '#a87652', '#8a5c3e', '#5e3e2a'],
+    look: { skin: 2, build: 'recio', hair: 'despeinado', hairColor: 'castano', face: 'barba_corta', dress: 'viajero', dressColor: 'verde', crown: 'ninguna', acc: 'mochila' } },
+  { id: 'enano', name: 'Enano de la Veta', family: 'pueblos', emoji: '⛏️', element: 'raiz',
+    desc: 'Mineros del Cerro. Las Casas los hicieron cavar: no se olvidan.',
+    skins: ['#e2b89a', '#d29e7c', '#bb8462', '#9c6a4a', '#7e5238', '#5a3a28'],
+    look: { skin: 1, build: 'recio', hair: 'cortito', hairColor: 'pelirrojo', face: 'barba_larga', dress: 'minero', dressColor: 'durazno', crown: 'ninguna', acc: 'ninguno' } },
+  { id: 'anuro', name: 'Anuro del Bañado', family: 'pueblos', emoji: '🐸', element: 'marea',
+    desc: 'Guardianes del agua. Hablan poco y no se apuran.',
+    skins: ['#6f8450', '#5a7044', '#848650', '#4e6656', '#76684a', '#3e5446'],
+    look: { skin: 0, build: 'recio', hair: 'lomo', hairColor: 'negro', face: 'ninguna', dress: 'pieles', dressColor: 'verde', crown: 'ninguna', acc: 'ninguno' } },
+  { id: 'zorro', name: 'Gente-zorro del Céfiro', family: 'pueblos', emoji: '🦊', element: 'cefiro',
+    desc: 'Viven entre dirigibles y riscos. Muchos piratas, algunos mensajeros.',
+    skins: ['#a8643a', '#8e4e2c', '#857a6c', '#6a5e54', '#b89a74', '#3c3430'],
+    look: { skin: 0, build: 'esbelto', hair: 'coleta', hairColor: 'blanco', face: 'ninguna', dress: 'abrigo', dressColor: 'azul', crown: 'ninguna', acc: 'ninguno' } },
+  { id: 'orco', name: 'Orco de la Brasa', family: 'pueblos', emoji: '🔥', element: 'brasa',
+    desc: 'De los volcanes del Bajo Mundo. Los que más perdieron con el Quiebre.',
+    skins: ['#7a8658', '#68744c', '#86845e', '#5c6852', '#776a54', '#4c5642'],
+    look: { skin: 0, build: 'recio', hair: 'jopo', hairColor: 'negro', face: 'cicatriz', dress: 'cuero', dressColor: 'rojo', crown: 'ninguna', acc: 'hacha' } },
 ];
 export const AVATAR_TYPE_BY_ID = Object.fromEntries(AVATAR_TYPES.map(t => [t.id, t]));
-const HUMANS = ['chica', 'chico'];
-const CASUAL = ['chica', 'chico'];
+// pueblos que no son jugables (enemigos y gente rara de ver): solo los usan los modelos (src/avatar/figure-*.js)
+export const NPC_PEOPLES = ['vaciado'];
+const ALL = ['humano', 'enano', 'anuro', 'zorro', 'orco'];
+const HAIRY = ['humano', 'enano', 'zorro', 'orco'];
+const BEARDED = ['humano', 'enano', 'orco'];
 
-export const SKIN_TONES = ['#ffe0cc', '#f5c7a9', '#e8b08a', '#c98e66', '#a06c4a', '#6e4630'];
+// Tonos de piel de antes (humanos): se mantienen como referencia de saves y perfiles viejos.
+export const SKIN_TONES = AVATAR_TYPES[0].skins;
+// Colores de pelo (en la gente-zorro, del pelo de la cabeza; en los anuros, de las marcas). Terrosos y apagados.
 export const HAIR_COLORS = [
-  { id: 'castano', hex: '#7a4a2a' }, { id: 'negro', hex: '#2b1d24' }, { id: 'rubio', hex: '#efcd7a' },
-  { id: 'pelirrojo', hex: '#cf673e' }, { id: 'rosa', hex: '#e39cbf' }, { id: 'lila', hex: '#ab94d6' },
-  { id: 'celeste', hex: '#8fc5e3' }, { id: 'menta', hex: '#80cbb0' }, { id: 'blanco', hex: '#f2eee8' }, { id: 'chocolate', hex: '#4a2c20' },
-  { id: 'gris', hex: '#a9a2b0' },
+  { id: 'castano', hex: '#6a4430' }, { id: 'negro', hex: '#261c1a' }, { id: 'rubio', hex: '#b39a62' },
+  { id: 'pelirrojo', hex: '#9a4e30' }, { id: 'rosa', hex: '#7a3e3a' }, { id: 'lila', hex: '#6a6670' },
+  { id: 'celeste', hex: '#8a949a' }, { id: 'menta', hex: '#5c6a5a' }, { id: 'blanco', hex: '#d6d0c4' }, { id: 'chocolate', hex: '#3e2a20' },
+  { id: 'gris', hex: '#8f8a86' },
 ];
+// Colores de ropa: los ids son los de siempre (también los usan el auto y la bandera); la ropa los apaga (figure-kit.js).
 export const OUTFIT_COLORS = [
   { id: 'rosa', hex: '#e392b0' }, { id: 'fucsia', hex: '#c4678e' }, { id: 'lila', hex: '#a993d6' }, { id: 'violeta', hex: '#7562b6' },
   { id: 'celeste', hex: '#9ccbe6' }, { id: 'azul', hex: '#5a7cc2' }, { id: 'menta', hex: '#80cbb0' }, { id: 'verde', hex: '#5fa86e' },
   { id: 'dorado', hex: '#f0c96e' }, { id: 'durazno', hex: '#efb592' }, { id: 'rojo', hex: '#cf5f5f' }, { id: 'blanco', hex: '#fbf6f1' }, { id: 'negro', hex: '#3b2f3a' },
 ];
+// Complexión (no se compra: las dos son de todos)
+export const BUILDS = [
+  { id: 'recio', name: 'Recio', free: true, types: ALL },
+  { id: 'esbelto', name: 'Esbelto', free: true, types: ALL },
+];
 export const HAIR_STYLES = [
-  // personas
-  { id: 'largo', name: 'Largo suelto', free: true, types: HUMANS },
-  { id: 'coleta', name: 'Cola alta', free: true, types: HUMANS },
-  { id: 'cortito', name: 'Corto clásico', free: true, types: HUMANS },
-  { id: 'despeinado', name: 'Despeinado', free: true, types: HUMANS },
-  { id: 'corto', name: 'Bob corto', price: { coins: 200 }, unlock: 1, types: HUMANS },
-  { id: 'flequillo', name: 'Flequillo de costado', price: { coins: 250 }, unlock: 1, types: HUMANS },
-  { id: 'rodete', name: 'Rodete', price: { coins: 350 }, unlock: 2, types: HUMANS },
-  { id: 'jopo', name: 'Jopo', price: { coins: 450 }, unlock: 2, types: HUMANS },
-  { id: 'trenzas', name: 'Dos trenzas', price: { coins: 500 }, unlock: 3, types: HUMANS },
-  { id: 'barba', name: 'Barba de sabio', price: { coins: 600 }, unlock: 3, types: ['chico'] },
-  { id: 'rizos', name: 'Rulos', price: { coins: 800 }, unlock: 5, types: HUMANS },
-  { id: 'colitas', name: 'Dos colas', price: { coins: 1200 }, unlock: 7, types: HUMANS },
-  { id: 'ondas', name: 'Ondas largas', price: { gems: 15 }, unlock: 9, types: HUMANS },
+  { id: 'rapado', name: 'Rapado', free: true, types: ALL },
+  { id: 'cortito', name: 'Corto', free: true, types: HAIRY },
+  { id: 'despeinado', name: 'Revuelto', free: true, types: HAIRY },
+  { id: 'coleta', name: 'Cola atada', free: true, types: HAIRY },
+  { id: 'largo', name: 'Largo suelto', free: true, types: HAIRY },
+  { id: 'lomo', name: 'Lomo manchado', free: true, types: ['anuro'] },
+  { id: 'cresta_piel', name: 'Cresta de piel', free: true, types: ['anuro'] },
+  { id: 'corto', name: 'Melena corta', price: { coins: 200 }, unlock: 1, types: HAIRY },
+  { id: 'flequillo', name: 'Flequillo de costado', price: { coins: 250 }, unlock: 1, types: ['humano', 'zorro'] },
+  { id: 'rodete', name: 'Rodete', price: { coins: 350 }, unlock: 2, types: HAIRY },
+  { id: 'jopo', name: 'Cresta', price: { coins: 450 }, unlock: 2, types: HAIRY },
+  { id: 'trenzas', name: 'Dos trenzas', price: { coins: 500 }, unlock: 3, types: HAIRY },
+  { id: 'rizos', name: 'Rulos', price: { coins: 800 }, unlock: 5, types: ['humano', 'enano'] },
+  { id: 'colitas', name: 'Dos colas bajas', price: { coins: 1200 }, unlock: 7, types: ['humano', 'enano', 'zorro'] },
+  { id: 'ondas', name: 'Ondas largas', price: { gems: 15 }, unlock: 9, types: ['humano', 'zorro'] },
+];
+// Cara: barbas, cicatrices y marcas (plan §M1: caras serias)
+export const FACES = [
+  { id: 'ninguna', name: 'Nada', free: true, types: ALL },
+  { id: 'barba_corta', name: 'Barba corta', free: true, types: BEARDED },
+  { id: 'barba_larga', name: 'Barba larga', free: true, types: BEARDED },
+  { id: 'bigote', name: 'Bigote', free: true, types: BEARDED },
+  { id: 'cicatriz', name: 'Cicatriz en la mejilla', free: true, types: ALL },
+  { id: 'cicatriz_ojo', name: 'Ojo cruzado', price: { coins: 300 }, unlock: 1, types: ALL },
+  { id: 'barba_trenzada', name: 'Barba trenzada', price: { coins: 400 }, unlock: 2, types: BEARDED },
+  { id: 'pintura', name: 'Pintura de guerra', price: { coins: 500 }, unlock: 3, types: ALL },
+  { id: 'parche', name: 'Parche', price: { coins: 600 }, unlock: 4, types: ALL },
 ];
 export const DRESS_STYLES = [
-  // vestidos
-  { id: 'clasico', name: 'Vestido clásico', free: true, types: ['chica'] },
-  { id: 'corto', name: 'Vestido corto', free: true, types: CASUAL },
-  { id: 'gala', name: 'Vestido de noche', price: { coins: 600 }, unlock: 2, types: ['chica'] },
-  { id: 'overol', name: 'Overol', price: { coins: 400 }, unlock: 3, types: CASUAL },
-  { id: 'sirena', name: 'Vestido largo', price: { coins: 1000 }, unlock: 5, types: CASUAL },
-  { id: 'deportivo', name: 'Deportivo', price: { coins: 700 }, unlock: 4, types: ['chica'] },
-  { id: 'capa', name: 'Vestido con capa', price: { gems: 20 }, unlock: 8, types: ['chica'] },
-  { id: 'estrellas', name: 'Vestido de estrellas', price: { gems: 30 }, unlock: 12, types: CASUAL },
-  // de gala
-  { id: 'chaqueta', name: 'Chaqueta de gala', free: true, types: ['chico'] },
-  { id: 'capa_real', name: 'Capa de gala', free: true, types: ['chico'] },
-  { id: 'gala_p', name: 'Uniforme de gala', price: { coins: 600 }, unlock: 2, types: ['chico'] },
-  { id: 'caballero', name: 'Armadura de caballero', price: { coins: 1000 }, unlock: 5, types: ['chico'] },
-  { id: 'estrellas_p', name: 'Traje de estrellas', price: { gems: 30 }, unlock: 12, types: CASUAL },
-  // casual
-  { id: 'buzo', name: 'Buzo y jeans', free: true, types: CASUAL },
-  { id: 'remera', name: 'Remera y jeans', free: true, types: CASUAL },
-  { id: 'pollera', name: 'Remera y pollera', price: { coins: 300 }, unlock: 1, types: ['chica'] },
-  { id: 'camisa', name: 'Camisa a cuadros', price: { coins: 450 }, unlock: 2, types: CASUAL },
-  { id: 'campera', name: 'Campera de jean', price: { coins: 650 }, unlock: 3, types: CASUAL },
-  { id: 'futbol', name: 'Equipo de fútbol', price: { coins: 800 }, unlock: 4, types: CASUAL },
-  // disfraz de hada
-  { id: 'petalos', name: 'Vestido de pétalos', free: true, types: CASUAL },
-  { id: 'hojas', name: 'Vestido de hojas', free: true, types: CASUAL },
-  { id: 'mariposa', name: 'Vestido mariposa', price: { coins: 900 }, unlock: 5, types: CASUAL },
-  // disfraz de mago
-  { id: 'tunica', name: 'Túnica de mago', free: true, types: CASUAL },
-  { id: 'aprendiz', name: 'Túnica de aprendiz', free: true, types: CASUAL },
-  { id: 'tunica_capa', name: 'Túnica con capa', price: { coins: 700 }, unlock: 3, types: CASUAL },
-  { id: 'lunar', name: 'Túnica lunar', price: { coins: 1000 }, unlock: 5, types: CASUAL },
-  { id: 'archimago', name: 'Manto de archimago', price: { gems: 25 }, unlock: 9, types: CASUAL },
+  { id: 'viajero', name: 'Ropa de viajero', free: true, types: ALL },
+  { id: 'jubon', name: 'Jubón y calzas', free: true, types: ALL },
+  { id: 'vestido', name: 'Vestido de lana', free: true, types: ALL },
+  { id: 'minero', name: 'Ropa de mina', free: true, types: ALL },
+  { id: 'tunica', name: 'Túnica de mago', free: true, types: ALL },
+  { id: 'habito', name: 'Hábito de monje', free: true, types: ALL },
+  { id: 'delantal', name: 'Delantal de forja', price: { coins: 400 }, unlock: 1, types: ALL },
+  { id: 'cuero', name: 'Coraza de cuero', price: { coins: 600 }, unlock: 2, types: ALL },
+  { id: 'vestido_noble', name: 'Vestido de casa noble', price: { coins: 600 }, unlock: 2, types: ALL },
+  { id: 'tabardo', name: 'Tabardo de guardia', price: { coins: 650 }, unlock: 3, types: ALL },
+  { id: 'capa_viaje', name: 'Capa de viaje', price: { coins: 700 }, unlock: 3, types: ALL },
+  { id: 'pieles', name: 'Pieles del norte', price: { coins: 800 }, unlock: 4, types: ALL },
+  { id: 'abrigo', name: 'Abrigo de cielo', price: { coins: 900 }, unlock: 5, types: ALL },
+  { id: 'cota', name: 'Cota de malla', price: { coins: 1000 }, unlock: 5, types: ALL },
+  { id: 'placas', name: 'Armadura de placas', price: { gems: 25 }, unlock: 8, types: ALL },
+  { id: 'archimago', name: 'Manto de archimago', price: { gems: 25 }, unlock: 9, types: ALL },
 ];
-// "Cabeza": gorras, gorros, sombreros y vinchas (el id de la categoría sigue siendo crown por compatibilidad)
+// "Cabeza": capuchas, gorros, sombreros y cascos (el id de la categoría sigue siendo crown por compatibilidad)
 export const CROWNS = [
-  { id: 'ninguna', name: 'Nada', free: true, types: CASUAL },
-  { id: 'flores', name: 'Guirnalda de flores', price: { coins: 400 }, unlock: 3, types: CASUAL },
-  { id: 'moño', name: 'Moño', price: { coins: 300 }, unlock: 1, types: ['chica'] },
-  { id: 'vincha', name: 'Vincha', free: true, types: ['chica'] },
-  // aventura
-  { id: 'laurel', name: 'Laurel dorado', free: true, types: CASUAL },
-  { id: 'casco', name: 'Casco de caballero', price: { coins: 600 }, unlock: 3, types: ['chico'] },
-  // casual
-  { id: 'gorra', name: 'Gorra', free: true, types: CASUAL },
-  { id: 'gorro', name: 'Gorro de lana', free: true, types: CASUAL },
-  { id: 'auris', name: 'Auriculares', price: { coins: 500 }, unlock: 2, types: CASUAL },
-  { id: 'piluso', name: 'Piluso', price: { coins: 400 }, unlock: 3, types: CASUAL },
-  // disfraces
-  { id: 'diadema', name: 'Diadema de hojas', free: true, types: CASUAL },
-  { id: 'sombrero_mago', name: 'Sombrero de mago', free: true, types: CASUAL },
-  { id: 'capucha', name: 'Capucha', free: true, types: CASUAL },
-  { id: 'sombrero_luna', name: 'Sombrero lunar', price: { coins: 700 }, unlock: 4, types: CASUAL },
-  { id: 'sombrero_estrellas', name: 'Sombrero de estrellas', price: { gems: 15 }, unlock: 8, types: CASUAL },
-  { id: 'galera', name: 'Galera', price: { coins: 700 }, unlock: 5, types: CASUAL },
+  { id: 'ninguna', name: 'Nada', free: true, types: ALL },
+  { id: 'capucha', name: 'Capucha', free: true, types: ALL },
+  { id: 'gorro', name: 'Gorro de lana', free: true, types: ALL },
+  { id: 'vincha', name: 'Vincha de cuero', free: true, types: ALL },
+  { id: 'gorra', name: 'Boina', free: true, types: ALL },
+  { id: 'sombrero_mago', name: 'Sombrero de mago', free: true, types: ALL },
+  { id: 'bandana', name: 'Pañuelo de cielo', price: { coins: 300 }, unlock: 1, types: ALL },
+  { id: 'piluso', name: 'Sombrero de paja', price: { coins: 400 }, unlock: 3, types: ALL },
+  { id: 'casco', name: 'Casco de hierro', price: { coins: 600 }, unlock: 3, types: ALL },
+  { id: 'galera', name: 'Sombrero de ala ancha', price: { coins: 700 }, unlock: 5, types: ALL },
+  { id: 'yelmo', name: 'Yelmo con cuernos', price: { gems: 15 }, unlock: 8, types: ALL },
 ];
 export const ACCESSORIES = [
-  { id: 'ninguno', name: 'Nada', free: true, types: CASUAL },
-  // lindos
-  { id: 'collar', name: 'Collar de perlas', free: true, types: CASUAL },
-  { id: 'ramo', name: 'Ramo de flores', free: true, types: CASUAL },
-  { id: 'bolso', name: 'Cartera', price: { coins: 450 }, unlock: 2, types: ['chica'] },
-  { id: 'anteojos', name: 'Anteojos de sol', price: { coins: 600 }, unlock: 4, types: CASUAL },
-  { id: 'alas', name: 'Alas de tela', price: { gems: 20 }, unlock: 6, types: CASUAL },
-  { id: 'gatito', name: 'Gato en brazos', price: { gems: 25 }, unlock: 8, types: HUMANS },
-  // aventura
-  { id: 'espada', name: 'Espada de madera', free: true, types: ['chico'] },
-  { id: 'escudo', name: 'Escudo de madera', free: true, types: ['chico'] },
-  // casual
-  { id: 'mochila', name: 'Mochila', free: true, types: CASUAL },
-  { id: 'pelota', name: 'Pelota', free: true, types: CASUAL },
-  { id: 'globo', name: 'Globo', price: { coins: 350 }, unlock: 2, types: CASUAL },
-  { id: 'patineta', name: 'Patineta', price: { coins: 700 }, unlock: 4, types: CASUAL },
-  // disfraces
-  { id: 'farolito', name: 'Frasco de luciérnagas', price: { coins: 500 }, unlock: 3, types: CASUAL },
-  { id: 'alas_mariposa', name: 'Alas de mariposa', price: { coins: 900 }, unlock: 5, types: CASUAL },
-  { id: 'baston', name: 'Bastón de mago', free: true, types: CASUAL },
-  { id: 'libro', name: 'Libro de hechizos', free: true, types: CASUAL },
-  { id: 'orbe', name: 'Bola de cristal', price: { coins: 600 }, unlock: 3, types: CASUAL },
-  { id: 'buho', name: 'Búho mensajero', price: { gems: 20 }, unlock: 6, types: CASUAL },
+  { id: 'ninguno', name: 'Nada', free: true, types: ALL },
+  { id: 'mochila', name: 'Mochila de viaje', free: true, types: ALL },
+  { id: 'espada', name: 'Espada corta', free: true, types: ALL },
+  { id: 'escudo', name: 'Escudo redondo', free: true, types: ALL },
+  { id: 'baston', name: 'Bastón', free: true, types: ALL },
+  { id: 'libro', name: 'Libro gastado', free: true, types: ALL },
+  { id: 'collar', name: 'Amuleto de veta', free: true, types: ALL },
+  { id: 'bolso', name: 'Bolso cruzado', price: { coins: 450 }, unlock: 2, types: ALL },
+  { id: 'farolito', name: 'Farol', price: { coins: 500 }, unlock: 3, types: ALL },
+  { id: 'hacha', name: 'Hacha', price: { coins: 600 }, unlock: 3, types: ALL },
+  { id: 'orbe', name: 'Piedra de veta', price: { coins: 600 }, unlock: 3, types: ALL },
+  { id: 'catalejo', name: 'Catalejo', price: { coins: 600 }, unlock: 4, types: ALL },
+  { id: 'martillo', name: 'Martillo de forja', price: { coins: 700 }, unlock: 4, types: ALL },
+  { id: 'lanza', name: 'Lanza', price: { coins: 800 }, unlock: 5, types: ALL },
+  { id: 'arco', name: 'Arco', price: { coins: 800 }, unlock: 5, types: ALL },
+  { id: 'buho', name: 'Cuervo mensajero', price: { gems: 20 }, unlock: 6, types: ALL },
 ];
 /** Tipo de personaje (o el primero si el id no existe). */
 export function avatarType(id) { return AVATAR_TYPE_BY_ID[id] || AVATAR_TYPES[0]; }
-/** ¿La pieza sirve para ese tipo de personaje? (las piezas sin types son de personas, por compatibilidad) */
-export function fitsType(item, type) { return !!item && (item.types ? item.types.includes(type) : HUMANS.includes(type)); }
+/** ¿La pieza sirve para ese pueblo? (las piezas sin types sirven para todos) */
+export function fitsType(item, type) { return !!item && (item.types ? item.types.includes(type) : ALL.includes(type)); }
 
-// Tipos y piezas que ya no existen (la realeza se fue): saves viejos y perfiles de amistades se traducen así.
+// Tipos y piezas que ya no existen: saves viejos y perfiles de amistades se traducen así (primero LEGACY_*, después V5_*).
 export const LEGACY_TYPES = { princesa: 'chica', principe: 'chico', hada: 'chica', mago: 'chico', gatito: 'chica', conejito: 'chica', zorrito: 'chico', osito: 'chico' };
 export const LEGACY_ITEMS = {
   crown: { tiara: 'vincha', corona: 'galera', estrella: 'auris', corona_p: 'gorra', corona_rey: 'galera', corona_cristal: 'sombrero_estrellas' },
   acc: { varita: 'globo', cetro: 'patineta', varita_flor: 'ramo' },
   topper: { corona: 'corazon' },
 };
+// v4 → v5 (plan §M, personajes serios): chica y chico pasan a ser humanos (esbelto y recio).
+export const V5_TYPES = { chica: { type: 'humano', build: 'esbelto' }, chico: { type: 'humano', build: 'recio' } };
+// Cada pieza vieja pasa a su equivalente: [id nuevo, lo que costaba]. migrateV5 (state.js) te da la nueva y, si ya la
+// tenías o es gratis, te devuelve lo que pagaste por la vieja. Las que no figuran siguen con el mismo id.
+export const V5_ITEMS = {
+  hair: { barba: ['cortito', { coins: 600 }] },
+  dress: {
+    clasico: ['vestido'], corto: ['jubon'], gala: ['vestido_noble', { coins: 600 }], overol: ['delantal', { coins: 400 }],
+    sirena: ['vestido_noble', { coins: 1000 }], deportivo: ['cuero', { coins: 700 }], capa: ['capa_viaje', { gems: 20 }],
+    estrellas: ['archimago', { gems: 30 }], chaqueta: ['jubon'], capa_real: ['capa_viaje'], gala_p: ['tabardo', { coins: 600 }],
+    caballero: ['cota', { coins: 1000 }], estrellas_p: ['placas', { gems: 30 }], buzo: ['viajero'], remera: ['viajero'],
+    pollera: ['vestido', { coins: 300 }], camisa: ['jubon', { coins: 450 }], campera: ['cuero', { coins: 650 }],
+    futbol: ['pieles', { coins: 800 }], petalos: ['vestido'], hojas: ['viajero'], mariposa: ['abrigo', { coins: 900 }],
+    aprendiz: ['habito'], tunica_capa: ['capa_viaje', { coins: 700 }], lunar: ['tunica', { coins: 1000 }],
+    archimago: ['archimago', { gems: 25 }],
+  },
+  crown: {
+    flores: ['vincha', { coins: 400 }], 'moño': ['vincha', { coins: 300 }], laurel: ['vincha'], diadema: ['vincha'],
+    auris: ['gorro', { coins: 500 }], sombrero_luna: ['sombrero_mago', { coins: 700 }], sombrero_estrellas: ['yelmo', { gems: 15 }],
+    casco: ['casco', { coins: 600 }], piluso: ['piluso', { coins: 400 }], galera: ['galera', { coins: 700 }],
+  },
+  acc: {
+    ramo: ['ninguno'], pelota: ['ninguno'], anteojos: ['catalejo', { coins: 600 }], alas: ['lanza', { gems: 20 }],
+    gatito: ['buho', { gems: 25 }], globo: ['farolito', { coins: 350 }], patineta: ['hacha', { coins: 700 }],
+    alas_mariposa: ['arco', { coins: 900 }], bolso: ['bolso', { coins: 450 }], farolito: ['farolito', { coins: 500 }],
+    orbe: ['orbe', { coins: 600 }], buho: ['buho', { gems: 20 }],
+  },
+};
+/** Id nuevo de una pieza vieja (o el mismo si no cambió). */
+export const v5Item = (kind, id) => V5_ITEMS[kind]?.[id]?.[0] ?? id;
 // v3 → v4 (plan §J7, fuera lo tierno): piezas que se retiraron con su precio. migrateV4 (state.js) devuelve lo que
 // costaba lo que tenías comprado (monedas o gemas, lo mismo que pagaste); lo gratis solo se va.
 export const RETIRED_ITEMS = {
@@ -519,7 +558,7 @@ export const CAR_TOPPERS = [
 ];
 
 export const CUSTOM_CATALOG = {
-  hair: HAIR_STYLES, dress: DRESS_STYLES, crown: CROWNS, acc: ACCESSORIES,
+  hair: HAIR_STYLES, dress: DRESS_STYLES, crown: CROWNS, acc: ACCESSORIES, face: FACES, build: BUILDS,
   body: CAR_BODIES, wheels: CAR_WHEELS, topper: CAR_TOPPERS,
 };
 

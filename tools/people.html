@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galería de personajes</title>
+<link rel="icon" href="data:,">
+<script type="importmap">{ "imports": { "three": "../vendor/three.min.js" } }</script>
+<style>
+  html, body { margin: 0; height: 100%; background: #1d1a18; font-family: sans-serif; overflow: hidden; }
+  #view { position: fixed; inset: 0; }
+  .lbl { position: fixed; transform: translate(-50%, 0); font: 600 11px sans-serif; color: #e8dcc6; background: #0008; padding: 1px 4px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="view"></div>
+<script type="module">
+// Fila de personajes del estilo nuevo (plan §M1 y §M2) para mirar y comparar. La captura: GALLERY_PAGE=people.html
+// node tools/gallery-shot.mjs "set=pueblos" ../shots/personajes/pueblos.png 1500 700
+//   set: pueblos | gente (randomLook) | ropa | cabeza | cara | equipo | clases | enemigos
+//   cols, vs (alto visible), ang, pitch, walk=1 (caminando)
+import * as THREE from 'three';
+import { createPixelRenderer, addLights, setIsoCamera } from '../src/core/voxel.js';
+import { AVATAR_TYPES, DRESS_STYLES, CROWNS, FACES, ACCESSORIES, HAIR_STYLES } from '../src/core/data.js';
+import { avatarModel, randomLook, classLook, CLASS_KIT } from '../src/avatar/avatar.js';
+import { enemyModel, ENEMY_MODEL_TYPES } from '../src/combat/enemy-models.js';
+window.__ready = false;
+const q = new URLSearchParams(location.search);
+const set = q.get('set') || 'pueblos';
+const items = [];
+const base = (id, extra = {}) => ({ ...AVATAR_TYPES.find(t => t.id === id).look, type: id, ...extra });
+if (set === 'pueblos') {
+  for (const t of AVATAR_TYPES) for (const b of ['recio', 'esbelto']) items.push({ obj: avatarModel(base(t.id, { build: b, ...(b === 'esbelto' ? { face: 'ninguna', hair: t.id === 'anuro' ? 'cresta_piel' : 'largo', dress: 'vestido', dressColor: 'durazno' } : {}) })), label: `${t.name} · ${b}` });
+  items.push({ obj: avatarModel({ ...randomLook(3, { type: 'vaciado' }) }), label: 'Vaciado' });
+} else if (set === 'gente') {
+  const n = Number(q.get('n') || 18);
+  for (let i = 0; i < n; i++) items.push({ obj: avatarModel(randomLook(i * 13 + 5), { npc: !!q.get('npc') }), label: randomLook(i * 13 + 5).type });
+} else if (set === 'ropa') {
+  const who = q.get('who') || 'humano';
+  for (const d of DRESS_STYLES) items.push({ obj: avatarModel(base(who, { dress: d.id, acc: 'ninguno' })), label: d.name });
+} else if (set === 'cabeza') {
+  const who = q.get('who') || 'humano';
+  for (const c of CROWNS) items.push({ obj: avatarModel(base(who, { crown: c.id, acc: 'ninguno' })), label: c.name });
+} else if (set === 'cara') {
+  const who = q.get('who') || 'humano';
+  for (const f of FACES) items.push({ obj: avatarModel(base(who, { face: f.id, acc: 'ninguno' })), label: f.name });
+  for (const h of HAIR_STYLES.filter(h => h.types.includes(who))) items.push({ obj: avatarModel(base(who, { hair: h.id, face: 'ninguna', acc: 'ninguno' })), label: h.name });
+} else if (set === 'equipo') {
+  const who = q.get('who') || 'humano';
+  for (const a of ACCESSORIES) items.push({ obj: avatarModel(base(who, { acc: a.id })), label: a.name });
+} else if (set === 'clases') {
+  AVATAR_TYPES.forEach((t, i) => { const cls = Object.keys(CLASS_KIT)[i % 6]; items.push({ obj: avatarModel(base(t.id), { cls }), label: `${t.id} · ${cls}` }); });
+  items.push({ obj: avatarModel(base('humano'), { cls: 'saqueador' }), label: 'humano · saqueador' });
+} else if (set === 'enemigos') {
+  for (const id of (q.get('ids') ? q.get('ids').split(',') : ENEMY_MODEL_TYPES)) items.push({ obj: enemyModel(id), label: id });
+}
+const cols = Number(q.get('cols') || Math.min(items.length, 8));
+const rows = Math.ceil(items.length / cols);
+const gap = Number(q.get('gap') || (set === 'enemigos' ? 1.9 : 1.05)), pitch = Number(q.get('pitch') || 0.32), rowGap = Number(q.get('rowgap') || (set === 'enemigos' ? 2.4 : 1.5)) / Math.sin(pitch);
+const r = createPixelRenderer(document.getElementById('view'), { viewSize: Number(q.get('vs') || Math.max(rows * rowGap * Math.sin(pitch) + 0.3, (cols * gap + 0.2) * innerHeight / innerWidth)), background: 0x26221f, outline: true });
+addLights(r.scene, { shadowSize: 30, shadowRes: 2048 });
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshLambertMaterial({ color: 0x3a342c }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; r.scene.add(ground);
+items.forEach((it, i) => {
+  const cx = (i % cols - (cols - 1) / 2) * gap, rz = Math.floor(i / cols) * rowGap;
+  it.obj.position.set(cx, 0, -rz);
+  it.obj.rotation.y = Number(q.get('turn') || 0.45);
+  r.scene.add(it.obj);
+});
+setIsoCamera(r.camera, new THREE.Vector3(0, Number(q.get('ty') || 0.5), -(rows - 1) * rowGap / 2), Number(q.get('ang') || 0), 60, pitch);
+const walk = !!q.get('walk');
+r.onFrame((dt) => { for (const it of items) it.obj.userData.update?.(dt, walk, performance.now() / 1000); });
+r.start();
+if (!q.get('nolabels')) {
+  requestAnimationFrame(() => items.forEach((it) => {
+    const p = r.toScreen(new THREE.Vector3(it.obj.position.x, -0.08, it.obj.position.z));
+    const d = document.createElement('div'); d.className = 'lbl'; d.textContent = it.label; d.style.left = p.x + 'px'; d.style.top = p.y + 'px'; document.body.append(d);
+  }));
+}
+setTimeout(() => { window.__ready = true; }, 400);
+</script>
+</body>
+</html>

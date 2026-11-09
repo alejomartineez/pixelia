@@ -27,7 +27,7 @@ page.on('pageerror', e => errors.push('PAGEERROR: ' + (e.stack || e.message)));
 page.on('console', m => { if (m.type() === 'error') errors.push('CONSOLE.ERROR: ' + m.text()); else if (m.type() === 'warning') console.log('warn:', m.text()); else console.log('log:', m.text()); });
 page.on('response', r => { if (r.status() >= 400) errors.push(`HTTP ${r.status()}: ${r.url()}`); });
 const t0 = Date.now();
-await page.goto(`http://127.0.0.1:${server.address().port}/tools/gallery.html?${query}`, { waitUntil: 'load' });
+await page.goto(`http://127.0.0.1:${server.address().port}/tools/${process.env.GALLERY_PAGE || 'gallery.html'}?${query}`, { waitUntil: 'load' });
 await page.waitForFunction('window.__ready === true', { timeout: 60000 }).catch(e => errors.push('timeout ready'));
 console.log('listo en', Date.now() - t0, 'ms');
 await new Promise(r => setTimeout(r, Number(wait)));
