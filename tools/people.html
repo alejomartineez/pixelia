@@ -54,8 +54,8 @@ if (set === 'pueblos') {
 } else if (set === 'giro') {   // hoja de giro de las muestras: frente, tres cuartos y espalda
   const MUESTRAS = [
     ['Enano con hacha', { type: 'enano', build: 'recio', skin: 1, hair: 'cortito', hairColor: 'pelirrojo', face: 'barba_trenzada', dress: 'cuero', dressColor: 'rojo', crown: 'casco', acc: 'hacha' }],
-    ['Monje', { type: 'humano', build: 'recio', skin: 3, hair: 'rapado', hairColor: 'castano', face: 'barba_corta', dress: 'habito', dressColor: 'durazno', crown: 'ninguna', acc: 'baston' }],
-    ['Pirata gente-zorro', { type: 'zorro', build: 'esbelto', skin: 0, hair: 'coleta', hairColor: 'blanco', face: 'parche', dress: 'abrigo', dressColor: 'rojo', crown: 'galera', acc: 'espada' }],
+    ['Monje', { type: 'humano', build: 'recio', skin: 3, hair: 'rapado', hairColor: 'castano', face: 'barba_corta', dress: 'habito', dressColor: 'rojo', crown: 'ninguna', acc: 'baston' }],
+    ['Pirata gente-zorro', { type: 'zorro', build: 'esbelto', skin: 0, hair: 'coleta', hairColor: 'blanco', face: 'parche', dress: 'abrigo', dressColor: 'rojo', crown: 'bandana', acc: 'espada' }],
   ];
   for (const [name, look] of MUESTRAS) for (const [view, turn] of [['frente', 0], ['tres cuartos', 0.75], ['espalda', Math.PI]]) items.push({ obj: avatarModel(look), label: name + ' · ' + view, turn });
 } else if (set === 'enemigos') {
