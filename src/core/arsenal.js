@@ -28,7 +28,7 @@ export const TXT = {
 function withText(table, prefix, fields = { name: 'name', text: 'text' }) {
   for (const o of Object.values(table)) {
     for (const [field, sub] of Object.entries(fields)) {
-      Object.defineProperty(o, field, { get: () => t(sub ? `${prefix}.${o.id}.${sub}` : `${prefix}.${o.id}`), enumerable: true, configurable: true });
+      Object.defineProperty(o, field, { get: () => t(sub ? `${prefix}${o.id}.${sub}` : `${prefix}${o.id}`), enumerable: true, configurable: true });
     }
   }
   return table;
@@ -70,8 +70,8 @@ export const WEAPON_TYPES = {
     { id: 'aguante', hp: 3 }] },
 };
 // name: arsenal.type.<id>; cada técnica, arsenal.tech.<id>.name y .text
-withText(WEAPON_TYPES, 'arsenal.type', { name: null });
-for (const T of Object.values(WEAPON_TYPES)) withText(T.techs, 'arsenal.tech');
+withText(WEAPON_TYPES, 'arsenal.type.', { name: null });
+for (const T of Object.values(WEAPON_TYPES)) withText(T.techs, 'arsenal.tech.');
 export const WEAPON_IDS = Object.keys(WEAPON_TYPES);
 /** El arma que cada clase lleva cuando no tiene una equipada (la de su kit, CLASS_KIT de figure.js). */
 export const CLASS_WEAPON = { guerrero: 'espada', cazador: 'arco', forjador: 'martillo', curandero: 'baston', monje: 'baston', saqueador: 'hacha' };
@@ -90,7 +90,7 @@ export const RARITIES = [
   { id: 'epica', color: '#8a5ab0', stats: { hp: 2, atk: 1 }, traits: 2, affinity: 1, scrap: 7 },
   { id: 'reliquia', color: '#c99a3a', stats: { hp: 3, atk: 1 }, traits: 2, affinity: 1, scrap: 12 },
 ];
-withText(RARITIES, 'arsenal.rarity', { name: null });
+withText(RARITIES, 'arsenal.rarity.', { name: null });
 /** Chances de rareza (en %) según de dónde sale. */
 export const DROP_ODDS = {
   pelea: [62, 27, 8, 2.5, 0.5],
@@ -121,7 +121,7 @@ export const TRAITS = {
   hallazgo: { id: 'hallazgo', find: 0.05 },
   afinidad: { id: 'afinidad', affinity: true, rarityOnly: true },
 };
-withText(TRAITS, 'arsenal.trait');   // arsenal.trait.<id>.name y .text
+withText(TRAITS, 'arsenal.trait.');   // arsenal.trait.<id>.name y .text
 export const TRAIT_POOL = Object.values(TRAITS).filter(t => !t.rarityOnly).map(t => t.id);
 
 // ---------- azar (las funciones reciben rng: () => [0, 1)) ----------
@@ -348,7 +348,9 @@ export const MASTERY_FRAMES = [
   { lv: 14, id: 'brillo' }, { lv: 16, id: 'estela' },
   { lv: 18, id: 'aura' }, { lv: 20, id: 'nombre' },
 ];
-withText(MASTERY_FRAMES, 'arsenal.frame', { name: null });   // arsenal.frame.<id>
+withText(MASTERY_FRAMES, 'arsenal.frame.', { name: null });   // arsenal.frame.<id>
+// los nombres de los elementos (combat-data.js queda puro, sin i18n): element.<id>
+withText(ELEMENTS, 'element.', { name: null });
 /** Vida que da la maestría (nivel 2, 5 y 8). */
 export const MASTERY_HP_AT = [2, 5, 8];
 /** Técnicas: niveles que abren las 3 técnicas del tipo. */
