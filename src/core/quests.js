@@ -20,6 +20,14 @@ function absoluteValue(goal) {
     case 'charm': return cityCharm(s);
     case 'expand': return s.city.expansions;
     case 'threat': return s.stats.threats || 0;   // amenazas pasadas (simulacro incluido; src/threats/threats.js)
+    // El Quiebre (E5, paso 6b): peleas ganadas (de un encuentro, o todas), elementos encontrados y marcas de la historia.
+    // Son absolutos: una partida que ya lo hizo los cumple apenas le llegan, sin perder nada.
+    case 'combat': {
+      const w = s.combat?.wins || {};
+      return goal.enc ? (w[goal.enc] || 0) : Object.values(w).reduce((a, n) => a + (Number(n) || 0), 0);
+    }
+    case 'element': return (s.story?.elements || []).includes(goal.id) ? 1 : 0;
+    case 'flag': return s.story?.flags?.[goal.flag] ? 1 : 0;
     case 'zone': {
       if (!goal.region) return zonesExplored(s);
       const r = s.expedition?.regions?.[goal.region];
@@ -262,6 +270,8 @@ export function claimableCount() {
 // ---------- Escucha de eventos ----------
 const TRACKED = ['building:built', 'building:upgraded', 'production:collected', 'coins:earned', 'customize:changed', 'item:bought',
   'expedition:finished', 'craft:done', 'building:repaired'];
+// eventos que no cuentan para nada pero cambian una misión absoluta (combate, elementos, historia): refrescan la tarjeta
+const REFRESH = ['level:up', 'city:expanded', 'building:upgraded', 'expedition:zone', 'combat:won', 'reward:element', 'story:faro', 'story:flag'];
 export function initQuests() {
   migrateQuestChain();
   ensureDaily();
@@ -271,7 +281,7 @@ export function initQuests() {
   for (const ev of ['chests:changed', 'album:changed']) bus.on(ev, () => bus.emit('quests:changed'));
   bus.on('*', ({ name, payload }) => {
     if (!TRACKED.includes(name)) {
-      if (name === 'level:up' || name === 'city:expanded' || name === 'building:upgraded' || name === 'expedition:zone') bus.emit('quests:changed');
+      if (REFRESH.includes(name)) bus.emit('quests:changed');
       return;
     }
     const s = S();

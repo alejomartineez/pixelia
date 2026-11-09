@@ -64,15 +64,16 @@ bichos de veta son criaturas en low-poly (`src/combat/enemy-models.js`). Brígid
 Usa las cinco regiones actuales. Los capítulos se calculan solos (`ACTS` en `story-data.js`, `when(s)`): el último que se
 cumple es el actual, y nunca vuelve atrás.
 
-| # | Capítulo | Arranca cuando | Qué pasa (el detalle llega en el paso 6) |
+| # | Capítulo | Arranca cuando | Qué pasa |
 |---|---|---|---|
 | 1 | Lo que quedó | partida nueva | Prólogo: el Quiebre y la cartógrafa. Primeras casas y la base. |
-| 2 | El Bosque del Arroyo | t4 (Casa de Expediciones) | Primer combate, de tutorial: los lobos de ojos brillantes. |
+| 2 | El Bosque del Arroyo | t4 (Casa de Expediciones) | Primer combate, de tutorial: los lobos de ojos brillantes (misión `q_combate`, E5). |
 | 3 | Las Sierras Bajas | rango 2 | Desde las sierras se ve el borde y las luces del Bajo Mundo. |
-| 4 | El agua que respira | rango 3 | Jefe del Bañado de los Juncos, despertado por la Marea suelta. |
-| 5 | La mina sellada | rango 5 | En la mina vieja del Cerro del Hierro está el **Núcleo de Raíz**, con la primera elección de extracción (L1). |
-| 6 | Los faros apagados | rango 6 | Reencender un faro de la costa: te volvés visible. |
-| 7 | Velas en el cielo | `story.flags.faro` | Primer abordaje de piratas del cielo, jefe del acto. Gancho al Acto 2. |
+| 4 | El agua que respira | rango 3 | La bestia del Bañado espera en **la poza honda**, al fondo de la salida normal (jefe, `q_bestia`). |
+| 5 | La mina sellada | rango 5 | En la mina vieja del Cerro del Hierro está el **Núcleo de Raíz**, con la primera elección de extracción (L1, `q_nucleo`). |
+| 6 | Los faros apagados | rango 6 | La salida normal a la Costa va al **faro viejo**; al volver queda encendido (`story.flags.faro`, `q_faro`). |
+| 7 | Velas en el cielo | `story.flags.faro` | 15 minutos después llega el dirigible de la capitana: el **abordaje** se pelea en la ciudad (jefe del acto, `q_abordaje`). |
+| 8 | Las islas te vieron | `story.flags.capitana_vencida` | Cierre: el mapa con el sello de la Cofradía y el gancho al Acto 2. |
 
 **Decisión:** el plan ponía el Cerro antes que el Bañado; acá van en el orden en que se abren las regiones (el Bañado en
 rango 3, el Cerro en rango 5), para que la historia no pida ir a un lugar todavía cerrado. Si se prefiere el orden del
@@ -144,10 +145,64 @@ Al encontrar un elemento (el Núcleo de Raíz en el Acto 1) se elige cuánto sac
   `tools/package.json`. Al mergear con el 4a (`state.js` v5) no hace falta tocar `defaultState`: los campos nuevos los
   arma `raizState`. Falta `npm run bump`.
 
+**Estado (paso 6b, rama `claude/jefes-faro-6b`, sin mergear):** hecho y probado (`tools/test-act1.mjs`). Lógica en
+`src/story/act1.js` (pura sobre `state`), ecos en `src/story/echoes.js` + `echo-fx.js`, la ciudad en
+`src/scenes/city-act1.js` y los jefes low-poly en `src/combat/boss-models.js`.
+- **La bestia del Bañado** espera en "la poza honda": una casilla `enemigo` con `boss: true` al fondo de la salida
+  normal al Bañado (`placeBoss` en `expedition.js`, sobre casillas vacías), desde el rango 3 y hasta vencerla
+  (`lairFor`). La salida emite `expedition:lair` y Vera avisa (`poza`: pelear en alto, no se la puede empujar). En el
+  mapa se ve la poza negra con cuatro ojos. No se resuelve rápido.
+- **Revancha:** `makeBattle` (`exp-rules.js`) arma la pelea de un jefe con `attempt = 1 + derrotas` (las de antes, que
+  pasan en `mods.bossLosses`, y las de esa salida), hasta 3, como pide DESIGN-COMBAT §6. Perder la primera vez dispara
+  `bestia_lost` / `abordaje_lost`; después, una línea suelta.
+- **Ganarle a la bestia:** `bestia_1` + `bestia_2` a pantalla completa (la Madre del Agua de los Anuros: "no la matamos,
+  la dormimos"), la página 9 (`reward.page` pasó de p3, que ya da el rango 2, a p9) y `flags.bestia_vencida`.
+- **El faro viejo:** desde el rango 6, la salida normal a la Costa lo tiene de objetivo (`placeLugar`, la misma regla que la
+  mina). Vera avisa antes (`faro_camino`, con otro "…" sobre los mapas: L2). Al volver con el objetivo cumplido,
+  `lightFaro` pone `flags.faro`, emite `story:flag` (la luz de la isla sube) y `story:faro`: `faro_1` + `faro_2`
+  (el haz, las luces que contestan, "ya saben que estamos"). En el mapa, torre de piedra con la linterna apagada.
+- **El abordaje** (`state.story.abordaje = { at, arrived, tries, won }`): llega `ABORDAJE.delayMs` (15 min) después del
+  faro. Al llegar, `abordaje_1` + `abordaje_2` a pantalla completa; en la ciudad queda el dirigible amarrado al borde,
+  un botón arriba ("Abordaje: defendé el borde") y la tarjeta con quién defiende y qué pasa si se pierde. La pelea
+  (`costa_capitana`) es en la ciudad: el líder y las 3 clases de nivel más alto (cansadas o no: es tu casa), los
+  consumibles del depósito (se gastan solo si se usan), la hora y el clima de la isla. Sin "Reintentar" adentro
+  (`noRetry`): la revancha se pide desde la tarjeta. **Decisión:** perder no cuesta nada guardado (tono cozy); los piratas
+  siguen en el borde hasta que se los vence. Ganar: botín al depósito, página 8 (La llave), `flags.capitana_vencida`,
+  `acto1_1`–`acto1_3` (el mapa con el sello de la Cofradía, "alguien les dijo dónde buscar" y el fin del Acto 1) y el
+  capítulo 8, "Las islas te vieron". `?abordaje=1` trae el dirigible ya.
+- **Los jefes en low-poly** (`bossModel(type, { phase })`, mismo contrato que `enemyModel`): la bestia (lomo de barro y
+  musgo, juncos, cuatro ojos y vetas de Marea que en la fase 2 se encienden junto con la boca) y la capitana, gente-zorro
+  del Céfiro (M2: saco rojo oscuro con dorado, tricornio con pluma, brazo de bronce con la pistola, sable que alza en la
+  fase 2). El kit facetado es propio del archivo; al integrar el 4a puede pasar a `src/avatar/lowpoly.js`.
+- **E5** (cadena de `MAIN_QUESTS`, seguida por id): `q_combate` después de t5 (se cobra sola), `q_bestia` después de
+  m21 (rango 4), `q_nucleo` después de m24 (rango 5), `q_faro` y `q_abordaje` después de m26 (rango 6). Tipos nuevos en
+  `quests.js` (`combat` con `enc` opcional, `element`, `flag`), todos absolutos: una partida que ya lo hizo los cumple
+  al llegar, sin migrar nada. Botones y pistas en `panels-common` y `panels-quests`; la flecha guía a Expedición.
+- **Ecos de noche (L6):** cinco, de a uno y una sola vez (`state.story.echoes`). Ciudad: en el borde de la isla
+  (`islandEdgeSpots`, un paso hacia adentro), solo de noche. Expedición: en una ruina ya pisada, de noche en el reloj de la
+  salida. Clic: la línea en una tarjeta y, el de la mesa del archivo, la página 10. Se listan en el Diario de la
+  Bitácora y tienen capítulo en el Manual. `?echo=1` los muestra de día (capturas).
+
+  | Eco | Dónde | Desde | Qué se ve | Siembra |
+  |---|---|---|---|---|
+  | Los que cavaban | ciudad | Bosque | dos mineros; uno para, el otro le devuelve la pala: "Una más" | el Quiebre |
+  | Los que subieron | ciudad | Sierras | una familia sobre la tierra que sube; del otro lado alguien se queda abajo | el Quiebre |
+  | La mesa del archivo | ciudad | Cerro | una muchacha dibuja un mapa; un señor de una Casa marca siempre el mismo punto (p10) | L2 |
+  | Los permisos | expedición | Cerro | un hombre firma sin leer; otro deja una bolsa que suena a piedra | L4 |
+  | El farero | expedición (Costa) | Costa | un farero apaga la lámpara mirando al cielo: le pagaron | L4 |
+
+  Las siluetas son bloques traslúcidos propios (`echo-fx.js`), sin los modelos de personajes, para no depender del 4a.
+- **Pruebas:** `tools/test-act1.mjs` (72 ✔; `--shots` deja 11 capturas en `shots/act1/`). Se adaptaron `test-raiz`
+  (p8 sin disparador), `test-story` y `test-e2e` (la primera pelea entre t5 y t6). `sim:economy`: 22 ✔ · 0 ✘ (la
+  Raíz sigue en 2,2 % de ventaja).
+- **Para integrar:** sumar `node test-act1.mjs` al `npm test` y `"test:act1": "node test-act1.mjs"` en
+  `tools/package.json`.
+
 ## 6. Páginas del diario
-Ocho en el Acto 1 (`PAGES`). Se acreditan con `store.grant({ page: 'p3' })` o por su `trigger`:
+Diez en el Acto 1 (`PAGES`). Se acreditan con `store.grant({ page: 'p3' })` o por su `trigger`:
 p1 en el prólogo, p2 al explorar una zona del Bosque, p3 al subir a rango 2, p4 al abrir La mina sellada, p5 al explorar
-una zona del Bañado, p6 con el Núcleo de Raíz, p7 al abrir Los faros apagados y p8 al explorar una zona de la Costa. Cada
+una zona del Bañado, p6 con el Núcleo de Raíz, p7 al abrir Los faros apagados, p8 al ganar el abordaje (la capitana),
+p9 al vencer a la bestia del Bañado (la Madre del Agua de los Anuros) y p10 con el eco de la mesa del archivo (L2). Cada
 página deja una pregunta abierta (los lobos, el bote de abajo, los permisos, el agua que respira, la galería sellada, el
 faro, la llave). Las páginas 5 a 8 siembran L2 y L4 sin decirlo: p5, los mapas del archivo con "una letra prolija que no
 era la mía" (Vera); p6, las Casas cavaban siguiendo una línea, siempre debajo de sus tierras; p7, "no todos los que
@@ -178,7 +233,7 @@ De noche (J3), en algunas ruinas de la ciudad y de la expedición aparecen silue
 un momento de antes del Quiebre. Al hacer clic dan una línea o una página; salen una sola vez y quedan en la Bitácora.
 Misteriosos, no dan miedo. Algunos siembran L2 y L4 (por ejemplo, Vera joven dibujando un mapa para un señor de una Casa).
 
-**Cuándo se hace:** 3b deja la noche y los lugares para los ecos; 5b hace L5; 6 hace L1 con el Núcleo de Raíz, las pistas
+**Hecho en el paso 6b** (cinco ecos; ver el Estado del paso 6b en §5). **Cuándo se hace:** 3b deja la noche y los lugares para los ecos; 5b hace L5; 6 hace L1 con el Núcleo de Raíz, las pistas
 de L2 y L4 y los primeros ecos; 7 balancea L1 y L5.
 
 **Base lista (3b, `src/core/ambience.js`):** la noche va de 20 a 6 (`isNightHour`; la ciudad emite `ambience:night`). Los

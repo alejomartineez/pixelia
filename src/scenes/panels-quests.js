@@ -158,7 +158,12 @@ export function openQuests(ctx, params = {}) {
       case 'expFar': return 'En la expedición, internate más allá de la mitad del mapa.';
       case 'threat': return 'Cuando llegue el aviso, preparate con defensas y reservas. Si no estás, se resuelve sola.';
       case 'repair': return 'Hacé clic en un edificio dañado y elegí Reparar.';
-      case 'combat': return 'Los enemigos aparecen en las casillas lejanas de la expedición.';
+      case 'combat':
+        if (goal.enc === 'banado_bestia') return 'La bestia espera al fondo de la salida normal al Bañado. Cuando suba el agua, peleá en alto.';
+        if (goal.enc === 'costa_capitana') return 'Los piratas llegan un rato después de encender el faro. Cortá la pasarela primero: así no llegan más.';
+        return 'Los enemigos aparecen en las casillas lejanas de la salida normal. La primera, en el Bosque, va guiada.';
+      case 'element': return 'La salida normal al Cerro del Hierro va a la mina sellada: llegá al fondo y volvé.';
+      case 'flag': return 'La salida normal a la Costa de los Faros va al faro viejo: llegá y volvé para encenderlo.';
       case 'story': return 'Abrí la Bitácora (J): ahí está lo que sigue en la historia.';
       default: return 'Seguí la Bitácora (J): ahí está lo que conviene hacer.';
     }

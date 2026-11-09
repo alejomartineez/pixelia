@@ -618,6 +618,8 @@ export const MAIN_QUESTS = [
   { id: 't3', title: 'Primera cosecha', text: 'Hacé clic en la Huerta y juntá 4 provisiones.', goal: { type: 'prov', count: 4 }, reward: { coins: 60, xp: 15 } },
   { id: 't4', title: 'Base de operaciones', text: 'Construí la Casa de Expediciones.', goal: { type: 'build', id: 'casa_exp', count: 1 }, reward: { gems: 2, xp: 30 } },
   { id: 't5', title: 'Primera salida', text: 'Hacé la salida corta al Bosque del Arroyo (botón Expedición).', goal: { type: 'expedition', kind: 'corta', region: 'bosque', count: 1 }, reward: { coins: 100, xp: 30, mats: { madera: 3 } } },
+  // El Quiebre, E5 (paso 6b): la primera pelea, después de la salida corta. La de los lobos va guiada (exp E6).
+  { id: 'q_combate', title: 'Primera pelea', text: 'Hacé una salida normal al Bosque del Arroyo: en el monte esperan unos lobos. Ganá la pelea.', goal: { type: 'combat', count: 1 }, reward: { coins: 120, xp: 40, mats: { madera: 2 } } },
   { id: 't6', title: 'Con lo que trajiste', text: 'Construí el Taller: pide 3 de madera.', goal: { type: 'build', id: 'taller', count: 1 }, reward: { coins: 60, xp: 30, mats: { madera: 3 } } },
   { id: 't7', title: 'Bien equipados', text: 'Fabricá una Cuerda en el Taller.', goal: { type: 'craft', id: 'cuerda', count: 1 }, reward: { coins: 100, xp: 25 } },
   { id: 't8', title: 'Más gente', text: 'Llegá a 15 de población.', goal: { type: 'pop', count: 15 }, reward: { coins: 200, xp: 40 } },
@@ -640,11 +642,18 @@ export const MAIN_QUESTS = [
   { id: 'm19', title: 'Al cine', text: 'Construí el Cine.', goal: { type: 'build', id: 'cine', count: 1 }, reward: { gems: 3, xp: 200 } },
   { id: 'm20', title: 'Leyenda de Pixelia', text: 'Llegá al nivel 12.', goal: { type: 'level', count: 12 }, reward: { gems: 5, xp: 0, chest: 'oro' } },
   { id: 'm21', title: 'Una Villa hecha y derecha', text: 'Subí la ciudad al rango Villa.', goal: { type: 'castle', count: 4 }, reward: { gems: 7, xp: 300 } },
+  // Acto 1 (E5, paso 6b): la bestia del Bañado, que espera desde el rango 3
+  { id: 'q_bestia', title: 'El agua que respira', text: 'Vencé a la bestia del Bañado: espera en la poza honda, al fondo de la salida normal.', goal: { type: 'combat', enc: 'banado_bestia', count: 1 }, reward: { gems: 6, xp: 400, mats: { hierbas: 4 } } },
   { id: 'm22', title: 'Gran Metrópolis', text: 'Llegá a 150 de población.', goal: { type: 'pop', count: 150 }, reward: { gems: 8, xp: 400 } },
   { id: 'm23', title: 'Un pueblo encantador', text: 'Llegá a 300 de Encanto (deco variada y edificios mejorados).', goal: { type: 'charm', count: 300 }, reward: { gems: 4, xp: 300 } },
   { id: 'm24', title: '¡Ya somos Ciudad!', text: 'Subí la Municipalidad al rango Ciudad.', goal: { type: 'castle', count: 5 }, reward: { gems: 8, xp: 500, chest: 'oro' } },
+  // Acto 1 (E5, paso 6b): el Núcleo de Raíz en la mina del Cerro
+  { id: 'q_nucleo', title: 'La mina sellada', text: 'Salí al Cerro del Hierro: la salida normal va a la mina vieja. Encontrá el Núcleo de Raíz.', goal: { type: 'element', id: 'raiz', count: 1 }, reward: { gems: 5, xp: 300, mats: { mineral: 3 } } },
   { id: 'm25', title: 'Encanto puro', text: 'Llegá a 600 de Encanto.', goal: { type: 'charm', count: 600 }, reward: { gems: 5, xp: 600 } },
   { id: 'm26', title: 'Gran Ciudad', text: 'Subí la Municipalidad al rango Gran Ciudad.', goal: { type: 'castle', count: 6 }, reward: { gems: 10, xp: 800, chest: 'oro' } },
+  // Cierre del Acto 1: el faro de la Costa y el primer abordaje
+  { id: 'q_faro', title: 'Los faros apagados', text: 'Salí a la Costa de los Faros y encendé el faro viejo, al fondo de la salida normal.', goal: { type: 'flag', flag: 'faro', count: 1 }, reward: { gems: 6, xp: 500 } },
+  { id: 'q_abordaje', title: 'Velas en el cielo', text: 'Resistí el primer abordaje de los piratas del cielo: cortales la pasarela.', goal: { type: 'combat', enc: 'costa_capitana', count: 1 }, reward: { gems: 10, xp: 800, chest: 'oro' } },
   { id: 'm27', title: 'Luces de Metrópolis', text: 'Subí la Municipalidad al rango Metrópolis.', goal: { type: 'castle', count: 7 }, reward: { gems: 13, xp: 1000, chest: 'real' } },
   { id: 'm28', title: 'Capital de Pixelia', text: 'Llevá tu ciudad al rango Capital.', goal: { type: 'castle', count: 8 }, reward: { gems: 20, xp: 1500, chest: 'real' } },
 ];

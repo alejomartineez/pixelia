@@ -19,6 +19,7 @@ import * as R from './exp-rules.js';
 import { eventMult } from '../season/events.js';
 import { comfortInfo } from '../home/furniture.js';
 import { mineObjective, foundNucleo, raizMult } from '../core/raiz.js';
+import { lairFor, faroDue, lightFaro, BOSS_LAIRS, FARO } from '../story/act1.js';
 
 export { zonesExplored, roleLevel } from '../core/economy.js';
 
@@ -187,6 +188,7 @@ function cityMods(party, equip, state = S(), { region, kind, tutorial, daily } =
     encantoStars: stars,
     vision: (() => { try { return E.monumentBonus('vision', state); } catch { return 0; } })(),   // Faro (+1)
     combatWins: { ...cb.wins }, escort, elements: (state.story?.elements || []).slice(),
+    bossLosses: { ...cb.losses },   // revancha contra los jefes (DESIGN-COMBAT §6): cada derrota de antes suma un intento
   };
   // la primera pelea es guiada: la de los lobos del Bosque del Arroyo, en la primera salida normal al Bosque (E6)
   if (kind === 'normal' && region === 'bosque' && !daily && !tutorial && !cb.guided && !cb.fights) mods.firstFight = FIRST_FIGHT;
@@ -294,10 +296,16 @@ export function startExpedition({ region = 'bosque', kind = 'normal', party = nu
   // la mina sellada del Cerro (L1): el objetivo de la salida normal es la mina, para encontrar el Núcleo o volver a elegir
   const mine = kind === 'normal' && !dInfo && region === 'cerro' ? mineObjective(state) : null;
   if (mine) placeMine(run, mine);
+  // el Acto 1 (paso 6b): la bestia en la poza honda del Bañado y el faro viejo de la Costa
+  const boss = kind === 'normal' && !dInfo ? lairFor(state, region) : null;
+  if (boss) placeBoss(run, boss);
+  if (kind === 'normal' && !dInfo && !mine && faroDue(state, region)) placeLugar(run, FARO.name, 'faro');
   e.active = run;
   e.party = party.slice();
   store.markDirty();
   bus.emit('expedition:started', { region, zone, kind, party: run.party.slice(), equip: run.equip.slice(), prov: run.prov, daily: run.city.daily });
+  if (boss) bus.emit('expedition:lair', { region, enc: boss });
+  if (run.objective?.faro) bus.emit('expedition:lair', { region, enc: 'faro' });
   return { run };
 }
 /**
@@ -317,6 +325,34 @@ function placeMine(run, mode) {
   const c = run.cells[cell[1] * run.w + cell[0]];
   c.content = 'objetivo'; c.sub = 'lugar'; c.mina = true;
   run.objective = { type: 'lugar', name: MINE_NAME, cell: cell.slice(), hint: (o.hint || cell).slice(), known: false, done: false, mina: mode };
+}
+/**
+ * Un lugar de la historia como objetivo de la salida (el faro viejo): misma regla que la mina. key: marca en la casilla
+ * y en el objetivo (c.faro, objective.faro).
+ */
+function placeLugar(run, name, key) {
+  placeMine(run, 'x');
+  const o = run.objective, c = run.cells[o.cell[1] * run.w + o.cell[0]];
+  delete c.mina; delete o.mina;
+  c[key] = true; o[key] = true; o.name = name;
+}
+/**
+ * El jefe en su lugar (la bestia en la poza honda): una casilla `enemigo` al fondo del mapa, lejos de la base y fuera
+ * de la barrera del río, que no se resuelve rápido. El resto del mapa queda igual.
+ */
+function placeBoss(run, enc) {
+  const oc = run.objective?.cell;
+  const isObj = (i) => oc && i === oc[1] * run.w + oc[0];
+  // casillas vacías primero (las de recurso pueden ser las que pide el objetivo "juntar")
+  let best = -1;
+  for (const ok of ['vacio', 'recurso']) {
+    run.cells.forEach((c, i) => { if (!c.band && c.content === ok && !isObj(i) && (best < 0 || c.depth > run.cells[best].depth || (c.depth === run.cells[best].depth && (i + run.seed) % 3 === 0))) best = i; });
+    if (best >= 0) break;
+  }
+  if (best < 0) return;
+  const c = run.cells[best];
+  c.content = 'enemigo'; c.sub = enc; c.boss = true; delete c.amount;
+  run.boss = { enc, cell: [best % run.w, (best / run.w) | 0], name: Object.values(BOSS_LAIRS).find(l => l.enc === enc)?.name || '' };
 }
 /** Salida en curso guardada (para retomarla) o null. */
 export function activeRun(state = S()) {
@@ -414,6 +450,8 @@ export function finishExpedition(run, state = S()) {
     const f = foundNucleo(state, now, { revisit: run.objective.mina === 'revisit' });
     summary.nucleo = { first: f.first, revisit: run.objective.mina === 'revisit' };
   }
+  // el faro viejo de la Costa: al volver con el objetivo cumplido queda encendido (act1.js emite 'story:faro')
+  if (run.objective?.faro && res.objectiveDone) summary.faro = lightFaro(state, now);
   if (zoneExplored) bus.emit('expedition:zone', { region: run.region, zone: run.zone, total: summary.zonesTotal });
   if (regionDone) bus.emit('expedition:region', { region: run.region });
   return summary;

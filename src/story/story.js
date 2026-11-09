@@ -178,6 +178,12 @@ async function pump() {
 function choicePending() {
   try { const r = raizState(); return !!(r.found && r.pending) && (!!r.mode || hasSeen('nucleo_1')); } catch { return false; }
 }
+/** Lo que dice Vera después de perder otra vez contra un jefe (la escena de la revancha sale una sola vez). */
+const BOSS_RETRY = {
+  banado_bestia: 'Otra vez abajo. Cada vuelta se cansa más: la próxima la tenemos.',
+  costa_capitana: 'Siguen en el borde. Cortá la pasarela primero y quedan pocos.',
+  any: 'La próxima sale mejor.',
+};
 /** Una línea suelta de la cartógrafa (no bloquea). */
 export function say(text, ms = 4800) {
   if (!text) return;
@@ -292,8 +298,17 @@ export function initStory(ctx, h = {}) {
   bus.on('threat:announced', () => trigger('threat:announced'));
   bus.on('expedition:zone', ({ region } = {}) => trigger('zone:' + region));
   bus.on('expedition:region', ({ region } = {}) => trigger('region:' + region));
-  bus.on('combat:won', () => { trigger('combat:first'); trigger('combat:won'); });
-  bus.on('combat:lost', () => trigger('combat:first'));
+  // los jefes (paso 6b): ganar dispara su escena (boss:<enc>) y perder, la de la revancha (bosslost:<enc>)
+  bus.on('combat:won', ({ enc, kind } = {}) => { trigger('combat:first'); trigger('combat:won'); if (kind === 'jefe' && enc) { trigger('boss:' + enc); updateChapter(); } });
+  bus.on('combat:lost', ({ enc, kind } = {}) => {
+    trigger('combat:first');
+    if (kind !== 'jefe' || !enc) return;
+    if (hasSeen(enc === 'banado_bestia' ? 'bestia_lost' : 'abordaje_lost')) say(BOSS_RETRY[enc] || BOSS_RETRY.any);
+    else trigger('bosslost:' + enc);
+  });
+  bus.on('expedition:lair', ({ enc } = {}) => { if (enc) trigger('lair:' + enc); });
+  bus.on('story:faro', () => { trigger('story:faro'); updateChapter(); });
+  bus.on('abordaje:arrive', () => trigger('abordaje:arrive'));
   bus.on('quest:claimed', ({ id } = {}) => { questBark(id); trigger('quest:' + id); updateChapter(); });
   bus.on('quests:changed', () => setTimeout(autoClaim, 250));
   // la Raíz (L1): el Núcleo, la elección, la Grieta que Vera nota y la obra que la cose

@@ -487,9 +487,12 @@ cloneBattle(b)
   - `level` sale del nivel real del líder (`mods.leader.level`, de `state.classes`; §14). Sin él (simuladores, salidas
     guardadas de antes) queda el `expected.level` del encuentro;
   - `element` sale de los elementos encontrados (`state.story.elements`).
-- **Paso 6 (E5):** el paso "primer combate" de la cadena del tutorial, después de t5. El tipo de misión `combat` ya tiene
-  pista y flecha, pero `quests.js` todavía no lo cuenta: tiene que escuchar `combat:won`. Los jefes van en lugares de la
-  historia, no en casillas al azar.
+- **Paso 6 (E5), hecho en el 6b:** `q_combate` después de t5 (`quests.js` cuenta las victorias de `state.combat.wins`,
+  con `enc` opcional). Los jefes van en lugares de la historia: la bestia en la poza honda del Bañado (casilla `enemigo`
+  con `boss`, al fondo de la salida normal) y la capitana en el abordaje, que se pelea en la ciudad
+  (`src/story/act1.js`). La revancha cuenta las derrotas guardadas (`mods.bossLosses` → `attempt` en `makeBattle`).
+  Los jefes se dibujan en low-poly (`src/combat/boss-models.js`, con `setPhase` en la fase 2). La bestia ahora da la
+  página 9 (antes p3, que ya daba el rango 2). Detalle en DESIGN-STORY §5, "Estado (paso 6b…)".
 - **Paso 7:**
   - revisar que la Cuerda no quede obligatoria contra la bestia;
   - ajustar con los datos de la telemetría de combate (`combat:won`, `combat:lost` y `combat:retreat`).

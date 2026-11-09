@@ -202,6 +202,11 @@ try {
   await run(`bus.emit('expedition:finished', { kind: 'corta', region: 'bosque', stars: 1, equip: [] }); return true;`);
   ok(await waitFor(`!!window.__pixelia.store.state.quests.done.t5`, 7000), 't5 se cobra sola');
   await drain();
+  // E5 (paso 6b): después de la salida corta, la primera pelea (la pelea real se prueba en test-combat-exp)
+  ok(await run(`return Q.mainQuest().id === 'q_combate'`), 'sigue la primera pelea (E5)');
+  await run(`const c = store.state.combat ||= {}; c.wins ||= {}; c.wins.bosque_claro = 1; bus.emit('quests:changed'); return true;`);
+  ok(await waitFor(`!!window.__pixelia.store.state.quests.done.q_combate`, 7000), 'la primera pelea se cobra sola');
+  await drain();
   ok(await place('taller'), 't6: Taller');
   ok(await waitFor(`!!window.__pixelia.store.state.quests.done.t6`, 7000), 't6 se cobra sola');
   await drain();
@@ -312,7 +317,7 @@ try {
     delete raw.story; delete raw.introSeen;
     raw.onboarded = true; raw.coins = 12345; raw.gems = 77;
     const c = raw.city.buildings.find(b => b.id === 'castillo'); c.level = 3;
-    raw.quests.done = Object.fromEntries(ctx.data.MAIN_QUESTS.slice(0, 20).map(q => [q.id, 1]));
+    raw.quests.done = Object.fromEntries(ctx.data.MAIN_QUESTS.slice(0, ctx.data.MAIN_QUESTS.findIndex(q => q.id === 't20') + 1).map(q => [q.id, 1]));
     store.save = () => {};   // que el autoguardado no pise lo que se escribe a mano
     localStorage.setItem(store.SAVE_KEY || 'pixelia.save.v1', JSON.stringify(raw));
     return true;`);

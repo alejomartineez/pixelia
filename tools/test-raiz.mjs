@@ -294,7 +294,8 @@ try {
   const pages = await run(`
     for (const k of ['chapter:cerro', 'zone:banado', 'chapter:costa', 'zone:costa']) ST.trigger(k);
     const p = store.state.story.pages; return ['p4', 'p5', 'p6', 'p7', 'p8'].filter(id => p[id]);`);
-  ok(pages.join() === 'p4,p5,p6,p7,p8', 'p4 (la mina), p5 (Bañado), p6 (el Núcleo), p7 (Costa) y p8 (zona de la Costa) tienen disparador', pages);
+  // p8 la deja la capitana al ganar el abordaje (paso 6b, test-act1.mjs): la zona de la Costa ya no la da
+  ok(pages.join() === 'p4,p5,p6,p7', 'p4 (la mina), p5 (Bañado), p6 (el Núcleo) y p7 (Costa) tienen disparador; p8 queda para el abordaje', pages);
   await finishCards(8000);
   await closeModals();
   await run(`ctx.openPanel ? ctx.openPanel('story', { tab: 'diario' }) : bus.emit('panel:open', { id: 'story' }); return true;`);
