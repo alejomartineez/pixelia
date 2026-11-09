@@ -129,7 +129,7 @@ const autoOn = () => !!S().onboarded && !hooks.paused?.();
 let barkUntil = 0;   // una línea suelta se deja leer un rato antes de la siguiente
 async function pump() {
   if (playing) return;
-  if (!queue.length && !barks.length) return;
+  if (!queue.length && !barks.length && !choicePending()) return;
   if (!autoOn()) { schedule(1500); return; }
   // escenas primero: con la ciudad libre (sin menús, llegada ni subidas de nivel) y nada de la historia en pantalla
   if (queue.length && (hooks.idle?.() ?? true) && !ui?.busy()) {

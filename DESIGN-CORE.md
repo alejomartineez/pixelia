@@ -932,6 +932,23 @@ Lo que queda abajo de 1× al llegar son las etapas de monumento que se pagan en 
 Estadio, Museo): ahí frenan las monedas, que es lo esperable. Las semillas 3 y 4 encuentran más materiales y entonces las
 monedas frenan más seguido: si se quiere ≥ 75% en todas, el próximo paso es bajar un poco las monedas de esas etapas y a
 la vez reacomodar las amenazas (que hoy quedan en 75–76%, justo en el borde).
+
+### 8.x La Raíz y la Grieta (PLAN-QUIEBRE L1, paso 6a)
+`npm run sim:economy` corre además las tres extracciones (`--raiz sellar|medida|exprimir`, en procesos aparte; `--no-raiz3`
+para saltearlo). La sim encuentra el Núcleo al llegar a la mina (o 3 días después del rango 5 si el bot no fue al Cerro),
+construye el Invernadero apenas puede y hace la obra de Raíz cuando la Grieta pasa de 40.
+
+| Meta | Cómo se mide | Semilla 1 (2026-11-09) |
+|---|---|---|
+| Ninguna extracción saca más de 15 % de ventaja neta a los 60 días | valor neto desde el día del Núcleo = monedas + 250 × material + 20 × provisión que entran − reparaciones − obras de Raíz; (mejor − peor) / peor | 2,7 % |
+| La elección cuesta | exprimir da más bonus y trae más Grieta y no menos daño que sellar | sellar 39.500 · Grieta 0 · 3 dañados / exprimir 158.000 · Grieta 38 · 4 dañados |
+
+Números (src/core/raiz.js): sellar ×0,5 sin Grieta · con medida ×1, +4 al elegir y +0,15 por día hasta 15 · exprimir ×2,
++15 al elegir y +0,9 por día. La Grieta da +1 de fuerza a las amenazas desde 25, +2 desde 50 y +3 desde 75 (el premio
+se calcula sin esa fuerza) y suma una amenaza por temporada desde 40 y dos desde 75 (los sábados que falten y después los
+miércoles 9 y 23). La Raíz da +0,1 × rinde de eficacia contra la sequía y la helada. El Invernadero (rango 5, 7.000
+monedas, madera 6, hierbas 6, mineral 2) da 2 hierbas × rinde cada 3 h (guarda 2 tandas). La obra de Raíz cuesta 6.000
+monedas, madera 6, piedra 6 y hierbas 4 (+35 % cada vez), tarda 12 h y cose 12.
 ---
 
 ## 9. Abierto (lo deciden las fases con el juego en la mano)

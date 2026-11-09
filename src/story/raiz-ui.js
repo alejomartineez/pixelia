@@ -14,14 +14,14 @@ const CSS = `
 .rz-choice .rz-meter { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 15px; color: var(--ink-l); }
 .rz-choice .rz-meter .rz-bar { flex: 1; height: 10px; border: 2px solid var(--edge); border-radius: 6px; background: var(--track); overflow: hidden; }
 .rz-choice .rz-meter .rz-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-d), var(--coral)); }
-.rz-choice .rz-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.rz-choice .rz-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 640px) { .rz-choice .rz-opts { grid-template-columns: 1fr; } }
 .rz-choice .rz-opt { display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--surface); border: 2px solid var(--edge);
   border-radius: 14px; box-shadow: 0 3px 0 var(--shade); }
 .rz-choice .rz-opt.now { box-shadow: inset 0 0 0 2px var(--gold-d), 0 3px 0 var(--shade); }
 .rz-choice .rz-opt h3 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 20px; color: var(--gold-t); }
 .rz-choice .rz-opt h3 small { margin-left: auto; font-size: 12px; color: var(--ink-l); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.rz-choice .rz-opt .rz-row { font-size: 15px; line-height: 1.3; }
+.rz-choice .rz-opt .rz-row { font-size: 15px; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
 .rz-choice .rz-opt .rz-row b { color: var(--ink); }
 .rz-choice .rz-opt .rz-row.cost { color: var(--ink-l); }
 .rz-choice .rz-opt blockquote { margin: 2px 0 4px; padding: 6px 8px; border-left: 3px solid var(--gold-d); background: var(--surface-2);
@@ -85,7 +85,7 @@ export function openExtraction(ctx, { first = false } = {}) {
       card.append(h('div.rz-row', { html: `<b>Da:</b> ${esc(E.gives)}` }));
       card.append(h('div.rz-row.cost', { html: `<b>Cuesta:</b> ${esc(E.costs)}` }));
       card.append(h('div.rz-row', { html: esc(costLine(id, g, cur)) }));
-      card.append(h('blockquote', {}, `Vera: «${E.vera}»`));
+      card.append(h('blockquote', {}, `Vera: "${E.vera}"`));
       card.append(h('button.btn.' + (id === 'sellar' ? 'ghost' : id === 'medida' ? 'mint' : 'primary'), {
         html: id === cur ? 'Dejarla así' : 'Elegir',
         onclick: () => {
