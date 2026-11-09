@@ -70,7 +70,26 @@ export function costHtml(cost = {}, size = 16, opts = {}) {
 
 // ---------- Toast ----------
 const TOAST_MAX = 3;
-export function toast(text, { icon: ic, type = '' } = {}) {
+// Con un cartel de premio abierto (Subiste de nivel, Premio diario, rango…) los avisos esperan a que se cierre: arriba
+// del todo tapaban su título («Misión cumplida» sobre «Subiste de nivel», docs/RECORRIDO-NOCHE.md). Salen después, de a uno.
+const heldToasts = [];
+let heldTimer = 0;
+const rewardOpen = () => !!document.querySelector('#modal-root .reward-modal');
+function releaseHeld() {
+  if (rewardOpen()) return;
+  clearInterval(heldTimer); heldTimer = 0;
+  heldToasts.splice(0).forEach(([text, opts], i) => setTimeout(() => showToast(text, opts), i * 300));
+}
+export function toast(text, opts = {}) {
+  if (rewardOpen()) {
+    heldToasts.push([text, opts]);
+    if (heldToasts.length > TOAST_MAX) heldToasts.shift();
+    if (!heldTimer) heldTimer = setInterval(releaseHeld, 300);
+    return;
+  }
+  showToast(text, opts);
+}
+function showToast(text, { icon: ic, type = '' } = {}) {
   const root = $('#toast-root');
   if (!root) return;
   // como mucho 3 a la vez: el más viejo se va

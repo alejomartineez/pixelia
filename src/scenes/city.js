@@ -606,6 +606,12 @@ export default function create(ctx) {
       if (side === 'left') showTip(tipText, rc.left - 8, rc.top + rc.height / 2, 'left');
       else if (side === 'right') showTip(tipText, rc.right + 8, rc.top + rc.height / 2, 'right');
       else showTip(tipText, rc.left + rc.width / 2, rc.top - 6);
+      // si se pisa con una tarjeta de la historia (Vera presentando la ciudad, a 1280×800), la guía es ella: la flecha espera
+      const card = document.querySelector('#story-root .st-card:not(.bark):not(.out)');
+      if (card && tipEl) {
+        const a = tipEl.getBoundingClientRect(), b = card.getBoundingClientRect();
+        if (a.left < b.right + 8 && a.right > b.left - 8 && a.top < b.bottom + 8 && a.bottom > b.top - 8) hideTip();
+      }
     } else hideTip();
     // carteles de terreno: se marcan mientras la misión pide ampliar
     const wantSign = !!tgt?.sign && !blocked;
@@ -866,14 +872,25 @@ export default function create(ctx) {
 
   /** Los carteles "Expandir" se esconden si chocan con un reloj de obra o una burbuja (esos tienen prioridad). */
   const elW = (it, def) => it.w || ((it.w = it.el.offsetWidth) || def);
+  // los avisos de arriba (#toast-root, p. ej. «Premio de tu primer día») también tapan carteles: se miden cada 200 ms
+  let toastRects = [], toastAt = 0;
+  function measureToasts() {
+    const now = performance.now();
+    if (now < toastAt) return toastRects;
+    toastAt = now + 200;
+    const ts = document.querySelectorAll('#toast-root .toast');
+    if (!ts.length) return (toastRects = []);
+    const c = container.getBoundingClientRect();
+    return (toastRects = [...ts].map(t => { const r = t.getBoundingClientRect(); return { l: r.left - c.left, r: r.right - c.left, t: r.top - c.top, b: r.bottom - c.top }; }));
+  }
   function declutterSigns() {
     if (!signItems.length) return;
-    const k = ov.scale;
+    const k = ov.scale, toasts = measureToasts();
     for (const sg of signItems) {
       if (!sg.onScreen) continue;
       const sw = elW(sg, 100) * k / 2, sb = sg.sy - 4 * k, st = sb - 30 * k;
-      let hit = false;
-      for (const e of entries.values()) {
+      let hit = toasts.some(r => sg.sx + sw > r.l - 6 && sg.sx - sw < r.r + 6 && st < r.b + 6 && sb > r.t - 6);
+      for (const e of hit ? [] : entries.values()) {
         for (const it of [e.timer, e.bubble]) {
           if (!it || !it.onScreen) continue;
           const isT = it === e.timer;

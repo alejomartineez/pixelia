@@ -29,7 +29,8 @@ const COLOR_NAMES = {
 const nameKind = (t) => (t.animal ? 'animal' : ['principe', 'chico', 'mago'].includes(t.id) ? 'masc' : 'fem');
 const pickOther = (list, cur) => { const opts = list.filter(x => x !== cur); return opts[Math.floor(Math.random() * opts.length)]; };
 const isDefaultName = (n) => !n || n === 'Pixelín' || n === 'Princesa'; // nombres por defecto (net.js)
-const clean = (s) => [...String(s || '').replace(/\s+/g, ' ').trim()].slice(0, 16).join('').trim();
+const MAX_NAME = 16;   // tope de letras del nombre y de la ciudad
+const clean = (s) => [...String(s || '').replace(/\s+/g, ' ').trim()].slice(0, MAX_NAME).join('').trim();
 
 const OB_CSS = `
 .scene-onboarding .ob { position:absolute; inset:0; display:flex; flex-direction:column; background:linear-gradient(var(--surface-2),var(--surface-2)); }
@@ -68,6 +69,11 @@ const OB_CSS = `
   border:var(--line) solid var(--edge); border-radius:12px; box-shadow:inset 0 3px 0 var(--surface-2); }
 .scene-onboarding .ob-input:focus { outline:none; border-color:var(--primary-d); }
 .scene-onboarding .ob-dice { flex:none; width:50px; height:50px; }
+/* contador de letras dentro del campo (el nombre y la ciudad tienen tope de 16): gris, y cálido al llegar al tope */
+.scene-onboarding .ob-wrap { position:relative; flex:1; min-width:0; display:flex; }
+.scene-onboarding .ob-wrap .ob-input { padding-right:58px; }
+.scene-onboarding .ob-count { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:13px; font-weight:700; color:var(--ink-l); pointer-events:none; font-variant-numeric:tabular-nums; }
+.scene-onboarding .ob-count.full { color:var(--gold-d); }
 .scene-onboarding .ob-hint { margin:-8px 2px 14px; font-size:13px; color:var(--ink-l); }
 .scene-onboarding .ob-foot { display:flex; gap:8px; padding:10px 14px calc(var(--safe-b) + 12px); border-top:2px dashed var(--rule); }
 .scene-onboarding .ob-foot .btn { min-height:50px; font-size:18px; }
@@ -259,6 +265,16 @@ export default function create(ctx) {
   function swatches(list, cur, key) {
     return `<div class="ob-sw" data-key="${key}">${list.map(c => `<button class="${String(c.id) === String(cur) ? 'on' : ''}" data-id="${c.id}" style="background:${c.hex}" aria-label="${c.name}"></button>`).join('')}</div>`;
   }
+  // contador «7/16» en los campos de nombre y ciudad; al llegar al tope avisa, sin cortar de golpe en silencio
+  function paintCounts() {
+    for (const c of root.querySelectorAll('.ob-count')) {
+      const n = [...(root.querySelector(`[data-f=${c.dataset.count}]`)?.value || '')].length, full = n >= MAX_NAME;
+      c.textContent = `${n}/${MAX_NAME}`;
+      c.classList.toggle('full', full);
+    }
+    const hint = root.querySelector('.ob-name-hint');
+    if (hint) hint.textContent = root.querySelector('.ob-count.full') ? `Hasta ${MAX_NAME} letras. Los podés cambiar cuando quieras en Ajustes.` : 'Los podés cambiar cuando quieras en Ajustes.';
+  }
   function renderStep() {
     const body = root.querySelector('.ob-body');
     const foot = root.querySelector('.ob-foot');
@@ -295,15 +311,16 @@ export default function create(ctx) {
       setTitle(`¡Hola, ${ui.esc(name || suggestedName())}!`, 'Ponele nombre a tu personaje y a tu ciudad.');
       body.innerHTML = `<div class="ob-step">
         <h2 class="ob-h">${icon(t.emoji, 22)} Tu nombre</h2>
-        <div class="ob-field"><input class="ob-input" data-f="name" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="${ui.esc(suggestedName())}" aria-label="Nombre de tu personaje">
+        <div class="ob-field"><span class="ob-wrap"><input class="ob-input" data-f="name" type="text" maxlength="${MAX_NAME}" autocomplete="off" spellcheck="false" placeholder="${ui.esc(suggestedName())}" aria-label="Nombre de tu personaje" aria-describedby="ob-count-name"><span class="ob-count" id="ob-count-name" data-count="name"></span></span>
           <button class="icon-btn ob-dice" data-dice="name" aria-label="Nombre al azar">${icon('🎲', 24)}</button></div>
         <h2 class="ob-h">${icon('🏡', 22)} Tu ciudad</h2>
-        <div class="ob-field"><input class="ob-input" data-f="city" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="${ui.esc(sugg.city)}" aria-label="Nombre de tu ciudad">
+        <div class="ob-field"><span class="ob-wrap"><input class="ob-input" data-f="city" type="text" maxlength="${MAX_NAME}" autocomplete="off" spellcheck="false" placeholder="${ui.esc(sugg.city)}" aria-label="Nombre de tu ciudad" aria-describedby="ob-count-city"><span class="ob-count" id="ob-count-city" data-count="city"></span></span>
           <button class="icon-btn ob-dice" data-dice="city" aria-label="Ciudad al azar">${icon('🎲', 24)}</button></div>
-        <p class="ob-hint">Los podés cambiar cuando quieras en Ajustes.</p>
+        <p class="ob-hint ob-name-hint" aria-live="polite">Los podés cambiar cuando quieras en Ajustes.</p>
       </div>`;
       const ni = body.querySelector('[data-f=name]'), ci = body.querySelector('[data-f=city]');
       ni.value = name; ci.value = city;
+      paintCounts();
       foot.innerHTML = `<button class="btn ghost ob-back" aria-label="Volver">${icon('back', 20)}</button><button class="btn primary ob-next">${icon('sparkle', 20)}Empezar</button>`;
     }
     body.scrollTop = 0;
@@ -373,6 +390,7 @@ export default function create(ctx) {
       const list = dice.dataset.dice === 'name' ? NAMES[nameKind(avatarType(look.type))] : CITY_NAMES;
       input.value = pickOther(list, input.value);
       readInputs();
+      paintCounts();
       audio.sfx('pop');
       if (dice.dataset.dice === 'name') setTitle(`¡Hola, ${ui.esc(name)}!`, 'Ponele nombre a tu personaje y a tu ciudad.');
       return;
@@ -460,7 +478,7 @@ export default function create(ctx) {
         <div class="ob-panel"><div class="ob-dots"></div><div class="ob-body scroll"></div><div class="ob-foot"></div></div>`;
       container.append(root);
       root.addEventListener('click', onClick);
-      root.addEventListener('input', (e) => { if (e.target.dataset.f === 'name') { name = clean(e.target.value); setTitle(`¡Hola, ${ui.esc(name || suggestedName())}!`, 'Ponele nombre a tu personaje y a tu ciudad.'); } });
+      root.addEventListener('input', (e) => { if (e.target.dataset.f) paintCounts(); if (e.target.dataset.f === 'name') { name = clean(e.target.value); setTitle(`¡Hola, ${ui.esc(name || suggestedName())}!`, 'Ponele nombre a tu personaje y a tu ciudad.'); } });
       addEventListener('keydown', onKey);
       offs.push(() => removeEventListener('keydown', onKey));
       const stage = root.querySelector('.ob-stage');
