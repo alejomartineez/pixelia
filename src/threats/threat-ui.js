@@ -102,17 +102,17 @@ export function openThreatPanel(ctx, hooks = {}) {
     ? (st.phase === 'hoy' ? 'Llegó el simulacro: hoy podés enfrentarlo.' : `Un simulacro para practicar, ${st.when}.`)
     : st.phase === 'hoy' ? 'Llegó. Podés enfrentarla hasta las 23:59.' : `Llega el sábado, ${st.when}.`;
   body.append(ui.h('p.th-when', { html: `${ui.esc(when)} Fuerza ${st.f}${st.g ? ` (+${st.g} por la Grieta)` : ''}.` }));
-  if (info.list?.length && (st.type === 'sequia' || st.type === 'helada') && ctx.state.world?.raiz?.mode) body.append(ui.h('p.th-when', { html: `${icon('🌱', 14)} La Raíz ayuda contra ${st.type === 'sequia' ? 'la sequía' : 'la helada'}.` }));
+  if (info.list?.length && (st.type === 'sequia' || st.type === 'helada') && ctx.state.world?.raiz?.mode) body.append(ui.h('p.th-when', { html: `${icon('el-raiz', 14)} La Raíz ayuda contra ${st.type === 'sequia' ? 'la sequía' : 'la helada'}.` }));
   if (st.phase === 'señales' || st.phase === 'hoy') body.append(ui.h('p.th-tip', {}, def.sign));
   // preparación
   const prep = ui.h('div.cx-box.th-prep');
   if (!info.enRiesgo) {
-    prep.append(ui.h('h4', { html: icon('🛡️', 20) + 'Preparación' }), ui.h('div.line', { html: `<span>Por ahora no hay nada expuesto: si pasa así, pasa sola. ${ui.esc(def.risk)}</span>` }));
+    prep.append(ui.h('h4', { html: icon('shield', 20) + 'Preparación' }), ui.h('div.line', { html: `<span>Por ahora no hay nada expuesto: si pasa así, pasa sola. ${ui.esc(def.risk)}</span>` }));
   } else {
-  prep.append(ui.h('h4', { html: icon('🛡️', 20) + `Preparación ${info.pct}%` }), ui.h('div', { html: ui.progressHtml(info.prep, info.prep >= 0.7 ? 'xp' : 'gold') }));
+  prep.append(ui.h('h4', { html: icon('shield', 20) + `Preparación ${info.pct}%` }), ui.h('div', { html: ui.progressHtml(info.prep, info.prep >= 0.7 ? 'xp' : 'gold') }));
   const resName = RESERVES[st.reserve]?.name || 'Reservas';
   prep.append(ui.h('div.line', { html: `<span>Defensas que cubren</span><b>${pct(info.c)}</b>` }));
-  prep.append(ui.h('div.line', { html: `<span>${icon(RESERVES[st.reserve]?.icon || '📦', 16)} ${ui.esc(resName)}</span><b>${info.have}/${info.need}</b>` }));
+  prep.append(ui.h('div.line', { html: `<span>${icon(RESERVES[st.reserve]?.icon || 'crate', 16)} ${ui.esc(resName)}</span><b>${info.have}/${info.need}</b>` }));
   if (st.help?.n) prep.append(ui.h('div.line.th-help', { html: `<span>${icon('people', 16)} Cuadrillas de ${ui.esc(joinNames(st.help.names))}</span><b>+${Math.round(st.help.bonus * 100)}%</b>` }));
   const auto = autoResolve(Math.min(1, info.prep + (st.help?.bonus || 0)), st.f, info.enRiesgo);
   prep.append(ui.h('div.line', { html: `<span class="muted">Si no estás, se resuelve sola: salvarías cerca del ${auto.pct}%</span>` }));
@@ -123,7 +123,7 @@ export function openThreatPanel(ctx, hooks = {}) {
   for (const x of info.list) {
     const b = ctx.state.city.buildings.find(o => o.uid === x.uid);
     const by = x.by != null ? ctx.state.city.buildings.find(o => o.uid === x.by) : null;
-    const cov = by ? `<span class="ok">${icon('🛡️', 14)} ${ui.esc(bName(by))} · ${pct(x.eff)}</span>` : x.eff > 0 ? `<span class="ok">resiste ${pct(x.eff)}</span>` : '<span class="no">sin cubrir</span>';
+    const cov = by ? `<span class="ok">${icon('shield', 14)} ${ui.esc(bName(by))} · ${pct(x.eff)}</span>` : x.eff > 0 ? `<span class="ok">resiste ${pct(x.eff)}</span>` : '<span class="no">sin cubrir</span>';
     const row = ui.h('button.th-row', { html: `<b>${ui.esc(bName(b))}</b>${cov}` });
     row.addEventListener('click', () => { audio.sfx('tap'); m.close(); hooks.onHighlight?.(x.uid); });
     list.append(row);
@@ -172,7 +172,7 @@ function helpParts(rep, esc) {
   for (const x of rep.helpFixed || []) {
     const sum = x.to != null ? `llegó después de que se resolviera sola, pero salió a tiempo: el resultado pasa de ${x.from}% a ${x.to}%` : '';
     const fix = x.b ? `arregló ${esc(bName(x.b))}` : '';
-    out.push(`${icon('🔧', 18)} La cuadrilla de ${esc(x.name)} ${[sum, fix].filter(Boolean).join(' y ')}.`);
+    out.push(`${icon('wrench', 18)} La cuadrilla de ${esc(x.name)} ${[sum, fix].filter(Boolean).join(' y ')}.`);
   }
   return out;
 }
@@ -185,12 +185,12 @@ export function reportParts(ctx) {
   for (const it of rep.items) {
     const past = it.id === 'sim' ? 'Pasó el simulacro' : THREAT_TYPES[it.type]?.past || 'Pasó la amenaza';
     const withHelp = it.help?.length ? ` Con la ayuda de ${ctx.ui.esc(joinNames(it.help))}.` : '';
-    lines.push(`${icon(THREAT_TYPES[it.type]?.icon || '🌊', 18)} ${past}: salvaste el <b>${it.pct}%</b>.${withHelp} ${damagedLine(it.damaged?.length || 0)}`);
+    lines.push(`${icon(THREAT_TYPES[it.type]?.icon || 'flood', 18)} ${past}: salvaste el <b>${it.pct}%</b>.${withHelp} ${damagedLine(it.damaged?.length || 0)}`);
     const r = it.reward || {};
     total.coins += r.coins || 0; total.gems += r.gems || 0; total.planos += r.planos || 0;
     for (const [k, v] of Object.entries(r.mats || {})) total.mats[k] = (total.mats[k] || 0) + v;
   }
-  if (rep.mended.length) lines.push(`${icon('🔧', 18)} Lo arreglaron entre todos: ${rep.mended.map(b => ctx.ui.esc(bName(b))).join(', ')}.`);
+  if (rep.mended.length) lines.push(`${icon('wrench', 18)} Lo arreglaron entre todos: ${rep.mended.map(b => ctx.ui.esc(bName(b))).join(', ')}.`);
   lines.push(...helpParts(rep, ctx.ui.esc));
   T.ackReport();
   return { lines, reward: rep.items.length ? total : {} };
@@ -203,12 +203,12 @@ export async function openReport(ctx) {
   const total = { coins: 0, gems: 0, mats: {}, planos: 0 };
   for (const it of rep.items) {
     const past = it.id === 'sim' ? 'Pasó el simulacro' : THREAT_TYPES[it.type]?.past || 'Pasó la amenaza';
-    lines.push(`${icon(THREAT_TYPES[it.type]?.icon || '🌊', 18)} ${past}: salvaste el <b>${it.pct}%</b>. ${damagedLine(it.damaged?.length || 0)}`);
+    lines.push(`${icon(THREAT_TYPES[it.type]?.icon || 'flood', 18)} ${past}: salvaste el <b>${it.pct}%</b>. ${damagedLine(it.damaged?.length || 0)}`);
     const r = it.reward || {};
     total.coins += r.coins || 0; total.gems += r.gems || 0; total.planos += r.planos || 0;
     for (const [k, v] of Object.entries(r.mats || {})) total.mats[k] = (total.mats[k] || 0) + v;
   }
-  if (rep.mended.length) lines.push(`${icon('🔧', 18)} Lo arreglaron entre todos: ${rep.mended.map(b => ctx.ui.esc(bName(b))).join(', ')}.`);
+  if (rep.mended.length) lines.push(`${icon('wrench', 18)} Lo arreglaron entre todos: ${rep.mended.map(b => ctx.ui.esc(bName(b))).join(', ')}.`);
   T.ackReport();
   await ctx.ui.rewardModal({ title: 'Mientras no estabas', reward: rep.items.length ? total : {}, lines, buttons: [{ label: 'Ver la ciudad', value: 'ok' }] });
   return true;
@@ -223,21 +223,21 @@ export function infoBoxes(ctx, b, close) {
   const ri = T.repairInfo(b);
   if (ri) {
     const box = ui.h('div.cx-box.th-dmgbox');
-    box.append(ui.h('h4', { html: icon('🔧', 20) + `Dañado por ${ri.type === 'crecida' ? 'la crecida' : ri.type === 'sequia' ? 'la sequía' : ri.type === 'incendio' ? 'el incendio' : ri.type === 'tormenta' ? 'la tormenta' : 'la helada'}` }));
+    box.append(ui.h('h4', { html: icon('wrench', 20) + `Dañado por ${ri.type === 'crecida' ? 'la crecida' : ri.type === 'sequia' ? 'la sequía' : ri.type === 'incendio' ? 'el incendio' : ri.type === 'tormenta' ? 'la tormenta' : 'la helada'}` }));
     box.append(ui.h('div.line', { html: '<span>No produce ni se puede mejorar hasta repararlo.</span>' }));
     box.append(ui.h('div.line', { html: `<span class="muted">Si no, la vecindad lo arregla sola en ${fmtH(ri.autoIn)}.</span>` }));
     const can = T.canRepair(b);
     box.append(ui.h('button.btn.gold', { html: `Reparar ${ui.costHtml(ri.cost, 16)}`, disabled: !can.ok, onclick: () => {
       const r = T.repair(b.uid);
       if (r.error) { audio.sfx('error'); ui.toast(r.error, { icon: 'info' }); return; }
-      audio.sfx('build'); ui.toast(`${bName(b)} quedó como nuevo`, { icon: '🔧', type: 'good' }); close?.();
+      audio.sfx('build'); ui.toast(`${bName(b)} quedó como nuevo`, { icon: 'wrench', type: 'good' }); close?.();
     } }));
     if (!can.ok) box.append(ui.h('div.line', { html: `<span class="muted">${ui.esc(can.reason)}</span>` }));
     const all = T.repairAllInfo();
     if (all.list.length > 1) box.append(ui.h('button.btn.sky', { html: `Reparar todo (${all.list.length}) ${ui.costHtml(all.cost, 16)}`, disabled: !all.ok, onclick: () => {
       const n = T.repairAll();
       if (!n) { audio.sfx('error'); ui.toast('No te alcanza para repararlos todos', { icon: 'info' }); return; }
-      audio.sfx('build'); ui.toast(`Reparaste ${plural(n, 'edificio', 'edificios')}`, { icon: '🔧', type: 'good' }); close?.();
+      audio.sfx('build'); ui.toast(`Reparaste ${plural(n, 'edificio', 'edificios')}`, { icon: 'wrench', type: 'good' }); close?.();
     } }));
     void store;
     out.push(box);
@@ -246,7 +246,7 @@ export function infoBoxes(ctx, b, close) {
   if (dd && !b.buildEnd) {
     const L = b.level || 1;
     const box = ui.h('div.cx-box.th-defbox');
-    box.append(ui.h('h4', { html: icon('🛡️', 20) + 'Defensa' }));
+    box.append(ui.h('h4', { html: icon('shield', 20) + 'Defensa' }));
     if (dd.threat === '*') box.append(ui.h('div.line', { html: `<span>Contra todas: +${Math.round(HOSPITAL_BONUS * 100)}% de eficacia en su radio y una cuadrilla más</span>` }));
     else box.append(ui.h('div.line', { html: `<span>Contra ${ui.esc(THREAT_TYPES[dd.threat].name.toLowerCase())}</span><b>eficacia ${pct(effOf(L))}</b>` }));
     box.append(ui.h('div.line', { html: `<span>Radio</span><b>${defenseRadius(b.id, L)} casillas</b>` }));

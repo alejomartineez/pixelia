@@ -100,7 +100,7 @@ export function openExtraction(ctx, { first = false } = {}) {
     }
     wrap.append(opts);
     wrap.append(h('p.rz-note', {}, 'Ninguna decisión es para siempre: se puede volver a la mina y la Grieta se cose con obras de Raíz en el Invernadero.'));
-    const m = ui.modal({ title: first ? 'El Núcleo de Raíz' : 'La mina sellada', icon: '🌱', content: wrap, closable: !first, className: 'rz-choice',
+    const m = ui.modal({ title: first ? 'El Núcleo de Raíz' : 'La mina sellada', icon: 'el-raiz', content: wrap, closable: !first, className: 'rz-choice',
       onClose: () => {
         // al cerrar sin elegir (solo al volver), la elección queda cerrada y sigue la extracción de antes
         if (!picked && !first) { r.pending = false; store.markDirty(); }

@@ -127,8 +127,8 @@ function resolveTier(n, index, plan) {
   if (t.chest) parts.push({ kind: 'chest', type: t.chest, n: 1, name: CHESTS[t.chest]?.name || 'Cofre' });
   if (t.stickers) parts.push({ kind: 'stickers', n: t.stickers.n, minStars: t.stickers.minStars || 1 });
   for (const [id, k] of Object.entries(t.items || {})) parts.push({ kind: 'item', id, n: k, name: ITEMS[id]?.name || id, icon: ITEMS[id]?.icon || 'gift' });
-  for (const [id, k] of Object.entries(t.equip || {})) parts.push({ kind: 'equip', id, n: k, name: EQUIP_LOOK[id]?.name || id, icon: EQUIP_LOOK[id]?.icon || '🎒' });
-  if (t.planos) parts.push({ kind: 'planos', n: t.planos, name: t.planos === 1 ? 'Plano' : 'Planos', icon: '📜' });
+  for (const [id, k] of Object.entries(t.equip || {})) parts.push({ kind: 'equip', id, n: k, name: EQUIP_LOOK[id]?.name || id, icon: EQUIP_LOOK[id]?.icon || 'bag' });
+  if (t.planos) parts.push({ kind: 'planos', n: t.planos, name: t.planos === 1 ? 'Plano' : 'Planos', icon: 'plans' });
   for (const [id, k] of Object.entries(t.mats || {})) parts.push({ kind: 'mats', id, n: k, name: MATERIAL_BY_ID[id]?.name || id, icon: MATERIAL_BY_ID[id]?.icon || 'gift' });
   return parts;
 }
@@ -326,7 +326,7 @@ let lastExp = null;
 /** Chispas ganadas en la última expedición terminada (para el resumen de la vuelta). {pts, at} | null */
 export function lastExpeditionPoints() { return lastExp; }
 // nombre e ícono del equipo para las partes del Pase (los datos de expedición viven en exp-data.js)
-const EQUIP_LOOK = { cuerda: { name: 'Cuerda', icon: '🪢' }, pala: { name: 'Pala', icon: '🪏' }, lona: { name: 'Lona', icon: '⛺' }, farol: { name: 'Farol', icon: '🏮' }, botiquin: { name: 'Botiquín', icon: '🩹' }, carreta: { name: 'Carreta', icon: '🛒' } };
+const EQUIP_LOOK = { cuerda: { name: 'Cuerda', icon: 'rope' }, pala: { name: 'Pala', icon: 'shovel' }, lona: { name: 'Lona', icon: 'tarp' }, farol: { name: 'Farol', icon: 'lantern' }, botiquin: { name: 'Botiquín', icon: 'medkit' }, carreta: { name: 'Carreta', icon: 'cart' } };
 
 // ---------- Bienvenida de vuelta ----------
 let awayFrom = null;   // lastSeen capturado ANTES del autoguardado

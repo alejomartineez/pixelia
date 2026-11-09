@@ -76,7 +76,7 @@ function render() {
     </div>
     <div class="hud-rail">
       <div class="rail-group" data-layer="hoy">
-        <button class="rail-btn exp" data-act="expedition" data-hud="prov" aria-label="Expedición" style="display:none">${icon('🧭', 30)}<span>Expedición</span><em class="rail-tag" data-hud="provtag"></em><i class="badge" data-badge="expedition"></i></button>
+        <button class="rail-btn exp" data-act="expedition" data-hud="prov" aria-label="Expedición" style="display:none">${icon('expedition', 30)}<span>Expedición</span><em class="rail-tag" data-hud="provtag"></em><i class="badge" data-badge="expedition"></i></button>
         <button class="rail-btn" data-act="chests" aria-label="Cofres" style="display:none">${chestIcon('madera', 34)}<span>Cofres</span><i class="badge" data-badge="chests"></i></button>
       </div>
       <div class="rail-group" data-layer="temporada">
@@ -84,8 +84,8 @@ function render() {
       </div>
       <div class="rail-group" data-layer="largo">
         <button class="rail-btn works" data-act="works" data-hud="works" aria-label="Obras: monumentos" style="display:none">${icon('monument', 30)}<span>Obras</span><i class="badge" data-badge="works"></i></button>
-        <button class="rail-btn" data-act="album" aria-label="Hallazgos" style="display:none">${icon('album', 30)}<span>Hallazgos</span><i class="badge" data-badge="album"></i></button>
-        <button class="rail-btn journal" data-act="story" aria-label="Bitácora" title="Bitácora (J)">${icon('📖', 30)}<span>Bitácora</span></button>
+        <button class="rail-btn" data-act="album" aria-label="Hallazgos" style="display:none">${icon('finding', 30)}<span>Hallazgos</span><i class="badge" data-badge="album"></i></button>
+        <button class="rail-btn journal" data-act="story" aria-label="Bitácora" title="Bitácora (J)">${icon('journal', 30)}<span>Bitácora</span></button>
       </div>
     </div>
     <nav class="hud-bottom">
@@ -118,11 +118,11 @@ function refreshFx() {
   const now = Date.now();
   const chips = [];
   const b = safe(() => activeBoosts(now), {});
-  if (b.prod) chips.push(`<button class="fx-chip gold" data-act="backpack" aria-label="Poción de producción">${icon('🧪', 16)}<b>x${b.prod.mult}</b><small>${shortTime(b.prod.leftMs)}</small></button>`);
-  if (b.happy) chips.push(`<button class="fx-chip primary" data-act="backpack" aria-label="Felicidad al máximo">${icon('🌸', 16)}<b>Feliz</b><small>${shortTime(b.happy.leftMs)}</small></button>`);
+  if (b.prod) chips.push(`<button class="fx-chip gold" data-act="backpack" aria-label="Poción de producción">${icon('potion', 16)}<b>x${b.prod.mult}</b><small>${shortTime(b.prod.leftMs)}</small></button>`);
+  if (b.happy) chips.push(`<button class="fx-chip primary" data-act="backpack" aria-label="Felicidad al máximo">${icon('perfume', 16)}<b>Feliz</b><small>${shortTime(b.happy.leftMs)}</small></button>`);
   for (const e of safe(() => activeEvents(now), [])) {
     const m = e.mult?.production;
-    if (m && m > 1) chips.push(`<button class="fx-chip mint" data-act="events" aria-label="${esc(e.title)}">${icon(e.emoji || '⚡', 16)}<b>x${String(m).replace('.', ',')}</b><small>${fmtLeft(e.endsInMs)}</small></button>`);
+    if (m && m > 1) chips.push(`<button class="fx-chip mint" data-act="events" aria-label="${esc(e.title)}">${icon(e.emoji || 'calendar', 16)}<b>x${String(m).replace('.', ',')}</b><small>${fmtLeft(e.endsInMs)}</small></button>`);
   }
   const html = chips.join('');
   if (html !== lastFx) { lastFx = html; el.innerHTML = html; el.style.display = html ? '' : 'none'; }

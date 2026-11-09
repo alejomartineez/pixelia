@@ -20,7 +20,7 @@ function celebrateGot(el, got) {
   flyFrom(el, got);
   const ch = Object.keys(got.chests || {});
   if (ch.length) setTimeout(() => toast(`¡${CHESTS[ch[0]]?.name || 'Cofre'} a tus cofres!`, { icon: 'gift', type: 'good' }), 500);
-  if (got.stickers?.length) setTimeout(() => toast(`¡${got.stickers.length} hallazgos nuevos en tu colección!`, { icon: '🃏', type: 'good' }), 1000);
+  if (got.stickers?.length) setTimeout(() => toast(`¡${got.stickers.length} hallazgos nuevos en tu colección!`, { icon: 'finding', type: 'good' }), 1000);
 }
 function weekLabel(w) { return `Semana ${Number(String(w).split('W')[1]) || ''}`; }
 function smallConnect(api, text) {
@@ -72,7 +72,7 @@ export async function renderRanking(api, tok) {
       const r = rows[pos];
       const has = r && (r.v > 0 || cat === 'level');
       pod.append(h('div.soc-pod.' + cls + (has ? '' : '.empty'), {
-        html: `${pos === 0 && has ? `<span class="soc-crown">${icon('crown', 26)}</span>` : ''}
+        html: `${pos === 0 && has ? `<span class="soc-crown">${icon('medal', 26)}</span>` : ''}
           ${avatarHtml(r?.look, r?.name || '?', pos === 0 ? 56 : 46, r?.me ? 'me' : '')}
           <span class="soc-pn">${has ? esc(r.me ? 'Vos' : r.name) : '—'}</span>
           <span class="soc-pv">${has ? `${icon(c.icon, 14)}${fmtV(r.v)}` : '&nbsp;'}</span>
@@ -149,7 +149,7 @@ function dailyCard(api) {
 }
 
 // ---------- Obra en Equipo ----------
-const SITE = ['🚧', '🧱', '🏗️', '🏠', '🏡', '🏛️'];
+const SITE = ['build', 'stone', 'hammer', 'home', 'village', 'monument'];
 export async function renderTeam(api, tok) {
   const { pane } = api;
   if (net.user && !cache.coop) pane.innerHTML = loadingHtml('Mirando la obra…');
@@ -235,12 +235,12 @@ export async function renderTeam(api, tok) {
     const how = h('div.soc-sec', { html: `<h4>${icon('sparkle', 20)} ¿Cómo sumo puntos?</h4>` });
     how.append(h('div.soc-how', {
       html: [
-        ['🧭', 'Volver de una expedición', COOP_POINTS.win],
+        ['expedition', 'Volver de una expedición', COOP_POINTS.win],
         ['build', 'Terminar una obra', COOP_POINTS.built],
         ['up', 'Mejorar un edificio', COOP_POINTS.upgraded],
-        ['🤝', 'Cumplir un pedido', COOP_POINTS.request],
+        ['handshake', 'Cumplir un pedido', COOP_POINTS.request],
         ['gift', 'Mandar un regalo', COOP_POINTS.gift],
-        ['🔨', 'Ayudar en una visita', COOP_POINTS.help],
+        ['hammer', 'Ayudar en una visita', COOP_POINTS.help],
       ].map(([ic, t, p]) => `<div>${icon(ic, 20)}<span>${t}</span><b>+${p}</b></div>`).join(''),
     }));
     nodes.push(how);

@@ -79,7 +79,7 @@ function describe(inst, t) {
     const tiers = tpl.race.map((x, i) => ({ goal: x.goal, reward: scaledReward(x.reward), done: !!r.done[i] }));
     const next = tiers.find(x => !x.done);
     out.progress = { cur: r.stars, max: tiers[tiers.length - 1].goal, next: next ? next.goal : null, tiers, complete: !next };
-    out.short = next ? `⭐ ${r.stars}/${next.goal}` : '⭐ ¡Completa!';
+    out.short = next ? `★ ${r.stars}/${next.goal}` : '★ ¡Completa!';
   }
   return out;
 }
@@ -129,7 +129,7 @@ export function eventBannerInfo(now) {
   return {
     id: top.id, key: top.key, emoji: top.emoji, title: top.title, short: top.short, color: top.color, dark: top.dark,
     endsAt: top.endsAt, endsInMs: top.endsInMs, endsIn: top.endsIn, count: list.length, others: list.slice(1).map(e => e.emoji),
-    text: `${top.emoji} ${top.short} · ${top.endsIn}`,
+    text: `${top.short} · ${top.endsIn}`,
   };
 }
 

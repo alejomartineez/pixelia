@@ -294,7 +294,7 @@ export function playChestOpening(ctx, type, drops = []) {
       const el = h('div.chx-card.r' + r.order, { style: rarityVars(d.rarity), html: `
         <div class="chx-cardglow"></div>
         <div class="chx-flipper">
-          <div class="chx-face chx-back">${icon('crown', 84)}<b>?</b></div>
+          <div class="chx-face chx-back">${icon('medal', 84)}<b>?</b></div>
           <div class="chx-face chx-front">
             <div class="chx-banner">${esc(d.kind === 'stickers' ? 'Hallazgos' : r.name)}</div>
             <div class="chx-icwrap">${d.kind === 'stickers' ? '' : icon(d.icon || 'gift', 96)}</div>
@@ -385,7 +385,7 @@ export function playChestOpening(ctx, type, drops = []) {
         : hasStk ? 'Los hallazgos nuevos ya están en Hallazgos.' : '';
       sumEl = h('div.chx-sum', {},
         h('div.chx-sumbox', {},
-          h('div.chx-sumhead', { html: `${icon('crown', 32)}<h2>Lo que había adentro</h2>${icon('crown', 32)}` }),
+          h('div.chx-sumhead', { html: `${icon('medal', 32)}<h2>Lo que había adentro</h2>${icon('medal', 32)}` }),
           grid,
           h('div.chx-sumfoot', {}, tip ? h('p', {}, tip) : null, okBtn)));
       sumEl.addEventListener('pointerdown', e => e.stopPropagation());

@@ -74,10 +74,10 @@ export const TERRAIN = {
 export const TERRAIN_IDS = ['llano', 'bosque', 'colina', 'pantano', 'roca'];
 
 export const MATERIALS = {
-  madera: { id: 'madera', name: 'madera', icon: '🪵' },
-  piedra: { id: 'piedra', name: 'piedra', icon: '🪨' },
-  mineral: { id: 'mineral', name: 'mineral', icon: '⛏️' },
-  hierbas: { id: 'hierbas', name: 'hierbas', icon: '🌿' },
+  madera: { id: 'madera', name: 'madera', icon: 'wood' },
+  piedra: { id: 'piedra', name: 'piedra', icon: 'stone' },
+  mineral: { id: 'mineral', name: 'mineral', icon: 'ore' },
+  hierbas: { id: 'hierbas', name: 'hierbas', icon: 'herbs' },
 };
 export const MAT_IDS = ['madera', 'piedra', 'mineral', 'hierbas'];
 
@@ -85,13 +85,13 @@ export const CONTENT_IDS = ['vacio', 'recurso', 'ruina', 'campamento', 'aldea', 
 export const CONTENT = {
   vacio: { name: 'Nada a la vista', icon: null },
   recurso: { name: 'Recurso', icon: null },        // usa el ícono del material
-  ruina: { name: 'Ruina', icon: '🏚️', text: 'Restos de algo que fue importante para alguien.' },
-  campamento: { name: 'Campamento', icon: '⛺', text: 'Un claro con fogón. Se puede descansar una vez.' },
-  aldea: { name: 'Aldea', icon: '🏘️', text: 'Gente de la zona. Se puede hacer una cosa con ellos.' },
-  mirador: { name: 'Mirador', icon: '🔭', text: 'Desde arriba se ve lejos.' },
+  ruina: { name: 'Ruina', icon: 'ruin', text: 'Restos de algo que fue importante para alguien.' },
+  campamento: { name: 'Campamento', icon: 'camp', text: 'Un claro con fogón. Se puede descansar una vez.' },
+  aldea: { name: 'Aldea', icon: 'village', text: 'Gente de la zona. Se puede hacer una cosa con ellos.' },
+  mirador: { name: 'Mirador', icon: 'lookout', text: 'Desde arriba se ve lejos.' },
   peligro: { name: 'Peligro', icon: null },          // usa el ícono del peligro
-  enemigo: { name: 'Enemigos', icon: '⚔️', text: 'Algo se mueve más adelante. Para pasar por acá hay que pelear.' },   // sub = id del encuentro
-  objetivo: { name: 'Objetivo', icon: '🚩' },
+  enemigo: { name: 'Enemigos', icon: 'fight', text: 'Algo se mueve más adelante. Para pasar por acá hay que pelear.' },   // sub = id del encuentro
+  objetivo: { name: 'Objetivo', icon: 'flag' },
 };
 
 // Regiones (§2.5, §2.9). content: % por tipo (suma 100); mats/hazards/terrain: % dentro de cada grupo.
@@ -152,12 +152,12 @@ export const REGION_IDS = ['bosque', 'sierras', 'banado', 'cerro', 'costa'];
 // Clases de la expedición (paso 5b; antes, roles). building: el edificio que la trae (el nivel del edificio es su nivel
 // de oficio, 1..5, el que usan las decisiones). El Guerrero llega con la Casa de Expediciones 2 (src/core/classes.js).
 export const CLASSES = {
-  cazador: { id: 'cazador', name: 'Cazador', building: 'casa_exp', icon: '🏹', text: 'Ve más lejos: visión 2.' },
-  forjador: { id: 'forjador', name: 'Forjador', building: 'taller', icon: '🔨', text: 'Cruza ríos y despeja derrumbes.' },
-  curandero: { id: 'curandero', name: 'Curandero', building: 'dispensario', icon: '🩹', text: 'Más ánimo y mejor descanso.' },
-  saqueador: { id: 'saqueador', name: 'Saqueador', building: 'huerta', icon: '🧺', text: 'Junta más en cada recurso.' },
-  monje: { id: 'monje', name: 'Monje', building: 'establo', icon: '🥾', text: 'Pasa mejor por colinas, bañados y roca.' },
-  guerrero: { id: 'guerrero', name: 'Guerrero', building: 'casa_exp', minLevel: 2, icon: '🛡️', text: 'Abre paso por la fuerza: derrumbes y ríos.' },
+  cazador: { id: 'cazador', name: 'Cazador', building: 'casa_exp', icon: 'cls-cazador', text: 'Ve más lejos: visión 2.' },
+  forjador: { id: 'forjador', name: 'Forjador', building: 'taller', icon: 'cls-forjador', text: 'Cruza ríos y despeja derrumbes.' },
+  curandero: { id: 'curandero', name: 'Curandero', building: 'dispensario', icon: 'cls-curandero', text: 'Más ánimo y mejor descanso.' },
+  saqueador: { id: 'saqueador', name: 'Saqueador', building: 'huerta', icon: 'cls-saqueador', text: 'Junta más en cada recurso.' },
+  monje: { id: 'monje', name: 'Monje', building: 'establo', icon: 'cls-monje', text: 'Pasa mejor por colinas, bañados y roca.' },
+  guerrero: { id: 'guerrero', name: 'Guerrero', building: 'casa_exp', minLevel: 2, icon: 'cls-guerrero', text: 'Abre paso por la fuerza: derrumbes y ríos.' },
 };
 export const CLASS_IDS = ['cazador', 'forjador', 'curandero', 'saqueador', 'monje', 'guerrero'];
 /** @deprecated los roles pasaron a clases (paso 5b): quedan los nombres para quien todavía los importa. */
@@ -165,19 +165,19 @@ export const ROLES = CLASSES;
 export const ROLE_IDS = CLASS_IDS;
 
 export const EQUIPMENT = {
-  cuerda: { id: 'cuerda', name: 'Cuerda', icon: '🪢', text: '+15 cruzar ríos, +10 trepar' },
-  pala: { id: 'pala', name: 'Pala', icon: '🪏', text: '+15 despejar, +10 revisar ruinas' },
-  lona: { id: 'lona', name: 'Lona', icon: '⛺', text: '+20 seguir con tormenta; esperar cuesta 1 menos' },
-  farol: { id: 'farol', name: 'Farol', icon: '🏮', text: 'Espantar con fuego sin gastar madera' },
-  botiquin: { id: 'botiquin', name: 'Botiquín', icon: '🩹', text: 'Una vez: +3 de ánimo' },
-  carreta: { id: 'carreta', name: 'Carreta', icon: '🛒', text: '+4 de carga (+6 desde la época Hierro)' },
+  cuerda: { id: 'cuerda', name: 'Cuerda', icon: 'rope', text: '+15 cruzar ríos, +10 trepar' },
+  pala: { id: 'pala', name: 'Pala', icon: 'shovel', text: '+15 despejar, +10 revisar ruinas' },
+  lona: { id: 'lona', name: 'Lona', icon: 'tarp', text: '+20 seguir con tormenta; esperar cuesta 1 menos' },
+  farol: { id: 'farol', name: 'Farol', icon: 'lantern', text: 'Espantar con fuego sin gastar madera' },
+  botiquin: { id: 'botiquin', name: 'Botiquín', icon: 'medkit', text: 'Una vez: +3 de ánimo' },
+  carreta: { id: 'carreta', name: 'Carreta', icon: 'cart', text: '+4 de carga (+6 desde la época Hierro)' },
 };
 
 // Peligros y ruinas (§2.6). Cada opción: base (100 = seguro), role {clase: bono}, equip {id: bono}, cost (se paga al elegir),
 // ok / fail (efectos). Efectos: morale, prov, mats {id:n}, loseMat (n al azar), loot ('full' | 'small').
 export const HAZARDS = {
   rio: {
-    id: 'rio', name: 'Río crecido', icon: '🌊', text: 'El agua viene alta y marrón.',
+    id: 'rio', name: 'Río crecido', icon: 'flood', text: 'El agua viene alta y marrón.',
     options: [
       { id: 'cruzar', label: 'Cruzar', base: 50, role: { forjador: 25, guerrero: 10 }, equip: { cuerda: 15 },
         fail: { morale: -2, prov: -1, loseMat: 1 }, failText: 'El agua se llevó algo' },
@@ -185,7 +185,7 @@ export const HAZARDS = {
     ],
   },
   derrumbe: {
-    id: 'derrumbe', name: 'Derrumbe', icon: '⛰️', text: 'Piedras sueltas tapan el paso.',
+    id: 'derrumbe', name: 'Derrumbe', icon: 'rockfall', text: 'Piedras sueltas tapan el paso.',
     options: [
       { id: 'despejar', label: 'Despejar', base: 45, role: { forjador: 30, guerrero: 20 }, equip: { pala: 15 },
         ok: { mats: { piedra: 1 } }, fail: { morale: -2, prov: -2 }, failText: 'Mucho esfuerzo y poco avance' },
@@ -194,7 +194,7 @@ export const HAZARDS = {
     ],
   },
   tormenta: {
-    id: 'tormenta', name: 'Tormenta', icon: '⛈️', text: 'Se larga fuerte y no se ve nada.',
+    id: 'tormenta', name: 'Tormenta', icon: 'storm', text: 'Se larga fuerte y no se ve nada.',
     options: [
       { id: 'seguir', label: 'Seguir igual', base: 55, role: { monje: 20 }, equip: { lona: 20 },
         fail: { morale: -2, prov: -2 }, failText: 'Empapados y con la vianda mojada' },
@@ -202,7 +202,7 @@ export const HAZARDS = {
     ],
   },
   lobos: {
-    id: 'lobos', name: 'Lobos', icon: '🐺', text: 'Una manada cruza más adelante.',
+    id: 'lobos', name: 'Lobos', icon: 'wolf', text: 'Una manada cruza más adelante.',
     options: [
       { id: 'silencio', label: 'Pasar en silencio', base: 50, role: { cazador: 25 },
         fail: { morale: -3, prov: -2 }, failText: 'Los vieron y hubo que correr' },
@@ -211,7 +211,7 @@ export const HAZARDS = {
     ],
   },
   ruina: {
-    id: 'ruina', name: 'Ruina', icon: '🏚️', text: 'Restos viejos. Puede haber algo adentro.',
+    id: 'ruina', name: 'Ruina', icon: 'ruin', text: 'Restos viejos. Puede haber algo adentro.',
     options: [
       { id: 'revisar', label: 'Revisar a fondo', base: 70, role: { cazador: 15 }, equip: { pala: 10 },
         ok: { loot: 'full' }, fail: { morale: -2, prov: -1, loot: 'small' }, failText: 'Se vino abajo una pared' },

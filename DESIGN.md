@@ -126,8 +126,23 @@ export default function create(ctx) {
 ## Estilo visual
 - Paleta única en `src/core/palette.js` (`PALETTE`, re-exportada por `data.js`) y variables CSS en `styles.css` (`--primary` terracota, `--second` azul pizarra, `--mint`, `--sky`, `--gold`, `--ink`...; clases `.btn.primary` / `.btn.second`). Contorno tinta café `#3d2f2a`. Nada de realeza: sin coronas, castillos ni princesas (la Municipalidad es el centro de la ciudad).
 - 3D: usar SIEMPRE `createPixelRenderer` + `addLights` + `Voxels` de `voxel.js` (material compartido). 1 tile de ciudad = 1 unidad de mundo; edificios con **8 vóxeles por tile** (`scale: 1/8`).
-- 2D (íconos, tableros): canvas a baja resolución con `image-rendering: pixelated`, sprites pixel-art dibujados por código, con "volumen" (bisel claro arriba-izquierda, sombra abajo-derecha) para que combine con lo 3D.
-- Fuente: `var(--font)` (Pixelify). Íconos: `icon('coin')`, `icon('gem')`, `icon('star')`, `icon('heart')`, `icon('crown')`, `icon('xp')` + cualquier emoji pixelado (`icon('🌸')`) o nombres en `icons.js`.
+- 2D (íconos, tableros): canvas a baja resolución con `image-rendering: pixelated`, sprites pixel-art dibujados por código, con "volumen" (claro arriba-izquierda, sombra abajo-derecha) para que combine con lo 3D.
+- Fuente: `var(--font)` (Pixelify).
+- **Íconos** (`icons.js`, grillas en `src/core/icons/*.js`, galería `tools/icons.html`): `icon(id, tamaño)` /
+  `iconUrl(id)` con ids dibujados a mano (`coin`, `gem`, `expedition`, `journal`, `flood`, `el-raiz`, `rank3`…).
+  Cada ícono tiene una grilla de **16×16** (HUD, botones) y otra de **24×24** (paneles, premios) con la paleta oscura de
+  `icons/palette.js` (rampas claro · base · oscuro sacadas de los tokens); el contorno de tinta se agrega solo y se
+  muestran con bloques enteros. Reglas de lectura, para cada ícono nuevo:
+  - **silueta legible a 16 px en negro** (la galería tiene la prueba de silueta);
+  - **prueba de grises**: las piezas se separan por valor, no solo por color;
+  - **una idea por ícono**, sin escenas;
+  - **nada de copiar el emoji equivalente**: la metáfora sale de este mundo (islas flotantes, vetas, esquife);
+  - **el mismo trazo y la misma luz** en toda la familia: luz arriba a la izquierda, tres tonos por material, brillo
+    de 1 a 3 pixeles; las piezas grandes en tonos base o claros, para que se lean sobre la interfaz oscura.
+  Los emojis no se usan como íconos ni como texto: si un id no está dibujado, `drawEmoji` lo muestra como último
+  recurso con un aviso en consola, y `tools/test-icons.mjs` (en `npm test`) falla. `icons/legacy.js` traduce los
+  emojis de partidas y mensajes viejos. Teñir un ícono: `registerTint(id, base, { carácter: '#hex' })` (los cofres
+  por rareza); canvases propios (miniaturas 3D): `registerIcon`.
 - Clases CSS listas: `.btn` (+ `.pink .lilac .mint .sky .gold .ghost .small .block`), `.icon-btn`, `.panel`, `.card` (+ `.locked .selected`), `.row .col .grid .grid.tight`, `.chip`, `.badge`, `.progress` (+ `.xp .pink .gold`), `.tabs .tab .tab.active`, `.swatches .swatch`, `.scroll`, `.game-bar` (+ `.game-stat` con `<small>` y `<b>`, `.game-title`, `.spacer`), `.game-bg`, `.game-bg.pattern`, `.game-help`.
 - Feedback claro: sonido (`audio.sfx`), partículas, `ui.floatText`, `ui.flyCurrency`, rebotes. Confeti y fanfarria solo en los
   momentos grandes de la Guía de tono (cambio de época, monumento, amenaza superada, región completa).
@@ -176,7 +191,7 @@ Todo color de la interfaz sale de los tokens de `:root` en `styles.css`; las pan
 - **Vóxel nítido** (desde nov 2026; antes el 3D se dibujaba a ~480 px y se agrandaba pixelado, y los bordes diagonales hacían serrucho): el "pixel" del arte es el **vóxel**, no el pixel de pantalla. `createPixelRenderer` dibuja a **2 pixeles de render por px CSS** (en PC es supersampleo 2×2; en celu, casi nativo) con **MSAA 4×** y el canvas al 100% suavizado (`.voxel-canvas`, nunca `pixelated`). Tope de 4,6 M pixeles de render; si los cuadros vienen lentos (<42 fps) baja solo a 1,5× y 1,2×. `settings.lowQuality` (o `?quality=low`) arranca en ≤1,5× sin MSAA; `?quality=high` apaga el ajuste automático (capturas).
 - **Oclusión ambiental por vértice**: `Voxels.toGeometry` oscurece cada esquina según sus 3 vecinos (rincones, aleros, pie de las paredes) — es lo que da volumen y lectura. `{ ao: false }` la apaga. Pisos con variación en manchas de 2×2 y contraste bajo.
 - **Contorno tinta**: `createPixelRenderer({ outline: true })` pinta ≈1 px CSS de tinta `#3b2340` por fuera de las siluetas (saltos de profundidad), con borde suavizado (`?outline=0|1` lo fuerza para comparar). Las miniaturas offscreen (edificios, personajes, temas, cofres) se dibujan a **3×** con antialias y `outlineCanvas(canvas, ancho)` de `voxel.js`; se muestran achicadas sin `pixelated`.
-- **2D sigue siendo pixel art**: íconos de `icons.js` (grilla de 24, bloques enteros), tableros de Joyas/Bloques, cielo de Ruta Pixel y burbujas `makeBillboard` conservan `pixelated`: la UI y los sprites son pixel art, el mundo 3D es vóxel nítido.
+- **2D sigue siendo pixel art**: íconos de `icons.js` (grillas de 16 y 24 dibujadas a mano, bloques enteros), tableros de Joyas/Bloques, cielo de Ruta Pixel y burbujas `makeBillboard` conservan `pixelated`: la UI y los sprites son pixel art, el mundo 3D es vóxel nítido.
 
 ## Sonidos disponibles
 `audio.sfx(name)`: tap, open, close, coin, gem, build, place, done, levelup, error, match, combo(n), pop, clear, swoosh, star, win, lose, horn, crash, bump, select, buy.

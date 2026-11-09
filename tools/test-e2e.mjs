@@ -420,7 +420,7 @@ try {
   await drainOverlays({ shots: { levelup: 'subida-nivel', chest: 'cofre-apertura', cards: 'cofre-figuritas', summary: 'cofre-botin' } });
   // t3: la primera Huerta arranca con dos tandas: tocar su globito junta 4 provisiones
   await sleep(1200);
-  const bubble = await ev(() => { const e = [...document.querySelectorAll('.cx-bubble')].find(x => x.getBoundingClientRect().width > 4 && x.querySelector('[data-pi="🍞"]')); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+  const bubble = await ev(() => { const e = [...document.querySelectorAll('.cx-bubble')].find(x => x.getBoundingClientRect().width > 4 && x.querySelector('[data-pi="prov"]')); if (!e) return null; const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
   ok(!!bubble, 'la Huerta muestra el globito de provisiones');
   const prov0 = await run(`return store.state.prov`);
   if (bubble) { await tapXY(bubble.x, bubble.y); await sleep(900); }

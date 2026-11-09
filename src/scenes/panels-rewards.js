@@ -58,7 +58,7 @@ export function openLogin(ctx) {
   // escudo de racha: si ayer faltó, la racha se pausó en vez de reiniciarse
   if (status?.shielded) {
     wrap.append(h('div.pnl-shield', { html: `
-      <span class="pnl-shield-ic pnl-pop">${icon('🛡️', 40)}</span>
+      <span class="pnl-shield-ic pnl-pop">${icon('shield', 40)}</span>
       <span><b>¡Tu racha se salvó!</b><small>Ayer no pudiste entrar, pero tu escudo de la semana la cuidó. ¡Seguimos sumando días!</small></span>` }));
   }
   wrap.append(stage, grid);
@@ -85,7 +85,7 @@ export function openLogin(ctx) {
       cell.classList.remove('today'); cell.classList.add('past', 'today', 'pnl-pop');
       rewardFx(stage, reward, { chestText: false });
       const st = ctx.state.login.streak || 1;
-      head.innerHTML = `${icon(status?.shielded ? '🛡️' : 'fire', 22)}<span>Racha de <b>${st}</b> ${st === 1 ? 'día' : 'días'}. Volvé mañana.</span>`;
+      head.innerHTML = `${icon(status?.shielded ? 'shield' : 'fire', 22)}<span>Racha de <b>${st}</b> ${st === 1 ? 'día' : 'días'}. Volvé mañana.</span>`;
       primaryBtn.disabled = false;
       primaryBtn.innerHTML = `${icon('check', 20)} Gracias`;
       sh.escAction = () => sh.close();
@@ -101,8 +101,8 @@ export function openLogin(ctx) {
 
 // ---------- Subida de nivel ----------
 const KIND = {
-  hair: ['Peinado', 'ribbon'], dress: ['Ropa', 'dress'], crown: ['Cabeza', 'crown'], acc: ['Accesorio', 'wand'],
-  body: ['Esquife', 'car'], wheels: ['Aparejo del esquife', 'car'], topper: ['Proa del esquife', 'car'],
+  hair: ['Peinado', 'hair'], dress: ['Ropa', 'dress'], crown: ['Cabeza', 'hat'], acc: ['Accesorio', 'bag'],
+  body: ['Esquife', 'skiff'], wheels: ['Aparejo del esquife', 'skiff'], topper: ['Proa del esquife', 'skiff'],
 };
 const CAT_ICON = { casa: 'home', negocio: 'shop', deco: 'flower', especial: 'castle', camino: 'map' };
 const CAT_NAME = { casa: 'Casa', negocio: 'Negocio', deco: 'Deco', especial: 'Especial', camino: 'Camino' };

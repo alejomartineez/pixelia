@@ -43,25 +43,25 @@ export const PITY_LEGENDARY = 20;         // a lo sumo 20 cofres sin legendaria
 export const ITEMS = {
   coins_s: { name: 'Bolsa de monedas', rarity: 'comun', kind: 'coins', amount: [120, 220], icon: 'coin' },
   xp_s: { name: 'Pergamino de saber', rarity: 'comun', kind: 'xp', amount: [25, 45], icon: 'xp' },
-  hammer: { name: 'Martillo Mágico', rarity: 'comun', kind: 'item', use: 'city', icon: '🔨', desc: 'Termina una obra o mejora al instante.' },
+  hammer: { name: 'Martillo Mágico', rarity: 'comun', kind: 'item', use: 'city', icon: 'hammer', desc: 'Termina una obra o mejora al instante.' },
 
   coins_m: { name: 'Caja de monedas', rarity: 'rara', kind: 'coins', amount: [400, 650], icon: 'coin' },
   gems_s: { name: 'Puñado de gemas', rarity: 'rara', kind: 'gems', amount: [1, 2], icon: 'gem' },
-  hourglass: { name: 'Reloj de Arena', rarity: 'rara', kind: 'item', use: 'city', icon: '⏳', desc: 'Adelanta 1 hora todas las obras y mejoras en curso.' },
-  potion_prod: { name: 'Poción Dorada', rarity: 'rara', kind: 'item', use: 'city', icon: '🧪', desc: 'Producción x2 en toda la ciudad durante 30 minutos.', boost: { type: 'prod', mult: 2, minutes: 30 } },
-  mats_bag: { name: 'Bolsa de materiales', rarity: 'rara', kind: 'material', amount: [4, 8], icon: 'monument', desc: 'Madera, piedra, mineral o hierbas para tus obras.' },
-  equip: { name: 'Equipo de expedición', rarity: 'rara', kind: 'equip', pool: ['cuerda', 'pala', 'lona', 'farol', 'botiquin'], icon: '🎒', desc: 'Una pieza de equipo para la próxima salida.' },
+  hourglass: { name: 'Reloj de Arena', rarity: 'rara', kind: 'item', use: 'city', icon: 'hourglass', desc: 'Adelanta 1 hora todas las obras y mejoras en curso.' },
+  potion_prod: { name: 'Poción Dorada', rarity: 'rara', kind: 'item', use: 'city', icon: 'potion', desc: 'Producción x2 en toda la ciudad durante 30 minutos.', boost: { type: 'prod', mult: 2, minutes: 30 } },
+  mats_bag: { name: 'Bolsa de materiales', rarity: 'rara', kind: 'material', amount: [4, 8], icon: 'mats', desc: 'Madera, piedra, mineral o hierbas para tus obras.' },
+  equip: { name: 'Equipo de expedición', rarity: 'rara', kind: 'equip', pool: ['cuerda', 'pala', 'lona', 'farol', 'botiquin'], icon: 'bag', desc: 'Una pieza de equipo para la próxima salida.' },
 
   gems_m: { name: 'Bolsa de gemas', rarity: 'epica', kind: 'gems', amount: [3, 5], icon: 'gem' },
-  potion_happy: { name: 'Perfume de Alegría', rarity: 'epica', kind: 'item', use: 'city', icon: '🌸', desc: 'Felicidad al máximo (+50% producción) durante 1 hora.', boost: { type: 'happy', minutes: 60 } },
+  potion_happy: { name: 'Perfume de Alegría', rarity: 'epica', kind: 'item', use: 'city', icon: 'perfume', desc: 'Felicidad al máximo (+50% producción) durante 1 hora.', boost: { type: 'happy', minutes: 60 } },
   coins_l: { name: 'Arcón de monedas', rarity: 'epica', kind: 'coins', amount: [700, 1000], icon: 'coin' },   // antes, el mueble sorpresa (Mi Casa salió en el paso 1c)
-  cosmetic_coins: { name: 'Prenda sorpresa', rarity: 'epica', kind: 'cosmetic', pool: 'coins', icon: '🎀', desc: 'Una prenda o pieza del esquife nueva, gratis.' },
-  build_deco: { name: 'Deco sorpresa', rarity: 'epica', kind: 'build', pool: ['fuente', 'estatua', 'glorieta', 'arco_rosas', 'cerezo', 'macetas'], icon: '⛲', desc: 'Una decoración gratis para tu ciudad.' },
+  cosmetic_coins: { name: 'Prenda sorpresa', rarity: 'epica', kind: 'cosmetic', pool: 'coins', icon: 'dress', desc: 'Una prenda o pieza del esquife nueva, gratis.' },
+  build_deco: { name: 'Deco sorpresa', rarity: 'epica', kind: 'build', pool: ['fuente', 'estatua', 'glorieta', 'arco_rosas', 'cerezo', 'macetas'], icon: 'build', desc: 'Una decoración gratis para tu ciudad.' },
 
   gems_l: { name: 'Tesoro de gemas', rarity: 'legendaria', kind: 'gems', amount: [30, 45], icon: 'gem' },
-  potion_mega: { name: 'Elixir Dorado', rarity: 'legendaria', kind: 'item', use: 'city', icon: '✨', desc: 'Producción x3 en toda la ciudad durante 2 horas.', boost: { type: 'prod', mult: 3, minutes: 120 } },
-  cosmetic_gems: { name: 'Prenda legendaria', rarity: 'legendaria', kind: 'cosmetic', pool: 'gems', icon: '🌟', desc: 'Una prenda o pieza del esquife premium (de las que cuestan gemas), gratis.' },
-  build_legend: { name: 'Construcción legendaria', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: '🦄', desc: 'Una construcción legendaria gratis, aunque no tengas el nivel.' },
+  potion_mega: { name: 'Elixir Dorado', rarity: 'legendaria', kind: 'item', use: 'city', icon: 'elixir', desc: 'Producción x3 en toda la ciudad durante 2 horas.', boost: { type: 'prod', mult: 3, minutes: 120 } },
+  cosmetic_gems: { name: 'Prenda legendaria', rarity: 'legendaria', kind: 'cosmetic', pool: 'gems', icon: 'bigstar', desc: 'Una prenda o pieza del esquife premium (de las que cuestan gemas), gratis.' },
+  build_legend: { name: 'Construcción legendaria', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: 'monument', desc: 'Una construcción legendaria gratis, aunque no tengas el nivel.' },
 };
 for (const [id, it] of Object.entries(ITEMS)) it.id = id;
 // nombres del equipo (los datos de expedición viven en exp-data.js; acá alcanza con el nombre para la carta)
@@ -211,7 +211,7 @@ function stickerDrop(got, type) {
   const best = Math.max(...got.map(g => g.stars));
   const fresh = got.filter(g => g.isNew).length;
   return {
-    item: 'stickers', kind: 'stickers', rarity: STAR_RARITY[best] || 'comun', icon: '🌟', amount: got.length,
+    item: 'stickers', kind: 'stickers', rarity: STAR_RARITY[best] || 'comun', icon: 'pack', amount: got.length,
     name: got.length === 1 ? '1 hallazgo' : `${got.length} hallazgos`, stickers: got, fresh, chest: type,
   };
 }

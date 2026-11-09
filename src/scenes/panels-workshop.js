@@ -70,14 +70,14 @@ export function openWorkshop(ctx) {
     w.append(h('div.pnl-ws-wallet', { html: REGION_MATERIALS.map(m => `<span title="${esc(m.name)}">${icon(m.icon, 20)}${fmt(mats[m.id] || 0)}</span>`).join('') + `<span>${icon('coin', 20)}${fmt(ctx.state.coins)}</span>` }));
     body.append(w);
     const eq = h('div.card.pnl-ws-sec');
-    eq.append(h('h4.pnl-ws-h', { html: `${icon('🪢', 20)}<span>Equipo de expedición</span><small>1 uso por salida</small>` }));
+    eq.append(h('h4.pnl-ws-h', { html: `${icon('rope', 20)}<span>Equipo de expedición</span><small>1 uso por salida</small>` }));
     const list = h('div.pnl-ws-list');
     for (const id of Object.keys(EQUIP_RECIPES)) list.append(row('equip', id, EQUIPMENT[id]));
     eq.append(list);
     body.append(eq);
     const rs = h('div.card.pnl-ws-sec');
     const open = ctx.economy.townRank() >= RESERVES_RANK;
-    rs.append(h('h4.pnl-ws-h', { html: `${icon('🧱', 20)}<span>Reservas para las amenazas</span><small>tope ${RESERVE_CAP}</small>` }));
+    rs.append(h('h4.pnl-ws-h', { html: `${icon('sandbags', 20)}<span>Reservas para las amenazas</span><small>tope ${RESERVE_CAP}</small>` }));
     if (!open) rs.append(h('p.pnl-ws-tip', { html: `${icon('lock', 16)}<span>Se abren en el rango ${esc(ctx.economy.rankName(RESERVES_RANK))}, cuando empiezan a llegar las amenazas de la temporada.</span>` }));
     else {
       const l2 = h('div.pnl-ws-list');

@@ -554,7 +554,7 @@ export function createPlacer(host) {
         lastKey = k;
         top.innerHTML = '';
         top.append(ui.h('b', {}, (p.mode === 'move' ? 'Mover: ' : '') + d.name), ui.h('span.grow'));
-        if (cost && (nFree > 0 || cost.free)) top.append(ui.h('span.chip.primary', { html: `${icon('🎁', 14)}Gratis${nFree > 1 ? ' x' + nFree : ''}` }));
+        if (cost && (nFree > 0 || cost.free)) top.append(ui.h('span.chip.primary', { html: `${icon('gift', 14)}Gratis${nFree > 1 ? ' x' + nFree : ''}` }));
         else if (cost) top.append(ui.h('span', { html: ui.costHtml(cost, 18) }));
         if (p.count) top.append(ui.h('span.chip.mint', { html: `${icon('check', 12)}${p.count}` }));
         let t;

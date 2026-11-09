@@ -193,7 +193,7 @@ html.reduce-motion .cx-tip, html.reduce-motion .cx-sign.guide { animation: none;
 .cx-exp-map canvas { image-rendering: pixelated; width: 132px; height: 132px; border: 3px solid var(--edge); border-radius: 10px; background: #79bb8c; }
 `;
 
-const CAT_ICON = { casa: 'home', ciclo: '🧭', defensa: '🛡️', negocio: 'shop', especial: 'sparkle', monumento: 'monument', deco: 'flower', camino: 'map' };
+const CAT_ICON = { casa: 'home', ciclo: 'expedition', defensa: 'shield', negocio: 'shop', especial: 'sparkle', monumento: 'monument', deco: 'flower', camino: 'map' };
 // lo que mejora a la vista un edificio del ciclo en cada nivel (DESIGN-CORE.md §4.2; models-cycle.js)
 const CYCLE_LOOK = { 2: 'un anexo al costado', 3: 'un piso más y techo nuevo', 4: 'chimenea y aberturas más grandes', 5: 'mirador arriba y cerco alrededor' };
 const thumbs = new Map();
@@ -224,11 +224,11 @@ function givesHtml(ctx, d) {
   if (d.pop) out.push(`<span class="chip primary">${icon('people', 14)}+${d.pop}</span>`);
   if (d.prod?.coins) out.push(`<span class="chip gold">${icon('coin', 14)}${d.prod.coins}/${fmtCycle(E, d.prod.cycle)}</span>`);
   if (d.prod?.gems) out.push(`<span class="chip sky">${icon('gem', 14)}${d.prod.gems}/${fmtCycle(E, d.prod.cycle)}</span>`);
-  if (d.prod?.prov) out.push(`<span class="chip gold">${icon('🍞', 14)}${d.prod.prov}/${fmtCycle(E, d.prod.cycle)}</span>`);
-  if (d.cat === 'ciclo' && !d.prod) { const fx = cycleEffects(d.id, 1)[0]; if (fx) out.push(`<span class="chip second" title="${ui_esc(fx.text)}">${icon('🧭', 14)}${ui_esc(fx.label)}: ${ui_esc(String(fx.value))}</span>`); }
+  if (d.prod?.prov) out.push(`<span class="chip gold">${icon('prov', 14)}${d.prod.prov}/${fmtCycle(E, d.prod.cycle)}</span>`);
+  if (d.cat === 'ciclo' && !d.prod) { const fx = cycleEffects(d.id, 1)[0]; if (fx) out.push(`<span class="chip second" title="${ui_esc(fx.text)}">${icon('expedition', 14)}${ui_esc(fx.label)}: ${ui_esc(String(fx.value))}</span>`); }
   if (d.happy) out.push(`<span class="chip mint">${icon('smile', 14)}+${d.happy}</span>`);
   if (d.game === 'wardrobe') out.push(`<span class="chip second">${icon('dress', 14)}Equipaje</span>`);
-  if (d.cat === 'camino') out.push(`<span class="chip">${icon('paw', 14)}Paseo</span>`);
+  if (d.cat === 'camino') out.push(`<span class="chip">${icon('steps', 14)}Paseo</span>`);
   if (d.cat === 'monumento') out.push(`<span class="chip second">${icon('monument', 14)}${MONUMENTS[d.id].stages.length} etapas</span>`);
   // Encanto que sumaría otra copia (rinde menos si ya tenés del mismo)
   const ch = E.charmGain(d.id);
@@ -333,7 +333,7 @@ export function openBuildMenu(S, focusId = null) {
         if (showLock) rb.style.bottom = '34px';
         th.append(rb);
       }
-      const priceHtml = isFree ? `<span class="cost cx-freecost">${icon('🎁', 16)}Gratis</span>` : ui.costHtml(cost, 16);
+      const priceHtml = isFree ? `<span class="cost cx-freecost">${icon('gift', 16)}Gratis</span>` : ui.costHtml(cost, 16);
       card.append(th,
         ui.h('div.nm', {}, d.name),
         ui.h('div.cx-gives', { html: givesHtml(ctx, d) }),
@@ -455,7 +455,7 @@ export function openInfo(S, uid) {
       box.append(refs.skipBtn);
       const nh = hammerCount();
       if (nh > 0) {
-        box.append(btn(`Martillo Mágico (${nh})`, 'gold', '🔨', () => {
+        box.append(btn(`Martillo Mágico (${nh})`, 'gold', 'hammer', () => {
           let res;
           try { res = chests.useCityItem('hammer', { uid: b.uid }); } catch (err) { console.warn('[city] martillo', err); res = { ok: false, msg: 'No se pudo usar el martillo' }; }
           if (!res?.ok) { ctx.audio.sfx('error'); ui.toast(res?.msg || 'No se pudo usar el martillo', { icon: 'info' }); return; }
@@ -463,7 +463,7 @@ export function openInfo(S, uid) {
           ctx.audio.sfx('build');
           m.close();
           E.tick();
-          ui.toast(res.msg || 'Obra terminada', { icon: '🔨', type: 'good' });
+          ui.toast(res.msg || 'Obra terminada', { icon: 'hammer', type: 'good' });
         }));
       }
       body.append(box);
@@ -472,7 +472,7 @@ export function openInfo(S, uid) {
     // ----- producción -----
     const ps = E.producerStatus(b, now);
     if (ps.producer && !busy && !ps.damaged) {   // dañado: lo explica la caja de amenazas (más abajo)
-      const cur = ps.currency === 'gems' ? 'gem' : ps.currency === 'prov' ? '🍞' : ps.currency === 'hierbas' ? '🌿' : 'coin';
+      const cur = ps.currency === 'gems' ? 'gem' : ps.currency === 'prov' ? 'prov' : ps.currency === 'hierbas' ? 'herbs' : 'coin';
       const box = ui.h('div.cx-box' + (ps.ready ? '.ready' : ''));
       box.append(ui.h('h4', { html: icon(cur, 20) + 'Producción' }));
       box.append(ui.h('div.line', { html: `<span>Cada <b>${E.fmtTime(ps.cycleSec)}</b></span><span class="cost">+${E.fmtNum(ps.perCycle)} ${icon(cur, 16)}</span>` }));
@@ -492,7 +492,7 @@ export function openInfo(S, uid) {
       const fx = cycleEffects(d.id, b.level || 1);
       if (fx.length) {
         const box = ui.h('div.cx-box.cx-cycle');
-        box.append(ui.h('h4', { html: icon('🧭', 20) + 'En la expedición' }));
+        box.append(ui.h('h4', { html: icon('expedition', 20) + 'En la expedición' }));
         for (const f of fx) box.append(ui.h('div.line', { html: `<span>${ui.esc(f.text)}</span>` }));
         body.append(box);
       }
@@ -506,7 +506,7 @@ export function openInfo(S, uid) {
       for (let i = 0; i < 5; i++) st += icon(i < stars ? 'star' : 'starOff', 18);
       const pct = Number.isFinite(+mi.bonusPct) ? Math.round(+mi.bonusPct) : Math.round((Number.isFinite(+mi.bonus) ? +mi.bonus : stars * 0.03) * 100);
       const box = ui.h('div.cx-box.cx-mastery');
-      box.append(ui.h('h4', { html: icon('🏅', 20) + 'Maestría' }));
+      box.append(ui.h('h4', { html: icon('medal', 20) + 'Maestría' }));
       box.append(ui.h('div.line', { html: `<span class="cx-stars">${st}</span><span class="muted">${pct ? `+${pct}% producción` : 'Producí para ganar estrellas'}</span>` }));
       const prog = Number.isFinite(+mi.progress) ? Math.max(0, Math.min(1, +mi.progress)) : null;
       if (stars < 5 && prog != null) box.append(ui.h('div', { html: ui.progressHtml(prog, 'gold') }));
@@ -533,7 +533,7 @@ export function openInfo(S, uid) {
       const box = ui.h('div.cx-box.up');
       if (!info) {
         if (isMon) box.append(ui.h('h4', { html: icon('trophy', 20) + '¡Monumento terminado!' }), ui.h('div.line', { html: `<span>${icon(MONUMENTS[d.id].bonusIcon || 'sparkle', 16)} ${ui.esc(MONUMENTS[d.id].bonusText)} (para siempre)</span>` }));
-        else box.append(ui.h('h4', { html: icon('crown', 20) + 'Nivel máximo' }), ui.h('span.muted', {}, 'No hay más mejoras para este edificio.'));
+        else box.append(ui.h('h4', { html: icon('medal', 20) + 'Nivel máximo' }), ui.h('span.muted', {}, 'No hay más mejoras para este edificio.'));
       } else {
         const can = E.canUpgrade(b);
         box.append(ui.h('h4', { html: icon('up', 20) + (isCastle ? `Subir a rango ${E.rankName(b.level + 1)}` : isMon ? `Etapa ${b.level + 1}: ${MONUMENTS[d.id].stageNames[b.level] || ''}` : `Mejorar a nivel ${b.level + 1}`) }));
@@ -616,7 +616,7 @@ export function openInfo(S, uid) {
       const ri = RZ.suturaInfo(ctx.state);
       const rs = RZ.raizState(ctx.state);
       const box = ui.h('div.cx-box.up');
-      box.append(ui.h('h4', { html: icon('🌱', 20) + 'La Raíz y la Grieta' }));
+      box.append(ui.h('h4', { html: icon('el-raiz', 20) + 'La Raíz y la Grieta' }));
       const ex = RZ.EXTRACTION[rs.mode];
       box.append(ui.h('div.line', { html: `<span>${icon(ex?.ic || 'lock', 14)} Extracción: <b>${ui.esc(ex?.name || 'sin elegir')}</b> · rinde ×${String(RZ.raizMult(ctx.state)).replace('.', ',')}</span>` }));
       box.append(ui.h('div.line', { html: `<span>${icon('bolt', 14)} Grieta <b>${Math.round(ri.grieta)}</b>/100: ${ui.esc(RZ.grietaText(ri.grieta))}</span>` }));
@@ -630,7 +630,7 @@ export function openInfo(S, uid) {
           const res = RZ.startSutura(ctx.state);
           if (res.error) { ctx.audio.sfx('error'); ui.toast(res.error, { icon: 'info' }); return; }
           ctx.audio.sfx('build');
-          ui.toast('La raíz empezó a coser la Grieta', { icon: '🌱', type: 'good' });
+          ui.toast('La raíz empezó a coser la Grieta', { icon: 'el-raiz', type: 'good' });
           m.close();
         }, !ri.can.ok && ri.can.reason !== 'No te alcanza'));
       }
@@ -674,7 +674,7 @@ export function openInfo(S, uid) {
       acts.append(btn(isExp ? 'Expedición' : 'Taller', 'primary', isExp ? 'map' : 'hammer', () => { m.close(); ctx.openPanel(d.panel); }));
     }
     // el auto del Equipaje vive en el Establo (era del Garaje, que se reconvirtió en Establo: DESIGN-CORE.md §5.3 y §9)
-    if (b.id === 'establo' && !building) acts.append(btn('Esquife', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
+    if (b.id === 'establo' && !building) acts.append(btn('Esquife', 'sky', 'skiff', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
     if (isCastle) acts.append(btn('Tu ciudad', 'gold', 'castle', () => { m.close(); ctx.openPanel('rank'); }));
     if (isMon) acts.append(btn('Obras', 'gold', 'monument', () => { m.close(); ctx.openPanel('works', { focus: d.id }); }));
     if (isCastle) acts.append(btn('Equipaje', 'primary', 'dress', () => { m.close(); ctx.router.go('wardrobe'); }));

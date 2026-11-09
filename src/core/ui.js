@@ -62,7 +62,7 @@ export function costHtml(cost = {}, size = 16, opts = {}) {
   }
   if (opts.extras && cost.stickers) {
     const n = typeof cost.stickers === 'object' ? cost.stickers.n : cost.stickers;
-    const art = rewardArt.pack ? rewardArt.pack(Math.round(size * 1.15)) : icon('🃏', size);
+    const art = rewardArt.pack ? rewardArt.pack(Math.round(size * 1.15)) : icon('pack', size);
     parts.push(`<span class="cost cost-pack" title="Hallazgos" aria-label="${n} hallazgos">${art}×${n}</span>`);
   }
   return parts.join(' ') || '<span class="cost">Gratis</span>';
@@ -238,7 +238,7 @@ export function flyCurrency(x, y, kind = 'coins', count = 6) {
   const target = document.querySelector(`[data-hud="${kind}"]`);
   const r = target?.getBoundingClientRect();
   const tx = r ? r.left + 14 : innerWidth / 2, ty = r ? r.top + r.height / 2 : 20;
-  const name = kind === 'gems' ? 'gem' : kind === 'xp' ? 'xp' : kind === 'prov' ? '🍞' : kind === 'hierbas' ? '🌿' : 'coin';
+  const name = kind === 'gems' ? 'gem' : kind === 'xp' ? 'xp' : kind === 'prov' ? 'prov' : kind === 'hierbas' ? 'herbs' : 'coin';
   if (reducedMotion()) {
     // sin íconos volando: solo el sonido y el saltito del contador
     audio.sfx(kind === 'gems' ? 'gem' : 'coin');

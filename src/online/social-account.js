@@ -36,11 +36,11 @@ export function openAccountUI(ctx, opts = {}) {
 
   function drawOff() {
     body.innerHTML = `
-      <div class="soc-off-art">${icon('🏡', 40)}${icon('💌', 40)}${icon('👭', 40)}</div>
+      <div class="soc-off-art">${icon('home', 40)}${icon('mail', 40)}${icon('people', 40)}</div>
       <h3 class="center" style="font-size:21px">Jugar online, ¡muy pronto!</h3>
       <p class="center soc-muted" style="font-size:16px">${opts.reason === 'trade' ? 'Los intercambios de hallazgos son con tus contactos online. ' : ''}El modo online se activa cuando se configure el servidor del juego. Ahí vas a poder crear tu cuenta, sumar contactos con un código, visitar sus ciudades, mandarse regalos e intercambiar hallazgos.</p>
       <div class="soc-card mint soc-row">${icon('save', 28)}<span class="soc-muted">Mientras tanto, <b>tu ciudad se guarda en este dispositivo</b> y podés jugar todo igual.</span></div>`;
-    const test = h('div.soc-card.soc-sec', { html: `<b>${icon('🧪', 18)} Modo simulado (para pruebas)</b><span class="soc-muted">Simula el servidor en este navegador: abrí dos pestañas con nombres distintos y probá la amistad.</span>` });
+    const test = h('div.soc-card.soc-sec', { html: `<b>${icon('gear', 18)} Modo simulado (para pruebas)</b><span class="soc-muted">Simula el servidor en este navegador: abrí dos pestañas con nombres distintos y probá la amistad.</span>` });
     const row = h('div.soc-row');
     const who = h('input', { type: 'text', placeholder: 'Ej: ana', maxlength: '16', 'aria-label': 'Nombre de prueba' });
     const go = h('button.btn.gold.small', { html: 'Probar' });
@@ -60,7 +60,7 @@ export function openAccountUI(ctx, opts = {}) {
 
   function drawOut() {
     body.innerHTML = '';
-    if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('🧪', 14)} Modo simulado: las cuentas viven en este navegador` }));
+    if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('gear', 14)} Modo simulado: las cuentas viven en este navegador` }));
     body.append(h('div.soc-row', {
       html: `${avatarHtml(store.state.avatar, store.state.player.name, 56, 'me')}<p class="soc-muted soc-grow">${opts.reason === 'trade' ? 'Para intercambiar hallazgos con tus contactos necesitás tu cuenta. ' : ''}Con tu cuenta, tu ciudad se guarda en la nube y podés jugar con tus contactos.</p>`,
     }));
@@ -111,7 +111,7 @@ export function openAccountUI(ctx, opts = {}) {
     const st = getSyncStatus();
     const s = store.state;
     body.innerHTML = '';
-    if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('🧪', 14)} Modo simulado` }));
+    if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('gear', 14)} Modo simulado` }));
     body.append(h('div.soc-card.soc-row', {
       html: `${avatarHtml(s.avatar, s.player.name, 60, 'me')}<div class="soc-grow"><b style="font-size:20px">${esc(s.player.name)}</b>
         <div class="soc-muted soc-ellip">${esc(net.user.email || '')}</div><div class="soc-muted">Nivel ${s.player.level} · ${esc(s.player.cityName || 'Pixelia')}</div></div>`,
@@ -124,7 +124,7 @@ export function openAccountUI(ctx, opts = {}) {
     else if (st.lastSync) line = `Guardado en la nube ${timeAgo(st.lastSync)}.`;
     else line = 'Tu ciudad se guarda sola en la nube cada pocos minutos.';
     body.append(h('div.soc-card.sky.soc-sync' + (online ? '' : '.off'), {
-      html: `<span class="soc-cloud">${icon(online ? '☁️' : '📴', 32)}</span><div class="soc-grow"><b>${online ? 'Sincronizada' : 'Sin conexión'}</b><div class="soc-muted">${line}</div></div>`,
+      html: `<span class="soc-cloud">${icon(online ? 'sync' : 'offline', 32)}</span><div class="soc-grow"><b>${online ? 'Sincronizada' : 'Sin conexión'}</b><div class="soc-muted">${line}</div></div>`,
     }));
     const row = h('div.soc-row');
     const save = h('button.btn.sky.small', { html: `${icon('save', 18)} Guardar ahora`, style: { flex: '1' } });
@@ -192,7 +192,7 @@ export function conflictModal(ctx, info) {
       c.append(b);
       return c;
     };
-    grid.append(card('local', loc, 'Este dispositivo', '📱'), card('cloud', cl, 'En la nube', '☁️'));
+    grid.append(card('local', loc, 'Este dispositivo', 'save'), card('cloud', cl, 'En la nube', 'sync'));
     body.append(grid, err);
     const m = modal({ title: '¿Qué partida seguimos?', icon: 'save', content: body, className: 'soc soc-account', closable: false, onClose: () => { release(); resolve(result); } });
   });

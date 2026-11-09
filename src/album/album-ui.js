@@ -210,7 +210,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 function rewardItemsHtml(rew, size = 22) {
   return `<span class="cost">${icon('gem', size)}${fmtNum(rew.gems)}</span><span class="cost">${icon('coin', size)}${fmtNum(rew.coins)}</span>`
-    + `<span class="cost">${icon('🎁', size)}${CHEST_NAMES[rew.chest] || 'Cofre'}</span>`;
+    + `<span class="cost">${icon('chest', size)}${CHEST_NAMES[rew.chest] || 'Cofre'}</span>`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -240,7 +240,7 @@ export function openAlbum(ctx, params = {}) {
   let pop = null;
 
   const m = modal({
-    title: 'Hallazgos', icon: '📒', className: 'alb',
+    title: 'Hallazgos', icon: 'finding', className: 'alb',
     onClose: () => {
       closed = true;
       for (const id of timers) clearTimeout(id);
@@ -259,8 +259,8 @@ export function openAlbum(ctx, params = {}) {
   head.insertBefore(bri, head.querySelector('.modal-x'));
 
   const tabs = [
-    ['album', 'Hallazgos', '📒'],
-    ['dupes', 'Repetidos', '🔁'],
+    ['album', 'Hallazgos', 'finding'],
+    ['dupes', 'Repetidos', 'trade'],
     ['shop', 'Tienda', 'sparkle'],
   ];
   const bar = h('div.alb-bar');
@@ -311,16 +311,16 @@ export function openAlbum(ctx, params = {}) {
     const wrap = h('div.alb-home');
     const cover = h('div.alb-cover');
     cover.append(
-      h('div.alb-cover-top', { html: `${icon('crown', 44)}<div><small>MI ÁLBUM DE</small><h3>Pixelia</h3></div>` }),
+      h('div.alb-cover-top', { html: `${icon('medal', 44)}<div><small>MI ÁLBUM DE</small><h3>Pixelia</h3></div>` }),
       h('div.alb-cover-num', { html: `<b>${p.have}</b><span>/ ${p.total}</span><em>${p.setsComplete}/${p.sets} sets</em>` }),
       h('div', { html: progressHtml(p.pct, 'gold') }),
     );
     if (p.albumDone) {
-      cover.append(h('div.alb-final.done', { html: `<small>¡HALLAZGOS COMPLETOS!</small><span>${icon('crown', 20)} Sos <b>${esc(p.title || A.ALBUM_TITLE)}</b></span>` }));
+      cover.append(h('div.alb-final.done', { html: `<small>¡HALLAZGOS COMPLETOS!</small><span>${icon('medal', 20)} Sos <b>${esc(p.title || A.ALBUM_TITLE)}</b></span>` }));
     } else {
       cover.append(h('div.alb-final', {
-        html: `<small>PREMIO POR COMPLETARLO</small><span>${icon('🎁', 20)} <b>2 Cofres de Diamante</b> + ${icon('gem', 18)}${A.ALBUM_REWARD.gems}</span>`
-          + `<span>${icon('crown', 18)} Título <b>${A.ALBUM_TITLE}</b></span>`,
+        html: `<small>PREMIO POR COMPLETARLO</small><span>${icon('chest', 20)} <b>2 Cofres de Diamante</b> + ${icon('gem', 18)}${A.ALBUM_REWARD.gems}</span>`
+          + `<span>${icon('medal', 18)} Título <b>${A.ALBUM_TITLE}</b></span>`,
       }));
     }
     const grid = h('div.alb-sets');
@@ -328,10 +328,10 @@ export function openAlbum(ctx, params = {}) {
     for (const r of A.REGION_ORDER) {
       const sets = A.STICKER_SETS.filter(s => s.region === r);
       if (!sets.length) continue;
-      grid.append(h('h4.alb-region', { style: { gridColumn: '1 / -1', margin: '6px 2px 0', fontSize: '15px' }, html: `${icon('🧭', 16)} ${esc(A.regionName(r))}` }));
+      grid.append(h('h4.alb-region', { style: { gridColumn: '1 / -1', margin: '6px 2px 0', fontSize: '15px' }, html: `${icon('expedition', 16)} ${esc(A.regionName(r))}` }));
       for (const set of sets) grid.append(renderTile(set));
     }
-    const right = h('div', {}, grid, h('p.alb-hint', { html: `${icon('🎁', 18)} Los hallazgos salen de las expediciones, de algunos cofres y de la Tienda de recortes` }));
+    const right = h('div', {}, grid, h('p.alb-hint', { html: `${icon('gift', 18)} Los hallazgos salen de las expediciones, de algunos cofres y de la Tienda de recortes` }));
     wrap.append(cover, right);
     return wrap;
   }
@@ -352,7 +352,7 @@ export function openAlbum(ctx, params = {}) {
     );
     if (p.claimable) tile.append(h('span.btn.gold.small', { role: 'button', html: `${icon('gift', 16)} ¡Reclamar!`, onclick: (e) => { e.stopPropagation(); doClaim(set.id); } }));
     else if (p.claimed) tile.append(h('span.alb-done-chip', { html: `${icon('check', 14)} Completo` }));
-    else tile.append(h('span.alb-rew-items', { style: { fontSize: '13px', gap: '6px', justifyContent: 'center' }, html: `<span class="cost">${icon('gem', 14)}${p.reward.gems}</span><span class="cost">${icon('🎁', 14)}</span>` }));
+    else tile.append(h('span.alb-rew-items', { style: { fontSize: '13px', gap: '6px', justifyContent: 'center' }, html: `<span class="cost">${icon('gem', 14)}${p.reward.gems}</span><span class="cost">${icon('chest', 14)}</span>` }));
     if (unseen) tile.append(h('i.badge', { title: 'Hallazgos nuevos para pegar' }, String(unseen)));
     return tile;
   }
@@ -475,7 +475,7 @@ export function openAlbum(ctx, params = {}) {
       await rewardModal({
         title: '¡Set completo!', subtitle: `${set.name} · 9 de 9`,
         reward: { coins: res.coins, gems: res.gems },
-        lines: [`<span style="display:inline-block;padding:6px;background:${set.color};border:3px solid var(--edge);border-radius:50%">${icon(set.emoji, 48)}</span>`, `${icon('🎁', 24)} <b>+1 ${CHEST_NAMES[res.chest]}</b>`],
+        lines: [`<span style="display:inline-block;padding:6px;background:${set.color};border:3px solid var(--edge);border-radius:50%">${icon(set.emoji, 48)}</span>`, `${icon('chest', 24)} <b>+1 ${CHEST_NAMES[res.chest]}</b>`],
         buttons: [{ label: '¡Genial!', value: 'ok', cls: 'gold' }],
       });
       if (res.album) {
@@ -483,7 +483,7 @@ export function openAlbum(ctx, params = {}) {
         await rewardModal({
           title: '¡Hallazgos completos!', subtitle: `¡Sos ${res.album.title}!`,
           reward: { gems: res.album.gems },
-          lines: [icon('crown', 60), `${icon('🎁', 24)} <b>2 Cofres de Diamante</b>`, `Nuevo título: <b>${esc(res.album.title)}</b>`],
+          lines: [icon('medal', 60), `${icon('chest', 24)} <b>2 Cofres de Diamante</b>`, `Nuevo título: <b>${esc(res.album.title)}</b>`],
           buttons: [{ label: '¡Soy una estrella!', value: 'ok', cls: 'gold' }],
         });
       }
@@ -520,7 +520,7 @@ export function openAlbum(ctx, params = {}) {
     head.append(tog, convBtn);
     wrap.append(head);
     if (!dups.length) {
-      wrap.append(h('div.alb-empty', { html: `${icon('🔁', 48)}<b>Todavía no tenés repetidos</b><span class="muted">Abrí cofres y sobres: los repetidos se cambian por recortes o se intercambian con tus contactos.</span>` }));
+      wrap.append(h('div.alb-empty', { html: `${icon('trade', 48)}<b>Todavía no tenés repetidos</b><span class="muted">Abrí cofres y sobres: los repetidos se cambian por recortes o se intercambian con tus contactos.</span>` }));
     } else {
       const grid = h('div.alb-dgrid');
       for (const d of dups) {
@@ -559,7 +559,7 @@ export function openAlbum(ctx, params = {}) {
     for (const it of A.SHOP) {
       const card = h('div.card.alb-sitem');
       if (it.kind === 'pack') card.append(renderPack(it, { small: true }));
-      else card.append(h('div.alb-chestart', { html: it.chest ? chestIcon(it.chest, 72) : icon('🎁', 72) })); // el mismo cofre que en Cofres
+      else card.append(h('div.alb-chestart', { html: it.chest ? chestIcon(it.chest, 72) : icon('gift', 72) })); // el mismo cofre que en Cofres
       card.append(h('b', {}, it.name), h('small', {}, it.desc));
       card.append(h('button.btn.gold', {
         disabled: b < it.cost,
@@ -569,7 +569,7 @@ export function openAlbum(ctx, params = {}) {
       grid.append(card);
     }
     wrap.append(grid);
-    if (b < 10) wrap.append(h('p.alb-hint', { html: `${icon('🔁', 18)} Cambiá tus repetidos por recortes en la pestaña Repetidos` }));
+    if (b < 10) wrap.append(h('p.alb-hint', { html: `${icon('trade', 18)} Cambiá tus repetidos por recortes en la pestaña Repetidos` }));
     return wrap;
   }
 
@@ -581,7 +581,7 @@ export function openAlbum(ctx, params = {}) {
       const res = A.buyShopItem(itemId);
       if (!res) { audio.sfx('error'); toast('Te faltan recortes', { type: 'bad', icon: 'sparkle' }); return; }
       audio.sfx('buy');
-      if (res.item.kind === 'chest') { toast(`¡${res.item.name} a tus cofres!`, { icon: '🎁', type: 'good' }); return; }
+      if (res.item.kind === 'chest') { toast(`¡${res.item.name} a tus cofres!`, { icon: 'chest', type: 'good' }); return; }
       await playPackOpening(ctx, res.stickers, { pack: res.item });
     } finally { buying = false; }
   }
@@ -667,7 +667,7 @@ export function playPackOpening(ctx, stickers = [], opts = {}) {
         if (nNew) sum.append(h('span.chip.mint', {}, `¡${nNew} nueva${nNew === 1 ? '' : 's'}!`));
         if (nRep) sum.append(h('span.chip', {}, `${nRep} repetido${nRep === 1 ? '' : 's'}`));
         if (nNew) audio.sfx('done');
-        foot.append(h('button.btn.primary', { html: `${icon('📒', 20)} ${nNew ? '¡A pegarlas!' : '¡Genial!'}`, onclick: finish }));
+        foot.append(h('button.btn.primary', { html: `${icon('finding', 20)} ${nNew ? '¡A pegarlas!' : '¡Genial!'}`, onclick: finish }));
       });
     }
     function finish() {

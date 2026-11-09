@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>Pixelia · íconos</title>
+<style>
+  :root { --page: #1b1a1d; --panel: #2a2522; --light: #ece4d6; --ink: #ece4d6; --mute: #aea392; --rule: #4d453e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 14px 18px; background: var(--page); color: var(--ink); font: 13px/1.3 system-ui, sans-serif; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  h2 { font-size: 14px; margin: 18px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+  h2 small { color: var(--mute); font-weight: normal; }
+  .legend { color: var(--mute); margin-bottom: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(600px, 1fr)); gap: 8px; }
+  .card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; }
+  .card .name { width: 92px; flex: none; line-height: 1.2; }
+  .card .name b { display: block; font-size: 12px; }
+  .card .name span { color: var(--mute); font-size: 11px; }
+  .sw { display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 4px; flex: none; }
+  .sw.dark { background: var(--page); }
+  .sw.light { background: var(--light); }
+  .sw.gray img { filter: grayscale(1); }
+  .sw.sil img { filter: brightness(0); }
+  img, canvas { image-rendering: pixelated; display: block; }
+  .zoom { display: flex; gap: 4px; flex: none; }
+  .zoom canvas { background: var(--page); }
+  .miss { color: #dc6b61; }
+  /* hoja final: solo íconos a 24 sobre oscuro y claro, en filas compactas */
+  body.sheet .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  body.sheet .card { gap: 6px; padding: 4px 6px; }
+  body.sheet .card .name { width: auto; flex: 1; }
+</style>
+</head>
+<body>
+<h1>Íconos de Pixelia</h1>
+<div class="legend">Por ícono: grilla de 16 ×4 y de 24 ×3 · oscuro a 16/24/32 · claro a 16/24/32 · grises a 24 · silueta a 16/24.
+  Parámetros: <code>?fam=res,ui</code> · <code>?ids=coin,gem</code> · <code>?sheet=1</code> (hoja compacta).</div>
+<div id="out"></div>
+<script type="module">
+import { FAMILIES, icon, spriteCanvas } from '../src/core/icons.js';
+const q = new URLSearchParams(location.search);
+const fams = q.get('fam')?.split(',');
+const ids = q.get('ids')?.split(',');
+const sheet = q.get('sheet') === '1';
+if (sheet) document.body.classList.add('sheet');
+const out = document.getElementById('out');
+const zoom = (id, n, k) => {
+  const src = spriteCanvas(id, n), cv = document.createElement('canvas');
+  if (!src) { cv.width = cv.height = n * k; return cv; }
+  cv.width = cv.height = n * k;
+  const g = cv.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0, n * k, n * k);
+  return cv;
+};
+let total = 0;
+for (const f of FAMILIES) {
+  if (fams && !fams.includes(f.id)) continue;
+  const list = Object.entries(f.icons).filter(([id]) => !ids || ids.includes(id));
+  if (!list.length) continue;
+  total += list.length;
+  const h = document.createElement('h2');
+  h.innerHTML = `${f.name} <small>${f.id} · ${list.length}</small>`;
+  const grid = document.createElement('div'); grid.className = 'grid';
+  for (const [id, d] of list) {
+    const c = document.createElement('div'); c.className = 'card';
+    const miss = [d.s16 ? '' : '16', d.s24 ? '' : '24'].filter(Boolean);
+    if (sheet) {
+      c.innerHTML = `<div class="sw dark">${icon(id, 24)}</div><div class="sw light">${icon(id, 24)}</div><div class="name"><b>${d.name}</b><span>${id}</span></div>`;
+    } else {
+      const z = document.createElement('div'); z.className = 'zoom';
+      z.append(zoom(id, 16, 4), zoom(id, 24, 3));
+      c.innerHTML = `<div class="name"><b>${d.name}</b><span>${id}</span>${miss.length ? `<span class="miss"> falta ${miss.join(' y ')}</span>` : ''}</div>`;
+      c.append(z);
+      c.insertAdjacentHTML('beforeend',
+        `<div class="sw dark">${icon(id, 16)}${icon(id, 24)}${icon(id, 32)}</div>` +
+        `<div class="sw light">${icon(id, 16)}${icon(id, 24)}${icon(id, 32)}</div>` +
+        `<div class="sw dark gray">${icon(id, 24)}</div>` +
+        `<div class="sw light sil">${icon(id, 16)}${icon(id, 24)}</div>`);
+    }
+    grid.append(c);
+  }
+  out.append(h, grid);
+}
+document.querySelector('h1').textContent += ` · ${total}`;
+window.__ready = true;
+</script>
+</body>
+</html>

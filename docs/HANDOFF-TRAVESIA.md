@@ -38,7 +38,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 |---|---|---|---|---|
 | — | Plan, handoff y referencia de sprites (`docs/ref/`) | orquestador | hecho | (este commit) |
 | 1a | Armas y armaduras fuera del cuerpo, `test-gear-fit` y galería de clases | trav-1a-armas | integrado | master |
-| 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | trav-1b-iconos | en curso | rama `trav-1b` |
+| 1b | Íconos originales, tanda 1 (sistemas), `icons.html` y `test-icons` | trav-1b-iconos | hecho, falta integrar | rama `claude/trav-1b-e6ea29` |
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
@@ -215,3 +215,62 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
   - **`test-people` da 29 bien y 2 mal** («la llegada se cuenta con una escena»): **falla igual en master** (`a335752`,
     con su propio servidor), no es del 1c. Queda para quien toque `people`/historia.
 - Captura del Diario con los Logros: bien (2 de 4 cumplidos, el de Joyas solo porque se ganó). Encanto de arranque 36.
+
+### 1b · Íconos originales, tanda 1 (rama `claude/trav-1b-e6ea29`, 2026-11-09)
+- **Sistema** (`src/core/icons.js` + `src/core/icons/`):
+  - cada ícono es una grilla de texto de 16×16 y otra de 24×24 con la paleta de `icons/palette.js` (11 rampas claro ·
+    base · oscuro sacadas de los tokens, más tinta, sombra y brillo);
+  - el contorno de tinta se agrega solo, y para cada tamaño se elige la grilla y el factor entero que más llenan
+    (16 → 16×1, 20 → 24×1 a dpr 1,25, 32 → 16×2, 48 → 24×2);
+  - siete familias, 158 íconos: `res` 15, `ui` 29, `hud` 22, `weather` 20, `land` 27, `combat` 24, `meta` 21;
+  - `registerTint(id, base, {carácter: '#hex'})` tiñe un ícono: los cofres por rareza en `season-ui-common.js`.
+    `registerIcon` queda solo para canvases (miniaturas 3D, banderas, `art()`);
+  - se borraron los DEFS vectoriales viejos, `EMOJI`, `ALIAS` y `chestLayers`. También salieron los tiernos: fairy,
+    wizard, bear, paw, cake, ribbon y wand;
+  - `drawEmoji` queda como último recurso, con `console.warn` y `window.__iconMisses`;
+  - `icons/legacy.js` traduce emojis e ids viejos (`crown`→`medal`, `car`→`skiff`, `album`→`finding`…). Sirve
+    para partidas, mensajes y el ❤️ que guarda `schema.sql`.
+- **Usos:** todos los `emoji`/`icon`/`ic` de los datos y las llamadas `icon('…')` usan ids, y no queda ningún
+  emoji en el código salvo el álbum.
+  - En `net-mock`, `social-*` y `events.js` los emojis del texto se sacaron. En `events.js` la estrella quedó como ★.
+  - `test-e2e` buscaba `[data-pi="🍞"]`: ahora busca `prov`.
+- **Galería** `tools/icons.html`:
+  - `?fam=` e `?ids=` filtran;
+  - `?sheet=1` arma la hoja compacta;
+  - cada tarjeta muestra la grilla de 16 ×4 y la de 24 ×3, el ícono a 16/24/32 sobre fondo oscuro y claro, la prueba
+    de grises y la silueta;
+  - se captura con `GALLERY_PAGE=icons.html node gallery-shot.mjs "sheet=1" ../shots/icons/sheet.png 1280 1740`.
+- **Test** `tools/test-icons.mjs`, primero en `npm test`, va en Node y tarda menos de un segundo:
+  - revisa las grillas: tamaño, paleta, borde vacío y que no sean de un solo tono;
+  - recorre los datos y sus campos de ícono;
+  - revisa las llamadas literales y que no haya emojis en el código.
+
+  Saltea solo `album.js` y `album-art.js` (tanda 2).
+- **DESIGN.md**: la regla de los emojis pixelados se cambió por las reglas de lectura (silueta a 16 px en negro,
+  grises, una idea, nada de copiar el emoji, mismo trazo y luz).
+- **Criterio de arte:** se dibujó por familias y cada una pasó dos o tres vueltas con capturas, grises y silueta.
+  Después hubo una vuelta de corrección de los más flojos (humo, visitas, cuerda, colonos, materiales, rank7, daga,
+  mano, equipaje).
+  - Metáforas cambiadas: `handshake` (Visitas) es una puerta abierta con luz adentro, `sync` una nube con dos
+    flechas, `build` el armazón de una casa en obra, `el-marea` una gota.
+  - Siguen dudosos a 16 px: `rope`, `pu-humano` (la espiga), `settlers` y `rank2`.
+- **Cruce con el 1c:** rebasado sobre `1e08b7f` (v54, con el 1c).
+  - En `chests.js`, `season.js`, `season-ui.js`, `season-ui-common.js` y `main.js` quedó lo del 1c (sin muebles,
+    `coins_l`, el aviso v6) con los ids nuevos.
+  - `achievements.js` (nuevo del 1c) usaba `album` y ahora usa `finding`.
+  - El test ya no saltea Mi Casa, y no queda ninguna referencia a muebles ni a `mi_casa` en lo del 1b. `home` sigue
+    siendo el ícono de la casa (volver a la ciudad, la categoría Casa).
+  - Después del rebase: `test-icons` OK, `test-e2e` 104/0 y `test-migration` 93/0, cada uno corrido solo.
+- **`npm test`** (corrida anterior, rebasado sobre `db9dff3` con el 1a y el 1d):
+  - Verde: icons, e2e, migration, place, stress, visit, mock, social, rank, works, home, expedition, cycle, threats,
+    telemetry, ambience, audio, combat, combat-scene, combat-exp, classes, class-look, gear-fit, sprite2d, raiz, act1 y
+    sql.
+  - `test-settings` da 80/3 (contador de FPS y `ambience-fx.js:62` leyendo `.y` de una partícula que no existe). Da
+    igual en `master` limpio: no es del 1b.
+  - `test-people` da 29/2 (llegada de Brígida sin texto). También falla igual en `master`.
+  - `test-story` es intermitente en esta rama: falló 3 veces, cada vez en algo distinto (premio del día, t3 al
+    cosechar, "Ver El Quiebre"), y después pasó 3 veces seguidas 107/0. En `master` pasó las 2 veces que se probó.
+    Si vuelve a fallar al integrar, mirar primero los tiempos de espera.
+- **Para después:**
+  - Tanda 2: las 108 láminas de Hallazgos (`album*.js`), que todavía usan emojis.
+  - Ícono propio para "líder" (hoy `settlers`), "jefes" (hoy `medal`) y "accesorio" (hoy `bag`).

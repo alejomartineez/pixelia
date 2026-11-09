@@ -132,10 +132,10 @@ export const BUILDINGS = [
 // Con ellos se construyen los monumentos, por etapas: el nivel del edificio es la etapa (1 = cimientos … N = terminado).
 // cost.mats = { madera: n, ... } (store.canAfford/spend/grant los entienden igual que monedas y gemas).
 export const REGION_MATERIALS = [
-  { id: 'madera', name: 'Madera', one: 'madera', icon: '🪵', color: '#a8774a' },
-  { id: 'piedra', name: 'Piedra', one: 'piedra', icon: '🪨', color: '#9b9286' },
-  { id: 'mineral', name: 'Mineral', one: 'mineral', icon: '⛏️', color: '#7d8a99' },
-  { id: 'hierbas', name: 'Hierbas', one: 'hierbas', icon: '🌿', color: '#6f8a4f' },
+  { id: 'madera', name: 'Madera', one: 'madera', icon: 'wood', color: '#a8774a' },
+  { id: 'piedra', name: 'Piedra', one: 'piedra', icon: 'stone', color: '#9b9286' },
+  { id: 'mineral', name: 'Mineral', one: 'mineral', icon: 'ore', color: '#7d8a99' },
+  { id: 'hierbas', name: 'Hierbas', one: 'hierbas', icon: 'herbs', color: '#6f8a4f' },
 ];
 export const REGION_MAT_IDS = REGION_MATERIALS.map(m => m.id);
 export const MATERIAL_BY_ID = Object.fromEntries(REGION_MATERIALS.map(m => [m.id, m]));
@@ -151,9 +151,9 @@ export const LEGACY_BOOSTERS = { m3_moves: 'cuerda', m3_bomb: 'pala', blk_bomb: 
 // ---------------- RECURSOS DEL CICLO ----------------
 // Provisiones (depósito con tope), planos, equipo, reservas y colonos (DESIGN-CORE.md §5.1). Íconos: emojis pixelados.
 export const RESOURCES = {
-  prov: { name: 'Provisiones', one: 'provisión', icon: '🍞' },
-  planos: { name: 'Planos', one: 'plano', icon: '📜' },
-  colonos: { name: 'Colonos', one: 'colono', icon: '👪' },
+  prov: { name: 'Provisiones', one: 'provisión', icon: 'prov' },
+  planos: { name: 'Planos', one: 'plano', icon: 'plans' },
+  colonos: { name: 'Colonos', one: 'colono', icon: 'settlers' },
 };
 export const PROV_START = 30;
 export const PROV_CAP_BASE = 40, PROV_CAP_PER_CASA = 20, PROV_CAP_PER_GRANERO = 40;   // tope del depósito
@@ -195,11 +195,11 @@ export const EQUIP_RECIPES = {
 };
 export const EQUIP_IDS = Object.keys(EQUIP_RECIPES);
 export const RESERVES = {
-  arena: { name: 'Bolsas de arena', icon: '🧱', threat: 'crecida', cost: { coins: 40, mats: { piedra: 2 } } },
-  tinajas: { name: 'Tinajas de agua', icon: '🏺', threat: 'sequia', cost: { coins: 40, mats: { piedra: 1, hierbas: 1 } } },
-  baldes: { name: 'Baldes', icon: '🪣', threat: 'incendio', cost: { coins: 40, mats: { mineral: 1, madera: 1 } } },
-  lonas: { name: 'Lonas', icon: '⛺', threat: 'tormenta', cost: { coins: 40, mats: { hierbas: 1, madera: 1 } } },
-  lena: { name: 'Leña', icon: '🪵', threat: 'helada', cost: { coins: 20, mats: { madera: 2 } } },
+  arena: { name: 'Bolsas de arena', icon: 'sandbags', threat: 'crecida', cost: { coins: 40, mats: { piedra: 2 } } },
+  tinajas: { name: 'Tinajas de agua', icon: 'jars', threat: 'sequia', cost: { coins: 40, mats: { piedra: 1, hierbas: 1 } } },
+  baldes: { name: 'Baldes', icon: 'buckets', threat: 'incendio', cost: { coins: 40, mats: { mineral: 1, madera: 1 } } },
+  lonas: { name: 'Lonas', icon: 'tarp', threat: 'tormenta', cost: { coins: 40, mats: { hierbas: 1, madera: 1 } } },
+  lena: { name: 'Leña', icon: 'firewood', threat: 'helada', cost: { coins: 20, mats: { madera: 2 } } },
 };
 export const RESERVE_IDS = Object.keys(RESERVES);
 export const RESERVES_RANK = 2;
@@ -232,7 +232,7 @@ const stgB = (coins, mats, time, gems = 0) => stg(Math.round(coins * MON_COIN / 
 //             stickers (chance de un hallazgo más al volver) · time (obras más rápidas)
 export const MONUMENTS = {
   faro: {
-    name: 'Faro', art: 'el', size: [3, 3], rank: 3, charm: 120, happy: 8, bonus: { type: 'vision', value: 1 }, bonusIcon: '🧭',
+    name: 'Faro', art: 'el', size: [3, 3], rank: 3, charm: 120, happy: 8, bonus: { type: 'vision', value: 1 }, bonusIcon: 'lookout',
     bonusText: '+1 de visión en todas las expediciones', desc: 'Ilumina el pueblo de noche y guía a quien sale. Terminado: se ve una casilla más lejos en cada expedición.',
     stageNames: ST4, stages: [
       stg(3000, { piedra: 14, mineral: 9 }, 120), stg(5000, { piedra: 23, mineral: 14 }, 300),
@@ -260,7 +260,7 @@ export const MONUMENTS = {
       stgB(57000, { piedra: 60, madera: 50 }, 2400), stgB(78000, { piedra: 70, madera: 60 }, 3600, 10),
     ] },
   museo: {
-    name: 'Museo', art: 'el', size: [4, 4], rank: 6, charm: 220, happy: 12, bonus: { type: 'stickers', value: 0.5 }, bonusIcon: '🃏',
+    name: 'Museo', art: 'el', size: [4, 4], rank: 6, charm: 220, happy: 12, bonus: { type: 'stickers', value: 0.5 }, bonusIcon: 'finding',
     bonusText: '+50% de chance de un hallazgo más al volver', desc: 'Historia, arte ¡y un dinosaurio! Terminado: más hallazgos al volver de expedición.',
     stageNames: ST5, stages: [
       stgB(45000, { hierbas: 42, piedra: 35, mineral: 28 }, 1200), stgB(66000, { hierbas: 56, piedra: 49, mineral: 42 }, 1800),
@@ -305,25 +305,25 @@ export const CATEGORIES = [
 // req: pop (población), happy (% de felicidad), charm (Encanto), shops (tipos de negocio distintos), monuments (terminados),
 // planos (se gastan al empezar la obra; solo cuentan si la partida ya tiene state.planos: ver economy.rankStatus).
 export const TOWN_RANKS = [
-  { rank: 1, name: 'Aldea', emoji: '🏕️', land: 1 },
-  { rank: 2, name: 'Caserío', emoji: '🏡', look: 'galería de troncos y campanario', land: 2, cost: { coins: 800, gems: 2 }, time: 60, reqLevel: 3,
+  { rank: 1, name: 'Aldea', emoji: 'rank1', land: 1 },
+  { rank: 2, name: 'Caserío', emoji: 'rank2', look: 'galería de troncos y campanario', land: 2, cost: { coins: 800, gems: 2 }, time: 60, reqLevel: 3,
     req: { pop: 12, happy: 30, charm: 40, shops: 1 }, reward: { gems: 3, chest: 'madera' } },
-  { rank: 3, name: 'Pueblo', emoji: '🏘️', look: 'muros de piedra y torre del reloj', land: 3, builders: 1, cost: { coins: 2500, gems: 5 }, time: 180, reqLevel: 7,
+  { rank: 3, name: 'Pueblo', emoji: 'rank3', look: 'muros de piedra y torre del reloj', land: 3, builders: 1, cost: { coins: 2500, gems: 5 }, time: 180, reqLevel: 7,
     req: { pop: 120, happy: 40, charm: 620, shops: 4, planos: 3 }, reward: { gems: 5, chest: 'plata' } },
-  { rank: 4, name: 'Villa', emoji: '⛲', look: 'soportales y fuentes en la plaza', land: 4, cost: { coins: 6000, gems: 10 }, time: 420, reqLevel: 12,
+  { rank: 4, name: 'Villa', emoji: 'rank4', look: 'soportales y fuentes en la plaza', land: 4, cost: { coins: 6000, gems: 10 }, time: 420, reqLevel: 12,
     req: { pop: 200, happy: 45, charm: 900, shops: 6, monuments: 1 }, reward: { gems: 8, chest: 'oro' } },
-  { rank: 5, name: 'Ciudad', emoji: '🏙️', look: 'ladrillo, balcones y cúpula de tejas', land: 5, cost: { coins: 14000, gems: 20 }, time: 900, reqLevel: 18,
+  { rank: 5, name: 'Ciudad', emoji: 'rank5', look: 'ladrillo, balcones y cúpula de tejas', land: 5, cost: { coins: 14000, gems: 20 }, time: 900, reqLevel: 18,
     req: { pop: 340, happy: 50, charm: 1350, shops: 8, monuments: 2, planos: 6 }, reward: { gems: 12, chest: 'oro' } },
-  { rank: 6, name: 'Gran Ciudad', emoji: '🌆', look: 'cúpula de hierro y faroles a gas', land: 7, builders: 1, cost: { coins: 30000, gems: 30 }, time: 1800, reqLevel: 21,
+  { rank: 6, name: 'Gran Ciudad', emoji: 'rank6', look: 'cúpula de hierro y faroles a gas', land: 7, builders: 1, cost: { coins: 30000, gems: 30 }, time: 1800, reqLevel: 21,
     req: { pop: 460, happy: 52, charm: 1750, shops: 9, monuments: 3, planos: 10 }, reward: { gems: 18, chest: 'oro' } },
-  { rank: 7, name: 'Metrópolis', emoji: '🌃', look: 'torre de hierro y banderas', land: 7, cost: { coins: 60000, gems: 45 }, time: 3600, reqLevel: 26,
+  { rank: 7, name: 'Metrópolis', emoji: 'rank7', look: 'torre de hierro y banderas', land: 7, cost: { coins: 60000, gems: 45 }, time: 3600, reqLevel: 26,
     req: { pop: 580, happy: 60, charm: 2400, shops: 10, monuments: 5 }, reward: { gems: 25, chest: 'real' } },
-  { rank: 8, name: 'Capital', emoji: '🏛️', look: 'torre de vidrio con terrazas verdes', land: 7, cost: { coins: 120000, gems: 60 }, time: 7200, reqLevel: 33,
+  { rank: 8, name: 'Capital', emoji: 'rank8', look: 'torre de vidrio con terrazas verdes', land: 7, cost: { coins: 120000, gems: 60 }, time: 7200, reqLevel: 33,
     req: { pop: 700, happy: 65, charm: 2800, shops: 11, monuments: 6, planos: 15 }, reward: { gems: 40, chest: 'real' } },
 ];
 export const RANK_REQ_LABELS = {
   pop: ['Población', 'people'], happy: ['Felicidad', 'smile'], charm: ['Encanto', 'sparkle'],
-  shops: ['Tipos de negocio', 'shop'], monuments: ['Monumentos terminados', 'monument'], planos: ['Planos', '📜'],
+  shops: ['Tipos de negocio', 'shop'], monuments: ['Monumentos terminados', 'monument'], planos: ['Planos', 'plans'],
 };
 
 // ---------------- ÉPOCAS (DESIGN-CORE.md §4) ----------------
@@ -365,27 +365,27 @@ export function levelUpReward(newLevel) {
 // price: {coins|gems}, unlock: nivel. Los free:true se tienen desde el inicio. Estilo serio y terroso (plan §M1):
 // los modelos están en src/avatar/ (figure-*.js). Las piezas de antes del guardado v5 se traducen con V5_ITEMS.
 export const AVATAR_FAMILIES = [
-  { id: 'pueblos', name: 'Pueblos', emoji: '🧭' },
+  { id: 'pueblos', name: 'Pueblos', emoji: 'people' },
 ];
 // look: look inicial al elegir el pueblo (todo gratis). skins: tonos de piel (o pelaje) propios del pueblo.
 export const AVATAR_TYPES = [
-  { id: 'humano', name: 'Humano', family: 'pueblos', emoji: '🧭', element: null,
+  { id: 'humano', name: 'Humano', family: 'pueblos', emoji: 'pu-humano', element: null,
     desc: 'De las islas y los reinos. Hay de todo: soldados, cartógrafos, desertores.',
     skins: ['#e6c4a8', '#d9ac8a', '#c6936e', '#a87652', '#8a5c3e', '#5e3e2a'],
     look: { skin: 2, build: 'recio', hair: 'despeinado', hairColor: 'castano', face: 'barba_corta', dress: 'viajero', dressColor: 'verde', crown: 'ninguna', acc: 'mochila' } },
-  { id: 'enano', name: 'Enano de la Veta', family: 'pueblos', emoji: '⛏️', element: 'raiz',
+  { id: 'enano', name: 'Enano de la Veta', family: 'pueblos', emoji: 'pu-enano', element: 'raiz',
     desc: 'Mineros del Cerro. Las Casas los hicieron cavar: no se olvidan.',
     skins: ['#e2b89a', '#d29e7c', '#bb8462', '#9c6a4a', '#7e5238', '#5a3a28'],
     look: { skin: 1, build: 'recio', hair: 'cortito', hairColor: 'pelirrojo', face: 'barba_larga', dress: 'minero', dressColor: 'durazno', crown: 'ninguna', acc: 'ninguno' } },
-  { id: 'anuro', name: 'Anuro del Bañado', family: 'pueblos', emoji: '🐸', element: 'marea',
+  { id: 'anuro', name: 'Anuro del Bañado', family: 'pueblos', emoji: 'pu-anuro', element: 'marea',
     desc: 'Guardianes del agua. Hablan poco y no se apuran.',
     skins: ['#6f8450', '#5a7044', '#848650', '#4e6656', '#76684a', '#3e5446'],
     look: { skin: 0, build: 'recio', hair: 'lomo', hairColor: 'negro', face: 'ninguna', dress: 'pieles', dressColor: 'verde', crown: 'ninguna', acc: 'ninguno' } },
-  { id: 'zorro', name: 'Gente-zorro del Céfiro', family: 'pueblos', emoji: '🦊', element: 'cefiro',
+  { id: 'zorro', name: 'Gente-zorro del Céfiro', family: 'pueblos', emoji: 'pu-zorro', element: 'cefiro',
     desc: 'Viven entre dirigibles y riscos. Muchos piratas, algunos mensajeros.',
     skins: ['#a8643a', '#8e4e2c', '#857a6c', '#6a5e54', '#b89a74', '#3c3430'],
     look: { skin: 0, build: 'esbelto', hair: 'coleta', hairColor: 'blanco', face: 'ninguna', dress: 'abrigo', dressColor: 'azul', crown: 'ninguna', acc: 'ninguno' } },
-  { id: 'orco', name: 'Orco de la Brasa', family: 'pueblos', emoji: '🔥', element: 'brasa',
+  { id: 'orco', name: 'Orco de la Brasa', family: 'pueblos', emoji: 'pu-orco', element: 'brasa',
     desc: 'De los volcanes del Bajo Mundo. Los que más perdieron con el Quiebre.',
     skins: ['#7a8658', '#68744c', '#86845e', '#5c6852', '#776a54', '#4c5642'],
     look: { skin: 0, build: 'recio', hair: 'jopo', hairColor: 'negro', face: 'cicatriz', dress: 'cuero', dressColor: 'negro', crown: 'ninguna', acc: 'hacha' } },

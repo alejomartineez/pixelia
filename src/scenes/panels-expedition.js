@@ -122,7 +122,7 @@ export function openExpedition(ctx, params = {}) {
     const rs = RZ.raizState(ctx.state);
     if (!rs.found && !goal) return null;
     const el = h('div.card.pnl-ex-sec', { 'data-ex': 'mina' });
-    el.append(h('h4.pnl-ex-h', { html: `${icon('🌱', 20)}<span>La mina sellada</span>${rs.found ? `<small>Raíz: ${esc(RZ.EXTRACTION[rs.mode]?.name || 'sin elegir')} · Grieta ${Math.round(RZ.grieta(ctx.state))}</small>` : ''}` }));
+    el.append(h('h4.pnl-ex-h', { html: `${icon('el-raiz', 20)}<span>La mina sellada</span>${rs.found ? `<small>Raíz: ${esc(RZ.EXTRACTION[rs.mode]?.name || 'sin elegir')} · Grieta ${Math.round(RZ.grieta(ctx.state))}</small>` : ''}` }));
     if (!rs.found) {
       el.append(h('p.pnl-ex-tip', { html: `${icon('info', 16)}<span>La salida normal al Cerro va a la mina: en el fondo de la galería está lo que buscan todos.</span>` }));
       return el;
@@ -179,7 +179,7 @@ export function openExpedition(ctx, params = {}) {
     const lead = K.leaderInfo(ctx.state);
     // la ficha del líder: tocarla abre el selector de clase (paso 5b, tercera parte)
     const leadBtn = h('button.pnl-ex-role.lead', { 'data-leader-level': String(lead.level), 'data-leader-class': lead.cls || '',
-      html: `<span class="ic">${icon('🧑', 28)}</span><b>${esc(ctx.state.player.name)} · nivel ${lead.level}</b><small>${lead.cls ? 'Lidera · ' + esc(CLASSES_K[lead.cls].name) + ' · cambiar' : 'Lidera el grupo · elegí su clase'}</small>` });
+      html: `<span class="ic">${icon('settlers', 28)}</span><b>${esc(ctx.state.player.name)} · nivel ${lead.level}</b><small>${lead.cls ? 'Lidera · ' + esc(CLASSES_K[lead.cls].name) + ' · cambiar' : 'Lidera el grupo · elegí su clase'}</small>` });
     leadBtn.onclick = async () => { audio.sfx('tap'); if (await openClassPicker(ctx)) render(); };
     grid.append(leadBtn);
     for (const id of ROLE_IDS) {
@@ -212,7 +212,7 @@ export function openExpedition(ctx, params = {}) {
 
   function equipCard(st) {
     const el = h('div.card.pnl-ex-sec');
-    el.append(h('h4.pnl-ex-h', { html: `${icon('🪢', 20)}<span>Equipo</span><small>${equip.length}/${st.equipSlots} lugares</small>` }));
+    el.append(h('h4.pnl-ex-h', { html: `${icon('rope', 20)}<span>Equipo</span><small>${equip.length}/${st.equipSlots} lugares</small>` }));
     const have = ctx.state.equipment || {};
     const ids = Object.keys(EQUIPMENT).filter(id => (have[id] || 0) > 0);
     if (!st.equipSlots) el.append(h('p.pnl-ex-tip', { html: `${icon('info', 16)}<span>Con el Taller se fabrica equipo: cuerdas, palas, faroles.</span>` }));
@@ -256,7 +256,7 @@ export function openExpedition(ctx, params = {}) {
       return;
     }
     if (st.active) {
-      const a = h('div.card.pnl-ex-active', { html: `${icon('🧭', 30)}<span><b>Salida en curso</b><br><small>${esc(st.active.name || '')}, ${st.active.kind === 'corta' ? 'salida corta' : `zona ${st.active.zone}`} · ${st.active.steps} pasos</small></span>` });
+      const a = h('div.card.pnl-ex-active', { html: `${icon('expedition', 30)}<span><b>Salida en curso</b><br><small>${esc(st.active.name || '')}, ${st.active.kind === 'corta' ? 'salida corta' : `zona ${st.active.zone}`} · ${st.active.steps} pasos</small></span>` });
       const b = h('button.btn.primary', { 'data-ex-go': 'resume', html: `${icon('play', 18)} Retomar` });
       b.onclick = resume;
       a.append(b);
@@ -269,11 +269,11 @@ export function openExpedition(ctx, params = {}) {
     const ri = st.regions.find(r => r.id === region);
     const cargo = X.cargoMax(equip);
     const morale = 8 + (party.includes('sanidad') ? 2 : 0);
-    body.append(h('div.pnl-ex-sum', { html: `<span>${icon(RESOURCES.prov.icon, 18)}${st.provTake} provisiones</span><span>${icon('🎒', 18)}carga ${cargo}</span><span>${icon('heart', 18)}ánimo ${morale}</span>` }));
+    body.append(h('div.pnl-ex-sum', { html: `<span>${icon(RESOURCES.prov.icon, 18)}${st.provTake} provisiones</span><span>${icon('bag', 18)}carga ${cargo}</span><span>${icon('heart', 18)}ánimo ${morale}</span>` }));
     const goRow = h('div.pnl-ex-go');
     const nb = h('button.btn.primary', { 'data-ex-go': 'normal', disabled: !st.canNormal, html: `<span>${icon('map', 18)} Salir</span><small>${ri?.done ? 'recorrido' : `zona ${ri?.zone || 1}`} · ${st.provTake} prov.</small>` });
     nb.onclick = () => go('normal');
-    const cb = h('button.btn.second', { 'data-ex-go': 'corta', disabled: !st.canShort, html: `<span>${icon('🥪', 18)} Salida corta</span><small>${st.canShort ? 'gratis hoy' : st.active ? 'en curso' : 'mañana'}</small>` });
+    const cb = h('button.btn.second', { 'data-ex-go': 'corta', disabled: !st.canShort, html: `<span>${icon('steps', 18)} Salida corta</span><small>${st.canShort ? 'gratis hoy' : st.active ? 'en curso' : 'mañana'}</small>` });
     cb.onclick = () => go('corta');
     goRow.append(nb, cb);
     body.append(goRow);

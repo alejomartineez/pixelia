@@ -246,7 +246,7 @@ const RPC = {
     const d = today(db);
     let pts;
     if (p_kind === 'gift') {
-      if (db.gifts.some(g => g.from_id === me && g.to_id === p_to && g.kind === 'gift' && g.day === d)) E('Ya le mandaste el regalo de hoy 🎁 ¡Volvé mañana!');
+      if (db.gifts.some(g => g.from_id === me && g.to_id === p_to && g.kind === 'gift' && g.day === d)) E('Ya le mandaste el regalo de hoy. ¡Volvé mañana!');
       pts = 2;
     } else if (p_kind === 'help') {
       const v = visitRow(db, p_to, me);
@@ -350,9 +350,9 @@ const RPC = {
     if (p_host === me) E('El corazón es para la ciudad de un contacto, no para la tuya');
     pairLock(db, me, p_host);
     const v = visitRow(db, p_host, me);
-    if (v.liked) E('Ya le diste ❤️ hoy. ¡Mañana podés de nuevo!');
+    if (v.liked) E('Ya le diste un me gusta hoy. ¡Mañana podés de nuevo!');
     v.liked = true; v.updated_at = nowIso(db);
-    addGift(db, me, p_host, 'like', {}, null, '❤️');
+    addGift(db, me, p_host, 'like', {}, null, null);
     bump(db, me, p_host, 2);
     return { ok: true };
   },
@@ -400,8 +400,8 @@ const RPC = {
   fill_request(db, me, { p_id }) {
     const r = db.requests.find(x => x.id === p_id);
     if (!r) E('No encontramos ese pedido');
-    if (r.from_id === me) E('No podés completar tu propio pedido 😅');
-    if (r.filled_by) E('Alguien más ya completó ese pedido 💨');
+    if (r.from_id === me) E('No podés completar tu propio pedido');
+    if (r.filled_by) E('Alguien más ya completó ese pedido');
     if (Date.parse(r.expires_at) <= nowMs(db)) E('Ese pedido ya venció');
     pairLock(db, me, r.from_id);
     r.filled_by = me; r.filled_at = nowIso(db);

@@ -221,7 +221,7 @@ export function createVisit(ctx) {
     ro.observe(container);
     if (castle) {
       const ce = entries.get(castle.uid);
-      nameTag = ov.add(ui.h('div.cv-name', { html: `<span>${icon('crown', 16)}${ui.esc(hostName)}</span>` }), topPos(ce, 0.25));
+      nameTag = ov.add(ui.h('div.cv-name', { html: `<span>${icon('medal', 16)}${ui.esc(hostName)}</span>` }), topPos(ce, 0.25));
     }
 
     makeTop();
@@ -436,8 +436,8 @@ export function createVisit(ctx) {
     for (const t of NOTE_IDEAS) ideas.append(ui.h('button', { type: 'button', onclick: () => { ta.value = t; upd(); ta.focus(); } }, t));
     body.append(ta, cnt, ideas);
     let sending = false;
-    const m = ui.modal({ title: `Nota para ${hostName}`, icon: '💌', content: body, className: 'cx-modal',
-      actions: [{ label: 'Cancelar', cls: 'ghost' }, { html: `${icon('💌', 20)}Dejar nota`, label: 'Dejar nota', cls: 'primary', onClick: async () => {
+    const m = ui.modal({ title: `Nota para ${hostName}`, icon: 'mail', content: body, className: 'cx-modal',
+      actions: [{ label: 'Cancelar', cls: 'ghost' }, { html: `${icon('mail', 20)}Dejar nota`, label: 'Dejar nota', cls: 'primary', onClick: async () => {
         if (sending) return false;
         const t = ta.value.trim();
         if (!t) { audio.sfx('error'); ui.toast('Escribí algo antes de mandarla', { icon: 'info' }); return false; }
@@ -465,7 +465,7 @@ export function createVisit(ctx) {
     audio.sfx('done');
     ui.toast(`Le dejaste una nota a ${hostName}.`, { icon: 'heart', type: 'good' });
     const s = screenOfCastle();
-    ui.floatText(s.x, s.y - 20, icon('💌', 30));
+    ui.floatText(s.x, s.y - 20, icon('mail', 30));
     renderBar();
     return true;
   }
@@ -501,11 +501,11 @@ export function createVisit(ctx) {
     likeBtn.innerHTML = L.liked ? `${icon('heart', 20)}Te gustó` : `${icon('heart', 20)}Me gusta`;
     likeBtn.classList.toggle('done', L.liked);
     likeBtn.disabled = false;
-    noteBtn.innerHTML = L.note ? `${icon('check', 18)}Nota enviada` : `${icon('💌', 20)}Dejar nota`;
+    noteBtn.innerHTML = L.note ? `${icon('check', 18)}Nota enviada` : `${icon('mail', 20)}Dejar nota`;
     noteBtn.classList.toggle('done', L.note);
   }
   function makeLoading(name) {
-    loadEl = ui.h('div.cv-load', { html: `<div><span class="cv-car">${icon('car', 48)}</span><b>Viajando a la ciudad de ${ui.esc(name)}…</b></div>` });
+    loadEl = ui.h('div.cv-load', { html: `<div><span class="cv-car">${icon('skiff', 48)}</span><b>Viajando a la ciudad de ${ui.esc(name)}…</b></div>` });
     const back = ui.h('button.btn.ghost.small', { html: `${icon('back', 18)}Volver`, onclick: () => { audio.sfx('tap'); goHome(); } });
     loadEl.firstChild.append(back);
     container.append(loadEl);

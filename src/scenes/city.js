@@ -25,7 +25,7 @@ import { eventMult } from '../season/events.js';
 // Amenazas (Fase 3): capa de defensa por turnos, cartel/señales/daño y radio al colocar una defensa
 import { attach as attachDefense, createDecor, createCoverage, openPanel as openThreatPanel } from '../threats/threat-scene.js';
 // ícono de lo que produce cada edificio (globito y cobro): monedas, gemas o provisiones (Huerta, Tambo…)
-const CUR_ICON = { coins: 'coin', gems: 'gem', prov: '🍞', hierbas: '🌿' };
+const CUR_ICON = { coins: 'coin', gems: 'gem', prov: 'prov', hierbas: 'herbs' };
 
 const TAP_PX = 8;
 
@@ -577,13 +577,13 @@ export default function create(ctx) {
   /** A dónde apunta la flecha para la misión q: {el, side, text, panel} (botón del HUD), {entry, text} (edificio) o {sign}. */
   function guideTarget(q) {
     const t = q.goal.type;
-    if (EXP_GOALS.includes(t) && !(t === 'combat' && q.goal.enc === 'costa_capitana') && entryOf('casa_exp')) return { el: '[data-act="expedition"]', side: 'left', panel: 'expedition', text: `${icon('🧭', 20)}Misión: salí de <b>Expedición</b>` };
+    if (EXP_GOALS.includes(t) && !(t === 'combat' && q.goal.enc === 'costa_capitana') && entryOf('casa_exp')) return { el: '[data-act="expedition"]', side: 'left', panel: 'expedition', text: `${icon('expedition', 20)}Misión: salí de <b>Expedición</b>` };
     if (t === 'craft' && entryOf('taller')) return { entry: 'taller', panel: 'workshop', text: `${icon('hammer', 18)}Hacé clic en el <b>Taller</b>` };
-    if (t === 'prov' && entryOf('huerta')) return { entry: 'huerta', text: `${icon('🍞', 18)}Cosechá la <b>Huerta</b>` };
+    if (t === 'prov' && entryOf('huerta')) return { entry: 'huerta', text: `${icon('prov', 18)}Cosechá la <b>Huerta</b>` };
     if (t === 'castle' || t === 'rank') return { el: '.hud-rank', side: 'right', panel: 'rank', text: `${icon('castle', 20)}Mirá el <b>expediente</b> del rango` };
     if (t === 'threat' && document.querySelector('#hud [data-act="threat"]')?.style.display !== 'none') return { el: '[data-act="threat"]', side: 'right', panel: 'threat', text: `${icon('bolt', 20)}Prepará la ciudad` };
     if (t === 'expand') return { sign: true };
-    if (t === 'story') return { el: '[data-act="story"]', side: 'left', panel: 'story', text: `${icon('📖', 20)}Abrí la <b>Bitácora</b>` };
+    if (t === 'story') return { el: '[data-act="story"]', side: 'left', panel: 'story', text: `${icon('journal', 20)}Abrí la <b>Bitácora</b>` };
     return null;
   }
   let guideSign = false;
@@ -709,7 +709,7 @@ export default function create(ctx) {
       life.refreshGrid();
       syncStatus();
     }));
-    offs.push(bus.on('production:full', () => { ui.toast('El depósito de provisiones está lleno: salí de expedición', { icon: '🍞' }); }));
+    offs.push(bus.on('production:full', () => { ui.toast('El depósito de provisiones está lleno: salí de expedición', { icon: 'prov' }); }));
     offs.push(bus.on('production:collected', ({ b, amount, currency }) => {
       const e = entries.get(b.uid);
       if (!e) return;

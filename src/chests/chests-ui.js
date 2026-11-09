@@ -230,7 +230,7 @@ export async function openChestsPanel(ctx, params = {}) {
       const what = h('button.chx-what', { html: `${icon('info', 14)}¿Qué puede salir?`, onclick: () => { audio.sfx('tap'); showWhat(ctx, t); } });
       if (n) actions.append(h('button.btn.primary', { html: `${icon('sparkle', 20)}Abrir${n > 1 ? ` <small>(${n})</small>` : ''}`, onclick: () => openFromPanel(t) }));
       else if (def.price) actions.append(h('button.btn.ghost.small', { html: `${icon('shop', 16)}Comprar ${icon('gem', 16)}${def.price.gems}`, onclick: () => { audio.sfx('select'); setTab('tienda'); } }));
-      else actions.append(h('div.chx-ingame', { html: `${icon('🧭', 16)} Sale en las expediciones de 3★, las amenazas, el Pase y cada 5 niveles` }));
+      else actions.append(h('div.chx-ingame', { html: `${icon('expedition', 16)} Sale en las expediciones de 3★, las amenazas, el Pase y cada 5 niveles` }));
       card.querySelector('.chx-info').append(what);
       card.append(actions);
       list.append(card);
@@ -252,9 +252,9 @@ export async function openChestsPanel(ctx, params = {}) {
       pane.append(h('div.chx-sec', { html: `${icon('sparkle', 16)} Efectos activos` }));
       const list = h('div.chx-list.two');
       if (boosts.prod) list.append(h('div.card.chx-row.chx-boost', { html:
-        `${icon(boosts.prod.mult >= 3 ? '✨' : '🧪', 40)}<div class="chx-info"><b>Producción x${boosts.prod.mult}</b><small>Todos tus negocios producen más</small></div><span class="chx-left">${icon('clock', 16)} <span data-chx-boost="prod"></span></span>` }));
+        `${icon(boosts.prod.mult >= 3 ? 'elixir' : 'potion', 40)}<div class="chx-info"><b>Producción x${boosts.prod.mult}</b><small>Todos tus negocios producen más</small></div><span class="chx-left">${icon('clock', 16)} <span data-chx-boost="prod"></span></span>` }));
       if (boosts.happy) list.append(h('div.card.chx-row.chx-boost', { html:
-        `${icon('🌸', 40)}<div class="chx-info"><b>Ciudad feliz</b><small>Felicidad al máximo (+50%)</small></div><span class="chx-left">${icon('clock', 16)} <span data-chx-boost="happy"></span></span>` }));
+        `${icon('perfume', 40)}<div class="chx-info"><b>Ciudad feliz</b><small>Felicidad al máximo (+50%)</small></div><span class="chx-left">${icon('clock', 16)} <span data-chx-boost="happy"></span></span>` }));
       pane.append(list);
     }
     if (fb.length) {
@@ -288,7 +288,7 @@ export async function openChestsPanel(ctx, params = {}) {
           <span class="chx-rar">${esc(r.name)}</span><span class="chx-qty">x${it.count}</span>
           <div class="chx-ic">${icon(it.icon, 60)}</div>
           <b>${esc(it.name)}</b><p>${esc(it.desc || '')}</p>` });
-        if (it.use === 'city') card.append(h('button.btn.mint.small', { html: `${icon('wand', 18)}Usar`, onclick: (e) => useItem(it.id, e.currentTarget) }));
+        if (it.use === 'city') card.append(h('button.btn.mint.small', { html: `${icon('sparkle', 18)}Usar`, onclick: (e) => useItem(it.id, e.currentTarget) }));
         grid.append(card);
       }
       pane.append(grid);
@@ -297,7 +297,7 @@ export async function openChestsPanel(ctx, params = {}) {
 
   function renderTienda() {
     const gems = ctx.state.gems;
-    pane.append(h('div.card.chx-shophead', { html: `${icon('diamond', 36)}<p>Comprá cofres con gemas. Las gemas se ganan jugando, subiendo de nivel y en los cofres.</p>` }));
+    pane.append(h('div.card.chx-shophead', { html: `${icon('gem', 36)}<p>Comprá cofres con gemas. Las gemas se ganan jugando, subiendo de nivel y en los cofres.</p>` }));
     const list = h('div.chx-list');
     for (const t of ORDER) {
       const def = CHESTS[t];

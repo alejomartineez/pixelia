@@ -312,10 +312,10 @@ export default function create(ctx) {
       body.innerHTML = `<div class="ob-step">
         <h2 class="ob-h">${icon(t.emoji, 22)} Tu nombre</h2>
         <div class="ob-field"><span class="ob-wrap"><input class="ob-input" data-f="name" type="text" maxlength="${MAX_NAME}" autocomplete="off" spellcheck="false" placeholder="${ui.esc(suggestedName())}" aria-label="Nombre de tu personaje" aria-describedby="ob-count-name"><span class="ob-count" id="ob-count-name" data-count="name"></span></span>
-          <button class="icon-btn ob-dice" data-dice="name" aria-label="Nombre al azar">${icon('🎲', 24)}</button></div>
-        <h2 class="ob-h">${icon('🏡', 22)} Tu ciudad</h2>
+          <button class="icon-btn ob-dice" data-dice="name" aria-label="Nombre al azar">${icon('dice', 24)}</button></div>
+        <h2 class="ob-h">${icon('castle', 22)} Tu ciudad</h2>
         <div class="ob-field"><span class="ob-wrap"><input class="ob-input" data-f="city" type="text" maxlength="${MAX_NAME}" autocomplete="off" spellcheck="false" placeholder="${ui.esc(sugg.city)}" aria-label="Nombre de tu ciudad" aria-describedby="ob-count-city"><span class="ob-count" id="ob-count-city" data-count="city"></span></span>
-          <button class="icon-btn ob-dice" data-dice="city" aria-label="Ciudad al azar">${icon('🎲', 24)}</button></div>
+          <button class="icon-btn ob-dice" data-dice="city" aria-label="Ciudad al azar">${icon('dice', 24)}</button></div>
         <p class="ob-hint ob-name-hint" aria-live="polite">Los podés cambiar cuando quieras en Ajustes.</p>
       </div>`;
       const ni = body.querySelector('[data-f=name]'), ci = body.querySelector('[data-f=city]');

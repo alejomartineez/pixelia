@@ -107,7 +107,7 @@ export function trigger(key) {
     if (hasSeen(sc.id) || queue.includes(sc.id)) continue;
     queue.push(sc.id);
   }
-  for (const p of PAGES) if (p.trigger === key && addPage(p.id)) toast(`Página nueva del diario: ${p.title}`, '📖');
+  for (const p of PAGES) if (p.trigger === key && addPage(p.id)) toast(`Página nueva del diario: ${p.title}`, 'journal');
   schedule();
 }
 /** Encola una escena por id (aunque ya se haya visto si force). */
