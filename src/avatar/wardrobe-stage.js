@@ -313,7 +313,17 @@ export function thumbnail(spec) {
   if (thumbCache.has(key)) return thumbCache.get(key);
   const { renderer, scene, camera } = ensureThumbRenderer();
   let obj, fr = FRAMES[spec.frame] || FRAMES.body;
-  if (spec.type === 'princess' || spec.type === 'avatar') obj = avatarModel(spec.look);
+  if (spec.type === 'princess' || spec.type === 'avatar') {
+    obj = avatarModel(spec.look, spec.cls ? { cls: spec.cls } : {});
+    // el encuadre sigue a la cabeza y al alto reales de cada pueblo (un enano no mide lo mismo que un orco)
+    const hp = new THREE.Vector3();
+    obj.updateMatrixWorld(true);
+    obj.userData.parts?.head?.getWorldPosition(hp);
+    const h = obj.userData.height || 1, hy = hp.y || h * 0.75;
+    const AV = { head: [hy + 0.13, 0.5], tall: [hy + 0.2, 0.68], bust: [hy + 0.04, 0.6], body: [h * 0.5, h * 1.22], tallbody: [h * 0.52, h * 1.3], back: [h * 0.55, h * 1.25] };
+    const a = AV[spec.frame] || AV.body;
+    fr = { ...fr, y: a[0], view: a[1], ang: spec.frame === 'back' ? 2.55 : spec.frame === 'bust' ? 0.3 : 0.45, elev: spec.frame === 'bust' ? 0.08 : 0.18 };
+  }
   else if (spec.frame === 'wheel') {
     const c = carModel(spec.car);
     const w = c.userData.wheels[0];

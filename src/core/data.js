@@ -525,6 +525,17 @@ export const V5_ITEMS = {
 };
 /** Id nuevo de una pieza vieja (o el mismo si no cambió). */
 export const v5Item = (kind, id) => V5_ITEMS[kind]?.[id]?.[0] ?? id;
+/** Traduce un look de antes de v5 (chica/chico y piezas viejas) al de ahora. No valida contra el pueblo (eso es normalizeLook). */
+export function v5Look(l) {
+  if (!l || typeof l !== 'object') return l;
+  const T = V5_TYPES[LEGACY_TYPES[l.type] || l.type];
+  const out = { ...l };
+  if (T) { out.type = T.type; out.build = out.build || T.build; }
+  for (const k of ['hair', 'dress', 'crown', 'acc']) if (out[k] != null) out[k] = v5Item(k, LEGACY_ITEMS[k]?.[out[k]] || out[k]);
+  if (out.face === undefined) out.face = l.hair === 'barba' ? 'barba_larga' : 'ninguna';
+  if (out.build === undefined) out.build = 'recio';
+  return out;
+}
 // v3 → v4 (plan §J7, fuera lo tierno): piezas que se retiraron con su precio. migrateV4 (state.js) devuelve lo que
 // costaba lo que tenías comprado (monedas o gemas, lo mismo que pagaste); lo gratis solo se va.
 export const RETIRED_ITEMS = {

@@ -293,22 +293,30 @@ function v3Lines() {
 }
 
 // ---------- Migración v4: fuera lo tierno (El Quiebre, plan §J7) ----------
-const v4Pending = () => { const v = store.state.v4; return !!v && !v.shown; };
+const v4Only = () => { const v = store.state.v4; return !!v && !v.shown; };
+const v5Pending = () => { const v = store.state.v5; return !!v && !v.shown; };
+const v4Pending = () => v4Only() || v5Pending();
 const V4_THEMES = { moderna: 'Ciudad Moderna', playa: 'Playa Tropical', bosque: 'Bosque', invierno: 'Invierno Nevado' };
 const V4_ANIMALS = { gatito: 'el gato', zorrito: 'el zorro', conejito: 'el conejo', osito: 'el oso' };
 /** Lo que cuenta el aviso "La isla cambió" (va dentro de "Mientras no estabas…"). Lo da por visto. */
 function v4Lines() {
+  const li = (ic, html) => `${icon(ic, 22)} <span>${html}</span>`;
+  const lines = [], reward = {};
+  const v5 = store.state.v5;
+  if (v5Pending()) {   // v5: personajes serios y pueblos (plan §M)
+    v5.shown = 1;
+    lines.push(li('dress', 'Los personajes cambiaron: ahora hay <b>pueblos</b> (humanos, enanos, anuros, gente-zorro y orcos) y ropa de viaje. Tu ropa pasó a su equivalente; elegí tu pueblo en el <b>Equipaje</b>.'));
+    if (v5.coins || v5.gems) { lines.push(li('coin', 'Algunas prendas ahora son la misma: te devolvimos lo que pagaste por las repetidas.')); if (v5.coins) reward.coins = v5.coins; if (v5.gems) reward.gems = v5.gems; }
+  }
+  if (!v4Only()) { store.save(); return { lines, reward }; }
   const v = store.state.v4;
   v.shown = 1;
   store.save();
-  const li = (ic, html) => `${icon(ic, 22)} <span>${html}</span>`;
-  const lines = [];
   if (v.from) lines.push(li('dress', `Los personajes ahora son solo personas: ${V4_ANIMALS[v.from] || 'tu personaje'} pasó a ser una persona con los mismos colores. Lo cambiás gratis en el <b>Equipaje</b> (el Vestidor de antes).`));
   else lines.push(li('dress', 'El Vestidor ahora se llama <b>Equipaje</b>.'));
   if (v.theme) lines.push(li('palette', `Tu ciudad pasó de ${V4_THEMES[v.theme] || 'su estilo'} a <b>${themeOf(store.state.city.theme).name}</b>. Hay estilos nuevos para elegir: Ceniza, Musgo, Bruma, Ocaso y Escarcha.`));
-  const reward = {};
-  if (v.coins) reward.coins = v.coins;
-  if (v.gems) reward.gems = v.gems;
+  if (v.coins) reward.coins = (reward.coins || 0) + v.coins;
+  if (v.gems) reward.gems = (reward.gems || 0) + v.gems;
   if (v.coins || v.gems) lines.push(li('coin', 'Algunas prendas se retiraron (pelajes, ropa de animales y algún disfraz): te devolvimos lo que pagaste por ellas.'));
   return { lines, reward };
 }
