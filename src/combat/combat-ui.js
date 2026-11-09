@@ -7,6 +7,7 @@
 import { icon } from '../core/icons.js';
 import { esc } from '../core/ui.js';
 import { ENEMIES, UNITS, TILES, COMBOS, COMBAT } from './combat-data.js';
+import { CLASSES } from './classes.js';
 import { MATERIALS, MAT_IDS } from '../expedition/exp-data.js';
 import { CHARACTERS } from '../story/story-data.js';
 import { portrait } from '../story/story-ui.js';
@@ -31,7 +32,7 @@ const CSS = `
 .scene-combat .cb-menu { width:48px; display:grid; place-items:center; padding:0; cursor:pointer; color:var(--ink); }
 .scene-combat .cb-menu:hover { background:var(--surface-hover); }
 
-.scene-combat .cb-order { position:absolute; z-index:4; top:calc(var(--safe-t) + 10px); left:calc(var(--safe-l) + 12px); width:212px; padding:8px; display:flex; flex-direction:column; gap:3px; }
+.scene-combat .cb-order { position:absolute; z-index:4; top:calc(var(--safe-t) + 10px); left:calc(var(--safe-l) + 12px); width:240px; padding:8px; display:flex; flex-direction:column; gap:3px; }
 @media (min-width: 1280px) { .scene-combat .cb-order { width:250px; } }
 .scene-combat .cb-order h4 { margin:2px 2px 2px; font-size:13px; font-weight:400; color:var(--gold-t); text-transform:uppercase; letter-spacing:.04em; }
 .scene-combat .cb-order h4.e { color:var(--coral); margin-top:6px; }
@@ -41,6 +42,7 @@ const CSS = `
 .scene-combat .cb-o.sel { border-color:var(--gold); background:var(--gold-l); }
 .scene-combat .cb-o.done { opacity:.55; }
 .scene-combat .cb-o .nm { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.scene-combat .cb-o .nm .cl { font-size:13px; color:var(--ink-l); }
 .scene-combat .cb-o .hp { font-size:14px; color:var(--ink-l); }
 .scene-combat .cb-o .st { font-size:12px; color:var(--ink-ll); }
 .scene-combat .cb-o .dot { width:8px; height:8px; border-radius:2px; flex:none; background:var(--second-t); }
@@ -156,7 +158,21 @@ function hiddenLine(en) {
   const hid = en.filter(u => u.intent?.hidden).length;
   return hid ? `<div class="cb-o" data-tip="Con el Catalejo se ven los golpes de más enemigos." style="font-size:13px;color:var(--ink-ll)">${plural(hid, 'golpe no se ve', 'golpes no se ven')} desde acá</div>` : '';
 }
-const unitLabel = (u) => (u.side === 'ally' ? (u.type === 'lider' ? 'Líder' : u.name) : u.name);
+// Cómo se llama cada uno (recorrido de la noche, A): quien juega va con su nombre y su clase ("Irene · Cazador"), y quien
+// del grupo tiene la misma clase que quien lidera es "Cazador de la ciudad", para que no parezca un duplicado.
+const LBL = { player: '', cls: null };
+/** Nombre de una unidad de la vista. html: con la segunda parte más chica (la lista del turno). */
+export function unitLabel(u, { html = false, player = LBL.player, leaderCls = LBL.cls } = {}) {
+  if (!u) return '';
+  const two = (a, b) => (html ? `${esc(a)} <small class="cl">${esc(b)}</small>` : `${a} ${b}`);
+  if (u.side !== 'ally' || u.captive) return html ? esc(u.name) : u.name;
+  if (u.type === 'lider') {
+    const name = player || 'Quien lidera', cn = CLASSES[leaderCls]?.name;
+    return cn ? (html ? two(name, cn) : `${name} · ${cn}`) : (html ? esc(name) : name);
+  }
+  if (leaderCls && (u.cls || u.type) === leaderCls) return two(u.name, 'de la ciudad');
+  return html ? esc(u.name) : u.name;
+}
 
 /** Rasgos que se ven en la ficha (lo que cambia cómo se juega con esa unidad). */
 function traits(u) {
@@ -183,7 +199,7 @@ function traits(u) {
 }
 function cardHtml(u) {
   if (!u) return '';
-  const role = u.side === 'ally' ? (UNITS[u.type]?.text || '') : (ENEMIES[u.type]?.text || '');
+  const role = u.side === 'ally' ? (u.type === 'lider' ? 'Lidera el grupo. Si cae, el grupo se repliega.' : (UNITS[u.type]?.text || '')) : (ENEMIES[u.type]?.text || '');
   const pct = Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100));
   let intent = '';
   if (u.side === 'enemy') intent = u.intent?.hidden ? '<div class="it">Su golpe no se ve (el Catalejo muestra más).</div>'
@@ -244,10 +260,12 @@ export function buildCombatUi(root, ctx, h) {
   endBtn.onclick = () => h.onEnd();
   let barIds = [];
   let last = null;
+  LBL.player = ctx?.store?.state?.player?.name || ctx?.state?.player?.name || '';
   const off = () => { const r = root.getBoundingClientRect(); return [r.left, r.top]; };
 
   function update(v, st) {
     last = { v, st };
+    LBL.cls = v.leader?.cls || null;
     // arriba: encuentro, objetivo, desafíos
     const extra = [];
     if (v.bridge && !v.bridge.cut) extra.push(`Pasarela: ${v.bridge.hp}/${v.bridge.max}`);
@@ -268,7 +286,7 @@ export function buildCombatUi(root, ctx, h) {
     order.innerHTML = `<h4>${enemyPhase ? 'Ya jugó el grupo' : 'Juega el grupo'}</h4>${al.map(u => {
       const done = u.acted || (u.captive && !u.freed);
       const tag = u.captive && !u.freed ? 'atado' : u.acted ? 'listo' : u.moved ? 'se movió' : '';
-      return `<div class="cb-o ally${done ? ' done' : ''}${u.id === st.sel ? ' sel' : ''}" data-id="${u.id}"><i class="dot"></i><span class="nm">${esc(unitLabel(u))}</span><span class="st">${tag}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`;
+      return `<div class="cb-o ally${done ? ' done' : ''}${u.id === st.sel ? ' sel' : ''}" data-id="${u.id}"><i class="dot"></i><span class="nm">${unitLabel(u, { html: true })}</span><span class="st">${tag}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`;
     }).join('')}<h4 class="e">${enemyPhase ? 'Juegan los enemigos' : 'Después, en orden'}</h4>${hiddenLine(en)}${en.map(u =>
       `<div class="cb-o enemy" data-hover="${u.id}"><i class="dot"></i><span class="nm">${esc(u.name)}</span><span class="st">${u.intent?.hidden ? '?' : u.intent ? '−' + u.intent.dmg : ''}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`).join('') || '<div class="cb-o"><span class="nm">Ninguno en pie</span></div>'}`;
     order.querySelectorAll('.cb-o.ally').forEach(el => { el.onclick = () => h.onSelect(el.dataset.id); });
@@ -440,6 +458,7 @@ export function buildCombatUi(root, ctx, h) {
     get guideOpen() { return !guideEl.classList.contains('gone'); },
     pulseHp(id) { const el = tagsEl.querySelector(`[data-id="${id}"]`); if (el) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); } },
     confirmEnd,
+    labelOf: (u) => unitLabel(u),
     openMenu,
     openResult,
     barIds: () => barIds.slice(),

@@ -31,7 +31,8 @@ con la interfaz real hasta el primer combate. La bestia y el faro los adelanté 
 ## Pendiente, por prioridad
 
 ### Alta
-- **A. En el combate, la persona que juega se llama "Líder" y hay otro "Cazador".** Es tema de la sesión de clases.
+- **A. En el combate, la persona que juega se llama "Líder" y hay otro "Cazador".** Hecho en `claude/nombres-grupo`
+  (DESIGN-COMBAT §16.6): "Irene · Cazador" y "Cazador de la ciudad". Es tema de la sesión de clases.
   - Irene eligió Cazador, pero la lista dice "Líder, Saqueador, Cazador, Forjador". El Cazador es alguien de la
     ciudad, y parece que el Cazador no fuera ella.
   - En Progreso pasa lo mismo: "Irene · Cazador" y, en El grupo, otro "Cazador".

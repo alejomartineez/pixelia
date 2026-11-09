@@ -1008,7 +1008,7 @@ export function view(b) {
     : o.boss ? `Vencé a ${ENEMIES[bossOf(b)?.type]?.name.toLowerCase() || 'el jefe'}` : 'Vencé a todos';
   return {
     enc: b.enc, name: enc.name, text: enc.text, kind: b.kind, turn: b.turn, maxTurns: b.maxTurns, phase: b.phase,
-    ended: b.ended, outcome: b.outcome, reason: b.reason, w: b.w, h: b.h, tiles, units,
+    ended: b.ended, outcome: b.outcome, reason: b.reason, w: b.w, h: b.h, tiles, units, leader: { cls: b.leader?.cls || null },
     objective: { type: o.type, text: objText, turns: o.turns || 0 },
     challenges: (enc.challenges || []).map(c => ({ id: c.id, name: CHALLENGES[c.id].name, text: CHALLENGES[c.id].text(c), done: challengeDone(b, c) })),
     items: { ...b.items }, bridge: b.bridge ? { hp: b.bridge.hp, max: b.bridge.max, cut: b.bridge.cut } : null,
