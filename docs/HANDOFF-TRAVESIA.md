@@ -57,7 +57,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 3b | Cinemática "El Quiebre" nueva | — | después del 3a | |
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
-| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas | base integrada; falta pasar el HUD a claves | master |
+| 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas | base integrada; HUD a claves: corte por contexto, sigue una sesión nueva (ver notas) | master |
 | 4b | Extraer el texto, glosario, traducir a 8 idiomas y revisar | — | después del Bloque 3 | |
 
 ## Claves externas (nunca copiarlas al repo, a los logs ni a la salida de comandos)
@@ -336,6 +336,35 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
 - Sumar esos archivos a `PASSED`, traducirlos a en y ja, y correr `node tools/subset-fonts.mjs`.
 - Conflicto esperable: una línea de `panels-settings.js` (el ícono `map` del paso 1 de iOS). Hay que quedarse con
   el `t('settings.install.ios1')` de esta rama y el ícono del 1b.
+
+**Corte por contexto (2026-11-09, sesión trav-4a, después de que el orquestador integró el 1b y el 4a en v55):**
+la sesión pasó el 50 % de contexto antes de empezar el HUD. No hay trabajo a medias: la rama
+`claude/trav-4a-b849e1` quedó igual a `master` (123bd5d) más esta nota. Lo que sigue lo hace una sesión **nueva**:
+1. Rama nueva desde `master`. Antes de probar, `npm install` en `tools/`: `fontverter` y `subset-font` son
+   devDependencies nuevas, y sin instalarlas `test-i18n` falla al importar `font-cmap.mjs`.
+2. Pasar a claves (prefijo `hud.`):
+   - todo `src/core/hud.js`;
+   - lo del HUD en `src/scenes/city-ui.js`;
+   - el `aria-label` "Cerrar" de `src/core/ui.js` (`common.close`);
+   - los paneles que queden con texto y entren en esta tanda.
+   Patrón, como en `panels-settings.js`: `import { t, tn } from '../core/i18n.js'`; plurales con `tn`; números en
+   `{n}`, que se formatean solos.
+3. Repintar con `lang:changed`:
+   - `main.js` ya llama `hud.refresh()`;
+   - revisar que `render()` de `hud.js` rearme **todos** los textos (badges, tooltips `data-tip`, aria-labels), y si
+     no, sumar un repintado completo.
+4. Traducir las claves nuevas a `en.js` y `ja.js` (las dos completas: `test-i18n` exige todas las claves en los
+   idiomas que tienen texto). Después, `node tools/subset-fonts.mjs` para rearmar `fonts/pixel-ja.woff2` con los
+   caracteres nuevos.
+5. `tools/test-i18n.mjs`:
+   - sumar `hud.js` y `city-ui.js` (y lo que se pase) a `PASSED`, con excepciones solo para nombres propios;
+   - agregar una captura de la ciudad con el HUD en `de` (`?pseudo=1`) y en `ja`, midiendo texto cortado en `#hud`.
+   Mirar las capturas a ojo antes de cerrar.
+6. Commit sin bump, nota acá y PushNotification.
+
+Detalle del conflicto ya resuelto en master: en `panels-settings.js`, el paso 1 de iOS quedó `icon('map', 40)` con
+`t('settings.install.ios1')`.
+
 ### 3a · Motor de cinemáticas (rama `claude/trav-3a-4f363c`, sin bump)
 Hecho:
 - **`src/cinema/timeline.js`** (sin three ni DOM; se prueba en node):
