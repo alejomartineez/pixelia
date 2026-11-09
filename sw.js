@@ -4,7 +4,7 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v31';
+const VERSION = 'pixelia-v32';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
@@ -19,6 +19,7 @@ const CORE = [
   './src/city/models-cycle.js', './src/city/models-deco.js', './src/city/models-defense.js', './src/city/models-home.js', './src/city/models-houses.js',
   './src/city/models-kit.js', './src/city/models-monuments.js', './src/city/models-shops.js', './src/city/models-shops3.js', './src/city/models-special.js',
   './src/city/models-town.js', './src/city/models.js', './src/city/themes-ui.js', './src/city/themes.js',
+  './src/combat/combat-data.js', './src/combat/combat-rules.js',
   './src/core/audio.js', './src/core/bus.js', './src/core/data.js', './src/core/desktop.js', './src/core/economy.js',
   './src/core/frame-cap.js', './src/core/hud.js', './src/core/icons.js', './src/core/keys.js', './src/core/monuments.js',
   './src/core/palette.js', './src/core/quests.js', './src/core/settings.js', './src/core/state.js', './src/core/tips.js',
