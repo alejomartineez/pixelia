@@ -8,6 +8,8 @@ import { icon } from '../core/icons.js';
 import { esc } from '../core/ui.js';
 import { ENEMIES, UNITS, TILES, COMBOS, COMBAT } from './combat-data.js';
 import { MATERIALS, MAT_IDS } from '../expedition/exp-data.js';
+import { CHARACTERS } from '../story/story-data.js';
+import { portrait } from '../story/story-ui.js';
 
 const CSS = `
 .scene-combat { position:absolute; inset:0; overflow:hidden; background:var(--page); user-select:none; -webkit-user-select:none; font-family:var(--font); color:var(--ink); }
@@ -64,6 +66,14 @@ const CSS = `
 .scene-combat .cb-card .tx { font-size:13px; color:var(--ink-l); line-height:1.2; }
 .scene-combat .cb-hover { position:absolute; z-index:4; right:calc(var(--safe-r) + 12px); top:calc(var(--safe-t) + 10px); }
 .scene-combat .cb-hover:empty { display:none; }
+.scene-combat .cb-guide { position:absolute; z-index:6; right:calc(var(--safe-r) + 12px); bottom:calc(var(--safe-b) + 128px); width:min(360px, calc(100vw - 24px));
+  display:grid; grid-template-columns:56px 1fr; gap:10px; padding:10px 12px; transition:opacity .25s, transform .25s; }
+.scene-combat .cb-guide.gone { opacity:0; transform:translateY(8px); pointer-events:none; }
+.scene-combat .cb-guide canvas { width:56px; height:56px; image-rendering:pixelated; border:2px solid var(--edge); border-radius:10px; background:var(--bg-d); }
+.scene-combat .cb-guide .gw { font-size:15px; color:var(--gold-t); }
+.scene-combat .cb-guide .gw small { color:var(--ink-l); }
+.scene-combat .cb-guide p { margin:3px 0 6px; font-size:16px; line-height:1.3; }
+.scene-combat .cb-guide .gf { display:flex; justify-content:flex-end; }
 
 .scene-combat .cb-bar { display:flex; flex-direction:column; gap:6px; align-items:center; }
 .scene-combat .cb-acts { display:flex; gap:6px; padding:6px; flex-wrap:wrap; justify-content:center; max-width:min(640px, calc(100vw - 560px)); min-width:300px; }
@@ -223,7 +233,8 @@ export function buildCombatUi(root, ctx, h) {
         <div class="cb-keys">Clic: elegir y mover · 1–9: habilidades · Tab: siguiente · Q/E: girar · Esc: menú</div></div>
       <button class="btn second cb-end">Fin de turno<small>Espacio</small></button>
     </div>
-    <div class="cb-banner cb-panel"></div>`;
+    <div class="cb-banner cb-panel"></div>
+    <div class="cb-guide cb-panel gone" role="status"></div>`;
   const $ = (s) => root.querySelector(s);
   const goal = $('.cb-goal'), turnEl = $('.cb-turn'), order = $('.cb-order'), selCard = $('.cb-sel'), hoverEl = $('.cb-hover');
   const acts = $('.cb-acts'), hintEl = $('.cb-hint'), endBtn = $('.cb-end'), banner = $('.cb-banner');
@@ -322,6 +333,18 @@ export function buildCombatUi(root, ctx, h) {
   }
 
   // ---------- diálogos ----------
+  // la primera pelea, guiada (plan §E6): una línea de Vera por vez, de un solo uso (la escena decide cuándo)
+  const guideEl = $('.cb-guide');
+  function guide(text, who = 'cartografa') {
+    if (!text) { guideEl.classList.add('gone'); return; }
+    const ch = CHARACTERS[who] || {};
+    guideEl.innerHTML = `<div class="gp"></div><div><div class="gw">${esc(ch.name || '')}${ch.title ? ` <small>· ${esc(ch.title)}</small>` : ''}</div>
+      <p>${esc(text)}</p><div class="gf"><button class="btn ghost small" data-a="ok">Entendido</button></div></div>`;
+    const face = portrait(who);
+    if (face) guideEl.querySelector('.gp').append(face);
+    guideEl.querySelector('[data-a="ok"]').onclick = () => guideEl.classList.add('gone');
+    guideEl.classList.remove('gone');
+  }
   function dialog(html, cls = '') {
     const w = document.createElement('div');
     w.className = 'cb-modal';
@@ -385,7 +408,7 @@ export function buildCombatUi(root, ctx, h) {
     const morale = res.morale ? `<p>El ánimo de la expedición baja ${-res.morale}.</p>` : '';
     const btns = win
       ? `<button class="btn gold" data-a="go">${icon('play', 20)} Seguir</button>`
-      : `${lose ? `<button class="btn second" data-a="retry">${icon('rotate', 20)} ${info.boss ? 'Revancha' : 'Reintentar'}</button>` : ''}
+      : `${lose && !info.noRetry ? `<button class="btn second" data-a="retry">${icon('rotate', 20)} ${info.boss ? 'Revancha' : 'Reintentar'}</button>` : ''}
          <button class="btn ghost" data-a="go">${icon('back', 20)} Volver</button>`;
     const w = dialog(`<h2 class="${win ? 'win' : 'lose'}">${title}</h2><p>${esc(REASON[res.reason] || '')} ${res.turns ? esc(plural(res.turns, 'turno', 'turnos')) + '.' : ''}</p>
       ${win ? `<div class="cb-stars">${stars}</div>` : ''}
@@ -412,6 +435,8 @@ export function buildCombatUi(root, ctx, h) {
     banner: showBanner,
     float,
     hint,
+    guide,
+    get guideOpen() { return !guideEl.classList.contains('gone'); },
     pulseHp(id) { const el = tagsEl.querySelector(`[data-id="${id}"]`); if (el) { el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit'); } },
     confirmEnd,
     openMenu,

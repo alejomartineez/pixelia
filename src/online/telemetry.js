@@ -38,7 +38,16 @@ export const TRACKED_EVENTS = {
   // próximas fases: cada evento con su prefijo queda registrado con sus valores simples
   'expedition:*': p => scalars(p),
   'threat:*': p => scalars(p),
+  // combate (El Quiebre, paso 5; DESIGN-COMBAT.md §13): victoria, derrota y retirada, con los turnos, las estrellas y
+  // si fue la guiada o una resolución rápida (para ajustar el balance con datos reales)
+  'combat:won': p => combatProps(p),
+  'combat:lost': p => combatProps(p),
+  'combat:retreat': p => combatProps(p),
 };
+function combatProps(p = {}) {
+  return scalars({ enc: p.enc, region: p.region, kind: p.kind, reason: p.reason, turns: p.turns, stars: p.stars, attempt: p.attempt,
+    quick: !!p.quick, guided: !!p.guided, first: !!p.first, combos: p.combos, downs: p.downs });
+}
 
 // ---------- utilidades ----------
 const store = {

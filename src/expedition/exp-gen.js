@@ -1,7 +1,7 @@
 // Expedición: generador de mapas puro y determinista (DESIGN-CORE.md §2.5). Sin DOM ni three.js.
 //   rng(seed) → () => [0,1) (mulberry32; .state es el entero serializable)
 //   hashSeed(...parts) → entero de 32 bits estable
-//   generateMap({ region, zone, kind, seed }) → { w, h, base, cells, objective }
+//   generateMap({ region, zone, kind, seed, enemies }) → { w, h, base, cells, objective }
 import { EXP, REGIONS, TERRAIN, ringOf, MAT_IDS, HAZARD_IDS } from './exp-data.js';
 
 /** mulberry32. El estado (entero) se puede leer y escribir con f.state para guardar y retomar. */
@@ -60,7 +60,7 @@ export function cheapestPath(w, h, from, to, cost) {
   return { cost: dist[t], path };
 }
 
-export function generateMap({ region = 'bosque', zone = 1, kind = 'normal', seed = 1 } = {}) {
+export function generateMap({ region = 'bosque', zone = 1, kind = 'normal', seed = 1, enemies } = {}) {
   const R = REGIONS[region] || REGIONS.bosque;
   const K = EXP.kinds[kind] || EXP.kinds.normal;
   const { w, h, base } = K;
@@ -161,7 +161,31 @@ export function generateMap({ region = 'bosque', zone = 1, kind = 'normal', seed
     if (Math.abs(objective.hint[0] - objective.cell[0]) > 1) objective.hint[0] = objective.cell[0];
     if (Math.abs(objective.hint[1] - objective.cell[1]) > 1) objective.hint[1] = objective.cell[1];
   }
+  placeEnemies(cells, { R, K, kind, seed, zone, enemies });
   return { w, h, base: base.slice(), cells, objective, region: R.id, zone, kind, seed };
+}
+
+/**
+ * Casillas `enemigo` (El Quiebre, paso 5): sobre las vacías de las bandas media y lejana, con su propia suerte (el resto
+ * del mapa queda igual que antes). sub = id del encuentro (REGIONS[r].enemies). Solo en la salida normal.
+ * enemies: false = ninguna · { first: 'bosque_claro' } = la primera pelea, guiada, garantizada en EXP.enemy.firstDepth.
+ */
+function placeEnemies(cells, { R, K, kind, seed, zone, enemies }) {
+  if (enemies === false || kind === 'corta' || K.barrier === false || !R.enemies) return;
+  const E = EXP.enemy, r = rng(hashSeed(seed, R.id, zone, 'enemigo'));
+  const free = (c) => c.content === 'vacio' && !c.band && c.depth >= 4;
+  let n = 0;
+  if (enemies?.first) {
+    const [lo, hi] = E.firstDepth;
+    const spots = cells.filter(c => free(c) && c.depth >= lo && c.depth <= hi);
+    const c = spots.length ? spots[Math.floor(r() * spots.length)] : cells.filter(free).sort((a, b) => a.depth - b.depth)[0];
+    if (c) { c.content = 'enemigo'; c.sub = enemies.first; c.guided = true; n++; }
+  }
+  for (const c of cells) {
+    if (n >= E.max) break;
+    if (!free(c)) continue;
+    if (r() < E.chance[ringOf(c.depth) - 1]) { c.content = 'enemigo'; c.sub = weighted(r, R.enemies); n++; }
+  }
 }
 
 export { MAT_IDS, HAZARD_IDS };

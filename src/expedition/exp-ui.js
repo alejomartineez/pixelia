@@ -4,7 +4,29 @@
 import { icon } from '../core/icons.js';
 import { esc } from '../core/ui.js';
 import { WEATHER } from '../core/ambience.js';
-import { MATERIALS, MAT_IDS, HAZARDS, REGIONS, CONTENT, OBJECTIVES, EXP, ringOf } from './exp-data.js';
+import { MATERIALS, MAT_IDS, HAZARDS, REGIONS, CONTENT, OBJECTIVES, EXP, ROLES, ringOf } from './exp-data.js';
+import { ENCOUNTERS, ENEMIES } from '../combat/combat-data.js';
+
+/** "lobo de ojos brillantes" → "lobos de ojos brillantes", "grumete pirata" → "grumetes piratas". */
+function pluralName(name) {
+  let keep = false;
+  return name.split(' ').map(w => { if (w === 'de') keep = true; return keep ? w : w + (/[aeiouáéó]$/.test(w) ? 's' : 'es'); }).join(' ');
+}
+/** Quiénes esperan en una casilla `enemigo`: "2 lobos de ojos brillantes y el lobo viejo · llega 1 más en el turno 4". */
+export function foesText(enc) {
+  const def = ENCOUNTERS[enc];
+  if (!def) return '';
+  const count = {};
+  for (const t of def.enemies) count[t] = (count[t] || 0) + 1;
+  const names = Object.entries(count).map(([t, n]) => {
+    const nm = (ENEMIES[t]?.name || t).toLowerCase();
+    return n === 1 ? (ENEMIES[t]?.boss ? nm : 'un ' + nm) : n + ' ' + pluralName(nm);
+  });
+  const list = names.length > 1 ? names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1] : names[0];
+  const more = (def.waves || []).reduce((a, w) => a + (w.kinds?.length || 0), 0);
+  const obj = def.objective?.type === 'survive' ? ` · hay que aguantar ${def.objective.turns} turnos` : def.objective?.type === 'rescue' ? ' · hay que rescatar a alguien' : '';
+  return `${list}${more ? (more === 1 ? ' · llega uno más durante la pelea' : ` · llegan ${more} más durante la pelea`) : ''}${obj}`;
+}
 
 export const ICONS = {
   prov: '🍞', morale: 'heart', cargo: '🎒', plano: '📜', find: '🏺', colono: '👪', home: 'home', step: '👣',
@@ -82,6 +104,9 @@ const CSS = `
 .scene-expedition .ex-card header { display:flex; align-items:center; gap:10px; }
 .scene-expedition .ex-card header b { font-size:22px; line-height:1.1; display:block; }
 .scene-expedition .ex-card header p { margin:2px 0 0; font-size:14px; color:var(--ink-l); }
+.scene-expedition .ex-foes { display:flex; flex-direction:column; gap:3px; font-size:14px; color:var(--ink-l); margin:2px 0 4px; }
+.scene-expedition .ex-foes span { display:flex; align-items:center; gap:6px; }
+.scene-expedition .ex-foes .bad { color:#b5483f; font-weight:700; }
 .scene-expedition .ex-opt { display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:8px 10px; background:var(--surface); border:var(--line) solid var(--edge);
   border-radius:14px; box-shadow:0 3px 0 var(--shade); font:inherit; color:inherit; cursor:pointer; }
 .scene-expedition .ex-opt:active:not(:disabled) { transform:translateY(2px); box-shadow:0 1px 0 var(--shade); }
@@ -97,6 +122,7 @@ const CSS = `
 .scene-expedition .ex-opt .p { flex:none; min-width:64px; text-align:center; font-size:28px; font-weight:700; line-height:1; }
 .scene-expedition .ex-opt .p small { display:block; font-size:12px; color:var(--ink-l); }
 .scene-expedition .ex-opt.sure .p { font-size:18px; color:#2d8a6a; }
+.scene-expedition .ex-opt.fight .p { font-size:18px; color:var(--primary-t); }
 .scene-expedition .ex-opt.risky .p { color:var(--primary-t); }
 .scene-expedition .ex-back { align-self:center; }
 .scene-expedition .ex-modal { position:absolute; inset:0; z-index:8; display:grid; place-items:center; background:rgba(8, 6, 5,.35); padding:16px; }
@@ -298,6 +324,9 @@ export function openDecision(root, pending, ctxInfo, onChoose) {
   if (pending.kind === 'peligro' || pending.kind === 'ruina') {
     const hz = HAZARDS[pending.hazard];
     title = hz.name; text = hz.text; ic = hz.icon;
+  } else if (pending.kind === 'enemigo') {
+    const def = ENCOUNTERS[pending.encounter];
+    title = def?.name || CONTENT.enemigo.name; text = def?.text || CONTENT.enemigo.text; ic = CONTENT.enemigo.icon;
   } else if (pending.kind === 'campamento') {
     title = CONTENT.campamento.name; text = CONTENT.campamento.text; ic = CONTENT.campamento.icon;
   } else {
@@ -306,10 +335,18 @@ export function openDecision(root, pending, ctxInfo, onChoose) {
     ic = CONTENT.aldea.icon;
   }
   card.innerHTML = `<header>${icon(ic, 44)}<div><b>${esc(title)}</b><p>${esc(text)}</p></div></header>`;
+  if (pending.kind === 'enemigo') {
+    // quiénes esperan y quiénes pelean (con la escolta de la ciudad si el grupo es chico)
+    const fp = ctxInfo.fightParty || [], own = ctxInfo.party || [];
+    const who = ['Quien lidera', ...fp.map(r => (ROLES[r]?.name || r) + (own.includes(r) ? '' : ' (escolta)'))].join(', ');
+    const tired = pending.options.find(o => o.fight)?.tired;
+    card.insertAdjacentHTML('beforeend', `<div class="ex-foes"><span>${icon('⚔️', 16)} ${esc(foesText(pending.encounter))}.</span>
+      <span>${icon('people', 16)} Pelean: ${esc(who)}.</span>${tired ? `<span class="bad">${I('morale', 14)} Con el ánimo tan bajo llegan cansados: ${EXP.enemy.tiredHp} de vida menos cada uno.</span>` : ''}</div>`);
+  }
   const btns = [];
   pending.options.forEach((o, i) => {
     const b = document.createElement('button');
-    b.className = 'ex-opt ' + (o.sure ? 'sure' : 'risky');
+    b.className = 'ex-opt ' + (o.fight || o.quick ? 'fight' : o.sure ? 'sure' : 'risky');
     const lines = [];
     const stepTxt = pending.at === 'enter' ? pending.step : 0;
     const cost = stepTxt + (o.prov || 0);
@@ -320,7 +357,12 @@ export function openDecision(root, pending, ctxInfo, onChoose) {
     if (failL) lines.push(`<span class="bad">Si sale mal: ${failL}</span>`);
     if (!o.can && o.why) lines.push(`<span class="bad">${esc(o.why)}</span>`);
     if (!o.sure && o.detail) lines.push(`<small>${esc(o.detail)}</small>`);
-    const pCol = pending.at !== 'enter' ? '' : `<span class="p">${o.sure ? 'Seguro' : `${o.p}%`}${o.sure ? '' : '<small>sale bien</small>'}</span>`;
+    if (o.fight) {
+      lines.push(`<span class="good">Si ganan: hasta ${matsHtml(o.win.mats, 13)} y el paso queda libre</span>`);
+      lines.push(`<span class="bad">Si pierden: −${-o.lose.morale} ${I('morale', 13)} y vuelven a la casilla anterior. Retirarse: −${-o.retreat.morale} ${I('morale', 13)}</span>`);
+    } else if (o.quick && o.can) lines.push('<small>Ya la ganaron: se resuelve sin jugarla, con menos botín.</small>');
+    const pCol = pending.at !== 'enter' ? '' : o.fight || o.quick ? `<span class="p">${o.fight ? 'Pelea' : 'Rápido'}<small>${o.fight ? 'por turnos' : '1 estrella'}</small></span>`
+      : `<span class="p">${o.sure ? 'Seguro' : `${o.p}%`}${o.sure ? '' : '<small>sale bien</small>'}</span>`;
     b.innerHTML = `<i class="k">${i + 1}</i><span class="m"><b>${esc(o.label)}</b>${lines.join('')}</span>${pCol}`;
     b.disabled = !o.can;
     b.onclick = () => onChoose(o.id);

@@ -48,6 +48,12 @@ export const EXP = {
     costa: { p: 0.4, kinds: [['tormenta', 50], ['niebla', 50]] },
   },
   weatherFrom: [3, 8], weatherLen: [2, 4],   // el frente llega entre el paso 3 y el 8 y dura de 2 a 4 pasos
+  // Enemigos (El Quiebre, paso 5; DESIGN-COMBAT.md §13): casillas `enemigo` en las bandas media y lejana de la salida
+  // normal. Se tiran aparte, con su propia suerte, sobre las casillas vacías: los mapas de antes no cambian en lo demás.
+  // chance: [medio, lejos] por casilla vacía; max: tope por mapa. La corta (tutorial y Expedición del día) no tiene.
+  // fightProv: lo que cuesta la pelea en provisiones, además del paso. tiredMorale: con el ánimo en eso o menos, el grupo
+  // arranca la pelea con tiredHp de vida menos. firstDepth: dónde cae la primera pelea (la guiada) del Bosque.
+  enemy: { chance: [0.07, 0.13], max: 2, fightProv: 1, tiredMorale: 3, tiredHp: 2, firstDepth: [4, 5] },
   cargoStar: 1.0, moraleStar: 4,
   gemsAt3: 1, chestAt3: 0.10,          // cofre de madera en una salida de 3★ (Fase 5b: era 0,25; §8 ≤ 1,5 cofres por día)
   // Prototipo (Fase 1): sin ciudad. 3 roles fijos en nivel 1 y lo que daría una ciudad con Casa nivel 3 y Establo 3.
@@ -75,7 +81,7 @@ export const MATERIALS = {
 };
 export const MAT_IDS = ['madera', 'piedra', 'mineral', 'hierbas'];
 
-export const CONTENT_IDS = ['vacio', 'recurso', 'ruina', 'campamento', 'aldea', 'mirador', 'peligro'];
+export const CONTENT_IDS = ['vacio', 'recurso', 'ruina', 'campamento', 'aldea', 'mirador', 'peligro', 'enemigo'];
 export const CONTENT = {
   vacio: { name: 'Nada a la vista', icon: null },
   recurso: { name: 'Recurso', icon: null },        // usa el ícono del material
@@ -84,6 +90,7 @@ export const CONTENT = {
   aldea: { name: 'Aldea', icon: '🏘️', text: 'Gente de la zona. Se puede hacer una cosa con ellos.' },
   mirador: { name: 'Mirador', icon: '🔭', text: 'Desde arriba se ve lejos.' },
   peligro: { name: 'Peligro', icon: null },          // usa el ícono del peligro
+  enemigo: { name: 'Enemigos', icon: '⚔️', text: 'Algo se mueve más adelante. Para pasar por acá hay que pelear.' },   // sub = id del encuentro
   objetivo: { name: 'Objetivo', icon: '🚩' },
 };
 
@@ -96,6 +103,7 @@ export const REGIONS = {
     mats: { madera: 50, piedra: 20, mineral: 0, hierbas: 30 },
     hazards: { rio: 40, derrumbe: 10, tormenta: 15, lobos: 35 },
     terrain: { llano: 35, bosque: 40, colina: 15, pantano: 5, roca: 5 },
+    enemies: { bosque_claro: 55, bosque_manada: 45 },   // encuentros comunes (src/combat/combat-data.js), con su peso
     places: ['el aserradero abandonado', 'la casa del guardabosque', 'el puente de troncos', 'el vivero viejo', 'la capilla del monte'],
   },
   sierras: {
@@ -105,6 +113,7 @@ export const REGIONS = {
     mats: { madera: 15, piedra: 50, mineral: 35, hierbas: 0 },
     hazards: { rio: 10, derrumbe: 45, tormenta: 30, lobos: 15 },
     terrain: { llano: 30, bosque: 15, colina: 30, pantano: 5, roca: 20 },
+    enemies: { bosque_manada: 60, cerro_veta: 40 },   // encuentros comunes (src/combat/combat-data.js), con su peso
     places: ['la mina vieja', 'la cantera cerrada', 'el puesto de arriba', 'la pirca larga', 'el refugio de pastores'],
   },
   banado: {
@@ -114,6 +123,7 @@ export const REGIONS = {
     mats: { madera: 35, piedra: 10, mineral: 0, hierbas: 55 },
     hazards: { rio: 50, derrumbe: 15, tormenta: 20, lobos: 15 },
     terrain: { llano: 30, bosque: 20, colina: 5, pantano: 40, roca: 5 },
+    enemies: { banado_juncal: 65, bosque_manada: 35 },   // encuentros comunes (src/combat/combat-data.js), con su peso
     places: ['el muelle hundido', 'la casa sobre pilotes', 'el viejo arrozal', 'la balsa encallada', 'el faro del estero'],
   },
   cerro: {
@@ -123,6 +133,7 @@ export const REGIONS = {
     mats: { madera: 10, piedra: 35, mineral: 55, hierbas: 0 },
     hazards: { rio: 10, derrumbe: 40, tormenta: 35, lobos: 15 },
     terrain: { llano: 25, bosque: 10, colina: 30, pantano: 5, roca: 30 },
+    enemies: { cerro_veta: 55, cerro_rescate: 45 },   // encuentros comunes (src/combat/combat-data.js), con su peso
     places: ['la fundición vieja', 'el socavón norte', 'el polvorín', 'la estación del cable carril', 'la casa del capataz'],
   },
   costa: {
@@ -132,6 +143,7 @@ export const REGIONS = {
     mats: { madera: 25, piedra: 25, mineral: 25, hierbas: 25 },
     hazards: { rio: 25, derrumbe: 15, tormenta: 45, lobos: 15 },
     terrain: { llano: 45, bosque: 15, colina: 20, pantano: 10, roca: 10 },
+    enemies: { costa_muelle: 100 },   // encuentros comunes (src/combat/combat-data.js), con su peso
     places: ['el faro apagado', 'la aduana vieja', 'el naufragio', 'la casa de botes', 'el salinar'],
   },
 };

@@ -9,9 +9,17 @@
 //   useItem(run, id)       → { ok, events }        ('botiquin' | 'atender' | 'soltar:madera')
 //   goHome(run)            → { result, events }
 //   result(run)            → { stars, starCount, loot, reason, steps, objectiveDone, ... }
+//
+// Casilla `enemigo` (El Quiebre, paso 5; DESIGN-COMBAT.md §13): entrar deja run.pending = { kind: 'enemigo' } con
+// Pelear, Resolver rápido (si ya se ganó esa pelea) y Retroceder. Pelear da el paso, cobra la pelea y arma la batalla en
+// run.battle (JSON puro, se guarda con la salida); queda run.pending = { kind: 'combate' } hasta que
+// endCombat(run, combatResult) acredita lo que pasó: ganar deja la casilla hecha con su botín; perder o retirarse cuesta
+// ánimo y devuelve al grupo a la casilla anterior (los enemigos siguen ahí).
 import { EXP, TERRAIN, REGIONS, HAZARDS, MAT_IDS, ringOf, lootValue } from './exp-data.js';
-import { generateMap } from './exp-gen.js';
+import { generateMap, hashSeed } from './exp-gen.js';
 import { WEATHER, NIGHT_FROM, isNightHour, hourText } from '../core/ambience.js';
+import { COMBAT, ENCOUNTERS, ELEMENTS as C_ELEMENTS, ITEMS } from '../combat/combat-data.js';
+import * as C from '../combat/combat-rules.js';
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 
@@ -191,7 +199,7 @@ function describe(fx) {
 
 // ---------- crear ----------
 export function newRun({ region = 'bosque', zone = 1, kind = 'normal', seed = 1, party = [], equip = [], prov, mods = {} } = {}) {
-  const map = generateMap({ region, zone, kind, seed });
+  const map = generateMap({ region, zone, kind, seed, enemies: mods.noEnemies ? false : mods.firstFight ? { first: mods.firstFight } : undefined });
   const K = EXP.kinds[kind] || EXP.kinds.normal;
   const roleLv = { ...(mods.roleLevel || {}) };
   const sanidad = party.includes('sanidad');
@@ -212,6 +220,7 @@ export function newRun({ region = 'bosque', zone = 1, kind = 'normal', seed = 1,
     used: {}, shield: sanidad,             // Sanidad: el primer peligro fallado baja 1 menos
     pending: null, ended: false, reason: null, objectiveDone: false, decisions: [], result: null,
     clock: { start: EXP.dawn, per: EXP.hoursPerStep }, front: makeFront(map.region, seed, kind),
+    battle: null, fights: [],               // pelea en curso (combat-rules, JSON puro) y las peleas de la salida
   };
   const b = cellAt(run, run.base[0], run.base[1]);
   b.visited = true; b.done = true;
@@ -413,6 +422,122 @@ function openVillage(run, x, y, free, events) {
   events.push({ type: 'decision', pending: run.pending });
 }
 
+// ---------- enemigos y combate (DESIGN-COMBAT.md §13) ----------
+const COMBAT_ROLES = ['exploracion', 'ingenieria', 'sanidad'];   // TUTORIAL_PARTY: la escolta si la ciudad no tiene a nadie
+/** Peleas ganadas de un encuentro: las de antes (mods.combatWins, de la ciudad) más las de esta salida. */
+export function combatWins(run, enc) {
+  return (run.mods.combatWins?.[enc] || 0) + (run.fights || []).filter(f => f.enc === enc && f.outcome === 'win').length;
+}
+/**
+ * El grupo que pelea: los que salieron y, si son menos de 3, la escolta (gente de la ciudad que acompaña hasta el
+ * campamento: mods.escort, o los roles del tutorial). Sin escolta, quien lidera con uno solo pierde casi siempre.
+ */
+export function fightParty(run) {
+  const out = run.party.slice(0, 3);
+  for (const r of [...(run.mods.escort || []), ...COMBAT_ROLES]) { if (out.length >= 3) break; if (!out.includes(r)) out.push(r); }
+  return out;
+}
+/** Consumibles del Taller que llegan a la pelea: lo que se llevó (el Botiquín, si no se usó en el camino). */
+export function fightItems(run) {
+  return run.equip.filter(id => ITEMS[id] && !(id === 'botiquin' && run.used.botiquin));
+}
+const tiredFight = (run) => run.morale <= EXP.enemy.tiredMorale;
+function enemyOptions(run, enc, stepC) {
+  const E = EXP.enemy, def = ENCOUNTERS[enc];
+  const total = stepC + E.fightProv;
+  const enough = total <= run.prov;
+  const wins = combatWins(run, enc);
+  const quick = C.canQuickResolve(enc, wins) ? C.quickResolve({ encounter: enc, wins }) : null;
+  const winMats = {};
+  for (const [m, n] of Object.entries(def.reward.mats || {})) winMats[m] = Math.max(1, Math.round(n * 0.8));
+  return [
+    { id: 'pelear', label: 'Pelear', p: 100, sure: true, fight: true, prov: E.fightProv, can: enough, why: enough ? '' : 'No alcanzan las provisiones',
+      win: { mats: winMats }, lose: { morale: COMBAT.morale.lose }, retreat: { morale: COMBAT.morale.retreat }, tired: tiredFight(run) },
+    { id: 'resolver', label: 'Resolver rápido', p: 100, sure: true, quick: true, prov: E.fightProv, can: !!quick && enough,
+      why: !quick ? (def.kind === 'jefe' ? 'Contra un jefe hay que pelear' : 'Primero hay que ganarla una vez') : enough ? '' : 'No alcanzan las provisiones',
+      ok: quick ? { mats: { ...quick.loot.mats } } : null },
+  ];
+}
+/** Arma la pelea de la casilla con el grupo, los consumibles y el ánimo de la salida. */
+export function makeBattle(run, enc, x, y) {
+  const def = ENCOUNTERS[enc];
+  const elements = run.mods.elements || [];
+  const b = C.newBattle({
+    encounter: enc, seed: hashSeed(run.seed, enc, x, y, (run.fights || []).length, 'pelea'),
+    party: fightParty(run),
+    // hasta el paso 5b (nivel del líder por experiencia) pelea con el nivel que espera el encuentro
+    level: run.mods.leaderLevel ?? def.expected?.level ?? 1,
+    element: elements.find(id => !!C_ELEMENTS[id]) || null,
+    tools: { ...(run.mods.tools || {}) }, equip: fightItems(run), roleLevel: { ...run.roleLevel }, attempt: 1,
+  });
+  if (tiredFight(run)) {
+    // con el ánimo por el piso el grupo llega cansado: un poco menos de vida (se ve en la tarjeta antes de entrar)
+    for (const u of b.units) if (u.side === 'ally' && !u.captive) { u.maxHp = Math.max(1, u.maxHp - EXP.enemy.tiredHp); u.hp = Math.min(u.hp, u.maxHp); }
+    b.tired = true;
+  }
+  return b;
+}
+function chooseEnemy(run, pd, optionId, events) {
+  const c = cellAt(run, pd.x, pd.y);
+  const opts = enemyOptions(run, pd.encounter, pd.step);
+  const opt = opts.find(o => o.id === optionId);
+  if (!opt || !opt.can) return { ok: false, reason: 'cant', why: opt?.why || '', events };
+  run.pending = null;
+  doStep(run, pd.x, pd.y, pd.step, events);
+  addProv(run, -EXP.enemy.fightProv, 'pelea', events);
+  if (optionId === 'resolver') {
+    const res = C.quickResolve({ encounter: pd.encounter, wins: combatWins(run, pd.encounter) });
+    events.push({ type: 'combatQuick', encounter: pd.encounter });
+    applyFight(run, c, res, pd, events);
+    if (!run.ended) checkMorale(run, events);
+    return { ok: true, outcome: 'ok', events };
+  }
+  run.battle = makeBattle(run, pd.encounter, pd.x, pd.y);
+  run.pending = { kind: 'combate', at: 'fight', encounter: pd.encounter, guided: !!pd.guided, x: pd.x, y: pd.y, from: pd.from };
+  events.push({ type: 'combat', encounter: pd.encounter, guided: !!pd.guided, x: pd.x, y: pd.y });
+  return { ok: true, outcome: 'combat', events };
+}
+/** Lo que deja una pelea (o la resolución rápida) en la salida. */
+function applyFight(run, c, res, pd, events) {
+  const win = res.outcome === 'win';
+  const f = { enc: res.enc, outcome: res.outcome, reason: res.reason, turns: res.turns, stars: res.stars, xp: res.xp, quick: !!res.quick,
+    mats: { ...(res.loot?.mats || {}) }, page: res.page || null, flag: res.flag || null, guided: !!pd.guided, attempt: res.attempt || 1,
+    combos: res.comboCount || 0, downs: res.downs || 0 };
+  (run.fights ||= []).push(f);
+  events.push({ type: 'combatEnd', fight: { ...f } });
+  if (win) {
+    c.done = true;
+    if (Object.keys(f.mats).length) giveMats(run, f.mats, events, 'combate');
+    else pickup(run, events);
+  } else {
+    // perder o retirarse: cuesta ánimo y el grupo vuelve a la casilla de antes (los enemigos se quedan ahí)
+    addMorale(run, res.morale || 0, res.outcome === 'retreat' ? 'retirada' : 'derrota', events);
+    const from = pd.from || run.prev || run.base;
+    events.push({ type: 'pushBack', from: run.pos.slice(), x: from[0], y: from[1] });
+    run.pos = from.slice();
+    run.prev = null;
+  }
+}
+/**
+ * Cierra la pelea en curso con su resultado (combat-rules result(b)). Devuelve { ok, fight, events }. Si la pelea no
+ * terminó, cuenta como retirada.
+ */
+export function endCombat(run, res = null, events = []) {
+  const pd = run.pending;
+  if (!pd || pd.kind !== 'combate') return { ok: false, reason: 'nofight', events };
+  const b = run.battle;
+  if (!res) { if (b && !b.ended) C.retreat(b); res = b ? C.result(b) : { enc: pd.encounter, outcome: 'retreat', reason: 'retirada', turns: 0, stars: 0, xp: 0, morale: COMBAT.morale.retreat, loot: { mats: {} } }; }
+  // el Botiquín de la pelea es el mismo de la salida: si se usó ahí, ya no está
+  if (b?.items && b.items.botiquin === 0 && run.equip.includes('botiquin')) run.used.botiquin = true;
+  run.pending = null;
+  run.battle = null;
+  applyFight(run, cellAt(run, pd.x, pd.y), res, pd, events);
+  if (!run.ended) checkMorale(run, events);
+  return { ok: true, fight: run.fights[run.fights.length - 1], events };
+}
+/** La pelea en curso guardada con la salida (o null). */
+export const activeBattle = (run) => (run?.pending?.kind === 'combate' ? run.battle : null);
+
 // ---------- acciones ----------
 export function move(run, x, y) {
   if (run.ended) return { ok: false, reason: 'ended', events: [] };
@@ -422,6 +547,11 @@ export function move(run, x, y) {
   const cost = stepCost(run, c);
   if (cost > run.prov) return { ok: false, reason: 'prov', events: [] };
   const events = [];
+  if (!c.done && c.content === 'enemigo' && ENCOUNTERS[c.sub]) {
+    run.pending = { kind: 'enemigo', encounter: c.sub, guided: !!c.guided, x, y, from: run.pos.slice(), at: 'enter', step: cost, options: enemyOptions(run, c.sub, cost) };
+    events.push({ type: 'decision', pending: run.pending });
+    return { ok: true, events };
+  }
   if (!c.done && (c.content === 'peligro' || c.content === 'ruina')) {
     const hz = c.content === 'ruina' ? 'ruina' : c.sub;
     run.pending = { kind: c.content, hazard: hz, x, y, from: run.pos.slice(), at: 'enter', step: cost, options: buildOptions(run, hz, cost) };
@@ -444,8 +574,10 @@ export function choose(run, optionId) {
     events.push({ type: 'back' });
     return { ok: true, outcome: null, events };
   }
+  if (pd.kind === 'combate') return { ok: false, reason: 'fight', events };   // la pelea se termina con endCombat
   const opt = pd.options.find(o => o.id === optionId);
   if (!opt) return { ok: false, reason: 'option', events };
+  if (pd.kind === 'enemigo') return chooseEnemy(run, pd, optionId, events);
 
   if (pd.at === 'enter') {
     // peligro o ruina: se paga el paso + el costo de la opción y se tira la suerte
@@ -563,6 +695,8 @@ function endRun(run, reason, events) {
 
 export function goHome(run) {
   const events = [];
+  // volver en medio de una pelea es retirarse de ella (cuesta lo mismo que el botón Retirarse)
+  if (!run.ended && run.pending?.kind === 'combate') endCombat(run, null, events);
   if (!run.ended) {
     run.pending = null;
     const cost = returnCost(run);
@@ -587,6 +721,7 @@ export function result(run) {
     region: run.region, zone: run.zone, kind: run.kind,
     provLeft: run.ended && run.reason === 'volvio' ? run.prov : 0, cargoN, cargoMax: run.cargoMax, morale: run.morale,
     value: lootValue(loot, starCount),
+    fights: (run.fights || []).map(f => ({ ...f })),
   };
 }
 
