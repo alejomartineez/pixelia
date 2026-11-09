@@ -74,6 +74,8 @@ function syncDesktop(n) {
     ['desktop/package.json', /("version":\s*")[^"]+(")/],
     ['desktop/src-tauri/tauri.conf.json', /("version":\s*")[^"]+(")/],
     ['desktop/src-tauri/Cargo.toml', /^(version = ")[^"]+(")/m],
+    // si no, cada build local cambia Cargo.lock solo y queda un cambio sin commitear (release:check lo frena)
+    ['desktop/src-tauri/Cargo.lock', /(\[\[package\]\]\r?\nname = "pixelia"\r?\nversion = ")[^"]+(")/],
   ];
   for (const [f, re] of targets) {
     const p = join(ROOT, f);

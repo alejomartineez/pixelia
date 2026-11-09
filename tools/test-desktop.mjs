@@ -38,7 +38,9 @@ console.log('ventana', await page.evaluate(async () => {
   const size = async () => { const s = await w.outerSize(), f = await w.scaleFactor(); return [Math.round(s.width / f), Math.round(s.height / f)]; };
   const m = await D.monitorInfo();
   const r = { monitor: m && [m.w, m.h, 'útil', m.aw, m.ah], inicio: await size() };
-  r.entra = !!m && r.inicio[0] <= m.aw && r.inicio[1] <= m.ah;
+  // si la partida quedó en pantalla completa o sin bordes, abre así (initDesktop) y no tiene que entrar en el área útil
+  r.modoGuardado = window.__pixelia.ctx.state.settings.winMode;
+  r.entra = r.modoGuardado !== 'window' ? 'no aplica' : !!m && r.inicio[0] <= m.aw && r.inicio[1] <= m.ah;
   S.setSetting({ winMode: 'borderless' }); await wait(1500); r.sinBordes = [await size(), 'deco', await w.isDecorated()];
   S.setSetting({ winMode: 'fullscreen' }); await wait(1800); r.completa = await w.isFullscreen();
   S.setSetting({ winMode: 'window', winRes: '1280x720' }); await wait(1800); r.ventana = [await size(), 'fs', await w.isFullscreen(), 'deco', await w.isDecorated()];

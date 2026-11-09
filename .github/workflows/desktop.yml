@@ -109,7 +109,16 @@ jobs:
           APP="desktop/src-tauri/target/release/bundle/macos/Pixelia.app"
           ls -la "$APP/Contents/MacOS"
           "$APP/Contents/MacOS/pixelia" > shots/app.log 2>&1 &
-          for t in 6 14 24 40; do sleep $((t - ${prev:-0})); prev=$t; screencapture -x "shots/mac-${t}s.png" || true; done
+          for t in 6 14 24; do sleep $((t - ${prev:-0})); prev=$t; screencapture -x "shots/mac-${t}s.png" || true; done
+          # dónde quedó la ventana (tiene que entrar entera en la pantalla) y Enter en el splash para ver la cinemática
+          # (System Events puede no tener permiso de accesibilidad en el runner: si falla, solo quedan las capturas del splash)
+          osascript -e 'tell application "System Events" to tell process "pixelia" to get {position, size} of window 1' > shots/window.txt 2>&1 || true
+          system_profiler SPDisplaysDataType | grep -i resolution >> shots/window.txt 2>&1 || true
+          osascript -e 'tell application "System Events" to set frontmost of process "pixelia" to true' -e 'delay 1' -e 'tell application "System Events" to key code 36' >> shots/window.txt 2>&1 || true
+          sleep 6; screencapture -x shots/mac-enter-6s.png || true
+          sleep 8; screencapture -x shots/mac-enter-14s.png || true
+          osascript -e 'tell application "System Events" to key code 53' >> shots/window.txt 2>&1 || true
+          sleep 6; screencapture -x shots/mac-esc-6s.png || true
           pkill -f "Pixelia.app" || true
       - uses: actions/upload-artifact@v4
         with:

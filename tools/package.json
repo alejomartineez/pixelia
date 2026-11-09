@@ -26,7 +26,7 @@
     "bump": "node gen-sw-core.mjs --bump",
     "check": "node gen-sw-core.mjs --check",
     "desktop:dev": "npm --prefix ../desktop run dev",
-    "desktop:build": "npm --prefix ../desktop run build -- --bundles nsis",
+    "desktop:build": "npm --prefix ../desktop run build -- --bundles nsis --config src-tauri/tauri.check.conf.json",
     "release": "node release.mjs",
     "release:check": "node release.mjs --dry"
   },
