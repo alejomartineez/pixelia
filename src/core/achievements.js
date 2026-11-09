@@ -7,7 +7,7 @@ import { store } from './state.js';
 export const ACHIEVEMENTS = [
   { id: 'trofeo_rango', name: 'Copa de la Municipalidad', ic: 'trophy', desc: 'Llevar la ciudad al rango Villa.', test: (s) => (s.stats?.rankBest || 0) >= 4 },
   { id: 'trofeo_obra', name: 'Maqueta del Faro', ic: 'monument', desc: 'Terminar el primer monumento.', test: (s) => MONUMENT_DONE(s) },
-  { id: 'trofeo_album', name: 'Medalla de Hallazgos', ic: 'album', desc: 'Juntar 30 Hallazgos nuevos.', test: (s) => (s.stats?.stickersNew || 0) >= 30 },
+  { id: 'trofeo_album', name: 'Medalla de Hallazgos', ic: 'finding', desc: 'Juntar 30 Hallazgos nuevos.', test: (s) => (s.stats?.stickersNew || 0) >= 30 },
   // recuerdo de los minijuegos: solo se muestra a quien lo ganó
   { id: 'trofeo_joyas', name: 'Trofeo de Joyas', ic: 'gem', desc: 'Pasar 10 niveles de Joyas Brillantes.', legacy: true, test: (s) => (s.stats?.match3Wins || 0) >= 10 },
 ];

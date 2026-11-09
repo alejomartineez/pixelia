@@ -245,8 +245,7 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
   - recorre los datos y sus campos de ícono;
   - revisa las llamadas literales y que no haya emojis en el código.
 
-  Saltea `album.js` y `album-art.js` (tanda 2) y **Mi Casa** (`scenes/home.js`, `home/*`, `models-home.js`): cuando
-  entre el 1c, sacar esas tres del `SKIP` del test.
+  Saltea solo `album.js` y `album-art.js` (tanda 2).
 - **DESIGN.md**: la regla de los emojis pixelados se cambió por las reglas de lectura (silueta a 16 px en negro,
   grises, una idea, nada de copiar el emoji, mismo trazo y luz).
 - **Criterio de arte:** se dibujó por familias y cada una pasó dos o tres vueltas con capturas, grises y silueta.
@@ -255,10 +254,14 @@ Queda para un retoque de arte (no traba al 2b ni al 3a):
   - Metáforas cambiadas: `handshake` (Visitas) es una puerta abierta con luz adentro, `sync` una nube con dos
     flechas, `build` el armazón de una casa en obra, `el-marea` una gota.
   - Siguen dudosos a 16 px: `rope`, `pu-humano` (la espiga), `settlers` y `rank2`.
-- **Cruce con el 1c:** el 1c todavía no estaba en `master` al cerrar (se rebasó sobre `db9dff3`, con el 1a y el 1d).
-  El 1b tocó `season-data.js`, `chests.js` y `season-ui-common.js`, así que el 1c resuelve quedándose con los ids
-  nuevos (`furniture` en `chests.js` usa `home`).
-- **`npm test`**, rebasado sobre `db9dff3` (con el 1a y el 1d):
+- **Cruce con el 1c:** rebasado sobre `1e08b7f` (v54, con el 1c).
+  - En `chests.js`, `season.js`, `season-ui.js`, `season-ui-common.js` y `main.js` quedó lo del 1c (sin muebles,
+    `coins_l`, el aviso v6) con los ids nuevos.
+  - `achievements.js` (nuevo del 1c) usaba `album` y ahora usa `finding`.
+  - El test ya no saltea Mi Casa, y no queda ninguna referencia a muebles ni a `mi_casa` en lo del 1b. `home` sigue
+    siendo el ícono de la casa (volver a la ciudad, la categoría Casa).
+  - Después del rebase: `test-icons` OK, `test-e2e` 104/0 y `test-migration` 93/0, cada uno corrido solo.
+- **`npm test`** (corrida anterior, rebasado sobre `db9dff3` con el 1a y el 1d):
   - Verde: icons, e2e, migration, place, stress, visit, mock, social, rank, works, home, expedition, cycle, threats,
     telemetry, ambience, audio, combat, combat-scene, combat-exp, classes, class-look, gear-fit, sprite2d, raiz, act1 y
     sql.

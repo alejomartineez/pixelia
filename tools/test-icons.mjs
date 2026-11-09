@@ -78,8 +78,8 @@ if (!onlySprites) {
 
   // b) el código: llamadas icon('x') / iconUrl('x') y campos ic/icon/emoji literales; nada de emojis sueltos
   const EMOJI = /(?:\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}])/u;
-  // las láminas de Hallazgos son la tanda 2; Mi Casa se borra entera en el paso 1c (hasta que llegue, no se revisa)
-  const SKIP = /(^|\/)(album\.js|album-art\.js|icons\/legacy\.js|scenes\/home\.js|home\/[^/]+\.js|models-home\.js)$/;
+  // las láminas de Hallazgos son la tanda 2
+  const SKIP = /(^|\/)(album\.js|album-art\.js|icons\/legacy\.js)$/;
   const files = [];
   const scan = (d) => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) scan(p); else if (p.endsWith('.js')) files.push(p); } };
   scan(join(ROOT, 'src'));
