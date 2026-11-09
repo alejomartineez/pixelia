@@ -12,6 +12,8 @@ import {
 import * as E from '../core/economy.js';
 import { EXP, REGIONS, REGION_IDS, CLASSES, EQUIPMENT, HAZARDS, ringOf } from './exp-data.js';
 import * as K from '../core/classes.js';
+import * as PE from '../core/people.js';
+import { toolVision } from '../core/people-data.js';
 import { toClass } from '../combat/classes.js';
 import { hashSeed } from './exp-gen.js';
 import { ENCOUNTERS } from '../combat/combat-data.js';
@@ -185,7 +187,8 @@ function cityMods(party, equip, state = S(), { region, kind, tutorial, daily } =
     leader: K.leaderMods(state),
     cargoMax: cargoMax(equip, state),
     encantoStars: stars,
-    vision: (() => { try { return E.monumentBonus('vision', state); } catch { return 0; } })(),   // Faro (+1)
+    vision: (() => { try { return E.monumentBonus('vision', state); } catch { return 0; } })() + toolVision(PE.toolLevels(state)),   // Faro (+1) y Catalejo 3+
+    tools: PE.toolLevels(state),   // las herramientas de la gente de la ciudad (L5): decisiones, ánimo y combate
     combatWins: { ...cb.wins }, escort, elements: (state.story?.elements || []).slice(),
   };
   // la primera pelea es guiada: la de los lobos del Bosque del Arroyo, en la primera salida normal al Bosque (E6)
