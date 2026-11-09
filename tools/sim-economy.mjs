@@ -106,6 +106,8 @@ const CH = await imp('src/chests/chests.js');
 const AL = await imp('src/album/album.js');
 const X = await imp('src/expedition/expedition.js');
 const XD = await imp('src/expedition/exp-data.js');
+const CL = await imp('src/combat/classes.js');   // nivel del líder (paso 5b; lo balancea el paso 7)
+const leaderLog = [];
 const TH = await imp('src/threats/threats.js');
 const TR = await imp('src/threats/threat-rules.js');
 const TD = await imp('src/threats/threat-data.js');
@@ -768,6 +770,7 @@ for (let day = 0; day < DAYS; day++) {
   for (const h of HOURS) await session(day, h);
   rz.grietaByDay[day] = Math.round(RZ.grieta(s, T) * 10) / 10;
   const p = P(day);
+  if ([6, 24, 59].includes(day)) leaderLog.push(`día ${day + 1}: nivel ${CL.leaderLevelFromXp(s.classes?.leader?.xp || 0)}`);
   const si = SE.seasonInfo(T);
   if (si.id === 1 && si.level >= 30 && !pass30Day) pass30Day = day + 1;
   const rs = E.rankStatus();
@@ -907,6 +910,7 @@ const goals = [
 console.log(`\nMetas de balance (DESIGN-CORE.md §8) · ${HOURS.length} ratos/día · ${DAYS} días · semilla ${SEED}${RUNS ? ` (+${RUNS} corridas)` : ''}`);
 for (const [g, ok, t] of goals) console.log(`  ${mark(ok)} ${g.padEnd(6)} ${t}`);
 if (others.length) console.log(`  corridas extra: ${others.map(o => `semilla ${o.seed}: rango 3 d${o.rankDays[3] ?? "—"} · 5 d${o.rankDays[5] ?? "—"} · 8 d${o.rankDays[8] ?? "—"} · monumento d${o.firstMonumentDay ?? "—"} · Pase d${o.pass30 ?? "> 28"} · monedas al llegar ${f1(o.arrPct)}% · cofres ${f1(o.chestsPerDay)} · gemas ${f1(o.gemsPerDay)}`).join(' | ')}`);
+console.log(`  (info) nivel del líder: ${leaderLog.join(' · ')} — meta del paso 7: 6 o 7 al llegar a la Costa`);
 const failed = goals.filter(g => g[1] === false).length;
 console.log(`  ${goals.filter(g => g[1] === true).length} ✔ · ${failed} ✘ · ${goals.filter(g => g[1] == null).length} sin medir`);
 process.exit(0);

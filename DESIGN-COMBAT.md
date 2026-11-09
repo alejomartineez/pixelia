@@ -2,12 +2,17 @@
 
 Plan: [docs/PLAN-QUIEBRE.md](docs/PLAN-QUIEBRE.md), §C (combate), §I (principios y balance) y §L5 (herramientas y nivel
 del líder). Cubre el motor puro (§1–§10), la escena con su interfaz (§11) y el combate dentro de la expedición: la
-casilla `enemigo`, el traspaso entre las dos escenas y la primera pelea guiada (§13). Lo que falta está en §12.
+casilla `enemigo`, el traspaso entre las dos escenas y la primera pelea guiada (§13), y las clases, subclases y el
+nivel del líder (paso 5b, §14). Lo que falta está en §12 y en §14.10.
 
 | Archivo | Qué es |
 |---|---|
 | `src/combat/combat-data.js` | Todos los números: unidades, habilidades, elementos, consumibles, enemigos, encuentros, desafíos y combos |
 | `src/combat/combat-rules.js` | Motor puro y determinista: sin DOM, sin three.js y sin `Math.random` |
+| `src/combat/classes.js` | Clases, subclases, curvas de nivel y kits (paso 5b, §14). Puro |
+| `src/core/classes.js` | Estado de la partida: experiencia de clase y del líder, clase y subclase del líder (§14.6) |
+| `src/core/classes-migrate.js` | Migración de los roles viejos a clases (§14.8). Pura |
+| `tools/test-classes.mjs` | Clases, nivel del líder, subclases y migración: Node y Chrome headless (§14.9) |
 | `tools/test-combat.mjs` | Pruebas en Node: `node test-combat.mjs` (con `--quick` saltea las corridas largas) |
 | `tools/sim-combat.mjs` | Simulador con una IA de jugador: `node sim-combat.mjs [--n 40] [--only id] [--tools]` |
 | `src/combat/combat-scene.js` | Escena `combat` en 3D: campo, unidades, casillas marcadas, animaciones y entrada |
@@ -70,19 +75,42 @@ de 0 a 2 obstáculos, sin cortar caminos. Los jefes usan mapa fijo.
 - Los enemigos **no ven las trampas**: si su camino pasa por una, caen ahí y quedan frenados.
 
 ## 4. El grupo (el líder y hasta 3 integrantes)
-El rol define el kit (§C del plan). La recarga se cuenta en turnos propios: con recarga 1, se usa un turno sí y uno no.
+Desde el paso 5b la **clase** define el kit (§14). Las 6 clases reemplazan a los 5 roles. La recarga se cuenta en turnos
+propios: con recarga 1, se usa un turno sí y uno no.
 
-| Unidad | Vida | Mover | Ataque | Habilidades (recarga) |
-|---|---|---|---|---|
-| Líder | 12 | 3 | 3 | Golpe; habilidades de elemento según nivel |
-| Exploración | 8 | 3 | 2 | Tiro 2–3 (4 desde lo alto); Marcar (2): el próximo golpe que reciba hace +3 |
-| Ingeniería | 10 | 3 | 3 | Golpe; Trampa (2): 3 de daño y frena; Barrera (3): pared por 3 turnos |
-| Sanidad | 9 | 3 | 1 | Golpe; Curar (1): 4 a distancia 2; Aliento (4): 2 a todos a distancia 2 |
-| Recolección | 10 | 3 | 2 | Golpe; Romper (2): +2, atraviesa y rompe corazas, parte rocas, doble contra la pasarela; Robar (3): le saca el golpe marcado y suma botín |
-| Guía | 10 | 4 | 3 | Golpe; Empujar (1): una casilla, 2 si choca, cae en trampas; Relevo (3): cambia de lugar con un aliado a distancia 3 |
+| Clase (antes) | Vida | Mover | Ataque | Básico | Grupo de 4 activas (recarga) — se eligen 2 |
+|---|---|---|---|---|---|
+| Guerrero (nueva) | 13 | 3 | 3 | Golpe | Tajo (2) · Guardia (3) · Embestida (3) · Aguante (3) |
+| Cazador (exploración) | 8 | 3 | 2 | Tiro 2–3 | Marcar (2) · Tiro al pie (3) · Tiro certero (2) · Lazo (3) |
+| Forjador (ingeniería) | 10 | 3 | 3 | Golpe | Trampa (2) · Barrera (3) · Remache (2) · Cepo (3) |
+| Curandero (sanidad) | 9 | 3 | 1 | Golpe | Curar (1) · Aliento (4) · Vendaje (3) · Resguardo (3) |
+| Monje (guía) | 10 | 4 | 3 | Golpe | Empujar (1) · Relevo (3) · Esquivar (2) · Salto (2) |
+| Saqueador (recolección) | 10 | 3 | 2 | Golpe | Romper (2) · Robar (3) · Rapiña (2) · Humo (4) |
 
+- Las 2 primeras del grupo vienen de entrada (son el kit del rol viejo, y el cazador suma Tiro al pie). La 3.ª se abre
+  en el nivel de clase 3 y la 4.ª en el 6.
 - Con un rescate en curso, cualquiera del grupo puede **Liberar**.
-- **Nivel de rol** (de la expedición): +1 de vida por nivel sobre 1 y +1 de ataque cada 2 niveles.
+- El **líder** sin clase pelea como antes: vida 12, ataque 3, Golpe y las habilidades del elemento. Con clase, ver §14.4.
+
+**Habilidades nuevas** (`ABILITIES` en `combat-data.js`):
+
+| Habilidad | Tipo | Efecto |
+|---|---|---|
+| Tajo | attack + `cleave` | pega al de enfrente y a los dos de sus costados |
+| Guardia | cover, radio 1 | él y los de al lado reciben 2 menos el próximo turno enemigo |
+| Embestida | push | 2 de daño y lo corre una casilla |
+| Aguante | heal, `self` | se cura 4 |
+| Tiro al pie | root, distancia 2–3 | 1 de daño y lo frena; no le saca el golpe ni levanta pared |
+| Tiro certero | attack, distancia 2–4 | +2 de daño |
+| Lazo | trap, distancia 1–3 | trampa de 2 que frena |
+| Remache | attack + `pierce` | +1 y atraviesa la coraza sin romperla |
+| Cepo | trap | 4 de daño y frena 2 turnos |
+| Vendaje | heal, distancia 0–1 | cura 6 |
+| Resguardo | cover, radio 1 | 1 menos al grupo de al lado |
+| Esquivar | cover, radio 0 | 3 menos solo para él |
+| Salto | leap, distancia 2–3 | salta a una casilla libre, por encima de todo |
+| Rapiña | attack + `lootKill` | +1, y si lo liquida suma 1 de botín |
+| Humo | dazzle, radio 1 | los enemigos de al lado pierden el golpe marcado |
 
 **Elemento Raíz** (líder):
 - **Enredar** (3): a distancia 3. Hace 1 de daño, le saca el golpe marcado, no lo deja moverse el próximo turno y
@@ -140,10 +168,16 @@ esquivando todo: sin acoso, la IA terminaba las peleas comunes sin recibir daño
 - **Daño enemigo:** `golpe + 1 desde lo alto − Farol − Lona`, con un mínimo de 1. El acoso no se reduce.
 - **Choque al empujar:** 2 a quien empujaste y 1 a la otra unidad, si chocó con una.
 - **Trampa:** 3, más el bonus de Martillo (0, 1, 1, 2, 2 o 3), y frena 1 turno.
-- **Líder por nivel** (1 a 30):
+- **Líder por nivel** (1 a 30; experiencia y niveles clave en §14.4):
   - vida: `+⌊(nivel − 1) / 2⌋`;
   - ataque: `+⌊(nivel + 2) / 6⌋`, o sea +1 en el nivel 4 y +2 en el 10;
-  - espacios de elemento: en los niveles 1, 5 y 12.
+  - sin clase, espacios de elemento en los niveles 1, 5 y 12 (como antes del 5b).
+- **Integrante por nivel de clase** (1 a 10): vida `+⌊(nivel − 1) / 2⌋` y ataque `+⌊(nivel − 1) / 4⌋`. El nivel de
+  clase `2n − 1` pega y aguanta igual que el rol viejo de nivel `n`.
+- **Pasivas** que lee el motor (`u.f`): Coraza (−1 a cada golpe), Protector (−1 a los de al lado), Rastreador (+1
+  intención a la vista), Ojo fino (marcas +1), Oficio (el Martillo vale para sus trampas y barreras), Filo (trampas +1),
+  Obra firme (barreras +1 turno), Botica (el Botiquín vale para sus curas), Mano firme (curas +1), Paso libre (no se
+  traba), Bolsillo hondo (+1 material al ganar), Oportunista (+1 de botín por enemigo liquidado).
 - **Revancha contra jefes:** por cada intento fallido, hasta 2, el grupo suma +5 de vida y el jefe tiene −20 % de vida.
   `newBattle({ attempt })`.
 - **Botín:** `mats × (0,8 · 1 · 1,2)` con 1, 2 o 3 estrellas, más 1 material por cada Robar que sacó un golpe.
@@ -178,52 +212,57 @@ grupo cuando el minero llega a una salida.
 `reward.page` y `reward.flag`, y la historia decide si es la primera vez.
 
 **Grupo esperado** (`expected`, lo usa el simulador). El líder es de nivel 1 en el Bosque, 3 en el Cerro, 4 o 5 en el
-Bañado y 6 o 7 en la Costa. La Raíz entra desde el Bañado. Todas las combinaciones de 3 roles.
+Bañado y 6 o 7 en la Costa. La Raíz entra desde el Bañado. El nivel de clase de los integrantes (`classLevel`) es 1 en
+el Bosque, 2 en el Cerro, 3 en el Bañado y 4 en la Costa. Todas las combinaciones de 3 clases, y el líder rota por las 6.
 
-**Grupo del tutorial** (`TUTORIAL_PARTY`). El líder de nivel 1, sin herramientas ni elemento, con exploración,
-ingeniería y sanidad.
+**Grupo del tutorial** (`TUTORIAL_PARTY`). El líder de nivel 1, sin clase, herramientas ni elemento, con cazador,
+forjador y curandero de nivel 1.
 
 ## 8. Metas y resultados del simulador
-`node sim-combat.mjs --n 40 --tools` corre 40 peleas por cada una de las 10 combinaciones de 3 roles. Son 400 por
-encuentro y 400 por intento en los jefes, unas 4.500 peleas en total, en unos 80 s.
+`node sim-combat.mjs --n 20` corre 20 peleas por cada una de las 20 combinaciones de 3 clases, con el líder rotando por
+las 6 clases. Son 400 por encuentro y 400 por intento en los jefes, unas 4.400 peleas en total, en unos 110 s. Con
+`--noclass` el líder pelea sin clase, como antes del 5b.
 
-| Pelea | Meta | Resultado |
-|---|---|---|
-| Ojos en el monte | 85–95 % | 93,0 % ✔ (7,8 turnos) |
-| La manada | 85–95 % | 92,8 % ✔ (6,8) |
-| La veta despierta | 85–95 % | 91,8 % ✔ (9,1) |
-| El minero atrapado | 85–95 % | 92,3 % ✔ (7,1) |
-| Aguantar en el juncal | 85–95 % | 91,8 % ✔ (5,0) |
-| Saqueo en el muelle | 85–95 % | 94,0 % ✔ (7,8) |
-| Bestia, 1.º intento | 45–65 % | 58,5 % ✔ |
-| Bestia, 3.º intento | ≥ 85 % | 91,3 % ✔ (ganada al 3.º o antes: 99,4 %) |
-| Bestia, duración | 6–12 turnos | 8,5 ✔ |
-| Capitana, 1.º intento | 45–65 % | 55,3 % ✔ |
-| Capitana, 3.º intento | ≥ 85 % | 93,8 % ✔ (99,5 %) |
-| Capitana, duración | 6–12 turnos | 9,7 ✔ |
+Con las clases (paso 5b) se reajustaron 4 números: grumete 12 → 14 de vida, tirador 9 → 10, la capitana 34 → 42 y la
+bestia 30 → 32. El grupo de clases nivel 3–4 con el líder de clase pegaba de más en la Costa (98,8 % y 77 %).
 
-**Aporte por rol.** Es el promedio por pelea en la que está cada uno. La meta es ≤ 35 % del daño y de los golpes
-finales.
+| Pelea | Meta | Resultado (paso 5b) | Antes (roles) |
+|---|---|---|---|
+| Ojos en el monte | 85–95 % | 86,8 % ✔ (7,8 turnos) | 93,0 % |
+| La manada | 85–95 % | 89,0 % ✔ (6,8) | 92,8 % |
+| La veta despierta | 85–95 % | 90,3 % ✔ (8,9) | 91,8 % |
+| El minero atrapado | 85–95 % | 92,5 % ✔ (7,4) | 92,3 % |
+| Aguantar en el juncal | 85–95 % | 92,5 % ✔ (5,0) | 91,8 % |
+| Saqueo en el muelle | 85–95 % | 92,0 % ✔ (8,1) | 94,0 % |
+| Bestia, 1.º intento | 45–65 % | 61,3 % ✔ | 58,5 % |
+| Bestia, 3.º intento | ≥ 85 % | 89,3 % ✔ (ganada al 3.º o antes: 99,1 %) | 91,3 % |
+| Bestia, duración | 6–12 turnos | 8,2 ✔ | 8,5 |
+| Capitana, 1.º intento | 45–65 % | 56,8 % ✔ | 55,3 % |
+| Capitana, 3.º intento | ≥ 85 % | 94,8 % ✔ (99,5 %) | 93,8 % |
+| Capitana, duración | 6–12 turnos | 9,9 ✔ | 9,7 |
 
-| Rol | Daño | Golpes finales |
-|---|---|---|
-| Líder | 22,1 % | 28,5 % |
-| Exploración | 34,8 % | 22,6 % |
-| Ingeniería | 31,8 % | 26,4 % |
-| Sanidad | 1,3 % | 4,3 % |
-| Recolección | 29,2 % | 25,0 % |
-| Guía | 32,9 % | 28,5 % |
+**Aporte por clase.** Es el promedio por pelea en la que está cada una. La meta es ≤ 35 % del daño y de los golpes
+finales. "Ganadas con / sin" compara las peleas con esa clase en el grupo contra las que no la tienen.
 
-Todos cumplen. Sanidad aporta curando, no pegando.
+| Clase | Daño | Golpes finales | Ganadas con / sin |
+|---|---|---|---|
+| Líder (todas) | 23,7 % | 26,5 % | — |
+| Guerrero | 30,0 % | 26,7 % | 81,3 % / 83,9 % |
+| Cazador | 32,7 % | 24,7 % | 86,7 % / 78,6 % |
+| Forjador | 29,1 % | 23,4 % | 80,7 % / 84,6 % |
+| Curandero | 1,2 % | 5,3 % | 78,8 % / 86,5 % |
+| Monje | 31,7 % | 26,8 % | 85,7 % / 79,6 % |
+| Saqueador | 27,9 % | 24,8 % | 82,6 % / 82,6 % |
 
-Cada encuentro favorece a un rol distinto:
-- exploración, contra lobos (≈ 45 %);
-- recolección, contra bichos (≈ 42 %);
-- exploración, contra la bestia (≈ 59 %).
+Como líder: cazador 38,0 % del daño, monje 31,5 %, forjador 23,9 %, guerrero 22,8 %, saqueador 14,2 % y curandero
+11,8 %. El líder cazador pega más porque tira de lejos sin trabarse con lo alto; no cuenta para la meta (el líder está
+siempre), pero el paso 7 lo mira.
 
-Ningún camino único gana siempre. Contra la bestia, los grupos sin nadie a distancia ganan menos.
+- Todas cumplen. El curandero aporta curando: con él se gana un poco menos en el simulador porque la IA no aprovecha
+  bien las curas en peleas cortas. El paso 7 lo revisa con la telemetría.
+- Ninguna clase gana siempre: las dos que más suben las victorias (cazador y monje) suman unos 7 puntos.
 
-**Herramientas en nivel 3.** % de peleas ganadas, primer intento contra los jefes:
+**Herramientas en nivel 3** (medido con los roles, antes del 5b). % de peleas ganadas, primer intento contra los jefes:
 
 | Variante | La manada | Bestia | Capitana |
 |---|---|---|---|
@@ -445,8 +484,8 @@ cloneBattle(b)
   sumar golpes propios y una pista de combate.
 - **Paso 5b, L5:** de dónde salen `tools`, `level` y `element`. Hoy la expedición los pasa así (§13):
   - `tools` sale de `mods.tools`, vacío hasta que estén los Vínculos;
-  - `level` sale de `mods.leaderLevel` y, mientras no exista, del `expected.level` del encuentro. Cuando exista, saldrá de
-    `state.combat.xp`, que ya se junta;
+  - `level` sale del nivel real del líder (`mods.leader.level`, de `state.classes`; §14). Sin él (simuladores, salidas
+    guardadas de antes) queda el `expected.level` del encuentro;
   - `element` sale de los elementos encontrados (`state.story.elements`).
 - **Paso 6 (E5):** el paso "primer combate" de la cadena del tutorial, después de t5. El tipo de misión `combat` ya tiene
   pista y flecha, pero `quests.js` todavía no lo cuenta: tiene que escuchar `combat:won`. Los jefes van en lugares de la
@@ -587,7 +626,181 @@ entrar a una pelea.
 - `6-vuelta-con-botin`;
 - `7-vuelta-tras-derrota`.
 
+## 14. Clases, subclases y nivel del líder (paso 5b, primera parte: la lógica)
+Plan: M3 y L5 de `docs/PLAN-QUIEBRE.md`. Esta parte es solo lógica, sin interfaz ni modelos: la elección de clase en el
+onboarding, la pestaña "Progreso" y los modelos por clase quedan para la segunda parte, después del 4a.
+
+### 14.1 Las 6 clases
+| Clase | Antes era | En combate | En la expedición | Edificio que la trae |
+|---|---|---|---|---|
+| Guerrero | nueva | primera línea: aguanta y protege | abre paso: +20 al despejar un derrumbe, +10 al cruzar un río | Casa de Expediciones 2 |
+| Cazador | exploración | a distancia y marcar | visión 2, mejor con lobos y ruinas | Casa de Expediciones |
+| Forjador | ingeniería | barreras y trampas | cruzar ríos y despejar derrumbes | Taller |
+| Curandero | sanidad | curar y proteger | ánimo, descanso y Atender | Dispensario |
+| Monje | guía | movimiento, empujar y esquivar | colinas, bañados, roca y tormenta | Establo |
+| Saqueador | recolección | robar y romper | más material por recurso | Huerta |
+
+- En la expedición, cada clase conserva **los mismos efectos** que su rol. Las decisiones usan el **nivel de oficio**
+  (1 a 5, el nivel de su edificio, `run.tier`), con los mismos números de antes. Por eso `sim:expedition` no cambia.
+- La ciudad tiene una persona por clase, como antes un rol por edificio. El Guerrero entra último en el grupo por defecto
+  (`CLASS_PRIORITY`), así los grupos de siempre no cambian.
+
+### 14.2 Nivel de clase (1 a 10)
+- Experiencia total para cada nivel (`CLASS_XP`): 0 · 30 · 80 · 150 · 240 · 350 · 480 · 640 · 830 · 1050.
+- **Tope:** el edificio entrena hasta 2 × su nivel. Con el edificio al 5 se llega al 10. La experiencia de más se guarda:
+  al mejorar el edificio, el nivel sube solo.
+- **De dónde sale:** cada pelea da su experiencia (20 a 100, `reward.xp` × resultado) a cada integrante que peleó,
+  escolta incluida. Cada salida da su experiencia (`EXP_XP`: 10 + 5 por estrella) a los que fueron.
+- **Qué da:** vida y ataque (§6), la 3.ª activa del grupo en el nivel 3, la 4.ª en el 6 y las pasivas en el 1, el 5 y
+  el 9.
+
+| Clase | Nivel 1 | Nivel 5 | Nivel 9 |
+|---|---|---|---|
+| Guerrero | Coraza: −1 a cada golpe | Protector: −1 a los de al lado | Temple: +3 de vida |
+| Cazador | Rastreador: +1 intención a la vista | Ojo fino: marcas +1 | Pulso: +1 de ataque |
+| Forjador | Oficio: el Martillo vale para sus trampas y barreras | Filo: trampas +1 | Obra firme: barreras +1 turno |
+| Curandero | Botica: el Botiquín vale para sus curas | Mano firme: curas +1 | Entereza: +2 de vida |
+| Monje | Paso libre: no se traba | Calma: +2 de vida | Pies de viento: +1 de movimiento |
+| Saqueador | Bolsillo hondo: +1 material al ganar | Oportunista: +1 de botín por enemigo liquidado | Muñeca: +1 de ataque |
+
+Las pasivas de nivel 1 de monje, curandero y forjador son las reglas que antes tenía el rol (no trabarse, el Botiquín y
+el Martillo).
+
+### 14.3 Elegir habilidades
+`validPicks(clase, nivel, picks)` deja solo las abiertas y completa con las primeras del grupo. Se guardan en
+`state.classes.members[clase].picks` (`setPicks`) y llegan a la pelea en `newBattle({ picks })`. La interfaz para
+elegirlas es de la segunda parte.
+
+### 14.4 El líder: nivel 1 a 30 (L5)
+- **Experiencia para pasar del nivel n al n + 1:** `100 + 50 × (n − 1)`. Para el nivel 3 hacen falta 250; para el 5,
+  700; para el 7, 1.350; para el 10, 2.700, y para el 30, 23.200.
+- **De dónde sale:**
+  - las peleas: su experiencia completa;
+  - las salidas: ½ de la experiencia de la salida (de 5 a 13);
+  - las amenazas aguantadas: `10 + 0,1 × %` (de 10 a 20), escuchando `threat:resolved`.
+
+  La primera curva (`50 + 25 × (n − 1)` y 3 × la salida) llevaba al líder al nivel 11 el día 7 en `sim:economy`.
+  `sim:economy` ahora muestra el nivel del líder en los días 7, 25 y 60 (resultado en §14.9). El paso 7 lo ajusta: la
+  meta es llegar a la Costa con nivel 6 o 7.
+- **Bonus chico por nivel:** vida y ataque (§6) y +1 de ánimo máximo en la expedición cada 10 niveles.
+- **La clase del líder** sube sola con su nivel: nivel de clase `1 + ⌊(nivel − 1) / 3⌋` (1, 4, 7… → 1, 2, 3…; el 10
+  llega en el 28). Con él se abren las pasivas y el grupo de 4 de su clase.
+- **Niveles clave** (`LEADER.slots`): abren espacios de habilidad.
+
+  | Nivel | Abre |
+  |---|---|
+  | 1 | la 1.ª habilidad de la subclase |
+  | 5 | la 2.ª habilidad de la subclase |
+  | 6 | la 1.ª activa de su clase (elegida del grupo) |
+  | 8 | la pasiva de la subclase |
+  | 12 | la 2.ª activa de su clase |
+  | 15, 20, 25 y 30 | reservados para los actos 2 a 4 (otro elemento y habilidades del equipo) |
+
+- **Stats del líder con clase:** vida `12 + (vida de la clase − 10)`, ataque `máx(2, ataque de la clase)` más el bonus
+  por nivel, movimiento y ataque básico de su clase (el cazador tira de lejos).
+- **Sin clase** (partida vieja, o nueva antes de la segunda parte del 5b) pelea como antes: Golpe y Raíz por los niveles
+  1, 5 y 12.
+- La primera prueba con los espacios de clase en los niveles 1 y 10 daba 98 % en el muelle y 83 % contra la capitana.
+  Por eso la activa de clase llega recién en el 6.
+
+### 14.5 Subclases del líder
+Cada elemento descubierto abre la subclase de su clase con ese elemento. Cada una da 2 habilidades (en los niveles 1 y
+5) y una pasiva (en el 8). Se cambia en la ciudad (`setSubclass`, no con una salida en curso). Si el líder tiene un
+solo elemento, queda la subclase de ese elemento sin tener que elegir.
+
+**Acto 1: Raíz** (hechas):
+
+| Subclase | Clase | Habilidades | Pasiva |
+|---|---|---|---|
+| Guardián de Raíz | Guerrero | Abrazo de raíz (cuerpo a cuerpo: 2, quita el golpe, frena y levanta pared) · Muro de raíz | Corteza: +3 de vida |
+| Acechador de Raíz | Cazador | Espina (distancia 2–4, +1 y frena) · Enredar | Ojos de raíz: +1 intención a la vista |
+| Tejedor de Raíz | Forjador | Zarza (trampa de 3 que frena 2, a distancia 3) · Muro de raíz | Trenzado: paredes +1 turno |
+| Herbolario de Raíz | Curandero | Savia (cura 3 al grupo a 2 o menos) · Enredar | Brotes: curas +1 |
+| Caminante de Raíz | Monje | Brote (salta hasta 3 y deja una pared de raíz) · Enredar | Raíz ligera: +1 de movimiento |
+| Furtivo de Raíz | Saqueador | Zarpa de raíz (2, quita el golpe, frena y suma botín) · Muro de raíz | Raíz codiciosa: +1 material al ganar |
+
+**Diseñadas, sin implementar** (llegan con su acto; los números se calibran entonces):
+
+| Elemento | Guerrero | Cazador | Forjador | Curandero | Monje | Saqueador |
+|---|---|---|---|---|---|---|
+| **Marea** (empuja y apaga el fuego) | Rompeolas: Ola de choque (empuja a los de alrededor) · Dique (pared de agua que frena) · pasiva: no lo pueden empujar | Arponero de Marea: Arpón (lo trae 2 casillas hacia él) · Niebla (−1 intención a la vista del enemigo) · pasiva: tiros +1 en agua | Esclusero: Compuerta (inunda o seca una franja) · Canal (agua que lleva una trampa) · pasiva: el agua no lo frena | Aguador: Manantial (cura 2 por turno en una casilla, 3 turnos) · Calma chicha (limpia el agua y el fuego al lado) · pasiva: curas +1 en agua | Monje de la Corriente: Corriente (corre a un aliado o enemigo 2 casillas por el agua) · Remolino (empuja en rueda) · pasiva: nada en agua sin costo | Contrabandista de Marea: Resaca (le roba y lo arrastra 1) · Bote (sale por el agua) · pasiva: +1 material en peleas con agua |
+| **Brasa** (fuego y calor) | Yunque Ardiente: Golpe de brasa (+2 y quema 1 por 2 turnos) · Muralla de fuego (pared que quema al que la toca) · pasiva: −1 al daño de fuego | Tirador de Brasa: Flecha encendida (quema 1 por 2 turnos) · Bengala (muestra todas las intenciones por un turno) · pasiva: quemar +1 | Fundidor: Colada (trampa que quema) · Forja rápida (repara una barrera y la deja ardiendo) · pasiva: trampas +1 | Brasero: Calor (el grupo a 2 cura 2 y se saca la helada) · Cauterizar (cura 5 y limpia estados) · pasiva: estados −1 turno | Monje de Ceniza: Paso de fuego (salta y quema donde cae) · Humareda (los de al lado pierden el golpe) · pasiva: no lo traban ni lo queman | Incendiario: Mecha (deja una bomba que revienta al turno siguiente) · Saqueo en llamas (si lo liquida, +2 de botín) · pasiva: Romper quema |
+| **Céfiro** (viento y altura) | Vendaval: Ráfaga (empuja en línea 2 casillas) · Escudo de viento (para los tiros por un turno) · pasiva: −1 a los tiros | Tirador del Viento: Tiro largo (distancia 2–6) · Ojo de halcón (desde lo alto, +2 y +1 intención) · pasiva: subir a lo alto cuesta 1 | Aparejador: Polea (sube a un aliado a lo alto) · Ancla (pared que corta la pasarela) · pasiva: barreras paran el viento | Soplo: Aire limpio (cura 2 a todos a 3) · Brisa (+1 de movimiento al grupo un turno) · pasiva: curas a distancia +1 | Monje del Cielo: Planeo (salta hasta 4) · Torbellino (empuja en rueda y frena) · pasiva: +1 de movimiento | Pirata del Cielo: Gancho (le roba a distancia 3) · Escape (cambia de lugar con un aliado lejos) · pasiva: +1 material contra piratas |
+
+Para sumar un elemento hacen falta: sus habilidades en `ABILITIES` (los tipos nuevos que pidan, como quemar o inundar,
+en `combat-rules`), sus 6 entradas en `SUBCLASSES` y el elemento en `ELEMENTS`.
+
+### 14.6 Estado de la partida (`src/core/classes.js`)
+```
+state.classes = { v: 1, leader: { cls, sub, xp, picks }, members: { [clase]: { xp, picks } } }
+```
+- **Lectura:** `classTier`, `classCap`, `memberLevel`, `memberInfo`, `cityClasses`, `leaderLevel`, `leaderInfo` (con lo
+  que falta para el próximo nivel y el próximo nivel clave) y `leaderMods`.
+- **Escritura:** `grantClassXp`, `grantLeaderXp`, `setLeaderClass`, `setSubclass`, `setPicks`, `setLeaderPicks`,
+  `creditFightXp` y `creditExpeditionXp`.
+- **Eventos:** `class:levelup`, `leader:levelup` y `leader:changed`. `initClasses()` (lo llama `initExpedition`)
+  escucha `threat:resolved`.
+- **La expedición** (`cityMods` de `expedition.js`) pasa a la salida `mods.tier`, `mods.classLevel`, `mods.picks` y
+  `mods.leader`. `makeBattle` arma la pelea con el nivel real del líder.
+- **Se acredita** en `creditFight` (pelea) y en `finishExpedition` (salida).
+
+### 14.7 API del motor
+`newBattle({ party, level, leader: { cls, sub, picks }, classLevel, picks, elements, … })`. `party` son clases; los roles
+viejos y `roleLevel` (1..5) se traducen solos: rol de nivel n = clase de nivel 2n − 1. Las unidades del grupo tienen
+`cls`, `lv` y las pasivas en `u.f`. La pelea suma `b.leader`, `b.intentPlus` y `b.lootWin`. Las estadísticas de daño y
+golpes finales van por clase (`lider` para el líder). El motor sigue siendo JSON puro y determinista.
+
+### 14.8 Migración (`src/core/classes-migrate.js`)
+`migrateClasses(save)` corre desde `migrate()` de `state.js` antes de `deepFill`, una sola vez (marca
+`state.classes.v`), sin depender de la versión del guardado. **No sube la versión:** la v5 la sube el 4a.
+1. Cada clase arranca con la experiencia del nivel `2 × nivel del edificio − 1`. En combate rinde igual que antes.
+2. El líder junta `combat.xp + 30 × salidas + 20 × amenazas`, sin clase: la elige la primera vez que abre la ciudad
+   (segunda parte del 5b).
+3. La salida y la pelea guardadas a medias pasan sus roles a clases: grupo, escolta, niveles (`roleLevel` → `tier`),
+   unidades con sus pasivas de nivel 1 y estadísticas. También el último grupo y el cansancio.
+
+### 14.9 Pruebas y balance
+- `node test-classes.mjs`: 78 bien, 0 mal (64 en Node y 14 en Chrome headless; `--quick`, solo Node). Cubre:
+  - datos, curvas, kits, pasivas y habilidades nuevas;
+  - subclases de Raíz y nivel del líder;
+  - combate y expedición con clases;
+  - migración cruda y migración de una partida vieja al cargar en el juego;
+  - experiencia por pelea, por salida y por amenaza.
+- `node test-combat.mjs`: 102 bien. El grupo del tutorial contra los jefes pide ahora un mínimo de 10 % (antes 20 %):
+  el grupo esperado de la Costa ya tiene nivel de clase 4 y el del tutorial queda más lejos. La duración de los jefes se
+  mide con el grupo esperado con clases.
+- `node test-combat-exp.mjs`: 75 bien. `test-cycle`: 61. `test-migration`: 63. `test-expedition`: 30.
+- `sim:combat`: todas las metas (§8).
+- `sim:expedition`: las mismas metas en ✔ y en ✘ que en master, con los mismos números.
+- `sim:economy` (semilla 1): 18 ✔ y 2 ✘, las mismas dos que ya fallaban en master ("preparación al llegar" y "la
+  automática daría"). Con las semillas 4 a 8 suma lo mismo que master: 84 ✔. Muestra el nivel del líder: 3 el día 7,
+  5 el día 25 y 9 el día 60. A la Costa (rango 6) se llega con nivel 5 o 6; el encuentro espera 6 o 7 (paso 7).
+- `test-e2e`: 89 bien y 7 mal, las mismas 7 del Pase de Temporada que fallan en master. `test-combat-scene` 29,
+  `test-threats` 79, `test-settings` 77, `test-stress` 15, `test-ambience` 65 y `test-telemetry` 67, sin fallas.
+- `test-story`: 94. La flecha de t14 a veces tarda más de 1 s: el test ahora la espera hasta 4 s en lugar de un
+  `sleep(900)` fijo.
+
+### 14.10 Para la segunda parte del 5b (después del 4a)
+- **Onboarding:** elegir la clase del líder (`setLeaderClass`). En una partida vieja (`leader.cls === null`), la primera
+  vez que abre la ciudad.
+- **Interfaz:**
+  - pestaña "Progreso" de la Bitácora con `leaderInfo()` y `memberInfo()`;
+  - elegir las activas (`setPicks` y `setLeaderPicks`);
+  - cambiar la subclase en la ciudad;
+  - nombres de clase en el panel de Expedición: hoy usa `ROLES` y `ROLE_IDS`, que quedan como alias de `CLASSES`.
+    El Guerrero bloqueado dice "Construí Casa de Expediciones"; tiene que decir "nivel 2".
+- **Modelos:** `combat-scene` y `exp-scene` pueden pasar `u.cls` y la clase a `avatarModel(look, { cls })` del 4a.
+  `ROLE_CLASS` del 4a coincide con el de `src/combat/classes.js`.
+- **`combat-scene`:** hoy acepta `roleLevel` por la URL. Sumar `classLevel`, `leader` y `picks`.
+- **Paso 7:** el líder cazador (38 % del daño), el curandero (el simulador gana menos con él) y la curva del líder en
+  `sim:economy`.
+
 ## Estado
+- **Paso 5b, primera parte** (la lógica de clases, subclases y nivel del líder, §14): **hecha** en la rama
+  `claude/clases-5b-7cbe71`, sin mergear. No sube la versión del guardado ni corre `npm run bump`.
+  - Para integrar: sumar a `tools/package.json` el script `"test:classes": "node test-classes.mjs"` y
+    `node test-classes.mjs` a `npm test`, y correr `npm run bump`.
+  - Lo que sigue (segunda parte, después del 4a) está en §14.10.
 - **Paso 5, primera parte** (motor puro, tests, simulador y este documento): **hecho** e integrado en v32.
 - **Paso 5, segunda parte** (escena, interfaz, modelos de enemigos, prueba headless y capturas): **hecha** en la rama
   `claude/combat-scene-02dc34`, sin mergear. Ya trae master (v33, con el 3b) adentro.

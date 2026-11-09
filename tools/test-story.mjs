@@ -214,7 +214,9 @@ try {
   await run(`for (const q of ctx.data.MAIN_QUESTS) { if (q.id === 't14') break; store.state.quests.done[q.id] = 1; } bus.emit('quests:changed'); return true;`);
   await drain();
   await finishCard();
-  await sleep(900);
+  // la flecha sale después de que se cierra la tarjeta: a veces tarda un poco más de 1 s
+  for (let t0 = Date.now(); Date.now() - t0 < 4000 && !(await tipBox());) await sleep(200);
+  await sleep(300);
   await shot('flecha-rango');
   ok(/expediente/.test((await tipBox())?.txt || '') && /right/.test((await tipBox())?.cls || ''), 't14: la flecha señala el rango, a la derecha', await tipBox());
 

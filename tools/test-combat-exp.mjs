@@ -70,7 +70,7 @@ const CD = await imp('src/combat/combat-data.js');
 }
 
 /** Salida de prueba con el grupo al lado de la casilla de la pelea guiada (camino visitado hasta la base). */
-function nearFight(mods = {}, party = ['exploracion'], equip = ['botiquin', 'farol', 'lona']) {
+function nearFight(mods = {}, party = ['cazador'], equip = ['botiquin', 'farol', 'lona']) {
   const run = R.newRun({ region: 'bosque', zone: 1, seed: 21, party, equip, prov: 24, mods: { firstFight: 'bosque_claro', ...mods } });
   const i = run.cells.findIndex(c => c.guided);
   const x = i % run.w, y = (i / run.w) | 0;
@@ -103,13 +103,13 @@ function nearFight(mods = {}, party = ['exploracion'], equip = ['botiquin', 'far
   check(r.ok && r.outcome === 'combat' && run.pending?.kind === 'combate' && run.battle?.enc === 'bosque_claro', 'Pelear arma la pelea y la deja guardada en la salida');
   check(run.prov <= prov0 - stepC - D.EXP.enemy.fightProv && run.prov >= prov0 - stepC - D.EXP.enemy.fightProv - 1 && run.pos[0] === x && run.pos[1] === y, 'se pagó el paso y la pelea, y el grupo está en la casilla');
   const allies = run.battle.units.filter(u => u.side === 'ally').map(u => u.type);
-  check(allies.length === 4 && allies[0] === 'lider' && allies.includes('exploracion'), 'pelean quien lidera, el que salió y la escolta hasta completar 3', allies);
+  check(allies.length === 4 && allies[0] === 'lider' && allies.includes('cazador'), 'pelean quien lidera, el que salió y la escolta hasta completar 3', allies);
   check(run.battle.items.botiquin === 1 && run.battle.items.farol === 1 && run.battle.items.lona === 1, 'el equipo del Taller llega como consumibles', run.battle.items);
   check(R.choose(run, 'pelear').ok === false && R.move(run, x, y + 1).ok === false, 'con la pelea en curso no se puede elegir ni moverse');
 
   // guardar a mitad de la pelea con JSON y retomar: mismo resultado
   const b = run.battle;
-  const ally = b.units.find(u => u.side === 'ally' && u.type === 'exploracion');
+  const ally = b.units.find(u => u.side === 'ally' && u.type === 'cazador');
   const to = C.reachable(b, ally.id)[0];
   C.move(b, ally.id, to.x, to.y);
   C.endTurn(b); C.enemyTurn(b);
@@ -168,8 +168,8 @@ function nearFight(mods = {}, party = ['exploracion'], equip = ['botiquin', 'far
 }
 {
   // grupos chicos: la escolta completa 3; el Botiquín usado en el camino no llega a la pelea
-  const { run } = nearFight({ escort: ['guia', 'recoleccion'] }, ['sanidad'], ['botiquin']);
-  check(R.fightParty(run).join() === 'sanidad,guia,recoleccion', 'la escolta sale de la ciudad (mods.escort)', R.fightParty(run));
+  const { run } = nearFight({ escort: ['monje', 'saqueador'] }, ['curandero'], ['botiquin']);
+  check(R.fightParty(run).join() === 'curandero,monje,saqueador', 'la escolta sale de la ciudad (mods.escort)', R.fightParty(run));
   R.useItem(run, 'botiquin');
   check(!R.fightItems(run).includes('botiquin'), 'el Botiquín ya usado no llega a la pelea');
 }

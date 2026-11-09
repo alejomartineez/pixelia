@@ -7,6 +7,7 @@ import {
   TOWN_RANKS, eraOfRank, RETIRED_ITEMS,
 } from './data.js';
 import { THEME_ALIASES } from '../city/themes.js';
+import { migrateClasses } from './classes-migrate.js';
 
 const BASE_KEY = 'pixelia.save.v1';
 // 1: original · 2: sin realeza (tipos/piezas de princesa → gente) y tema por defecto "pueblo"
@@ -140,6 +141,7 @@ function migrate(s) {
   if ((s.v || 1) < 2) migrateNoRoyalty(s);
   if ((s.v || 1) < 3) migrateV3(s);
   if ((s.v || 1) < 4) migrateV4(s);
+  migrateClasses(s);   // roles de la expedición → clases (paso 5b; una sola vez, sin depender de s.v)
   if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'chica';
   if (s.onboarded === undefined) s.onboarded = true;
   // el nombre por defecto viejo era 'Princesa': ahora el juego es neutro

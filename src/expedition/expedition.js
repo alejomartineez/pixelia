@@ -2,7 +2,7 @@
 // depósito, grupo según los edificios, equipo del Taller, cansancio), acredita el botín, avanza las zonas (que abren
 // terreno), lleva la salida corta gratis del día y fabrica en el Taller. Emite los eventos de bus del contrato.
 //   initExpedition() · expeditionStatus() · startExpedition({region, kind, party, equip}) · finishExpedition(run)
-//   zonesExplored() · roleLevel(role) · cycleEffects(id, level) · cycleUpgradeLines(b) · roleChance(role, level)
+//   zonesExplored() · cityClasses() · cycleEffects(id, level) · cycleUpgradeLines(b) · classChance(cls, level)
 //   craftStatus(kind, id) · craft(kind, id) · expeditionBadge()
 import { bus } from '../core/bus.js';
 import { store, todayStr } from '../core/state.js';
@@ -10,7 +10,9 @@ import {
   CYCLE, EQUIP_RECIPES, EQUIP_IDS, RESERVES, RESERVE_IDS, RESERVES_RANK, RESERVE_CAP, TIRED_MIN_NONE, BUILDING_BY_ID,
 } from '../core/data.js';
 import * as E from '../core/economy.js';
-import { EXP, REGIONS, REGION_IDS, ROLES, ROLE_IDS, EQUIPMENT, HAZARDS, ringOf } from './exp-data.js';
+import { EXP, REGIONS, REGION_IDS, CLASSES, EQUIPMENT, HAZARDS, ringOf } from './exp-data.js';
+import * as K from '../core/classes.js';
+import { toClass } from '../combat/classes.js';
 import { hashSeed } from './exp-gen.js';
 import { ENCOUNTERS } from '../combat/combat-data.js';
 import * as R from './exp-rules.js';
@@ -57,7 +59,7 @@ export function dailyInfo(state = S(), now = Date.now()) {
   return { day, region, regionName: REGIONS[region]?.name, zone: DAILY_ZONE, seed: dailySeed(day), done: !!last || e.dailyStarted === day, last };
 }
 // Orden en que se arma el grupo por defecto (si no hay uno elegido antes).
-const ROLE_PRIORITY = ['exploracion', 'ingenieria', 'guia', 'sanidad', 'recoleccion'];
+const PRIORITY = K.CLASS_PRIORITY;
 
 // ---------- estado ----------
 /** Completa state.expedition (idempotente). */
@@ -99,19 +101,18 @@ export function cargoMax(equip = [], state = S()) {
   return EXP.cargoBase + E.cycleValue('establo', 'cargo', lv('establo', state), 0) + (equip.includes('carreta') ? carretaCargo(state) : 0);
 }
 export const regionOpen = (id, state = S()) => !!REGIONS[id] && E.townRank(state) >= REGIONS[id].rank;
-/** Roles que existen en la ciudad: [{ id, level, tiredMs }] (tiredMs > 0: descansando). */
-export function cityRoles(state = S(), now = Date.now()) {
+/** Clases que hay en la ciudad: [{ id, level (oficio 1..5), classLevel (1..10), tiredMs }] (tiredMs > 0: descansando). */
+export function cityClasses(state = S(), now = Date.now()) {
   const e = expState(state);
-  return ROLE_IDS.map(id => ({ id, level: E.roleLevel(id, state, now), tiredMs: Math.max(0, (e.tired[id] || 0) - now) }))
-    .filter(r => r.level > 0);
+  return K.cityClasses(state, now).map(r => ({ ...r, tiredMs: Math.max(0, (e.tired[r.id] || 0) - now) }));
 }
 /** Grupo por defecto: el último elegido (lo que siga disponible) y después por prioridad y nivel. */
 export function defaultParty(state = S(), now = Date.now()) {
   const max = Math.max(0, partySlots(state) - 1);
-  const ok = cityRoles(state, now).filter(r => !r.tiredMs);
+  const ok = cityClasses(state, now).filter(r => !r.tiredMs);
   const ids = ok.map(r => r.id);
   const out = (expState(state).party || []).filter(id => ids.includes(id)).slice(0, max);
-  const rest = ok.filter(r => !out.includes(r.id)).sort((a, b) => b.level - a.level || ROLE_PRIORITY.indexOf(a.id) - ROLE_PRIORITY.indexOf(b.id));
+  const rest = ok.filter(r => !out.includes(r.id)).sort((a, b) => b.level - a.level || PRIORITY.indexOf(a.id) - PRIORITY.indexOf(b.id));
   for (const r of rest) { if (out.length >= max) break; out.push(r.id); }
   return out;
 }
@@ -138,7 +139,7 @@ export function expeditionStatus(state = S(), now = Date.now()) {
   const base = hasBase(state);
   const prov = state.prov || 0;
   const active = e.active && !e.active.ended ? e.active : null;
-  const roles = cityRoles(state, now);
+  const roles = cityClasses(state, now);
   const tired = Object.fromEntries(roles.filter(r => r.tiredMs).map(r => [r.id, r.tiredMs]));
   const pm = provMax(state);
   let reason = '', reasonShort = '';
@@ -175,9 +176,13 @@ function cityMods(party, equip, state = S(), { region, kind, tutorial, daily } =
   try { stars = E.rankStatus(state).stars; } catch {}
   const cb = combatState(state);
   // escolta para la pelea: roles que hay en la ciudad y no salieron (los de nivel más alto primero)
-  const escort = cityRoles(state).filter(r => !party.includes(r.id)).sort((a, b) => b.level - a.level).map(r => r.id);
+  const escort = cityClasses(state).filter(r => !party.includes(r.id)).sort((a, b) => b.level - a.level).map(r => r.id);
   const mods = {
-    roleLevel: Object.fromEntries([...party, ...escort].map(id => [id, Math.max(1, E.roleLevel(id, state))])),
+    // nivel de oficio (decisiones) y de clase (combate) de los que salen y de la escolta; el líder con su nivel real
+    tier: Object.fromEntries([...party, ...escort].map(id => [id, Math.max(1, K.classTier(id, state))])),
+    classLevel: Object.fromEntries([...party, ...escort].map(id => [id, Math.max(1, K.memberLevel(id, state))])),
+    picks: Object.fromEntries([...party, ...escort].map(id => [id, K.memberInfo(id, state).picks])),
+    leader: K.leaderMods(state),
     cargoMax: cargoMax(equip, state),
     encantoStars: stars,
     vision: (() => { try { return E.monumentBonus('vision', state); } catch { return 0; } })(),   // Faro (+1)
@@ -218,6 +223,8 @@ export function creditFight(run, fight, state = S()) {
   const first = !cb.fights;
   cb.fights++;
   cb.xp += fight.xp || 0;
+  // la pelea da su experiencia al líder y a cada clase que peleó (paso 5b)
+  try { K.creditFightXp(run ? R.fightParty(run) : [], fight.xp || 0, state); } catch (err) { console.warn('[expedition] xp de clase', err); }
   if (fight.quick) cb.quick++;
   cb.guided = true;   // la guía es una sola: la primera pelea, sea cual sea
   const bag = fight.outcome === 'win' ? cb.wins : fight.outcome === 'lose' ? cb.losses : cb.retreats;
@@ -258,9 +265,9 @@ export function startExpedition({ region = 'bosque', kind = 'normal', party = nu
   if (!dInfo && !regionOpen(region, state)) return { error: `${REGIONS[region].name} se abre en el rango ${E.rankName(REGIONS[region].rank)}` };
   if (kind === 'corta' && !dInfo && !freeShortToday(state)) return { error: 'La salida corta de hoy ya se hizo' };
   if (kind === 'normal' && (state.prov || 0) < EXP.provMinNormal) return { error: `Hacen falta ${EXP.provMinNormal} provisiones` };
-  // grupo: un integrante por rol, que exista en la ciudad y no esté descansando, hasta los lugares de la Casa
-  const avail = cityRoles(state, now).filter(r => !r.tiredMs).map(r => r.id);
-  party = [...new Set(party || defaultParty(state, now))].filter(id => avail.includes(id)).slice(0, Math.max(0, partySlots(state) - 1));
+  // grupo: un integrante por clase, que exista en la ciudad y no esté descansando, hasta los lugares de la Casa
+  const avail = cityClasses(state, now).filter(r => !r.tiredMs).map(r => r.id);
+  party = [...new Set((party || defaultParty(state, now)).map(toClass))].filter(id => avail.includes(id)).slice(0, Math.max(0, partySlots(state) - 1));
   // equipo: uno de cada, lo que haya, hasta los lugares del Taller
   const have = state.equipment || {};
   equip = [...new Set(equip || defaultEquip(state))].filter(id => EQUIPMENT[id] && (have[id] || 0) > 0).slice(0, equipSlots(state));
@@ -349,6 +356,8 @@ export function finishExpedition(run, state = S()) {
   reward.xp = run.prototype ? 0 : Math.round((EXP_XP.base + EXP_XP.perStar * res.starCount) * (1 + xpBonus));
   if (run.kind === 'normal' && res.reason === 'volvio' && res.provLeft > 0) reward.prov = res.provLeft;
   const got = store.grant(reward, 'expedition');
+  // experiencia de clase y del líder (paso 5b): la de la salida, a quien fue y a quien lidera
+  if (!run.prototype) { try { K.creditExpeditionXp(run.party, reward.xp, state); } catch (err) { console.warn('[expedition] xp de clase', err); } }
   const finds = [];
   const findN = Math.max(1, Math.round(mult('stickers')));
   for (const f of L.finds || []) { const o = store.grant({ stickers: { n: findN, minStars: f.stars, region: run.region } }, 'expedition'); finds.push(...(o.stickers || [])); }
@@ -412,45 +421,48 @@ export function finishExpedition(run, state = S()) {
 
 // ---------- qué da cada nivel (ficha del edificio y panel) ----------
 // Decisión que mejor muestra cada rol: [peligro, opción].
-const ROLE_SAMPLE = { exploracion: ['lobos', 'silencio'], ingenieria: ['rio', 'cruzar'], guia: ['tormenta', 'seguir'] };
-const SAMPLE_TEXT = { lobos: 'pasar en silencio junto a los lobos', rio: 'cruzar un río', tormenta: 'seguir con tormenta' };
-/** Probabilidad que se ve en la decisión típica del rol (zona 1 del Bosque, sin equipo). null si el rol no tiene una. */
-export function roleChance(role, level) {
-  const s = ROLE_SAMPLE[role];
-  if (!s || level < 1) return null;
-  const hz = HAZARDS[s[0]], opt = hz.options.find(o => o.id === s[1]);
-  const fake = { party: [role], roleLevel: { [role]: level }, equip: [], mods: {}, zone: 1, region: 'bosque', care: 0 };
-  return { p: R.optionChance(fake, hz, opt).p, text: SAMPLE_TEXT[s[0]], hazard: s[0] };
+const CLASS_SAMPLE = { cazador: ['lobos', 'silencio'], forjador: ['rio', 'cruzar'], monje: ['tormenta', 'seguir'], guerrero: ['derrumbe', 'despejar'] };
+const SAMPLE_TEXT = { lobos: 'pasar en silencio junto a los lobos', rio: 'cruzar un río', tormenta: 'seguir con tormenta', derrumbe: 'despejar un derrumbe' };
+/** Probabilidad que se ve en la decisión típica de la clase (zona 1 del Bosque, sin equipo). null si no tiene una. */
+export function classChance(cls, level) {
+  cls = toClass(cls);
+  const sm = CLASS_SAMPLE[cls];
+  if (!sm || level < 1) return null;
+  const hz = HAZARDS[sm[0]], opt = hz.options.find(o => o.id === sm[1]);
+  const fake = { party: [cls], tier: { [cls]: level }, equip: [], mods: {}, zone: 1, region: 'bosque', care: 0 };
+  return { p: R.optionChance(fake, hz, opt).p, text: SAMPLE_TEXT[sm[0]], hazard: sm[0] };
 }
-/** Materiales por casilla de recurso con Recolección (anillo cercano). */
+/** @deprecated nombre de antes del paso 5b. */
+export const roleChance = classChance;
+/** Materiales por casilla de recurso con el Saqueador (anillo cercano). */
 const gatherAmount = (level) => EXP.ringAmount[0] + (level > 0 ? 1 + Math.floor(level / 2) : 0);
 /** Líneas "qué da este edificio en este nivel" para la expedición: [{ key, label, value, text }]. */
 export function cycleEffects(id, level) {
   const out = [];
   const add = (key, label, value, text) => out.push({ key, label, value, text: text ?? `${label}: ${value}` });
-  const rc = (role) => {
-    const c = roleChance(role, level);
-    if (c) add('p', `${ROLES[role].name} ${level}`, `${c.p}%`, `${ROLES[role].name} ${level}: ${c.text} · ${c.p}%`);
+  const rc = (cls) => {
+    const c = classChance(cls, level);
+    if (c) add('p', `${CLASSES[cls].name} ${level}`, `${c.p}%`, `${CLASSES[cls].name} ${level}: ${c.text} · ${c.p}%`);
   };
   switch (id) {
     case 'casa_exp':
       add('slots', 'Lugares en el grupo', E.cycleValue(id, 'slots', level), `Grupo: quien lidera + ${E.cycleValue(id, 'slots', level) - 1}`);
       add('provMax', 'Provisiones por salida', E.cycleValue(id, 'provMax', level));
-      rc('exploracion');
+      rc('cazador');
       add('cap', 'Depósito', 40 + 20 * level, `Depósito: hasta ${40 + 20 * level} provisiones`);
       if (level >= 3) add('mirador', 'Mirador', 'radio 4', 'Desde un mirador se ve más lejos (radio 4)');
       break;
     case 'taller':
-      rc('ingenieria');
+      rc('forjador');
       add('equip', 'Equipo por salida', E.cycleValue(id, 'equipSlots', level));
       break;
     case 'establo':
-      rc('guia');
+      rc('monje');
       add('cargo', 'Carga del grupo', EXP.cargoBase + E.cycleValue(id, 'cargo', level));
       if (level >= 2) add('carreta', 'Carreta', 'se puede fabricar', `Se puede fabricar la Carreta (+${carretaCargo()} de carga)`);
       break;
     case 'dispensario':
-      add('morale', 'Ánimo del grupo', EXP.morale + EXP.moraleSanidad, `Sanidad ${level}: ánimo ${EXP.morale + EXP.moraleSanidad} y mejor descanso`);
+      add('morale', 'Ánimo del grupo', EXP.morale + EXP.moraleSanidad, `Curandero ${level}: ánimo ${EXP.morale + EXP.moraleSanidad} y mejor descanso`);
       add('tired', 'Descanso tras un fracaso', `${E.cycleValue(id, 'tiredMin', level)} min`);
       if (level >= 3) add('atender', 'Atender', '+2 ánimo', 'Una vez por salida: Atender (+2 de ánimo)');
       break;
@@ -463,14 +475,14 @@ export function cycleEffects(id, level) {
     case 'huerta': case 'tambo': case 'molino': case 'conservera': {
       const d = BUILDING_BY_ID[id];
       add('prov', 'Provisiones', E.cycleValue(id, 'prov', level), `${E.cycleValue(id, 'prov', level)} provisiones cada ${Math.round(d.prod.cycle / 60)} min`);
-      if (id === 'huerta') add('gather', 'Recolección', `${gatherAmount(level)} por recurso`, `Recolección ${level}: ${gatherAmount(level)} de material por casilla cercana (la mejor Huerta)`);
+      if (id === 'huerta') add('gather', 'Saqueador', `${gatherAmount(level)} por recurso`, `Saqueador ${level}: ${gatherAmount(level)} de material por casilla cercana (la mejor Huerta)`);
       break;
     }
     default: break;
   }
   return out;
 }
-/** Para la ficha: qué cambia en la expedición al mejorar `b` → ['Ingeniería 2: cruzar un río · 75% → 80%', ...]. */
+/** Para la ficha: qué cambia en la expedición al mejorar `b` → ['Forjador 2: cruzar un río · 75% → 80%', ...]. */
 export function cycleUpgradeLines(b) {
   if (!CYCLE[b.id] || (b.level || 1) >= 5) return [];
   const a = cycleEffects(b.id, b.level || 1), z = cycleEffects(b.id, (b.level || 1) + 1);
@@ -483,7 +495,7 @@ export function cycleUpgradeLines(b) {
   return lines;
 }
 function ROLE_SAMPLE_TEXT(id) {
-  const role = CYCLE[id]?.role, s = role && ROLE_SAMPLE[role];
+  const role = toClass(CYCLE[id]?.role), s = role && CLASS_SAMPLE[role];
   return s ? SAMPLE_TEXT[s[0]] : '';
 }
 
@@ -518,6 +530,7 @@ export { EQUIP_IDS, RESERVE_IDS };
 let inited = false;
 export function initExpedition() {
   expState();
+  K.initClasses();
   if (inited) return;
   inited = true;
   // primera cosecha: la primera Huerta arranca con dos tandas listas (el tutorial pide 4 provisiones enseguida)

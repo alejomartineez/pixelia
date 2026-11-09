@@ -11,7 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { COMBAT, ENCOUNTERS, ACT1, TUTORIAL_PARTY, ENEMIES } from '../src/combat/combat-data.js';
 import * as R from '../src/combat/combat-rules.js';
-import { botTurn, playBattle } from './sim-combat.mjs';
+import { botTurn, playBattle, expectedCfg } from './sim-combat.mjs';
+import { CLASS_IDS } from '../src/combat/classes.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const QUICK = process.argv.includes('--quick');
@@ -23,7 +24,7 @@ function section(t) { console.log('\n' + t); }
 const J = (x) => JSON.stringify(x);
 
 /** Deja el campo vacío alrededor y pone unidades a mano (el estado es JSON: se puede armar un escenario). */
-function scene(encounter = 'bosque_claro', party = ['exploracion', 'ingenieria', 'guia'], extra = {}) {
+function scene(encounter = 'bosque_claro', party = ['cazador', 'forjador', 'monje'], extra = {}) {
   const b = R.newBattle({ encounter, seed: 7, party, ...extra });
   b.tiles = b.tiles.map(t => (t === 'arbol' || t === 'roca' ? 'llano' : t));
   return b;
@@ -61,7 +62,7 @@ section('newBattle y view');
   ok(v.tiles.some(t => t.t === 'arbol'), 'con obstáculos según el terreno');
   ok(v.units.filter(u => u.side === 'ally').length === 4, 'el líder y 3 integrantes');
   ok(v.units.find(u => u.type === 'lider').abilities.some(a => a.id === 'golpe'), 'el líder tiene su golpe');
-  ok(v.units.find(u => u.type === 'exploracion').abilities.map(a => a.id).join() === 'tiro,marcar', 'el rol define el kit (exploración: tiro y marcar)');
+  ok(v.units.find(u => u.type === 'cazador').abilities.map(a => a.id).join() === 'tiro,marcar,tiro_pie', 'la clase define el kit (cazador: tiro, marcar y tiro al pie)');
   ok(v.phase === 'player' && v.turn === 1 && v.canEnd, 'arranca el turno del grupo');
   ok(J(b) === J(JSON.parse(J(b))), 'la pelea es JSON puro');
   const b2 = R.newBattle({ encounter: 'bosque_claro', seed: 3, party: TUTORIAL_PARTY });
@@ -85,13 +86,13 @@ section('move');
   const r = R.move(b, L.id, t.x, t.y);
   ok(r.ok && r.events[0].type === 'move' && r.events[0].path.length >= 2, 'se mueve y devuelve el camino');
   ok(!R.move(b, L.id, L.x, L.y - 1).ok, 'una sola vez por turno');
-  const E = byType(b, 'exploracion');
+  const E = byType(b, 'cazador');
   b.tiles[(E.y - 1) * 8 + E.x] = 'roca';
   ok(!R.move(b, E.id, E.x, E.y - 1).ok, 'no se pisa una roca');
   const foe = b.units.find(u => u.side === 'enemy');
   ok(!R.move(b, foe.id, foe.x, foe.y + 1).ok, 'no se mueven enemigos');
   // trabado
-  const G = byType(b, 'guia'), I = byType(b, 'ingenieria');
+  const G = byType(b, 'monje'), I = byType(b, 'forjador');
   place(foe, 4, 3); place(I, 4, 4); place(G, 3, 3);
   ok(R.reachable(b, I.id).every(t => t.cost <= COMBAT.stuckMv), 'trabado: al lado de un enemigo se mueve 1');
   ok(R.reachable(b, G.id).some(t => t.cost > 1), 'la guía no se traba');
@@ -100,9 +101,9 @@ section('move');
 // ------------------------------------------------------------------ marcas antes del golpe
 section('Intenciones a la vista');
 {
-  const b = scene('bosque_claro', ['ingenieria', 'sanidad', 'guia']);
+  const b = scene('bosque_claro', ['forjador', 'curandero', 'monje']);
   const [w1, w2] = b.units.filter(u => u.side === 'enemy');
-  const L = byType(b, 'lider'), S = byType(b, 'sanidad');
+  const L = byType(b, 'lider'), S = byType(b, 'curandero');
   place(w1, 3, 3); place(w2, 7, 0); place(L, 3, 5); place(S, 0, 7);
   R.endTurn(b);
   const e1 = R.enemyTurn(b);
@@ -129,19 +130,19 @@ section('Intenciones a la vista');
   R.endTurn(many); R.enemyTurn(many);
   const base = R.visibleIntentIds(many).size;
   many.tools.catalejo = 5;
-  ok(base === COMBAT.intentsBase && R.visibleIntentIds(many).size > base, `Catalejo: de ${base} a ${R.visibleIntentIds(many).size} intenciones a la vista`);
+  ok(base === COMBAT.intentsBase + many.intentPlus && many.intentPlus === 1 && R.visibleIntentIds(many).size > base, `Catalejo: de ${base} a ${R.visibleIntentIds(many).size} intenciones a la vista`);
   many.tools.catalejo = 0;
   for (const e of many.units.filter(u => u.side === 'enemy')) e.intent = { id: 'chispazo', name: 'Chispazo', pattern: 'line2', dmg: 2, dir: [0, 1], len: 0 };
   const hidden = R.view(many).units.filter(u => u.intent?.hidden).length;
-  ok(hidden === many.units.filter(u => u.side === 'enemy').length - COMBAT.intentsBase, `las que no se ven quedan ocultas (${hidden})`);
+  ok(hidden === many.units.filter(u => u.side === 'enemy').length - COMBAT.intentsBase - many.intentPlus, `las que no se ven quedan ocultas (${hidden})`);
 }
 
 // ------------------------------------------------------------------ acciones, recargas y combos
 section('act, recargas y combos');
 {
-  const b = scene('bosque_claro', ['exploracion', 'ingenieria', 'guia']);
+  const b = scene('bosque_claro', ['cazador', 'forjador', 'monje']);
   const [w1, w2] = b.units.filter(u => u.side === 'enemy');
-  const L = byType(b, 'lider'), E = byType(b, 'exploracion'), I = byType(b, 'ingenieria'), G = byType(b, 'guia');
+  const L = byType(b, 'lider'), E = byType(b, 'cazador'), I = byType(b, 'forjador'), G = byType(b, 'monje');
   place(w1, 4, 3); place(w2, 7, 0); place(L, 0, 7); place(E, 4, 6); place(I, 6, 3); place(G, 3, 3);
   // marcar y pegar
   let r = R.act(b, E.id, 'marcar', 4, 3);
@@ -166,24 +167,24 @@ section('act, recargas y combos');
     ok(b.ended || R.abilitiesOf(b, G.id).find(a => a.id === 'empujar').ready, 'al turno siguiente vuelve');
   }
   // empujar corre la marca (es relativa) y contra algo hace daño
-  const c = scene('bosque_claro', ['guia', 'sanidad', 'ingenieria']);
+  const c = scene('bosque_claro', ['monje', 'curandero', 'forjador']);
   const [a1, a2] = c.units.filter(u => u.side === 'enemy');
-  const g = byType(c, 'guia'), L2 = byType(c, 'lider'), S2 = byType(c, 'sanidad'), I2 = byType(c, 'ingenieria');
+  const g = byType(c, 'monje'), L2 = byType(c, 'lider'), S2 = byType(c, 'curandero'), I2 = byType(c, 'forjador');
   place(a1, 4, 2); place(a2, 6, 0); place(g, 4, 3); place(L2, 0, 7); place(S2, 1, 7); place(I2, 2, 7);
   a1.intent = { id: 'mordida', name: 'Mordida', pattern: 'ring', dmg: 3, dir: [0, 1], len: 0 };
   const before = R.intentTiles(c, a1).map(J).sort().join();
   R.act(c, g.id, 'empujar', 4, 2);
   const after = R.intentTiles(c, a1).map(J).sort().join();
   ok(a1.y === 1 && before !== after && !R.intentTiles(c, a1).some(([x, y]) => x === 4 && y === 3), 'empujado, su golpe se corre con él');
-  const d = scene('bosque_claro', ['guia', 'sanidad', 'ingenieria']);
+  const d = scene('bosque_claro', ['monje', 'curandero', 'forjador']);
   const [d1] = d.units.filter(u => u.side === 'enemy');
-  const dg = byType(d, 'guia');
+  const dg = byType(d, 'monje');
   place(d1, 4, 0); place(dg, 4, 1);
   const dh = d1.hp;
   const rr = R.act(d, dg.id, 'empujar', 4, 0);
   ok(rr.events.some(e => e.type === 'combo' && e.id === 'empuje_choque') && dh - d1.hp === 1 + COMBAT.collideDmg, 'contra el borde: choque de 2');
   // fuego amigo: el golpe marcado pega a otro enemigo
-  const f = scene('bosque_claro', ['guia', 'sanidad', 'ingenieria']);
+  const f = scene('bosque_claro', ['monje', 'curandero', 'forjador']);
   const [f1, f2] = f.units.filter(u => u.side === 'enemy');
   for (const u of f.units.filter(u => u.side === 'ally')) place(u, u.x, 7);
   place(byType(f, 'lider'), 0, 7);
@@ -213,7 +214,7 @@ section('Raíz y nivel del líder');
   const r = R.act(b, L.id, 'enredar', 4, 2);
   ok(r.ok && !w.intent && w.root === 1, 'Enredar frena: pierde el golpe marcado y no se mueve');
   ok(b.walls.length === 1 && b.walls[0].root && Math.abs(b.walls[0].x - 4) + Math.abs(b.walls[0].y - 2) === 1, 'y levanta una pared de raíz al lado');
-  ok(!R.move(b, byType(b, 'sanidad').id, b.walls[0].x, b.walls[0].y).ok, 'la pared corta el paso');
+  ok(!R.move(b, byType(b, 'curandero').id, b.walls[0].x, b.walls[0].y).ok, 'la pared corta el paso');
   // el jefe no se frena
   const k = R.newBattle({ encounter: 'banado_bestia', seed: 1, party: TUTORIAL_PARTY, level: 1, element: 'raiz' });
   const bs = k.units.find(u => u.type === 'bestia');
@@ -227,12 +228,12 @@ section('Raíz y nivel del líder');
 // ------------------------------------------------------------------ herramientas de L5
 section('Herramientas (L5)');
 {
-  const mk = (tools) => scene('bosque_claro', ['exploracion', 'ingenieria', 'sanidad'], { tools });
+  const mk = (tools) => scene('bosque_claro', ['cazador', 'forjador', 'curandero'], { tools });
   const a = mk({}), m = mk({ martillo: 3 });
-  for (const b of [a, m]) R.act(b, byType(b, 'ingenieria').id, 'trampa', byType(b, 'ingenieria').x, byType(b, 'ingenieria').y - 1);
+  for (const b of [a, m]) R.act(b, byType(b, 'forjador').id, 'trampa', byType(b, 'forjador').x, byType(b, 'forjador').y - 1);
   ok(m.traps[0].dmg > a.traps[0].dmg, `Martillo: la trampa pega más (${a.traps[0].dmg}→${m.traps[0].dmg})`);
   const h0 = mk({}), h3 = mk({ botiquin: 3 });
-  for (const b of [h0, h3]) { const L = byType(b, 'lider'); L.hp = 2; const S = byType(b, 'sanidad'); place(S, L.x + 1, L.y); R.act(b, S.id, 'curar', L.x, L.y); }
+  for (const b of [h0, h3]) { const L = byType(b, 'lider'); L.hp = 2; const S = byType(b, 'curandero'); place(S, L.x + 1, L.y); R.act(b, S.id, 'curar', L.x, L.y); }
   ok(byType(h3, 'lider').hp > byType(h0, 'lider').hp, 'Botiquín: la sanidad cura más');
   const c0 = scene('banado_bestia', TUTORIAL_PARTY), c3 = scene('banado_bestia', TUTORIAL_PARTY, { tools: { cuerda: 3 } });
   const climb = (b) => { const L = byType(b, 'lider'); const al = b.tiles.findIndex((t, i) => t === 'alto' && Math.abs((i % 8) - L.x) + Math.abs(((i / 8) | 0) - L.y) === 1); return R.reachable(b, L.id).find(t => t.y * 8 + t.x === al)?.cost; };
@@ -240,13 +241,13 @@ section('Herramientas (L5)');
   const g0 = scene('bosque_claro', TUTORIAL_PARTY), g3 = scene('bosque_claro', TUTORIAL_PARTY, { tools: { farol: 3 } });
   for (const b of [g0, g3]) {
     const [w] = b.units.filter(u => u.side === 'enemy');
-    const L = byType(b, 'lider'), S = byType(b, 'sanidad');
+    const L = byType(b, 'lider'), S = byType(b, 'curandero');
     place(L, 3, 5); place(S, 4, 5); place(w, 4, 4);
     w.intent = { id: 'mordida', name: 'Mordida', pattern: 'ring', dmg: 3, dir: [0, 1], len: 0 };
     w.mv = 0;
     R.endTurn(b); R.enemyTurn(b);
   }
-  ok(byType(g3, 'sanidad').hp > byType(g0, 'sanidad').hp, 'Farol de guardia: al lado del líder se recibe menos');
+  ok(byType(g3, 'curandero').hp > byType(g0, 'curandero').hp, 'Farol de guardia: al lado del líder se recibe menos');
   // ninguna herramienta es obligatoria: la pelea común se gana sin ninguna (ver abajo, grupo del tutorial)
 }
 
@@ -259,9 +260,9 @@ section('Consumibles');
   ok(R.abilitiesOf(b, L.id).some(a => a.id === 'item:botiquin'), 'lo del Taller aparece como acción');
   const r = R.act(b, L.id, 'item:botiquin', L.x, L.y);
   ok(r.ok && L.hp === 8 && b.items.botiquin === 0, 'el botiquín cura 5 y se gasta');
-  ok(!R.abilitiesOf(b, byType(b, 'sanidad').id).some(a => a.id === 'item:botiquin'), 'un uso por pelea');
+  ok(!R.abilitiesOf(b, byType(b, 'curandero').id).some(a => a.id === 'item:botiquin'), 'un uso por pelea');
   const [w] = b.units.filter(u => u.side === 'enemy');
-  const E = byType(b, 'exploracion');
+  const E = byType(b, 'cazador');
   place(w, E.x, E.y - 2);
   w.intent = { id: 'mordida', name: 'Mordida', pattern: 'ring', dmg: 3, dir: [0, 1], len: 0 };
   R.act(b, E.id, 'item:farol', E.x, E.y);
@@ -342,12 +343,12 @@ section('Jefes');
   ok(ev.events.some(e => e.type === 'flood') && b.flood[wet] > 0, 'el agua sube donde marcó');
   ok(L.hp === hp - COMBAT.floodDmg[0] || b.ended, 'el agua tira: quien está abajo recibe daño');
   // capitana y pasarela
-  const c = R.newBattle({ encounter: 'costa_capitana', seed: 2, party: ['recoleccion', 'exploracion', 'sanidad'] });
+  const c = R.newBattle({ encounter: 'costa_capitana', seed: 2, party: ['saqueador', 'cazador', 'curandero'] });
   ok(c.bridge && c.bridge.tiles.length === 2, 'la capitana trae una pasarela');
   let arrived = false;
   for (let k = 0; k < 2; k++) { R.endTurn(c); if (R.enemyTurn(c).events.some(e => e.type === 'spawn' && e.from === 'bridge')) arrived = true; }
   ok(arrived, 'llama refuerzos por la pasarela');
-  const Rc = byType(c, 'recoleccion');
+  const Rc = byType(c, 'saqueador');
   const [px, py] = c.bridge.tiles.find(([x, y]) => !R.unitAt(c, x, y));
   place(Rc, px + 1, py);
   if (R.unitAt(c, px + 1, py) !== Rc) place(Rc, px + 1, py);
@@ -355,11 +356,11 @@ section('Jefes');
   Rc.cd = {};
   R.act(c, Rc.id, 'romper', px, py);
   ok(hp0 - c.bridge.hp === 2 * (Rc.atk + 2), 'Romper pega doble a la pasarela');
-  const z = scene('costa_capitana', ['recoleccion', 'exploracion', 'sanidad']);
+  const z = scene('costa_capitana', ['saqueador', 'cazador', 'curandero']);
   for (const e of z.units.filter(u => u.side === 'enemy' && u.type !== 'capitana')) e.alive = false;
   const zc = z.units.find(u => u.type === 'capitana');
   place(zc, 7, 0);
-  const zr = byType(z, 'recoleccion');
+  const zr = byType(z, 'saqueador');
   const [bx, by] = z.bridge.tiles[0];
   place(zr, bx + 1, by);
   z.bridge.hp = 1;
@@ -391,7 +392,7 @@ section('Retirada y resolución rápida');
 // ------------------------------------------------------------------ determinismo y guardado
 section('Determinismo, guardar y retomar');
 {
-  const cfg = { encounter: 'bosque_manada', seed: 42, party: ['exploracion', 'guia', 'sanidad'], level: 2 };
+  const cfg = { encounter: 'bosque_manada', seed: 42, party: ['cazador', 'monje', 'curandero'], level: 2 };
   const a = playFrom(R.newBattle(cfg)), b = playFrom(R.newBattle(cfg));
   ok(J(a) === J(b), `mismas acciones, mismo resultado (${a.outcome} en ${a.turns} turnos)`);
   for (const id of ['bosque_manada', 'cerro_rescate', 'banado_bestia', 'costa_capitana']) {
@@ -433,15 +434,16 @@ if (!QUICK) {
     const N = 30;
     let w = 0;
     for (let s = 1; s <= N; s++) w += playBattle({ encounter: id, seed: s, party: TUTORIAL_PARTY, level: 1 }).res.outcome === 'win';
-    const min = ENCOUNTERS[id].kind === 'jefe' ? 0.2 : 0.5;
+    // con las clases, el grupo esperado de la Costa ya tiene nivel de clase 4: el del tutorial queda más lejos (jefes: 10 %)
+    const min = ENCOUNTERS[id].kind === 'jefe' ? 0.1 : 0.5;
     ok(w / N >= min, `${ENCOUNTERS[id].name}: ${w}/${N} ganadas (mínimo ${Math.round(min * 100)} %)`);
   }
-  section('Los jefes duran de 6 a 12 turnos (grupo esperado, primer intento, peleas ganadas)');
+  section('Los jefes duran de 6 a 12 turnos (grupo esperado con nivel de clase, el líder de cada clase, primer intento, ganadas)');
   for (const id of ACT1.filter(id => ENCOUNTERS[id].kind === 'jefe')) {
     const ex = ENCOUNTERS[id].expected;
     const turns = [];
     for (let s = 1; s <= 60; s++) {
-      const { res } = playBattle({ encounter: id, seed: s, party: TUTORIAL_PARTY, level: ex.level, element: ex.element });
+      const { res } = playBattle(expectedCfg(id, TUTORIAL_PARTY, s, {}, CLASS_IDS[s % CLASS_IDS.length]));
       if (res.outcome === 'win') turns.push(res.turns);
     }
     const avg = turns.reduce((a, n) => a + n, 0) / Math.max(1, turns.length);

@@ -57,7 +57,7 @@ export const EXP = {
   cargoStar: 1.0, moraleStar: 4,
   gemsAt3: 1, chestAt3: 0.10,          // cofre de madera en una salida de 3★ (Fase 5b: era 0,25; §8 ≤ 1,5 cofres por día)
   // Prototipo (Fase 1): sin ciudad. 3 roles fijos en nivel 1 y lo que daría una ciudad con Casa nivel 3 y Establo 3.
-  prototype: { party: ['exploracion', 'ingenieria', 'sanidad'], level: 1, prov: 24, cargoMax: 15, equip: [] },
+  prototype: { party: ['cazador', 'forjador', 'curandero'], level: 1, prov: 24, cargoMax: 15, equip: [] },
 };
 
 /** Anillo de una profundidad: 0 cerca (1–3), 1 medio (4–6), 2 lejos (7+). */
@@ -149,14 +149,20 @@ export const REGIONS = {
 };
 export const REGION_IDS = ['bosque', 'sierras', 'banado', 'cerro', 'costa'];
 
-export const ROLES = {
-  exploracion: { id: 'exploracion', name: 'Exploración', building: 'casa_exp', icon: '🧭', text: 'Ve más lejos: visión 2.' },
-  ingenieria: { id: 'ingenieria', name: 'Ingeniería', building: 'taller', icon: '🔧', text: 'Cruza ríos y despeja derrumbes.' },
-  sanidad: { id: 'sanidad', name: 'Sanidad', building: 'dispensario', icon: '🩹', text: 'Más ánimo y mejor descanso.' },
-  recoleccion: { id: 'recoleccion', name: 'Recolección', building: 'huerta', icon: '🧺', text: 'Junta más en cada recurso.' },
-  guia: { id: 'guia', name: 'Guía', building: 'establo', icon: '🐴', text: 'Pasa mejor por colinas, bañados y roca.' },
+// Clases de la expedición (paso 5b; antes, roles). building: el edificio que la trae (el nivel del edificio es su nivel
+// de oficio, 1..5, el que usan las decisiones). El Guerrero llega con la Casa de Expediciones 2 (src/core/classes.js).
+export const CLASSES = {
+  cazador: { id: 'cazador', name: 'Cazador', building: 'casa_exp', icon: '🏹', text: 'Ve más lejos: visión 2.' },
+  forjador: { id: 'forjador', name: 'Forjador', building: 'taller', icon: '🔨', text: 'Cruza ríos y despeja derrumbes.' },
+  curandero: { id: 'curandero', name: 'Curandero', building: 'dispensario', icon: '🩹', text: 'Más ánimo y mejor descanso.' },
+  saqueador: { id: 'saqueador', name: 'Saqueador', building: 'huerta', icon: '🧺', text: 'Junta más en cada recurso.' },
+  monje: { id: 'monje', name: 'Monje', building: 'establo', icon: '🥾', text: 'Pasa mejor por colinas, bañados y roca.' },
+  guerrero: { id: 'guerrero', name: 'Guerrero', building: 'casa_exp', minLevel: 2, icon: '🛡️', text: 'Abre paso por la fuerza: derrumbes y ríos.' },
 };
-export const ROLE_IDS = ['exploracion', 'ingenieria', 'sanidad', 'recoleccion', 'guia'];
+export const CLASS_IDS = ['cazador', 'forjador', 'curandero', 'saqueador', 'monje', 'guerrero'];
+/** @deprecated los roles pasaron a clases (paso 5b): quedan los nombres para quien todavía los importa. */
+export const ROLES = CLASSES;
+export const ROLE_IDS = CLASS_IDS;
 
 export const EQUIPMENT = {
   cuerda: { id: 'cuerda', name: 'Cuerda', icon: '🪢', text: '+15 cruzar ríos, +10 trepar' },
@@ -167,13 +173,13 @@ export const EQUIPMENT = {
   carreta: { id: 'carreta', name: 'Carreta', icon: '🛒', text: '+4 de carga (+6 desde la época Hierro)' },
 };
 
-// Peligros y ruinas (§2.6). Cada opción: base (100 = seguro), rol {id: bono}, equip {id: bono}, cost (se paga al elegir),
+// Peligros y ruinas (§2.6). Cada opción: base (100 = seguro), role {clase: bono}, equip {id: bono}, cost (se paga al elegir),
 // ok / fail (efectos). Efectos: morale, prov, mats {id:n}, loseMat (n al azar), loot ('full' | 'small').
 export const HAZARDS = {
   rio: {
     id: 'rio', name: 'Río crecido', icon: '🌊', text: 'El agua viene alta y marrón.',
     options: [
-      { id: 'cruzar', label: 'Cruzar', base: 50, role: { ingenieria: 25 }, equip: { cuerda: 15 },
+      { id: 'cruzar', label: 'Cruzar', base: 50, role: { forjador: 25, guerrero: 10 }, equip: { cuerda: 15 },
         fail: { morale: -2, prov: -1, loseMat: 1 }, failText: 'El agua se llevó algo' },
       { id: 'rodear', label: 'Rodear', base: 100, cost: { prov: 2 }, guiaProv: -1, okText: 'Dieron la vuelta larga' },
     ],
@@ -181,16 +187,16 @@ export const HAZARDS = {
   derrumbe: {
     id: 'derrumbe', name: 'Derrumbe', icon: '⛰️', text: 'Piedras sueltas tapan el paso.',
     options: [
-      { id: 'despejar', label: 'Despejar', base: 45, role: { ingenieria: 30 }, equip: { pala: 15 },
+      { id: 'despejar', label: 'Despejar', base: 45, role: { forjador: 30, guerrero: 20 }, equip: { pala: 15 },
         ok: { mats: { piedra: 1 } }, fail: { morale: -2, prov: -2 }, failText: 'Mucho esfuerzo y poco avance' },
-      { id: 'trepar', label: 'Trepar', base: 60, role: { guia: 20 }, equip: { cuerda: 10 },
+      { id: 'trepar', label: 'Trepar', base: 60, role: { monje: 20 }, equip: { cuerda: 10 },
         fail: { morale: -2, prov: -1 }, failText: 'Raspones y un susto' },
     ],
   },
   tormenta: {
     id: 'tormenta', name: 'Tormenta', icon: '⛈️', text: 'Se larga fuerte y no se ve nada.',
     options: [
-      { id: 'seguir', label: 'Seguir igual', base: 55, role: { guia: 20 }, equip: { lona: 20 },
+      { id: 'seguir', label: 'Seguir igual', base: 55, role: { monje: 20 }, equip: { lona: 20 },
         fail: { morale: -2, prov: -2 }, failText: 'Empapados y con la vianda mojada' },
       { id: 'esperar', label: 'Esperar', base: 100, cost: { prov: 2 }, lonaProv: -1, okText: 'Esperaron a que pase' },
     ],
@@ -198,7 +204,7 @@ export const HAZARDS = {
   lobos: {
     id: 'lobos', name: 'Lobos', icon: '🐺', text: 'Una manada cruza más adelante.',
     options: [
-      { id: 'silencio', label: 'Pasar en silencio', base: 50, role: { exploracion: 25 },
+      { id: 'silencio', label: 'Pasar en silencio', base: 50, role: { cazador: 25 },
         fail: { morale: -3, prov: -2 }, failText: 'Los vieron y hubo que correr' },
       { id: 'fuego', label: 'Espantar con fuego', base: 85, needs: 'fuego',
         fail: { morale: -2 }, failText: 'No se fueron del todo' },
@@ -207,7 +213,7 @@ export const HAZARDS = {
   ruina: {
     id: 'ruina', name: 'Ruina', icon: '🏚️', text: 'Restos viejos. Puede haber algo adentro.',
     options: [
-      { id: 'revisar', label: 'Revisar a fondo', base: 70, role: { exploracion: 15 }, equip: { pala: 10 },
+      { id: 'revisar', label: 'Revisar a fondo', base: 70, role: { cazador: 15 }, equip: { pala: 10 },
         ok: { loot: 'full' }, fail: { morale: -2, prov: -1, loot: 'small' }, failText: 'Se vino abajo una pared' },
       { id: 'mirar', label: 'Mirar por arriba', base: 100, ok: { loot: 'small' } },
     ],

@@ -82,7 +82,7 @@ section('La luz como progreso');
 
 section('Expedición: día, noche y clima como reglas');
 {
-  const mk = (o = {}) => R.newRun({ region: 'sierras', zone: 1, seed: 1234, party: ['exploracion'], ...o });
+  const mk = (o = {}) => R.newRun({ region: 'sierras', zone: 1, seed: 1234, party: ['cazador'], ...o });
   const a = mk(), b = mk();
   ok(JSON.stringify(a.front) === JSON.stringify(b.front) && a.clock.start === EXP.dawn, 'se sale al alba y el frente sale de la semilla');
   let fronts = 0, early = 0;
