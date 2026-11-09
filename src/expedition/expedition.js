@@ -249,6 +249,9 @@ export function creditFight(run, fight, state = S()) {
     stars: fight.stars || 0, quick: !!fight.quick, guided: !!fight.guided, attempt: fight.attempt || 1, combos: fight.combos || 0,
     downs: fight.downs || 0, first, page: grant.page || null,
   };
+  // para la telemetría (paso 7): con qué nivel y clase se peleó y con quiénes
+  try { const lm = K.leaderMods(state); payload.level = lm.level; payload.lead = lm.cls || null; } catch {}
+  try { payload.party = (run ? R.fightParty(run) : []).join(','); } catch {}
   bus.emit(ev, payload);
   return payload;
 }

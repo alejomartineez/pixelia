@@ -951,6 +951,25 @@ monedas, madera 6, hierbas 6, mineral 2) da 2 hierbas × rinde cada 3 h (guarda 
 monedas, madera 6, piedra 6 y hierbas 4 (+35 % cada vez), tarda 12 h y cose 12.
 ---
 
+### 8.y La gente de la ciudad en el simulador (paso 7)
+`sim:economy` simula ahora a la gente de la ciudad (L5): llegan, avanzan sus encargos, el bot entrega materiales y mejora
+las herramientas en el Taller con lo que le sobra después del próximo gasto grande (una mejora por rato, Martillo y Farol
+primero). `--no-tools` corre como antes. Imprime en cada rango el nivel del líder, el de las tres mejores clases y las
+herramientas (con eso arma `sim-combat` su sección "En la partida").
+
+- **Semilla 1, con la gente:** 18 ✔ · 4 ✘. Fallan monedas al llegar (58,7 % contra ≥ 75 %), "el último requisito es el
+  nivel" (33 % contra ≤ 25 %), "esperando solo por nivel" (15,9 % contra < 10 %) y la automática (74,3 % contra 75–95 %).
+  Sin la gente (`--no-tools`) da 22 ✔ · 0 ✘.
+- **No es la gente lo que lo rompe: es la semilla.** Con las semillas 2 a 4, sin la gente, fallan 3, 4 y 5 metas; con la
+  gente, 7, 2 y 3. "Monedas al llegar" falla en todas las corridas menos la semilla 1 sin gente; la preparación, la
+  automática y "el último requisito es el nivel" fallan en la mitad. Con la gente el juego va un poco más rápido (rango 5
+  el día 19 en vez del 24): las salidas rinden más y el nivel del jugador queda atrás del rango.
+- **Se probó y no alcanzó:** sin los efectos de las herramientas en la expedición, sin que el bot gaste en la gente,
+  experiencia por Vínculo (40 × Vínculo) y Martillo al 3 %. Ninguno lleva las cuatro semillas a verde: las metas de
+  arriba están al borde con cualquier suerte.
+- **Pendiente:** un rebalanceo de la economía mirando varias semillas a la vez (`--runs 4`), no solo la 1: la
+  experiencia del jugador por rango y el saldo con el que se llega. Es trabajo para una sesión propia.
+
 ## 9. Abierto (lo deciden las fases con el juego en la mano)
 - Fuerza, focos y turnos de amenaza: validar en la Fase 3 que con preparación media se llegue a ~90% jugando.
 - Si quien lidera tiene alguna habilidad propia (hoy no).

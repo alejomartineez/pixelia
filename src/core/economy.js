@@ -14,6 +14,7 @@ export { monumentComplete, monumentsDone, monumentBonus };
 import { prodBoostMult, happyBoostActive, freeBuildCount, consumeFreeBuild, addFreeBuild } from '../chests/chests.js';
 import { eventMult } from '../season/events.js';
 import { raizFound, raizMult } from './raiz.js';
+import { buildCoinMult } from './tools-city.js';
 
 const S = () => store.state;
 export const def = (b) => BUILDING_BY_ID[typeof b === 'string' ? b : b.id];
@@ -392,7 +393,9 @@ export function placeCost(id, state = S()) {
   const d = def(id);
   const n = countOf(id, state);
   const mult = (d.cat === 'casa' || d.cat === 'negocio') ? 1 + 0.15 * n : 1;
-  const out = { coins: Math.round((d.cost.coins || 0) * mult), gems: d.cost.gems || 0 };
+  // el Martillo de Brígida (L5, paso 7, tools-city.js): las obras salen más baratas (no los monumentos ni Mi Casa)
+  const tool = d.cat === 'monumento' || d.id === 'mi_casa' ? 1 : buildCoinMult(state);
+  const out = { coins: Math.round((d.cost.coins || 0) * mult * tool), gems: d.cost.gems || 0 };
   if (d.cost.mats) out.mats = { ...d.cost.mats };
   // planos: algunas defensas piden 1 (el Pararrayos, solo el primero: firstPlanos)
   const planos = (d.cost.planos || 0) + (d.firstPlanos && n === 0 ? d.firstPlanos : 0);
@@ -601,13 +604,13 @@ export function upgradeInfo(b) {
   if (d.cat === 'ciclo' || d.cat === 'defensa') {
     // edificios del ciclo y defensas: sin gemas; desde el nivel 3 piden materiales de región (y la Casa, planos en el 4 y el 5)
     const up = (d.cat === 'defensa' ? DEFENSES : CYCLE)[d.id]?.up?.[b.level + 1] || {};
-    const cost = { coins: Math.round(base * UPGRADE_COST_MULT[b.level]) };
+    const cost = { coins: Math.round(base * UPGRADE_COST_MULT[b.level] * buildCoinMult(S())) };
     if (up.mats) cost.mats = { ...up.mats };
     if (up.planos) cost.planos = up.planos;
     return { cost, time: stageTime(upgradeSec(d, b.level)), reqLevel: d.unlock + b.level, reqEra: up.era || 0 };
   }
   return {
-    cost: { coins: Math.round(base * UPGRADE_COST_MULT[b.level]), gems: b.level >= 3 ? b.level - 2 : 0 },
+    cost: { coins: Math.round(base * UPGRADE_COST_MULT[b.level] * buildCoinMult(S())), gems: b.level >= 3 ? b.level - 2 : 0 },
     time: stageTime(upgradeSec(d, b.level)),
     reqLevel: d.unlock + b.level * 2,
   };

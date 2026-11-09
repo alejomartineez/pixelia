@@ -16,6 +16,7 @@ import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
 import * as E from '../core/economy.js';
 import { syncGrieta, grietaPower, grietaExtra, raizResist } from '../core/raiz.js';
+import { threatPrepBonus } from '../core/tools-city.js';
 import { BUILDING_BY_ID, DEFENSES, REGION_MAT_IDS, RESERVES } from '../core/data.js';
 import * as Cal from './threat-calendar.js';
 import * as R from './threat-rules.js';
@@ -144,6 +145,8 @@ export function cityView(state = S(), now = Date.now()) {
   // la Raíz da resistencia a la sequía y a la helada (más con más extracción)
   let mods = null;
   try { const sq = raizResist('sequia', state), he = raizResist('helada', state); if (sq || he) mods = { eff: { sequia: sq, helada: he } }; } catch {}
+  // el Farol de guardia de Ramiro (L5, paso 7): más preparación
+  try { const pr = threatPrepBonus(state); if (pr) mods = { ...(mods || {}), prep: pr }; } catch {}
   return { bounds: { min: L.min, max: L.max }, buildings, mods };
 }
 

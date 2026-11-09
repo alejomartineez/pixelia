@@ -4,7 +4,7 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v40';
+const VERSION = 'pixelia-v41';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
@@ -48,7 +48,8 @@ const CORE = [
   './src/core/classes.js', './src/core/data.js', './src/core/desktop.js', './src/core/economy.js', './src/core/frame-cap.js',
   './src/core/hud.js', './src/core/icons.js', './src/core/keys.js', './src/core/monuments.js', './src/core/palette.js',
   './src/core/people-data.js', './src/core/people.js', './src/core/quests.js', './src/core/raiz.js', './src/core/settings.js',
-  './src/core/state.js', './src/core/tips.js', './src/core/ui.js', './src/core/unlocks.js', './src/core/voxel.js',
+  './src/core/state.js', './src/core/tips.js', './src/core/tools-city.js', './src/core/ui.js', './src/core/unlocks.js',
+  './src/core/voxel.js',
   './src/expedition/exp-ambience.js', './src/expedition/exp-data.js', './src/expedition/exp-gen.js', './src/expedition/exp-guide.js', './src/expedition/exp-rules.js',
   './src/expedition/exp-scene.js', './src/expedition/exp-ui.js', './src/expedition/expedition.js',
   './src/home/furniture-models.js', './src/home/furniture.js',

@@ -43,10 +43,15 @@ export const TRACKED_EVENTS = {
   'combat:won': p => combatProps(p),
   'combat:lost': p => combatProps(p),
   'combat:retreat': p => combatProps(p),
+  // el abordaje que cierra el Acto 1 (paso 6b): cuándo llega, cuándo se sale a pelear y cómo termina
+  'abordaje:*': p => scalars(p),
 };
 function combatProps(p = {}) {
-  return scalars({ enc: p.enc, region: p.region, kind: p.kind, reason: p.reason, turns: p.turns, stars: p.stars, attempt: p.attempt,
-    quick: !!p.quick, guided: !!p.guided, first: !!p.first, combos: p.combos, downs: p.downs });
+  // en dos tandas: scalars se queda con 12 valores por objeto
+  return {
+    ...scalars({ enc: p.enc, region: p.region, kind: p.kind, reason: p.reason, turns: p.turns, stars: p.stars, attempt: p.attempt, outcome: p.outcome }),
+    ...scalars({ quick: !!p.quick, guided: !!p.guided, first: !!p.first, combos: p.combos, downs: p.downs, level: p.level, lead: p.lead, party: p.party }),
+  };
 }
 
 // ---------- utilidades ----------
