@@ -431,11 +431,12 @@ section('preview');
 // ------------------------------------------------------------------ corridas largas
 if (!QUICK) {
   section('Cada encuentro del Acto 1 se gana con el grupo del tutorial (líder nivel 1, sin herramientas ni elemento)');
-  for (const id of ACT1.filter(id => !ENCOUNTERS[id].expected?.city)) {   // el abordaje lo pelea la gente de la ciudad
+  // el abordaje lo pelea la gente de la ciudad, y el muelle llega en el rango 6: los dos se miden con la partida real
+  // (expected.tools, el grupo que da sim:economy; DESIGN-COMBAT §8), no con el grupo del tutorial
+  for (const id of ACT1.filter(id => !ENCOUNTERS[id].expected?.city && !ENCOUNTERS[id].expected?.tools)) {
     const N = 30;
     let w = 0;
     for (let s = 1; s <= N; s++) w += playBattle({ encounter: id, seed: s, party: TUTORIAL_PARTY, level: 1 }).res.outcome === 'win';
-    // con las clases, el grupo esperado de la Costa ya tiene nivel de clase 4: el del tutorial queda más lejos (jefes: 10 %)
     const min = ENCOUNTERS[id].kind === 'jefe' ? 0.1 : 0.5;
     ok(w / N >= min, `${ENCOUNTERS[id].name}: ${w}/${N} ganadas (mínimo ${Math.round(min * 100)} %)`);
   }

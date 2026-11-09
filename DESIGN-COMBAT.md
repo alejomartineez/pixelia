@@ -287,7 +287,53 @@ siempre), pero el paso 7 lo mira.
   `src/combat/classes.js` y `combat-data.js`, de la sesión de clases: no se tocó.
 - **Para mirar:** las clases de la ciudad suben rápido (10/10/9 en el rango 6, cuando los encuentros comunes de la Costa
   esperan 4). Las peleas comunes de la Costa con la partida real salen más fáciles que la meta. La curva es
-  `CLASS_XP` / `CLASS_GAIN` (sesión de clases).
+  `CLASS_XP` / `CLASS_GAIN` (sesión de clases). **Lo resolvió el paso 5b, cuarta parte** (abajo).
+
+**Paso 5b, cuarta parte: la curva de clase y el líder cazador** (`node sim-combat.mjs --n 20`, todas las metas ✔,
+incluida "En la partida"; ahora cada clase como líder también tiene la meta de ≤ 35 %).
+- **Curva de clase** (`CLASS_XP`, §14.2): unas 6,7 veces más larga. En `sim:economy` (semilla 1) las 3 mejores clases
+  de la ciudad quedan así en cada rango:
+
+  | Rango (día) | Antes | Ahora |
+  |---|---|---|
+  | 3 (5) | 2/1/1 | 2/1/1 |
+  | 4 (12) | 6/6/1 | 3/2/1 |
+  | 5 (19) | 8/8/1 | 4/3/1 |
+  | 6 (30) | 10/10/9 | 5/4/3 |
+  | 7 (50) | 10/10/10 | 6/6/5 |
+
+  Las metas de `sim:economy` no cambian (las mismas 18 ✔ y 4 ✘ que en master; las 4 son de la economía).
+- **El muelle con la partida real:** con el grupo del rango 6 (líder 6, clases 5/4/3 y las herramientas) daba 99 %.
+  Sin las herramientas, 93 %: lo que sobra lo ponen el Botiquín 5, la Cuerda 4 y el Catalejo 4. El muelle se pelea
+  recién en el rango 6, así que su grupo esperado pasó a ser ese (como el abordaje en el paso 7) y lleva `foeHp: 1,35`.
+  `test-combat` ya no lo prueba con el grupo del tutorial (como al abordaje): con clases en 1 gana 0 de 30 con el líder
+  1 y 5 de 30 con el líder 6. **Para mirar con la telemetría:** quien llegue a la Costa con las clases muy abajo.
+- **El abordaje** con clases 5/4/3 (antes 10/10/9): `foeHp` 1,35 → 0,9, `bossHp` 1,45 → 1,3 y `foeDmg` +3 → +2. Con
+  +1 duraba 12,3 turnos con el grupo del tutorial (la prueba de duración de `test-combat` pide ≤ 12).
+- **El líder cazador** (36,2 %, la meta es ≤ 35 %). La pasiva Pulso no era: el líder llega al nivel de clase 9 recién
+  en el nivel 25, y en el Acto 1 no pasa del 3. Lo que pesaba era la bestia (63 % del daño: la inundación aleja a los
+  que pegan de cerca y el cazador tira desde lo alto) y el juncal (47 %). Dos cambios:
+  - **Espina** (Acechador de Raíz) ya no suma +1: llega a 4 y frena. Sola bajaba a 35,3 %.
+  - **El ataque por nivel del líder que pega a distancia llega 6 niveles después** (`LEADER.rangedAtkDelay`): +1 en el
+    nivel 10 y +2 en el 16, en vez del 4 y el 10.
+  - Probado y descartado: Espina con recarga 3 (no cambia nada) y que desde lo alto los tiros no sumen +1 (la bestia
+    sigue en 63 % y baja la victoria).
+
+| Pelea | Meta | Cuarta parte | Paso 7 |
+|---|---|---|---|
+| Comunes del Bosque, el Cerro y el Bañado (5) | 85–95 % | 86,8–92,5 % ✔ | igual |
+| Saqueo en el muelle (grupo del rango 6) | 85–95 % | 88,0 % ✔ · 9,3 turnos | 92,0 % con el grupo viejo; 99,5 % con el real |
+| Bestia, grupo esperado | 45–65 % / ≥ 85 % | 57,8 % / 93,5 % ✔ · 8,6 turnos | 61,3 % / 93,8 % |
+| Bestia, rango 3 (líder 2, clases 2/1/1) | 45–65 % / ≥ 85 % | 52,0 % / 89,5 % ✔ | igual |
+| Bestia, rango 4 (dato: líder 4, clases 3/2/1) | — | 63,0 % / 91,0 % | 86,5 % / 96,5 % (con 6/5/1) |
+| Abordaje (líder 7, clases 5/4/3) | 45–65 % / ≥ 85 % | 60,0 % / 96,8 % ✔ · 10,6 turnos | 59,8 % / 97,0 % (con 10/10/9) |
+
+| Aporte | Daño | Golpes finales |
+|---|---|---|
+| Clases (la más alta) | cazador 34,3 % | guerrero 28,7 % |
+| Líder cazador | 30,9 % (antes 36,2 %) | 23,0 % |
+| Líder monje | 30,0 % | 31,6 % |
+| Resto de los líderes | 11,3–22,7 % | 14,9–29,8 % |
 
 **Herramientas en nivel 3** (medido con los roles, antes del 5b). % de peleas ganadas, primer intento contra los jefes:
 
@@ -678,7 +724,10 @@ onboarding, la pestaña "Progreso" y los modelos por clase quedan para la segund
   (`CLASS_PRIORITY`), así los grupos de siempre no cambian.
 
 ### 14.2 Nivel de clase (1 a 10)
-- Experiencia total para cada nivel (`CLASS_XP`): 0 · 30 · 80 · 150 · 240 · 350 · 480 · 640 · 830 · 1050.
+- Experiencia total para cada nivel (`CLASS_XP`): 0 · 200 · 600 · 1.200 · 2.000 · 3.000 · 4.200 · 5.600 · 7.200 ·
+  9.000 (paso 5b, cuarta parte; §8). La de antes (0 · 30 · 80 · 150 · 240 · 350 · 480 · 640 · 830 · 1050) dejaba las
+  clases en 10/10/9 al llegar a la Costa. Los guardados con la curva vieja se pasan solos al cargar
+  (`state.classes.curve`, `remapClassXp`): mismo nivel y lo mismo juntado dentro del nivel, en proporción.
 - **Tope:** el edificio entrena hasta 2 × su nivel. Con el edificio al 5 se llega al 10. La experiencia de más se guarda:
   al mejorar el edificio, el nivel sube solo.
 - **De dónde sale:** cada pelea da su experiencia (20 a 100, `reward.xp` × resultado) a cada integrante que peleó,
@@ -700,8 +749,8 @@ el Martillo).
 
 ### 14.3 Elegir habilidades
 `validPicks(clase, nivel, picks)` deja solo las abiertas y completa con las primeras del grupo. Se guardan en
-`state.classes.members[clase].picks` (`setPicks`) y llegan a la pelea en `newBattle({ picks })`. La interfaz para
-elegirlas es de la segunda parte.
+`state.classes.members[clase].picks` (`setPicks`) y llegan a la pelea en `newBattle({ picks })`. Se eligen desde la
+ciudad (paso 5b, cuarta parte, §17).
 
 ### 14.4 El líder: nivel 1 a 30 (L5)
 - **Experiencia para pasar del nivel n al n + 1:** `100 + 50 × (n − 1)`. Para el nivel 3 hacen falta 250; para el 5,
@@ -729,7 +778,8 @@ elegirlas es de la segunda parte.
   | 15, 20, 25 y 30 | reservados para los actos 2 a 4 (otro elemento y habilidades del equipo) |
 
 - **Stats del líder con clase:** vida `12 + (vida de la clase − 10)`, ataque `máx(2, ataque de la clase)` más el bonus
-  por nivel, movimiento y ataque básico de su clase (el cazador tira de lejos).
+  por nivel, movimiento y ataque básico de su clase (el cazador tira de lejos). Si su ataque básico es a distancia, el
+  bonus de ataque por nivel llega 6 niveles después (`LEADER.rangedAtkDelay`: +1 en el 10 y +2 en el 16; §8).
 - **Sin clase** (partida vieja, o nueva antes de la segunda parte del 5b) pelea como antes: Golpe y Raíz por los niveles
   1, 5 y 12.
 - La primera prueba con los espacios de clase en los niveles 1 y 10 daba 98 % en el muelle y 83 % contra la capitana.
@@ -745,7 +795,7 @@ solo elemento, queda la subclase de ese elemento sin tener que elegir.
 | Subclase | Clase | Habilidades | Pasiva |
 |---|---|---|---|
 | Guardián de Raíz | Guerrero | Abrazo de raíz (cuerpo a cuerpo: 2, quita el golpe, frena y levanta pared) · Muro de raíz | Corteza: +3 de vida |
-| Acechador de Raíz | Cazador | Espina (distancia 2–4, +1 y frena) · Enredar | Ojos de raíz: +1 intención a la vista |
+| Acechador de Raíz | Cazador | Espina (distancia 2–4 y frena; el +1 se sacó en el paso 5b, cuarta parte) · Enredar | Ojos de raíz: +1 intención a la vista |
 | Tejedor de Raíz | Forjador | Zarza (trampa de 3 que frena 2, a distancia 3) · Muro de raíz | Trenzado: paredes +1 turno |
 | Herbolario de Raíz | Curandero | Savia (cura 3 al grupo a 2 o menos) · Enredar | Brotes: curas +1 |
 | Caminante de Raíz | Monje | Brote (salta hasta 3 y deja una pared de raíz) · Enredar | Raíz ligera: +1 de movimiento |
@@ -988,10 +1038,9 @@ Plan: M3 de `docs/PLAN-QUIEBRE.md`, sobre el 4a (`CLASS_KIT`, `classLook` y `opt
 pelea de la expedición y el abordaje traen la batalla armada y no pasan por acá.
 
 ### 16.4 Lo que queda
-- La interfaz para elegir las activas (`setPicks` y `setLeaderPicks`) y la subclase en la ciudad (§14.10) todavía no
-  está. Hoy el líder usa las que vienen por defecto de su nivel.
-- Del paso 7 (§14.10 y §15.3): el balance del líder cazador y del curandero, la curva del líder en `sim:economy` y la
-  parte de ciudad de las herramientas.
+- La interfaz para elegir las activas y la subclase en la ciudad: **hecha** en la cuarta parte (§17).
+- Del paso 7 (§14.10 y §15.3): el balance del líder cazador (hecho en la cuarta parte, §8) y del curandero, la curva del
+  líder en `sim:economy` y la parte de ciudad de las herramientas.
 
 ### 16.5 Pruebas
 `node test-class-look.mjs` (con `--shots`, capturas en `shots/clase-*.png`): 31 bien, 0 mal. Cubre:
@@ -1004,7 +1053,43 @@ pelea de la expedición y el abordaje traen la batalla armada y no pasan por ac�
 
 `test-e2e` elige Cazador en el onboarding y revisa que quede en la partida. `test-story` pasa por el paso nuevo.
 
+## 17. Elegir las activas y la subclase (paso 5b, cuarta parte)
+`openKitPicker(ctx, who)` de `src/scenes/class-pick.js`: un modal para quien lidera (`who: 'leader'`) o para una clase de
+la ciudad. Resuelve `true` si se guardó algo.
+
+### 17.1 Dónde se abre
+- **Pestaña Progreso:** un botón "Habilidades" en la fila de quien lidera (cuando ya tiene clase) y en la de cada clase
+  del grupo. La fila de cada clase dice qué activas lleva.
+- **El selector de clase** suma "Habilidades" (en lugar de "Ahora no") cuando quien lidera ya tiene clase. Se cierra y
+  abre el de las activas. Así llega también desde la ficha de quien lidera del panel de Expedición.
+- Se guarda en la ciudad: con una salida en curso, "Listo" avisa y no cambia nada.
+
+### 17.2 Qué muestra
+- **Las 4 activas de la clase**, con su texto y su recarga, y el ataque básico que va siempre.
+  - Las que no están abiertas se ven punteadas y dicen cuándo se abren: el nivel de clase para un integrante
+    (`POOL_UNLOCK`: 3 y 6), el nivel de quien lidera para el líder (7 y 16, porque su clase sube con su nivel).
+  - **Un integrante lleva siempre 2.** Tocar otra cambia la segunda.
+  - **Quien lidera deja 2 en orden** (1.ª y 2.ª): la 1.ª entra con el primer espacio de clase (nivel 6) y la 2.ª con el
+    segundo (nivel 12). Antes de eso se pueden dejar elegidas, y la marca de las que todavía no entran se ve apagada.
+- **Las pasivas** de la clase, con el nivel en que llega cada una.
+- **La subclase** (solo quien lidera): una tarjeta por cada elemento encontrado, con sus 2 habilidades, su pasiva y
+  el nivel de cada cosa. Sin elementos dice que se abre con el primero. En el Acto 1 hay una sola (la de Raíz), y
+  elegirla la guarda explícita (`setSubclass`).
+
+### 17.3 Pruebas
+`node test-class-look.mjs` suma 16 (47 bien, 0 mal): la curva vieja → la nueva sin bajar de nivel; el botón en
+Progreso; las 4 activas con las cerradas y el orden; la subclase y las pasivas; no guarda con una salida en curso;
+"Listo" guarda activas y subclase; el Forjador en nivel 6 con las 4 abiertas y siempre 2; el selector de clase lleva
+a las habilidades. La captura es `shots/clase-habilidades.png`.
+
 ## Estado
+- **Paso 5b, cuarta parte** (elegir las activas y la subclase en la ciudad, §17, y el balance de la curva de clase, el
+  muelle, el abordaje y el líder cazador, §8): **hecha** en la rama `claude/clases-activas-5b4`, sin mergear. No toca la
+  economía (`data.js`, `economy.js`, `tools-city.js`).
+  - `sim:combat --n 20`: todas las metas ✔ (166 s). `sim:economy`: las mismas 18 ✔ y 4 ✘ que master.
+  - Pruebas, cada una sola: `test-class-look` 47, `test-classes` 80, `test-combat` 100, `test-combat-scene` 29,
+    `test-combat-exp` 75, `test-expedition` 30, `test-people` 31, `test-act1` 84, `test-story` 107, `test-e2e` 104 y
+    `test-cycle` 61, todas sin fallas.
 - **Paso 5b, tercera parte** (elegir la clase en el onboarding y en la ciudad, y el aspecto de cada clase en la
   ciudad, la expedición y el combate, §16): **hecha** en la rama `claude/clases-look-5b3`, sin mergear. Falta la
   interfaz de activas y subclase (§16.4).
