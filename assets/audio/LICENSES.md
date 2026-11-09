@@ -117,3 +117,7 @@ De Freesound se usaron las vistas previas en MP3 (`-hq`, se bajan sin cuenta); l
 - Descarga: https://opengameart.org/sites/default/files/RPGsounds_Kenney.zip
 - Archivos: `sfx/act_footstep00.m4a`, `sfx/act_footstep01.m4a`, `sfx/act_footstep02.m4a`, `sfx/act_footstep03.m4a`, `sfx/act_footstep04.m4a`, `sfx/act_footstep05.m4a`, `sfx/act_bookFlip1.m4a`, `sfx/act_bookFlip2.m4a`, `sfx/act_bookOpen.m4a`, `sfx/act_bookClose.m4a`, `sfx/act_cloth1.m4a`, `sfx/act_cloth3.m4a`, `sfx/act_creak1.m4a`, `sfx/act_creak2.m4a`, `sfx/act_chop.m4a`, `sfx/act_metalClick.m4a`, `sfx/act_metalLatch.m4a`, `sfx/act_handleCoins.m4a`, `sfx/act_handleCoins2.m4a`, `sfx/act_doorOpen1.m4a`, `sfx/act_doorClose1.m4a`, `sfx/act_dropLeather.m4a`, `sfx/act_metalPot1.m4a`, `sfx/act_knifeSlice.m4a`, `sfx/act_drawKnife1.m4a`
 
+## Narrador
+- Autor: voz generada con Gemini TTS (Google) para Pixelia, con `tools/audio/narrate.mjs`
+- Licencia: generada para el juego (no es CC0)
+- Archivos: `voice/intro/01.m4a`

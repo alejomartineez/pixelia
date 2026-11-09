@@ -91,7 +91,7 @@ export const HEADS = {
     px: [...span(-2, 2, 4, 's'), ...span(-1, 1, 5, 's'), ...span(-2, 11, 13, 's'), ...span(-1, 10, 14, '1'), [13, -2, '1'], [14, 0, '1'],
       [7, 3, '1'], [9, 3, '1'], ...span(5, 2, 13, '0'), [1, 4, '0'], [14, 4, '0'], ...span(6, 3, 12, 'q'), ...span(7, 4, 11, 'q'),
       [15, 1, '1'], [15, 2, '1'], [15, 3, '1'], [15, 4, '1'], [14, 1, '1']],
-    eyes: [[3, -1], [12, -1]], mouth: [7, 5], noBrow: true,
+    eyes: [[3, -1], [12, -1]], mouth: [7, 5], noBrow: true, hatDy: 2, eyesOver: true,
   },
   zorro: {
     w: 12, rows: [8, 10, 12, 12, 12, 12, 12, 10, 8, 6],
@@ -400,7 +400,7 @@ export const HATS = {
     '..xXxxxxxxxxxxx&..',
     '.&&&&&&&&&&&&&&&&.',
   ] },
-  casco: { ox: -2, oy: -3, hide: 'all', rows: [
+  casco: { ox: -2, oy: -5, hide: 'all', rows: [
     '.......k........',
     '.....mmmmmm.....',
     '...mMMmmmmmm5...',
@@ -408,9 +408,8 @@ export const HATS = {
     '.mMmmmmmmmmmmm5.',
     '.mMmmmmmmmmmmm5.',
     '.8bbbbBbbbbbb88.',
-    '.m5.....m5....5.',
-    '.m5.....m5....5.',
-    '........m5......',
+    '.m5..........m5.',
+    '.m5..........m5.',
   ] },
   galera: { ox: -3, oy: -3, hide: 1, rows: [
     '......llllll......',
@@ -422,7 +421,6 @@ export const HATS = {
   ] },
   yelmo: { ox: -2, oy: -6, hide: 'all', rows: [
     'R..............R',
-    'r..............r',
     'rR............r^',
     '.rr..mmmmmm..r^.',
     '..rmMMmmmmmm5^..',
@@ -430,9 +428,8 @@ export const HATS = {
     '.mMmmmmmmmmmmm5.',
     '.mMmmmmmmmmmmm5.',
     '.8bbbbBbbbbbb88.',
-    '.mm5........mm5.',
-    '.mm5........mm5.',
-    '..m5........m5..',
+    '.m5..........m5.',
+    '.m5..........m5.',
   ] },
 };
 
@@ -448,6 +445,9 @@ export const ARMS = {
   strike: { x: 0, y: 0, hand: [4, 3], rows: ['aaa...', 'aaaa..', '.aaai.', '..aiggg', '...ggg'] },
   point: { x: 0, y: 0, hand: [6, 1], rows: ['aaaaai.', 'aaaaaiggg', '.aaaaigg'] },
   give: { x: 0, y: 0, hand: [5, 3], rows: ['aaa...', 'aaa...', 'aaaai.', '.aaaiggg', '.....ggg'] },
+  // al caminar: el brazo va adelante (sale del cuerpo y sube la mano) o queda atrás pegado
+  swing: { x: 0, y: 0, stretch: 1, hand: [3, 3], rows: ['aaa..', '.aaa.', '..aaa', '..iii', '..ggg', '..ggg'] },
+  back: { x: -1, y: 0, stretch: 2, hand: [1, 5], rows: ['aaa', 'aaa', 'aaa', 'aaa', 'iii', 'ggg', 'ggg'] },
   // brazo que tensa la cuerda: cruza el pecho hacia el centro (en espejo queda del lado de atrás)
   draw: { x: -5, y: 1, hand: [0, 0], rows: ['ggiaaaa', 'ggiaaaa'] },
 };
@@ -457,30 +457,30 @@ export const ARMS = {
 // para cada dirección. dir: up (en guardia), raise (levantada atrás), strike (después del golpe), fwd (al frente).
 export const DIRS = { up: [0, -1], raise: [-1, -1], strike: [1, 1], fwd: [1, 0], down: [0, 1] };
 export const WEAPONS = {
-  espada: { kind: 'melee', back: [['b', 1]], shaft: [['+', 1], ['guard', 1], ['blade', 9]], tip: true },
-  hacha: { kind: 'melee', back: [['6', 2]], shaft: [['w', 9]], head: {
-    up: { rows: ['..MM.', '.wmmM', '.wmmmM', '.wmm5', '.w55.'], ox: -1 },
-    raise: { at: [0, 0], rows: ['.M..', 'Mm5.', 'mmw.', '.5.w'], ox: -1, oy: -1 },
-    strike: { at: [0, 0], rows: ['w.m.', '.wmm', '.5mM', '..5.'], ox: -1, oy: -1 },
-    fwd: { at: [0, 0], rows: ['.Mm.', 'wmmm', '.5m5'], ox: -1, oy: -1 },
+  espada: { kind: 'melee', back: [['b', 1]], shaft: [['+', 1], ['guard', 1], ['blade', 11]], tip: true },
+  hacha: { kind: 'melee', back: [['6', 2]], shaft: [['w', 11]], head: {
+    up: { rows: ['..MM..', '.wMmmM', '.wmmmm5', '.wmmmm5', '.wmm55', '.w55..'], ox: -1 },
+    raise: { rows: ['.MM..', 'MmmM.', 'mmmm5', '.mm55', '..5.w'], ox: -2, oy: -2 },
+    strike: { rows: ['w..M.', '.wmmM', '.mmmm5', '..mm55', '...55'], ox: -1, oy: -1 },
+    fwd: { rows: ['.MMm.', 'wmmmm', '.mmm5', '.5555'], ox: -1, oy: -1 },
   } },
-  martillo: { kind: 'melee', back: [['6', 2]], shaft: [['w', 8]], head: {
-    up: { rows: ['mMmm5', 'mmmm5', '5555%'], ox: -2, oy: -2 },
-    raise: { rows: ['.mM.', 'mMm5', 'mmm5', '.55.'], ox: -2, oy: -2 },
-    strike: { rows: ['.mm.', 'mMm5', 'mmm5', '.55.'], ox: -1, oy: -1 },
-    fwd: { rows: ['mm5', 'Mm5', 'mm5', 'm55'], ox: 0, oy: -2 },
+  martillo: { kind: 'melee', back: [['6', 2]], shaft: [['w', 9]], head: {
+    up: { rows: ['MMMmmm5', 'Mmmmmm5', 'mmmmmm5', '5555555'], ox: -3, oy: -3 },
+    raise: { rows: ['.MMm.', 'MMmm5', 'Mmmm5', 'mmmm5', '.555.'], ox: -2, oy: -2 },
+    strike: { rows: ['.MMm.', 'MMmm5', 'Mmmm5', 'mmmm5', '.555.'], ox: -2, oy: -2 },
+    fwd: { rows: ['MMm5', 'Mmm5', 'mmm5', 'mmm5', 'm555'], ox: 0, oy: -2 },
   } },
-  lanza: { kind: 'thrust', back: [['6', 4]], shaft: [['w', 12]], head: {
-    up: { rows: ['.M.', 'Mm5', '.m.'], ox: -1, oy: -2 },
-    raise: { rows: ['M.', '.m'], ox: -1, oy: -1 },
-    strike: { rows: ['m.', '.M'], ox: 0, oy: 0 },
-    fwd: { rows: ['.M.', 'mmM5', '.5.'], ox: 0, oy: -1 },
+  lanza: { kind: 'thrust', back: [['6', 4]], shaft: [['w', 14]], head: {
+    up: { rows: ['.M.', 'MM5', 'Mm5', '.m.'], ox: -1, oy: -3 },
+    raise: { rows: ['MM.', 'Mm.', '..m'], ox: -1, oy: -1 },
+    strike: { rows: ['m..', '.mM', '.MM'], ox: 0, oy: 0 },
+    fwd: { rows: ['.MM.', 'mmMM5', '.55.'], ox: 0, oy: -1 },
   } },
-  baston: { kind: 'cast', back: [['6', 5]], shaft: [['w', 11]], head: {
-    up: { rows: ['.V.', 'VvV', '*v*', '.6.'], ox: -1, oy: -3 },
-    raise: { rows: ['.V.', 'VvV', '*v*', '.6.'], ox: -1, oy: -3 },
-    strike: { rows: ['.V.', 'VvV', '*v*'], ox: -1, oy: -1 },
-    fwd: { rows: ['.V.', 'VvV', '*v*'], ox: 0, oy: -1 },
+  baston: { kind: 'cast', back: [['6', 5]], shaft: [['w', 13]], head: {
+    up: { rows: ['.VV.', 'VvvV', 'Vv**', '.**.', '.6..'], ox: -1, oy: -4 },
+    raise: { rows: ['.VV.', 'VvvV', 'Vv**', '.**.', '.6..'], ox: -1, oy: -4 },
+    strike: { rows: ['.VV.', 'VvvV', 'Vv**', '.**.'], ox: -1, oy: -1 },
+    fwd: { rows: ['.VV.', 'VvvV', 'Vv**', '.**.'], ox: 0, oy: -2 },
   } },
   // en la mano, dibujados enteros ('+' es el agarre)
   arco: { kind: 'bow', grid: ['.W...', '.NW..', '.N.W.', '.N..W', '.N..W', '.N..W', '.N..l', '.N..+', '.N..l', '.N..W', '.N..W', '.N..W', '.N.W.', '.NW..', '.W...'] },
@@ -503,8 +503,10 @@ export const BODY_GEAR = {
 export const ITEMS = {
   caja: ['WWwww6', 'w6ww66', 'w8ww86', 'w6ww66', '666666'],
   veta: ['..V..', '.VvV.', 'VVv**', '.v**.', '..*..'],
-  carta: ['NnnnN', 'n9999', 'nnnnn', '99999'],
-  bolsa: ['.4l.', '.88.', 'lLll', 'llll', '4ll4'],
+  // carta: sobre claro con la solapa marcada y un sello rojo, para que se lea como carta
+  carta: ['NnnnnnN', 'n9nnn9n', 'nn9!9nn', 'nnn!nnn', '9999999'],
+  // bolsa: saco atado con el cordón y una moneda asomando
+  bolsa: ['..44..', '..88..', '.lLll4', 'lLlll4', 'llBll4', '.4444.'],
 };
 // efectos: flecha, fogonazo y destello de veta (no llevan contorno)
 export const FX = {

@@ -91,17 +91,26 @@ if (view === 'grid') {
 }
 if (view === 'anims') {
   // cada animación cuadro a cuadro a 4× (y 1× al final de la fila)
-  const who = [
+  // set=all: las seis clases, el tirador y las armas sueltas (lanza, escudo, farol, libro, orbe), cada fila con otro
+  // objeto en los gestos (caja, veta, carta, bolsa). rows=a-b muestra solo esas filas.
+  const few = [
     { look: baseLook('humano'), cls: 'guerrero' }, { look: baseLook('humano'), cls: 'cazador' },
     { look: baseLook('enano'), cls: 'forjador' }, { look: baseLook('orco'), cls: 'monje' }, { look: ENEMY_LOOKS.tirador.look, gear: 'trabuco' },
   ];
+  const all = [...few, { look: baseLook('zorro'), cls: 'curandero' }, { look: baseLook('anuro'), cls: 'saqueador' },
+    { look: baseLook('humano'), gear: 'lanza' }, { look: baseLook('enano'), gear: 'escudo' }, { look: baseLook('zorro'), gear: 'farolito' },
+    { look: baseLook('humano'), gear: 'libro' }, { look: baseLook('orco'), gear: 'orbe' }];
+  const [r0, r1] = (q.get('rows') || '0-99').split('-').map(Number);
+  const who = (q.get('set') === 'all' ? all : few).slice(r0, r1 + 1);
+  const ITEMS4 = ['caja', 'veta', 'carta', 'bolsa'];
   const k = Number(q.get('k') || 3);
-  for (const w of who) {
+  who.forEach((w, n) => {
+    const item = ITEMS4[(n + r0) % 4];
     const r = el('div', 'row');
-    for (const a of ANIM_IDS) for (let f = 0; f < ANIMS[a].frames; f++) r.append(fig(frameCanvas(w.look, a, f, { ...w, scale: k, item: 'caja' }), f ? '' : a));
-    for (const a of ANIM_IDS) r.append(fig(frameCanvas(w.look, a, 0, { ...w, scale: 1, item: 'caja' })));
+    for (const a of ANIM_IDS) for (let f = 0; f < ANIMS[a].frames; f++) r.append(fig(frameCanvas(w.look, a, f, { ...w, scale: k, item }), f ? '' : a));
+    for (const a of ANIM_IDS) r.append(fig(frameCanvas(w.look, a, 0, { ...w, scale: 1, item })));
     out.append(r);
-  }
+  });
 }
 if (view === 'parts') {
   // pelos, barbas, sombreros y ropa de a uno, sobre el humano base

@@ -3,12 +3,15 @@
 //   audio.sfx('coin') · audio.music('city') · audio.music(null) · audio.configure(settings) · audio.unlock()
 // y suma: audio.setScene({ place, night, weather, light, threat, indoor, danger }) · audio.stinger('hallazgo')
 // · audio.intensity(0..1) · audio.epic(true) · audio.motif('quiebre') · audio.step('piedra') · audio.thunder()
-// · audio.dialog(true) (baja la música en los diálogos) · audio.connect(bus) (stingers, trueno y noche por eventos).
+// · audio.dialog(true) (baja la música en los diálogos) · audio.connect(bus) (stingers, trueno y noche por eventos)
+// · audio.track('intro') (pista grabada .m4a del manifest, categoría music: la de Suno entra así) · audio.voice('intro/01')
+// (una línea del narrador por el bus de voz, con la música baja mientras habla; PLAN-TRAVESIA §3a).
 // El audio se habilita con el primer gesto (unlock en main.js). Sin muestras cargadas suena la síntesis de respaldo.
 import { createEngine, SFX, UI_SFX, PLACE_PIECE } from '../audio/engine.js';
 import { resolvePiece } from '../audio/composer.js';
 import { PIECES } from '../audio/pieces.js';
 
+const PRIO_TRACK = 6;   // pista grabada y voz: no las roba el límite de voces
 let ctx = null, engine = null, timer = null, unlocking = null, userUnlocked = false, preloaded = null;
 // volúmenes 0..1 de Ajustes (src/core/settings.js); music/sfx son el sí/no de siempre
 let settings = { music: true, sfx: true, volMaster: 0.8, volMusic: 0.7, volSfx: 0.8, volAmb: 0.6, volUi: 0.8, volVoice: 1 };
@@ -26,7 +29,7 @@ function gains() {
     voice: BASE.voice * vol('volVoice', 1),
   };
 }
-let currentSong = null, scene = { place: 'city', night: false, weather: 'despejado', light: 1 }, lastHooked = 0;
+let currentSong = null, currentTrack = null, trackPlay = null, scene = { place: 'city', night: false, weather: 'despejado', light: 1 }, lastHooked = 0;
 
 function ensure() {
   if (ctx) return ctx;
@@ -43,7 +46,8 @@ function startTimer() {
 }
 function running() { return !!ctx && ctx.state === 'running'; }
 function preload() {
-  if (!preloaded && engine) preloaded = engine.preload().catch(() => {});
+  // las pistas grabadas (categoría music) se bajan también durante el splash
+  if (!preloaded && engine) preloaded = engine.preload().then(() => engine.sampler.loadGroup('music')).catch(() => {});
   return preloaded;
 }
 // lugar por defecto de cada pista, para las escenas que no lo dicen (Equipaje, onboarding)
@@ -53,7 +57,12 @@ export const audio = {
   unlock() {
     if (!ensure()) return;
     userUnlocked = true;
-    const go = () => { startTimer(); preload(); if (currentSong) audio.music(currentSong, true); engine.setScene(scene, { now: true, follow: false }); };
+    const go = () => {
+      startTimer(); preload();
+      if (currentTrack) audio.track(currentTrack.id, { ...currentTrack.o, force: true });
+      else if (currentSong) audio.music(currentSong, true);
+      engine.setScene(scene, { now: true, follow: false });
+    };
     // resume() es asíncrono: la música recién puede arrancar cuando el contexto pasa a 'running'
     if (ctx.state !== 'running') {
       if (!unlocking) {
@@ -86,6 +95,7 @@ export const audio = {
   },
   /** Cambia la música: 'city' | 'calm' | 'expedition' | 'threat' | 'battle' | 'epic' | … | null. Cae en el compás. */
   music(name, force = false) {
+    if (currentTrack) audio.track(null);
     const p = resolvePiece(name);
     if (p === currentSong && !force) return;
     currentSong = p;
@@ -136,11 +146,69 @@ export const audio = {
   },
   get songs() { return Object.keys(PIECES); },
   get placePiece() { return PLACE_PIECE; },
+  /**
+   * Pista grabada: 'track/<id>' del manifest (.m4a, categoría music), por el bus de música, en loop salvo { loop: false }.
+   * Reemplaza a la música compuesta mientras suena; audio.track(null) la corta con fundido y audio.music(…) vuelve a la
+   * compuesta. Si la pista no está en el manifest (todavía no se grabó) suena { fallback } (una pieza, por defecto nada
+   * cambia). Devuelve una promesa: true si sonó la grabación.
+   */
+  async track(id, o = {}) {
+    const { loop = true, fade = 1.2, fallback = null, force = false, gain = 1 } = o;
+    if (!id) {
+      const tp = trackPlay; trackPlay = null; currentTrack = null;
+      if (tp && running()) tp.stop(ctx.currentTime, fade);
+      return false;
+    }
+    if (currentTrack?.id === id && trackPlay && !force) return true;
+    if (trackPlay && running()) trackPlay.stop(ctx.currentTime, fade);
+    trackPlay = null;
+    currentTrack = { id, o: { loop, fade, fallback, gain } };
+    if (!ensure()) return false;
+    const key = 'track/' + id;
+    await engine.sampler.loadManifest();
+    if (!engine.sampler.manifest?.files?.[key]) {
+      currentTrack = null;
+      if (fallback) audio.music(fallback);
+      return false;
+    }
+    await engine.sampler.load([key]);
+    if (currentTrack?.id !== id || !running() || !engine.sampler.has(key)) return false;
+    engine.composer.stop(); currentSong = null;
+    trackPlay = engine.sampler.play(key, { out: engine.mixer.music, loop, gain, attack: fade, release: fade, prio: PRIO_TRACK });
+    return !!trackPlay;
+  },
+  /** La pista grabada que suena (o null). */
+  get trackId() { return currentTrack?.id || null; },
+  /** Duración (s) de una línea grabada del narrador según el manifest, o null si no hay (o no cargó el manifest). */
+  voiceDur(id) { return engine?.sampler.manifest?.files?.['voice/' + id]?.dur ?? null; },
+  /** Baja el manifest y las líneas pedidas (para que voiceDur sepa y la voz arranque sin espera). */
+  async prepareVoice(ids = []) {
+    if (!ensure()) return;
+    await engine.sampler.loadManifest();
+    await engine.sampler.load(ids.map(i => 'voice/' + i));
+  },
+  /**
+   * Una línea del narrador ('intro/01' → voice/intro/01.m4a) por el bus de voz. La música baja mientras habla.
+   * Devuelve { dur, end, stop() } o null si no hay grabación o el audio no arrancó (el subtítulo sigue con su tiempo).
+   */
+  voice(id, { duck = 0.35 } = {}) {
+    if (!running() || !(vol('volVoice', 1) > 0)) return null;
+    const key = 'voice/' + id;
+    if (!engine.sampler.has(key)) { engine.sampler.load([key]); return null; }
+    const v = engine.sampler.play(key, { out: engine.mixer.voice, prio: PRIO_TRACK + 1, attack: 0.01, release: 0.15 });
+    if (!v) return null;
+    const holdKey = 'voice:' + id;
+    engine.mixer.duckHold(holdKey, duck);
+    const release = () => engine?.mixer.duckHold(holdKey, null);
+    const ms = Math.max(0, (v.end - ctx.currentTime) * 1000 + 250);
+    const tm = setTimeout(release, ms);
+    return { dur: v.end - ctx.currentTime, end: v.end, stop: () => { clearTimeout(tm); release(); v.stop(ctx.currentTime, 0.2); } };
+  },
   /** Para las pruebas: estado del motor. */
   debug() {
     if (!engine) return { ctx: ctx?.state || 'none' };
     return { ctx: ctx.state, levels: engine.mixer.levels(), music: engine.composer.state, scape: engine.soundscape.state,
-      voices: engine.mixer.voiceStats, loaded: engine.sampler.loaded, failed: engine.sampler.failed, reverb: engine.mixer.reverb, scene: engine.scene };
+      track: currentTrack?.id || null, voices: engine.mixer.voiceStats, loaded: engine.sampler.loaded, failed: engine.sampler.failed, reverb: engine.mixer.reverb, scene: engine.scene };
   },
   get engine() { return engine; },
 };

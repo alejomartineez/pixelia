@@ -18,7 +18,7 @@ const OUT = join(ROOT, 'assets/audio');
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const SRC = arg('--src');
 const ONLY = arg('--only');
-if (!SRC || !existsSync(SRC)) { console.error('Falta --src <carpeta de descargas>'); process.exit(1); }
+const VOICE = arg('--voice');
 
 const ff = (args, opts = {}) => {
   const r = spawnSync('ffmpeg', ['-hide_banner', '-nostdin', '-y', ...args], { maxBuffer: 1 << 28, ...opts });
@@ -26,6 +26,36 @@ const ff = (args, opts = {}) => {
   return r;
 };
 const probeDur = (f) => Number(String(spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f]).stdout).trim());
+
+// sección del narrador en LICENSES.md (la arma --voice y también la pasada completa)
+const NARRATOR_MD = (files) => '## Narrador\n- Autor: voz generada con Gemini TTS (Google) para Pixelia, con `tools/audio/narrate.mjs`\n' +
+  '- Licencia: generada para el juego (no es CC0)\n- Archivos: ' + files.map(f => '`' + f + '`').join(', ') + '\n';
+// Voz del narrador (PLAN-TRAVESIA §3a): `--voice <lista.json>` con [{ id: 'voice/intro/01', wav }] que arma
+// narrate.mjs. Saca el silencio de las puntas, normaliza a −18 LUFS (la voz va adelante de la música), pasa a mono y a
+// AAC, y suma cada una al manifest con categoría 'voice' y su duración real (los subtítulos se estiran a eso).
+if (VOICE) {
+  const list = JSON.parse(readFileSync(VOICE, 'utf8'));
+  const mpath = join(OUT, 'manifest.json');
+  const manifest = JSON.parse(readFileSync(mpath, 'utf8'));
+  for (const { id, wav } of list) {
+    const rel = id.replace(/^voice\//, '').replace(/[^a-zA-Z0-9_/-]/g, '_') + '.m4a';
+    const out = join(OUT, 'voice', rel);
+    mkdirSync(dirname(out), { recursive: true });
+    const trim = 'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.02';
+    ff(['-i', wav, '-af', `${trim},areverse,${trim},areverse,afade=t=in:d=0.01,loudnorm=I=-18:TP=-1.5:LRA=11,alimiter=limit=0.9`,
+      '-ac', '1', '-ar', '44100', '-c:a', 'aac', '-b:a', '96k', '-movflags', '+faststart', out]);
+    const dur = probeDur(out);
+    manifest.files[id] = { file: 'voice/' + rel, cat: 'voice', dur: Math.round(dur * 1000) / 1000, src: 'gemini' };
+    console.log(`  ${id.padEnd(22)} ${(statSync(out).size / 1024).toFixed(0).padStart(4)} KB  ${dur.toFixed(2)} s`);
+  }
+  if (!manifest.credits.some(c => c.name === 'Narrador')) manifest.credits.push({ name: 'Narrador', author: 'Voz generada con Gemini TTS (Google)', license: 'Generada para Pixelia', url: '' });
+  writeFileSync(mpath, JSON.stringify(manifest, null, 1));
+  const lpath = join(OUT, 'LICENSES.md'), voiceFiles = Object.values(manifest.files).filter(f => f.cat === 'voice').map(f => f.file);
+  const lic = readFileSync(lpath, 'utf8').replace(/\n## Narrador\n[\s\S]*?(?=\n## |$)/, '').trimEnd();
+  writeFileSync(lpath, lic + '\n\n' + NARRATOR_MD(voiceFiles));
+  process.exit(0);
+}
+if (!SRC || !existsSync(SRC)) { console.error('Falta --src <carpeta de descargas>'); process.exit(1); }
 
 /** Cadena de filtros de recorte y limpieza (sin la ganancia). */
 function baseChain(e) {
@@ -90,6 +120,8 @@ function encode(e, gainDb, outFile) {
 const list = SOURCES.filter(e => !ONLY || e.id.startsWith(ONLY) || e.inst === ONLY);
 const prevPath = join(OUT, 'manifest.json');
 const manifest = existsSync(prevPath) && ONLY ? JSON.parse(readFileSync(prevPath, 'utf8')) : { files: {}, instruments: {} };
+// la voz del narrador la arma narrate.mjs (--voice): una pasada completa no la borra
+if (!ONLY && existsSync(prevPath)) for (const [id, f] of Object.entries(JSON.parse(readFileSync(prevPath, 'utf8')).files)) if (f.cat === 'voice') manifest.files[id] = f;
 
 // ganancia por instrumento: el pico más alto de sus notas queda en −1,5 dBFS (respeta la dinámica entre notas)
 const peaks = new Map();
@@ -124,7 +156,8 @@ manifest.version = 1;
 const by = {};
 for (const [id, f] of Object.entries(manifest.files)) (by[f.src] ||= []).push(id);
 // créditos para el juego (Ajustes → Partida)
-manifest.credits = Object.keys(by).map(k => { const o = ORIGINS[k] || {}; return { name: o.name || k, author: o.author || '?', license: o.license || '?', url: o.url || '' }; });
+manifest.credits = Object.keys(by).filter(k => k !== 'gemini').map(k => { const o = ORIGINS[k] || {}; return { name: o.name || k, author: o.author || '?', license: o.license || '?', url: o.url || '' }; });
+if (by.gemini) manifest.credits.push({ name: 'Narrador', author: 'Voz generada con Gemini TTS (Google)', license: 'Generada para Pixelia', url: '' });
 writeFileSync(prevPath, JSON.stringify(manifest, null, 1));
 
 // LICENSES.md
@@ -133,8 +166,10 @@ let md = '# Sonidos de Pixelia: origen y licencias\n\nTodo es de uso libre y sin
   'a partir de `tools/audio/sources.mjs`; los archivos se recortaron, normalizaron y pasaron a AAC (.m4a).\n\n' +
   'De Freesound se usaron las vistas previas en MP3 (`-hq`, se bajan sin cuenta); la licencia CC0 es la misma que la del original.\n\n';
 for (const [k, ids] of Object.entries(by)) {
+  if (k === 'gemini') continue;
   const o = ORIGINS[k] || { name: k, author: '?', url: '', license: '?' };
   md += `## ${o.name}\n- Autor: ${o.author}\n- Licencia: ${o.license}\n- Fuente: ${o.url}${o.file && o.file !== o.url ? `\n- Descarga: ${o.file}` : ''}\n- Archivos: ${ids.map(i => '`' + manifest.files[i].file + '`').join(', ')}\n\n`;
 }
+if (by.gemini) md += NARRATOR_MD(by.gemini.map(i => manifest.files[i].file));
 writeFileSync(join(OUT, 'LICENSES.md'), md);
 console.log(`\n${list.length} archivos · ${(total / 1048576).toFixed(2)} MB`);

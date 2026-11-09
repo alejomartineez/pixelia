@@ -8,12 +8,15 @@
 //  6. Tu fragmento en ruinas al atardecer y un esquife que llega.
 // Es la primera escena de una partida nueva (main.js, `!state.introSeen`) y se vuelve a ver desde la Bitácora
 // ({replay: 1, back: 'city'}). Clic, Enter o Espacio pasan al plano siguiente; Esc o "Saltar" la terminan.
+// Corre sobre el motor de cinemáticas (src/cinema/player.js): acá quedan los decorados, la luz y los planos.
 // Calidad: el renderer respeta ?quality=low y los Ajustes (sombras, contorno, tope de FPS).
 import * as THREE from 'three';
 import { Voxels, createPixelRenderer, addLights, voxelMaterial } from '../core/voxel.js';
 import { avatarModel } from '../avatar/avatar.js';
 import { skiffModel } from '../avatar/skiff.js';
 import { natureModel } from '../city/models.js';
+import { createCinema } from '../cinema/player.js';
+import { travel } from '../cinema/timeline.js';
 
 // ---------- Texto (M4: una línea por plano, que dé ganas de ver la siguiente) ----------
 export const INTRO_LINES = [
@@ -64,10 +67,9 @@ export default function create(ctx) {
   let r = null, root = null, alive = false, offFrame = null, onKey = null, params = {};
   const own = [];        // geometrías y materiales propios (los modelos de gente y árboles se comparten: no se tocan)
   const sets = [];       // un grupo por plano
-  let shot = 0, t = 0, finished = false, titleT = -1;
+  let shot = 0, cin = null;
   let lights = null, lamps = [];
   const shake = { amp: 0 };
-  const reduce = () => document.documentElement.classList.contains('reduce-motion');
 
   // ---------- Ayudas de armado ----------
   const glowMats = {};
@@ -621,46 +623,29 @@ export default function create(ctx) {
     cam.updateProjectionMatrix();
   }
 
-  // ---------- Interfaz ----------
-  let ui = null;
-  function buildUi(container) {
-    const { h } = ctx.ui;
-    const el = h('div.in-root');
-    const fade = h('div.in-fade');
-    const sub = h('p.in-sub', { 'aria-live': 'polite' });
-    const title = h('div.in-title', {}, INTRO_TITLE);
-    const skip = h('button.btn.ghost.small.in-skip', { html: 'Saltar <small>(Esc)</small>' });
-    const dots = h('div.in-dots', { html: SHOTS.map(() => '<i></i>').join('') });
-    el.append(h('div.in-bar.top'), h('div.in-bar.bot'), fade, sub, title, dots, skip);
-    container.append(el);
-    skip.addEventListener('click', (e) => { e.stopPropagation(); try { ctx.audio.sfx('close'); } catch {} finish('skip'); });
-    el.addEventListener('click', () => next());
-    return { el, fade, sub, title, dots };
+  // ---------- Planos sobre el motor de cinemáticas (src/cinema/) ----------
+  // cada plano de SHOTS pasa a la línea de tiempo: travelling de dos puntos con ease, un subtítulo de 0,7 s hasta
+  // medio segundo antes del final, y el último con el título y 1,4 s de espera.
+  function cinemaShots() {
+    return SHOTS.map((S, i) => ({
+      set: sets[i], dur: S.dur, tail: 0.5, light: S.light, shadow: S.shadow, title: !!S.title, hold: S.title ? 1.4 : 0,
+      cam: travel(S.dur, [S.cam[0], S.look[0]], [S.cam[1], S.look[1]]),
+      subs: [{ at: 0.7, text: INTRO_LINES[i], dur: S.dur - 1.2 }],
+      // el plano del robo sigue a los que corren
+      camFn: S.night ? (tt, cam, u) => {
+        const people = sets[i].userData.people;
+        if (!people) return;
+        const lead = people.thieves[0].position.x, e = ease(u);
+        cam.pos.x = lead + 0.4 + (1 - e) * 0.6; cam.look.x = lead + 0.7;
+      } : null,
+    }));
   }
-  function showShot(i) {
-    shot = i; t = 0;
-    sets.forEach((s, k) => { s.visible = k === i; });
-    const S = SHOTS[i];
-    applyLight(S.light, S.shadow);
+  function onShot(i) {
+    shot = i;
     for (const l of lamps) l.intensity = 0;
-    if (S.night && lamps.length) lamps[2].intensity = 1.2;
-    sets[i].userData.reset?.();
-    shake.amp = 0;
-    ui.sub.textContent = INTRO_LINES[i];
-    ui.sub.classList.remove('on');
-    ui.dots.querySelectorAll('i').forEach((d, k) => d.classList.toggle('on', k <= i));
-    ui.title.classList.remove('on');
-    titleT = -1;
-  }
-  function next() {
-    if (finished) return;
-    if (shot < SHOTS.length - 1) { try { ctx.audio.sfx('select'); } catch {} showShot(shot + 1); }
-    else finish('done');
+    if (SHOTS[i].night && lamps.length) lamps[2].intensity = 1.2;
   }
   async function finish(how) {
-    if (finished) return;
-    finished = true;
-    ui?.el.classList.add('out');
     const s = ctx.state;
     if (!params.replay) {
       s.introSeen = true;
@@ -673,106 +658,40 @@ export default function create(ctx) {
     ctx.router.go(to);
   }
 
-  // ---------- Bucle ----------
-  const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
-  function frame(dt, tt) {
-    if (finished) return;
-    dt = Math.min(dt, 0.05);
-    t += dt;
-    const S = SHOTS[shot];
-    const set = sets[shot];
-    set.userData.update?.(dt, tt, t);
-    const u = ease(t / S.dur);
-    camPos.set(...lerp3(S.cam[0], S.cam[1], u));
-    camLook.set(...lerp3(S.look[0], S.look[1], u));
-    if (shake.amp > 0 && !reduce()) {
-      camPos.x += (Math.random() - 0.5) * shake.amp * 2; camPos.y += (Math.random() - 0.5) * shake.amp * 2;
-    }
-    // el plano del robo sigue a los que corren
-    if (S.night && set.userData.people) {
-      const lead = set.userData.people.thieves[0].position.x;
-      camPos.x = lead + 0.4 + (1 - u) * 0.6; camLook.x = lead + 0.7;
-    }
-    // los encuadres están pensados para 16:9: en una ventana más angosta (16:10, 4:3) la cámara se aleja un poco para
-    // que no se corten los costados
-    const wide = 16 / 9, asp = r.camera.aspect || wide;
-    if (asp < wide) camPos.sub(camLook).multiplyScalar(Math.min(1.5, wide / asp)).add(camLook);
-    r.camera.position.copy(camPos);
-    r.camera.lookAt(camLook);
-    // fundido a negro entre planos y el subtítulo
-    const fadeIn = Math.max(0, 1 - t / 0.6), fadeOut = S.title ? 0 : Math.max(0, (t - (S.dur - 0.5)) / 0.5);
-    ui.fade.style.opacity = String(Math.min(1, Math.max(fadeIn, fadeOut)));
-    ui.sub.classList.toggle('on', t > 0.7 && t < S.dur - 0.5);
-    if (S.title && t > S.dur - 3.6 && titleT < 0) { titleT = t; ui.title.classList.add('on'); }
-    if (t >= S.dur + (S.title ? 1.4 : 0)) next();
-  }
-
   return {
     hud: false,
     music: 'intro',
     async mount(container, p = {}) {
       alive = true; params = p || {};
-      ensureStyle();
       r = createPixelRenderer(container, { ortho: false, fov: 42, background: 0x0b0d13, outline: true });
       lights = addLights(r.scene, { shadowSize: 30, shadowRes: 2048 });
       // faroles de la guardia y el brillo de lo robado (siempre en la escena: así no se recompilan los materiales)
       lamps = [new THREE.PointLight(0xffb060, 0, 5, 1.6), new THREE.PointLight(0xffb060, 0, 4.5, 1.6), new THREE.PointLight(0xa8e0ff, 0, 3, 1.6)];
       r.scene.add(...lamps);
       for (const S of SHOTS) { const g = S.build(); g.visible = false; sets.push(g); r.scene.add(g); }
-      ui = buildUi(container);
-      showShot(Math.max(0, Math.min(SHOTS.length - 1, Number(params.shot) || 0)));
-      offFrame = r.onFrame(frame);
+      cin = createCinema(ctx, container, { r, shots: cinemaShots(), prefix: 'in', title: INTRO_TITLE, applyLight, onShot, onFinish: finish, shake, advanceSfx: 'select' });
+      cin.go(Math.max(0, Math.min(SHOTS.length - 1, Number(params.shot) || 0)));
+      offFrame = r.onFrame((dt, tt) => cin.frame(dt, tt));
       onKey = (e) => {
-        if (finished) return;
-        if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); try { ctx.audio.sfx('close'); } catch {} finish('skip'); return; }
-        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) next(); return; }
+        if (cin.finished) return;
+        if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); try { ctx.audio.sfx('close'); } catch {} cin.finish('skip'); return; }
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); if (!e.repeat) cin.next(); return; }
         e.stopImmediatePropagation();
       };
       addEventListener('keydown', onKey, true);
       r.start();
-      if (window.__pixelia) window.__pixelia.intro = { get shot() { return shot; }, get t() { return t; }, get count() { return SHOTS.length; }, go: (i) => showShot(i), seek: (s) => { const S = sets[shot]; S.userData.reset?.(); t = 0; let k = 0; while (t < s && k++ < 2000) frame(1 / 30, t); }, next, skip: () => finish('skip'), r };
+      if (window.__pixelia) window.__pixelia.intro = { get shot() { return cin.shot; }, get t() { return cin.t; }, get count() { return SHOTS.length; }, go: (i) => cin.go(i), seek: (s) => cin.seek(s), next: () => cin.next(), skip: () => cin.finish('skip'), cinema: cin, r };
     },
     unmount() {
-      alive = false; finished = true;
+      alive = false;
       if (onKey) removeEventListener('keydown', onKey, true);
       offFrame?.();
       if (r) { r.stop(); r.dispose(); }
       for (const o of own.splice(0)) o.dispose?.();
       sets.length = 0; lamps = [];
-      ui?.el.remove(); ui = null;
+      cin?.dispose(); cin = null;
       if (window.__pixelia) delete window.__pixelia.intro;
       r = null;
     },
   };
-}
-
-// ---------- Estilos ----------
-let styled = false;
-function ensureStyle() {
-  if (styled) return;
-  styled = true;
-  const el = document.createElement('style');
-  el.id = 'intro-style';
-  el.textContent = `
-.in-root { position: absolute; inset: 0; z-index: 5; pointer-events: auto; cursor: pointer; user-select: none; transition: opacity .38s; }
-.in-root.out { opacity: 0; }
-.in-bar { position: absolute; left: 0; right: 0; height: 9vh; background: #050506; z-index: 2; }
-.in-bar.top { top: 0; } .in-bar.bot { bottom: 0; }
-.in-fade { position: absolute; inset: 0; background: #050506; opacity: 1; z-index: 1; pointer-events: none; }
-.in-sub { position: absolute; z-index: 3; left: 50%; bottom: calc(9vh + 22px); transform: translate(-50%, 6px); margin: 0;
-  width: min(900px, calc(100% - 48px)); text-align: center; color: #efe6d8; font-size: clamp(20px, 2.3vw, 28px); line-height: 1.3;
-  text-shadow: 0 2px 0 #000, 0 0 18px rgba(0,0,0,.85); opacity: 0; transition: opacity .6s, transform .6s; }
-.in-sub.on { opacity: 1; transform: translate(-50%, 0); }
-.in-title { position: absolute; z-index: 3; left: 0; right: 0; top: calc(9vh + 7%); text-align: center; color: #e8c676;
-  font-size: clamp(42px, 6.5vw, 86px); font-weight: 800; letter-spacing: .28em; text-transform: uppercase;
-  text-shadow: 0 4px 0 #000, 0 0 30px rgba(0,0,0,.8); opacity: 0; transform: scale(.96); transition: opacity 1.4s, transform 3s ease-out; }
-.in-title.on { opacity: 1; transform: none; }
-.in-skip { position: absolute; z-index: 4; top: calc(9vh + 12px); right: 18px; }
-.in-dots { position: absolute; z-index: 3; top: calc(9vh + 22px); left: 22px; display: flex; gap: 5px; }
-.in-dots i { width: 18px; height: 3px; background: rgba(239,230,216,.22); }
-.in-dots i.on { background: #e8c676; }
-html.reduce-motion .in-sub, html.reduce-motion .in-title { transition: opacity .2s; transform: translate(-50%, 0); }
-html.reduce-motion .in-title { transform: none; }
-`;
-  document.head.append(el);
 }
