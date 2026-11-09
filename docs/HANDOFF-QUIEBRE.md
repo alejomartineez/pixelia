@@ -92,14 +92,34 @@ cada paso.
     las notas compartidas, `paso-4a-propagar-brief.md`.
 - `test-story` ya está arreglado (`5fb6722`, onboarding con pueblo al azar).
 
+- **Propagación (esta tanda, commits `6502371` a `de2d00e`):**
+  - Orcos, anuros y Vaciados con la plantilla; la red de valor de `paletteOf` separa la ropa de la piel.
+  - Pintura nueva, cota en bandas y pañuelo con un umbral de rojo más fino.
+  - Enemigos low-poly con rampa por orientación y paletas más claras.
+  - Busto de la Bitácora que sigue al sombrero.
+  - Docs: DESIGN.md, DESIGN-STORY.md (pueblos) y la guía §6.
+- **Ojos (pedido del usuario):**
+  - El párpado salía rojo y se cambió.
+  - Ahora son ojos negros de 2 × 2, sin brillo (con brillo quedaban tiernos).
+  - Las cejas son gruesas: en V en enanos y orcos, rectas en humanos.
+  - Los enanos llevan la nariz colorada.
+  - El usuario mandó de referencia un enano pixel art y preguntó **por qué los nuestros no se ven así de detallados**.
+- **Tests:**
+  - `test-e2e` bajó de 32 a 7 fallas, todas por el tipo "chico"; el test ya está arreglado y falta volver a correrlo.
+  - `test-stress` dio 3 fallas de `expedition.js` (`combatState`). Corrió mientras se mergeaba origin/master: hay que
+    volver a correrlo.
+- **Galería:** `set=caras&who=pueblos`, `pick=` y `set=autos`.
+
 **Falta:**
-- El usuario vio el primer pase y dijo que se veía feo. La segunda pasada de `figure.js` (silueta, tonos planos, caras
-  con volumen, pose en A) todavía no está aprobada.
-- Iterar las 3 muestras (`set=giro`) hasta que el usuario dé el OK, y recién ahí propagar.
-- Arreglar `test-story` (onboarding, paso del nombre).
-- Volver a correr `test-e2e`, `test-settings` y `test-stress`.
-- Capturas finales y docs (DESIGN.md arte y tono, DESIGN-STORY pueblos).
-- El brief completo para la sesión siguiente está en las notas compartidas: `paso-4a-estado-brief.md`.
+1. **Pasada de detalle** (respuesta a la pregunta del usuario), sobre las 3 muestras primero:
+   - tonos pintados por bloque, sin ruido: degradé en la barba, luz en los bordes de arriba y sombra en los pliegues;
+   - más accesorios: hebillas, remaches, correas y bolsos;
+   - proporción más robusta, como la referencia: cabeza y manos más grandes;
+   - mostrársela al usuario y recién ahí propagar.
+2. Volver a correr `test-e2e` y `test-stress` hasta que den verde.
+3. Capturas finales en `shots/personajes/` y enviárselas al usuario.
+4. **M5, el esquife volador** (pedido del coordinador, `docs/PLAN-QUIEBRE.md` M5): el brief está en las notas,
+   `paso-4a-detalle-y-esquife-brief.md`.
 
 ## Decisiones tomadas
 - Plataforma:
