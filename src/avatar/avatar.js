@@ -132,8 +132,11 @@ export function avatarModel(lookIn = {}, opts = {}) {
   upper.add(head);
   head.add(meshOf(cachedGeo(`h|${lookKey(look)}`, (v) => buildHead(v, look, D, P))));
   const eyeList = eyeVoxels(look, D, P);
-  const eyes = meshOf(cachedGeo(`e|${look.type}|${look.build}|${look.face}`, (v) => { for (const [x, y, z, c] of eyeList) v.set(x, y, z, c); }),
+  // la malla de los ojos tiene el pivote a la altura de los ojos: al parpadear se cierran en el lugar
+  const eyeY = eyeList.length ? Math.min(...eyeList.map(e => e[1])) : 0;
+  const eyes = meshOf(cachedGeo(`e2|${look.type}|${look.build}|${look.face}|${look.skin}`, (v) => { for (const [x, y, z, c] of eyeList) v.set(x, y - eyeY, z, c); }),
     look.type === 'vaciado' ? lightMat() : undefined);
+  eyes.position.y = eyeY * S;
   eyes.castShadow = false;
   head.add(eyes);
   const swings = [];

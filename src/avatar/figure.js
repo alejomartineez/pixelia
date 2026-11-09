@@ -7,7 +7,7 @@
 //   buildHead(v, look, D, pal)  cabeza con cara, pelo, barba o cicatrices y lo que lleve puesto
 //   GEAR[id]             equipo en la mano, el cuerpo o el hombro (las clases de M3 lo cambian con classLook)
 // Ejes: +Z es el frente, y = 0 el piso. Cada parte se dibuja en su grilla local con el pivote en el origen.
-import { MAT, mix, shade, hexToInt, skinHex, hairHex, clothHex } from './avatar-kit.js';
+import { MAT, mix, shade, ramp, hsl, hexToInt, skinHex, hairHex, clothHex } from './avatar-kit.js';
 
 // ---------------- Medidas por pueblo ----------------
 // leg: alto/ancho/profundidad y separación de la cadera; boot: alto de la bota; H/W/D: torso; sh: hombros que salen
@@ -16,12 +16,12 @@ import { MAT, mix, shade, hexToInt, skinHex, hairHex, clothHex } from './avatar-
 const base = (o) => ({ neck: 1, hunch: 0, headZ: 0, headY: 0, sh: 1, boot: 6, ...o });
 export const PEOPLE = {
   humano: {
-    recio: base({ legH: 17, legW: 6, legD: 6, hip: 3.5, H: 16, W: 18, D: 9, sh: 2, armL: 16, armW: 5, hand: 6, hw: 10, hh: 12, hd: 10 }),
-    esbelto: base({ legH: 18, legW: 5, legD: 5, hip: 3, H: 15, W: 14, D: 8, sh: 1, armL: 15, armW: 4, hand: 5, hw: 10, hh: 12, hd: 10, slim: true }),
+    recio: base({ legH: 20, legW: 6, legD: 6, hip: 3.5, H: 17, W: 18, D: 9, sh: 2, armL: 18, armW: 5, hand: 6, hw: 10, hh: 12, hd: 10 }),
+    esbelto: base({ legH: 21, legW: 5, legD: 5, hip: 3, H: 16, W: 14, D: 8, sh: 1, armL: 17, armW: 4, hand: 5, hw: 10, hh: 12, hd: 10, slim: true }),
   },
   enano: {
-    recio: base({ legH: 9, legW: 8, legD: 8, hip: 4.5, H: 15, W: 24, D: 12, sh: 2, armL: 14, armW: 7, hand: 8, hw: 12, hh: 12, hd: 12, neck: 0, headY: 1, boot: 5 }),
-    esbelto: base({ legH: 10, legW: 7, legD: 7, hip: 4, H: 14, W: 20, D: 11, sh: 1, armL: 13, armW: 6, hand: 7, hw: 12, hh: 12, hd: 11, neck: 0, headY: 1, boot: 5, slim: true }),
+    recio: base({ legH: 11, legW: 8, legD: 8, hip: 4.5, H: 16, W: 24, D: 12, sh: 2, armL: 15, armW: 7, hand: 8, hw: 12, hh: 12, hd: 12, neck: 0, headY: 1, boot: 5 }),
+    esbelto: base({ legH: 12, legW: 7, legD: 7, hip: 4, H: 15, W: 20, D: 11, sh: 1, armL: 14, armW: 6, hand: 7, hw: 12, hh: 12, hd: 11, neck: 0, headY: 1, boot: 5, slim: true }),
   },
   orco: {
     recio: base({ legH: 14, legW: 8, legD: 8, hip: 5, H: 19, W: 26, D: 13, sh: 3, armL: 20, armW: 8, hand: 9, hw: 12, hh: 12, hd: 12, neck: 0, headY: 3, hunch: 0.12, headZ: 3, boot: 5 }),
@@ -32,8 +32,8 @@ export const PEOPLE = {
     esbelto: base({ legH: 11, legW: 7, legD: 7, hip: 4.5, H: 14, W: 20, D: 12, sh: 1, armL: 15, armW: 5, hand: 6, hw: 16, hh: 8, hd: 13, neck: 0, headY: 1, hunch: 0.05, headZ: 1, boot: 0, slim: true }),
   },
   zorro: {
-    recio: base({ legH: 18, legW: 5, legD: 6, hip: 3.5, H: 15, W: 16, D: 8, sh: 1, armL: 15, armW: 4, hand: 5, hw: 10, hh: 9, hd: 10 }),
-    esbelto: base({ legH: 19, legW: 5, legD: 5, hip: 3, H: 14, W: 14, D: 7, sh: 1, armL: 15, armW: 4, hand: 5, hw: 10, hh: 9, hd: 10, slim: true }),
+    recio: base({ legH: 18, legW: 5, legD: 6, hip: 3.5, H: 15, W: 16, D: 8, sh: 1, armL: 15, armW: 4, hand: 5, hw: 10, hh: 11, hd: 10 }),
+    esbelto: base({ legH: 18, legW: 5, legD: 5, hip: 3, H: 14, W: 14, D: 7, sh: 1, armL: 15, armW: 4, hand: 5, hw: 10, hh: 11, hd: 10, slim: true }),
   },
   vaciado: {
     recio: base({ legH: 18, legW: 5, legD: 5, hip: 3, H: 15, W: 14, D: 7, armL: 17, armW: 4, hand: 5, hw: 10, hh: 12, hd: 10, hunch: 0.2, headZ: 2, slim: true }),
@@ -52,19 +52,24 @@ export function paletteOf(look) {
   const skin = hexToInt(skinHex(t, look.skin));
   const hair = hexToInt(hairHex(look.hairColor));
   const cloth = hexToInt(clothHex(look.dressColor));
+  // rampas con cambio de matiz (docs/ARTE-PERSONAJES.md §3): la piel oscurece hacia el rojo (nunca al gris) y aclara
+  // hacia el durazno; la tela y el pelo oscurecen hacia el violeta frío y aclaran hacia el ocre
+  const SK = { hue: 7, val: 0.085, cool: t === 'anuro' || t === 'orco' ? 200 : 350, warm: 42 };
+  const CL = { hue: 8, val: 0.08 };
   return {
     ...MAT, type: t,
-    skin, skinL: shade(skin, 0.1), skinD: shade(skin, -0.14), skinDD: shade(skin, -0.34),
-    hair, hairD: shade(hair, -0.2), hairL: shade(hair, 0.16),
+    skin, skinL: ramp(skin, 1, SK), skinD: ramp(skin, -1, SK), skinDD: ramp(skin, -2.4, SK),
+    hair, hairD: ramp(hair, -1.3, CL), hairL: ramp(hair, 1.2, CL), hairDD: ramp(hair, -2.4, CL),
     // pecho y hocico claros: la gente-zorro tiene el pelaje crema; los anuros, la panza pálida
-    cream: t === 'zorro' ? mix(skin, 0xe2d6c0, 0.75) : t === 'anuro' ? mix(skin, 0xd8d0a0, 0.55) : shade(skin, 0.1),
-    cloth, clothD: shade(cloth, -0.2), clothDD: shade(cloth, -0.36), clothL: shade(cloth, 0.14),
-    iris: IRIS[t] || IRIS.humano, sclera: t === 'orco' ? 0xa8a070 : 0xc4b8a2,
+    cream: t === 'zorro' ? mix(skin, 0xe6dcc6, 0.8) : t === 'anuro' ? mix(skin, 0xd8d0a0, 0.55) : ramp(skin, 1, SK),
+    cloth, clothD: ramp(cloth, -1.2, CL), clothDD: ramp(cloth, -2.2, CL), clothL: ramp(cloth, 1.2, CL),
+    iris: IRIS[t] || IRIS.humano, sclera: t === 'orco' ? 0xa09a70 : mix(ramp(skin, 1.5, SK), 0xc8bca6, 0.6),
+    lid: ramp(skin, -1.6, SK), lip: mix(ramp(skin, -1.4, SK), 0x8a3a34, 0.25),
     scar: mix(skin, 0xc8988a, 0.6),
   };
 }
 // tono por altura: luz arriba, sombra abajo (los 3 tonos de cada material)
-const lit = (c, k) => (k > 0 ? shade(c, 0.09) : k < 0 ? shade(c, -0.11) : c);
+const lit = (c, k) => (k > 0 ? ramp(c, 0.8) : k < 0 ? ramp(c, -0.9) : c);
 
 // ---------------- Ropa ----------------
 // ctx de torso: { x, y, z, hw, hd, H, front, back, side } (x en [-hw, hw), y en [0, H), z en [-hd, hd)).
@@ -372,11 +377,15 @@ export function drawCape(v, look, D, P) {
 
 /** Cola de la gente-zorro (pivote en la base, hacia atrás y abajo): grande, con la punta clara. */
 export function drawTail(v, look, D, P) {
-  // sale hacia atrás, baja un poco y la punta sube en curva; tupida en el medio
-  for (let i = 0; i < 20; i++) {
-    const r = i < 3 ? 1.6 + i * 0.4 : i < 14 ? 3.2 : 3.2 - (i - 14) * 0.45;
-    const cy = -i * 0.35 + (i > 9 ? (i - 9) * (i - 9) * 0.09 : 0);
-    v.sphere(0, cy, -i, r, r * 0.95, 1.3, i >= 15 ? P.cream : i % 6 === 5 ? P.skinD : P.skin);
+  // un cilindro grueso que baja hacia atrás y sube en curva al final (no una pila de rodajas): radio que crece hasta el
+  // medio y se afina en la punta, lomo un tono más claro que los costados y el último cuarto crema
+  const N = 28;
+  for (let i = 0; i < N; i++) {
+    const t = i / (N - 1);
+    const z = -t * 14, y = -8 * t + 13 * t * t * t, x = 6 * t * t;   // se abre hacia un costado: entra en la silueta
+    const r = 1.8 + Math.sin(Math.min(1, t * 1.25) * Math.PI) * 2.1 + (t > 0.8 ? -(t - 0.8) * 4 : 0);
+    const tip = t > 0.74;
+    v.sphere(x - 0.5, y, z, r, r, r, (xx, yy) => (tip ? (yy > y + r * 0.4 ? P.cream : ramp(P.cream, -0.6)) : yy > y + r * 0.35 ? P.skinL : yy < y - r * 0.5 ? P.skinD : P.skin));
   }
 }
 
@@ -393,12 +402,14 @@ function headBox(v, D, P, look) {
     if (t === 'anuro' && (y === hh - 1 || y === 0) && (x <= -W + 1 || x >= W - 2 || z <= zb + 1)) continue;
     let col = P.skin;
     if (t === 'anuro' && y <= 1) col = P.cream;   // garganta clara
-    if (t === 'zorro' && z >= Dz - 3 && y <= 3 && Math.abs(x + 0.5) < W - 1) col = P.cream;
+    // máscara de la gente-zorro: mejillas y quijada crema, que suben por los costados hasta debajo del ojo
+    if (t === 'zorro' && ((y <= 2) || (y <= 4 && Math.abs(x + 0.5) >= W - 2)) && z >= zb + 3) col = P.cream;
     v.set(x, y, z, y >= hh - 2 ? shade(col, 0.06) : col);
   }
   return { W, fz: Dz - 1, zb };
 }
-const EYE = { humano: 6, enano: 6, orco: 6, zorro: 5, vaciado: 6, anuro: 9 };
+const EYE = { humano: 5, enano: 5, orco: 5, zorro: 6, vaciado: 5, anuro: 9 };
+const BEARDS = new Set(['barba_corta', 'barba_larga', 'barba_trenzada', 'bigote']);
 
 /** Ojos (malla aparte para parpadear): lista de [x, y, z, color]. */
 export function eyeVoxels(look, D, P) {
@@ -412,11 +423,14 @@ export function eyeVoxels(look, D, P) {
     }
     return out;
   }
-  const inner = t === 'enano' || t === 'orco' ? 2 : 1;
+  // plantilla de cara (docs/ARTE-PERSONAJES.md §2): ojo de 2 × 1 sin blanco (pupila oscura adentro, sombra del párpado
+  // afuera), bajo el ceño que sale y le hace sombra. Separados por el puente de la nariz (2 vóxeles).
+  const inner = t === 'orco' ? 2 : 1;
   for (const s of [-1, 1]) {
     const xi = s < 0 ? -inner - 1 : inner, xo = s < 0 ? xi - 1 : xi + 1;
     if ((look.face === 'cicatriz_ojo' || look.face === 'parche') && s < 0) continue;
-    out.push([xi, ey, fz, P.iris], [xo, ey, fz, t === 'zorro' || t === 'vaciado' ? P.iris : P.sclera]);
+    if (t === 'zorro') { out.push([xi, ey, fz, P.ink], [xo, ey, fz, P.iris]); continue; }   // ojo ámbar con la pupila adentro
+    out.push([xi, ey, fz, P.iris], [xo, ey, fz, t === 'vaciado' ? P.iris : P.lid]);
   }
   return out;
 }
@@ -426,7 +440,7 @@ export function buildHead(v, look, D, P) {
   const t = look.type;
   const { W, fz, zb } = headBox(v, D, P, look);
   const hh = D.hh, ey = EYE[t] ?? 6;
-  const browC = look.hair === 'rapado' || t === 'vaciado' ? P.skinDD : P.hairD;
+  const browC = t === 'vaciado' ? P.skinDD : P.hairD;   // cejas del color del pelo aunque esté rapado
   if (t === 'anuro') {
     // ojos saltones que salen por arriba de la cabeza, boca de lado a lado con labio, fosas
     for (const s of [-1, 1]) {
@@ -439,49 +453,76 @@ export function buildHead(v, look, D, P) {
     v.set(-W + 1, 1, fz + 1, P.skinDD); v.set(W - 2, 1, fz + 1, P.skinDD); v.set(-W + 1, 0, fz, P.skinDD); v.set(W - 2, 0, fz, P.skinDD);
     for (const x of [-2, 1]) v.set(x, 4, fz + 1, P.skinDD);   // fosas
   } else if (t === 'zorro') {
-    // hocico largo que se afina, nariz negra en la punta, cachetes de pelo y orejas grandes
-    v.box(-3, 0, fz + 1, 6, 4, 3, (x, y) => (y <= 1 ? P.cream : P.skin));
-    v.box(-2, 0, fz + 4, 4, 4, 3, (x, y) => (y <= 1 ? P.cream : P.skin));
-    v.box(-2, 0, fz + 7, 4, 3, 2, (x, y) => (y === 0 ? P.cream : P.skin));
-    v.box(-1, 1, fz + 9, 2, 2, 1, (x, y) => (y === 2 ? P.ink : P.skin)); v.box(-1, 3, fz + 8, 2, 1, 2, P.ink);   // nariz negra en la punta
-    v.box(-1, 4, fz + 1, 2, 1, 4, P.skinD);   // caballete
-    for (let z = fz + 1; z <= fz + 8; z++) { v.set(-2, 0, z, P.skinDD); v.set(1, 0, z, P.skinDD); }   // boca
+    // Hocico de 6 que se afina en tres escalones (de frente se ven los anillos, no un agujero), lomo naranja, quijada
+    // crema, nariz chica negra arriba de la punta; ceño naranja oscuro y una línea oscura del ojo al hocico.
+    const MZ = [[6, 4, 2], [4, 3, 2], [2, 2, 2]];   // ancho, alto, largo de cada tramo
+    let z = fz + 1;
+    for (const [w, h, len] of MZ) {
+      v.box(-w / 2, 1, z, w, h, len, (x, y) => (y === 1 ? P.cream : y === h ? P.skinL : P.skin));
+      z += len;
+    }
+    v.box(-1, 2, z, 2, 1, 1, P.ink);   // nariz: 2 × 1 en la punta, arriba
+    v.box(-2, 0, fz + 1, 4, 1, 3, P.cream);   // quijada
+    for (let zz = fz + 1; zz < z; zz++) for (const x of [-2, 1]) if (zz < fz + 5) v.set(x < 0 ? x - (zz < fz + 3 ? 1 : 0) : x + (zz < fz + 3 ? 1 : 0), 1, zz, P.skinDD);   // boca
     for (const s of [-1, 1]) {
       const xe = s < 0 ? -W - 1 : W;
-      v.box(xe, 0, fz - 4, 1, 4, 4, P.cream); v.set(xe + s, 0, fz - 2, P.cream); v.set(xe + s, 1, fz - 2, P.cream);   // cachetes
-      for (let r = 0; r < 9; r++) {   // oreja: base de 4, punta oscura
-        const w = r < 3 ? 4 : r < 5 ? 3 : r < 7 ? 2 : 1, x0 = s < 0 ? -W + 1 : W - 1 - w;
+      v.box(xe, 1, fz - 4, 1, 3, 3, (x, y) => (y >= 3 ? P.skin : P.cream));   // cachetes de pelo, pegados a la cara
+      v.set(xe + s, 1, fz - 3, ramp(P.cream, -0.6));
+      // ceño: naranja oscuro, más bajo adentro
+      const xi = s < 0 ? -2 : 1, xo = s < 0 ? -4 : 3;
+      for (let x = Math.min(xi, xo); x <= Math.max(xi, xo); x++) v.set(x, ey + 2, fz + 1, P.skinD);
+      v.set(xi, ey + 1, fz + 1, P.skinD);
+      v.set(s < 0 ? -3 : 2, ey + 1, fz, P.lid);
+      v.set(xi, ey - 1, fz, P.skinDD);   // lágrima oscura hacia el hocico
+      // oreja: triángulo grande hacia arriba y un poco afuera, el adentro oscuro y la punta negra
+      for (let r = 0; r < 8; r++) {
+        const w = r < 2 ? 4 : r < 4 ? 3 : r < 6 ? 2 : 1, x0 = s < 0 ? -W + (r >> 2) : W - w - (r >> 2);
         for (let x = x0; x < x0 + w; x++) {
-          v.set(x, hh + r, -2, r >= 7 ? P.ink : P.skinD);
-          v.set(x, hh + r, -1, r >= 7 ? P.ink : r < 6 && w >= 3 && x !== x0 && x !== x0 + w - 1 ? P.skinDD : P.skin);
+          const edge = x === x0 || x === x0 + w - 1;
+          v.set(x, hh + r, -2, r >= 6 ? P.ink : P.skinD);
+          v.set(x, hh + r, -1, r >= 6 ? P.ink : !edge && r < 5 ? P.skinDD : P.skin);
         }
       }
     }
-    for (const s of [-1, 1]) v.box(s < 0 ? -4 : 2, ey + 1, fz + 1, 2, 1, 1, P.skinD);   // ceño
   } else {
-    // ceño (arco de la frente que sale y hace sombra), nariz con volumen, boca, orejas
-    const big = t === 'enano' ? 1 : 0;
-    v.box(-W + 1, ey + 1, fz + 1, 2 * W - 2, 1, 1, P.skinD);
-    for (const s of [-1, 1]) { const x0 = s < 0 ? -W + 1 : 1; for (let i = 0; i < W - 2; i++) v.set(x0 + i, ey + 2, fz + 1, browC); }
-    v.box(-1, 3, fz + 1, 2, 3 + big, 1, P.skin); v.box(-1, 3, fz + 2, 2, 2 + big, 1, P.skin);   // nariz
-    v.set(-1, 3, fz + 2, P.skinD); v.set(0, 3, fz + 2, P.skinD);
-    if (big) v.box(-2, 3, fz + 1, 4, 2, 2, P.skin);
-    for (let x = -2; x < 2; x++) v.set(x, 1, fz, P.skinDD);
+    // Plantilla de cara (docs/ARTE-PERSONAJES.md §2). La cara se lee por planos y sombras, no por líneas pintadas:
+    //   fila ey+1: ceño que sale 1 vóxel de lado a lado, con las cejas del color del pelo justo encima del ojo
+    //              (sin piel entre ceja y ojo: así se ve serio). Enanos y orcos: el extremo de afuera sube (gesto duro).
+    //   fila ey:   ojo de 2 × 1 sin blanco: pupila oscura adentro y la sombra del párpado afuera; entre los ojos, el
+    //              puente de la nariz (2 vóxeles, que sale 1)
+    //   filas 3..4: nariz que sale 1 y la punta 2, con la luz arriba; fila 1: boca corta (no va con barba); fila 0: mentón
+    const big = t === 'enano' ? 1 : 0, inner = t === 'orco' ? 2 : 1, gruff = t === 'enano' || t === 'orco';
+    for (let x = -W + 1; x < W - 1; x++) v.set(x, ey + 1, fz + 1, Math.abs(x + 0.5) < inner ? P.skinL : P.skin);   // arco del ceño
+    for (const s of [-1, 1]) {
+      const n = 3 + big;
+      for (let i = 0; i < n; i++) {
+        const x = s < 0 ? -inner - 1 - i : inner + i, outer = i === n - 1;
+        v.set(x, ey + 1 + (gruff && outer ? 1 : 0), fz + 1, browC);
+        if (gruff && outer) v.set(x, ey + 1, fz + 1, P.skinD);
+        if (big && i < n - 1) v.set(x, ey + 2, fz + 1, i === 0 ? P.hairD : browC);   // cejas tupidas
+      }
+    }
+    v.box(-1, 3, fz + 1, 2, ey - 2, 1, P.skin);   // puente y cuerpo de la nariz
+    v.box(-1 - big, 3 - big, fz + 2, 2 + 2 * big, 1 + big, 1, P.skin);   // punta (la luz la pone la escena)
+    if (big) v.box(-2, 2, fz + 1, 4, 2, 1, P.skin);
+    v.set(-2 - big, 3 - big, fz, P.skinD); v.set(1 + big, 3 - big, fz, P.skinD);   // aletas: sombra al costado
+    if (!BEARDS.has(look.face)) for (let x = -1; x < 1; x++) v.set(x, 1, fz, P.lip);   // boca: una línea corta
     v.box(-2, 0, fz + 1, 4, 1, 1, P.skin);   // mentón
     if (t === 'vaciado') { v.set(-W + 1, 3, fz, P.skinDD); v.set(W - 2, 3, fz, P.skinDD); for (let y = 2; y < ey; y++) v.set(W - 3, y, fz, P.veinD); }
     for (const s of [-1, 1]) {
       const xe = s < 0 ? -W - 1 : W;
       if (t === 'orco') { v.box(xe, 5, -2, 1, 3, 3, P.skin); for (let i = 1; i <= 3; i++) v.box(xe + s * i, 6 + (i >> 1), -2, 1, 2, 2, i === 3 ? P.skinD : P.skin); }
-      else { v.box(xe, 3, -1, 1, 4, 3, P.skin); v.set(xe, 4, 0, P.skinD); }
+      else { v.box(xe, 3, -1, 1, 4, 3, P.skin); v.set(xe, 4, 0, P.skinD); v.set(xe, 5, 0, P.skinD); }
     }
     if (t === 'orco') {   // frente pesada, mandíbula adelantada y colmillos que suben
-      v.box(-W + 1, ey + 1, fz + 1, 2 * W - 2, 2, 2, P.skinD);
+      v.box(-W + 1, ey + 1, fz + 1, 2 * W - 2, 2, 2, (x, y) => (y === ey + 2 ? P.skin : P.skinD));
       v.box(-W + 1, 0, fz + 1, 2 * W - 2, 3, 2, (x, y) => (y === 2 ? P.skinD : P.skin));
-      v.box(-2, 4, fz + 1, 4, 2, 2, P.skinD);
-      for (const x of [-4, 3]) v.box(x, 2, fz + 3, 1, 4, 1, (xx, y) => (y === 5 ? P.bone : shade(P.bone, -0.1)));
+      v.box(-2, 4, fz + 1, 4, 2, 2, (x, y) => (y === 5 ? P.skin : P.skinD));
+      for (const x of [-4, 3]) v.box(x, 2, fz + 3, 1, 4, 1, (xx, y) => (y === 5 ? P.bone : ramp(P.bone, -1)));
     }
   }
-  for (const [x, y, z] of eyeVoxels(look, D, P)) { v.remove(x, y, z); v.set(x, y, z - 1, P.skinDD); }   // cuencas (los ojos van aparte)
+  // cuencas: los ojos van en otra malla (parpadean); atrás queda el párpado cerrado
+  for (const [x, y, z] of eyeVoxels(look, D, P)) { v.remove(x, y, z); v.set(x, y, z - 1, P.lid); }
   drawHair(v, look, D, P, { W, fz, zb });
   drawFace(v, look, D, P, { W, fz, zb, ey });
   drawHat(v, look, D, P, { W, fz, zb });
@@ -577,32 +618,46 @@ export function hairSwings(look, D, P) {
 function drawFace(v, look, D, P, g) {
   const f = look.face, { W, fz, ey } = g;
   if (!f || f === 'ninguna') return;
-  const bc = (x, y) => ((x + 99) % 3 === 0 ? P.hairD : y > 1 ? P.hairL : P.hair);
+  // Barba como volumen (docs/ARTE-PERSONAJES.md §1): una masa que sale de la mandíbula con 3 tonos por altura (luz
+  // arriba, base, punta oscura) y surcos cada 3 columnas solo en la cara de adelante; el bigote es un alero aparte, más
+  // claro, que tapa la boca y cae en las puntas.
+  const groove = (x) => (x + 99) % 3 === 1 && Math.abs(x + 0.5) > 1;
+  const bc = (x, y, z, len) => {
+    const tip = y <= -len + 1, top = y >= 2;
+    const c = top ? P.hairL : tip ? P.hairD : P.hair;
+    return len > 3 && z >= fz + 2 && groove(x) && !top ? ramp(c, -0.8) : c;   // surcos solo en las barbas largas
+  };
   const beard = (len, braid) => {
-    // barba que sale de la cara: dos capas hacia adelante, patillas a los costados y bigote encima
+    // mejillas y mandíbula: cubre la cara de la boca para abajo, salvo el labio de abajo
     for (let y = 0; y < 4; y++) for (let x = -W; x < W; x++) {
-      if (y >= 1 && Math.abs(x + 0.5) < 2.5) continue;   // boca libre
-      v.set(x, y, fz + 1, bc(x, y)); if (y < 2) v.set(x, y, fz + 2, bc(x, y));
-      if (Math.abs(x + 0.5) >= W - 1) for (let z = fz - 4; z <= fz; z++) v.set(x + (x < 0 ? -1 : 1), y + 2, z, bc(z, y));   // patillas
+      if (y >= 1 && y <= 2 && Math.abs(x + 0.5) < 2) continue;   // boca
+      if (y === 3 && Math.abs(x + 0.5) < W - 1) continue;   // de la nariz para arriba solo las patillas
+      v.set(x, y, fz + 1, bc(x, y, fz + 1, len));
+      if (y < 2) v.set(x, y, fz + 2, bc(x, y, fz + 2, len));
     }
-    for (let x = -3; x < 3; x++) { v.set(x, 2, fz + 2, P.hair); v.set(x, 3, fz + 2, bc(x, 3)); }   // bigote
-    v.set(-3, 1, fz + 2, P.hairD); v.set(2, 1, fz + 2, P.hairD);
+    for (const s of [-1, 1]) for (let y = 1; y < ey - 1; y++) for (let z = fz - 3; z <= fz; z++) v.set(s < 0 ? -W - 1 : W, y, z, z === fz - 3 ? P.hairD : P.hair);   // patillas
+    // bigote: alero de 6 que sale 2, con las puntas que caen
+    for (let x = -3; x < 3; x++) { v.set(x, 2, fz + 2, Math.abs(x + 0.5) < 1 ? P.hair : P.hairL); v.set(x, 2, fz + 1, P.hairD); }
+    for (const x of [-3, 2]) { v.set(x, 1, fz + 2, P.hair); v.set(x, 0, fz + 3, P.hairD); }
+    v.set(-1, 1, fz + 1, P.hairD); v.set(0, 1, fz + 1, P.hairD);   // la boca queda tapada: con barba no se dibuja
+    // largo: se angosta de a poco y sale hacia adelante (no es una caja colgada)
     for (let i = 0; i < len; i++) {
-      const w = Math.max(2, W - Math.floor(i / 3)), dz = i < len - 2 ? 3 : 2;
-      for (let x = -w; x < w; x++) for (let z = fz - 2; z <= fz - 2 + dz + 1; z++) v.set(x, -1 - i, z, bc(x, -i));
+      const y = -1 - i, w = Math.max(2, W - Math.floor(i / 3) - (i === len - 1 ? 1 : 0));
+      const z0 = fz - 3 + Math.min(2, i >> 2), z1 = fz + 2 - (i >= len - 2 ? 1 : 0);
+      for (let x = -w; x < w; x++) for (let z = z0; z <= z1; z++) v.set(x, y, z, bc(x, y, z, len));
     }
-    if (braid) for (let i = 0; i < 6; i++) v.box(-1, -1 - len - i, fz, 2, 1, 2, i === 2 || i === 4 ? P.brass : P.hair);
+    if (braid) for (let i = 0; i < 6; i++) v.box(-1, -1 - len - i, fz, 2, 1, 2, i === 1 || i === 4 ? P.brass : i === 5 ? P.hairD : P.hair);
   };
   if (f === 'barba_corta') beard(2);
   else if (f === 'barba_larga') beard(look.type === 'enano' ? 11 : 7);
   else if (f === 'barba_trenzada') beard(look.type === 'enano' ? 8 : 5, true);
   else if (f === 'bigote') { for (let x = -3; x < 3; x++) v.set(x, 2, fz + 2, bc(x, 3)); for (const x of [-4, 3]) { v.set(x, 1, fz + 1, P.hair); v.set(x, 0, fz + 1, P.hairD); } }
   else if (f === 'cicatriz') { for (let i = 0; i < 5; i++) v.set(W - 2 - (i >> 1), 1 + i, fz + (i === 2 ? 1 : 0), P.scar); }
-  else if (f === 'cicatriz_ojo') { const x = look.type === 'enano' || look.type === 'orco' ? -3 : -2; for (let y = ey - 3; y <= ey + 3; y++) v.set(x, y, fz + (y === ey + 1 || y === ey + 2 ? 2 : 0), P.scar); v.set(x - 1, ey, fz, P.skinDD); v.set(x + 1, ey, fz, P.skinDD); }
+  else if (f === 'cicatriz_ojo') { const x = look.type === 'orco' ? -3 : -2; for (let y = ey - 3; y <= ey + 3; y++) v.set(x, y, fz + (y === ey + 1 || y === ey + 2 ? 2 : 0), P.scar); v.set(x - 1, ey, fz, P.skinDD); v.set(x + 1, ey, fz, P.skinDD); }
   else if (f === 'pintura') { for (const x of [-3, -2, 1, 2]) for (let y = ey - 3; y < ey; y++) v.set(x, y, fz, 0x2a2224); for (let x = -W + 1; x < W - 1; x++) if (!v.has(x, ey + 3, fz + 1)) v.set(x, ey + 3, fz, 0x5a2a22); }
   else if (f === 'parche') {
-    const x = look.type === 'enano' || look.type === 'orco' ? -3 : -2;
-    v.box(x - 1, ey - 1, fz + 1, 3, 3, 1, P.ink);
+    const x = look.type === 'orco' ? -3 : -2;
+    v.box(x - 1, ey, fz + 1, 2, 2, 1, P.ink); v.set(x - 1, ey - 1, fz + 1, P.leatherD);   // parche chico sobre el ojo
     for (let i = 0; i < W * 2 + 2; i++) { const xx = -W - 1 + i; const yy = ey + 1 + Math.round(i * 0.25); v.set(xx, yy, xx < -W || xx >= W ? 0 : fz + 1, P.leatherD); }
   }
 }
@@ -640,9 +695,16 @@ function drawHat(v, look, D, P, g) {
       v.box(-1, hh - 6, zc0 - 1, 2, 4, 1, P.leatherD); break;
     case 'gorra': for (let y = top; y < top + 3; y++) ring(v, y, R + (y === top ? 1 : y === top + 2 ? -1 : 0), zc0 - 1, zc1, y === top + 2 ? P.clothL : P.clothD, 0.5); break;
     case 'bandana':
-      // pañuelo oscuro a rayas claras (contrasta con cualquier ropa), con el nudo y las puntas atrás
-      shell(hh - 4, top + 1, (x, y) => ((y + 99) % 3 === 0 ? P.linenD : 0x2e2a2c));
-      v.box(-1, hh - 6, zc0 - 1, 3, 3, 1, 0x2e2a2c); v.box(-2, hh - 11, zc0 - 1, 2, 5, 1, 0x242022); v.box(1, hh - 10, zc0 - 1, 2, 4, 1, 0x242022);
+      // pañuelo de un solo color de acento (óxido) que se apoya arriba del ceño: no tapa la cara. Ruedo de lino,
+      // nudo y dos puntas atrás. Si la ropa ya es roja, el pañuelo va carbón.
+      {
+        const red = hsl(P.cloth)[0] < 25 || hsl(P.cloth)[0] > 340, B = red ? 0x34302e : 0x7c3226;
+        const y0 = (EYE[look.type] ?? 6) + 3;
+        const yt = hh + 1;   // pegado al cráneo: una sola fila sobre la cabeza, aunque el pelo sea más alto
+        shell(y0, yt + 1, (x, y) => (y === y0 ? ramp(B, -1) : y === yt ? ramp(B, 0.8) : B));
+        v.box(-1, y0, zc0 - 1, 3, 3, 1, ramp(B, -1));
+        v.box(-2, y0 - 5, zc0 - 1, 2, 5, 1, ramp(B, -0.5)); v.box(1, y0 - 4, zc0 - 1, 2, 4, 1, ramp(B, -1.5));
+      }
       break;
     case 'sombrero_mago': {
       ring(v, top, R + 5, zc0 - 5, zc1 + 4, P.clothD); ring(v, top + 1, R + 3, zc0 - 3, zc1 + 2, P.clothDD);
@@ -669,7 +731,7 @@ function drawHat(v, look, D, P, g) {
         if (r < 1) break;
         ring(v, y, r, zc0 + Math.max(0, y - top), zc1 - Math.max(0, y - top), y >= top + 1 ? P.metalL : P.metal);
       }
-      v.box(-1, 2, zc1 + 1, 2, hh - 6, 1, P.metalD);   // nasal
+      v.box(-1, EYE[look.type] ?? 5, zc1 + 1, 2, hh - 4 - (EYE[look.type] ?? 5), 1, P.metalD);   // nasal corto: deja ver la nariz
       for (const x of [-W - 1, W]) v.box(x, 2, fz - 3, 1, hh - 6, 3, P.metal);   // carrilleras
       v.box(-1, top + 2, zc0 + 1, 2, 2, zc1 - zc0 - 1, P.brassD);   // cresta
       if (id === 'yelmo') for (const s of [-1, 1]) for (let i = 0; i < 9; i++) {

@@ -77,6 +77,15 @@ cada paso.
 - Galería en `tools/people.html`, con los sets pueblos, gente, ropa, cabeza, cara, equipo, clases, enemigos, retratos y giro.
   Se captura con `GALLERY_PAGE=people.html node tools/gallery-shot.mjs ...`.
 
+- **Tercera pasada (caras), con investigación previa:** guía en `docs/ARTE-PERSONAJES.md`, con las fuentes.
+  - Rampas con cambio de matiz: `ramp` en `avatar-kit.js`, y `MAT` separado por valor y temperatura.
+  - Plantilla de cara nueva: ojo de 2 × 1 sin blanco, ceño pegado al ojo, nariz con volumen y sin boca cuando hay barba.
+  - La barba es una masa con bigote aparte.
+  - Gente-zorro: hocico en 3 escalones y pañuelo de acento.
+  - Humanos más altos (unas 3,8 cabezas) y enanos un poco más altos.
+  - Galería: `set=caras&view=f|t|p` para el primer plano y `&gray=1` para la prueba de valor.
+  - Las capturas son `shots/personajes/giro.png`, `caras.png` y `giro-grises.png`. **Espera el OK del usuario.**
+
 **Falta:**
 - El usuario vio el primer pase y dijo que se veía feo. La segunda pasada de `figure.js` (silueta, tonos planos, caras
   con volumen, pose en A) todavía no está aprobada.

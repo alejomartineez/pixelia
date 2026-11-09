@@ -51,13 +51,21 @@ if (set === 'pueblos') {
 } else if (set === 'clases') {
   AVATAR_TYPES.forEach((t, i) => { const cls = Object.keys(CLASS_KIT)[i % 6]; items.push({ obj: avatarModel(base(t.id), { cls }), label: `${t.id} · ${cls}` }); });
   items.push({ obj: avatarModel(base('humano'), { cls: 'saqueador' }), label: 'humano · saqueador' });
-} else if (set === 'giro') {   // hoja de giro de las muestras: frente, tres cuartos y espalda
+} else if (set === 'giro' || set === 'caras') {   // hoja de giro de las muestras (frente, tres cuartos y espalda); caras: primer plano
   const MUESTRAS = [
-    ['Enano con hacha', { type: 'enano', build: 'recio', skin: 1, hair: 'cortito', hairColor: 'pelirrojo', face: 'barba_trenzada', dress: 'cuero', dressColor: 'rojo', crown: 'casco', acc: 'hacha' }],
-    ['Monje', { type: 'humano', build: 'recio', skin: 3, hair: 'rapado', hairColor: 'castano', face: 'barba_corta', dress: 'habito', dressColor: 'rojo', crown: 'ninguna', acc: 'baston' }],
-    ['Pirata gente-zorro', { type: 'zorro', build: 'esbelto', skin: 0, hair: 'coleta', hairColor: 'blanco', face: 'parche', dress: 'abrigo', dressColor: 'rojo', crown: 'bandana', acc: 'espada' }],
+    ['Enano con hacha', { type: 'enano', build: 'recio', skin: 1, hair: 'cortito', hairColor: 'pelirrojo', face: 'barba_trenzada', dress: 'cuero', dressColor: q.get('cd') || 'verde', crown: 'casco', acc: 'hacha' }],
+    ['Monje', { type: 'humano', build: 'recio', skin: 2, hair: 'rapado', hairColor: 'castano', face: 'barba_corta', dress: 'habito', dressColor: q.get('cm') || 'negro', crown: 'ninguna', acc: 'baston' }],
+    ['Pirata gente-zorro', { type: 'zorro', build: 'esbelto', skin: 0, hair: 'corto', hairColor: 'pelirrojo', face: 'parche', dress: 'abrigo', dressColor: q.get('cf') || 'azul', crown: 'bandana', acc: 'espada' }],
   ];
-  for (const [name, look] of MUESTRAS) for (const [view, turn] of [['frente', 0], ['tres cuartos', 0.75], ['espalda', Math.PI]]) items.push({ obj: avatarModel(look), label: name + ' · ' + view, turn });
+  // caras: primer plano; view=f (frente), t (tres cuartos) o p (perfil); sin view, frente y tres cuartos
+  const V = { f: ['frente', 0], t: ['tres cuartos', 0.6], p: ['perfil', Math.PI / 2] };
+  const VIEWS = set === 'caras' ? (q.get('view') || 'ft').split('').map(k => V[k]) : [['frente', 0], ['tres cuartos', 0.75], ['espalda', Math.PI]];
+  for (const [name, look] of MUESTRAS) for (const [view, turn] of VIEWS) {
+    const obj = avatarModel(set === 'caras' ? { ...look, acc: 'ninguno' } : look);   // en el primer plano, sin armas que tapen
+    // en el primer plano todas las cabezas quedan a la misma altura (el enano sube sobre un pedestal invisible)
+    if (set === 'caras') { obj.updateMatrixWorld(true); obj.userData.lift = 0.9 - obj.userData.parts.head.getWorldPosition(new THREE.Vector3()).y; }
+    items.push({ obj, label: name + ' · ' + view, turn });
+  }
 } else if (set === 'enemigos') {
   for (const id of (q.get('ids') ? q.get('ids').split(',') : ENEMY_MODEL_TYPES)) items.push({ obj: enemyModel(id), label: id });
 }
@@ -75,6 +83,8 @@ if (set === 'retratos') {   // retratos de la Bitácora (story-ui.js → portrai
   }
   document.body.append(wrap);
 }
+// gray=1: la misma captura en escala de grises, para chequear el contraste de valor (docs/ARTE-PERSONAJES.md §3)
+if (q.get('gray')) document.body.style.filter = 'grayscale(1)';
 const cols = Number(q.get('cols') || Math.min(items.length, 8));
 const rows = Math.ceil(items.length / cols);
 const gap = Number(q.get('gap') || (set === 'enemigos' ? 1.9 : 1.05)), pitch = Number(q.get('pitch') || 0.32), rowGap = Number(q.get('rowgap') || (set === 'enemigos' ? 2.4 : 1.5)) / Math.sin(pitch);
@@ -84,7 +94,7 @@ const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshLam
 ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; r.scene.add(ground);
 items.forEach((it, i) => {
   const cx = (i % cols - (cols - 1) / 2) * gap, rz = Math.floor(i / cols) * rowGap;
-  it.obj.position.set(cx, 0, -rz);
+  it.obj.position.set(cx, it.obj.userData.lift || 0, -rz);
   it.obj.rotation.y = it.turn ?? Number(q.get('turn') || 0.45);
   r.scene.add(it.obj);
 });
