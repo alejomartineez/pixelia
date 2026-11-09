@@ -139,7 +139,13 @@ cada paso.
   espera la ficha y, si el toque cae en alguien que pasa, la abre por el bus. Si vuelve a fallar algo suelto, correrlo
   solo antes de buscar un error.
 
-**Falta:** nada del 4a. Lo integra el coordinador (no se corrió `npm run bump`).
+**Falta: segunda pasada de detalle.** El usuario mandó 4 referencias vóxel (un oso con la grilla visible, un muchacho de
+rulos con anteojos, un chibi y un vikingo) y pidió que se entiendan así de detallados. El plan:
+- variación de valor por vóxel (±3–4 %), salvo en ojos, cejas, boca y metal;
+- cabeza mucho más grande, de 2 a 3 cabezas de alto (hay que mostrarle al usuario las dos versiones lado a lado);
+- rasgos que salen del cráneo, marcas pintadas y una cámara más cerca.
+El brief está en las notas compartidas: `paso-4a-detalle-2-brief.md`. Después de esa pasada, lo integra el coordinador (no
+se corrió `npm run bump`).
 
 ## Decisiones tomadas
 - Plataforma:
