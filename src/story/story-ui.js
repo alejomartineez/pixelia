@@ -49,6 +49,8 @@ body.no-hud #story-root .st-card { display: none; }
 .st-epic.see { justify-content: flex-end; padding-bottom: calc(9vh + 54px);
   background: linear-gradient(to bottom, rgba(6,6,9,.1) 0%, rgba(6,6,9,.25) 40%, rgba(6,6,9,.82) 72%, rgba(6,6,9,.94) 100%); }
 .st-epic.see .st-veins { display: none; }
+/* mientras habla Vera, el HUD y la pista de la ciudad no se ven detrás (se tapaban con Saltar y con la ayuda de abajo) */
+body.st-seeing #hud, body.st-seeing .cx-tip { opacity: 0 !important; pointer-events: none !important; transition: opacity .3s; }
 .st-epic.see .st-head { margin-bottom: 12px; }
 .st-epic.see .st-face { width: 96px; height: 96px; margin-bottom: 12px; }
 .st-epic::before, .st-epic::after { content: ''; position: absolute; left: 0; right: 0; height: 9vh; background: var(--shade); z-index: 1; }
@@ -298,6 +300,8 @@ export function showEpic(ctx, scenes) {
     const hint = h('div.st-hint', {}, 'Hacé clic para seguir');
     el.append(head, faceBox, line, dots, hint, skip);
     root().append(el);
+    const see = el.classList.contains('see');
+    if (see) document.body.classList.add('st-seeing');
     const t = typer(line, ctx);
     let curScene = null;
     const show = () => {
@@ -318,6 +322,7 @@ export function showEpic(ctx, scenes) {
       t.stop();
       removeEventListener('keydown', onKey, true);
       el.classList.add('out');
+      if (see) document.body.classList.remove('st-seeing');
       setTimeout(() => el.remove(), 450);
       res(v);
     };

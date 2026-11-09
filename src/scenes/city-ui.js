@@ -115,6 +115,8 @@ html.reduce-motion .cx-tip, html.reduce-motion .cx-sign.guide { animation: none;
 .cx-build .modal-body { padding-top: 0; }
 .cx-tabs { position: sticky; top: 0; z-index: 3; background: var(--panel); margin: 0 -14px 6px; padding: 10px 12px 8px; border-bottom: 2px dashed var(--rule); }
 .cx-tabs .tab { position: relative; }
+/* con mouse no se nota que las pestañas se deslizan: en pantallas anchas van en dos renglones si no entran */
+@media (min-width: 900px) { .cx-tabs { flex-wrap: wrap; overflow-x: visible; } }
 .cx-tabs .tab .dot { position: absolute; top: -6px; right: -6px; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); border: 2px solid var(--edge); }
 @media (max-width: 520px) {
   .cx-tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; overflow: visible; padding: 10px 8px 8px; margin: 0 -14px 6px; }

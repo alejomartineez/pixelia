@@ -30,6 +30,11 @@ const CSS = `
 .scene-expedition .ex-guide .gw small { color:var(--ink-l); }
 .scene-expedition .ex-guide p { margin:4px 0 6px; font-size:15px; line-height:1.3; color:var(--ink); }
 .scene-expedition .ex-guide .gf { display:flex; justify-content:flex-end; }
+/* con una tarjeta de decisión abierta, la pista no la tapa: va arriba de todo (pantalla angosta: la tarjeta deja libre el 28 % de arriba) o a la izquierda de la tarjeta */
+.scene-expedition:has(.ex-sheet .ex-card.in) .ex-guide { bottom:auto; top:calc(var(--safe-t, 0px) + 8px); z-index:8; }
+@media (min-width: 900px) {
+  .scene-expedition:has(.ex-sheet .ex-card.in) .ex-guide { top:auto; bottom:calc(var(--safe-b, 0px) + 16px); right:calc(var(--safe-r, 0px) + 16px + 440px + 12px); }
+}
 `;
 let styleEl = null;
 function injectStyle() {
