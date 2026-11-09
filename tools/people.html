@@ -24,6 +24,10 @@ import { createPixelRenderer, addLights, setIsoCamera } from '../src/core/voxel.
 import { AVATAR_TYPES, DRESS_STYLES, CROWNS, FACES, ACCESSORIES, HAIR_STYLES } from '../src/core/data.js';
 import { avatarModel, randomLook, classLook, CLASS_KIT } from '../src/avatar/avatar.js';
 import { enemyModel, ENEMY_MODEL_TYPES } from '../src/combat/enemy-models.js';
+import { setHeadMode } from '../src/avatar/avatar-kit.js';
+// head=chico: la cabeza de la tercera pasada (~3,8 cabezas); head=ambas: en giro y caras, cada muestra chica y grande
+if (q0().get('head') === 'chico') setHeadMode('chico');
+function q0() { return new URLSearchParams(location.search); }
 window.__ready = false;
 const q = new URLSearchParams(location.search);
 const set = q.get('set') || 'pueblos';
@@ -74,7 +78,10 @@ if (set === 'pueblos') {
   // caras: primer plano; view=f (frente), t (tres cuartos) o p (perfil); sin view, frente y tres cuartos
   const V = { f: ['frente', 0], t: ['tres cuartos', 0.6], p: ['perfil', Math.PI / 2] };
   const VIEWS = set === 'caras' ? (q.get('view') || 'ft').split('').map(k => V[k]) : [['frente', 0], ['tres cuartos', 0.75], ['espalda', Math.PI]];
-  for (const [name, look] of MUESTRAS) for (const [view, turn] of VIEWS) {
+  const MODES = q.get('head') === 'ambas' ? ['chico', 'grande'] : [null];
+  for (const [name0, look] of MUESTRAS) for (const mode of MODES) for (const [view, turn] of VIEWS) {
+    if (mode) setHeadMode(mode);
+    const name = mode ? `${name0} (${mode === 'chico' ? 'cabeza chica' : 'cabeza grande'})` : name0;
     const obj = avatarModel(set === 'caras' ? { ...look, acc: 'ninguno' } : look);   // en el primer plano, sin armas que tapen
     // en el primer plano todas las cabezas quedan a la misma altura (el enano sube sobre un pedestal invisible)
     if (set === 'caras') { obj.updateMatrixWorld(true); obj.userData.lift = 0.9 - obj.userData.parts.head.getWorldPosition(new THREE.Vector3()).y; }

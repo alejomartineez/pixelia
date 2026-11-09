@@ -614,7 +614,7 @@ export default function create(ctx) {
     const phone = h < 520;
     const big = h >= 700;
     // el esquife es más largo y alto que el auto de antes (con el palo o el globo): la cámara se aleja y mira más arriba
-    let dist = car ? (phone ? 6 : big ? 6.6 : 6.3) : (phone ? 4.1 : big ? 5.2 : 4.7);
+    let dist = car ? (phone ? 6 : big ? 6.6 : 6.3) : (phone ? 3.6 : big ? 4.3 : 3.9);   // de cerca: que se vea la grilla de vóxeles (§8)
     const look = lookWant.set(0, car ? 0.95 : 0.62, 0);
     if (phone) look.y += car ? 0.1 : 0.08; // la barra de arriba tapa un poco
     const need = car ? 1.2 : 0.85; // ancho mínimo visible

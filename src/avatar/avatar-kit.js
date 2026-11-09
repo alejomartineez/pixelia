@@ -112,12 +112,37 @@ export const MAT = {
 const geoCache = new Map();
 export function cacheGet(key) { return geoCache.get(key); }
 export function cacheSet(key, g) { geoCache.set(key, g); }
+// Variación por vóxel (segunda pasada de detalle, docs/ARTE-PERSONAJES.md §8): cada cubo de tela, piel, pelo o cuero
+// lleva un valor apenas distinto (±3,5 %, por hash de su posición), así se lee la grilla como en las referencias vóxel
+// del usuario. No varían los colores de FLAT: ojos, cejas, boca, metal pulido, bronce, tinta y veta (figure.js suma los
+// de cada look con keepFlat). Tampoco las mallas de ojos ni las que brillan (claves e2|, gl|, gk|).
+export const FLAT = new Set();
+export const keepFlat = (...cs) => { for (const c of cs) FLAT.add(hexToInt(c)); return cs[0]; };
+const NO_GRAIN = /^(grande|chico)\|(e2|gl|gk)\|/;
+export const GRAIN = 0.035;
+keepFlat(MAT.metal, MAT.metalD, MAT.metalL, MAT.brass, MAT.brassD, MAT.ink, MAT.vein, MAT.veinD, MAT.bone);
+function grain(v) {
+  for (const [k, c] of v.map) {
+    if (FLAT.has(c)) continue;
+    const [x, y, z] = k.split(',').map(Number);
+    const h = hash3(x * 7 + 3, y * 13 + 5, z * 11 + 1) - 0.5;
+    v.map.set(k, shade(c, h * 2 * GRAIN));
+  }
+}
 /** Geometría cacheada por clave. build(v) dibuja en una grilla de vóxeles de tamaño S. */
-// sin ruido (jitter 0): materiales planos, de 2 o 3 tonos
+// los tonos se pintan en bloques de 2 o 3 por material y cada vóxel varía apenas (grain); el jitter de la malla es 0
+// Tamaño de cabeza (segunda pasada de detalle, §8): 'grande' (de 2,8 a 3,4 cabezas de alto, como las referencias vóxel
+// del usuario) o 'chico' (el de la tercera pasada, ~3,8). La galería los compara con &head=chico. Entra en la clave de
+// la caché para que las dos versiones convivan en una misma página.
+let HEAD = 'grande';
+export const headMode = () => HEAD;
+export function setHeadMode(m) { HEAD = m === 'chico' ? 'chico' : 'grande'; }
 export function cachedGeo(key, build, scale = S) {
+  key = HEAD + '|' + key;
   if (geoCache.has(key)) return geoCache.get(key);
   const v = new Voxels();
   build(v);
+  if (!NO_GRAIN.test(key)) grain(v);
   const g = v.size ? v.toGeometry({ scale, jitter: 0 }) : null;
   geoCache.set(key, g);
   return g;

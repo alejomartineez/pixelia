@@ -300,7 +300,7 @@ export function thumbnail(spec) {
     obj.updateMatrixWorld(true);
     obj.userData.parts?.head?.getWorldPosition(hp);
     const h = obj.userData.height || 1, hy = hp.y || h * 0.75;
-    const AV = { head: [hy + 0.13, 0.5], tall: [hy + 0.2, 0.68], bust: [Math.max(hy + 0.07, h - 0.25), 0.64], body: [h * 0.5, h * 1.22], tallbody: [h * 0.52, h * 1.3], back: [h * 0.55, h * 1.25] };
+    const AV = { head: [hy + 0.13, 0.5], tall: [hy + 0.2, 0.68], bust: [Math.max(hy + 0.07, h - 0.24), 0.58], body: [h * 0.5, h * 1.22], tallbody: [h * 0.52, h * 1.3], back: [h * 0.55, h * 1.25] };
     const a = AV[spec.frame] || AV.body;
     fr = { ...fr, y: a[0], view: a[1], ang: spec.frame === 'back' ? 2.55 : spec.frame === 'bust' ? 0.3 : 0.45, elev: spec.frame === 'bust' ? 0.08 : 0.18 };
   }

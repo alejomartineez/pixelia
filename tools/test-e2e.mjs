@@ -554,6 +554,8 @@ try {
   await buildUI('casita');
   const busyUid = await run(`const now = Date.now(); return store.state.city.buildings.find(b => b.buildEnd > now)?.uid ?? null`);
   if (busyUid != null) {
+    // la Casa tarda segundos: con la CPU cargada terminaba sola antes del martillo. Se alarga la obra para la prueba
+    await run(`const b = store.state.city.buildings.find(b => b.uid === ${busyUid}); b.buildEnd = Date.now() + 300e3; store.markDirty(); return true;`);
     const hammers = await run(`return C.itemCount('hammer')`);
 
     const opened = await ev((uid) => { const c = window.__pixelia.city; const e = c.entries.get(uid); if (!e) return false; const v = e.root.position.clone(); v.y += 0.4; v.project(c.r.camera); const b = document.querySelector('.scene-city').getBoundingClientRect(); return { x: b.left + (v.x + 1) / 2 * b.width, y: b.top + (1 - v.y) / 2 * b.height }; }, busyUid).catch(() => null);
@@ -561,18 +563,25 @@ try {
     // el toque puede caer en alguien que pasa por delante de la casa (el personaje lleva al Equipaje): si la ficha no
     // abrió, se vuelve a la ciudad y se abre la misma ficha por el bus (city:focus). Así el martillo se usa siempre desde
     // la ficha y no queda nada abierto que tape el aviso del Pase más adelante.
+    // con la CPU cargada el toque táctil puede tomarse como toque largo y entrar en "Mover": se cancela
+    const cancelMove = async () => { for (let i = 0; i < 3 && await ev(() => !!window.__pixelia.city?.placer?.active); i++) { await page.keyboard.press('Escape'); await sleep(400); } };
+    await cancelMove();
     if (!(opened && await waitFor(`!!document.querySelector('.modal.cx-info-modal')`, 2500))) {
+      await cancelMove();
       if (await run(`return ctx.router.current`) !== 'city') { await run(`ctx.router.go('city'); return true;`); await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 8000); await sleep(1500); }
       await run(`ctx.bus.emit('city:focus', { uid: ${busyUid} }); return true;`);
       await waitFor(`!!document.querySelector('.modal.cx-info-modal')`, 5000);
     }
     await sleep(500);
-    const viaUI = await tap('.modal .btn.gold', 'Martillo', { timeout: 4000 });
-    if (!viaUI) await run(`C.useCityItem('hammer', { uid: ${busyUid} }); E.tick(); return true;`);
+    const doneCode = `!(window.__pixelia.store.state.city.buildings.find(b => b.uid === ${busyUid})?.buildEnd > Date.now())`;
+    let viaUI = await tap('.modal .btn.gold', 'Martillo', { timeout: 4000 });
+    if (viaUI && !(await waitFor(doneCode, 3000))) viaUI = false;
+    if (!viaUI && !(await waitFor(doneCode, 10))) await run(`C.useCityItem('hammer', { uid: ${busyUid} }); E.tick(); return true;`);
     await sleep(600);
     ok((await run(`return C.itemCount('hammer')`)) === hammers - 1 && (await run(`return !(store.state.city.buildings.find(b => b.uid === ${busyUid})?.buildEnd > Date.now())`)), `martillo terminó la obra (${viaUI ? 'desde la ficha' : 'por API'})`);
     await closeTop();
     await drainOverlays();
+    await cancelMove();
   }
   await checkBadges('después de cofres');
 

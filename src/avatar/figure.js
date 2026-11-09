@@ -7,7 +7,7 @@
 //   buildHead(v, look, D, pal)  cabeza con cara, pelo, barba o cicatrices y lo que lleve puesto
 //   GEAR[id]             equipo en la mano, el cuerpo o el hombro (las clases de M3 lo cambian con classLook)
 // Ejes: +Z es el frente, y = 0 el piso. Cada parte se dibuja en su grilla local con el pivote en el origen.
-import { MAT, mix, shade, ramp, hsl, hash3, hexToInt, skinHex, hairHex, clothHex } from './avatar-kit.js';
+import { MAT, mix, shade, ramp, hsl, hash3, hexToInt, skinHex, hairHex, clothHex, keepFlat, headMode } from './avatar-kit.js';
 
 // ---------------- Medidas por pueblo ----------------
 // leg: alto/ancho/profundidad y separación de la cadera; boot: alto de la bota; H/W/D: torso; sh: hombros que salen
@@ -41,8 +41,21 @@ export const PEOPLE = {
     esbelto: base({ legH: 18, legW: 5, legD: 5, hip: 3, H: 15, W: 13, D: 7, armL: 17, armW: 4, hand: 5, hw: 10, hh: 12, hd: 10, hunch: 0.22, headZ: 2, slim: true }),
   },
 };
+// Cabeza grande (§8, el modo por defecto): la cabeza crece y el cuerpo se acorta un poco (piernas dl, torso dH), así hay
+// lugar para ojos de 2 × 3, cejas, nariz y orejas grandes. Por pueblo; recio y esbelto comparten la cabeza.
+const BIG_HEAD = {
+  humano: { hw: 12, hh: 14, hd: 12, dl: -3, dH: -1 },
+  enano: { hw: 16, hh: 15, hd: 14, dl: 0, dH: -1 },
+  orco: { hw: 14, hh: 14, hd: 14, dl: -2, dH: -1 },
+  anuro: { hw: 20, hh: 10, hd: 16, dl: 0, dH: 0 },
+  zorro: { hw: 12, hh: 13, hd: 12, dl: -3, dH: -1 },
+  vaciado: { hw: 12, hh: 14, hd: 12, dl: -3, dH: -1 },
+};
+export const bigHead = () => headMode() === 'grande';
 export const dimsOf = (type, build) => {
-  const D = (PEOPLE[type] || PEOPLE.humano)[build === 'esbelto' ? 'esbelto' : 'recio'];
+  let D = (PEOPLE[type] || PEOPLE.humano)[build === 'esbelto' ? 'esbelto' : 'recio'];
+  const B = bigHead() && BIG_HEAD[type];
+  if (B) D = { ...D, hw: B.hw - (build === 'esbelto' && type === 'anuro' ? 2 : 0), hh: B.hh, hd: B.hd - (build === 'esbelto' && type !== 'humano' ? 1 : 0), legH: D.legH + B.dl, H: D.H + B.dH };
   // el brazo se mete 1 vóxel en el hombro: con la pose en A no queda una rendija entre brazo y torso
   return { ...D, armX: D.W / 2 + D.sh + D.armW / 2 - 1 };
 };
@@ -347,6 +360,8 @@ export function drawArm(v, look, D, P) {
     }
     let col = o.sleeve(r, L - 4, P);
     if (col === 'skin') col = P.skin;
+    // marca pintada (§8): una raya de 1 vóxel en la manga de tela, a 2 filas del puño, un tono más oscuro
+    if (col === P.cloth && r === L - 4 - (o.glove ? 3 : 2)) col = P.clothD;
     const wide = o.wide && r >= L - 4 - o.wide ? 1 : 0;
     for (let x = a0 - wide; x < a1 + wide; x++) for (let z = a0 - wide; z < a1 + wide; z++) {
       if (bevel(x, z, a0 - wide, a1 + wide, a0 - wide, a1 + wide) && D.armW > 3) continue;
@@ -465,8 +480,13 @@ function headBox(v, D, P, look) {
   }
   return { W, fz: Dz - 1, zb };
 }
-const EYE = { humano: 5, enano: 6, orco: 5, zorro: 6, vaciado: 5, anuro: 9 };
-const EYE_INK = 0x141114;   // ojos negros (nada más oscuro que ~#101010)
+const EYE_S = { humano: 5, enano: 6, orco: 5, zorro: 6, vaciado: 5, anuro: 9 };
+const EYE_B = { humano: 6, enano: 7, orco: 6, zorro: 7, vaciado: 6, anuro: 11 };
+/** Fila de arriba del ojo (desde el mentón) y alto del ojo: con la cabeza grande, el ojo negro pasa a 2 × 3. */
+const eyeRow = (t) => (bigHead() ? EYE_B : EYE_S)[t] ?? 6;
+const eyeTall = (t) => (bigHead() && t !== 'anuro' ? 3 : 2);
+const EYE = new Proxy({}, { get: (o, t) => eyeRow(t) });
+const EYE_INK = keepFlat(0x141114);   // ojos negros (nada más oscuro que ~#101010); no varían por vóxel
 const BEARDS = new Set(['barba_corta', 'barba_larga', 'barba_trenzada', 'bigote']);
 
 /** Ojos (malla aparte para parpadear): lista de [x, y, z, color]. */
@@ -489,7 +509,7 @@ export function eyeVoxels(look, D, P) {
     const xi = s < 0 ? -inner - 1 : inner, xo = s < 0 ? xi - 1 : xi + 1;
     if ((look.face === 'cicatriz_ojo' || look.face === 'parche') && s < 0) continue;
     const c = t === 'vaciado' ? P.iris : EYE_INK;
-    for (const y of [ey - 1, ey]) out.push([xi, y, fz, c], [xo, y, fz, c]);
+    for (let y = ey - eyeTall(t) + 1; y <= ey; y++) out.push([xi, y, fz, c], [xo, y, fz, c]);
   }
   return out;
 }
@@ -502,6 +522,7 @@ export function buildHead(v, look, D, P) {
   // cejas del color del pelo aunque esté rapado, un poco más oscuras y apagadas (pegadas al ojo, un cobre vivo se
   // leía como párpado colorado)
   const browC = t === 'vaciado' ? P.skinDD : mix(P.hairD, 0x2a2224, 0.35);
+  keepFlat(browC, P.lid, P.lip);   // cejas, cuencas y boca van lisas: la cara se lee por contraste
   if (t === 'anuro') {
     // ojos saltones que salen por arriba de la cabeza, boca de lado a lado con labio, fosas
     for (const s of [-1, 1]) {
@@ -533,7 +554,7 @@ export function buildHead(v, look, D, P) {
       const xi = s < 0 ? -2 : 1, xo = s < 0 ? -4 : 3;
       for (let x = Math.min(xi, xo); x <= Math.max(xi, xo); x++) v.set(x, ey + 2, fz + 1, P.skinD);
       v.set(xi, ey + 1, fz + 1, P.skinDD); v.set(xi, ey, fz + 1, P.skinDD); v.set(s < 0 ? -3 : 2, ey + 1, fz + 1, P.skinDD);   // ceja oscura que baja adentro sobre el ojo
-      v.set(xi, ey - 2, fz, P.skinDD);   // lágrima oscura hacia el hocico
+      v.set(xi, ey - eyeTall(t), fz, P.skinDD);   // lágrima oscura hacia el hocico
       // oreja: triángulo grande hacia arriba y un poco afuera, el adentro oscuro y la punta negra
       for (let r = 0; r < 8; r++) {
         const w = r < 2 ? 4 : r < 4 ? 3 : r < 6 ? 2 : 1, x0 = s < 0 ? -W + (r >> 2) : W - w - (r >> 2);
@@ -567,7 +588,8 @@ export function buildHead(v, look, D, P) {
     }
     v.box(-1, 3, fz + 1, 2, ey - 2, 1, P.skin);   // puente y cuerpo de la nariz
     // punta (la luz la pone la escena); los enanos, colorada y ancha
-    v.box(-1 - big, 3 - big, fz + 2, 2 + 2 * big, 1 + big, 1, big ? mix(P.skin, 0xb04838, 0.35) : P.skin);
+    // con la cabeza grande la punta es de 2 de alto y sale 2: la nariz se lee de frente y de perfil
+    v.box(-1 - big, 3 - big, fz + 2, 2 + 2 * big, 1 + big + (bigHead() ? 1 : 0), 1, big ? mix(P.skin, 0xb04838, 0.35) : P.skin);
     if (big) v.box(-2, 2, fz + 1, 4, 2, 1, P.skin);
     v.set(-2 - big, 3 - big, fz, P.skinD); v.set(1 + big, 3 - big, fz, P.skinD);   // aletas: sombra al costado
     if (!BEARDS.has(look.face)) for (let x = -1; x < 1; x++) v.set(x, 1, fz, P.lip);   // boca: una línea corta
@@ -575,7 +597,14 @@ export function buildHead(v, look, D, P) {
     if (t === 'vaciado') { v.set(-W + 1, 3, fz, P.skinDD); v.set(W - 2, 3, fz, P.skinDD); for (let y = 2; y < ey; y++) v.set(W - 3, y, fz, P.veinD); }
     for (const s of [-1, 1]) {
       const xe = s < 0 ? -W - 1 : W;
-      if (t === 'orco') { v.box(xe, 5, -2, 1, 3, 3, P.skin); for (let i = 1; i <= 3; i++) v.box(xe + s * i, 6 + (i >> 1), -2, 1, 2, 2, i === 3 ? P.skinD : P.skin); }
+      const eo = ey - 5;   // las orejas van de la ceja a la base de la nariz: con la cabeza grande suben con el ojo
+      if (t === 'orco') { v.box(xe, 5 + eo, -2, 1, 3, 3, P.skin); for (let i = 1; i <= 3; i++) v.box(xe + s * i, 6 + eo + (i >> 1), -2, 1, 2, 2, i === 3 ? P.skinD : P.skin); }
+      else if (bigHead()) {
+        // oreja grande que sale 2: la de afuera de 4 × 3 con el borde claro y la hendija oscura, y un lóbulo
+        v.box(xe, 2 + eo, -2, 1, 5, 4, P.skin);
+        v.box(xe + s, 3 + eo, -2, 1, 4, 3, (x, y) => (y === 6 + eo ? P.skinL : P.skin));
+        v.set(xe + s, 4 + eo, -1, P.skinDD); v.set(xe + s, 5 + eo, -1, P.skinD); v.set(xe, 2 + eo, 1, P.skinD);
+      }
       else { v.box(xe, 3, -1, 1, 4, 3, P.skin); v.set(xe, 4, 0, P.skinD); v.set(xe, 5, 0, P.skinD); }
     }
     if (t === 'orco') {
@@ -621,6 +650,7 @@ export function hairTop(look, D) { const h = hairShape(look.hair); return D.hh +
 
 function drawHair(v, look, D, P, g) {
   const t = look.type, h = hairShape(look.hair), hh = D.hh, { W, fz, zb } = g;
+  const dy = hh - 12;   // con la cabeza grande, las filas de los costados y la nuca suben lo mismo
   // mechones en bandas (sin ruido): base, sombra cada 3 columnas y luz arriba
   const hc = (x, y) => (y >= hh + (h.cap || 0) - 1 ? P.hairL : (x + 99) % 3 === 0 ? P.hairD : P.hair);
   const skinish = (c) => c === P.skin || c === shade(P.skin, 0.06);
@@ -648,16 +678,26 @@ function drawHair(v, look, D, P, g) {
     v.set(x, hh + c, z, hc(x, hh + c));
   }
   if (h.curls) for (let x = -W; x < W; x += 2) for (let z = zb; z < fz; z += 2) v.box(x, hh + 3, z, 1, 1, 1, P.hairD);
+  // mechones sueltos (§8): cubos que sobresalen del casquete a distintas alturas, en dos tonos; los rulos, el doble
+  if (h.cap) {
+    const yt = hh + h.cap - 1, pr = h.curls ? 0.5 : 0.2;
+    for (let x = -W; x < W; x++) for (let z = zb; z < fz; z++) {
+      if (!v.has(x, yt, z)) continue;
+      const k = hash3(x + 31, yt, z + 17);
+      if (k < pr) v.set(x, yt + 1, z, k < pr / 2 ? P.hairL : P.hair);
+      if (h.curls && k < pr / 3) v.set(x, yt + 2, z, P.hairD);
+    }
+  }
   if (h.spikes) for (const [x, z] of [[-3, -1], [1, 1], [-1, -4], [3, -3], [0, 2], [-4, 2]]) v.box(x, hh + 2, z, 2, 2 - ((x + z) & 1), 1, P.hairL);
   for (const s of [-1, 1]) {
     const x = s < 0 ? -W - 1 : W;
-    for (let y = h.side; y < hh + 1; y++) for (let z = zb - 1; z < (h.long ? fz - 1 : fz - 2); z++) {
-      if (!h.long && y < 7 && z > -3) continue;   // deja ver la oreja
+    for (let y = h.side + (h.side > 0 ? dy : 0); y < hh + 1; y++) for (let z = zb - 1; z < (h.long ? fz - 1 : fz - 2); z++) {
+      if (!h.long && y < 7 + dy && z > -3) continue;   // deja ver la oreja
       const wave = h.wavy && (y + 99) % 4 < 2 ? 1 : 0;
       v.set(x + s * wave, y, z, hc(z, y));
     }
   }
-  for (let y = h.back; y < hh + 1; y++) for (let x = -W + (y < 0 ? 1 : 0); x < W - (y < 0 ? 1 : 0); x++) v.set(x, y, zb - 1, hc(x, y));
+  for (let y = h.back + (h.back > 0 ? dy : 0); y < hh + 1; y++) for (let x = -W + (y < 0 ? 1 : 0); x < W - (y < 0 ? 1 : 0); x++) v.set(x, y, zb - 1, hc(x, y));
   if (h.long) for (let y = h.back; y < 4; y++) for (let x = -W + 1; x < W - 1; x++) v.set(x, y, zb - 2, (x + 99) % 3 === 0 ? P.hairD : P.hair);
   for (let i = 0; i < (h.fringe || 0); i++) {
     const y = hh - 1 - i;
@@ -665,6 +705,8 @@ function drawHair(v, look, D, P, g) {
       if (h.sweep && x > 1 - i * 2) continue;
       if (!h.sweep && i > 0 && Math.abs(x + 0.5) < W - 1) continue;
       v.set(x, y, fz + 1, hc(x, y));
+      // flequillo en escalones: algunos mechones de 2 bajan uno más, con la punta oscura
+      if (i === h.fringe - 1 && !h.sweep && h.fringe >= 2 && ((x + 99) >> 1) % 3 === 0 && Math.abs(x + 0.5) < W - 1) v.set(x, y - 1, fz + 1, P.hairD);
     }
   }
   if (h.bun) { v.box(-2, hh - 2, zb - 4, 4, 4, 3, (x, y) => hc(x, y)); v.box(-1, hh - 1, zb - 5, 2, 2, 1, P.hairD); v.box(-2, hh - 3, zb - 2, 4, 1, 1, P.leatherD); }
@@ -742,12 +784,14 @@ function drawFace(v, look, D, P, g) {
     // pintura de guerra: una franja de ocre rojo de lado a lado justo debajo de los ojos y dos rayas que bajan por las
     // mejillas (no manchas oscuras bajo el ojo, que se leen como otro par de ojos)
     const PT = look.type === 'orco' || look.type === 'anuro' ? 0xb0a58a : 0x7a2e24;
-    for (let x = -W; x < W; x++) if (Math.abs(x + 0.5) > 1) v.set(x, ey - 2, x === -W || x === W - 1 ? fz - 1 : fz, PT);
-    for (const x of [-W + 1, W - 2]) for (let y = ey - 4; y < ey - 2; y++) v.set(x, y, fz, ramp(PT, -0.6));
+    const yp = ey - eyeTall(look.type);   // justo debajo del ojo
+    for (let x = -W; x < W; x++) if (Math.abs(x + 0.5) > 1) v.set(x, yp, x === -W || x === W - 1 ? fz - 1 : fz, PT);
+    for (const x of [-W + 1, W - 2]) for (let y = yp - 2; y < yp; y++) v.set(x, y, fz, ramp(PT, -0.6));
   }
   else if (f === 'parche') {
     const x = look.type === 'orco' ? -3 : -2;
-    v.box(x - 1, ey - 1, fz + 1, 2, 2, 1, P.ink); v.set(x - 1, ey - 2, fz + 1, P.leatherD);   // parche chico sobre el ojo
+    const et = eyeTall(look.type);
+    v.box(x - 1, ey - et + 1, fz + 1, 2, et, 1, P.ink); v.set(x - 1, ey - et, fz + 1, P.leatherD);   // parche chico sobre el ojo
     for (let i = 0; i < W * 2 + 2; i++) { const xx = -W - 1 + i; const yy = ey + 1 + Math.round(i * 0.25); v.set(xx, yy, xx < -W || xx >= W ? 0 : fz + 1, P.leatherD); }
   }
 }

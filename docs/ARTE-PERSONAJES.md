@@ -278,6 +278,39 @@ con la luz del motor, así que el detalle se suma en bloques limpios y en piezas
   alta en todos los enanos (los hombros suben).
 - Los ojos negros de 2 × 2 y las cejas de §2 no cambian.
 
+## 8. Segunda pasada de detalle (las 4 referencias vóxel del usuario)
+
+El usuario mandó 4 capturas de personajes vóxel (un oso de un solo color con la grilla a la vista, un muchacho de rulos
+con anteojos, un chibi de espada y escudo y un vikingo) y dijo: "mira como se entienden de detallados los personajes aun
+siendo voxels". Lo que tienen en común y se sumó:
+- **Variación por vóxel** (`grain` en `cachedGeo`, `avatar-kit.js`): cada cubo de tela, piel, pelo o cuero lleva un
+  valor apenas distinto, de ±3,5 % por hash, y así se lee la grilla.
+  - No varían los colores de `FLAT`: ojos, cejas, cuencas, boca, metal, bronce, tinta, hueso y veta. Se suman con
+    `keepFlat`.
+  - Tampoco varían las mallas de ojos ni las que brillan.
+- **Cabeza grande** (`BIG_HEAD` en `figure.js`, el modo por defecto):
+  - humanos de cabeza 12 × 14 × 12, con 3 vóxeles menos de pierna y 1 menos de torso;
+  - enanos de 16 × 15 × 14;
+  - orcos de 14;
+  - gente-zorro de 12 × 13;
+  - anuros de 20 × 10.
+  - Quedan de 2,8 a 3,4 cabezas de alto, y el ojo negro pasa a 2 × 3 (`eyeTall`).
+  - **Decisión del 2026-11-09:** el usuario dormía y había autorizado todo, así que se eligió entre las dos versiones,
+    `shots/personajes/comparar-cabeza*.png`. Se eligió la grande, porque es lo que muestran las 4 referencias. Contradice
+    el 3,8 a 4,5 de §1.
+  - Para volver a la otra: `setHeadMode('chico')` en `avatar-kit.js`, o `&head=chico` en la galería (`&head=ambas` las
+    muestra lado a lado).
+- **Rasgos que salen del cráneo:**
+  - orejas grandes que salen 2, con el borde claro, la hendija y el lóbulo, a la altura del ojo;
+  - punta de la nariz de 2 de alto que sale 2;
+  - mechones sueltos que sobresalen del casquete, en dos tonos (los rulos, el doble);
+  - flequillo en escalones.
+- **Marcas pintadas:** una raya de 1 vóxel en las mangas de tela, a 2 filas del puño.
+- **Encuadre:**
+  - el Equipaje acerca la cámara al personaje (de 4,7 a 3,9);
+  - el busto de los retratos va más cerca (0,58);
+  - el combate es de quiebre-5-3 y no se tocó.
+
 ## Fuentes
 - [Veloren]: https://book.veloren.net/contributors/artists/voxel-models.html (escala de los modelos vóxel)
 - [Hytale 2025]: https://hytale.com/news/2025/12/an-introduction-to-making-models-for-hytale (geometría simple, sombras

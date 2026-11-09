@@ -139,13 +139,20 @@ cada paso.
   espera la ficha y, si el toque cae en alguien que pasa, la abre por el bus. Si vuelve a fallar algo suelto, correrlo
   solo antes de buscar un error.
 
-**Falta: segunda pasada de detalle.** El usuario mandó 4 referencias vóxel (un oso con la grilla visible, un muchacho de
-rulos con anteojos, un chibi y un vikingo) y pidió que se entiendan así de detallados. El plan:
-- variación de valor por vóxel (±3–4 %), salvo en ojos, cejas, boca y metal;
-- cabeza mucho más grande, de 2 a 3 cabezas de alto (hay que mostrarle al usuario las dos versiones lado a lado);
-- rasgos que salen del cráneo, marcas pintadas y una cámara más cerca.
-El brief está en las notas compartidas: `paso-4a-detalle-2-brief.md`. Después de esa pasada, lo integra el coordinador (no
-se corrió `npm run bump`).
+- **Segunda pasada de detalle** (las 4 referencias vóxel del usuario; guía §8):
+  - variación de valor por vóxel;
+  - cabeza grande con el ojo de 2 × 3;
+  - orejas, nariz, mechones y flequillo que salen del cráneo;
+  - raya en las mangas;
+  - cámara más cerca en el Equipaje y en los retratos.
+  - **Decisión tomada sin el usuario** (estaba durmiendo y lo había autorizado todo): la cabeza grande. La comparación
+    está en `shots/personajes/comparar-cabeza*.png`. Para volver: `setHeadMode('chico')`.
+
+- Tests después de la segunda pasada: e2e 96, stress 15, visit 20, migration 80 y story 94, todos en verde.
+  - El paso del martillo de `test-e2e` ahora alarga la obra, cancela el "Mover" si un toque se toma como toque largo y
+    verifica que el martillo terminó antes de seguir. Bajo carga eran las 7 u 8 fallas en cadena.
+
+**Falta:** nada del 4a. Lo integra el coordinador (no se corrió `npm run bump`).
 
 ## Decisiones tomadas
 - Plataforma:
