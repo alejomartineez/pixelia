@@ -3,7 +3,7 @@
 // cada pose dice a qué ángulo va cada articulación y `applyPose` mezcla con lo que dejó el update según el peso w, así
 // una pose entra y sale con suavidad (w de 0 a 1 y de vuelta).
 //
-//   applyPose(model, 'señalar', { w, t, side: 'R', look: 0.4 })   · poseNames · holdProp(model, prop, 'R') · dropProp
+//   applyPose(model, 'señalar', { w, t, side: 'R', look: 0.4 })   · poseNames · holdProp(model, prop, 'R') · holdBoth · dropProp
 //   prop('cristal' | 'caja' | 'carta' | 'bolsa' | 'farol' | 'pala', { color })
 //
 // Convenciones del avatar: mira a +z; rotation.x negativa lleva el brazo (o la pierna) adelante; en rotation.z, afuera
@@ -22,8 +22,8 @@ const S = (side) => (side === 'L' ? -1 : 1);
 const POSES = {
   // brazo extendido hacia adelante y un poco arriba; la cabeza acompaña
   señalar: (u, o) => ({ [arm(o)]: { x: -1.5, z: 0.08 * S(o.side) }, head: { x: -0.08, y: (o.look ?? 0) }, upper: { x: -0.04 } }),
-  // las dos manos adelante y juntas, sosteniendo algo contra el pecho; el cuerpo un poco atrás por el peso
-  cargar: () => ({ armR: { x: -0.95, z: -0.32 }, armL: { x: -0.95, z: 0.32 }, upper: { x: -0.1 }, head: { x: 0.12 } }),
+  // las dos manos adelante, a lo ancho del cuerpo, sosteniendo algo entre las dos (holdBoth); el cuerpo un poco atrás
+  cargar: () => ({ armR: { x: -1.0, z: -0.06 }, armL: { x: -1.0, z: 0.06 }, upper: { x: -0.08 }, head: { x: 0.12 } }),
   // inclinado adelante, brazos rectos al frente, empuje que late
   empujar: (u) => ({ armR: { x: -1.45, z: -0.12 }, armL: { x: -1.45, z: 0.12 }, upper: { x: 0.32 + Math.sin(u * 6) * 0.04 }, head: { x: -0.2 }, legs: [-0.45, 0.35] }),
   // forcejeo: golpes y tirones alternados, el cuerpo se balancea
@@ -35,7 +35,8 @@ const POSES = {
   // cae de espaldas: p 0..1 (0 parado, 1 en el piso); los brazos se abren
   caer: (u, o) => {
     const p = o.p ?? 1;
-    return { body: { x: -1.45 * p * p, y: -0.05 * p }, armR: { x: -2.2 * p, z: 0.6 * p }, armL: { x: -2.2 * p, z: -0.6 * p }, head: { x: -0.3 * p }, legs: [-0.5 * p, -0.2 * p] };
+    // las piernas siguen al cuerpo (casi rectas): en el piso no quedan los pies en el aire
+    return { body: { x: -1.45 * p * p, y: -0.05 * p }, armR: { x: -2.2 * p, z: 0.6 * p }, armL: { x: -2.2 * p, z: -0.6 * p }, head: { x: -0.3 * p }, legs: [0.08 * p, -0.08 * p] };
   },
   // estira el brazo a agarrar algo (p 0..1: estirar → cerrar y traer)
   agarrar: (u, o) => {
@@ -46,10 +47,11 @@ const POSES = {
   entregar: (u, o) => ({ [arm(o)]: { x: -1.05, z: -0.06 * S(o.side) }, upper: { x: 0.1 }, head: { x: 0.1, y: o.look ?? 0 } }),
   // gira la cabeza (o.look, rad; + mira a su izquierda) y el torso acompaña un poco
   mirar: (u, o) => ({ head: { y: o.look ?? 0.6, x: o.up ?? 0 }, upper: { y: (o.look ?? 0.6) * 0.3 } }),
-  // se arrodilla: una pierna adelante, la otra atrás, el cuerpo baja; p 0..1
+  // se arrodilla en el piso: las piernas (que no tienen rodilla) van atrás, apoyadas, y el cuerpo baja justo lo que
+  // hace falta para que los pies toquen el piso (legDrop); la espalda derecha y la cabeza gacha; p 0..1
   arrodillarse: (u, o) => {
-    const p = o.p ?? 1;
-    return { legs: [-1.25 * p, 1.05 * p], body: { y: -0.11 * p }, upper: { x: 0.25 * p }, head: { x: 0.3 * p }, armR: { x: -0.5 * p, z: -0.1 * p }, armL: { x: -0.2 * p } };
+    const p = o.p ?? 1, a = 1.3 * p;
+    return { legs: [a, a], body: { drop: 1 - Math.cos(a) }, upper: { x: -0.05 * p }, head: { x: 0.3 * p }, armR: { x: -0.25 * p, z: -0.08 * p }, armL: { x: -0.25 * p, z: 0.08 * p } };
   },
 };
 function arm(o) { return o.side === 'L' ? 'armL' : 'armR'; }
@@ -80,7 +82,28 @@ export function applyPose(model, name, o = {}) {
     if (T.body.y != null) P.body.position.y += T.body.y * H * w / (model.scale.y || 1);
   }
   if (T.legs && P.legs) P.legs.forEach((l, i) => { if (T.legs[i] != null) l.rotation.x = lerp(l.rotation.x, T.legs[i], w); });
+  // drop: con las piernas giradas, el cuerpo baja hasta que lo más bajo de las piernas toque el piso (se mide con la
+  // geometría real, bota incluida, y se guarda por ángulo)
+  if (T.body?.drop != null && P.legs?.length) P.body.position.y -= groundGap(model, P);   // ya mide las piernas a medio girar
   return true;
+}
+
+/** Cuánto sobra entre lo más bajo de las piernas (giradas como están) y el piso del modelo, en unidades de body. */
+function groundGap(model, P) {
+  const key = P.legs.map(l => l.rotation.x.toFixed(2)).join('|') + '|' + P.body.rotation.x.toFixed(2);
+  const cache = model.userData.__gap || (model.userData.__gap = new Map());
+  if (cache.has(key)) return cache.get(key);
+  const y0 = P.body.position.y;
+  P.body.position.y = 0;
+  model.updateMatrixWorld(true);
+  const bb = new THREE.Box3();
+  for (const l of P.legs) bb.expandByObject(l);
+  const ground = new THREE.Vector3().setFromMatrixPosition(model.matrixWorld).y;
+  const ws = new THREE.Vector3(); P.body.getWorldScale(ws);
+  P.body.position.y = y0;
+  const gap = Math.max(0, (bb.min.y - ground) / (ws.y || 1));
+  cache.set(key, gap);
+  return gap;
 }
 
 /** Mezcla de entrada y salida para una pose que dura [t0, t1] con fundidos de `fade` segundos. */
@@ -126,6 +149,29 @@ export function holdProp(model, obj, side = 'R') {
   obj.position.set(0, -0.02, 0.05);
   return obj;
 }
+/**
+ * Un objeto entre las dos manos (cargar una caja): se cuelga del torso, en el punto medio de las manos con la pose
+ * puesta, así queda entre las dos y no atravesado ni colgando de una sola.
+ */
+export function holdBoth(model, obj, pose = 'cargar', o = {}) {
+  const P = model.userData.parts;
+  if (!P?.upper || !obj) return obj;
+  const hr = handOf(model, 'R'), hl = handOf(model, 'L');
+  const keep = [P.armR, P.armL, P.upper, P.head, P.body].map(x => [x.rotation.clone(), x.position.clone()]);
+  applyPose(model, pose, { ...o, w: 1 });
+  model.updateMatrixWorld(true);
+  const a = new THREE.Vector3(), b = new THREE.Vector3();
+  hr.getWorldPosition(a); hl.getWorldPosition(b);
+  const mid = a.add(b).multiplyScalar(0.5);
+  [P.armR, P.armL, P.upper, P.head, P.body].forEach((x, i) => { x.rotation.copy(keep[i][0]); x.position.copy(keep[i][1]); });
+  model.updateMatrixWorld(true);
+  P.upper.add(obj);
+  P.upper.worldToLocal(mid);
+  const ws = new THREE.Vector3(); P.upper.getWorldScale(ws);
+  obj.scale.setScalar(1 / (ws.y || 1));
+  obj.position.copy(mid);
+  return obj;
+}
 /** Suelta el objeto en la escena, en el lugar del mundo donde estaba. */
 export function dropProp(obj, parent) {
   if (!obj?.parent || !parent) return obj;
@@ -151,9 +197,14 @@ export function prop(kind, { color } = {}) {
   const g = new THREE.Group();
   g.name = 'prop:' + kind;
   switch (kind) {
-    case 'cristal': part(g, 0.07, 0.12, 0.07, color ?? 0xd4ecf2, 0, -0.06, 0, true); part(g, 0.04, 0.05, 0.04, 0xffffff, 0, 0.02, 0, true); break;
-    case 'caja': part(g, 0.2, 0.15, 0.16, 0x6b4f33, 0, -0.08, 0.06); part(g, 0.21, 0.02, 0.17, 0x3e2e20, 0, -0.02, 0.06); break;
-    case 'carta': part(g, 0.1, 0.13, 0.012, 0xe8dcc0, 0, -0.07, 0.03); part(g, 0.03, 0.03, 0.014, 0x9a2e2a, 0, -0.07, 0.035); break;
+    // cristal de veta: rombo celeste (angosto, ancho, angosto) con el centro claro, para que no se lea como botella
+    case 'cristal': {
+      const c = color ?? 0x6cc8e8;
+      part(g, 0.04, 0.04, 0.04, c, 0, 0.0, 0, true); part(g, 0.08, 0.07, 0.08, c, 0, -0.055, 0, true);
+      part(g, 0.05, 0.05, 0.05, 0xeaffff, 0, -0.055, 0.02, true); part(g, 0.04, 0.04, 0.04, 0x3e8aa8, 0, -0.11, 0, true); break;
+    }
+    case 'caja': part(g, 0.3, 0.2, 0.2, 0x6b4f33, 0, -0.06, 0.08); part(g, 0.31, 0.03, 0.21, 0x3e2e20, 0, 0.0, 0.08); part(g, 0.03, 0.2, 0.21, 0x3e2e20, 0, -0.06, 0.08); break;
+    case 'carta': part(g, 0.14, 0.17, 0.016, 0xe8dcc0, 0, -0.08, 0.03); part(g, 0.04, 0.04, 0.02, 0x9a2e2a, 0, -0.08, 0.035); break;
     case 'bolsa': part(g, 0.12, 0.13, 0.1, 0x8a6a44, 0, -0.1, 0); part(g, 0.04, 0.04, 0.04, 0x5a4430, 0, -0.02, 0); break;
     case 'farol': part(g, 0.02, 0.06, 0.02, 0x2a2420, 0, -0.03, 0); part(g, 0.07, 0.09, 0.07, 0xffc070, 0, -0.1, 0, true); break;
     case 'pala': part(g, 0.025, 0.42, 0.025, 0x5a4430, 0, -0.05, 0.06); part(g, 0.09, 0.11, 0.02, 0x8a8f96, 0, -0.3, 0.06); break;

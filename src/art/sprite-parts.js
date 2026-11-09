@@ -91,7 +91,7 @@ export const HEADS = {
     px: [...span(-2, 2, 4, 's'), ...span(-1, 1, 5, 's'), ...span(-2, 11, 13, 's'), ...span(-1, 10, 14, '1'), [13, -2, '1'], [14, 0, '1'],
       [7, 3, '1'], [9, 3, '1'], ...span(5, 2, 13, '0'), [1, 4, '0'], [14, 4, '0'], ...span(6, 3, 12, 'q'), ...span(7, 4, 11, 'q'),
       [15, 1, '1'], [15, 2, '1'], [15, 3, '1'], [15, 4, '1'], [14, 1, '1']],
-    eyes: [[3, -1], [12, -1]], mouth: [7, 5], noBrow: true,
+    eyes: [[3, -1], [12, -1]], mouth: [7, 5], noBrow: true, hatDy: 2, eyesOver: true,
   },
   zorro: {
     w: 12, rows: [8, 10, 12, 12, 12, 12, 12, 10, 8, 6],
@@ -503,8 +503,10 @@ export const BODY_GEAR = {
 export const ITEMS = {
   caja: ['WWwww6', 'w6ww66', 'w8ww86', 'w6ww66', '666666'],
   veta: ['..V..', '.VvV.', 'VVv**', '.v**.', '..*..'],
-  carta: ['NnnnN', 'n9999', 'nnnnn', '99999'],
-  bolsa: ['.4l.', '.88.', 'lLll', 'llll', '4ll4'],
+  // carta: sobre claro con la solapa marcada y un sello rojo, para que se lea como carta
+  carta: ['NnnnnnN', 'n9nnn9n', 'nn9!9nn', 'nnn!nnn', '9999999'],
+  // bolsa: saco atado con el cordón y una moneda asomando
+  bolsa: ['..44..', '..88..', '.lLll4', 'lLlll4', 'llBll4', '.4444.'],
 };
 // efectos: flecha, fogonazo y destello de veta (no llevan contorno)
 export const FX = {

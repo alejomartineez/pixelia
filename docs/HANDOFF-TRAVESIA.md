@@ -261,11 +261,32 @@ Hecho:
 - **`tools/test-cinema.mjs`** (en `npm test` después de test-sprite2d, y `npm run test:cinema`): 54 ok, con la línea
   grabada sonando por el bus de voz y la música baja. `test-audio` 72/0.
 
+- **Revisión cuadro a cuadro** (regla nueva del usuario: nada sobrepuesto, todo se tiene que entender):
+  - sprites (`sprites.html?view=anims&set=all&rows=a-b`: las 6 clases, el tirador y lanza, escudo, farol, libro y orbe,
+    con caja, veta, carta y bolsa):
+    - el arma levantada para el golpe va detrás de la cabeza (antes cruzaba el casco o la cara);
+    - el objeto que se levanta se corre afuera de la cabeza sin soltarse de la mano;
+    - la carta lleva solapa y sello rojo, y la bolsa es un saco atado con una moneda;
+    - el anuro: el sombrero baja (`hatDy`) y los ojos saltones van encima (`eyesOver`);
+    - la lanza al frente sale de la mano, sin contera atravesando el torso.
+  - viñeta: el forcejeo es un tironeo con los dos brazos estirados sobre el cristal, a 24 px uno del otro (no se
+    pisan). El cristal va encima de las manos y salta en arco por encima de las cabezas hasta la mano del guardia. El
+    guardia va sin espada, así no aparece y desaparece un arma entre gestos.
+  - poses 3D (`cinema.html?view=poses`, de frente y de perfil):
+    - `cargar` con `holdBoth` (la caja entre las dos manos);
+    - `caer` con las piernas en el piso;
+    - `arrodillarse` con las piernas atrás y el cuerpo bajado hasta tocar el piso (se mide con la geometría,
+      `groundGap`);
+    - el cristal 3D es un rombo celeste, la caja y la carta son más grandes.
+  - pruebas: `test-sprite2d` 14/0 y `test-cinema` 56/0 (suma "caja entre las dos manos" y "de rodillas apoya en el
+    piso").
+
 Queda:
+- El cuadro tendido de `caer` en 2D sigue saliendo de girar la figura: se entiende, pero se puede dibujar mejor.
+- El arco tenso cruza el pecho con la cuerda, como el de la referencia; si molesta, acortar la V.
 - El 3b escribe sus líneas en `narration.js`, las graba con `npm run narrate -- --script intro` (Fenrir por defecto)
   y las pone en los planos con `subs: [{ at, text, voice: 'intro/NN' }]`.
 - El bump (orquestador) tiene que sumar `assets/audio/voice/` al `sw.js`.
-- El cuadro tendido de `caer` sigue saliendo de girar la figura (se ve en el forcejeo); conviene dibujarlo.
 - Las bestias (lobos, etc.) no tienen sprite.
 - Cuando entre el 4a, los subtítulos y carteles nuevos van con `t()`. Este paso no escribió textos de juego nuevos,
   salvo la línea de apertura en `narration.js` (es la de siempre) y los de la demostración, que van en el código de

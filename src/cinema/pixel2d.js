@@ -334,41 +334,47 @@ defineVignette('forcejeo', (v) => {
     g.fillRect(W - 60, 148, 22, 32); g.fillRect(W - 62, 152, 26, 4); g.fillRect(W - 62, 166, 26, 3);
   }, { width: 460 });
 
+  // quien roba (capucha, con el cristal) y un guardia de las Casas (casco y tabardo rojo; sin espada: así no aparece y
+  // desaparece un arma entre los gestos)
   const thief = v.actor({ type: 'zorro', build: 'esbelto', skin: 0, hair: 'coleta', hairColor: 'blanco', face: 'ninguna', dress: 'cuero', dressColor: 'negro', crown: 'capucha', acc: 'ninguno' },
     { x: 130, y: GROUND + 2, opts: { item: 'veta' } });
-  const guard = v.actor({ type: 'humano', build: 'recio', skin: 2, hair: 'corto', hairColor: 'negro', face: 'ninguna', dress: 'tabardo', dressColor: 'rojo', crown: 'casco', acc: 'espada' },
+  const guard = v.actor({ type: 'humano', build: 'recio', skin: 2, hair: 'corto', hairColor: 'negro', face: 'ninguna', dress: 'tabardo', dressColor: 'rojo', crown: 'casco', acc: 'ninguno' },
     { x: 300, y: GROUND + 2, flip: true });
+  // el cristal suelto se dibuja encima de las manos (z alto)
   const crystal = crystalProp(v, 158, GROUND - 14);
-  crystal.visible = false;
+  crystal.visible = false; crystal.z = 40;
 
   v.cam.x = 156; v.cam.y = 116; v.cam.zoom = 2;
-  // 0 s: sale del portón con el cristal en alto, mirando hacia la izquierda; el guardia llega por la derecha
+  // 0 s: sale del portón con el cristal en alto; el guardia llega por la derecha y la señala
   v.at(0, () => { thief.play('lift', { loop: false, hold: 1 }); guard.play('walk'); });
   v.tween(guard, { x: 214 }, { at: 0, dur: 1.6, ease: 'out' });
   v.tween(v.cam, { x: 192 }, { at: 0.3, dur: 1.5, ease: 'inOut' });
   v.at(1.6, () => { guard.play('point', { loop: false, hold: 1 }); });
-  // 2 s: el que robaba guarda el cristal y encara; la cámara se acerca
-  v.at(2.1, () => { thief.play('walk'); crystal.visible = true; crystal.x = thief.x + 8; crystal.y = GROUND - 12; });
-  v.tween(crystal, { x: 184 }, { at: 2.2, dur: 0.6, ease: 'out' });
-  v.tween(v.cam, { x: 186, y: 126, zoom: 3 }, { at: 2.2, dur: 0.6, ease: 'inOut' });
-  v.tween(thief, { x: 176 }, { at: 2.1, dur: 0.7, ease: 'out' });
+  // 2,1 s: quien roba baja el cristal a la mano y avanza; el guardia le sale al cruce; la cámara se acerca
+  v.at(2.1, () => { thief.play('walk'); crystal.visible = true; crystal.x = thief.x + 12; crystal.y = GROUND - 15; });
+  v.tween(thief, { x: 172 }, { at: 2.1, dur: 0.7, ease: 'out' });
+  v.tween(crystal, { x: 184 }, { at: 2.1, dur: 0.7, ease: 'out' });
   v.tween(guard, { x: 196 }, { at: 2.2, dur: 0.6, ease: 'out' });
-  // 2,8–4,6 s: forcejeo. Golpes cruzados, el cristal va y viene entre las manos, chispas y temblor
-  v.at(2.8, () => { thief.play('attack'); guard.play('attack'); thief.dy = 0; });
-  const grip = [[2.8, 184], [3.15, 189], [3.5, 183], [3.85, 190], [4.2, 186]];
-  grip.forEach(([at, x], i) => {
-    v.tween(crystal, { x, y: GROUND - 13 - (i % 2) * 2 }, { at, dur: 0.3, ease: 'inOut' });
-    v.at(at + 0.15, (vv) => { vv.shake(1); vv.burst('chispa', x, GROUND - 14, 5, { speed: 35, life: 0.45 }); });
+  v.tween(v.cam, { x: 184, y: 126, zoom: 3 }, { at: 2.2, dur: 0.6, ease: 'inOut' });
+  // 2,8–4,5 s: el tironeo. Los dos con el brazo estirado sobre el cristal (24 px entre uno y otro: no se pisan) y van
+  // juntos de un lado al otro; en cada tirón, chispas y un temblor
+  v.at(2.8, () => { thief.play('point', { loop: false, hold: 1 }); guard.play('point', { loop: false, hold: 1 }); });
+  [[3.0, -4], [3.35, 5], [3.7, -4], [4.05, 4], [4.4, -1]].forEach(([at, d], i) => {
+    const base = [172, 196, 184];
+    v.tween(thief, { x: base[0] + d }, { at, dur: 0.25, ease: 'inOut' });
+    v.tween(guard, { x: base[1] + d }, { at, dur: 0.25, ease: 'inOut' });
+    v.tween(crystal, { x: base[2] + d, y: GROUND - 15 - (i % 2) }, { at, dur: 0.25, ease: 'inOut' });
+    v.at(at + 0.2, (vv) => { vv.shake(1); vv.burst('chispa', base[2] + d, GROUND - 17, 4, { speed: 30, life: 0.4 }); });
   });
-  v.tween(thief, { x: 179 }, { at: 3.0, dur: 0.35 }); v.tween(thief, { x: 175 }, { at: 3.4, dur: 0.35 });
-  v.tween(guard, { x: 193 }, { at: 3.2, dur: 0.35 }); v.tween(guard, { x: 197 }, { at: 3.6, dur: 0.35 });
-  // 4,6 s: el guardia arranca el cristal; quien robaba recibe el golpe y cae
-  v.at(4.6, (vv) => { guard.play('attack', { loop: false, hold: 2 }); thief.play('hurt'); vv.shake(3); vv.burst('brillo', 188, GROUND - 16, 14, { speed: 30, life: 0.9 }); });
-  v.tween(crystal, { x: 205, y: GROUND - 22 }, { at: 4.65, dur: 0.45, ease: 'out' });
-  v.tween(thief, { x: 164 }, { at: 4.7, dur: 0.5, ease: 'out' });
-  v.at(5.15, (vv) => { thief.play('fall', { loop: false, hold: 1 }); vv.burst('polvo', 160, GROUND + 1, 16, { speed: 22, spread: Math.PI * 0.9, life: 1.1 }); vv.shake(2); });
-  // 5,6 s: el cristal queda en la mano del guardia, que lo levanta; la cámara se abre
-  v.at(5.6, () => { crystal.visible = false; guard.opts = { item: 'veta' }; guard.play('lift', { loop: false, hold: 1 }); });
-  v.tween(v.cam, { x: 184, y: 118, zoom: 2 }, { at: 5.9, dur: 1.2, ease: 'inOut' });
-  v.at(6.4, (vv) => vv.burst('brillo', 197, GROUND - 34, 10, { speed: 14, life: 1.4 }));
+  // 4,6 s: el guardia la empuja; el cristal salta por encima de las cabezas y cae en su mano; quien robaba cae
+  v.at(4.6, (vv) => { guard.play('attack', { loop: false, hold: 2 }); thief.play('hurt'); vv.shake(3); vv.burst('brillo', 183, GROUND - 18, 12, { speed: 30, life: 0.9 }); });
+  v.tween(crystal, { x: 186, y: GROUND - 46 }, { at: 4.65, dur: 0.35, ease: 'out' });
+  v.tween(crystal, { x: 184, y: GROUND - 17 }, { at: 5.0, dur: 0.35, ease: 'in' });
+  v.tween(thief, { x: 158 }, { at: 4.7, dur: 0.5, ease: 'out' });
+  v.at(5.15, (vv) => { thief.play('fall', { loop: false, hold: 1 }); vv.burst('polvo', 154, GROUND + 1, 16, { speed: 22, spread: Math.PI * 0.9, life: 1.1 }); vv.shake(2); });
+  v.at(5.35, (vv) => { guard.play('point', { loop: false, hold: 1 }); vv.burst('brillo', 184, GROUND - 18, 6, { speed: 12, life: 0.5 }); });
+  // 5,7 s: lo levanta; la cámara se abre
+  v.at(5.7, () => { crystal.visible = false; guard.opts = { item: 'veta' }; guard.play('lift', { loop: false, hold: 1 }); });
+  v.tween(v.cam, { x: 182, y: 118, zoom: 2 }, { at: 5.9, dur: 1.2, ease: 'inOut' });
+  v.at(6.5, (vv) => vv.burst('brillo', 199, GROUND - 36, 10, { speed: 14, life: 1.4 }));
 }, { dur: 8, seed: 12 });

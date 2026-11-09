@@ -110,7 +110,16 @@ const poses = await page.evaluate(async () => {
   P.dropProp(crystal, scene);
   const wp2 = new THREE.Vector3(); crystal.getWorldPosition(wp2);
   const kinds = ['cristal', 'caja', 'carta', 'bolsa', 'farol', 'pala'].every(k => P.prop(k).children.length > 0);
-  return { dbg: [wp.toArray(), armTop.toArray()], out, names: P.poseNames, r0, half, alias, weight, inHand: crystal.parent === scene && hand.children.length === 0, below: wp.distanceTo(armTop) > 0.15, kept: wp.distanceTo(wp2) < 1e-4, kinds };
+  // la caja entre las dos manos: a la misma distancia de una y de la otra
+  const mc = avatarModel(look); mc.userData.update(0.016, false);
+  const box = P.prop('caja'); P.holdBoth(mc, box, 'cargar'); P.applyPose(mc, 'cargar', { w: 1 }); mc.updateMatrixWorld(true);
+  const bp = new THREE.Vector3(), hr = new THREE.Vector3(), hl = new THREE.Vector3();
+  box.getWorldPosition(bp); P.handOf(mc, 'R').getWorldPosition(hr); P.handOf(mc, 'L').getWorldPosition(hl);
+  const both = Math.abs(bp.distanceTo(hr) - bp.distanceTo(hl)) < 0.03 && bp.distanceTo(hr) < 0.25;
+  // de rodillas: los pies tocan el piso (el punto más bajo del cuerpo queda en y ≈ 0)
+  const mk = avatarModel(look); mk.userData.update(0.016, false); P.applyPose(mk, 'arrodillarse', { w: 1, p: 1 }); mk.updateMatrixWorld(true);
+  const kneelLow = new THREE.Box3().setFromObject(mk).min.y;
+  return { both, kneelLow, dbg: [wp.toArray(), armTop.toArray()], out, names: P.poseNames, r0, half, alias, weight, inHand: crystal.parent === scene && hand.children.length === 0, below: wp.distanceTo(armTop) > 0.15, kept: wp.distanceTo(wp2) < 1e-4, kinds };
 });
 const want = ['señalar', 'cargar', 'empujar', 'pelear', 'caer', 'agarrar', 'entregar', 'mirar', 'arrodillarse'];
 ok(want.every(n => poses.names.includes(n)), 'están las nueve poses del plan', poses.names);
@@ -120,6 +129,8 @@ ok(poses.alias, 'acepta los nombres sin tilde o en inglés');
 ok(poses.weight[0] === 0 && poses.weight[1] === 1 && poses.weight[2] > 0 && poses.weight[2] < 1, 'peso de entrada y salida de una pose');
 ok(poses.below && poses.kept && poses.inHand, 'la utilería va a la punta del brazo y al soltarla queda donde estaba', poses.dbg);
 ok(poses.kinds, 'utilería: cristal, caja, carta, bolsa, farol y pala');
+ok(poses.both, 'cargar: la caja queda entre las dos manos');
+ok(Math.abs(poses.kneelLow) < 0.04, 'de rodillas: apoya en el piso, ni flota ni lo atraviesa', poses.kneelLow);
 
 console.log('\nViñeta 2D: el forcejeo');
 const vin = await page.evaluate(async () => {

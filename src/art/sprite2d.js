@@ -148,7 +148,8 @@ function rigOf(anim, f, kind) {
   else if (anim === 'attack') {
     const A = {
       melee: [{ main: 'up', wdir: 'raise' }, { main: 'strike', wdir: 'strike', dx: 1 }, { main: 'hold', wdir: 'up' }],
-      thrust: [{ wdir: 'fwd', wdx: -3 }, { main: 'point', wdir: 'fwd', dx: 1 }, { wdir: 'fwd', wdx: -1 }],
+      // la lanza sale de la mano hacia adelante: el asta nunca cruza el torso
+      thrust: [{ main: 'back', wdir: 'fwd' }, { main: 'point', wdir: 'fwd', dx: 1 }, { wdir: 'fwd' }],
       bow: [{ main: 'point', bow: 'rest' }, { main: 'point', off: 'draw', bow: 'drawn' }, { main: 'point', bow: 'rest', fx: 'arrow' }],
       gun: [{ main: 'point', wdir: 'fwd' }, { main: 'point', wdir: 'fwd', fx: 'flash', dx: -1 }, { main: 'point', wdir: 'fwd', mainDY: -1, fx: 'smoke' }],
       cast: [{ main: 'up' }, { main: 'up', fx: 'glow' }, { main: 'hold' }],
@@ -200,7 +201,8 @@ function drawWeapon(L, acc, dir, hx, hy, bow) {
   const px = dy === 0 ? 0 : 1, py = dy === 0 ? 1 : 0;   // al costado de la línea (para la hoja de 2)
   const room = (sx, sy) => { let n = 0, x = hx, y = hy; for (;;) { x += sx; y += sy; if (x < 0 || y < 1 || x > FW - 1 || y > GROUND) return n; n++; } };
   let x = hx, y = hy;
-  let backRoom = room(-dx, -dy);
+  // al frente (estocada) no se dibuja la contera: quedaría atravesando el cuerpo
+  let backRoom = dir === 'fwd' ? 0 : room(-dx, -dy);
   for (const [c, n] of W.back || []) for (let k = 0; k < n && backRoom > 0; k++, backRoom--) { x -= dx; y -= dy; put(L, x, y, c); }
   // la cabeza del arma tiene que entrar entera en el cuadro: el asta se acorta lo que haga falta (el martillo en el
   // golpe perdía la cabeza contra el piso)
@@ -305,6 +307,15 @@ function figure(look, R, anim, f, opts) {
   const offHand = [mirror(offA.hand[0]), offA.hand[1]];
   if (look.acc === 'escudo' && !r.lying) { const sh = layer(); rows(sh, WEAPONS.escudo.grid, offHand[0] - 4, Math.min(offHand[1] - 3, GROUND - WEAPONS.escudo.grid.length + 1)); commit(buf, sh, R, { sep: true }); }
 
+  // el arma levantada para el golpe va detrás de la cabeza (si no, la cruza por encima del casco o de la cara)
+  const behind = showWeapon && !W.off && W.kind === 'melee' && r.wdir === 'raise';
+  if (behind) {
+    const m = armCells(r.main, B, O, tx1, ty0 + breath, r.mainDY || 0);
+    const wl = layer();
+    drawWeapon(wl, look.acc, 'raise', m.hand[0] + (r.wdx || 0), m.hand[1], r.bow);
+    commit(buf, wl, R, { sep: true });
+  }
+
   // --- cabeza, cara, barba, pelo y sombrero
   const head = layer();
   HD.rows.forEach((w, y) => { const x0 = Math.floor((hw - w) / 2); for (let x = 0; x < w; x++) put(head, sx0 + x0 + x, sy0 + y, 's'); });
@@ -338,7 +349,17 @@ function figure(look, R, anim, f, opts) {
     commit(buf, L, R, { sep: !!hat });
   };
   if (!hat) ears();
-  if (hat) { const L = layer(); rows(L, widen(hat.rows, hw - 12), sx0 + hat.ox, sy0 + hat.oy); commit(buf, L, R, { sep: true }); if (hat.hide !== 'all') ears(); }
+  if (hat) {
+    const L = layer(); rows(L, widen(hat.rows, hw - 12), sx0 + hat.ox, sy0 + hat.oy + (hat.hide === 'all' ? 0 : HD.hatDy || 0)); commit(buf, L, R, { sep: true });
+    if (hat.hide !== 'all') ears();
+    // los ojos saltones (anuro) van por encima de lo que lleve en la cabeza: si no, el sombrero le tapa la cara
+    if (HD.eyesOver) {
+      const E = layer();
+      for (const [x, y, c] of HD.px) if (y < 0) put(E, sx0 + x, sy0 + y, c);
+      for (const [x, y] of eyes) { put(E, sx0 + x, sy0 + y, eyeCh[0]); if (!HD.eye1) put(E, sx0 + x, sy0 + y + 1, eyeCh[1]); }
+      commit(buf, E, R, { sep: true });
+    }
+  }
   if (look.acc === 'buho') { const L = layer(); rows(L, BODY_GEAR.buho.shoulder, tx0 - 3, ty0 - 5 + breath); commit(buf, L, R, { sep: true }); }
 
   // --- brazo de adelante, arma y lo que lleva en la mano
@@ -352,7 +373,7 @@ function figure(look, R, anim, f, opts) {
   if (showWeapon && !WEAPONS[look.acc].off) {
     const wl = layer();
     const wdir = W.kind === 'gun' ? (r.wdir === 'fwd' ? 'fwd' : 'up') : r.wdir;
-    const res = drawWeapon(wl, look.acc, wdir, hx + (r.wdx || 0), hy, r.bow);
+    const res = behind ? null : drawWeapon(wl, look.acc, wdir, hx + (r.wdx || 0), hy, r.bow);
     if (r.bow === 'drawn' && res?.top) {
       const [ox, oy] = offHand;
       line(wl, res.top[0], res.top[1], ox, oy, 'n'); line(wl, res.bot[0], res.bot[1], ox, oy, 'n');
@@ -371,7 +392,11 @@ function figure(look, R, anim, f, opts) {
   if (r.item) {
     const g = ITEMS[opts.item] || ITEMS.caja;
     const L = layer();
-    rows(L, g, hx - (g[0].length >> 1), hy - g.length);
+    // si el objeto queda a la altura de la cabeza, se corre afuera (sin soltarse de la mano) para no taparla
+    const gw = g[0].length, top = hy - g.length;
+    let ix = hx - (gw >> 1);
+    if (top <= sy1 + 1) ix += Math.max(0, Math.min(gw >> 1, sx0 + hw + 1 - ix));
+    rows(L, g, ix, top);
     commit(buf, L, R, { sep: true });
   }
   return { buf, fxL };

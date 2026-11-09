@@ -30,7 +30,40 @@ const id = q.get('v') || 'forcejeo', view = q.get('view') || (q.has('t') ? 'stil
 const out = document.getElementById('out');
 const big = (src, s) => { const c = document.createElement('canvas'); c.width = src.width * s; c.height = src.height * s; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0, c.width, c.height); return c; };
 
-if (view === 'strip') {
+if (view === 'poses') {
+  // cinema.html?view=poses[&t=0.5][&w=1] → las poses 3D de src/cinema/poses.js: arriba de frente (tres cuartos), abajo de perfil
+  const THREE = await import('three');
+  const { avatarModel } = await import('../src/avatar/avatar.js');
+  const P = await import('../src/cinema/poses.js');
+  const W = 1400, H = 560;
+  const ren = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  ren.setSize(W, H); ren.setPixelRatio(1); out.append(ren.domElement);
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x2a2830);
+  scene.add(new THREE.HemisphereLight(0xdde4ff, 0x40342c, 1.6));
+  const sun = new THREE.DirectionalLight(0xffeedd, 1.8); sun.position.set(-3, 6, 5); scene.add(sun);
+  const look = { type: 'humano', build: 'recio', skin: 2, hair: 'corto', hairColor: 'castano', face: 'barba_corta', dress: 'tabardo', dressColor: 'rojo', crown: 'ninguna', acc: 'ninguno' };
+  const PROPS = { cargar: ['caja', 'R'], agarrar: ['cristal', 'R'], entregar: ['carta', 'R'] };
+  const t = Number(q.get('t') ?? 0.5), w = Number(q.get('w') ?? 1);
+  const names = q.get('only') ? q.get('only').split(',') : P.poseNames, gap = 1.25, Z = Number(q.get('z')) || 115;
+  names.forEach((name, i) => {
+    for (const row of [0, 1]) {
+      const m = avatarModel(look);
+      m.position.set((i - (names.length - 1) / 2) * gap, row ? -1.35 : 0, row ? -2 : 0);
+      m.rotation.y = row ? Math.PI / 2 : -0.45;
+      m.userData.update(0.016, false);
+      if (name === 'cargar') P.holdBoth(m, P.prop('caja'), 'cargar');
+      else if (PROPS[name]) P.holdProp(m, P.prop(PROPS[name][0]), PROPS[name][1]);
+      P.applyPose(m, name, { w, t, p: 1, look: 0.6 });
+      scene.add(m);
+    }
+  });
+  const cam = new THREE.OrthographicCamera(-W / 2 / Z, W / 2 / Z, H / 2 / Z, -H / 2 / Z, 0.1, 50);
+  cam.position.set(0, -0.2, 10); cam.lookAt(0, -0.2, 0);
+  ren.render(scene, cam);
+  const lab = document.createElement('div'); lab.className = 'row';
+  lab.innerHTML = names.map(n => `<figure style="width:${W / names.length - 8}px">${n}</figure>`).join('');
+  out.append(lab);
+} else if (view === 'strip') {
   const v = createVignette(id);
   const row = document.createElement('div'); row.className = 'row'; out.append(row);
   const step = Number(q.get('step')) || 0.5;
