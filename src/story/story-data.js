@@ -6,10 +6,13 @@
 // En las líneas, {name} es el nombre del personaje y {city} el de la ciudad.
 
 // ---------- Personajes ----------
-// Retratos de 16×16: una letra por pixel ('.' = transparente), con su paleta. Es ilustración: lleva colores propios.
+// Retratos (plan §M1): un busto del modelo vóxel de cada personaje (look, del mismo estilo que la gente del juego),
+// serio, sobre fondo oscuro. Si no hay WebGL se usa el dibujo de 16×16 (portrait: una letra por pixel, con su paleta).
+// Los de L5 (Brígida, Nahuel, Olga y Ramiro) ya tienen cara; sus escenas llegan en el paso 5b.
 export const CHARACTERS = {
   cartografa: {
-    id: 'cartografa', name: 'Vera', title: 'la cartógrafa',
+    id: 'cartografa', name: 'Vera', title: 'la cartógrafa', people: 'humano',
+    look: { type: 'humano', build: 'esbelto', skin: 2, hair: 'rodete', hairColor: 'gris', face: 'cicatriz', dress: 'capa_viaje', dressColor: 'verde', crown: 'ninguna', acc: 'catalejo' },
     pal: { k: '#120f0d', h: '#4a3a32', H: '#8d8376', s: '#c99a78', S: '#a87a5a', e: '#1c1714', m: '#8a4b3c', y: '#d9a94e', Y: '#a27a2f', c: '#3f6b5e', C: '#2c4c43' },
     portrait: [
       '................',
@@ -29,6 +32,22 @@ export const CHARACTERS = {
       '.kcCccyYyccCck..',
       '.kcccCcccccCck..',
     ],
+  },
+  herrera: {
+    id: 'herrera', name: 'Brígida', title: 'la herrera', people: 'enano',
+    look: { type: 'enano', build: 'esbelto', skin: 2, hair: 'trenzas', hairColor: 'pelirrojo', face: 'cicatriz', dress: 'delantal', dressColor: 'durazno', crown: 'vincha', acc: 'martillo' },
+  },
+  nahuel: {
+    id: 'nahuel', name: 'Nahuel', title: 'el que subió del Bajo Mundo', people: 'humano',
+    look: { type: 'humano', build: 'recio', skin: 4, hair: 'despeinado', hairColor: 'negro', face: 'barba_corta', dress: 'minero', dressColor: 'negro', crown: 'ninguna', acc: 'ninguno' },
+  },
+  curandera: {
+    id: 'curandera', name: 'Olga', title: 'la curandera', people: 'humano',
+    look: { type: 'humano', build: 'esbelto', skin: 1, hair: 'largo', hairColor: 'blanco', face: 'ninguna', dress: 'habito', dressColor: 'durazno', crown: 'capucha', acc: 'bolso' },
+  },
+  guardia: {
+    id: 'guardia', name: 'Ramiro Ochoa', title: 'ex guardia de las Casas', people: 'humano',
+    look: { type: 'humano', build: 'recio', skin: 3, hair: 'cortito', hairColor: 'gris', face: 'cicatriz_ojo', dress: 'tabardo', dressColor: 'azul', crown: 'ninguna', acc: 'ninguno' },
   },
   // la voz que cuenta el prólogo y los momentos grandes (sin retrato)
   narrador: { id: 'narrador', name: '', title: '' },

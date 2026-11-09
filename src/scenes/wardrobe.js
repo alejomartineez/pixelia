@@ -1,5 +1,5 @@
 // Equipaje + Taller: elegí tu personaje (chica, chico o animalito), probá peinados,
-// ropa, cosas para la cabeza, accesorios y tuneá tu auto.
+// ropa, cosas para la cabeza, accesorios y el esquife (ex auto, plan §M5).
 // Arriba (o a la izquierda en PC) un escenario 3D giratorio; abajo (o a la derecha) el panel con categorías.
 // Tocar una pieza la prueba al instante; si no es tuya aparece "Comprar". Los colores y el tipo de personaje son gratis.
 import * as THREE from 'three';
@@ -9,8 +9,9 @@ import { fmtNum } from '../core/economy.js';
 import {
   HAIR_STYLES, HAIR_COLORS, SKIN_TONES, DRESS_STYLES, OUTFIT_COLORS, CROWNS, ACCESSORIES,
   CAR_BODIES, CAR_WHEELS, CAR_TOPPERS, BUILDING_BY_ID, CUSTOM_CATALOG,
-  AVATAR_TYPES, AVATAR_FAMILIES, avatarType, fitsType,
+  AVATAR_TYPES, AVATAR_FAMILIES, avatarType, fitsType, BUILDS, FACES,
 } from '../core/data.js';
+import { clothHex, clothName, HAIR_NAMES } from '../avatar/avatar-kit.js';
 import { avatarModel, normalizeLook } from '../avatar/avatar.js';
 import { carModel, carStats, normalizeCar } from '../avatar/car.js';
 import { buildBoutique, buildGarage, buildPlatform, thumbnail, hasThumb, disposeThumbs } from '../avatar/wardrobe-stage.js';
@@ -23,25 +24,28 @@ const COLOR_NAMES = {
 const colorList = (list) => list.map(c => ({ id: c.id, hex: c.hex, name: COLOR_NAMES[c.id] || c.id }));
 
 // Categorías del personaje. Las etiquetas cambian según el tipo (label(t) recibe la definición del tipo).
+// Personaje: el tipo es el pueblo (plan §M2). Los colores pueden depender del pueblo (piel, pelaje).
 const AVATAR_CATS = [
-  { id: 'type', label: () => 'Personaje', icon: 'sparkle', types: true },
-  { id: 'hair', label: (t) => (t.animal ? 'Pelaje' : 'Peinado'), icon: 'ribbon', kind: 'hair', list: HAIR_STYLES, frame: 'head' },
-  { id: 'hairColor', label: (t) => (t.animal ? 'Color de pelaje' : 'Color de pelo'), icon: 'palette', colors: colorList(HAIR_COLORS) },
-  { id: 'skin', label: () => 'Piel', icon: '🖐️', colors: SKIN_TONES.map((hex, i) => ({ id: i, hex, name: `Tono ${i + 1}` })), humans: true },
+  { id: 'type', label: () => 'Pueblo', icon: 'sparkle', types: true },
+  { id: 'build', label: () => 'Cuerpo', icon: 'dress', kind: 'build', list: BUILDS, frame: 'body' },
+  { id: 'skin', label: (t) => (t.id === 'zorro' ? 'Pelaje' : 'Piel'), icon: '🖐️', colors: (t) => t.skins.map((hex, i) => ({ id: i, hex, name: `Tono ${i + 1}` })) },
+  { id: 'hair', label: (t) => (t.id === 'anuro' ? 'Marcas' : 'Peinado'), icon: 'ribbon', kind: 'hair', list: HAIR_STYLES, frame: 'head' },
+  { id: 'hairColor', label: (t) => (t.id === 'anuro' ? 'Color de marcas' : 'Color de pelo'), icon: 'palette', colors: () => HAIR_COLORS.map(c => ({ id: c.id, hex: c.hex, name: HAIR_NAMES[c.id] || c.id })) },
+  { id: 'face', label: () => 'Cara', icon: '🧔', kind: 'face', list: FACES, frame: 'head' },
   { id: 'dress', label: () => 'Ropa', icon: 'dress', kind: 'dress', list: DRESS_STYLES, frame: 'body' },
-  { id: 'dressColor', label: () => 'Color de ropa', icon: '🎨', colors: colorList(OUTFIT_COLORS) },
+  { id: 'dressColor', label: () => 'Color de ropa', icon: '🎨', colors: () => OUTFIT_COLORS.map(c => ({ id: c.id, hex: clothHex(c.id), name: clothName(c.id) })) },
   { id: 'crown', label: () => 'Cabeza', icon: 'crown', kind: 'crown', list: CROWNS, frame: 'head' },
-  { id: 'acc', label: () => 'Accesorio', icon: 'wand', kind: 'acc', list: ACCESSORIES, frame: 'body' },
+  { id: 'acc', label: () => 'Equipo', icon: 'wand', kind: 'acc', list: ACCESSORIES, frame: 'body' },
 ];
-// piezas que se ven mejor de espaldas o enteras en la miniatura
-const BACK_ITEMS = new Set(['alas', 'alas_hada', 'alas_mariposa', 'mochila']);
-const TALL_ITEMS = new Set(['sombrero_mago', 'sombrero_luna', 'sombrero_estrellas', 'galera', 'casco', 'corona_rey', 'antenitas', 'gorrito', 'estrella']);
-const BODY_ITEMS = new Set(['barba', 'globo', 'baston', 'patineta', 'farolito']);
+// encuadres de las miniaturas: lo que va en la espalda, lo alto y lo que llega al pecho o al piso
+const BACK_ITEMS = new Set(['mochila', 'capa_viaje']);
+const TALL_ITEMS = new Set(['sombrero_mago', 'yelmo', 'piluso', 'galera']);
+const BODY_ITEMS = new Set(['barba_larga', 'barba_trenzada', 'lanza', 'baston', 'arco', 'farolito', 'escudo', 'buho']);
 const CAR_CATS = [
-  { id: 'body', label: 'Modelo', icon: 'car', kind: 'body', list: CAR_BODIES, frame: 'car', stats: true },
-  { id: 'color', label: 'Color', icon: 'palette', colors: colorList(OUTFIT_COLORS) },
-  { id: 'wheels', label: 'Ruedas', icon: 'gear', kind: 'wheels', list: CAR_WHEELS, frame: 'wheel' },
-  { id: 'topper', label: 'Adorno', icon: 'heart', kind: 'topper', list: CAR_TOPPERS, frame: 'car' },
+  { id: 'body', label: 'Casco', icon: 'car', kind: 'body', list: CAR_BODIES, frame: 'car', stats: true },
+  { id: 'color', label: 'Pintura', icon: 'palette', colors: colorList(OUTFIT_COLORS) },
+  { id: 'wheels', label: 'Aparejo', icon: 'car', kind: 'wheels', list: CAR_WHEELS, frame: 'wheel' },
+  { id: 'topper', label: 'Proa', icon: 'car', kind: 'topper', list: CAR_TOPPERS, frame: 'car' },
 ];
 // ángulo del escenario que mejor muestra cada pieza
 const FOCUS = {
@@ -167,11 +171,12 @@ export default function create(ctx) {
   const target = () => (mode === 'avatar' ? 'avatar' : 'car');
   const tdef = () => avatarType(pv.avatar?.type);
   // sin "Piel" para los animalitos
-  const cats = () => (mode === 'avatar' ? AVATAR_CATS.filter(c => !(c.humans && tdef().animal)) : CAR_CATS);
+  const cats = () => (mode === 'avatar' ? AVATAR_CATS : CAR_CATS);
+  const colorsOf = (c) => (typeof c.colors === 'function' ? c.colors(tdef()) : c.colors);
   const catLabel = (c) => (typeof c.label === 'function' ? c.label(tdef()) : c.label);
   const itemsFor = (c) => (mode === 'avatar' ? c.list.filter(i => fitsType(i, pv.avatar.type)) : c.list);
   const cat = () => cats().find(c => c.id === catId) || cats()[0];
-  const garageOk = () => ctx.economy.hasBuilt('establo');   // el auto vive en el Establo (ex Garaje, DESIGN-CORE.md §5.3)
+  const garageOk = () => ctx.economy.hasBuilt('establo');   // el esquife amarra en el muelle del Establo (ex Garaje, DESIGN-CORE.md §5.3)
   const S = () => store.state;
 
   // ---------------- UI ----------------
@@ -195,7 +200,7 @@ export default function create(ctx) {
       <div class="wd-panel">
         <div class="wd-seg">
           <button class="wd-segbtn" data-mode="avatar"></button>
-          <button class="wd-segbtn" data-mode="car">${icon('car', 24)}Auto</button>
+          <button class="wd-segbtn" data-mode="car">${icon('car', 24)}Esquife</button>
         </div>
         <div class="tabs wd-cats"></div>
         <div class="wd-list scroll"></div>
@@ -264,7 +269,7 @@ export default function create(ctx) {
       if (b.dataset.mode === 'car') {
         const locked = !garageOk();
         b.classList.toggle('locked', locked);
-        b.innerHTML = `${icon('car', 24)}Auto${locked ? icon('lock', 18) : ''}`;
+        b.innerHTML = `${icon('car', 24)}Esquife${locked ? icon('lock', 18) : ''}`;
       }
     }
   }
@@ -279,11 +284,10 @@ export default function create(ctx) {
       const look = { ...pv.avatar, [c.id]: item.id };
       let frame = c.frame;
       // peinados sin sombrero que los tape; pelajes sin ropa y más de cerca (se ven manchas, rayas y patitas)
-      if (c.id === 'hair') Object.assign(look, { crown: 'ninguna', acc: 'ninguno' }, tdef().animal ? { dress: 'pelito' } : {});
+      if (c.id === 'hair' || c.id === 'face') Object.assign(look, { crown: 'ninguna', acc: 'ninguno' });
       if (BACK_ITEMS.has(item.id)) frame = 'back';
-      else if (c.id === 'hair' && tdef().animal) frame = pv.avatar.type === 'conejito' ? 'furtall' : 'fur';
       else if (BODY_ITEMS.has(item.id)) frame = 'body';
-      else if (frame === 'head' && (TALL_ITEMS.has(item.id) || pv.avatar.type === 'conejito' || look.hair === 'barba')) frame = 'tall';
+      else if (frame === 'head' && (TALL_ITEMS.has(item.id) || pv.avatar.type === 'zorro')) frame = 'tall';
       return { type: 'avatar', look, frame };
     }
     return { type: 'car', car: { ...pv.car, [c.id]: item.id }, frame: c.frame };
@@ -303,7 +307,7 @@ export default function create(ctx) {
   }
   function typeCard(t) {
     const on = t.id === pv.avatar.type;
-    const spec = { type: 'avatar', look: typeLook(t), frame: t.id === 'conejito' ? 'tallbody' : 'body' };
+    const spec = { type: 'avatar', look: typeLook(t), frame: t.id === 'enano' ? 'body' : 'tallbody' };
     const cached = hasThumb(spec);
     return `<button class="wd-card${on ? ' on' : ''}" data-type="${t.id}">
       ${on ? `<span class="wd-check">${icon('check', 14)}</span>` : ''}
@@ -339,7 +343,7 @@ export default function create(ctx) {
     }
     if (c.colors) {
       const cur = pv[t][c.id];
-      html += `<div class="wd-swatches">${c.colors.map(col => `<button class="wd-sw${String(col.id) === String(cur) ? ' on' : ''}" data-id="${col.id}" aria-label="${col.name}"><i style="background:${col.hex}">${String(col.id) === String(cur) ? icon('heart', 24) : ''}</i>${col.name}</button>`).join('')}</div>`;
+      html += `<div class="wd-swatches">${colorsOf(c).map(col => `<button class="wd-sw${String(col.id) === String(cur) ? ' on' : ''}" data-id="${col.id}" aria-label="${col.name}"><i style="background:${col.hex}">${String(col.id) === String(cur) ? icon('heart', 24) : ''}</i>${col.name}</button>`).join('')}</div>`;
       html += `<p class="wd-note">${icon('sparkle', 14)} Los colores son gratis: probá sin miedo.</p>`;
     } else {
       html += '<div class="wd-grid">';
@@ -404,8 +408,8 @@ export default function create(ctx) {
     if (m === 'car' && !garageOk()) {
       audio.sfx('error');
       const enObra = S().city.buildings.some(b => b.id === 'establo');
-      ui.toast(enObra ? `Tu ${BUILDING_BY_ID.establo.name} está en obra. Cuando termine vas a poder tunear tu auto`
-        : `Construí el ${BUILDING_BY_ID.establo.name} para tunear tu auto`, { icon: enObra ? 'hammer' : 'lock' });
+      ui.toast(enObra ? `Tu ${BUILDING_BY_ID.establo.name} está en obra. Cuando termine, tu esquife va a tener dónde amarrar`
+        : `Construí el ${BUILDING_BY_ID.establo.name}: su muelle es donde amarra tu esquife`, { icon: enObra ? 'hammer' : 'lock' });
       return;
     }
     if (!silent) audio.sfx('swoosh');
@@ -507,7 +511,7 @@ export default function create(ctx) {
     for (const c of list) {
       if (c.types || c.id === 'skin') continue; // el tipo y la piel no se cambian solos
       let opts;
-      if (c.colors) opts = c.colors.map(x => x.id);
+      if (c.colors) opts = colorsOf(c).map(x => x.id);
       else opts = itemsFor(c).filter(i => store.owns(c.kind, i.id)).map(i => i.id);
       if (!opts.length) continue;
       const id = opts[Math.floor(Math.random() * opts.length)];
@@ -609,12 +613,13 @@ export default function create(ctx) {
     const car = mode === 'car';
     const phone = h < 520;
     const big = h >= 700;
-    let dist = car ? (phone ? 4.3 : big ? 4.7 : 4.5) : (phone ? 4.1 : big ? 5.2 : 4.7);
-    const look = lookWant.set(0, car ? 0.3 : 0.62, 0);
+    // el esquife es más largo y alto que el auto de antes (con el palo o el globo): la cámara se aleja y mira más arriba
+    let dist = car ? (phone ? 6 : big ? 6.6 : 6.3) : (phone ? 3.6 : big ? 4.3 : 3.9);   // de cerca: que se vea la grilla de vóxeles (§8)
+    const look = lookWant.set(0, car ? 0.95 : 0.62, 0);
     if (phone) look.y += car ? 0.1 : 0.08; // la barra de arriba tapa un poco
-    const need = car ? 1.1 : 0.85; // ancho mínimo visible
+    const need = car ? 1.2 : 0.85; // ancho mínimo visible
     if (aspect < need) dist *= need / aspect;
-    const lift = car ? 1.2 : 0.45;
+    const lift = car ? 0.7 : 0.45;
     camWant.set(0, look.y + lift * (dist / 4), dist);
   }
 
@@ -730,7 +735,7 @@ export default function create(ctx) {
     ray.setFromCamera(r.toNDC(e.clientX, e.clientY), r.camera);
     if (!ray.intersectObject(model, true).length) return;
     hop();
-    if (mode === 'car') { audio.sfx('horn'); carSpin = 6; burst(0.4, 10, 0xffe066); }
+    if (mode === 'car') { audio.sfx('swoosh'); carSpin = 6; burst(0.4, 10, 0x8fe0d4); }
     else { audio.sfx('pop'); burst(0.8, 12, 0xf1a181); ui.floatText(e.clientX, e.clientY - 20, icon('heart', 28)); }
   }
 

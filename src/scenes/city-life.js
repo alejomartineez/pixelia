@@ -1,8 +1,8 @@
-// Vida de la ciudad: vecinas que pasean, el personaje del jugador, el autito y mariposas.
+// Vida de la ciudad: vecinas que pasean, el personaje del jugador, el esquife amarrado y mariposas.
 import * as THREE from 'three';
 import { Voxels, disposeObject } from '../core/voxel.js';
 import { avatarModel, randomLook } from '../avatar/avatar.js';
-import { carModel } from '../avatar/car.js';
+import { skiffModel } from '../avatar/skiff.js';
 import { themeOf } from '../city/themes.js';
 import { footprint, def, isConstructing, landBounds } from '../core/economy.js';
 import { MAP, HALF, ROAD_H, angleDelta, mulberry } from './city-common.js';
@@ -179,39 +179,85 @@ export function createLife(r, ctx) {
     player = w;
   }
 
-  // ---------- Autito ----------
+  // ---------- El esquife (plan §M5) ----------
+  // Vive amarrado al muelle del Establo (un poste con la soga y dos tablas en el borde de la parcela): flota y se mece.
+  // Cada tanto suelta amarras, da una vuelta alrededor de la isla por fuera del borde, a la altura de los techos, y
+  // vuelve a amarrar. No anda por las calles.
   let car = null;
-  function syncCar() {
-    const garage = ctx.state.city.buildings.find(b => b.id === 'establo' && !isConstructing(b));   // el auto vive en el Establo (ex Garaje)
-    if (!garage) { if (car) { group.remove(car.obj); disposeObject(car.obj); car = null; } return; }
-    if (!car) {
-      const obj = carModel(ctx.state.car, { city: true });
-      car = makeWalker(obj, { speed: 1.5, roadOnly: true, lane: [0, 0], turnRate: 8 });
-      car.kind = 'car';
-      car.baseScale = CAR_SCALE;
-      obj.scale.setScalar(CAR_SCALE);
-      car.appear = 1;
-      group.add(obj);
-      car.parked = true;
+  const SKIFF_Y = 0.12, LAP_Y = 1.6;
+  function dockSpot(garage) {
+    const [gw, gd] = footprint(garage.id, garage.rot);
+    const cand = [];
+    for (let x = garage.x - 1; x <= garage.x + gw; x++) for (let z = garage.z - 1; z <= garage.z + gd; z++) {
+      const inside = x >= garage.x && x < garage.x + gw && z >= garage.z && z < garage.z + gd;
+      if (!inside && inLand(x, z) && grid.occ[x * MAP + z] === 0) cand.push([x, z]);
     }
-    if (grid.roads >= 3) {
-      if (car.parked || !isRoad(car.fx, car.fz)) {
-        const spot = randomTile((x, z) => isRoad(x, z) && NB.some(([dx, dz]) => isRoad(x + dx, z + dz)));
-        if (spot) { place(car, spot[0], spot[1]); car.parked = false; car.obj.visible = true; }
-      }
-    } else {
-      // estacionado al lado del Establo
-      const [gw, gd] = footprint(garage.id, garage.rot);
-      const cand = [];
-      for (let x = garage.x - 1; x <= garage.x + gw; x++) for (let z = garage.z - 1; z <= garage.z + gd; z++)
-        if (walkable(x, z) && !(x >= garage.x && x < garage.x + gw && z >= garage.z && z < garage.z + gd)) cand.push([x, z]);
-      const front = cand.find(([x, z]) => z === garage.z + gd) || cand[0];
-      car.parked = true;
-      if (front) { place(car, front[0], front[1]); car.obj.visible = true; car.heading = 0; car.obj.rotation.y = Math.PI / 2; }
-      else car.obj.visible = false;
-    }
+    // mejor del lado de adelante (z más grande) y lejos de los caminos
+    cand.sort((a, b) => (b[1] === garage.z + gd) - (a[1] === garage.z + gd) || isRoad(a[0], a[1]) - isRoad(b[0], b[1]));
+    return cand[0] || null;
   }
-  function rebuildCar() { if (car) { group.remove(car.obj); disposeObject(car.obj); car = null; } syncCar(); }
+  function makeDock() {
+    const v = new Voxels();
+    v.box(0, 0, 0, 2, 14, 2, (x, y) => (y === 13 ? '#6a5434' : y % 5 === 0 ? '#4a4e56' : '#3e2e20'));   // poste
+    v.box(-1, 10, -1, 4, 1, 4, '#9a8460');   // soga enrollada
+    v.box(-4, 0, 3, 10, 1, 3, (x) => ((x + 9) % 3 === 0 ? '#3e2e20' : '#5a4430'));   // dos tablas de muelle
+    return new THREE.Mesh(v.toGeometry({ scale: 1 / 24, jitter: 0 }), new THREE.MeshLambertMaterial({ vertexColors: true }));
+  }
+  function syncCar() {
+    const garage = ctx.state.city.buildings.find(b => b.id === 'establo' && !isConstructing(b));   // el esquife amarra en el muelle del Establo
+    const spot = garage && dockSpot(garage);
+    if (!spot) { if (car) { group.remove(car.obj, car.dock); disposeObject(car.obj); disposeObject(car.dock); car = null; } return; }
+    if (!car) {
+      const obj = skiffModel(ctx.state.car, { city: true });
+      obj.scale.setScalar(CAR_SCALE);
+      const dock = makeDock();
+      dock.castShadow = true; dock.receiveShadow = true;
+      car = { obj, dock, kind: 'car', baseScale: CAR_SCALE, state: 'moored', t: 0, wait: 25 + rnd() * 20, heading: 0, speed: 0, path: null };
+      group.add(obj, dock);
+    }
+    car.home = [center(spot[0]), center(spot[1])];
+    car.dock.position.set(car.home[0], 0, car.home[1] - 0.5);   // el poste queda al costado del casco
+    if (car.state === 'moored') { car.obj.position.set(car.home[0], SKIFF_Y, car.home[1]); car.obj.rotation.y = Math.PI / 2; car.heading = Math.PI / 2; }
+  }
+  function rebuildCar() { if (car) { group.remove(car.obj, car.dock); disposeObject(car.obj); disposeObject(car.dock); car = null; } syncCar(); }
+  /** Vuelta a la isla: sube, sale al borde más cercano, rodea la parcela por fuera y vuelve al muelle. */
+  function lapPath() {
+    const m = 1.6, a = grid.land.min - HALF - m, b = grid.land.max - HALF + m;
+    const corners = [[a, a], [b, a], [b, b], [a, b]];
+    const [hx, hz] = car.home;
+    let k = 0, best = Infinity;
+    corners.forEach(([x, z], i) => { const d = Math.hypot(x - hx, z - hz); if (d < best) { best = d; k = i; } });
+    const pts = [[hx, LAP_Y, hz]];
+    for (let i = 0; i <= 4; i++) { const [x, z] = corners[(k + i) % 4]; pts.push([x, LAP_Y, z]); }
+    pts.push([hx, LAP_Y, hz], [hx, SKIFF_Y, hz]);
+    return pts;
+  }
+  function stepSkiff(dt) {
+    const c = car;
+    c.t += dt;
+    if (c.state === 'moored') {
+      c.speed = 0;
+      if ((c.wait -= dt) <= 0) { c.state = 'lap'; c.path = lapPath(); c.seg = -1; }   // el primer tramo es subir
+    } else {
+      const [x, y, z] = c.path[c.seg + 1], p = c.obj.position;
+      const dx = x - p.x, dy = y - p.y, dz = z - p.z, d = Math.hypot(dx, dy, dz);
+      const v = (Math.abs(dx) + Math.abs(dz) < 0.01 ? 0.5 : 1.8);
+      if (d < 0.05) {
+        c.seg++;
+        if (c.seg >= c.path.length - 1) { c.state = 'moored'; c.wait = 40 + rnd() * 40; c.obj.position.set(c.home[0], SKIFF_Y, c.home[1]); }
+      } else {
+        const s = Math.min(d, v * dt);
+        p.x += dx / d * s; p.y += dy / d * s; p.z += dz / d * s;
+        if (Math.abs(dx) + Math.abs(dz) > 0.01) c.heading = Math.atan2(dx, dz);
+      }
+      c.speed = v;
+    }
+    // al amarrar vuelve a quedar de costado al muelle
+    const want = c.state === 'moored' ? Math.PI / 2 : c.heading;
+    const turn = angleDelta(c.obj.rotation.y, want);
+    c.obj.rotation.y += turn * Math.min(1, dt * 2);
+    c.obj.userData.update?.(dt, c.speed, Math.max(-1, Math.min(1, turn * 2)));
+  }
 
   // ---------- Mariposas ----------
   const butterflies = [];
@@ -262,11 +308,7 @@ export function createLife(r, ctx) {
       const glow = player.obj.userData.glow;
       if (glow) glow.visible = !!themeOf(ctx.state.city?.theme).dark; // el tema cambia en vivo
     }
-    if (car && car.obj.visible) {
-      if (!car.parked) stepWalker(car, dt);
-      const steer = car.parked ? 0 : Math.max(-1, Math.min(1, angleDelta(car.obj.rotation.y, car.heading) * 2));
-      car.obj.userData.update?.(dt, car.parked || !car.moving ? 0 : car.speed, steer);
-    }
+    if (car) stepSkiff(dt);
     for (const b of butterflies) {
       const u = b.userData;
       u.t += dt;
@@ -295,7 +337,6 @@ export function createLife(r, ctx) {
       const s = randomTile((x, z) => ok(player, x, z)) || randomTile(walkable);
       if (s) { place(player, s[0], s[1]); player.appear = 0; }
     }
-    if (car && !car.parked && !isRoad(car.tx, car.tz)) car.parked = true;
     syncCar();
     syncNpcs();
   }
@@ -322,7 +363,7 @@ export function createLife(r, ctx) {
     dispose() {
       for (const w of npcs) disposeObject(w.obj);
       if (player) disposeObject(player.obj);
-      if (car) disposeObject(car.obj);
+      if (car) { disposeObject(car.obj); disposeObject(car.dock); }
       for (const g of wingGeos) g.dispose();
       wingGeos.mat.dispose();
       r.scene.remove(group);

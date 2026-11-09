@@ -7,6 +7,7 @@ import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { icon } from '../core/icons.js';
 import { AVATAR_TYPES, AVATAR_FAMILIES, HAIR_COLORS, OUTFIT_COLORS, SKIN_TONES, avatarType } from '../core/data.js';
 import { avatarModel, normalizeLook } from '../avatar/avatar.js';
+import { clothHex, clothName, HAIR_NAMES } from '../avatar/avatar-kit.js';
 import { buildPlatform, thumbnail, hasThumb, disposeThumbs } from '../avatar/wardrobe-stage.js';
 
 const NAMES = {
@@ -91,9 +92,9 @@ export default function create(ctx) {
 
   const S = () => store.state;
   const look = normalizeLook(S().avatar);
-  // partida nueva: el personaje arranca con un tipo de "Gente" al azar (los animales quedan como opción en la lista)
+  // partida nueva: el personaje arranca con un pueblo al azar
   if (JSON.stringify(look) === JSON.stringify(normalizeLook({ ...avatarType(look.type).look, type: look.type }))) {
-    const people = AVATAR_TYPES.filter(t => t.family === 'casual');
+    const people = AVATAR_TYPES;   // pueblos jugables (plan §M2)
     const ty = people[Math.floor(Math.random() * people.length)];
     Object.assign(look, normalizeLook({ ...ty.look, type: ty.id }));
   }
@@ -239,15 +240,15 @@ export default function create(ctx) {
         if (AVATAR_FAMILIES.length > 1) html += `<div class="ob-fam">${icon(fam.emoji, 18)}${ui.esc(fam.name)}</div>`;
         html += '<div class="ob-types">';
         for (const ty of AVATAR_TYPES.filter(x => x.family === fam.id)) {
-          const spec = { type: 'avatar', look: normalizeLook({ ...ty.look, type: ty.id }), frame: 'body' };
+          const spec = { type: 'avatar', look: normalizeLook({ ...ty.look, type: ty.id }), frame: 'tallbody' };
           const ok = hasThumb(spec);
           html += `<button class="ob-type${ty.id === look.type ? ' on' : ''}" data-type="${ty.id}"><img class="th${ok ? ' ok' : ''}" alt="" draggable="false" ${ok ? `src="${thumbnail(spec)}"` : ''} data-k="${encodeURIComponent(JSON.stringify(spec))}">${ui.esc(ty.name)}</button>`;
         }
         html += '</div>';
       }
-      html += `<div class="ob-row">${t.animal ? 'Color de pelaje' : 'Color de pelo'}</div>${swatches(HAIR_COLORS.map(c => ({ ...c, name: COLOR_NAMES[c.id] || c.id })), look.hairColor, 'hairColor')}`;
-      if (!t.animal) html += `<div class="ob-row">Piel</div>${swatches(SKIN_TONES.map((hex, i) => ({ id: i, hex, name: `Tono ${i + 1}` })), look.skin, 'skin')}`;
-      html += `<div class="ob-row">Color de ropa</div>${swatches(OUTFIT_COLORS.map(c => ({ ...c, name: COLOR_NAMES[c.id] || c.id })), look.dressColor, 'dressColor')}`;
+      html += `<div class="ob-row">${t.id === 'anuro' ? 'Color de marcas' : 'Color de pelo'}</div>${swatches(HAIR_COLORS.map(c => ({ ...c, name: HAIR_NAMES[c.id] || c.id })), look.hairColor, 'hairColor')}`;
+      html += `<div class="ob-row">${t.id === 'zorro' ? 'Pelaje' : 'Piel'}</div>${swatches(t.skins.map((hex, i) => ({ id: i, hex, name: `Tono ${i + 1}` })), look.skin, 'skin')}`;
+      html += `<div class="ob-row">Color de ropa</div>${swatches(OUTFIT_COLORS.map(c => ({ ...c, hex: clothHex(c.id), name: clothName(c.id) })), look.dressColor, 'dressColor')}`;
       html += '</div>';
       body.innerHTML = html;
       foot.innerHTML = `<button class="btn primary ob-next">Siguiente ${icon('play', 18)}</button>`;

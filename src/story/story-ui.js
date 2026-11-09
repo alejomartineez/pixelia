@@ -7,6 +7,7 @@
 // Los retratos son 16×16 dibujados en un canvas sin suavizado (story-data.js). La velocidad del texto sale de
 // Ajustes → Juego (textSpeed) y con "reducir movimiento" el texto aparece entero.
 import { icon } from '../core/icons.js';
+import { thumbnail } from '../avatar/wardrobe-stage.js';
 import { CHARACTERS } from './story-data.js';
 import { fill } from './story.js';
 
@@ -79,9 +80,41 @@ function root() {
 }
 
 // ---------- Retratos ----------
-/** Canvas de 16×16 (se agranda por CSS sin suavizado). null si el personaje no tiene retrato. */
+/**
+ * Retrato del personaje: el busto de su modelo vóxel (thumbnail de wardrobe-stage.js, encuadre 'bust') sobre un fondo
+ * oscuro con viñeta. Se dibuja una vez por personaje y se copia (es síncrono: panels-story lo pasa a imagen al toque).
+ * Sin WebGL, el dibujo de 16×16. null si el personaje no tiene retrato.
+ */
+const busts = new Map();
+const PORTRAIT_PX = 128;
+function bust(ch) {
+  if (busts.has(ch.id)) return busts.get(ch.id);
+  let src = null;
+  try { src = thumbnail({ type: 'avatar', look: ch.look, frame: 'bust', raw: true }); } catch (e) { console.warn('retrato', e); }
+  let out = null;
+  if (src) {
+    out = document.createElement('canvas');
+    out.width = out.height = PORTRAIT_PX;
+    const g = out.getContext('2d');
+    const bg = g.createRadialGradient(PORTRAIT_PX * 0.5, PORTRAIT_PX * 0.42, 8, PORTRAIT_PX * 0.5, PORTRAIT_PX * 0.5, PORTRAIT_PX * 0.72);
+    bg.addColorStop(0, '#3a332c'); bg.addColorStop(1, '#151210');
+    g.fillStyle = bg; g.fillRect(0, 0, PORTRAIT_PX, PORTRAIT_PX);
+    g.imageSmoothingEnabled = false;
+    g.drawImage(src, 0, 0, PORTRAIT_PX, PORTRAIT_PX);
+  }
+  busts.set(ch.id, out);
+  return out;
+}
 export function portrait(who, cls = 'st-face') {
   const ch = CHARACTERS[who];
+  const b = ch?.look ? bust(ch) : null;
+  if (b) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = PORTRAIT_PX;
+    cv.className = cls;
+    cv.getContext('2d').drawImage(b, 0, 0);
+    return cv;
+  }
   if (!ch?.portrait) return null;
   const rows = ch.portrait;
   const cv = document.createElement('canvas');

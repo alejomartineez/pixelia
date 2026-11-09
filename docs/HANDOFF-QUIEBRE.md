@@ -47,7 +47,7 @@ cada paso.
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | 0bba507 (v34) |
-| 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y esquife | **en curso** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`), propagando el estilo; la integra el coordinador | |
+| 4a | M1 + M2 + M5: personajes serios (vóxel detallado y low-poly para criaturas y jefes), pueblos del mundo y el esquife volador | **hecho** en la rama `claude/personajes-4a-6b06a8` (guía de arte en `docs/ARTE-PERSONAJES.md`); falta que la integre el coordinador | |
 | 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | hecho: motor (v32), escena e interfaz, casilla `enemigo`, traspaso con la expedición, primer combate guiado y telemetría | d6f9451 + 1172274 (v35) |
 | 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y pestaña Progreso | primera parte hecha (6 clases con nivel 1–10, subclases de Raíz, nivel del líder 1–30, migración de roles; decisiones en DESIGN-COMBAT §8 y §14). Segunda parte (personajes de la ciudad, herramientas, Vínculo, Progreso) **en curso**; la clase en el onboarding y el aspecto de cada clase esperan al 4a | ed2ba67 (v36) |
@@ -80,6 +80,106 @@ tener que dar confirmaciones, le doy el si a todo".
   falló con carga y pasó solo.
 - Para no chocar con el 4a, las segundas partes de 5b y 6 no tocan `src/avatar/*`, `enemy-models.js`, onboarding,
   wardrobe, cofres, migraciones ni el esquife. Los jefes van en un archivo de modelos aparte.
+
+## Paso 4a (personajes serios, pueblos y esquife): hecho, rama `claude/personajes-4a-6b06a8`
+**Hecho (commits de esta rama, sin mergear):**
+- Catálogo nuevo en `src/core/data.js`: el tipo es el pueblo (`humano`, `enano`, `anuro`, `zorro`, `orco`), cada uno con
+  sus tonos de piel. Piezas serias. Categorías nuevas `face` (barbas, cicatrices, parche, pintura) y `build` (recio o
+  esbelto).
+- **Guardado v5** (`migrateV5` en `state.js`, `V5_TYPES`/`V5_ITEMS`/`v5Look` en `data.js`):
+  - chica y chico pasan a humano esbelto y recio;
+  - cada pieza vieja pasa a su equivalente; las repetidas o las que ahora son gratis se devuelven;
+  - lo que tenías puesto queda tuyo;
+  - el look del otro tipo queda en `s.v5.looks`;
+  - el aviso único va en `main.js`, y su caso está en `test-migration.mjs` (76 en verde).
+- Modelos:
+  - `src/avatar/figure.js`: vóxel a 1/48, medidas por pueblo, ropa, cabezas, pelo, caras, sombreros, equipo y
+    `CLASS_KIT`/`classLook`/`ROLE_CLASS` para el 5b;
+  - `src/avatar/avatar.js`: la misma API, más `opts.cls` y `opts.gear`;
+  - `src/avatar/lowpoly.js`: kit facetado;
+  - `src/combat/enemy-models.js`: rehecho, con la misma firma. Lobos, bichos, bestia, gólem y orco van en low-poly; los
+    piratas son gente-zorro y los Vaciados, vóxel.
+- Equipaje y onboarding con pueblos, telas apagadas (`clothHex`) y encuadres que siguen la cabeza real.
+- Retratos de la Bitácora: un busto 3D (`thumbnail` con `frame:'bust'`, `raw:true`) para Vera, Brígida (ahora enana),
+  Nahuel, Olga y Ramiro (`CHARACTERS` en `story-data.js`).
+- Galería en `tools/people.html`, con los sets pueblos, gente, ropa, cabeza, cara, equipo, clases, enemigos, retratos y giro.
+  Se captura con `GALLERY_PAGE=people.html node tools/gallery-shot.mjs ...`.
+
+- **Tercera pasada (caras), con investigación previa:** guía en `docs/ARTE-PERSONAJES.md`, con las fuentes.
+  - Rampas con cambio de matiz: `ramp` en `avatar-kit.js`, y `MAT` separado por valor y temperatura.
+  - Plantilla de cara nueva: ojo de 2 × 1 sin blanco, ceño pegado al ojo, nariz con volumen y sin boca cuando hay barba.
+  - La barba es una masa con bigote aparte.
+  - Gente-zorro: hocico en 3 escalones y pañuelo de acento.
+  - Humanos más altos (unas 3,8 cabezas) y enanos un poco más altos.
+  - Galería: `set=caras&view=f|t|p` para el primer plano y `&gray=1` para la prueba de valor.
+  - Las capturas son `shots/personajes/giro.png`, `caras.png` y `giro-grises.png`.
+  - En `44489f9`, con la lectura del coordinador: brazos que se meten en el hombro, cráneo redondeado y monje con faja,
+    cuentas y sandalias.
+  - **El usuario dio el OK al estilo de las 3 muestras** ("Sí, propagalo"). Lo que sigue es propagarlo: el brief está en
+    las notas compartidas, `paso-4a-propagar-brief.md`.
+- `test-story` ya está arreglado (`5fb6722`, onboarding con pueblo al azar).
+
+- **Propagación (esta tanda, commits `6502371` a `de2d00e`):**
+  - Orcos, anuros y Vaciados con la plantilla; la red de valor de `paletteOf` separa la ropa de la piel.
+  - Pintura nueva, cota en bandas y pañuelo con un umbral de rojo más fino.
+  - Enemigos low-poly con rampa por orientación y paletas más claras.
+  - Busto de la Bitácora que sigue al sombrero.
+  - Docs: DESIGN.md, DESIGN-STORY.md (pueblos) y la guía §6.
+- **Ojos (pedido del usuario):**
+  - El párpado salía rojo y se cambió.
+  - Ahora son ojos negros de 2 × 2, sin brillo (con brillo quedaban tiernos).
+  - Las cejas son gruesas: en V en enanos y orcos, rectas en humanos.
+  - Los enanos llevan la nariz colorada.
+  - El usuario mandó de referencia un enano pixel art y preguntó **por qué los nuestros no se ven así de detallados**.
+- **Tests:**
+  - `test-e2e` bajó de 32 a 7 fallas, todas por el tipo "chico"; el test ya está arreglado y falta volver a correrlo.
+  - `test-stress` dio 3 fallas de `expedition.js` (`combatState`). Corrió mientras se mergeaba origin/master: hay que
+    volver a correrlo.
+- **Galería:** `set=caras&who=pueblos`, `pick=` y `set=autos`.
+
+- **Pasada de detalle** (commit `73bde5b`; guía en `docs/ARTE-PERSONAJES.md` §7):
+  - barba en 5 tonos por capas, con mechones y puntas dentadas;
+  - borde de luz, sombra bajo el cinturón y pliegues;
+  - hebilla con relieve, remaches, correa con hebilla, bolsos con tapa, puños, pulgar y doblez de la bota;
+  - hacha parada que se lee de frente;
+  - enano a ~3 cabezas (cabeza de 14 × 13, manos de 9);
+  - todo es genérico en `figure.js`, así que ya está propagado a todos los pueblos y a la gente de la ciudad.
+- **Tests (con el esquife, `4bae6a3`):** `test-e2e` 96 OK, `test-stress` 15 OK sin fugas, `test-visit` 20 OK y `test-migration` 80 OK (el tope de alto del perfil
+  viejo subió a 1,4: los humanos más altos de la tercera pasada miden 1,33 con el sombrero de mago).
+- **Capturas finales** en `shots/personajes/final-*.png` (vestuario, ciudad, expedición, combate, jefe y retratos),
+  enviadas al usuario.
+- **M5, el esquife volador** (este commit):
+  - modelo en `src/avatar/skiff.js`; `car.js` lo reexporta como `carModel`;
+  - las claves de `state.car` y del catálogo siguen igual (`body`, `color`, `wheels`, `topper`), así no se tocan el pase,
+    los cofres ni el álbum; los ids nuevos están en `CAR_BODIES`, `CAR_WHEELS` y `CAR_TOPPERS`;
+  - migración: `V5_CAR` en `data.js` y `migrateSkiff` en `state.js`, que corre dentro de `migrateV5` (y también en las
+    partidas que ya eran v5); `normalizeCar` traduce los perfiles de contactos viejos; el aviso único suma la línea del
+    esquife (`v5.skiff`);
+  - ciudad: `city-life.js` lo amarra al muelle del Establo y cada 40 a 80 s da una vuelta a la isla;
+  - Equipaje: el escenario es el muelle de amarre (`buildDock`); las categorías son Casco, Pintura, Aparejo y Proa;
+  - textos: pase, cofres, recompensas, ficha del Establo y álbum (la colección "Vehículos" pasa a "Navegación", con los
+    mismos ids); el ícono `car` ahora es el esquife;
+  - galería: `tools/people.html?set=esquifes&part=casco|vela|proa&driver=1`; capturas en `shots/personajes/esquife-*.png`.
+
+- **Ojo con `test-e2e` bajo carga:** con otras sesiones corriendo tests a la vez, las fallas cambian de una corrida a
+  la otra (t2–t6, o el Pase, porque la ficha del martillo no abría y quedaba algo encima). El paso del martillo ahora
+  espera la ficha y, si el toque cae en alguien que pasa, la abre por el bus. Si vuelve a fallar algo suelto, correrlo
+  solo antes de buscar un error.
+
+- **Segunda pasada de detalle** (las 4 referencias vóxel del usuario; guía §8):
+  - variación de valor por vóxel;
+  - cabeza grande con el ojo de 2 × 3;
+  - orejas, nariz, mechones y flequillo que salen del cráneo;
+  - raya en las mangas;
+  - cámara más cerca en el Equipaje y en los retratos.
+  - **Decisión tomada sin el usuario** (estaba durmiendo y lo había autorizado todo): la cabeza grande. La comparación
+    está en `shots/personajes/comparar-cabeza*.png`. Para volver: `setHeadMode('chico')`.
+
+- Tests después de la segunda pasada: e2e 96, stress 15, visit 20, migration 80 y story 94, todos en verde.
+  - El paso del martillo de `test-e2e` ahora alarga la obra, cancela el "Mover" si un toque se toma como toque largo y
+    verifica que el martillo terminó antes de seguir. Bajo carga eran las 7 u 8 fallas en cadena.
+
+**Falta:** nada del 4a. Lo integra el coordinador (no se corrió `npm run bump`).
 
 ## Decisiones tomadas
 - Plataforma:

@@ -4,7 +4,7 @@ import { bus } from './bus.js';
 import {
   CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
   LEGACY_TYPES, LEGACY_ITEMS, REGION_MATERIALS, PROV_START, RESERVE_CAP, LEGACY_MATS, LEGACY_BUILDINGS, LEGACY_BOOSTERS,
-  TOWN_RANKS, eraOfRank, RETIRED_ITEMS,
+  TOWN_RANKS, eraOfRank, RETIRED_ITEMS, V5_TYPES, V5_ITEMS, v5Look, V5_CAR,
 } from './data.js';
 import { THEME_ALIASES } from '../city/themes.js';
 import { migrateClasses } from './classes-migrate.js';
@@ -13,7 +13,7 @@ const BASE_KEY = 'pixelia.save.v1';
 // 1: original · 2: sin realeza (tipos/piezas de princesa → gente) y tema por defecto "pueblo"
 // 3: sin minijuegos (materiales de región, edificios del ciclo, equipo, épocas; DESIGN-CORE.md §7.2)
 // 4: fuera lo tierno (El Quiebre, plan §J7): solo personas, piezas retiradas devueltas y estilos de ciudad nuevos
-export const VERSION = 4;
+export const VERSION = 5;
 
 /** Ajustes por defecto (src/core/settings.js los aplica y valida; los saves viejos los reciben por deepFill). */
 export const SETTINGS_DEFAULTS = {
@@ -76,9 +76,9 @@ export function defaultState() {
     coins: 600,
     gems: 15,
     // personaje del jugador. state.princess es un alias de state.avatar (saves viejos)
-    avatar: { type: 'chica', ...avatarType('chica').look },
+    avatar: { type: 'humano', ...avatarType('humano').look },
     avatarLooks: {}, // último look usado con cada tipo: { [type]: look } (al volver a un tipo se recupera)
-    car: { body: 'convertible', color: 'celeste', wheels: 'clasica', topper: 'ninguno' },
+    car: { body: 'bote', color: 'azul', wheels: 'vela', topper: 'ninguno' },   // el esquife (plan §M5)
     owned: freeOwned(),
     city: {
       // b: { uid, id, x, z, rot(0..3), level, buildEnd(ms|0), upgradeEnd(ms|0), lastCollect(ms), damaged(ms|0, amenazas) }
@@ -141,8 +141,10 @@ function migrate(s) {
   if ((s.v || 1) < 2) migrateNoRoyalty(s);
   if ((s.v || 1) < 3) migrateV3(s);
   if ((s.v || 1) < 4) migrateV4(s);
+  if ((s.v || 1) < 5) migrateV5(s);
+  else migrateSkiff(s);   // las partidas v5 de antes del esquife (rama de prueba) también se traducen
   migrateClasses(s);   // roles de la expedición → clases (paso 5b; una sola vez, sin depender de s.v)
-  if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'chica';
+  if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'humano';
   if (s.onboarded === undefined) s.onboarded = true;
   // el nombre por defecto viejo era 'Princesa': ahora el juego es neutro
   if (s.player && s.player.name === 'Princesa') s.player.name = 'Pixelín';
@@ -310,12 +312,85 @@ function migrateV4(s) {
   if (v4.shown == null) v4.shown = isFreshGame(s) || !(v4.from || v4.theme || v4.coins || v4.gems);
   s.v = 4;
 }
+/**
+ * v4 → v5 (plan §M, personajes serios y pueblos). Corre antes de deepFill, una sola vez (s.v pasa a 5):
+ *  1. chica y chico pasan a ser humanos (esbelto y recio) y las piezas se traducen (V5_ITEMS, v5Look); el look de un
+ *     tipo que no estaba puesto queda guardado en s.v5.looks (no hay dos looks de humano);
+ *  2. lo comprado pasa a su equivalente; si ya lo tenías o el equivalente es gratis, se devuelve lo que pagaste;
+ *  3. lo que tenías puesto queda tuyo aunque su equivalente ahora se pague (no se pierde nada).
+ * Lo que cambió queda en s.v5 { from, coins, gems, shown } para el aviso único (main.js).
+ */
+function migrateV5(s) {
+  if ((s.v || 1) >= 5) return;
+  const v5 = (s.v5 && typeof s.v5 === 'object') ? s.v5 : (s.v5 = {});
+  const KINDS = ['hair', 'dress', 'crown', 'acc'];
+  const item = (kind, id) => CUSTOM_CATALOG[kind]?.find(i => i.id === id);
+  let coins = 0, gems = 0;
+  if (!s.owned || typeof s.owned !== 'object') s.owned = {};
+  for (const kind of KINDS) {
+    const list = Array.isArray(s.owned[kind]) ? s.owned[kind] : [];
+    const out = new Set();
+    for (const id of new Set(list)) {
+      const [to, price] = V5_ITEMS[kind]?.[id] || [id, null];
+      const it = item(kind, to);
+      if (it && !it.free && !out.has(to)) { out.add(to); continue; }
+      if (price) { coins += price.coins || 0; gems += price.gems || 0; }
+    }
+    s.owned[kind] = [...out];
+  }
+  if (s.avatar && typeof s.avatar === 'object') {
+    if (V5_TYPES[s.avatar.type]) v5.from = s.avatar.type;
+    s.avatar = v5Look(s.avatar);
+    if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'humano';
+  }
+  const looks = {};
+  if (s.avatarLooks && typeof s.avatarLooks === 'object') {
+    for (const [t, l] of Object.entries(s.avatarLooks)) {
+      if (!l || typeof l !== 'object') continue;
+      if (AVATAR_TYPE_BY_ID[t]) { looks[t] = l; continue; }
+      const { type, ...rest } = v5Look({ ...l, type: t });
+      if (AVATAR_TYPE_BY_ID[type] && type !== s.avatar?.type && !looks[type]) looks[type] = rest;
+      else (v5.looks || (v5.looks = {}))[t] = rest;
+    }
+  }
+  s.avatarLooks = looks;
+  for (const l of [s.avatar, ...Object.values(looks), ...Object.values(v5.looks || {})]) {
+    if (!l) continue;
+    for (const kind of KINDS) {
+      const it = item(kind, l[kind]);
+      if (it && !it.free && !s.owned[kind].includes(it.id)) s.owned[kind].push(it.id);
+    }
+  }
+  if (coins) { s.coins = num(s.coins) + coins; v5.coins = num(v5.coins) + coins; }
+  if (gems) { s.gems = num(s.gems) + gems; v5.gems = num(v5.gems) + gems; }
+  if (migrateSkiff(s)) v5.skiff = 1;
+  if (v5.shown == null) v5.shown = isFreshGame(s);
+  s.v = 5;
+}
+/**
+ * El auto pasa a ser el esquife (plan §M5): state.car y las piezas compradas pasan a la pieza que ocupa su lugar (casco,
+ * vela, proa; el color queda). Nada se pierde y es seguro de repetir: solo traduce ids viejos. Devuelve si cambió algo.
+ */
+function migrateSkiff(s) {
+  let changed = false;
+  if (s.car && typeof s.car === 'object') for (const kind of ['body', 'wheels', 'topper']) {
+    const to = V5_CAR[kind][s.car[kind]];
+    if (to) { s.car[kind] = to; changed = true; }
+  }
+  if (s.owned && typeof s.owned === 'object') for (const kind of ['body', 'wheels', 'topper']) {
+    const list = Array.isArray(s.owned[kind]) ? s.owned[kind] : null;
+    if (!list || !list.some(id => V5_CAR[kind][id])) continue;
+    s.owned[kind] = [...new Set(list.map(id => V5_CAR[kind][id] || id))];
+    changed = true;
+  }
+  return changed;
+}
 /** state.princess → state.avatar (no enumerable: no se guarda dos veces ni cambia el hash de sincronización). */
 function withAlias(s) {
   Object.defineProperty(s, 'princess', {
     configurable: true, enumerable: false,
     get() { return s.avatar; },
-    set(v) { if (v && typeof v === 'object') s.avatar = { type: s.avatar?.type || 'chica', ...v }; },
+    set(v) { if (v && typeof v === 'object') s.avatar = { type: s.avatar?.type || 'humano', ...v }; },
   });
   return s;
 }
@@ -565,7 +640,8 @@ export const store = {
     const def = avatarType(type).look;
     const prev = state.avatarLooks[type] || {};
     const next = { type, skin: prev.skin ?? cur.skin ?? def.skin, hairColor: prev.hairColor ?? def.hairColor, dressColor: prev.dressColor ?? def.dressColor };
-    for (const kind of ['hair', 'dress', 'crown', 'acc']) {
+    next.build = prev.build ?? cur.build ?? def.build;
+    for (const kind of ['hair', 'face', 'dress', 'crown', 'acc']) {
       const want = prev[kind] ?? def[kind];
       const item = CUSTOM_CATALOG[kind].find(i => i.id === want);
       next[kind] = item && fitsType(item, type) && store.owns(kind, want) ? want : def[kind];

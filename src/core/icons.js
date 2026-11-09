@@ -71,6 +71,11 @@ const DEFS = {
     flat(starPath(12, 15.1, 3.7, 1.7), C.w),
   ],
   xp: [ly('M12 1.5L22.5 12H16v10.5H8V12H1.5z', C.l), flat('M11 5h1.6v3.4H11z', C.w)],
+  car: [   // el esquife (plan §M5): el id 'car' quedó de cuando era un auto
+    ly('M11.2 1.5h1.6v13h-1.6z', '#8a6a44'), ly('M12.8 2.5l7.4 10.5h-7.4z', C.c), ly('M11.2 4.5L5 13h6.2z', C.g),
+    ly('M1 13.6h22l-3.6 5.6H4.6z', C.wood), flat('M2.6 15.4h18.8', C.P, { stroke: 1.2 }),
+    ly('M10.4 19.6h3.2L12 23z', C.m),
+  ],
   gear: [ly(gearPath(), C.g), flat(circ(12, 12, 5.2), C.G, { stroke: 1.2 }), ly(circ(12, 12, 3), null, { cut: true })],
   hammer: [ly('M8.8 10.2l2.4-2.4 10.9 10.9a1.7 1.7 0 0 1-2.4 2.4z', C.wood), ly('M1.6 8.4L8.4 1.6l4.6 4.6-6.8 6.8z', '#dad0c2'), flat('M3.4 8.2l4.8-4.8', C.w, { stroke: 1 })],
   quest: [

@@ -680,7 +680,7 @@ export function openInfo(S, uid) {
       acts.append(btn(isExp ? 'Expedición' : 'Taller', 'primary', isExp ? 'map' : 'hammer', () => { m.close(); ctx.openPanel(d.panel); }));
     }
     // el auto del Equipaje vive en el Establo (era del Garaje, que se reconvirtió en Establo: DESIGN-CORE.md §5.3 y §9)
-    if (b.id === 'establo' && !building) acts.append(btn('Auto', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
+    if (b.id === 'establo' && !building) acts.append(btn('Esquife', 'sky', 'car', () => { m.close(); ctx.router.go('wardrobe', { tab: 'car' }); }));
     if (isCastle) acts.append(btn('Tu ciudad', 'gold', 'castle', () => { m.close(); ctx.openPanel('rank'); }));
     if (isMon) acts.append(btn('Obras', 'gold', 'monument', () => { m.close(); ctx.openPanel('works', { focus: d.id }); }));
     if (isHome) acts.append(btn('Entrar', 'primary', 'home', () => { m.close(); ctx.router.go('home'); }));

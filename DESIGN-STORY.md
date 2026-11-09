@@ -29,10 +29,26 @@ levantes es el refugio desde el que se sale a buscar respuestas.
 ## 2. Personajes
 | Quién | Rol | Notas |
 |---|---|---|
-| **Vera, la cartógrafa** | Guía y voz del tutorial | La única que se quedó en la isla. Seca, práctica, con humor de barrio. Habla en los contactos y al cumplir el tutorial. Retrato 16×16 en `CHARACTERS.cartografa`. **Su culpa (L2):** antes del Quiebre dibujó los mapas de las vetas para las Casas y, sin saberlo, les mostró dónde cavar. Se quedó porque quiere arreglar algo ("Tengo algo que arreglar", prólogo). En el Acto 1 solo hay pistas (un eco, la página 5, un silencio cuando se habla de mapas); se revela en el Acto 2. Es la **pista falsa del traidor**: todo apunta a ella y no es ella. |
+| **Vera, la cartógrafa** | Guía y voz del tutorial | La única que se quedó en la isla. Seca, práctica, con humor de barrio. Habla en los contactos y al cumplir el tutorial. Retrato: un busto 3D de su `look` en `CHARACTERS.cartografa` (el 16×16 queda de respaldo). **Su culpa (L2):** antes del Quiebre dibujó los mapas de las vetas para las Casas y, sin saberlo, les mostró dónde cavar. Se quedó porque quiere arreglar algo ("Tengo algo que arreglar", prólogo). En el Acto 1 solo hay pistas (un eco, la página 5, un silencio cuando se habla de mapas); se revela en el Acto 2. Es la **pista falsa del traidor**: todo apunta a ella y no es ella. |
 | **Tadeo Ibarra, el último intendente** | Voz del diario | No aparece: se lo lee. Firmó permisos para la Cofradía y lo cuenta. Las Páginas del diario son el coleccionable de la historia. |
 | **El narrador** | Prólogo y momentos grandes | Sin retrato. Registro épico. |
 | Tu personaje | Quien lidera | Elegido en el onboarding. Los elementos le dan habilidades de líder. |
+
+### Pueblos (paso 4a)
+Cada quien es de un pueblo (`AVATAR_TYPES` en `data.js`), con complexión recia o esbelta. Cómo se dibujan está en
+[docs/ARTE-PERSONAJES.md](docs/ARTE-PERSONAJES.md); las medidas, en `PEOPLE` de `src/avatar/figure.js`.
+
+| Pueblo | Veta | Quiénes son | Cómo se ven |
+|---|---|---|---|
+| **Humanos** | ninguna | De las islas y los reinos: soldados, cartógrafos, desertores. | ~3,8 cabezas, ceja recta y gesto serio. |
+| **Enanos de la Veta** | Raíz | Mineros del Cerro. Las Casas los hicieron cavar y no se olvidan. | Anchos y bajos, cejas tupidas, barba que se funde con el torso. |
+| **Anuros del Bañado** | Marea | Guardianes del agua. Hablan poco y no se apuran. | Achaparrados, ojos arriba, boca de lado a lado, manchas en el lomo. |
+| **Gente-zorro del Céfiro** | Céfiro | Viven entre dirigibles y riscos: muchos piratas, algunos mensajeros. | Hocico en escalones, orejas grandes y cola. |
+| **Orcos de la Brasa** | Brasa | De los volcanes del Bajo Mundo. Los que más perdieron con el Quiebre. | Torso enorme, cabeza chica y adelantada, ojos de brasa y colmillos. |
+| *Vaciados* (no se eligen) | — | Gente a la que la veta le comió algo por dentro. Aparecen en la mina. | Grises y encorvados, una grieta de veta que les baja por el pecho y ojos que brillan. |
+
+Los piratas del cielo son gente-zorro; el jefe de la Brasa, el gólem de Raíz, la bestia del Bañado, los lobos y los
+bichos de veta son criaturas en low-poly (`src/combat/enemy-models.js`). Brígida, la herrera, es enana.
 
 ## 3. Facciones (actos que siguen)
 - **Piratas del cielo**: saquean desde dirigibles. Primer abordaje al cierre del Acto 1.

@@ -38,7 +38,7 @@ export const PITY_LEGENDARY = 20;         // a lo sumo 20 cofres sin legendaria
 //  'coins'|'gems'|'xp'   — se acreditan al abrir (amount = [min,max], monedas escalan con nivel)
 //  'item'                — va a la mochila (consumible). use: 'city' (se usa desde la mochila)
 //  'equip'               — una pieza de equipo de expedición (va a state.equipment; pool: ids de EQUIP_RECIPES)
-//  'cosmetic'            — desbloquea una prenda/parte de auto que no tengas (pool: 'coins' o 'gems' según su precio)
+//  'cosmetic'            — desbloquea una prenda o pieza del esquife que no tengas (pool: 'coins' o 'gems' según su precio)
 //  'build'               — una construcción gratis de esos edificios (pool), sin requisito de nivel
 //  'furniture'           — un mueble para Mi Casa (pool: CHEST_FURNITURE de home/furniture.js)
 //  'material'            — materiales de región (amount = [min,max]; elige el que más falta para tus obras)
@@ -57,12 +57,12 @@ export const ITEMS = {
   gems_m: { name: 'Bolsa de gemas', rarity: 'epica', kind: 'gems', amount: [3, 5], icon: 'gem' },
   potion_happy: { name: 'Perfume de Alegría', rarity: 'epica', kind: 'item', use: 'city', icon: '🌸', desc: 'Felicidad al máximo (+50% producción) durante 1 hora.', boost: { type: 'happy', minutes: 60 } },
   furniture: { name: 'Mueble sorpresa', rarity: 'epica', kind: 'furniture', icon: 'home', desc: 'Un mueble especial para tu casa.' },
-  cosmetic_coins: { name: 'Prenda sorpresa', rarity: 'epica', kind: 'cosmetic', pool: 'coins', icon: '🎀', desc: 'Una prenda o parte de auto nueva, gratis.' },
+  cosmetic_coins: { name: 'Prenda sorpresa', rarity: 'epica', kind: 'cosmetic', pool: 'coins', icon: '🎀', desc: 'Una prenda o pieza del esquife nueva, gratis.' },
   build_deco: { name: 'Deco sorpresa', rarity: 'epica', kind: 'build', pool: ['fuente', 'estatua', 'glorieta', 'arco_rosas', 'cerezo', 'macetas'], icon: '⛲', desc: 'Una decoración gratis para tu ciudad.' },
 
   gems_l: { name: 'Tesoro de gemas', rarity: 'legendaria', kind: 'gems', amount: [30, 45], icon: 'gem' },
   potion_mega: { name: 'Elixir Dorado', rarity: 'legendaria', kind: 'item', use: 'city', icon: '✨', desc: 'Producción x3 en toda la ciudad durante 2 horas.', boost: { type: 'prod', mult: 3, minutes: 120 } },
-  cosmetic_gems: { name: 'Prenda legendaria', rarity: 'legendaria', kind: 'cosmetic', pool: 'gems', icon: '🌟', desc: 'Una prenda o parte de auto premium (de las que cuestan gemas), gratis.' },
+  cosmetic_gems: { name: 'Prenda legendaria', rarity: 'legendaria', kind: 'cosmetic', pool: 'gems', icon: '🌟', desc: 'Una prenda o pieza del esquife premium (de las que cuestan gemas), gratis.' },
   build_legend: { name: 'Construcción legendaria', rarity: 'legendaria', kind: 'build', pool: ['unicornio', 'lago', 'rueda'], icon: '🦄', desc: 'Una construcción legendaria gratis, aunque no tengas el nivel.' },
 };
 for (const [id, it] of Object.entries(ITEMS)) it.id = id;
@@ -96,8 +96,8 @@ const pickWeighted = (weights) => {
 const randInt = (a, b) => a + Math.floor(rand() * (b - a + 1));
 
 // Qué prendas se pueden sortear (que no tengas): del personaje, solo las que le sirven a su tipo
-// (las demás no aparecen en su Equipaje); además, partes del auto
-const AVATAR_KINDS = new Set(['hair', 'dress', 'crown', 'acc']);
+// (las demás no aparecen en su Equipaje); además, piezas del esquife
+const AVATAR_KINDS = new Set(['hair', 'dress', 'crown', 'acc', 'face']);
 function cosmeticPool(pool) {
   const s = S(), out = [];
   for (const [kind, list] of Object.entries(CUSTOM_CATALOG))

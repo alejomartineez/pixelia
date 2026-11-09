@@ -315,8 +315,9 @@ try {
   ok(await run(`return store.state.onboarded === false`), 'todavía no figura como onboarded');
   await sleep(900);
   await shot('onboarding-personaje');
-  // personaje distinto del de arranque (chica): Chico; tema nuevo del mundo (v4): Ocaso
-  const OB_TYPE = 'chico', OB_NAME = 'Bruno', OB_CITY = 'Villa Prueba', OB_THEME = 'ocaso';
+  // un pueblo distinto del de arranque (desde el paso 4a la partida nueva arranca con un pueblo al azar); tema: Ocaso
+  const OB_TYPE = await ev(() => document.querySelector('.scene-onboarding .ob-type:not(.on)')?.dataset.type || 'humano');
+  const OB_NAME = 'Bruno', OB_CITY = 'Villa Prueba', OB_THEME = 'ocaso';
   ok(await tap('.scene-onboarding .ob-type[data-type="' + OB_TYPE + '"]'), `toqué el personaje ${OB_TYPE}`);
   await sleep(600);
   ok(await ev((t) => !!document.querySelector(`.scene-onboarding .ob-type.on[data-type="${t}"]`), OB_TYPE), 'la tarjeta del personaje queda marcada');
@@ -325,7 +326,7 @@ try {
   const dressId = await ev(() => document.querySelector('.scene-onboarding .ob-sw[data-key="dressColor"] button:not(.on)')?.dataset.id || null);
   ok(!!dressId && await tap(`.scene-onboarding .ob-sw[data-key="dressColor"] button[data-id="${dressId}"]`), `toqué el color de ropa ${dressId}`);
   await sleep(500);
-  await shot('onboarding-chico');
+  await shot('onboarding-pueblo');
   await tap('.scene-onboarding .ob-next');
   ok(await waitFor(`!!document.querySelector('.scene-onboarding [data-f=name]')`, 4000), 'paso 2: nombre del personaje y de la ciudad');
   await sleep(500);
@@ -553,17 +554,34 @@ try {
   await buildUI('casita');
   const busyUid = await run(`const now = Date.now(); return store.state.city.buildings.find(b => b.buildEnd > now)?.uid ?? null`);
   if (busyUid != null) {
+    // la Casa tarda segundos: con la CPU cargada terminaba sola antes del martillo. Se alarga la obra para la prueba
+    await run(`const b = store.state.city.buildings.find(b => b.uid === ${busyUid}); b.buildEnd = Date.now() + 300e3; store.markDirty(); return true;`);
     const hammers = await run(`return C.itemCount('hammer')`);
 
     const opened = await ev((uid) => { const c = window.__pixelia.city; const e = c.entries.get(uid); if (!e) return false; const v = e.root.position.clone(); v.y += 0.4; v.project(c.r.camera); const b = document.querySelector('.scene-city').getBoundingClientRect(); return { x: b.left + (v.x + 1) / 2 * b.width, y: b.top + (1 - v.y) / 2 * b.height }; }, busyUid).catch(() => null);
     if (opened) await tapXY(opened.x, opened.y);
-    await sleep(800);
-    const viaUI = await tap('.modal .btn.gold', 'Martillo', { timeout: 1500 });
-    if (!viaUI) await run(`C.useCityItem('hammer', { uid: ${busyUid} }); E.tick(); return true;`);
+    // el toque puede caer en alguien que pasa por delante de la casa (el personaje lleva al Equipaje): si la ficha no
+    // abrió, se vuelve a la ciudad y se abre la misma ficha por el bus (city:focus). Así el martillo se usa siempre desde
+    // la ficha y no queda nada abierto que tape el aviso del Pase más adelante.
+    // con la CPU cargada el toque táctil puede tomarse como toque largo y entrar en "Mover": se cancela
+    const cancelMove = async () => { for (let i = 0; i < 3 && await ev(() => !!window.__pixelia.city?.placer?.active); i++) { await page.keyboard.press('Escape'); await sleep(400); } };
+    await cancelMove();
+    if (!(opened && await waitFor(`!!document.querySelector('.modal.cx-info-modal')`, 2500))) {
+      await cancelMove();
+      if (await run(`return ctx.router.current`) !== 'city') { await run(`ctx.router.go('city'); return true;`); await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 8000); await sleep(1500); }
+      await run(`ctx.bus.emit('city:focus', { uid: ${busyUid} }); return true;`);
+      await waitFor(`!!document.querySelector('.modal.cx-info-modal')`, 5000);
+    }
+    await sleep(500);
+    const doneCode = `!(window.__pixelia.store.state.city.buildings.find(b => b.uid === ${busyUid})?.buildEnd > Date.now())`;
+    let viaUI = await tap('.modal .btn.gold', 'Martillo', { timeout: 4000 });
+    if (viaUI && !(await waitFor(doneCode, 3000))) viaUI = false;
+    if (!viaUI && !(await waitFor(doneCode, 10))) await run(`C.useCityItem('hammer', { uid: ${busyUid} }); E.tick(); return true;`);
     await sleep(600);
     ok((await run(`return C.itemCount('hammer')`)) === hammers - 1 && (await run(`return !(store.state.city.buildings.find(b => b.uid === ${busyUid})?.buildEnd > Date.now())`)), `martillo terminó la obra (${viaUI ? 'desde la ficha' : 'por API'})`);
     await closeTop();
     await drainOverlays();
+    await cancelMove();
   }
   await checkBadges('después de cofres');
 
@@ -643,7 +661,7 @@ try {
   await tapXY(VIEW.width / 2, VIEW.height * 0.7);
   ok(await waitFor(`window.__pixelia.ctx.router.current === 'city'`, 9000), 'entra directo a la ciudad (sin repetir el onboarding)');
   const again = await run(`return { type: store.state.avatar.type, name: store.state.player.name, city: store.state.player.cityName, theme: store.state.city.theme, onboarded: store.state.onboarded }`);
-  ok(again.onboarded && again.type === 'chico' && again.name === 'Bruno' && again.city === 'Villa Prueba' && again.theme === 'ocaso', 'tras recargar: Chico «Bruno», «Villa Prueba», tema ocaso', again);
+  ok(again.onboarded && again.type === OB_TYPE && again.name === 'Bruno' && again.city === 'Villa Prueba' && again.theme === 'ocaso', `tras recargar: ${OB_TYPE} «Bruno», «Villa Prueba», tema ocaso`, again);
   await sleep(800);
   await drainOverlays();
   await shot('recarga-ciudad');} catch (e) {
