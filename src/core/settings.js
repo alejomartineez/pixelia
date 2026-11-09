@@ -7,7 +7,7 @@ import { audio } from './audio.js';
 import { applyA11y, setParticles } from './ui.js';
 import { SETTINGS_DEFAULTS } from './state.js';
 import { setKeyMap } from './keys.js';
-import { applyWindow } from './desktop.js';
+import { applyWindow, isDesktop } from './desktop.js';
 
 export { SETTINGS_DEFAULTS };
 
@@ -28,6 +28,10 @@ const num = (v, def, a, b) => (typeof v === 'number' && isFinite(v) ? clamp(v, a
 /** Corrige valores fuera de rango o de tipo (saves editados a mano, versiones viejas). Muta y devuelve s. */
 export function normalize(s) {
   const D = SETTINGS_DEFAULTS;
+  // en el juego de PC la escala por defecto es 115 % (a 1920×1080 el 100 % quedaba chico, recorrido del 9/11): una
+  // partida nueva o una que seguía en el 100 % de antes sube una sola vez. En la web sigue en 100 %.
+  // (uiScale115 no va en SETTINGS_DEFAULTS a propósito, así deepFill no lo marca antes de tiempo)
+  if (isDesktop && s.uiScale115 === undefined) { if (s.uiScale === 100 || s.uiScale === undefined) s.uiScale = 115; s.uiScale115 = true; }
   for (const k of Object.keys(D)) if (s[k] === undefined) s[k] = typeof D[k] === 'object' ? { ...D[k] } : D[k];
   if (s.lowQuality && s.gfxPreset === 'auto') Object.assign(s, PRESETS.low, { gfxPreset: 'low' });
   s.lowQuality = false;

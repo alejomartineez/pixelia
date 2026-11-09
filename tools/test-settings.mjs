@@ -98,6 +98,20 @@ try {
   await closeModals();
   let s = await settings();
   ok(s.gfxPreset === 'auto' && s.renderScale === 200 && s.maxFps === 60 && s.uiScale === 100 && s.winMode === 'window', 'gráficos y pantalla por defecto (preset automático, 200 %, 60 FPS)', s);
+  // juego de PC: la escala por defecto es 115 % (partida nueva o una que seguía en el 100 % de antes, una sola vez)
+  ok(await openCity('&reset&cheat=10&desktop'), 'la ciudad carga como juego de PC');
+  await run('store.state.onboarded = true; return true;');
+  let sd = await settings();
+  ok(sd.uiScale === 115 && sd.uiScale115 === true, 'PC: escala por defecto 115 %', sd.uiScale);
+  await run(`store.state.settings.uiScale = 100; const SM = await import('/src/core/settings.js'); SM.normalize(store.state.settings); return true;`);
+  ok((await settings()).uiScale === 100, 'PC: si después elegís 100 %, queda en 100 % (el salto es una sola vez)');
+  await run(`const st = store.state.settings; st.uiScale = 100; delete st.uiScale115; const SM = await import('/src/core/settings.js'); SM.normalize(st); return true;`);
+  ok((await settings()).uiScale === 115, 'PC: una partida vieja que seguía en 100 % sube a 115 %');
+  ok(await openCity('&reset&cheat=10'), 'la ciudad carga de nuevo en el navegador');
+  await run('store.state.onboarded = true; return true;');
+  await closeModals();
+  s = await settings();
+  ok(s.uiScale === 100, 'web: la escala sigue en 100 %', s.uiScale);
   ok(s.volMaster === 0.8 && s.volMusic === 0.7 && s.volSfx === 0.8 && s.volAmb === 0.6 && s.volUi === 0.8 && s.volVoice === 1 && s.muteBg === true, 'volúmenes por defecto (volSfx existe para el logo)');
   ok(s.textSpeed === 'normal' && s.combatSpeed === 1 && s.hints === true && s.camSpeed === 1 && JSON.stringify(s.keys) === '{}', 'juego y controles por defecto');
   ok(s.subtitles === true && s.hiContrast === false && s.textSize === 'normal', 'accesibilidad por defecto');
