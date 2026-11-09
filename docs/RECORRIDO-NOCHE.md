@@ -46,9 +46,9 @@ con la interfaz real hasta el primer combate. La bestia y el faro los adelanté 
     todas las pantallas y conviene mirarlo en la ventana real.
 
 ### Media
-- **C. En la primera expedición hay dos instrucciones iguales a la vez.** Abajo a la izquierda dice "Hacé clic en una
+- **C. (Resuelto en `claude/retoques-recorrido-96dd76`: con Vera guiando, el aviso de abajo dice solo la zona y el objetivo, `exp-scene.js`.) En la primera expedición hay dos instrucciones iguales a la vez.** Abajo a la izquierda dice "Hacé clic en una
   casilla vecina para avanzar", y Vera, a la derecha, dice lo mismo. Mientras habla Vera, la de abajo podría callarse.
-- **D. Una línea de Vera queda congelada detrás de la subida de nivel.** La hoja de Vera empezó a escribirse ("P") y
+- **D. (Resuelto en `claude/retoques-recorrido-96dd76`: las líneas sueltas de Vera esperan a la llegada, a las subidas de nivel y a cualquier aviso de premio; si el aviso sale con una hoja a la vista, la hoja se esconde y se pausa, y sigue al cerrarlo, `story-ui.js`, `story.js`, `main.js`.) Una línea de Vera queda congelada detrás de la subida de nivel.** La hoja de Vera empezó a escribirse ("P") y
   quedó trabada abajo a la izquierda, detrás del cartel "¡Nivel 3!". Parece roto. Mejor que espere a que se cierre el
   cartel. La captura es `43-ciudad-despues-pelea.png`.
 - **E. (Resuelto en `claude/recorrido-ajustes`: el nivel 3 abre 6 cosas y el expediente; ver DESIGN-CORE §8.z.) La subida al nivel 3 desbloquea 11 cosas de golpe.** Florería, Dispensario, Tambo, cerezo, fuente, camino,
@@ -59,12 +59,25 @@ con la interfaz real hasta el primer combate. La bestia y el faro los adelanté 
   turno 1, ayudaría. Va para la sesión de clases (combate).
 
 ### Baja
-- **G. El eco de noche cuesta encontrarlo.** Sale en el borde de la isla, pálido y con lluvia. Aun con la cámara
+- **G. (Resuelto en `claude/retoques-recorrido-96dd76`: el eco de la ciudad tiene una columna de luz tenue con motas que suben y un sonido de vidrio bajo al aparecer; el primero lleva una marca, "Algo se mueve en el borde", que queda en el borde de la pantalla si el eco está fuera de cuadro y lleva la cámara hasta él. Con un eco a la vista la cámara puede llegar hasta el borde de la isla, `echo-fx.js`, `city-act1.js`, `audio/engine.js`.) El eco de noche cuesta encontrarlo.** Sale en el borde de la isla, pálido y con lluvia. Aun con la cámara
   encima queda cerca del borde de la pantalla. Un brillo suave o una línea de Vera la primera noche ayudarían.
-- **H. Personaje y clase a 1920×1080:** el panel de la derecha es angosto y las muestras de color son chicas. Se
+- **H. (Resuelto en `claude/retoques-recorrido-96dd76`: desde 1200 px de ancho el panel mide el 36 % de la ventana (entre 500 y 720 px), las muestras de color pasan a 48 px y bajan de renglón, y crecen las tarjetas y los textos. Ya no cambia de ancho entre un paso y otro, `onboarding.js`.) Personaje y clase a 1920×1080:** el panel de la derecha es angosto y las muestras de color son chicas. Se
   resuelve junto con B.
-- **I. Cinemática:** a 16:9 se ve bien. En el plano 2 la torre se corta arriba (es a propósito, para que se vea
+- **I. (Revisado: no es un error, no se cambió.) Cinemática:** a 16:9 se ve bien. En el plano 2 la torre se corta arriba (es a propósito, para que se vea
   alta). Los seis subtítulos entran en una línea.
+
+### Segunda pasada (retoques C, D, G, H e I)
+- `node tools/recorrido.mjs`: 30 controles bien, 0 fallas y sin errores de consola, con 56 capturas. La nueva es
+  `54-noche-eco-marca.png`, el primer eco con su marca.
+- **Visto en las capturas:**
+  - En `26` queda una sola instrucción, la de Vera.
+  - En `43` el cartel de nivel sale sin nada detrás.
+  - En `09` y `11` el panel mide 690 px en los dos pasos.
+  - En `55` el eco queda centrado, con su brillo.
+- **Juego de PC al 115 %:** lo miré con una ventana de 1670×939 a 1,15 (es lo que ve el WebView a 1920×1080). El panel
+  mide 691 px en pantalla y las muestras, 55 px.
+- **Nuevo, sin arreglar:** con el cartel de nivel abierto, los avisos "Misión cumplida" y "Pase de Temporada" se
+  ponen encima del título "Subiste de nivel". Se lee igual, pero queda encimado.
 
 ### Economía
 En este recorrido no vi nada raro de economía. La salida corta gratis llegó a tiempo, la Huerta dio las 4 provisiones

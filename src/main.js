@@ -357,7 +357,7 @@ function applyDebugParams() {
 function initProgression() {
   const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['raiz', initRaiz], ['act1', initAct1], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
     ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds],
-    ['story', () => story.initStory(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length, inCity: () => cityReady() && !document.body.classList.contains('no-hud') })],
+    ['story', () => story.initStory(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length, inCity: () => cityReady() && !document.body.classList.contains('no-hud') && !arrival && !flushing && !pendingLevelUps.length && !document.querySelector('.reward-modal') })],
     ['people', () => people.initPeople(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length && cityReady(),
       show: (sc) => import('./story/story-ui.js').then(m => m.showScene(ctx, sc)) })],
     ['classpick', () => import('./scenes/class-pick.js').then(m => m.initClassNudge(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length && cityReady() }))],

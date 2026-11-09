@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { voxelModel } from '../city/models.js';
 import { islandEdgeSpots } from './city-world.js';
 import { createEcho } from '../story/echo-fx.js';
-import { cityEcho, seeEcho } from '../story/echoes.js';
+import { cityEcho, seeEcho, echoState } from '../story/echoes.js';
 import * as A from '../story/act1.js';
 import { ENCOUNTERS, ENEMIES } from '../combat/combat-data.js';
 import { CLASSES } from '../combat/classes.js';
@@ -48,7 +48,7 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
 
   // ---------- ecos ----------
   const spots = islandEdgeSpots(3, 31).map(s => ({ x: s.x - s.nx * 1.1, z: s.z - s.nz * 1.1, face: Math.atan2(-s.nx, -s.nz) }));
-  let echo = null, echoId = null;
+  let echo = null, echoId = null, chime = false;
   function wantEcho() {
     if (!Q_ECHO && !night()) return null;
     return cityEcho(state);
@@ -57,14 +57,53 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
     const e = wantEcho();
     if (echo && !echo.leaving && (!e || e.id !== echoId)) echo.leave();
     if (!echo && e) {
-      echo = createEcho(e.scene, { scale: 1.45, opacity: 0.55 });
+      echo = createEcho(e.scene, { scale: 1.45, opacity: 0.55, beacon: true });
       const sp = spots[e.spot % spots.length];
       echo.group.position.set(sp.x, 0, sp.z);
       echo.group.rotation.y = sp.face;
       root.add(echo.group);
       echoId = e.id;
+      chime = true;
+      // la primera vez (todavía no se vio ninguno), una marca lo señala hasta que se lo toca
+      if (!Object.keys(echoState(state)).length) showMark();
     }
+    // un sonido de vidrio, bajo y lento, cuando aparece (si recién se entra a la ciudad, después de que cargó)
+    if (chime && echo && t > 1.5) { chime = false; audio.sfx('echo'); }
     if (echo && echo.update(t) === false) { echo.dispose(); echo = null; echoId = null; }
+    syncMark();
+  }
+  // ---------- la marca del primer eco ----------
+  // Una etiqueta chica sobre el eco ("Algo se mueve en el borde"). Si el eco queda fuera de cuadro, se queda en el borde
+  // de la pantalla del lado donde está; un clic lleva la cámara hasta él.
+  let mark = null;
+  function showMark() {
+    if (mark) return;
+    markStyle();
+    mark = document.createElement('button');
+    mark.className = 'ec-mark';
+    mark.type = 'button';
+    mark.innerHTML = `<span class="ec-mark-dot"></span>Algo se mueve en el borde`;
+    mark.addEventListener('click', () => {
+      if (!echo) return;
+      audio.sfx('tap');
+      const p = echo.group.position;
+      cam?.flyTo(p.x, p.z);
+    });
+    container.append(mark);
+  }
+  function hideMark() { mark?.remove(); mark = null; }
+  const v3m = new THREE.Vector3();
+  function syncMark() {
+    if (!mark) return;
+    if (!echo || echo.leaving) { hideMark(); return; }
+    const s = screenOf(v3m.copy(echo.group.position).setY(2.2));
+    const W = container.clientWidth || innerWidth, H = container.clientHeight || innerHeight;
+    // centrada en x y apoyada sobre el punto: el margen deja la etiqueta entera adentro de la pantalla
+    const mx = (mark.offsetWidth || 220) / 2 + 16, my = 90;
+    const x = Math.max(mx, Math.min(W - mx, s.x)), y = Math.max(my + (mark.offsetHeight || 34), Math.min(H - my, s.y));
+    const out = x !== s.x || y !== s.y;
+    mark.style.left = `${x}px`; mark.style.top = `${y}px`;
+    mark.classList.toggle('off', out);
   }
   const v3 = new THREE.Vector3();
   function hitEcho(x, y) {
@@ -75,6 +114,7 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
   function openEcho() {
     const e = seeEcho(echoId);
     echo?.leave();
+    hideMark();
     if (!e) return;
     audio.sfx('page');
     const page = e.page ? PAGE_BY_ID[e.page] : null;
@@ -82,6 +122,24 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
     wrap.append(ui.h('p', { html: `<i>${ui.esc(e.line)}</i>` }));
     wrap.append(ui.h('p.ec-note', { html: page ? `${icon('quest', 16)} Página nueva del diario: <b>${ui.esc(page.title)}</b>.` : `${icon('quest', 16)} Queda anotado en el Diario de la Bitácora.` }));
     ui.modal({ title: e.title, icon: '🌙', content: wrap, className: 'ec-modal' });
+  }
+
+  function markStyle() {
+    if (document.getElementById('ec-mark-style')) return;
+    const st = document.createElement('style');
+    st.id = 'ec-mark-style';
+    st.textContent = `
+.ec-mark { position:absolute; z-index:5; transform:translate(-50%, -100%); display:flex; align-items:center; gap:8px;
+  padding:6px 12px 6px 10px; font:inherit; font-size:15px; font-weight:700; color:#e4f6ff; cursor:pointer; white-space:nowrap;
+  background:rgba(22,34,52,.82); border:2px solid #a9dcf0; border-radius:999px; box-shadow:0 0 14px rgba(169,220,240,.45), 0 3px 0 rgba(0,0,0,.35);
+  animation:ecMarkIn .6s ease-out, ecMarkPulse 2.8s ease-in-out .6s infinite; }
+.ec-mark-dot { width:9px; height:9px; border-radius:50%; background:#d8f3ff; box-shadow:0 0 8px #a9dcf0; }
+.ec-mark.off { opacity:.9; }
+body.no-hud .ec-mark { display:none; }
+@keyframes ecMarkIn { from { opacity:0; } to { opacity:1; } }
+@keyframes ecMarkPulse { 0%, 100% { box-shadow:0 0 10px rgba(169,220,240,.3), 0 3px 0 rgba(0,0,0,.35); } 50% { box-shadow:0 0 20px rgba(169,220,240,.65), 0 3px 0 rgba(0,0,0,.35); } }
+html.reduce-motion .ec-mark { animation:none; }`;
+    document.head.append(st);
   }
 
   // ---------- el dirigible del abordaje ----------
@@ -170,11 +228,12 @@ export function createCityAct1({ ctx, r, container, cam, screenOf, night }) {
     openAbordaje,
     get echo() { return echo ? { id: echoId, leaving: echo.leaving, pos: echo.group.position.clone() } : null; },
     get ship() { return ship; },
-    /** Cuánto más se puede correr la cámara (en casillas): con el dirigible amarrado, hasta verlo entero. */
-    get limitBonus() { return ship ? 7 : 0; },
+    /** Cuánto más se puede correr la cámara (en casillas): con el dirigible amarrado, hasta verlo entero; con un eco (en el borde de la isla, a ±15), hasta centrarlo. */
+    get limitBonus() { return ship ? 7 : echo ? 9 : 0; },
     dispose() {
       offs.forEach(f => f && f());
       echo?.dispose(); echo = null;
+      hideMark();
       root.removeFromParent();
       btn.remove();
     },

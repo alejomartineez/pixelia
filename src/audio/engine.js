@@ -39,6 +39,8 @@ export const SFX = {
   repair: { s: [[['sfx/anvil1', 'sfx/anvil2'], 0.4], [['act/metalClick'], 0.35, 1, 0.2]], fb: (y) => y.tone({ f: 300, d: 0.1, v: 0.2 }) },
   page: { s: [[['act/bookFlip1', 'act/bookFlip2'], 0.55]], fb: (y) => y.burst({ d: 0.2, v: 0.12, hp: 2500 }) },
   door: { s: [[['act/doorOpen1'], 0.45]], fb: (y) => y.burst({ d: 0.2, v: 0.12, lp: 600 }) },
+  // un eco de noche aparece en el borde: vidrio bajo y lento, dos veces, como algo que se recuerda
+  echo: { s: [[['ui/glass1'], 0.22, 0.5], [['ui/glass1'], 0.14, 0.67, 0.45]], fb: (y) => { y.tone({ f: 523, d: 0.6, v: 0.07, type: 'sine', attack: 0.08 }); y.tone({ f: 784, t: 0.45, d: 0.7, v: 0.05, type: 'sine', attack: 0.1 }); } },
 };
 export const UI_SFX = new Set(Object.entries(SFX).filter(([, d]) => d.ui).map(([k]) => k));
 const SFX_IDS = [...new Set(Object.values(SFX).flatMap(d => (d.s || []).flatMap(x => x[0])))];

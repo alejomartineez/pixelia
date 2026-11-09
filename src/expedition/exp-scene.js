@@ -23,7 +23,7 @@ import { hasBase, startExpedition, finishExpedition, expeditionStatus, creditFig
 import { ENCOUNTERS, ENEMIES } from '../combat/combat-data.js';
 import { expPlace, expEchoSpots } from '../core/ambience.js';
 import { createEcho } from '../story/echo-fx.js';
-import { createExpGuide } from './exp-guide.js';
+import { createExpGuide, guidedRun } from './exp-guide.js';
 import { expEcho, seeEcho } from '../story/echoes.js';
 import { PAGE_BY_ID } from '../story/story-data.js';
 import { icon as iconHtml } from '../core/icons.js';
@@ -945,7 +945,8 @@ export default function create(ctx) {
     if (run.ended) { setTimeout(() => alive && showResult(), 350); return; }
     if (run.pending?.kind === 'combate') { setTimeout(() => alive && enterCombat(), 400); return; }
     if (run.pending) showPending();
-    if (run.steps === 0) dom.hint(`${ui.esc(meta.regionName)}: ${ui.esc(dom.$('goal').querySelector('.t span').textContent)}. Hacé clic en una casilla vecina para avanzar.`, 7000);
+    // con Vera guiando, la instrucción la da ella: abajo queda solo la zona y el objetivo (sin repetir "hacé clic…")
+    if (run.steps === 0) dom.hint(`${ui.esc(meta.regionName)}: ${ui.esc(dom.$('goal').querySelector('.t span').textContent)}.${guidedRun(run, store.state) ? '' : ' Hacé clic en una casilla vecina para avanzar.'}`, 7000);
   }
   function buildGround() {
     // isla de tierra bajo la grilla y algo de monte alrededor (el diorama no flota en el vacío)

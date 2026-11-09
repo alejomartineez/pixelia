@@ -83,6 +83,32 @@ const OB_CSS = `
   .scene-onboarding .ob-foot { padding-right:calc(var(--safe-r) + 14px); }
   .scene-onboarding .ob-title b { font-size:28px; }
 }
+/* pantalla de PC (1920×1080, también con la interfaz al 115 %): el panel crece con la ventana, las muestras de color
+   son más grandes y bajan de renglón (antes, el renglón de 13 colores ensanchaba el panel y cambiaba de un paso al otro) */
+@media (orientation: landscape) and (min-width: 1200px) {
+  .scene-onboarding .ob-panel { flex:0 0 clamp(500px, 36vw, 720px); min-width:0; }
+  .scene-onboarding .ob-body { padding:10px 22px 18px; }
+  .scene-onboarding .ob-foot { padding-left:22px; padding-right:calc(var(--safe-r) + 22px); }
+  .scene-onboarding .ob-h { font-size:23px; margin:8px 2px 14px; }
+  .scene-onboarding .ob-types { gap:12px 12px; }
+  .scene-onboarding .ob-type { font-size:16px; padding:8px 4px 10px; }
+  .scene-onboarding .ob-type .th { width:84px; height:84px; }
+  .scene-onboarding .ob-row { margin:18px 2px 6px; font-size:16px; }
+  .scene-onboarding .ob-sw { flex-wrap:wrap; gap:10px; overflow:visible; }
+  .scene-onboarding .ob-sw button { width:48px; height:48px; border-radius:12px; }
+  .scene-onboarding .ob-field label { font-size:17px; }
+  .scene-onboarding .ob-input { height:56px; font-size:22px; }
+  .scene-onboarding .ob-dice { width:56px; height:56px; }
+  .scene-onboarding .ob-hint { font-size:15px; }
+  .scene-onboarding .ob-foot .btn { min-height:56px; font-size:20px; }
+  .scene-onboarding .cls-grid { gap:12px; }
+  .scene-onboarding .cls-card { grid-template-columns:72px 1fr; padding:12px 12px 12px 10px; column-gap:12px; }
+  .scene-onboarding .cls-card .th { width:72px; height:72px; }
+  .scene-onboarding .cls-card b { font-size:19px; }
+  .scene-onboarding .cls-card small { font-size:15px; line-height:1.25; }
+  .scene-onboarding .cls-card .cls-kit { font-size:14px; }
+  .scene-onboarding .cls-note { font-size:15px; margin-top:14px; }
+}
 `;
 
 export default function create(ctx) {

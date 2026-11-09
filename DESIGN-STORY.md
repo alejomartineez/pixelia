@@ -182,7 +182,10 @@ Al encontrar un elemento (el Núcleo de Raíz en el Acto 1) se elige cuánto sac
 - **Ecos de noche (L6):** cinco, de a uno y una sola vez (`state.story.echoes`). Ciudad: en el borde de la isla
   (`islandEdgeSpots`, un paso hacia adentro), solo de noche. Expedición: en una ruina ya pisada, de noche en el reloj de la
   salida. Clic: la línea en una tarjeta y, el de la mesa del archivo, la página 10. Se listan en el Diario de la
-  Bitácora y tienen capítulo en el Manual. `?echo=1` los muestra de día (capturas).
+  Bitácora y tienen capítulo en el Manual. `?echo=1` los muestra de día (capturas). Para que se los encuentre sin que
+  pierdan el misterio, el de la ciudad tiene una columna de luz tenue con motas (`beacon` de `createEcho`) y suena un
+  vidrio bajo al aparecer (`sfx('echo')`). El primero lleva una marca ("Algo se mueve en el borde") que lleva la cámara
+  hasta él, y con un eco a la vista la cámara puede llegar hasta el borde de la isla.
 
   | Eco | Dónde | Desde | Qué se ve | Siembra |
   |---|---|---|---|---|

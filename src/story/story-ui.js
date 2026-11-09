@@ -15,6 +15,8 @@ const CSS = `
 #story-root { position: absolute; inset: 0; z-index: 45; pointer-events: none; }
 /* con el HUD escondido (colocando un edificio, defendiendo una amenaza) la hoja espera sin tapar nada */
 body.no-hud #story-root .st-card { display: none; }
+/* un aviso de premio (subida de nivel, premio diario, rango) va primero: la hoja espera escondida y en pausa detrás */
+body:has(.reward-modal) #story-root .st-card { opacity: 0; pointer-events: none; transition: opacity .15s; }
 .st-card { position: absolute; left: calc(var(--safe-l) + 12px); bottom: calc(var(--safe-b) + 96px); width: min(420px, calc(100% - 24px));
   display: grid; grid-template-columns: 72px 1fr; gap: 0 12px; padding: 12px 14px 10px 12px; pointer-events: auto;
   background: var(--panel); color: var(--ink); border: var(--line) solid var(--edge); border-radius: 14px;
@@ -138,6 +140,8 @@ const whoHtml = (who) => {
 };
 
 // ---------- Texto que se escribe ----------
+/** Hay un aviso de premio abierto: la hoja no se escribe ni se va mientras tanto (no queda trabada a medias detrás). */
+export const held = () => !!document.querySelector('.reward-modal');
 const SPEED = { slow: 34, normal: 20, fast: 9, instant: 0 };
 function typer(el, ctx) {
   let timer = 0, full = '', done = true;
@@ -153,6 +157,7 @@ function typer(el, ctx) {
       let i = 0;
       el.textContent = '';
       timer = setInterval(() => {
+        if (held()) return;
         i += 1;
         el.textContent = full.slice(0, i);
         if (i >= full.length) { clearInterval(timer); done = true; }
@@ -245,9 +250,15 @@ export function bark(ctx, { who = 'cartografa', text, ms = 5000 } = {}) {
   root().append(el);
   const t = typer(txt, ctx);
   t.set(text);
-  const timer = setTimeout(() => { if (card?.el === el) dropCard(); }, ms);
+  // se va sola a los ms de estar a la vista (con un aviso de premio encima, el reloj se para)
+  let left = ms;
+  const timer = setInterval(() => {
+    if (held()) return;
+    left -= 250;
+    if (left <= 0 && card?.el === el) dropCard();
+  }, 250);
   el.onclick = () => { if (!t.done) t.finish(); else if (card?.el === el) dropCard(); };
-  card = { el, bark: true, cleanup: () => { clearTimeout(timer); t.stop(); } };
+  card = { el, bark: true, cleanup: () => { clearInterval(timer); t.stop(); } };
 }
 
 /** Se salió de la ciudad: la hoja abierta se guarda (resuelve 'away' para que vuelva a salir) y la línea suelta se va. */

@@ -6,7 +6,8 @@
 // quedan dados por vistos y le llega un aviso corto que lleva al prólogo.
 //
 // Las escenas se encolan y salen cuando la ciudad está libre (hooks.idle: sin modales, sin llegada ni subidas de nivel
-// pendientes). Las líneas de la cartógrafa al cobrar el tutorial (barks) solo piden estar en la ciudad.
+// pendientes). Las líneas de la cartógrafa al cobrar el tutorial (barks) piden estar en la ciudad y sin
+// un aviso de premio ni una subida de nivel por salir; si el aviso llega con la línea a la vista, la hoja espera escondida.
 // Lo que se ve en pantalla está en story-ui.js; la Bitácora, en scenes/panels-story.js.
 import { bus } from '../core/bus.js';
 import { store } from '../core/state.js';
@@ -167,7 +168,9 @@ async function pump() {
     finally { playing = false; schedule(600); }
     return;
   }
-  // líneas de la cartógrafa: alcanza con estar en la ciudad (no esperan a que se cierren los menús)
+  // con un aviso de premio encima, la línea que estaba a la vista se pausa: la próxima le da tiempo al volver
+  if (ui?.held?.()) barkUntil = Math.max(barkUntil, Date.now() + 2500);
+  // líneas de la cartógrafa: alcanza con estar en la ciudad (no esperan a que se cierren los menús, sí a los avisos de premio)
   if (barks.length && Date.now() >= barkUntil && (hooks.inCity?.() ?? true) && !ui?.busy()) {
     const b = barks.shift();
     try { (await loadUi()).bark(ctxRef, b); } catch (e) { console.warn('[story] bark', e); }

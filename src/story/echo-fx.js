@@ -145,8 +145,11 @@ const SCENES = {
 };
 export const ECHO_SCENES = Object.keys(SCENES);
 
-/** Arma la silueta de un eco. scale: tamaño en el mundo (1 ≈ una casilla). */
-export function createEcho(sceneId, { scale = 1, opacity = 0.42 } = {}) {
+/**
+ * Arma la silueta de un eco. scale: tamaño en el mundo (1 ≈ una casilla). beacon: una columna de luz tenue y unas motas
+ * que suben despacio (en la ciudad, para que se lo encuentre de noche y con lluvia sin perder el misterio).
+ */
+export function createEcho(sceneId, { scale = 1, opacity = 0.42, beacon = false } = {}) {
   const mat = new THREE.MeshBasicMaterial({ color: GHOST, transparent: true, opacity: 0, depthWrite: false });
   const lampMat = new THREE.MeshBasicMaterial({ color: '#ffe3a0', transparent: true, opacity: 0, depthWrite: false });
   const group = new THREE.Group();
@@ -157,6 +160,28 @@ export function createEcho(sceneId, { scale = 1, opacity = 0.42 } = {}) {
   const halo = new THREE.Mesh(new THREE.CircleGeometry(0.62, 24), new THREE.MeshBasicMaterial({ color: GHOST, transparent: true, opacity: 0, depthWrite: false }));
   halo.rotation.x = -Math.PI / 2; halo.position.y = 0.02; halo.renderOrder = 8;
   group.add(halo);
+  // el brillo: una columna que se aclara abajo y se apaga hacia arriba, y motas que suben (aditivo: se ve con lluvia)
+  let beam = null, beamMat = null, motes = [], moteMat = null;
+  if (beacon) {
+    const H = 2.6;
+    const geo = new THREE.CylinderGeometry(0.34, 0.5, H, 12, 6, true);
+    const col = [], pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) { const k = 1 - (pos.getY(i) / H + 0.5); col.push(k, k, k); }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    beamMat = new THREE.MeshBasicMaterial({ color: GHOST, vertexColors: true, transparent: true, opacity: 0, depthWrite: false,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    beam = new THREE.Mesh(geo, beamMat);
+    beam.position.y = H / 2; beam.renderOrder = 10;
+    group.add(beam);
+    moteMat = new THREE.MeshBasicMaterial({ color: '#d8f3ff', transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+    const mg = box(0.05, 0.05, 0.05);
+    for (let i = 0; i < 7; i++) {
+      const m = new THREE.Mesh(mg, moteMat);
+      m.userData = { a: i * 2.39, r: 0.18 + (i % 3) * 0.12, off: i / 7 };
+      m.renderOrder = 10;
+      group.add(m); motes.push(m);
+    }
+  }
   const pick = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 1.3, 10), new THREE.MeshBasicMaterial({ visible: false }));
   pick.position.y = 0.65;
   group.add(pick);
@@ -178,7 +203,18 @@ export function createEcho(sceneId, { scale = 1, opacity = 0.42 } = {}) {
       const k = gone ? 0 : api.leaving ? fading : 1;
       mat.opacity = opacity * (0.25 + 0.75 * loopA) * k;
       if (sceneId !== 'farero') lampMat.opacity = mat.opacity;
-      halo.material.opacity = (0.12 + 0.06 * Math.sin(t * 2)) * k;
+      halo.material.opacity = ((beacon ? 0.22 : 0.12) + 0.06 * Math.sin(t * 2)) * k;
+      if (beam) {
+        // respira despacio, sin seguir el bucle de la escena: se ve aunque las figuras estén por desvanecerse
+        beamMat.opacity = (0.16 + 0.07 * Math.sin(t * 1.4)) * k;
+        moteMat.opacity = 0.75 * k;
+        for (const m of motes) {
+          const u = (t * 0.16 + m.userData.off) % 1;
+          const a = m.userData.a + t * 0.5;
+          m.position.set(Math.cos(a) * m.userData.r, 0.1 + u * 2.2, Math.sin(a) * m.userData.r);
+          m.scale.setScalar(Math.sin(u * Math.PI) + 0.01);
+        }
+      }
       inner.position.y = Math.sin(t * 1.3) * 0.015;
       if (fading === 0 && api.leaving) { gone = true; return false; }
       return true;
@@ -188,7 +224,7 @@ export function createEcho(sceneId, { scale = 1, opacity = 0.42 } = {}) {
     leaving: false,
     dispose() {
       group.traverse(o => { if (o.isMesh && !o.userData.shared) o.geometry.dispose(); });
-      mat.dispose(); lampMat.dispose(); halo.material.dispose(); pick.material.dispose();
+      mat.dispose(); lampMat.dispose(); halo.material.dispose(); pick.material.dispose(); beamMat?.dispose(); moteMat?.dispose();
       group.removeFromParent();
     },
   };

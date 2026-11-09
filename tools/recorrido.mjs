@@ -615,6 +615,9 @@ try {
   await shot('noche-ciudad');
   const hasEcho = await waitFor(`!!window.__pixelia.city?.act1?.echo`, 8000);
   ok(hasEcho, 'aparece un eco');
+  ok(await waitFor(`!!document.querySelector('.ec-mark')`, 4000), 'la primera vez, una marca señala el eco');
+  await sleep(600);
+  await shot('noche-eco-marca');
   if (hasEcho) {
     await RUN(`const p = window.__pixelia.city.act1.echo.pos; window.__pixelia.city.cam.flyTo(p.x, p.z, 26); return true;`);
     await sleep(3000);
@@ -622,6 +625,7 @@ try {
     const sp = await RUN(`const c = window.__pixelia.city; const p = c.act1.echo.pos.clone(); p.y = 0.45; return c.ov.project(p, {});`);
     await page.mouse.click(sp.x, sp.y);
     ok(await waitFor(`!!document.querySelector('.ec-modal')`, 6000), 'línea del eco');
+    ok(!(await page.evaluate(() => !!document.querySelector('.ec-mark'))), 'la marca se va al tocar el eco');
     await sleep(900);
     await shot('noche-eco-linea');
   }
