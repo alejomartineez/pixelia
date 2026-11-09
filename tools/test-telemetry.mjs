@@ -143,8 +143,11 @@ try {
   await P.waitForSelector('.a11y-stats');
   ok((await T(P, () => document.querySelector('.a11y-stats').getAttribute('aria-checked'))) === 'true', 'el interruptor arranca prendido');
   await T(P, () => window.__pixeliaTelemetry.track('antes_de_apagar'));
-  await T(P, () => document.querySelector('.a11y-stats').scrollIntoView({ block: 'center' })); await sleep(250); await P.click('.a11y-stats');
+  await T(P, () => document.querySelector('.a11y-stats').scrollIntoView({ block: 'center' })); await sleep(250);
+  console.log('DBG antes', JSON.stringify(await T(P, () => { const e = document.querySelector('.a11y-stats'); const r = e.getBoundingClientRect(); const h = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { r: [r.left, r.top, r.width, r.height].map(Math.round), hit: h ? h.tagName + '.' + h.className : null, mine: e === h || e.contains(h), modals: [...document.querySelectorAll('.modal')].map(m => m.className), anim: document.getAnimations().map(a => a.animationName || a.constructor.name).slice(0, 8), st: window.__pixelia.store.state.settings.telemetry }; })));
+  await P.click('.a11y-stats');
   await sleep(300);
+  console.log('DBG despues', JSON.stringify(await T(P, () => ({ st: window.__pixelia.store.state.settings.telemetry, aria: document.querySelector('.a11y-stats')?.getAttribute('aria-checked') }))));
   ok((await T(P, () => window.__pixelia.store.state.settings.telemetry)) === false, 'tocarlo guarda settings.telemetry = false');
   ok((await T(P, () => window.__pixeliaTelemetry.queue.length)) === 0 && (await T(P, () => localStorage.getItem('pixelia.events.queue.v1'))) === null, 'apagarlo vacía la cola (memoria y localStorage)');
   await T(P, () => { window.__pixelia.bus.emit('level:up', { level: 5 }); window.__pixeliaTelemetry.track('x'); });
