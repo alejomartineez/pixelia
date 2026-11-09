@@ -138,6 +138,8 @@ try {
   ok(r.saq === 3000 && r.monje === 400 && r.curve === 2, 'un guardado con la curva vieja se pasa a la nueva con el mismo nivel', r);
   await run(`S.story ||= {}; window.__els = S.story.elements; S.story.elements = ['raiz']; P.ctx.openPanel('story', { tab: 'progreso' }); return true;`);
   ok(await waitFor(`!!document.querySelector('.pnl-story [data-kit="leader"]')`, 8000), 'quien lidera tiene "Habilidades" en la pestaña Progreso');
+  r = await page.evaluate(() => [...document.querySelectorAll('.pnl-story [data-pg="clase"]')].map(e => e.dataset.cls + (e.querySelector('.pg-same') ? '+' : '')));
+  ok(r.includes('cazador+') && r.filter(x => x.endsWith('+')).length === 1, 'en El grupo, el Cazador de la ciudad se distingue de quien lidera', r);
   await page.evaluate(() => document.querySelector('.pnl-story [data-kit="leader"]').click());
   ok(await waitFor(`document.querySelectorAll('.kit-modal .kit-card[data-ab]').length === 4`, 5000), 'se ven las 4 activas de la clase');
   r = await page.evaluate(() => ({
@@ -188,7 +190,7 @@ try {
   await page.keyboard.press('Escape'); await sleep(500);
 
   section('En el combate');
-  await run(`P.ctx.router.go('combat', { encounter: 'bosque_claro', seed: 3, party: ['forjador', 'curandero'], level: 3 }); return true;`);
+  await run(`P.ctx.router.go('combat', { encounter: 'bosque_claro', seed: 3, party: ['cazador', 'forjador', 'curandero'], level: 3 }); return true;`);
   ok(await waitFor(`!!document.querySelector('.scene-combat')?.__combat?.view`, 30000), 'entra a una pelea');
   await sleep(800);
   r = await page.evaluate(() => {
@@ -200,6 +202,14 @@ try {
   ok(byT.forjador?.acc === 'martillo' && byT.curandero?.acc === 'bolso' && byT.curandero?.dress === 'habito', 'cada integrante con el de su clase', r);
   r = await page.evaluate(() => document.querySelector('.scene-combat').__combat.battle?.leader?.cls);
   ok(r === 'cazador', 'y la pelea usa la clase de quien lidera', r);
+  // recorrido de la noche (A): quien juega con su nombre y su clase, y el Cazador del grupo "de la ciudad"
+  r = await page.evaluate(() => ({ names: [...document.querySelectorAll('.scene-combat .cb-o.ally .nm')].map(e => e.textContent.trim()), player: window.__pixelia.store.state.player?.name }));
+  ok(r.names[0] === `${r.player} Cazador` && !r.names.some(n => /^Líder/.test(n)), 'en la lista del turno, quien juega va con su nombre y su clase', r);
+  ok(r.names.includes('Cazador de la ciudad') && r.names.includes('Forjador') && r.names.includes('Curandero'), 'y el Cazador del grupo se lee como otra persona', r.names);
+  await page.evaluate(() => document.querySelector('.scene-combat .cb-o.ally').click());
+  await sleep(300);
+  r = await page.evaluate(() => document.querySelector('.scene-combat .cb-sel .hd b')?.textContent || '');
+  ok(r.includes('· Cazador') && !/Líder/.test(r), 'la ficha también', r);
   await shot('combate');
 
   section('En la expedición');

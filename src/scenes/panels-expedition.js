@@ -194,7 +194,8 @@ export function openExpedition(ctx, params = {}) {
       const on = party.includes(id);
       const line = r.tiredMs ? `Descansando: ${fmtRest(r.tiredMs)}` : ch ? `${esc(ch.text)} <span class="pnl-ex-p">${ch.p}%</span>` : esc(R.text);
       const btn = h('button.pnl-ex-role' + (on ? '.on' : '') + (r.tiredMs ? '.off' : ''), { 'data-role': id, 'aria-pressed': on ? 'true' : 'false',
-        html: `<span class="ic">${icon(R.icon, 26)}</span><b>${esc(R.name)} ${r.level}</b><small>${line}</small>` });
+        // la de la misma clase que quien lidera es otra persona (recorrido de la noche, A)
+        html: `<span class="ic">${icon(R.icon, 26)}</span><b>${esc(R.name)}${lead.cls === id ? ' de la ciudad' : ''} ${r.level}</b><small>${line}</small>` });
       if (!r.tiredMs) btn.onclick = () => {
         if (on) party = party.filter(x => x !== id);
         else if (party.length < max) party = [...party, id];

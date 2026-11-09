@@ -18,6 +18,7 @@ const CSS = `
 .pnl-story .pg-row + .pg-row { margin-top: 6px; }
 .pnl-story .pg-row .pg-ic { grid-row: span 3; display: grid; place-items: center; width: 44px; height: 44px; background: var(--panel-2); border: 2px solid var(--edge); border-radius: 10px; }
 .pnl-story .pg-row b { font-size: 16px; }
+.pnl-story .pg-row b .pg-same { grid-column: auto; display: inline; font-size: 13px; font-weight: 700; color: var(--ink-l); }
 .pnl-story .pg-row .pg-lv { font-weight: 700; color: var(--gold-t); font-size: 15px; white-space: nowrap; }
 .pnl-story .pg-row small { grid-column: 2 / -1; color: var(--ink-l); font-size: 13px; line-height: 1.25; }
 .pnl-story .pg-row .pnl-prog { grid-column: 2 / -1; }
@@ -83,7 +84,9 @@ export function progressPane(ctx, rerender) {
       const m = K.memberInfo(c.id, s);
       const capTxt = m.level >= m.cap && m.cap < 10 ? `Tope del edificio: mejoralo para pasar del nivel ${m.cap}.` : '';
       const picks = m.picks.map(id => ABILITIES[id]?.name || id).join(' y ');
-      const mr = row('people', esc(m.name), `Nivel ${m.level}`, (m.xp.max ? '' : bar(m.xp.into, m.xp.need, `${m.xp.into}/${m.xp.need}`))
+      // la de la misma clase que quien lidera es otra persona: "Cazador de la ciudad" (recorrido de la noche, A)
+      const same = li.cls === c.id;
+      const mr = row('people', esc(m.name) + (same ? ' <small class="pg-same">de la ciudad</small>' : ''), `Nivel ${m.level}`, (m.xp.max ? '' : bar(m.xp.into, m.xp.need, `${m.xp.into}/${m.xp.need}`))
         + `<small>${esc(CLASSES[c.id].combat)} Activas: ${esc(picks)}. ${capTxt}</small>`, '', { 'data-pg': 'clase', 'data-cls': c.id, 'data-picks': m.picks.join(',') });
       const ma = h('div.pg-acts');
       const kb = h('button.btn.small', { 'data-kit': c.id, html: `${icon('star', 18)} Habilidades` });

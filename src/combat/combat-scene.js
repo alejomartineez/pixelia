@@ -553,7 +553,7 @@ export default function create(ctx) {
     if (s) dom.float(s.x, s.y, html, cls);
   }
   function floatTile(x, y, html, cls = '') { const s = tileScreen(x, y, 0.4); dom.float(s.x, s.y, html, cls); }
-  const unitName = (id) => { const u = C.unitById(b, id); return u ? (u.side === 'ally' ? (u.type === 'lider' ? 'Líder' : unitView(id)?.name || u.type) : ENEMIES[u.type]?.name) : ''; };
+  const unitName = (id) => { const u = C.unitById(b, id); return u ? (u.side === 'ally' ? (dom.labelOf(unitView(id)) || u.type) : ENEMIES[u.type]?.name) : ''; };
   const ABIL_SFX = { attack: 'bump', heal: 'pop', healArea: 'pop', mark: 'select', trap: 'place', wall: 'build', push: 'bump', swap: 'swoosh', root: 'place', disarm: 'coin', free: 'pop', dazzle: 'clear', cover: 'place', rope: 'swoosh' };
 
   async function playOne(e) {
@@ -763,7 +763,7 @@ export default function create(ctx) {
     if (busy || modal || !b || b.ended || b.phase !== 'player') return;
     const left = pendingAllies();
     if (!force && settings().confirmEnd !== false && left.length) {
-      modal = dom.confirmEnd(left.map(u => unitView(u.id)?.name || u.type), (ok) => { modal = null; if (ok) endTurn(true); });
+      modal = dom.confirmEnd(left.map(u => dom.labelOf(unitView(u.id)) || u.type), (ok) => { modal = null; if (ok) endTurn(true); });
       return;
     }
     const r1 = C.endTurn(b);

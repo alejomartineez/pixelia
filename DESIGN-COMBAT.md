@@ -1053,6 +1053,19 @@ pelea de la expedición y el abordaje traen la batalla armada y no pasan por ac�
 
 `test-e2e` elige Cazador en el onboarding y revisa que quede en la partida. `test-story` pasa por el paso nuevo.
 
+### 16.6 Quién es quién en el grupo (recorrido de la noche, A)
+El recorrido de jugador nuevo (`docs/RECORRIDO-NOCHE.md`) encontró que en el combate quien juega figuraba como "Líder"
+y, si elegía Cazador, había otro "Cazador" en el grupo: se leía como un duplicado.
+- **Combate** (`unitLabel` de `combat-ui.js`): quien juega va con su nombre y su clase ("Irene · Cazador" en la ficha;
+  "Irene Cazador", con la clase más chica, en la lista del turno). La ficha dice "Lidera el grupo. Si cae, el grupo se
+  repliega". El aviso de "le quedan acciones" y los carteles usan el mismo nombre (`dom.labelOf`). La lista del turno
+  pasa de 212 a 240 px para que entre todo. La vista del motor suma `leader.cls`.
+- **Quien del grupo tiene la clase de quien lidera** es otra persona de la ciudad: "Cazador de la ciudad" en el
+  combate, en la pestaña Progreso (El grupo) y en las tarjetas del panel de Expedición.
+- **Decisión:** se distingue y no se saca del grupo. Cada clase de la ciudad es una persona con su propio nivel; sacarla
+  cuando coincide con la clase de quien lidera achicaría los grupos y cambiaría el balance (§8) y las salidas.
+- `test-class-look` suma 4 (51 bien): la lista del turno, la ficha y la fila de Progreso.
+
 ## 17. Elegir las activas y la subclase (paso 5b, cuarta parte)
 `openKitPicker(ctx, who)` de `src/scenes/class-pick.js`: un modal para quien lidera (`who: 'leader'`) o para una clase de
 la ciudad. Resuelve `true` si se guardó algo.
