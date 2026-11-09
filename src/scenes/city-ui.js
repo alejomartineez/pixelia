@@ -95,6 +95,19 @@ export const STYLE = `
 .cx-tip > i { width: 0; height: 0; border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 14px solid var(--edge); margin-top: -1px; }
 @keyframes cx-tipbob { 50% { margin-top: -8px; } }
 .cx-tip.fade { opacity: 0; transition: opacity .3s; }
+/* flecha guiada al costado (plan §E3): a la izquierda de un botón del riel o a la derecha de la tarjeta de rango */
+.cx-tip.left, .cx-tip.right { flex-direction: row; animation-name: cx-tipbobx; }
+.cx-tip.left { transform: translate(-100%, -50%); }
+.cx-tip.right { transform: translate(0, -50%); flex-direction: row-reverse; }
+.cx-tip.left > i, .cx-tip.right > i { border-top: 12px solid transparent; border-bottom: 12px solid transparent; margin: 0; }
+.cx-tip.left > i { border-left: 14px solid var(--edge); border-right: 0; margin-left: -1px; }
+.cx-tip.right > i { border-right: 14px solid var(--edge); border-left: 0; margin-right: -1px; }
+@keyframes cx-tipbobx { 50% { margin-left: -8px; } }
+.cx-tip.right { animation-name: cx-tipbobr; }
+@keyframes cx-tipbobr { 50% { margin-left: 8px; } }
+.cx-sign.guide { outline: 3px solid var(--gold); outline-offset: 2px; animation: cx-signpulse 1s steps(2) infinite; }
+@keyframes cx-signpulse { 50% { outline-color: transparent; } }
+html.reduce-motion .cx-tip, html.reduce-motion .cx-sign.guide { animation: none; }
 
 /* ---------- Modales (fuera de .scene-city) ---------- */
 .cx-modal .modal-body { padding: 12px 14px 16px; }

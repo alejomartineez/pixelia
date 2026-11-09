@@ -108,6 +108,8 @@ export function defaultState() {
     // games: progreso de los minijuegos retirados (solo en partidas de antes de la v3; queda guardado y sin uso)
     // v3: compensación de la migración { gems, finds, at, shown, placeExp } (la muestra main.js una sola vez)
     tutorial: {},   // flags libres para tips mostrados una vez: tutorial[key] = true
+    // historia (src/story/story.js la completa en initStory): { v, seen, pages, elements, act, chapter, flags }
+    story: {},
     // telemetry: métricas anónimas (online/telemetry.js) · textSize: 'normal'|'large'|'xlarge' · motion: 'auto'|'on'|'off'
     // (reducir movimiento: automático según el sistema, sí o no). Los saves viejos los reciben por deepFill.
     // el resto de los ajustes (gráficos, pantalla, volúmenes, juego, controles): SETTINGS_DEFAULTS, más abajo
@@ -428,7 +430,8 @@ export const store = {
     return true;
   },
   /**
-   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats, furniture, prov, planos, equip, reserves, colonos}.
+   * Suma premios. reward: {coins, gems, xp, chest, stickers, mats, furniture, prov, planos, equip, reserves, colonos, page, element}.
+ * page / element: id o lista de ids (historia, src/story/story.js) → emiten 'reward:page' / 'reward:element'.
    * mats: { madera: n, piedra: n, ... } → emite 'materials:changed'. prov/planos/colonos/equip/reserves → 'resources:changed'
    * (las provisiones respetan el tope del depósito). source: 'collect'|'game'|'quest'|'levelup'|'login'|'expedition'|...
    *  - chest: 'madera'|'plata'|'oro'|'real' (o {type, n}); chests: cantidad (default 1) → emite 'reward:chest' {type, n, source}
@@ -475,6 +478,9 @@ export const store = {
       const n = Math.max(1, Math.round((typeof reward.chest === 'object' ? reward.chest.n : reward.chests) || 1));
       if (type) bus.emit('reward:chest', { type, n, source });
     }
+    // historia: páginas del diario y elementos (src/story/story.js los anota; acá solo se avisa)
+    for (const id of [].concat(reward.page || [])) if (id) bus.emit('reward:page', { id, source });
+    for (const id of [].concat(reward.element || [])) if (id) bus.emit('reward:element', { id, source });
     if (reward.stickers) {
       const st = typeof reward.stickers === 'object' ? reward.stickers : { n: reward.stickers };
       const payload = { n: Math.max(0, Math.round(st.n || 0)), minStars: st.minStars || 1, region: st.region || null, source };

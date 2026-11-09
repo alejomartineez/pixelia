@@ -116,7 +116,8 @@ export function mainQuest() {
   const progress = abs !== null ? abs : s.quests.mainProgress;
   return { ...q, index, total: MAIN_QUESTS.length, progress: Math.min(progress, q.goal.count), done: progress >= q.goal.count };
 }
-export function claimMain() {
+/** Cobra la misión principal si está cumplida. auto: cobro automático del tutorial (t1–t20, src/story/story.js). */
+export function claimMain({ auto = false } = {}) {
   const q = mainQuest();
   if (!q || !q.done) return null;
   const s = S();
@@ -125,6 +126,7 @@ export function claimMain() {
   s.quests.mainProgress = 0;
   store.grant(q.reward, 'quest');
   changed();
+  bus.emit('quest:claimed', { id: q.id, title: q.title, reward: q.reward, auto });
   return q.reward;
 }
 /** ¿Esta misión principal ya se cobró? (para aperturas: Expedición en t4, Taller en t6, mapa de región en t11) */

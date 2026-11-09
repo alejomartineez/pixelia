@@ -133,9 +133,9 @@ export function buildDom(root, handlers) {
     <div class="ex-top">
       <div class="ex-bar">
         <button class="ex-stat ex-menu icon-btn" data-ex="menu" aria-label="Menú">${icon('pause', 22)}</button>
-        <div class="ex-stat" data-ex="prov">${I('prov', 22)}<span><b>0</b><em>provisiones</em></span></div>
-        <div class="ex-stat" data-ex="morale">${I('morale', 22)}<span><b>0</b><em>ánimo</em></span></div>
-        <div class="ex-stat" data-ex="cargo">${I('cargo', 22)}<span><b>0</b><em>carga</em></span></div>
+        <div class="ex-stat" data-ex="prov" data-tip-title="Provisiones" data-tip="Cada paso gasta según el terreno. Guardá lo que cuesta volver: si no alcanza, el grupo llega con la mitad de la carga.">${I('prov', 22)}<span><b>0</b><em>provisiones</em></span></div>
+        <div class="ex-stat" data-ex="morale" data-tip-title="Ánimo" data-tip="Baja con los peligros. Si llega a cero, el grupo vuelve con la mitad de la carga. Un campamento lo recupera.">${I('morale', 22)}<span><b>0</b><em>ánimo</em></span></div>
+        <div class="ex-stat" data-ex="cargo" data-tip-title="Carga" data-tip="Lo que traés: materiales, planos y hallazgos. El Establo suma lugar. Volver con la carga llena da una estrella.">${I('cargo', 22)}<span><b>0</b><em>carga</em></span></div>
       </div>
       <div class="ex-goal" data-ex="goal"></div>
     </div>

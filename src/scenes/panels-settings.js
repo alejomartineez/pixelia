@@ -1,4 +1,4 @@
-// Paneles de Ajustes (por pestañas) y Cómo jugar.
+// Panel de Ajustes (por pestañas). El "Cómo jugar" de antes es ahora el Manual de la Bitácora (panels-story.js).
 import { icon } from '../core/icons.js';
 import { OUTFIT_COLORS } from '../core/data.js';
 import { openShell, askConfirm, art, flagArt, chestArt } from './panels-common.js';
@@ -297,7 +297,7 @@ export function openSettings(ctx, p = {}) {
       h('b.pnl-credits-title', {}, 'Pixelia'),
       h('p', { html: 'Un juego de <b>Dezings</b>' }),
       h('p.small.muted', {}, 'Diseño, código, arte vóxel y música: Dezings · Música y sonidos sintetizados en el momento · Tipografía Jersey 10 (OFL) · Gráficos 3D con three.js · Juego de PC con Tauri'),
-      h('button.btn.mint.small', { html: `${icon('info', 18)} Cómo jugar`, onclick: () => ctx.openPanel('help') }),
+      h('button.btn.mint.small', { html: `${icon('info', 18)} Manual`, onclick: () => { sh.close(); setTimeout(() => ctx.openPanel('story', { tab: 'manual' }), 240); } }),
       ver);
   }
   function dangerZone() {
@@ -605,63 +605,4 @@ function accountSection(ctx, sh, section) {
   paint();
   load();
   return sec;
-}
-
-// ---------- Cómo jugar ----------
-export function openHelp(ctx) {
-  const sh = openShell(ctx, 'help', { title: 'Cómo jugar', ic: 'info', className: 'pnl-md pnl-help', actions: [{ label: '¡Entendido!', cls: 'primary' }] });
-  if (!sh) return;
-  const { h } = ctx.ui;
-  const groups = [
-    ['castle', 'Tu ciudad', [
-      ['coin', 'Cobrá', 'Cuando aparece una burbujita arriba de un edificio, hacé clic para juntar monedas. Si se llena, deja de producir: ¡volvé seguido!'],
-      ['hammer', 'Construí', 'Hacé clic en <b>Construir</b>, elegí algo y ubicalo en el pasto. Podés rotarlo y moverlo cuando quieras.'],
-      ['dress', 'Tu personaje', 'Elegí quién sos y vestite en el <b>Equipaje</b>. Cambiar de personaje es gratis y lo que compraste queda guardado.'],
-      ['palette', 'Estilo de la ciudad', 'Con el botón de la <b>paleta</b> en la ciudad (o en Ajustes) elegís cómo se ve: pastel, moderna, bosque, playa, invierno o noche. Es gratis.'],
-      ['people', 'Población', 'Las casas traen vecinos. Muchos negocios piden un mínimo de vecinos para abrir.'],
-      ['smile', 'Felicidad', 'Árboles, flores y deco hacen feliz a tu ciudad: ¡todo produce hasta un 50% más!'],
-      ['castle', 'Rango y Encanto', 'Mejorá la <b>Municipalidad</b> para subir de rango, de Aldea a Capital. Cada rango pide un expediente: vecinos, felicidad, tipos de negocio y <b>Encanto</b> (deco variada y edificios mejorados). Hacé clic en el cartel de tu rango, arriba a la izquierda.'],
-      ['monument', 'Monumentos', 'Desde el rango Pueblo construís monumentos por etapas con los <b>materiales</b> que trae la expedición: madera, piedra, mineral y hierbas. Cada uno terminado da un bonus para siempre. Mirá <b>Obras</b>.'],
-      ['👷', 'Constructoras', 'Cada obra ocupa una constructora un ratito. Si faltan menos de 5 segundos, terminala gratis.'],
-      ['🧭', 'Expedición', 'Con la <b>Casa de Expediciones</b> salís a explorar la región: cada paso gasta provisiones y lo que traés (materiales, planos, hallazgos) sirve para crecer.'],
-      ['quest', 'Misiones', 'Seguí la misión principal, hacé las 3 diarias para abrir el cofre y juntá estrellas de logro.'],
-      ['gem', 'Gemas', 'Se ganan con misiones, logros, subiendo de nivel, en las amenazas y en las salidas de 3★. Sirven para cosas especiales.'],
-    ]],
-    ['gift', 'Premios y colección', [
-      ['fire', 'Racha diaria', 'Entrá cada día por tu regalo. Si un día no podés, tu <b>escudo de racha</b> de la semana la cuida. Y si volvés después de unos días, ¡te espera un regalo de bienvenida!'],
-      ['chest:plata', 'Cofres', 'Salen en las expediciones de 3★, las amenazas, el Pase, cada 5 niveles y con las misiones, y cada día hay uno <b>gratis</b>. Traen monedas, gemas, equipo, prendas y construcciones sorpresa.'],
-      ['bag', 'Mochila y equipo', 'Lo que sale de los cofres se guarda en tu <b>mochila</b> (martillos, relojes, pociones). El <b>equipo</b> (cuerda, pala, lona, farol) se elige al preparar una salida.'],
-      ['🃏', 'Hallazgos', 'Lo que encontrás explorando: 12 colecciones repartidas entre las regiones. Salen en ruinas, objetivos y algunos cofres. Completá una página para ganar un premio grande. Los repetidos se cambian por <b>recortes</b> o se intercambian con tus contactos.'],
-      ['sparkle', 'Pase de Temporada', 'Cada temporada dura 4 semanas. Todo lo que hacés suma <b>chispas</b> y cada nivel del pase trae premios gratis. ¡Sin apuro!'],
-      ['calendar', 'Eventos', 'Cada semana hay eventos especiales: producción doble, semanas de región, lluvia de cofres, hallazgos dobles, carrera de estrellas… Mirá el cartelito arriba de la pantalla.'],
-    ]],
-    ['heart', 'Con tus amigos', [
-      ['people', 'Amigos', 'Sumá gente con tu <b>código de amistad</b> (está en Amigos y en Ajustes). Cuanto más juegan en equipo, más crece la amistad.'],
-      ['home', 'Visitas', 'Visitá sus ciudades, dejales un corazón y una notita, y dales una mano para terminar sus obras.'],
-      ['gift', 'Regalos', 'Mandá un regalito por día a cada persona de tu lista. Lo que te mandan llega a tu <b>Buzón</b>.'],
-      ['🙋', 'Pedidos', '¿Te falta algo? Pedí una mano (hasta 3 por día) y tu gente te ayuda. Ayudar a los demás también da premios.'],
-      ['rotate', 'Intercambios', 'Cambiá hallazgos repetidos, monedas u objetos con tus contactos: del otro lado aceptan o rechazan.'],
-      ['build', 'Obra en Equipo', 'Entre todos llenan una barra semanal con 5 escalones de premios. ¡Todo lo que jugás suma!'],
-      ['trophy', 'Ranking', 'Cada semana se comparan récords y estrellas. Hay premio para todos, ¡y medalla si superás tu mejor marca!'],
-    ]],
-  ];
-  const itemIc = (ic) => (ic.startsWith('chest:') ? chestArt(ic.slice(6), 34) : icon(ic, 32));
-  const list = h('div.pnl-help-groups', { html: groups.map(([gic, gt, items]) => `
-    <section class="pnl-help-group">
-      <h3 class="pnl-help-h">${icon(gic, 22)}<span>${gt}</span></h3>
-      <div class="pnl-help-list">${items.map(([ic, t, d]) => `
-        <div class="pnl-help-item"><span class="pnl-help-ic">${itemIc(ic)}</span><span><b>${t}</b><small>${d}</small></span></div>`).join('')}</div>
-    </section>`).join('') });
-  const pc = h('div.pnl-help-pc', { html: `
-    <b>${icon('🖱️', 20)} En la compu</b>
-    <ul>
-      <li><kbd>Arrastrar</kbd> mueve la cámara · <kbd>Rueda</kbd> hace zoom</li>
-      <li><kbd>Esc</kbd> cierra ventanas o pausa · <kbd>Enter</kbd> confirma</li>
-      <li>Para manejar: <kbd>flechas</kbd> o <kbd>WASD</kbd></li>
-    </ul>` });
-  sh.body.append(list);
-  // controles de teclado/mouse solo si hay un puntero fino (PC, o iPad con mouse)
-  if (matchMedia?.('(any-pointer: fine)').matches) sh.body.append(pc);
-  sh.keyHandler = (e) => { if (e.key === 'Enter') { e.preventDefault(); sh.close(); } };
-  return sh.done;
 }

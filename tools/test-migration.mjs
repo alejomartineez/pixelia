@@ -83,8 +83,9 @@ function saveV2({ withPista = true, withTaller = false } = {}) {
       claimedSets: ['princesas'], brillitos: 37, seen: ['princesas-1', 'joyas-1'], done: ['princesas'], since5: 12,
     },
     home: { items: [{ uid: 1, id: 'cama', x: 1, z: 1, rot: 0 }, { uid: 2, id: 'trofeo_joyas', x: 3, z: 1, rot: 0 }], wall: 'menta', floor: 'nogal', nextUid: 3, owned: { silla: 1 }, trophies: { trofeo_joyas: true }, started: true },
-    social: { giftDay: { 'f-bea': '2026-11-06' }, coop: { week: '2026-W45', local: 120, pending: 0, claimed: [1], reached: 1, carry: [] }, rank: { hist: { '2026-W44': { match3: 900, blocks: 0, parking: 0, driving: 0, stars: 6, played: 4 } }, claimed: [] } },
-    online: { week: { id: '2026-W45', match3: 1500, blocks: 0, parking: 0, driving: 0, stars: 6 } },
+    // la semana de hoy (antes estaba fija en 2026-W45 y la prueba fallaba al cambiar de semana)
+    social: { giftDay: { 'f-bea': '2026-11-06' }, coop: { week: weekKey(now), local: 120, pending: 0, claimed: [1], reached: 1, carry: [] }, rank: { hist: { [weekKey(now - 7 * 864e5)]: { match3: 900, blocks: 0, parking: 0, driving: 0, stars: 6, played: 4 } }, claimed: [] } },
+    online: { week: { id: weekKey(now), match3: 1500, blocks: 0, parking: 0, driving: 0, stars: 6 } },
     season: {}, events: {},
   };
 }
@@ -115,6 +116,16 @@ const snapshot = (page) => run(page, `
     login: S.login, settings: S.settings, expansions: S.city.expansions, level: S.player.level, name: S.player.name, city: S.player.cityName,
     // una amenaza del calendario que cae justo hoy se resuelve sola al cargar y paga gemas: se descuenta para que no dependa del día
     threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) };`);
+/** Clave de semana ISO como isoWeek de src/online/net.js (en UTC: la usan Contactos y la Obra en Equipo). */
+function weekKey(ms) {
+  const d = new Date(ms);
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dow = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - dow);
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  const wk = Math.ceil(((t - y0) / 864e5 + 1) / 7);
+  return `${t.getUTCFullYear()}-W${String(wk).padStart(2, '0')}`;
+}
 const sumHave = (h) => Object.values(h || {}).reduce((a, b) => a + b, 0);
 
 try {

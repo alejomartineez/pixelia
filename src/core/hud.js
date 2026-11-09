@@ -5,7 +5,8 @@
 //  derecha:     [hoy] Expedición (con las provisiones), Cofres · [temporada] Pase y eventos en un botón ·
 //               [largo plazo] Obras (monumentos), Hallazgos
 //  abajo:       Equipaje · Construir (al centro) · Contactos
-// Metas: ≤ 14 controles y ≤ 4 globitos a la vez (los de más prioridad; ver BADGE_ORDER). Cada función aparece cuando se
+// Bitácora (historia, diario y Manual; El Quiebre): en el riel, con lo de largo plazo.
+// Metas: ≤ 15 controles (eran 14 antes de la Bitácora) y ≤ 4 globitos a la vez (los de más prioridad; ver BADGE_ORDER). Cada función aparece cuando se
 // abre (apertura escalonada, unlocks.js). Los globitos se refrescan con eventos del bus y cada 30 s; los números, cada segundo.
 import { bus } from './bus.js';
 import { store } from './state.js';
@@ -54,16 +55,16 @@ function render() {
         <span class="hud-gear">${icon('gear', 18)}</span>
       </button>
       <div class="hud-res">
-        <div class="pill" data-hud="coins">${icon('coin', 20)}<b>${fmtNum(s.coins)}</b></div>
-        <div class="pill gem" data-hud="gems">${icon('gem', 20)}<b>${fmtNum(s.gems)}</b></div>
+        <div class="pill" data-hud="coins" data-tip-title="Monedas" data-tip="Las producen casas y negocios: hacé clic en lo que aparece arriba de cada edificio. Pagan obras y mejoras.">${icon('coin', 20)}<b>${fmtNum(s.coins)}</b></div>
+        <div class="pill gem" data-hud="gems" data-tip-title="Gemas" data-tip="Se ganan con misiones, logros, niveles, amenazas y salidas de 3 estrellas. Sirven para cosas especiales.">${icon('gem', 20)}<b>${fmtNum(s.gems)}</b></div>
       </div>
     </div>
     <div class="hud-left">
       <button class="hud-rank" data-act="rank" data-hud="rank" aria-label="Rango y época de tu ciudad"></button>
       <div class="hud-stats">
-        <div class="pill sm" data-hud="pop" title="Población">${icon('people', 16)}<b></b></div>
-        <div class="pill sm" data-hud="happy" title="Felicidad">${icon('smile', 16)}<b></b></div>
-        <div class="pill sm" data-hud="builders" title="Constructoras">${icon('hammer', 16)}<b></b></div>
+        <div class="pill sm" data-hud="pop" data-tip-title="Población" data-tip="La traen las casas. Muchos negocios piden un mínimo para abrir.">${icon('people', 16)}<b></b></div>
+        <div class="pill sm" data-hud="happy" data-tip-title="Felicidad" data-tip="Árboles, plantas y deco la suben. Con la ciudad feliz todo produce hasta un 50 % más.">${icon('smile', 16)}<b></b></div>
+        <div class="pill sm" data-hud="builders" data-tip-title="Constructoras" data-tip="Libres / en total. Cada obra o mejora ocupa una hasta que termina.">${icon('hammer', 16)}<b></b></div>
       </div>
       <div class="hud-fx" data-hud="fx"></div>
       <button class="hud-quest" data-act="quests"></button>
@@ -84,6 +85,7 @@ function render() {
       <div class="rail-group" data-layer="largo">
         <button class="rail-btn works" data-act="works" data-hud="works" aria-label="Obras: monumentos" style="display:none">${icon('monument', 30)}<span>Obras</span><i class="badge" data-badge="works"></i></button>
         <button class="rail-btn" data-act="album" aria-label="Hallazgos" style="display:none">${icon('album', 30)}<span>Hallazgos</span><i class="badge" data-badge="album"></i></button>
+        <button class="rail-btn journal" data-act="story" aria-label="Bitácora" title="Bitácora (J)">${icon('📖', 30)}<span>Bitácora</span></button>
       </div>
     </div>
     <nav class="hud-bottom">
@@ -325,7 +327,8 @@ function refreshExpedition() {
   lastExp = key;
   show(el, on);
   root.querySelector('[data-hud="provtag"]').textContent = fmtNum(s.prov || 0);
-  el.title = `Expedición · ${fmtNum(s.prov || 0)} provisiones en el depósito`;
+  el.setAttribute('data-tip-title', 'Expedición');
+  el.setAttribute('data-tip', `${fmtNum(s.prov || 0)} provisiones en el depósito. Salen de la Huerta y cada paso afuera gasta.`);
   applyBadges();
 }
 /** Renovar: va al próximo edificio que quedó en una época anterior (abre su ficha); de a uno por toque. */
@@ -383,7 +386,7 @@ export const hud = {
   refresh() { render(); },
   refreshBadges() { refreshBadges(); },
   badgeState,
-  /** Controles a la vista (botones del HUD que se ven): para la meta de ≤ 14. */
+  /** Controles a la vista (botones del HUD que se ven): para la meta de ≤ 15. */
   controls() {
     if (!root) return [];
     return [...root.querySelectorAll('button[data-act]')].filter(b => b.offsetParent !== null && getComputedStyle(b).display !== 'none' && !b.classList.contains('fx-chip')).map(b => b.dataset.act);

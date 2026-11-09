@@ -94,15 +94,18 @@ export async function openArrival(ctx, parts, hooks = {}) {
 /** Aviso liviano con la app abierta: el premio del día se cobra solo y cada novedad sale en un aviso corto. */
 function openLight(ctx, parts, hooks = {}) {
   const { threats, login, unlock } = parts;
+  if (parts.firstDay && login) login.first = true;
   const plain = (html) => { const d = document.createElement('div'); d.innerHTML = html; return d.textContent.replace(/\s+/g, ' ').trim(); };
   if (login) {
     try { hooks.claimLogin?.(); } catch (e) { console.error(e); }
     const r = login.reward || {};
     const got = [r.coins && `${ctx.economy.fmtNum(r.coins)} monedas`, r.gems && `${r.gems} gemas`, r.chest && (CHEST_NAME[r.chest] || 'un cofre')].filter(Boolean).join(', ');
     const streak = login.streak > 1 ? `racha de ${login.streak} días` : 'día 1 de la racha';
-    ctx.ui.toast(`Empezó un día nuevo (${streak})${got ? `: ${got}` : ''}`, { icon: login.streak > 1 ? 'fire' : 'calendar', type: 'good' });
+    ctx.ui.toast(`${login.first ? 'Premio de tu primer día' : `Empezó un día nuevo (${streak})`}${got ? `: ${got}` : ''}`, { icon: login.streak > 1 ? 'fire' : 'calendar', type: 'good' });
   }
   for (const l of threats?.lines || []) ctx.ui.toast(plain(l), { icon: 'info' });
   if (unlock) ctx.ui.toast(`Hoy se abre: ${unlock.name}`, { icon: unlock.icon || 'sparkle', type: 'good' });
+  // primer día (sin el modal: plan §E7): lo que se abre mañana también se cuenta
+  if (parts.firstDay && parts.next?.when === 'mañana') setTimeout(() => ctx.ui.toast(`Mañana se abre: ${parts.next.name}`, { icon: parts.next.icon || 'clock' }), 900);
   return Promise.resolve('ok');
 }

@@ -1,7 +1,7 @@
 // Arranque, router de escenas y contexto compartido (ctx) que reciben todas las escenas.
 //
 // Orden de arranque: store.load (con la migración v3) → applyDebugParams → initChests → initAlbum → initSeason
-// → initEvents → initExpedition → initThreats → initQuests → initUnlocks → HUD → (online) initSync → social.initSocial.
+// → initEvents → initExpedition → initThreats → initQuests → initUnlocks → initStory → HUD → (online) initSync → social.initSocial.
 // Al entrar a la ciudad sale un solo modal "Mientras no estabas…" (scenes/arrival.js) con todo lo pendiente: regalo de
 // bienvenida, "Los minijuegos se retiraron" (una vez, partidas de antes de la v3), amenazas que se resolvieron solas,
 // premio del día y la función que se abre hoy (apertura escalonada, core/unlocks.js). Después, las subidas de nivel.
@@ -27,6 +27,8 @@ import * as threats from './threats/threats.js';   // Amenazas (Fase 3)
 import * as unlocks from './core/unlocks.js';      // apertura escalonada (Fase 5b)
 import { isDesktop, initDesktop } from './core/desktop.js';
 import { initSettings } from './core/settings.js';   // juego de PC (Tauri)
+import * as story from './story/story.js';
+import { initTips } from './core/tips.js';   // pistas al pasar el mouse (data-tip)      // historia "El Quiebre" (DESIGN-STORY.md)
 
 const SCENES = {
   city: () => import('./scenes/city.js'),
@@ -136,7 +138,7 @@ const openSeasonPass = lazyUi(() => season.openSeasonPass(ctx), 'No se pudo abri
 const openEvents = lazyUi(() => events.openEventsPanel(ctx), 'No se pudieron abrir los eventos');
 
 export const ctx = {
-  store, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats,
+  store, bus, ui, audio, data, economy, quests, router, hud, home, expedition, threats, story,
   get state() { return store.state; },
   desktop: isDesktop,
   openPanel,
@@ -150,9 +152,9 @@ export const ctx = {
 // ---------- Llegada a la ciudad: bienvenida → premio diario → subidas de nivel ----------
 // .cx-placebar: colocando un edificio (pintando árboles, caminos…): un modal ahí taparía la barra y el próximo
 // toque en "Colocar" caería sobre él. Las subidas de nivel esperan a que termine (city:placing {active:false}).
-const OVERLAYS = '.chx-open, .alb-open, .cx-placebar, .th-bar';   // .th-bar: defensa de una amenaza en curso
+const OVERLAYS = '.chx-open, .alb-open, .cx-placebar, .th-bar, .st-epic';   // .th-bar: defensa de una amenaza en curso · .st-epic: historia a pantalla completa
 const cityReady = () => router.current === 'city' && !navigating && !router.visiting;
-const cityIdle = () => cityReady() && !hasModal() && !document.querySelector(OVERLAYS);
+const cityIdle = () => cityReady() && !hasModal() && !document.querySelector(OVERLAYS) && !story.blocking();
 /** Espera a que la ciudad esté libre (sin modales ni animaciones). false si se fue de la ciudad o pasó maxMs. */
 function waitIdle(maxMs = 60e3) {
   return new Promise(res => {
@@ -180,6 +182,8 @@ async function arrivalSteps() {
   if (!(await waitIdle())) return false;
   const fresh = freshArrival;   // la primera pasada después de llegar se lo queda, aunque no haya nada que mostrar
   freshArrival = false;
+  const first = firstSession;   // solo la llegada que sigue al onboarding
+  firstSession = false;
   const parts = {};
   let any = false;
   const welcome = season.welcomeBackStatus();
@@ -199,6 +203,9 @@ async function arrivalSteps() {
   parts.next = unlocks.nextUnlock();
   parts.firstDay = unlocks.playDay() === 1 && !welcome && !parts.v3Lines && !parts.v4Lines && !parts.threats;
   parts.light = !fresh && !welcome && !parts.v3Lines && !parts.v4Lines && !parts.firstDay;
+  // primera sesión (plan §E7): después del personaje, el prólogo y el estilo no se apila otro modal; el premio del día
+  // se cobra solo con un aviso y la cartógrafa presenta la ciudad
+  if (first && !welcome && !parts.threats) parts.light = true;
   const arrival = await import('./scenes/arrival.js');
   await arrival.openArrival(ctx, parts, {
     claimWelcome: () => season.claimWelcomeBack(),
@@ -333,7 +340,8 @@ function applyDebugParams() {
 
 function initProgression() {
   const steps = [['chests', chests.initChests], ['album', album.initAlbum], ['season', season.initSeason], ['events', events.initEvents], ['expedition', expedition.initExpedition], ['threats', threats.initThreats], ['quests', quests.initQuests], ['unlocks', unlocks.initUnlocks],
-    ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds]];
+    ['home', () => home.initHome({ monumentDone: (s) => economy.monumentsDone(s) > 0 })], ['v3', grantV3Finds],
+    ['story', () => story.initStory(ctx, { idle: () => cityIdle() && !arrival && !flushing && !pendingLevelUps.length, inCity: () => cityReady() && !document.body.classList.contains('no-hud') })]];
   for (const [name, fn] of steps) { try { fn(); } catch (e) { console.error('[init] ' + name, e); } }
   // íconos pixel de cofres y sobres en los premios (costHtml)
   rewardArt.chest = (type, size) => chestIcon(type, size);
@@ -344,11 +352,14 @@ function initProgression() {
 // preloader inline de index.html (window.__boot); en páginas de herramientas puede no existir
 const bootUi = window.__boot || null;
 
+let firstSession = false;   // se acaba de hacer el onboarding: la próxima llegada no abre modal
+bus.on('onboarding:done', () => { firstSession = true; });
 async function boot() {
   bootUi?.started();
   store.load();
   applyDebugParams();
   initSettings(ctx);   // gráficos, sonido, texto, escala de la interfaz y atajos (src/core/settings.js)
+  initTips();
   initProgression();
   hud.init(document.getElementById('hud'), ctx);
   import('./online/telemetry.js').then(m => m.initTelemetry(ctx)).catch(e => console.warn('[telemetry]', e));

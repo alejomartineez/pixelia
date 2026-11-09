@@ -16,6 +16,7 @@ export const KEY_ACTIONS = [
   { id: 'home', group: 'Ciudad', label: 'Ir a la Municipalidad', def: 'KeyH' },
   { id: 'themes', group: 'Ciudad', label: 'Estilo de la ciudad', def: 'KeyT' },
   { id: 'expedition', group: 'Ciudad', label: 'Expedición', def: 'KeyX' },
+  { id: 'journal', group: 'General', label: 'Bitácora', def: 'KeyJ' },
   { id: 'settings', group: 'General', label: 'Ajustes', def: 'KeyO' },
   { id: 'back', group: 'Expedición', label: 'Volver a la ciudad', def: 'KeyV' },
 ];

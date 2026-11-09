@@ -34,6 +34,10 @@ barrio, sin hablarle a un chico?
 - **Fuera lo tierno** (El Quiebre, §J7): personajes solo personas; nada de mascotas-avatar, tutús, orejitas ni "mimosos".
   Los Hallazgos se nombran como cosas que se encuentran en la isla ("Ancla Oxidada", "Pato del Bañado"), no como peluches.
 
+- **Registro épico** (El Quiebre, [DESIGN-STORY.md](DESIGN-STORY.md)): solo en el prólogo, los jefes y las revelaciones.
+  Frases cortas y concretas, sin mayúsculas, signos de más ni adjetivos grandes: "La tierra se vació por dentro y se
+  partió", no "¡El cataclismo más terrible de la historia!". La ciudad sigue cálida y sobria.
+
 Reemplazos de ejemplo:
 
 | Antes | Ahora |

@@ -1,5 +1,6 @@
 // Partida de punta a punta como jugadora nueva (sin cheat) en iPhone, con la interfaz real:
-// splash → onboarding (personaje Osito, nombre, ciudad, estilo Bosque; se verifica el guardado) → premio diario → tutorial t1–t10 (casa, huerta y cosecha, Casa de Expediciones, salida corta, Taller y Cuerda, población,
+// splash → onboarding (personaje, nombre, ciudad) → prólogo de la cartógrafa → estilo (se verifica el guardado) → premio
+// diario sin modal (primera sesión) → la cartógrafa presenta la ciudad → tutorial t1–t10 (se cobran solas: El Quiebre §E4) (casa, huerta y cosecha, Casa de Expediciones, salida corta, Taller y Cuerda, población,
 // panadería, salida normal con Cuerda) → subida de nivel
 // → cofre con hallazgos → potenciador viejo → equipo → Pase → Hallazgos → Cofres (gratis, mochila,
 // poción, martillo) → Eventos. Revisa que los globitos del HUD coincidan con los módulos en cada paso.
@@ -151,10 +152,20 @@ const finishWorks = () => run(`const now = Date.now(); for (const b of store.sta
 const ageProduction = (hours) => run(`for (const b of store.state.city.buildings) b.lastCollect -= ${hours} * 3600e3; store.markDirty(); E.tick(); return true;`);
 
 /** Resuelve lo que esté encima: subidas de nivel (abriendo cofres), aperturas de cofre, premios. Devuelve lo que vio. */
+/** Cierra las hojas de diálogo de la historia (contactos de la cartógrafa) que estén abiertas. */
+async function closeStory() {
+  for (let i = 0; i < 10; i++) {
+    const open = await ev(() => !!document.querySelector('.st-card:not(.out):not(.bark)') || !!document.querySelector('.st-epic'));
+    if (!open) return;
+    await ev(() => { const sk = document.querySelector('.st-epic .st-skip') || document.querySelector('.st-card:not(.out):not(.bark) .st-skip') || document.querySelector('.st-card:not(.out):not(.bark) .st-next'); sk?.click(); });
+    await sleep(300);
+  }
+}
 async function drainOverlays({ maxRounds = 40, shots = {} } = {}) {
   const seen = []; let quiet = 0;
   for (let i = 0; i < maxRounds; i++) {
     await sleep(350);
+    if (await ev(() => !!document.querySelector('.st-card:not(.out):not(.bark), .st-epic'))) { seen.push('story'); await closeStory(); quiet = 0; continue; }
     const st = await ev(() => ({
       chx: !!document.querySelector('.chx-open'),
       sum: !!document.querySelector('.chx-sum .btn'),
@@ -252,7 +263,19 @@ async function buildUI(id, n = 1) {
  * antes devolvía el id aunque el toque en "Cobrar" cayera sobre una subida de nivel que apareció encima, y desde ahí
  * todas las misiones quedaban corridas una (e2e intermitente en "m4 cobrada").
  */
+/** Anota en la página cada misión cobrada (también las del cobro automático de t1–t20, El Quiebre §E4). */
+const installClaimLog = () => run(`if (!window.__claimLog) { window.__claimLog = []; window.__claimRead = 0; ctx.bus.on('quest:claimed', (e) => window.__claimLog.push(e.id)); } return true;`);
+const isTutorial = (id) => /^t\d+$/.test(id) && Number(id.slice(1)) <= 20;
 async function claimMainUI() {
+  await installClaimLog();
+  // t1–t20 se cobran solas al cumplirse: se toma la próxima cobrada que la prueba todavía no contó
+  const nextAuto = async () => run(`if (window.__claimRead < window.__claimLog.length) return window.__claimLog[window.__claimRead++]; return null;`);
+  let id = await nextAuto();
+  if (!id) {
+    const cur = await run(`const m = Q.mainQuest(); return m ? { id: m.id, done: m.done } : null;`);
+    if (cur && isTutorial(cur.id) && cur.done) { await waitFor(`window.__claimLog.length > window.__claimRead`, 7000); id = await nextAuto(); }
+  }
+  if (id) { await drainOverlays(); return id; }
   const q = await run(`const m = Q.mainQuest(); return m ? { id: m.id, done: m.done, index: m.index } : null;`);
   if (!q?.done) {
     if (q) console.log('    (la misión ' + q.id + ' todavía no está cumplida: ' + JSON.stringify(await run(`return Q.mainQuest()`)) + ')');
@@ -318,7 +341,17 @@ try {
   await sleep(300);
   await shot('onboarding-nombre');
   await tap('.scene-onboarding .ob-next', 'Empezar');
-  ok(await waitFor(`!!document.querySelector('.modal.tp-modal .tp-card')`, 9000), 'al terminar se abre "Estilo de tu ciudad"');
+  // orden de entrada (El Quiebre §E7): personaje → nombre → prólogo → estilo
+  ok(await waitFor(`!!document.querySelector('.st-epic')`, 12000), 'al terminar llega el prólogo a pantalla completa');
+  await sleep(900);
+  await shot('prologo');
+  for (let i = 0; i < 12 && !/cartógrafa/.test(await ev(() => document.querySelector('.st-epic .st-head')?.textContent || '')); i++) { await tapXY(VIEW.width / 2, VIEW.height / 2); await sleep(150); }
+  ok(/cartógrafa/.test(await ev(() => document.querySelector('.st-epic .st-head')?.textContent || '')), 'la cartógrafa se presenta');
+  await sleep(1200);
+  await shot('prologo-cartografa');
+  await tap('.st-epic .st-skip');
+  ok(await waitFor(`!document.querySelector('.st-epic')`, 3000), 'Saltar cierra el prólogo');
+  ok(await waitFor(`!!document.querySelector('.modal.tp-modal .tp-card')`, 9000), 'después se abre "Estilo de tu ciudad"');
   ok(await run(`return ctx.router.current === 'city' && store.state.onboarded === true`), 'ya en la ciudad y marcado como onboarded');
   ok(!(await ev(() => !!document.querySelector('.modal.arrival-modal'))), 'el premio diario espera a que se cierre el selector de estilo');
   await sleep(900);
@@ -339,18 +372,20 @@ try {
   ok(saved?.name === OB_NAME && saved?.city === OB_CITY, `guardado: nombre «${OB_NAME}» y ciudad «${OB_CITY}»`, saved);
   ok(saved?.theme === OB_THEME, `guardado: tema ${OB_THEME}`, saved);
 
-  // un solo modal al llegar (Fase 5b): el primer día trae el premio del día y adelanta lo que se abre mañana
-  ok(await waitFor(`!!document.querySelector('.modal.arrival-modal')`, 9000), 'aparece el modal de llegada con el premio del día');
-  const arrTxt = await ev(() => document.querySelector('.modal.arrival-modal')?.textContent.replace(/\s+/g, ' ') || '');
-  ok(/Tu primer día/.test(arrTxt) && /Premio del día/.test(arrTxt) && /Mañana se abre: el Pase de Temporada/.test(arrTxt), 'cuenta el premio y que mañana se abre el Pase', arrTxt.slice(0, 200));
+  // primera sesión (El Quiebre §E7): no se apila el modal de llegada; el premio del día se cobra con un aviso que también
+  // adelanta lo que se abre mañana
+  ok(await waitFor(`[...document.querySelectorAll('#toast-root .toast')].some(t => /primer día/.test(t.textContent))`, 9000), 'aviso del premio de tu primer día');
+  ok(await waitFor(`[...document.querySelectorAll('#toast-root .toast')].some(t => /Mañana se abre: el Pase de Temporada/.test(t.textContent))`, 4000), 'y que mañana se abre el Pase');
+  ok(!(await ev(() => !!document.querySelector('.modal.arrival-modal'))), 'sin modal de llegada en la primera sesión');
   ok(await run(`return !Q.mainQuest() ? false : Q.mainQuest().id === 't1' && store.state.player.level === 1`), 'nivel 1 y misión t1');
-  await sleep(700);
-  await shot('premio-diario');
-  await tap('.modal.arrival-modal .modal-foot .btn');
-  await sleep(1200);
   ok(await run(`return Q.loginStatus() === null`), 'premio diario cobrado');
+  // la cartógrafa presenta la ciudad (no bloquea)
+  ok(await waitFor(`!!document.querySelector('.st-card[data-scene="c_ciudad"]')`, 9000), 'la cartógrafa presenta la ciudad');
+  await sleep(1500);
+  await shot('contacto-ciudad');
+  await closeStory();
   ok(await ev(() => ['pass', 'social', 'album', 'chests', 'works'].every(a => document.querySelector(`#hud [data-act="${a}"]`)?.style.display === 'none')), 'día 1: Pase, Contactos, Hallazgos, Cofres y Obras todavía cerrados');
-  ok(await run(`return ctx.hud.controls().length <= 14`), 'el HUD tiene ≤ 14 controles');
+  ok(await run(`return ctx.hud.controls().length <= 15`), 'el HUD tiene ≤ 15 controles');
   await sleep(500);
   await drainOverlays();
   ok(!(await hasModal()), 'sin modales después del premio diario');
@@ -359,6 +394,7 @@ try {
 
   // ===================================================================
   section('Tutorial t1–t4: casa, huerta, primera cosecha y la base');
+  await installClaimLog();
   ok(await buildUI('casita') === 1, 't1: Casa colocada con Construir → tarjeta → Colocar');
   await shot('obra-casita');
   await finishWorks();

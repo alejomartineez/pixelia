@@ -209,7 +209,8 @@ try {
   await run(`store.state.reserves.arena = 2; return true;`);
   const risk1 = await run(`return T.threatStatus().info;`);
   ok(risk1.prep > risk0.prep + 0.3 && risk1.list.some(x => x.covered), `con Dique y 2 bolsas sube la preparación (${risk0.pct}% → ${risk1.pct}%)`);
-  ok(await run(`return Q.mainQuest().id === 't15' && Q.mainQuest().done`), 't15 (Dique) cumplida');
+  // t1–t20 se cobran solas al cumplirse (El Quiebre §E4): cumplida = cobrada o lista para cobrar
+  ok(await run(`return !!store.state.quests.done.t15 || (Q.mainQuest().id === 't15' && Q.mainQuest().done)`), 't15 (Dique) cumplida');
 
   // ===================================================================
   section('Defensa jugada (simulacro)');
@@ -248,7 +249,7 @@ try {
   ok(r1.res?.mode === 'jugada' && r1.sim.done && !r1.active, 'simulacro resuelto (jugada)', r1.res);
   ok(r1.ev && r1.ev.id === 'sim' && r1.ev.mode === 'jugada', 'evento threat:resolved {mode: "jugada"}');
   ok(await run(`return !window.__pixelia.city.defense && !document.querySelector('.th-bar')`), 'se desmonta la capa y vuelve la ciudad');
-  ok(await run(`store.state.quests.done.t15 = 1; store.state.quests.done.t16 = 1; return Q.mainQuest().id === 't17' && Q.mainQuest().done`), 't17 (pasar el simulacro) cumplida');
+  ok(await run(`store.state.quests.done.t15 = 1; store.state.quests.done.t16 = 1; return !!store.state.quests.done.t17 || (Q.mainQuest().id === 't17' && Q.mainQuest().done)`), 't17 (pasar el simulacro) cumplida');
 
   // ===================================================================
   section('Resolución automática y "Mientras no estabas"');

@@ -445,7 +445,7 @@ export default function create(ctx) {
     if (ck) { cam.key(ck, isDown); ev.preventDefault(); return; }
     if (!isDown || ev.repeat) return;
     if (placer.active) return;
-    const act = ev.code === 'Home' ? 'home' : actionFor(ev.code, ['rotL', 'rotR', 'build', 'collect', 'home', 'themes', 'expedition', 'settings']);
+    const act = ev.code === 'Home' ? 'home' : actionFor(ev.code, ['rotL', 'rotR', 'build', 'collect', 'home', 'themes', 'expedition', 'settings', 'journal']);
     if (act === 'rotL') { cam.rotate(-1); audio.sfx('swoosh'); }
     else if (act === 'rotR') { cam.rotate(1); audio.sfx('swoosh'); }
     else if (act === 'build') { audio.sfx('tap'); openBuildMenu(S); }
@@ -454,6 +454,7 @@ export default function create(ctx) {
     else if (act === 'themes') { audio.sfx('tap'); openThemes(); }
     else if (act === 'expedition') { audio.sfx('tap'); ctx.openPanel('expedition'); }
     else if (act === 'settings') { audio.sfx('tap'); ctx.openPanel('settings'); }
+    else if (act === 'journal') { audio.sfx('tap'); ctx.openPanel('story'); }
   }
   // desplazar la cámara con el mouse en los bordes de la ventana (Ajustes → Juego)
   let edgePos = null;
@@ -502,16 +503,24 @@ export default function create(ctx) {
   // =====================================================================
   // Tutorial suave
   // =====================================================================
-  function showTip(html, x, y) {
+  /** side: 'top' (arriba del punto), 'left' (a la izquierda) o 'right' (a la derecha). */
+  function showTip(html, x, y, side = 'top') {
     if (!tipEl) {
       tipEl = ui.h('div.cx-tip', { html: '<span></span><i></i>' });
       container.append(tipEl);
     }
     const sp = tipEl.firstChild;
     if (sp.innerHTML !== html) sp.innerHTML = html;
-    tipEl.style.left = clamp(x, 120, innerWidth - 120) + 'px';
+    const cls = 'cx-tip' + (side === 'top' ? '' : ' ' + side);
+    if (tipEl.className !== cls) tipEl.className = cls;
+    if (side === 'top') {
+      tipEl.style.left = clamp(x, 120, innerWidth - 120) + 'px';
+      tipEl.querySelector('i').style.marginLeft = ((x - clamp(x, 120, innerWidth - 120)) * 2) + 'px';
+    } else {
+      tipEl.style.left = x + 'px';
+      tipEl.querySelector('i').style.marginLeft = '';
+    }
     tipEl.style.top = y + 'px';
-    tipEl.querySelector('i').style.marginLeft = ((x - clamp(x, 120, innerWidth - 120)) * 2) + 'px';
     tipEl.style.display = '';
   }
   function hideTip() { if (tipEl) tipEl.style.display = 'none'; }
@@ -549,27 +558,60 @@ export default function create(ctx) {
     return pool.reduce((a, e) => (dist(e) < dist(a) ? e : a), pool[0]);
   }
   function clearWorldTip() { if (worldTip) { ov.remove(worldTip.item); worldTip = null; } }
+  // ---------- Flecha guiada (plan §E3): señala lo que pide la misión actual ----------
+  const EXP_GOALS = ['expedition', 'zone', 'expStars', 'expFar', 'combat'];
+  const entryOf = (id) => [...entries.values()].find(e => e.b.id === id && !e.b.buildEnd);
+  /** A dónde apunta la flecha para la misión q: {el, side, text, panel} (botón del HUD), {entry, text} (edificio) o {sign}. */
+  function guideTarget(q) {
+    const t = q.goal.type;
+    if (EXP_GOALS.includes(t) && entryOf('casa_exp')) return { el: '[data-act="expedition"]', side: 'left', panel: 'expedition', text: `${icon('🧭', 20)}Misión: salí de <b>Expedición</b>` };
+    if (t === 'craft' && entryOf('taller')) return { entry: 'taller', panel: 'workshop', text: `${icon('hammer', 18)}Hacé clic en el <b>Taller</b>` };
+    if (t === 'prov' && entryOf('huerta')) return { entry: 'huerta', text: `${icon('🍞', 18)}Cosechá la <b>Huerta</b>` };
+    if (t === 'castle' || t === 'rank') return { el: '.hud-rank', side: 'right', panel: 'rank', text: `${icon('castle', 20)}Mirá el <b>expediente</b> del rango` };
+    if (t === 'threat' && document.querySelector('#hud [data-act="threat"]')?.style.display !== 'none') return { el: '[data-act="threat"]', side: 'right', panel: 'threat', text: `${icon('bolt', 20)}Prepará la ciudad` };
+    if (t === 'expand') return { sign: true };
+    if (t === 'story') return { el: '[data-act="story"]', side: 'left', panel: 'story', text: `${icon('📖', 20)}Abrí la <b>Bitácora</b>` };
+    return null;
+  }
+  let guideSign = false;
   function updateTutorial() {
     const blocked = placer?.active || myModals.size || ui.hasModal();
-    // flecha al botón Construir
-    let tipText = null;
+    const hints = ctx.state.settings.hints !== false;
+    const q = ctx.quests.mainQuest();
+    const tgt = hints && q && !q.done && !T()['q_' + q.id] ? guideTarget(q) : null;
+    // flecha a un botón del HUD: Construir (por defecto) o el que pida la misión
+    let tipText = null, tipSel = '.hud-btn.big', side = 'top';
     if (!T().cityIntro && ctx.state.city.buildings.length <= 1) tipText = `${icon('hammer', 20)}Hacé clic en <b>Construir</b> para empezar`;
-    else {
-      const q = ctx.quests.mainQuest();
+    else if (tgt?.el) { tipText = tgt.text; tipSel = tgt.el; side = tgt.side; }
+    else if (hints && q && !q.done && !tgt && !T()['q_' + q.id] && !(q.goal.type === 'pop' || q.goal.type === 'happy')) {
       const ids = questBuildIds(ctx).filter(id => E.canBuild(id).ok);
-      if (ctx.state.settings.hints !== false && q && ids.length && !T()['q_' + q.id] && !(q.goal.type === 'pop' || q.goal.type === 'happy')) tipText = `${icon('quest', 20)}Misión: construí <b>${ui.esc(E.def(ids[0]).name)}</b>`;
+      if (ids.length) tipText = `${icon('quest', 20)}Misión: construí <b>${ui.esc(E.def(ids[0]).name)}</b>`;
     }
-    const btn = document.querySelector('#hud:not(.hidden) .hud-btn.big');
-    if (tipText && !blocked && btn) {
-      const rc = btn.getBoundingClientRect();
-      if (rc.width) showTip(tipText, rc.left + rc.width / 2, rc.top - 6); else hideTip();
+    const btn = document.querySelector(`#hud:not(.hidden) ${tipSel}`);
+    const rc = btn?.getBoundingClientRect();
+    if (tipText && !blocked && rc?.width && btn.style.display !== 'none') {
+      if (side === 'left') showTip(tipText, rc.left - 8, rc.top + rc.height / 2, 'left');
+      else if (side === 'right') showTip(tipText, rc.right + 8, rc.top + rc.height / 2, 'right');
+      else showTip(tipText, rc.left + rc.width / 2, rc.top - 6);
     } else hideTip();
-    // cobrar
-    const firstBubble = !T().collect && !blocked ? pickTipBubble() : null;
-    if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}Hacé clic para cobrar`);
+    // carteles de terreno: se marcan mientras la misión pide ampliar
+    const wantSign = !!tgt?.sign && !blocked;
+    if (wantSign !== guideSign) { guideSign = wantSign; for (const it of signItems) it.el?.classList.toggle('guide', wantSign); }
+    // cartel arriba de un edificio: la Huerta o el Taller que pide la misión, o el primer cobro
+    const guideEntry = tgt?.entry && !blocked ? entryOf(tgt.entry) : null;
+    const firstBubble = !T().collect && !blocked && !guideEntry ? pickTipBubble() : null;
+    if (guideEntry) setWorldTip(guideEntry.bubble ? 'collect' : 'guide', guideEntry, tgt.text);
+    else if (firstBubble) setWorldTip('collect', firstBubble, `${icon('coin', 18)}Hacé clic para cobrar`);
     else if (gameTip && !blocked && entries.has(gameTip.uid)) setWorldTip('game', entries.get(gameTip.uid), `${icon('dress', 18)}Hacé clic para abrir el Equipaje`);
     else clearWorldTip();
     if (gameTip && performance.now() > gameTip.until) gameTip = null;
+  }
+  /** La flecha de la misión actual ya cumplió (se abrió lo que señalaba): se apaga hasta la próxima misión. */
+  function guideDone(match) {
+    const q = ctx.quests.mainQuest();
+    if (!q) return;
+    const tgt = guideTarget(q);
+    if (tgt && match(tgt)) { setFlag('q_' + q.id); syncStatus(); }
   }
 
   // =====================================================================
@@ -580,7 +622,7 @@ export default function create(ctx) {
     ui.floatText(s.x, s.y, html, cls);
   }
   function bindEvents() {
-    offs.push(bus.on('hud:build', (p) => { if (placer.active) endPlacement(true); setFlag('cityIntro'); const q = ctx.quests.mainQuest(); if (q) setFlag('q_' + q.id); openBuildMenu(S, p?.focus || null); }));
+    offs.push(bus.on('hud:build', (p) => { if (placer.active) endPlacement(true); setFlag('cityIntro'); const q = ctx.quests.mainQuest(); if (q && !guideTarget(q)) setFlag('q_' + q.id); openBuildMenu(S, p?.focus || null); }));
     offs.push(bus.on('building:placed', ({ b }) => {
       const e = createEntry(b, 'drop');
       e.placedAt = performance.now();
@@ -660,9 +702,11 @@ export default function create(ctx) {
       if (!e.anim) e.anim = { type: 'squish', t: 0 };
       fx.sparkle(e.root.position.x, e.height + 0.2, e.root.position.z, currency === 'gems' ? ['#8fd3ff', '#ffffff', '#d4efff'] : currency === 'prov' ? ['#d9b46a', '#ffffff', '#9ccf7a'] : ['#ffd166', '#ffffff', '#fff0c2']);
       setFlag('collect');
-      if (worldTip?.kind === 'collect') clearWorldTip();
+      if (currency === 'prov') guideDone(t => t.entry === 'huerta');
+      if (worldTip?.kind === 'collect' || worldTip?.kind === 'guide') clearWorldTip();
     }));
     offs.push(bus.on('city:expanded', ({ bounds }) => {
+      guideDone(t => !!t.sign);
       world.animateExpand(bounds, !!E.expansionInfo());
       rebuildSignLabels();
       life.refreshGrid();
@@ -681,6 +725,22 @@ export default function create(ctx) {
     // panel de Obras → "Construir" un monumento: arranca la colocación como desde el menú
     offs.push(bus.on('city:place', ({ id } = {}) => { if (!disposed && id) setTimeout(() => { if (!disposed) startPlacement(id); }, 260); }));
     offs.push(bus.on('city:focus', ({ uid } = {}) => { if (!disposed && entries.has(uid)) setTimeout(() => { if (!disposed) openInfo(S, uid); }, 260); }));
+    // pedidos de goalAction (panels-common.js): cámara a un edificio, a un cartel de terreno o cobrar todo
+    offs.push(bus.on('city:highlight', ({ id, uid } = {}) => {
+      if (disposed) return;
+      const e = uid != null ? entries.get(uid) : entryOf(id);
+      if (e) setTimeout(() => !disposed && highlightBuilding(e.b.uid), 200);
+    }));
+    offs.push(bus.on('city:sign', () => {
+      if (disposed) return;
+      const sg = world.signs?.[0];
+      if (sg) cam.flyTo(sg.pos.x, sg.pos.z);
+      guideDone(t => !!t.sign);
+    }));
+    offs.push(bus.on('city:collect', () => { if (!disposed) setTimeout(() => !disposed && collectAll(), 200); }));
+    // la flecha se apaga cuando se abre lo que señalaba
+    offs.push(bus.on('panel:open', ({ name } = {}) => guideDone(t => t.panel === name)));
+    offs.push(bus.on('threat:panel', () => guideDone(t => t.panel === 'threat')));
     offs.push(bus.on('customize:changed', ({ target }) => {
       if (target === 'avatar') life.rebuildPlayer();
       else if (target === 'car') life.rebuildCar();

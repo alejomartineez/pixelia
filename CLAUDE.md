@@ -15,6 +15,7 @@ adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
 - Ciclo nuevo (Expedición, Amenazas, Épocas, recursos, tutorial, migración v3, metas de balance y qué archivos toca cada
   fase): [DESIGN-CORE.md](DESIGN-CORE.md) · arquitectura, arte y guía de tono: [DESIGN.md](DESIGN.md) ·
   online: [DESIGN-ONLINE.md](DESIGN-ONLINE.md) · retención: [DESIGN-RETENTION.md](DESIGN-RETENTION.md) ·
+  historia, Bitácora y guías (`src/story/`): [DESIGN-STORY.md](DESIGN-STORY.md) ·
   uso y hosting: [README.md](README.md).
 - JavaScript con módulos ES, **sin build**: three.js y supabase-js están en `vendor/` (importmap en `index.html`).
   No agregar bundlers ni dependencias en tiempo de ejecución. Tauri (Rust) solo empaqueta y vive aparte, en `desktop/`:
@@ -29,7 +30,7 @@ adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
 - `npm run serve` → http://127.0.0.1:5173/ (`serve:lan` para abrirlo desde el celu en la misma Wi-Fi).
   También está la configuración `pixelia` en `.claude/launch.json` para la vista previa.
 - `npm test` → e2e, migración v2→v3, colocación, stress, visitas, mock online, social, rango, obras, Mi Casa, expedición,
-  ciclo, amenazas, telemetría, ajustes y SQL (Chrome headless; tarda unos minutos).
+  ciclo, amenazas, telemetría, ajustes, historia y SQL (Chrome headless; tarda unos minutos).
 - `node smoke.mjs --scene city --device desktop --dpr 1.25 --shot ../shots/x.png` → captura rápida de una escena.
 - `npm run sim:economy` → simula 60 días de economía (2 ratos por día) y chequea las metas de DESIGN-CORE.md §8.
 - `npm run desktop:dev` abre la ventana del juego de PC en vivo. `npm run desktop:build` arma el `.exe`, y

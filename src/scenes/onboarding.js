@@ -1,7 +1,7 @@
 // Primera vez (partida nueva): elegir tipo de personaje y colores, nombre del personaje y de la ciudad.
 // Arriba (o a la izquierda en PC) el personaje girando en 3D; abajo (o a la derecha) los pasos.
-// Al terminar marca state.onboarded, entra a la ciudad y abre el selector de estilo de ciudad
-// (openThemePicker de src/city/themes-ui.js, si existe).
+// Al terminar marca state.onboarded, entra a la ciudad, pasa el prólogo de la historia (src/story/story.js) y abre el
+// selector de estilo de ciudad (openThemePicker de src/city/themes-ui.js, si existe).
 import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { icon } from '../core/icons.js';
@@ -362,14 +362,18 @@ export default function create(ctx) {
     ctx.hud?.refresh?.();
     await new Promise(res => setTimeout(res, 700));
     await ctx.router.go('city');
+    // orden de entrada (plan §E7): personaje → nombre → prólogo (la cartógrafa, a pantalla completa) → estilo
+    try { await ctx.story?.playPrologue(); } catch (e) { console.warn('[onboarding] prólogo', e); }
     // estilo de la ciudad (lo agrega otra parte del juego; si todavía no existe, se sigue sin él)
     try {
       const m = await themesMod;
       // el saludo va dentro del selector (un toast tapaba el HUD y el título del selector o del premio diario)
-      const greet = `¡${s.player.cityName} te da la bienvenida, ${s.player.name}!`;
+      const greet = `${s.player.cityName} te da la bienvenida, ${s.player.name}.`;
       if (m && typeof m.openThemePicker === 'function') await m.openThemePicker(ctx, { first: true, greet });
       else ui.toast(greet, { icon: t.emoji, type: 'good' });
     } catch (e) { console.warn('[onboarding] selector de estilo', e); }
+    // primer contacto: la ciudad (producir y cobrar), cuando la ciudad quede libre
+    ctx.story?.cityIntro();
   }
 
   function onKey(e) {
@@ -389,6 +393,7 @@ export default function create(ctx) {
       styleEl.textContent = OB_CSS;
       document.head.append(styleEl);
       themesMod = import('../city/themes-ui.js').catch(() => null);
+      import('../story/story-ui.js').catch(() => null);   // el prólogo sale apenas se entra a la ciudad
       root = ui.h('div.ob');
       root.innerHTML = `<div class="ob-stage"><div class="ob-title"></div></div>
         <div class="ob-panel"><div class="ob-dots"></div><div class="ob-body scroll"></div><div class="ob-foot"></div></div>`;

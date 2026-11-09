@@ -1,8 +1,9 @@
-// Paneles de la ciudad: misiones, minijuegos, ajustes, ayuda, premio diario, subida de nivel, rango de la ciudad, obras,
+// Paneles de la ciudad: misiones, Bitácora (historia, diario y Manual), ajustes, premio diario, subida de nivel, rango de la ciudad, obras,
 // expedición (mapa de región y preparar la salida) y Taller.
 // API: openPanel(ctx, name, params) -> Promise que resuelve cuando el panel se cierra.
 import { openQuests } from './panels-quests.js';
-import { openSettings, openHelp } from './panels-settings.js';
+import { openSettings } from './panels-settings.js';
+import { openStory } from './panels-story.js';
 import { openLogin, openLevelUp } from './panels-rewards.js';
 import { openRank } from './panels-rank.js';
 import { openWorks } from './panels-works.js';
@@ -13,7 +14,9 @@ import { getOpen } from './panels-common.js';
 const PANELS = {
   quests: openQuests,
   settings: openSettings,
-  help: openHelp,
+  story: openStory,
+  // "Cómo jugar" de antes: ahora es la pestaña Manual de la Bitácora
+  help: (ctx, p) => openStory(ctx, { ...p, tab: 'manual' }),
   login: openLogin,
   levelup: openLevelUp,
   rank: openRank,
@@ -24,6 +27,7 @@ const PANELS = {
 
 export async function openPanel(ctx, name, params = {}) {
   const fn = PANELS[name];
+  ctx.bus.emit('panel:open', { name });
   if (!fn) { console.warn('[panels] panel desconocido:', name); ctx.ui.toast('Ese panel no existe'); return; }
   // las subidas de nivel se muestran de a una, en orden (aunque lleguen varias juntas)
   if (name === 'levelup') {

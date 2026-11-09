@@ -350,14 +350,27 @@ export function goalIcon(goal, size = 32) {
     build: 'hammer', upgrade: 'up', collect: 'coin', earn: 'coin',
     customize: 'dress', buy: 'shop', level: 'xp', pop: 'people', happy: 'smile', expand: 'map', castle: 'castle', charm: 'sparkle', rank: 'castle',
     sticker: '🃏', stickers: '🃏', album: '🃏', season: 'sparkle', friend: 'people', friends: 'people', help: 'heart', gift: 'gift', visit: 'home',
+    prov: '🍞', craft: 'hammer', expedition: '🧭', zone: 'map', expStars: 'star', expFar: 'map', threat: 'bolt', repair: 'hammer', combat: '⚔️', story: '📖',
   };
   return icon(map[goal.type] || 'quest', size);
 }
 
-/** Acción sugerida para avanzar un objetivo: {label, run} o null. */
+/**
+ * Acción sugerida para avanzar un objetivo: {label, ic, run} o null (plan §E1: todos los tipos). close() cierra el panel
+ * desde el que se pide. La ciudad escucha city:highlight {id} (cámara al edificio), city:sign (cámara al cartel de
+ * terreno), city:collect (cobrar todo) y city:focus {uid} (ficha del edificio).
+ */
 export function goalAction(ctx, goal, close) {
   const econ = ctx.economy;
+  const st = ctx.state;
+  const later = (fn) => { close(); setTimeout(fn, 260); };
   const buildFocus = (id) => ({ label: 'Construir', ic: 'hammer', run: () => { close(); ctx.bus.emit('hud:build', id ? { focus: id } : {}); } });
+  const has = (id) => st.city.buildings.some(b => b.id === id && !b.buildEnd);
+  const placed = (id) => st.city.buildings.some(b => b.id === id);
+  const expOpen = () => { try { return ctx.expedition && (placed('casa_exp') || !!st.expedition?.active); } catch { return false; } };
+  const toExpedition = (region) => (expOpen()
+    ? { label: 'Expedición', ic: '🧭', run: () => later(() => ctx.openPanel('expedition', region ? { region } : {})) }
+    : buildFocus('casa_exp'));
   switch (goal.type) {
     case 'build': {
       const id = goal.id || goal.ids?.[0];
@@ -367,10 +380,31 @@ export function goalAction(ctx, goal, close) {
     case 'happy': return buildFocus('arbusto');
     // Encanto: deco variada (la que todavía no tiene suma más); rango: el panel "Tu ciudad" con el expediente
     case 'charm': return buildFocus(['banco', 'fuente', 'cerezo', 'macetas', 'farol', 'arbusto'].find(id => econ.canBuild(id).ok && econ.countOf(id) === 0) || 'arbusto');
-    case 'castle': case 'rank': return { label: 'Ver ciudad', ic: 'castle', run: () => { close(); setTimeout(() => ctx.openPanel('rank'), 260); } };
+    case 'castle': case 'rank': return { label: 'Ver ciudad', ic: 'castle', run: () => later(() => ctx.openPanel('rank')) };
     case 'customize': case 'buy':
-      if (!econ.hasBuilt('boutique_real') && !ctx.state.city.buildings.some(b => b.id === 'boutique_real')) return buildFocus('boutique_real');
+      if (!econ.hasBuilt('boutique_real') && !placed('boutique_real')) return buildFocus('boutique_real');
       return { label: 'Equipaje', ic: 'dress', run: () => { close(); ctx.router.go('wardrobe'); } };
+    case 'upgrade': {
+      const b = st.city.buildings.find(x => x.id !== 'castillo' && !x.buildEnd && !x.upgradeEnd && (() => { try { return econ.upgradeInfo(x) && econ.canUpgrade(x).ok; } catch { return false; } })())
+        || st.city.buildings.find(x => x.id !== 'castillo' && !x.buildEnd && (() => { try { return !!econ.upgradeInfo(x); } catch { return false; } })());
+      return b ? { label: 'Mejorar', ic: 'up', run: () => { close(); ctx.bus.emit('city:focus', { uid: b.uid }); } } : buildFocus('casita');
+    }
+    case 'collect': case 'earn': return { label: 'Cobrar todo', ic: 'coin', run: () => { close(); ctx.bus.emit('city:collect'); } };
+    case 'prov': return has('huerta') ? { label: 'Ver la Huerta', ic: '🍞', run: () => { close(); ctx.bus.emit('city:highlight', { id: 'huerta' }); } } : buildFocus('huerta');
+    case 'craft': return has('taller') ? { label: 'Taller', ic: 'hammer', run: () => later(() => ctx.openPanel('workshop')) } : buildFocus('taller');
+    case 'expedition': case 'zone': return toExpedition(goal.region);
+    case 'expStars': case 'expFar': case 'combat': return toExpedition();
+    case 'expand': return { label: 'Ver el cartel', ic: 'map', run: () => { close(); ctx.bus.emit('city:sign'); } };
+    case 'threat': {
+      let visible = false;
+      try { visible = !!ctx.threats?.threatStatus?.()?.visible; } catch {}
+      return visible ? { label: 'Ver la amenaza', ic: 'bolt', run: () => { close(); ctx.bus.emit('threat:panel'); } } : null;
+    }
+    case 'repair': {
+      const b = st.city.buildings.find(x => x.damaged);
+      return b ? { label: 'Reparar', ic: 'hammer', run: () => { close(); ctx.bus.emit('city:focus', { uid: b.uid }); } } : null;
+    }
+    case 'story': return { label: 'Bitácora', ic: '📖', run: () => later(() => ctx.openPanel('story')) };
     default: return null;
   }
 }

@@ -37,8 +37,8 @@ cada paso.
 | 2b | E8: textos viejos, "Tocá" → "Hacé clic", pistas de misiones (`hintFor`, que adelanta E2) | hecho | (commit v26) |
 | 2c | G: Ajustes completos, más el ajuste de la ventana al monitor | hecho | (commit v27) |
 | 2d | J6 interfaz oscura + J7 fuera lo tierno (solo personas, estilos nuevos, guardado v4) | hecho | 3ef5f83 (v29) |
-| 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | **siguiente** | |
-| 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | pendiente | |
+| 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | (commit v30) |
+| 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | **siguiente** | |
 | 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | pendiente | |
 | 4 | B: cinemática "El Quiebre" | pendiente | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | pendiente | |
@@ -195,7 +195,61 @@ cada paso.
   27 gemas, playa → bruma, aviso único, segunda carga sin cambios, perfil de contacto viejo). `test-e2e.mjs` usa Chico y
   Ocaso en el onboarding.
 
+**Paso 3: historia, Bitácora, tutorial y guías** (canon y reglas en [DESIGN-STORY.md](../DESIGN-STORY.md))
+- **`src/story/`**:
+  - `story-data.js`: la cartógrafa (Vera, retrato 16×16 con su paleta), actos y capítulos (`ACTS`, cada uno con
+    `when(s)`), escenas (`SCENES`: prólogo en 2 partes, aviso para partidas viejas, los 7 contactos y una escena por
+    capítulo), `QUEST_LINES` (t1–t20), 8 páginas del diario, 4 elementos y el `MANUAL`.
+  - `story.js`: `initStory(ctx, hooks)` en `initProgression` (`main.js`). `state.story = { v, seen{id:ms}, pages{id:ms},
+    elements[], act, chapter, flags, read, veteran }` y `state.introSeen`, sin subir la versión del guardado
+    (`defaultState` trae `story: {}`). Disparadores por el bus → claves (`unlock:expedicion`, `built:taller`, `rank:2`,
+    `quest:t13`, `zone:bosque`, `chapter:bosque`, `threat:announced`, `combat:first`, `element:first`, `story:city`,
+    `story:veteran`). Cola: las escenas esperan `hooks.idle` (ciudad sin modales, sin llegada ni subidas de nivel) y se
+    marcan vistas al aparecer; las líneas de la cartógrafa (barks) solo piden estar en la ciudad y se espacian 4 s.
+    `playPrologue()`, `replay(id)`, `blocking()` (la llegada espera mientras hay una escena épica).
+  - `story-ui.js`: hoja de diálogo abajo a la izquierda (z 45: arriba del HUD, debajo de los modales; **no es modal**,
+    se sigue jugando), barks que se van solos y pantalla completa épica con vetas (Esc saltea; las teclas no llegan a la
+    escena). Al salir de la ciudad (`scene:changed`) la hoja abierta se guarda (`leave()` → `'away'`) y vuelve a salir al
+    regresar: antes tapaba el botón "A la ciudad" de la expedición en pantallas angostas. Con el HUD escondido
+    (`body.no-hud`: colocando, defendiendo) la hoja no se ve y no salen líneas sueltas ni cobros automáticos. Velocidad del texto = `settings.textSpeed`; con reducir movimiento sale entero.
+  - Premios: `store.grant({ page, element })` emite `reward:page` / `reward:element` (story.js los anota). Por el bus
+    para no crear una importación circular state ↔ story.
+- **Cobro automático de t1–t20** (`AUTO_CLAIM`): `story.js` llama `quests.claimMain({auto: true})` cuando la misión está
+  cumplida y estás en la ciudad (al cambiar `quests:changed`, `stats:changed` de amenazas, al volver a la ciudad y cada
+  4 s), con aviso "Misión cumplida", monedas que vuelan desde la tarjeta y la línea de la cartógrafa. `claimMain` emite
+  `quest:claimed {id, title, reward, auto}` siempre.
+- **Orden de entrada** (`onboarding.js`): personaje → nombre → `router.go('city')` → **prólogo** → estilo →
+  `story.cityIntro()` (contacto de la ciudad). En la primera sesión la llegada es liviana (sin modal "Tu primer día":
+  avisos con el premio y "Mañana se abre…"), `firstSession` en `main.js` se prende con `onboarding:done`.
+- **Partidas viejas** (onboarded al crear la historia): `veteran`, `introSeen = true`, contactos de lo que ya conocen
+  dados por vistos y un aviso corto ("Leer el prólogo") que también da la página 1.
+- **Bitácora** (`src/scenes/panels-story.js`, panel `story`): Historia (acto, capítulo, "Qué sigue" con la misión actual
+  y su `goalAction`, escenas para releer, volver a ver el prólogo, actos cerrados), Diario (páginas con globito de no
+  leídas, elementos) y Manual (capítulos por sistema con `open(s, X)`, buscador sin tildes, atajos actuales de
+  `keys.js`). Botón en el riel del HUD (meta de controles pasa a ≤ 15) y tecla **J** (`journal` en `keys.js`). El panel
+  `help` de antes abre el Manual; `openHelp` se borró y Ajustes → Partida tiene el botón "Manual".
+- **Tutorial**: `goalAction` cubre todos los tipos (Huerta y cartel por `city:highlight` / `city:sign`, cobrar por
+  `city:collect`, Taller, Expedición, amenaza, reparar, Bitácora; nivel no tiene botón) y `goalIcon` también.
+  `hintFor` suma reparar, combate y historia. **Flecha guiada** (`guideTarget` en `city.js`): Construir, Expedición
+  (a la izquierda del riel), Huerta y Taller (cartel arriba del edificio), rango y amenaza (a la derecha), carteles de
+  terreno (titilan) o la Bitácora; se apaga al abrir lo que señalaba (`panel:open`, que ahora emite `openPanel`).
+  Abrir Construir ya no apaga la flecha de una misión que no es de construir.
+- **Pistas contextuales** (`src/core/tips.js`, `initTips()` en `boot`): `data-tip` / `data-tip-title`, solo con mouse.
+  Puestas en monedas, gemas, población, felicidad, constructoras, Expedición (provisiones) y en provisiones, ánimo y
+  carga de la expedición. Faltan habilidades e íconos de efecto (llegan con el combate).
+- **Tests**: `tools/test-story.mjs` (en `npm test`, 94 chequeos; capturas en `shots/story/` sin `--no-shots`).
+  `test-e2e.mjs` sigue el recorrido nuevo (prólogo, primer día sin modal, `installClaimLog` para los cobros
+  automáticos, `closeStory` en `drainOverlays`). `test-threats.mjs` acepta t15/t17 ya cobradas. `test-migration.mjs` arma la semana
+  de Contactos con la fecha de hoy en UTC (estaba fija en 2026-W45 y fallaba cada lunes UTC).
+- **Decisión de canon**: los capítulos siguen el orden en que se abren las regiones (Bosque → Sierras → Bañado → Cerro →
+  Costa → abordaje); el plan ponía el Cerro antes que el Bañado (ver DESIGN-STORY §4).
+
 ## Pendiente o frágil
+- **Del paso 3**: el contacto del combate y el de los elementos ya están escritos pero se disparan con `combat:won`/
+  `combat:lost` (paso 5) y `reward:element` (paso 6). Las páginas p4–p8 no tienen disparador todavía (paso 6). "Volver
+  a ver la intro" en la Bitácora va cuando exista la cinemática (paso 4; hoy está "Volver a ver el prólogo"). El ajuste
+  `skipSeen` todavía no se usa. En la web, la hoja de diálogo puede quedar encima de la tarjeta "Instalar" (solo
+  navegador). E6 (primera expedición guiada con pistas de un uso) y E5 (pasos nuevos en la cadena) van en el paso 6.
 - **J7 a medias en el arte de los personajes**: siguen siendo chibi (ojos grandes, cachetes). El plan pide cuerpos,
   peinados y ropa de viajero "con el mundo": es trabajo de modelos en `avatar*.js` (también borrar el código de pelajes).
   Lo mismo para algunas piezas de disfraz que quedaron (hada, mago, Calabaza rodante del auto). Conviene hacerlo con el

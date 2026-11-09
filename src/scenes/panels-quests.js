@@ -157,7 +157,10 @@ export function openQuests(ctx, params = {}) {
       case 'expStars': return 'Las 3 estrellas: cumplí el objetivo, volvé con la carga llena y con todo el grupo bien.';
       case 'expFar': return 'En la expedición, internate más allá de la mitad del mapa.';
       case 'threat': return 'Cuando llegue el aviso, preparate con defensas y reservas. Si no estás, se resuelve sola.';
-      default: return 'Avanza jugando.';
+      case 'repair': return 'Hacé clic en un edificio dañado y elegí Reparar.';
+      case 'combat': return 'Los enemigos aparecen en las casillas lejanas de la expedición.';
+      case 'story': return 'Abrí la Bitácora (J): ahí está lo que sigue en la historia.';
+      default: return 'Seguí la Bitácora (J): ahí está lo que conviene hacer.';
     }
   }
 
