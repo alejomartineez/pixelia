@@ -427,6 +427,7 @@ function headBox(v, D, P, look) {
   return { W, fz: Dz - 1, zb };
 }
 const EYE = { humano: 5, enano: 5, orco: 5, zorro: 6, vaciado: 5, anuro: 9 };
+const EYE_INK = 0x141114;   // ojos negros (nada más oscuro que ~#101010)
 const BEARDS = new Set(['barba_corta', 'barba_larga', 'barba_trenzada', 'bigote']);
 
 /** Ojos (malla aparte para parpadear): lista de [x, y, z, color]. */
@@ -437,18 +438,19 @@ export function eyeVoxels(look, D, P) {
   if (t === 'anuro') {   // en el frente de los ojos saltones: iris dorado con pupila horizontal
     for (const s of [-1, 1]) {
       const x0 = s < 0 ? -W + 1 : W - 5;
-      for (let x = x0; x < x0 + 4; x++) for (const y of [ey, ey + 1]) out.push([x, y, fz - 1, y === ey && x > x0 && x < x0 + 3 ? 0x1a1410 : P.iris]);
+      for (let x = x0; x < x0 + 4; x++) for (const y of [ey, ey + 1]) out.push([x, y, fz - 1, x > x0 && x < x0 + 3 ? EYE_INK : P.iris]);   // ojo negro de 2 × 2 con el aro dorado
     }
     return out;
   }
-  // plantilla de cara (docs/ARTE-PERSONAJES.md §2): ojo de 2 × 1 sin blanco (pupila oscura adentro, sombra del párpado
-  // afuera), bajo el ceño que sale y le hace sombra. Separados por el puente de la nariz (2 vóxeles).
+  // plantilla de cara (docs/ARTE-PERSONAJES.md §2): ojo negro de 2 × 2, bien marcado contra la piel, bajo el ceño que
+  // sale y le hace sombra. Separados por el puente de la nariz (2 vóxeles; en los orcos, 4). Los Vaciados, con el
+  // brillo de la veta.
   const inner = t === 'orco' ? 2 : 1;
   for (const s of [-1, 1]) {
     const xi = s < 0 ? -inner - 1 : inner, xo = s < 0 ? xi - 1 : xi + 1;
     if ((look.face === 'cicatriz_ojo' || look.face === 'parche') && s < 0) continue;
-    if (t === 'zorro' || t === 'orco') { out.push([xi, ey, fz, P.ink], [xo, ey, fz, P.iris]); continue; }   // ojo ámbar con la pupila adentro
-    out.push([xi, ey, fz, P.iris], [xo, ey, fz, t === 'vaciado' ? P.iris : P.lid]);
+    const c = t === 'vaciado' ? P.iris : EYE_INK;
+    for (const y of [ey - 1, ey]) out.push([xi, y, fz, c], [xo, y, fz, c]);
   }
   return out;
 }
@@ -493,7 +495,7 @@ export function buildHead(v, look, D, P) {
       for (let x = Math.min(xi, xo); x <= Math.max(xi, xo); x++) v.set(x, ey + 2, fz + 1, P.skinD);
       v.set(xi, ey + 1, fz + 1, P.skinD);
       v.set(s < 0 ? -3 : 2, ey + 1, fz, P.lid);
-      v.set(xi, ey - 1, fz, P.skinDD);   // lágrima oscura hacia el hocico
+      v.set(xi, ey - 2, fz, P.skinDD);   // lágrima oscura hacia el hocico
       // oreja: triángulo grande hacia arriba y un poco afuera, el adentro oscuro y la punta negra
       for (let r = 0; r < 8; r++) {
         const w = r < 2 ? 4 : r < 4 ? 3 : r < 6 ? 2 : 1, x0 = s < 0 ? -W + (r >> 2) : W - w - (r >> 2);
@@ -684,12 +686,12 @@ function drawFace(v, look, D, P, g) {
     // pintura de guerra: una franja de ocre rojo de lado a lado justo debajo de los ojos y dos rayas que bajan por las
     // mejillas (no manchas oscuras bajo el ojo, que se leen como otro par de ojos)
     const PT = look.type === 'orco' || look.type === 'anuro' ? 0xb0a58a : 0x7a2e24;
-    for (let x = -W; x < W; x++) if (Math.abs(x + 0.5) > 1) v.set(x, ey - 1, x === -W || x === W - 1 ? fz - 1 : fz, PT);
-    for (const x of [-W + 1, W - 2]) for (let y = ey - 3; y < ey - 1; y++) v.set(x, y, fz, ramp(PT, -0.6));
+    for (let x = -W; x < W; x++) if (Math.abs(x + 0.5) > 1) v.set(x, ey - 2, x === -W || x === W - 1 ? fz - 1 : fz, PT);
+    for (const x of [-W + 1, W - 2]) for (let y = ey - 4; y < ey - 2; y++) v.set(x, y, fz, ramp(PT, -0.6));
   }
   else if (f === 'parche') {
     const x = look.type === 'orco' ? -3 : -2;
-    v.box(x - 1, ey, fz + 1, 2, 2, 1, P.ink); v.set(x - 1, ey - 1, fz + 1, P.leatherD);   // parche chico sobre el ojo
+    v.box(x - 1, ey - 1, fz + 1, 2, 2, 1, P.ink); v.set(x - 1, ey - 2, fz + 1, P.leatherD);   // parche chico sobre el ojo
     for (let i = 0; i < W * 2 + 2; i++) { const xx = -W - 1 + i; const yy = ey + 1 + Math.round(i * 0.25); v.set(xx, yy, xx < -W || xx >= W ? 0 : fz + 1, P.leatherD); }
   }
 }

@@ -92,7 +92,7 @@ desde el mentón:
 | Fila | Qué va | Volumen |
 |---|---|---|
 | `ey + 1` | ceño de lado a lado, con las cejas del color del pelo **justo encima del ojo** | sale 1 (`fz + 1`) |
-| `ey` = 5 | ojo de 2 × 1 **sin blanco**: pupila oscura adentro y sombra del párpado (`lid`) afuera; entre los ojos, el puente de la nariz | ojo al ras; malla aparte que parpadea con el pivote a su altura |
+| `ey − 1` a `ey` = 5 | ojo **negro de 2 × 2** (`EYE_INK`), sin blanco, bien marcado contra la piel (pedido del usuario: la ranura de 2 × 1 era muy chica); entre los ojos, el puente de la nariz | ojo al ras; malla aparte que parpadea con el pivote a su altura |
 | 3 a 4 | nariz de 2 de ancho; la punta, en la fila 3 | sale 1 y la punta 2 |
 | 1 | boca: una línea de 2 (`lip`), solo si no hay barba | pintada |
 | 0 | mentón | sale 1 |
@@ -114,7 +114,7 @@ desde el mentón:
   - el hocico se afina en 3 escalones (6, 4 y 2 de ancho), así de frente se ven anillos y no un agujero;
   - nariz negra de 2 × 1 en la punta;
   - ceño naranja oscuro y una lágrima oscura del ojo al hocico;
-  - el ojo es ámbar con la pupila adentro;
+  - el ojo es negro de 2 × 2, como el de todos;
   - orejas de 8 con el adentro oscuro y la punta negra.
 - **Lo que va en la cabeza no tapa la cara:**
   - el pañuelo arranca en `ey + 3`, pegado al cráneo;
@@ -225,7 +225,7 @@ Las muestras se pueden recolorear con `cd`, `cm` y `cf`.
 - **Orcos:**
   - la cabeza se hunde 1 (no 3) entre los hombros, así la cara queda arriba de la línea de los hombros;
   - el ceño sale 1 y la frente pesada va en la fila de arriba. Con 2 de vuelo, desde la cámara tapaba el ojo;
-  - ojo ámbar de brasa con la pupila adentro, como la gente-zorro: el ojo oscuro no se leía sobre el verde;
+  - el ojo es negro de 2 × 2, como el de todos (el ámbar quedó descartado): a ese tamaño se lee sobre el verde;
   - nariz chata con las fosas oscuras, mandíbula que sale 2, boca de 6 y colmillos que suben por delante del labio.
 - **Anuros:** las manchas del lomo van en parches limpios de 3 × 3, a mitad de camino entre la piel y el color de
   marcas. Las rayas negras de antes eran ruido.
