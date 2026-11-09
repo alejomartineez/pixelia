@@ -493,8 +493,7 @@ export function buildHead(v, look, D, P) {
       // ceño: naranja oscuro, más bajo adentro
       const xi = s < 0 ? -2 : 1, xo = s < 0 ? -4 : 3;
       for (let x = Math.min(xi, xo); x <= Math.max(xi, xo); x++) v.set(x, ey + 2, fz + 1, P.skinD);
-      v.set(xi, ey + 1, fz + 1, P.skinD);
-      v.set(s < 0 ? -3 : 2, ey + 1, fz, P.lid);
+      v.set(xi, ey + 1, fz + 1, P.skinDD); v.set(xi, ey, fz + 1, P.skinDD); v.set(s < 0 ? -3 : 2, ey + 1, fz + 1, P.skinDD);   // ceja oscura que baja adentro sobre el ojo
       v.set(xi, ey - 2, fz, P.skinDD);   // lágrima oscura hacia el hocico
       // oreja: triángulo grande hacia arriba y un poco afuera, el adentro oscuro y la punta negra
       for (let r = 0; r < 8; r++) {
@@ -519,13 +518,17 @@ export function buildHead(v, look, D, P) {
       const n = 3 + big;
       for (let i = 0; i < n; i++) {
         const x = s < 0 ? -inner - 1 - i : inner + i, outer = i === n - 1;
-        v.set(x, ey + 1 + (gruff && outer ? 1 : 0), fz + 1, browC);
+        // cejas gruesas (2 filas) que bajan adentro y le tapan al ojo negro la esquina de adentro: le dan ceño (sin
+        // ceja encima, el ojo negro se ve vacío). Enanos y orcos, en V: la punta de afuera sube
+        const y0 = ey + 1 - (gruff && i === 0 ? 1 : 0) + (gruff && outer ? 1 : 0);   // humanos: recta (serio sin enojo)
+        v.set(x, y0, fz + 1, browC);
+        if (!outer || gruff) v.set(x, y0 + 1, fz + 1, i === 0 ? browC : P.hairD);
         if (gruff && outer) v.set(x, ey + 1, fz + 1, P.skinD);
-        if (big && i < n - 1) v.set(x, ey + 2, fz + 1, i === 0 ? P.hairD : browC);   // cejas tupidas
       }
     }
     v.box(-1, 3, fz + 1, 2, ey - 2, 1, P.skin);   // puente y cuerpo de la nariz
-    v.box(-1 - big, 3 - big, fz + 2, 2 + 2 * big, 1 + big, 1, P.skin);   // punta (la luz la pone la escena)
+    // punta (la luz la pone la escena); los enanos, colorada y ancha
+    v.box(-1 - big, 3 - big, fz + 2, 2 + 2 * big, 1 + big, 1, big ? mix(P.skin, 0xb04838, 0.35) : P.skin);
     if (big) v.box(-2, 2, fz + 1, 4, 2, 1, P.skin);
     v.set(-2 - big, 3 - big, fz, P.skinD); v.set(1 + big, 3 - big, fz, P.skinD);   // aletas: sombra al costado
     if (!BEARDS.has(look.face)) for (let x = -1; x < 1; x++) v.set(x, 1, fz, P.lip);   // boca: una línea corta

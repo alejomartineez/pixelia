@@ -98,6 +98,11 @@ desde el mentón:
 | 0 | mentón | sale 1 |
 
 - **Separación:** el puente de la nariz, de 2 vóxeles, separa los ojos. En los orcos los ojos se abren uno más.
+- **Cejas (lo que le da alma al ojo negro):** gruesas, de 2 filas, y pegadas al ojo. Sin ceja encima, el ojo negro se
+  ve vacío ("desalmados", dijo el usuario), y con brillo blanco queda tierno. En enanos y orcos van en V: la punta de
+  adentro baja y le tapa al ojo la esquina de arriba, y la de afuera sube. En humanos van rectas, que da serio sin
+  enojo. En la gente-zorro, la ceja oscura baja adentro. Referencia del usuario: un enano pixel art con cejas en V
+  sobre ojos negros chicos y la nariz colorada.
 - **Gesto por pueblo:**
   - humanos: ceja recta, que da serio;
   - enanos y orcos: el extremo de afuera de la ceja sube uno, que da gesto duro;
