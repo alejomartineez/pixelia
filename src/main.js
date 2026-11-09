@@ -73,7 +73,7 @@ const router = {
       container.className = 'scene-root scene-' + id;
       sceneEl.append(container);
       if (instance.hud === false) hud.hide(); else hud.show();
-      audio.music(instance.music ?? (id === 'city' ? 'city' : 'game'));
+      audio.enterScene(id, instance.music ?? (id === 'city' ? 'city' : id === 'expedition' ? 'expedition' : 'calm'));
       await instance.mount(container, p);
       bus.emit('scene:changed', { id, params: p || {} });
     } catch (e) {
@@ -361,6 +361,7 @@ async function boot() {
   bootUi?.started();
   store.load();
   applyDebugParams();
+  audio.connect(bus);   // stingers, trueno y noche por eventos (DESIGN-AUDIO.md)
   initSettings(ctx);   // gráficos, sonido, texto, escala de la interfaz y atajos (src/core/settings.js)
   initTips();
   initProgression();

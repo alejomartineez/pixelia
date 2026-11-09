@@ -22,6 +22,7 @@ const src = list('src', /\.js$/);
 const files = [
   './', './index.html', './styles.css', './manifest.webmanifest',
   ...list('vendor', /\.js$/), ...list('fonts', /\.(woff2?|ttf)$/), ...list('icons', /\.(png|svg)$/),
+  ...list('assets', /\.(m4a|json)$/),   // sonidos (DESIGN-AUDIO.md)
   './src/main.js', ...src.filter(f => f !== './src/main.js'),
 ];
 

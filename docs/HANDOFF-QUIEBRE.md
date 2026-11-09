@@ -46,10 +46,11 @@ cada paso.
 | 2d | J6 interfaz oscura + J7 fuera lo tierno (solo personas, estilos nuevos, guardado v4) | hecho | 3ef5f83 (v29) |
 | 3 | D + E1–E4 + E7 + H: motor de historia, Bitácora con el Manual, prólogo, tutorial, primeros contactos | hecho | 97ac780 (v30) |
 | 3b | J1–J5: ambiente (oscuridad por lugar, luz con la historia, día y noche, clima dinámico) | hecho | cefa551 (v33) |
-| 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro) | **siguiente**: descargas aprobadas ("dale", set mínimo de `paso-3c-fuentes-audio.md`). La abre el usuario desde la app (brief `paso-3b-hecho-brief-3c.md` en las notas compartidas) | |
-| 4 | B: cinemática "El Quiebre" | pendiente | |
+| 3c | K: sonido y música (motor en `src/audio/`, mezclador por buses, música adaptativa, paisaje sonoro, 104 sonidos CC0) | hecho | (commit v34) |
+| 4a | M1 + M2: personajes serios (vóxel detallado y low-poly para criaturas y jefes) y pueblos del mundo | **en curso en una rama aparte** (worktree propio, la abrió el coordinador); la integra el coordinador | |
+| 4 | B + M4: cinemática "El Quiebre" y llegada corta con Vera | pendiente (después del 4a) | |
 | 5 | C: combate táctico (motor y tests, escena e interfaz, casilla `enemigo`) | pendiente | |
-| 5b | L5: personas con nombre, Vínculo, herramientas, nivel del líder y pestaña Progreso | pendiente | |
+| 5b | L5 + M3: personas con nombre, Vínculo, herramientas, nivel del líder y pestaña Progreso | pendiente | |
 | 6 | Acto 1 completo + E5–E6 | pendiente | |
 | 7 | Balance (`sim-combat`, `sim:economy`), telemetría y primer release | pendiente | |
 
@@ -278,9 +279,38 @@ cada paso.
   75–95 %; antes 20 ✔). El simulador es muy sensible al orden de compras: cualquier cambio en las salidas mueve qué defensa
   se construye cuándo. Revisarlo en el paso 7.
 - **Para después**: los lugares de la historia (mina con vetas, faros con haces) están como perfiles pero ninguna escena los
-  usa todavía (paso 6 o el combate). El sonido de la lluvia, el trueno y la noche va en el 3c (`ambience:thunder`,
-  `ambience:night`, `look.weather`). El combate pide `combatConditions(cond)` (paso 5, segunda parte). Los ecos (L6) se
+  usa todavía (paso 6 o el combate). El sonido de la lluvia, el trueno y la noche quedó en el 3c. El combate pide `combatConditions(cond)` (paso 5, segunda parte). Los ecos (L6) se
   arman en el paso 6 sobre `echoSpots()` de la ciudad y de la expedición.
+
+**Ramas en paralelo (2026-11-09).** El 4a y la integración del combate con la expedición corren en ramas aparte, cada
+uno en su worktree; los integra a `master` la sesión coordinadora. El 3c se commiteó directo en `master`.
+
+**Paso 3c: sonido y música** (detalle en [DESIGN-AUDIO.md](../DESIGN-AUDIO.md))
+- **Motor** en `src/audio/`: `mixer.js` (buses general/música/ambiente/efectos/interfaz/voz, ducking, reverb por lugar
+  con impulsos hechos en código, amortiguado, 32 voces, limitador), `sampler.js` (`.m4a` del manifest, loops sin el
+  relleno del AAC, instrumentos con round-robin), `synth.js` (cuerdas, bajo, coro con formantes y el respaldo de cada
+  instrumento), `pieces.js` (10 piezas, 3 leitmotivs, 14 stingers), `composer.js` (capas por intensidad, cambios en el
+  compás, frases con respiros), `soundscape.js` (camas, emisores 3D, trueno con retraso, pasos), `engine.js`.
+- **Fachada** `src/core/audio.js`: misma API de siempre más `setScene`, `stinger`, `intensity`, `epic`, `motif`, `step`,
+  `thunder`, `dialog`, `connect(bus)` (en `main.js`), `enterScene` (lo llama el router), `credits` y `debug`. Lo alimentan
+  `city-ambience.js` (cada segundo, más cosechar y reparar) y `exp-ambience.js` (cada paso, con pasos según el terreno).
+  El secuenciador chiptune y el ambiente sintético viejos se borraron; los efectos con nombre ahora son muestras de Kenney
+  o stingers, con la síntesis de antes de respaldo.
+- **Ajustes**: fila "Voces" en Sonido; Partida → Créditos suma "Sonidos e instrumentos" (desde `manifest.credits`).
+- **Archivos**: `assets/audio/` (4,8 MB, 104 `.m4a`, `manifest.json`, `LICENSES.md`). Se rehacen con
+  `node tools/audio/prepare.mjs --src <descargas>` (qué se toma de cada descarga: `tools/audio/sources.mjs`). Las
+  descargas originales quedaron en el scratchpad de la sesión del 3c (no en el repo); si hace falta rehacerlas, bajar de
+  nuevo lo de `paso-3c-fuentes-audio.md` (set mínimo ya aprobado). `assets/` entra a `sw.js` y a `desktop/stage.mjs`.
+- **Pruebas**: `tools/test-audio.mjs` en `npm test`; `node tools/render-audio.mjs` deja 9 `.wav` en `shots/audio/`
+  (ciudad de día, noche y tormenta; expedición cerca y lejos; combate; épico; mina; Mi Casa). Niveles: ciudad −20 LUFS,
+  picos debajo de −3 dBFS.
+- **Enganches que esperan a otros pasos**: combate (paso 5) → `bus.emit('combat:music', { danger })` y
+  `bus.emit('combat:end', { won })` (no toqué `src/combat/`); cinemática (paso 4) → `audio.music('epic')`,
+  `audio.epic(true)`, `audio.motif('quiebre')`; diálogos → `audio.dialog(true/false)` (story-ui todavía no lo llama);
+  pasos en Mi Casa y en combate → `audio.step('madera')` cuando haya personaje que camine. El bus `voice` está listo
+  pero no hay voces grabadas.
+- **Falta (necesita OK de descarga nueva)**: cuerdas sostenidas, cello y arpa de VSCO (el colchón hoy es sintético),
+  Impact Sounds de Kenney para pasos reales por superficie, originales de Freesound en calidad completa.
 
 **Sección L del plan (historia que se juega; c2f389d).** El usuario sumó L1 (elegir cuánto sacarle a un elemento y la
 Grieta), L2 (la culpa de Vera, pista falsa del traidor, se revela en el Acto 2), L4 (el giro: las Casas cavaron donde
@@ -291,6 +321,9 @@ L4. **No está implementado**: 3b deja la noche y los lugares para los ecos, 5b 
 los primeros ecos, 7 balancea L1 y L5.
 
 ## Pendiente o frágil
+- **`npm test` con la máquina cargada** (2026-11-09, otras sesiones corriendo tests a la vez): `test-mock`,
+  `test-migration`, `test-social`, `test-threats` y `test-story` fallaron alguna vez en la cadena por tiempos y pasaron
+  solos. Si falla una en la cadena, correrla sola antes de buscar un bug.
 - **Del paso 3**: el contacto del combate y el de los elementos ya están escritos pero se disparan con `combat:won`/
   `combat:lost` (paso 5) y `reward:element` (paso 6). Las páginas p4–p8 no tienen disparador todavía (paso 6). "Volver
   a ver la intro" en la Bitácora va cuando exista la cinemática (paso 4; hoy está "Volver a ver el prólogo"). El ajuste
