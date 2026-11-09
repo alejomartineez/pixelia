@@ -51,7 +51,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 1b-2 | Íconos, tanda 2 (las 108 láminas de Hallazgos) | — | después del 1b | |
 | 1c | Sacar Mi Casa y guardado v6 | trav-1c-micasa → trav-1c2-micasa | integrado | master |
 | 1d | Generador de sprites 2D por capas, animaciones y `sprites.html` | trav-1d-sprites | integrado (quedan retoques de arte, ver notas) | master |
-| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a → trav-2a2 → trav-2a3 | **hecho** (sin bump): rebasado sobre v57, `fightRate` 1,5, textos a `t()`, `npm test` (ver notas) | rama `claude/nifty-nightingale-01cb64` |
+| 2a | Nivel único, talentos, arsenal, maestría y fuerza | trav-2a → trav-2a2 → trav-2a3 | **hecho** (sin bump): rebasado sobre v57, `fightRate` 1,5, textos a `t()`, `npm test` entero sin confirmar (primera parte ✔, ver notas) | rama `claude/nifty-nightingale-01cb64` |
 | 2b | Cuartel, reclutas y encargos | — | después del 2a | |
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
