@@ -198,7 +198,7 @@ export default function create(ctx) {
     const nr = R.newRun({
       region, zone, kind, seed, party: P.party.slice(), equip: P.equip.slice(),
       prov: kind === 'corta' ? EXP.kinds.corta.prov : P.prov,
-      mods: { roleLevel: Object.fromEntries(P.party.map(id => [id, P.level])), cargoMax: P.cargoMax },
+      mods: { tier: Object.fromEntries(P.party.map(id => [id, P.level])), cargoMax: P.cargoMax },
     });
     // ?hour=21 en una práctica: la salida arranca a esa hora (capturas y pruebas de la noche, PLAN-QUIEBRE §J3)
     const qh = new URLSearchParams(location.search).get('hour');

@@ -12,7 +12,7 @@ export const COMBAT = {
   floodExtra: 1,                  // una casilla inundada cuesta 1 más
   floodTurns: 2,                  // cuántas fases enemigas dura una inundación
   floodDmg: [1, 2],               // el agua tira: daño por fase en casilla inundada (fase 1 / fase 2 de la bestia)
-  stuckMv: 1,                     // trabado: quien arranca al lado de un enemigo se mueve 1 (la guía no se traba)
+  stuckMv: 1,                     // trabado: quien arranca al lado de un enemigo se mueve 1 (el monje no se traba)
   highDmg: 1,                     // pegar desde lo alto a alguien de abajo
   highRange: 1,                   // alcance extra de los ataques a distancia desde lo alto
   markBonus: 3,                   // daño extra del golpe a un enemigo marcado (y se gasta la marca)
@@ -27,7 +27,7 @@ export const COMBAT = {
     atk: (lv) => Math.floor((lv + 2) / 6),     // ataque extra (nivel 4: +1, 10: +2, …)
     slots: [1, 5, 12],                         // niveles que abren espacios de habilidad de elemento
   },
-  roleLevel: { hp: 1, atkEvery: 2 },           // por nivel de rol sobre 1: +1 de vida; +1 de ataque cada 2 niveles
+  classLevel: { hpEvery: 2, atkEvery: 4 },     // nivel de clase (1..10): +1 de vida cada 2 niveles y +1 de ataque cada 4
   revancha: { hp: 5, bossHp: 0.2, max: 2 },    // por intento fallido contra un jefe: +5 de vida al grupo, −20 % al jefe
   maxTurns: { comun: 12, jefe: 16 },           // si se llega, se hace de noche y hay que replegarse (derrota)
   quick: { loot: 0.75 },                       // resolución rápida: botín reducido, sin estrellas extra
@@ -51,7 +51,10 @@ export const TILES = {
 export const MAP_CHARS = { '.': 'llano', '~': 'agua', A: 'alto', T: 'arbol', R: 'roca', P: 'pasarela', S: 'salida' };
 
 // Habilidades. range: [mín, máx] en pasos (Manhattan) desde quien la usa. cd: turnos propios de recarga.
-// kind: attack | mark | trap | wall | heal | healArea | disarm | push | swap | root | free | dazzle | cover | rope
+// kind: attack | mark | trap | wall | heal | healArea | disarm | push | swap | root | free | dazzle | cover | rope | leap
+// Opcionales (clases, paso 5b): cleave (pega también a los costados del blanco), rootHit (frena al blanco N turnos),
+// lootKill (si lo liquida, suma 1 de botín), noCancel y wallTurns: 0 (raíz sin pared y sin sacarle el golpe), radius en
+// cover (0: solo quien la usa), self (heal: solo a sí mismo), leaveWall (leap: deja una pared donde estaba).
 export const ABILITIES = {
   golpe: { id: 'golpe', name: 'Golpe', kind: 'attack', range: [1, 1], dmg: 'atk', cd: 0, text: 'Pega al lado.' },
   tiro: { id: 'tiro', name: 'Tiro', kind: 'attack', range: [2, 3], dmg: 'atk', cd: 0, ranged: true, text: 'Pega de lejos (2 a 3; 4 desde lo alto). Trabado no puede apuntar.' },
@@ -72,11 +75,54 @@ export const ABILITIES = {
     text: 'Empuja una casilla. Si choca recibe 2; si cae en una trampa, la pisa. Su golpe se corre con él.' },
   relevo: { id: 'relevo', name: 'Relevo', kind: 'swap', range: [1, 3], cd: 3, text: 'Cambia de lugar con alguien del grupo.' },
   liberar: { id: 'liberar', name: 'Liberar', kind: 'free', range: [1, 1], cd: 0, text: 'Desata a quien hay que rescatar.' },
+  // Guerrero (paso 5b)
+  tajo: { id: 'tajo', name: 'Tajo', kind: 'attack', range: [1, 1], dmg: 'atk', cleave: true, cd: 2,
+    text: 'Golpe ancho: pega al de enfrente y a los que estén a sus costados.' },
+  guardia: { id: 'guardia', name: 'Guardia', kind: 'cover', range: [0, 0], radius: 1, cover: 2, cd: 3,
+    text: 'Se planta: él y los de al lado reciben 2 menos en el próximo turno enemigo.' },
+  embestida: { id: 'embestida', name: 'Embestida', kind: 'push', range: [1, 1], dmg: 2, cd: 3,
+    text: 'Empuja con el cuerpo: 2 de daño y lo corre una casilla (si choca, recibe 2 más).' },
+  aguante: { id: 'aguante', name: 'Aguante', kind: 'heal', range: [0, 0], self: true, heal: 4, cd: 3, text: 'Respira hondo: se cura 4.' },
+  // Cazador
+  tiro_pie: { id: 'tiro_pie', name: 'Tiro al pie', kind: 'root', range: [2, 3], dmg: 1, root: 1, wallTurns: 0, noCancel: true, cd: 3, ranged: true,
+    text: 'Lo clava al piso: no se mueve el próximo turno (su golpe sigue marcado).' },
+  certero: { id: 'certero', name: 'Tiro certero', kind: 'attack', range: [2, 4], dmg: 'atk', plus: 2, cd: 2, ranged: true,
+    text: 'Apunta con calma: +2 de daño y llega a 4 (5 desde lo alto).' },
+  lazo: { id: 'lazo', name: 'Lazo', kind: 'trap', range: [1, 3], dmg: 2, root: 1, cd: 3, text: 'Deja un lazo más lejos: 2 de daño y lo frena.' },
+  // Forjador
+  remache: { id: 'remache', name: 'Remache', kind: 'attack', range: [1, 1], dmg: 'atk', plus: 1, pierce: true, cd: 2,
+    text: 'Golpe de martillo: +1 y atraviesa la coraza (sin romperla).' },
+  cepo: { id: 'cepo', name: 'Cepo', kind: 'trap', range: [1, 2], dmg: 4, root: 2, cd: 3, text: 'Trampa de hierro: 4 de daño y lo frena 2 turnos.' },
+  // Curandero
+  vendaje: { id: 'vendaje', name: 'Vendaje', kind: 'heal', range: [0, 1], heal: 6, cd: 3, text: 'Venda fuerte: cura 6 a quien está al lado (o a sí mismo).' },
+  resguardo: { id: 'resguardo', name: 'Resguardo', kind: 'cover', range: [0, 0], radius: 1, cover: 1, cd: 3,
+    text: 'Junta al grupo: él y los de al lado reciben 1 menos en el próximo turno enemigo.' },
+  // Monje
+  esquivar: { id: 'esquivar', name: 'Esquivar', kind: 'cover', range: [0, 0], radius: 0, cover: 3, cd: 2,
+    text: 'Se pone en guardia: recibe 3 menos en el próximo turno enemigo.' },
+  salto: { id: 'salto', name: 'Salto', kind: 'leap', range: [2, 3], cd: 2, text: 'Salta a una casilla libre a 2 o 3, por encima de todo.' },
+  // Saqueador
+  rapina: { id: 'rapina', name: 'Rapiña', kind: 'attack', range: [1, 1], dmg: 'atk', plus: 1, lootKill: true, cd: 2,
+    text: 'Golpe con mañas: +1, y si lo liquida suma 1 de botín.' },
+  humo: { id: 'humo', name: 'Humo', kind: 'dazzle', range: [0, 0], radius: 1, cd: 4, text: 'Bomba de humo: los enemigos de al lado pierden su golpe marcado.' },
   // Elemento Raíz (líder)
   enredar: { id: 'enredar', name: 'Enredar', kind: 'root', range: [1, 3], dmg: 1, root: 1, wallTurns: 2, cd: 3, element: 'raiz',
     text: 'Las raíces lo frenan: pierde el golpe marcado, no se mueve el próximo turno y sale una pared de raíz a su lado.' },
   muro_raiz: { id: 'muro_raiz', name: 'Muro de raíz', kind: 'wall', range: [1, 3], turns: 3, cd: 2, element: 'raiz',
     text: 'Levanta una pared de raíz por 3 turnos.' },
+  // Subclases de Raíz del líder (SUBCLASSES en src/combat/classes.js)
+  abrazo_raiz: { id: 'abrazo_raiz', name: 'Abrazo de raíz', kind: 'root', range: [1, 1], dmg: 2, root: 1, wallTurns: 2, cd: 3, element: 'raiz',
+    text: 'Lo agarra de cerca: 2 de daño, pierde el golpe marcado, no se mueve y sale una pared de raíz a su lado.' },
+  espina: { id: 'espina', name: 'Espina', kind: 'attack', range: [2, 4], dmg: 'atk', plus: 1, rootHit: 1, cd: 2, ranged: true, element: 'raiz',
+    text: 'Tiro de espina: +1 y lo frena un turno.' },
+  zarza: { id: 'zarza', name: 'Zarza', kind: 'trap', range: [1, 3], dmg: 3, root: 2, cd: 2, element: 'raiz',
+    text: 'Hace crecer una zarza: 3 de daño y lo frena 2 turnos.' },
+  savia: { id: 'savia', name: 'Savia', kind: 'healArea', range: [0, 0], radius: 2, heal: 3, cd: 3, element: 'raiz',
+    text: 'La savia cierra heridas: cura 3 a todo el grupo que esté a 2 o menos.' },
+  brote: { id: 'brote', name: 'Brote', kind: 'leap', range: [1, 3], leaveWall: 2, cd: 2, element: 'raiz',
+    text: 'Salta a una casilla libre a 3 o menos y deja una pared de raíz donde estaba.' },
+  zarpa_raiz: { id: 'zarpa_raiz', name: 'Zarpa de raíz', kind: 'disarm', range: [1, 1], dmg: 2, rootHit: 1, cd: 3, element: 'raiz',
+    text: 'Le arranca lo que tiene en la mano: 2 de daño, pierde el golpe, lo frena y suma botín.' },
 };
 
 // Elementos: cada uno suma habilidades al líder, en el orden en que se abren los espacios (COMBAT.leader.slots).
@@ -95,18 +141,23 @@ export const ITEMS = {
 };
 export const ITEM_IDS = ['botiquin', 'farol', 'pala', 'lona', 'cuerda'];
 
-// Unidades del grupo. El rol define el kit (plan §C).
+// Unidades del grupo: el líder y las 6 clases (paso 5b; reemplazan a los roles). Lo de cada clase (grupo de 4
+// habilidades, pasivas, subclases y curvas) vive en src/combat/classes.js; acá van la vida, el movimiento, el ataque y
+// el kit por defecto: el ataque básico y las 2 primeras habilidades del grupo.
 export const UNITS = {
   lider: { id: 'lider', name: 'Líder', hp: 12, mv: 3, atk: 3, abilities: ['golpe'], text: 'Si cae, el grupo se repliega.' },
-  exploracion: { id: 'exploracion', name: 'Exploración', hp: 8, mv: 3, atk: 2, abilities: ['tiro', 'marcar'], text: 'A distancia.' },
-  ingenieria: { id: 'ingenieria', name: 'Ingeniería', hp: 10, mv: 3, atk: 3, abilities: ['golpe', 'trampa', 'barrera'], text: 'Barreras y trampas.' },
-  sanidad: { id: 'sanidad', name: 'Sanidad', hp: 9, mv: 3, atk: 1, abilities: ['golpe', 'curar', 'aliento'], text: 'Curar.' },
-  recoleccion: { id: 'recoleccion', name: 'Recolección', hp: 10, mv: 3, atk: 2, abilities: ['golpe', 'romper', 'robar'], text: 'Robar o romper.' },
-  guia: { id: 'guia', name: 'Guía', hp: 10, mv: 4, atk: 3, abilities: ['golpe', 'empujar', 'relevo'], text: 'Movimiento y empujar.' },
+  guerrero: { id: 'guerrero', name: 'Guerrero', hp: 13, mv: 3, atk: 3, abilities: ['golpe', 'tajo', 'guardia'], text: 'Primera línea: aguanta y protege.' },
+  cazador: { id: 'cazador', name: 'Cazador', hp: 8, mv: 3, atk: 2, abilities: ['tiro', 'marcar', 'tiro_pie'], text: 'A distancia y marcar.' },
+  forjador: { id: 'forjador', name: 'Forjador', hp: 10, mv: 3, atk: 3, abilities: ['golpe', 'trampa', 'barrera'], text: 'Barreras y trampas.' },
+  curandero: { id: 'curandero', name: 'Curandero', hp: 9, mv: 3, atk: 1, abilities: ['golpe', 'curar', 'aliento'], text: 'Curar y proteger.' },
+  monje: { id: 'monje', name: 'Monje', hp: 10, mv: 4, atk: 3, abilities: ['golpe', 'empujar', 'relevo'], text: 'Movimiento, empujar y esquivar.' },
+  saqueador: { id: 'saqueador', name: 'Saqueador', hp: 10, mv: 3, atk: 2, abilities: ['golpe', 'romper', 'robar'], text: 'Robar y romper.' },
   cautivo: { id: 'cautivo', name: 'Minero atrapado', hp: 12, mv: 3, atk: 0, abilities: [],
     text: 'Atado y escondido: los bichos no lo ven. Cuando lo desatás, van por él. Hay que llevarlo a la salida.' },
 };
-export const ROLE_IDS = ['exploracion', 'ingenieria', 'sanidad', 'recoleccion', 'guia'];
+export const CLASS_IDS = ['guerrero', 'cazador', 'forjador', 'curandero', 'monje', 'saqueador'];
+/** @deprecated los roles pasaron a clases (paso 5b). Queda el nombre para quien todavía lo importa. */
+export const ROLE_IDS = CLASS_IDS;
 
 // Ataques enemigos. pattern (relativo a quien ataca y a dónde mira):
 //   ring: las 4 de al lado · ring8: las 8 de alrededor · arc: la de enfrente y sus dos costados
@@ -121,18 +172,18 @@ export const ENEMIES = {
   bicho: { id: 'bicho', name: 'Bicho de veta', hp: 7, mv: 2, armor: 1, explode: true, prefers: 'captive',
     attacks: [{ id: 'chispazo', name: 'Chispazo', pattern: 'line2', dmg: 2 }],
     text: 'Coraza de mineral (−1 a cada golpe). Al morir revienta y lastima a los de al lado.' },
-  grumete: { id: 'grumete', name: 'Grumete pirata', hp: 12, mv: 3, prefers: 'near', nip: 1,
+  grumete: { id: 'grumete', name: 'Grumete pirata', hp: 14, mv: 3, prefers: 'near', nip: 1,
     attacks: [{ id: 'sable', name: 'Sablazo', pattern: 'arc', dmg: 3 }], text: 'Barre de frente con el sable. Acosa: al llegar pega 1.' },
-  tirador: { id: 'tirador', name: 'Tirador pirata', hp: 9, mv: 2, prefers: 'line', keepAway: true,
+  tirador: { id: 'tirador', name: 'Tirador pirata', hp: 10, mv: 2, prefers: 'line', keepAway: true,
     attacks: [{ id: 'trabuco', name: 'Trabuco', pattern: 'shot', len: 4, dmg: 3 }],
     text: 'Tira en línea y pega en lo primero que encuentra: una barrera lo para.' },
-  bestia: { id: 'bestia', name: 'Bestia del Bañado', hp: 30, mv: 2, heavy: true, boss: true, swims: true, prefers: 'near',
+  bestia: { id: 'bestia', name: 'Bestia del Bañado', hp: 32, mv: 2, heavy: true, boss: true, swims: true, prefers: 'near',
     phases: [
       { from: 1, attacks: [{ id: 'coletazo', name: 'Coletazo', pattern: 'line3', dmg: 4 }], floodRows: 2, text: 'El agua sube por franjas.' },
       { from: 0.5, attacks: [{ id: 'remolino', name: 'Remolino', pattern: 'ring8', dmg: 4 }], floodRows: 3, text: 'Marejada: el agua sube más y tira más fuerte.' },
     ],
     text: 'Inunda casillas por turnos: hay que pelear en alto. No se la puede empujar ni frenar su golpe.' },
-  capitana: { id: 'capitana', name: 'La capitana', hp: 34, mv: 3, heavy: true, boss: true, prefers: 'leader',
+  capitana: { id: 'capitana', name: 'La capitana', hp: 42, mv: 3, heavy: true, boss: true, prefers: 'leader',
     phases: [
       { from: 1, attacks: [{ id: 'pistola', name: 'Pistola', pattern: 'shot', len: 5, dmg: 4 }, { id: 'sable_c', name: 'Sable', pattern: 'arc', dmg: 4, near: true }],
         bridgeEvery: 2, text: 'Llama refuerzos por la pasarela cada dos turnos.' },
@@ -154,8 +205,8 @@ export const CHALLENGES = {
 
 // Combos que se descubren y se anotan en el manual.
 export const COMBOS = {
-  marca: { id: 'marca', name: 'Marcar y pegar', text: 'Exploración marca y el siguiente golpe hace +3.' },
-  empuje_trampa: { id: 'empuje_trampa', name: 'A la trampa', text: 'Empujar a un enemigo a una trampa de ingeniería.' },
+  marca: { id: 'marca', name: 'Marcar y pegar', text: 'El cazador marca y el siguiente golpe hace +3.' },
+  empuje_trampa: { id: 'empuje_trampa', name: 'A la trampa', text: 'Empujar a un enemigo a una trampa.' },
   empuje_choque: { id: 'empuje_choque', name: 'Contra la pared', text: 'Empujar a un enemigo contra algo: recibe 2.' },
   fuego_amigo: { id: 'fuego_amigo', name: 'Entre ellos', text: 'Correr a un enemigo para que el golpe de otro le caiga a él.' },
   reventon: { id: 'reventon', name: 'Reventón', text: 'Un bicho de veta que revienta lastima a otro enemigo.' },
@@ -183,7 +234,7 @@ export const ENCOUNTERS = {
     waves: [{ turn: 4, kinds: ['lobo'] }],
     objective: { type: 'defeat' },
     challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 6 }],
-    expected: { level: 1, size: 3 },
+    expected: { level: 1, size: 3, classLevel: 1 },
     reward: { xp: 20, mats: { madera: 2, hierbas: 1 } },
   },
   bosque_manada: {
@@ -202,7 +253,7 @@ export const ENCOUNTERS = {
     enemies: ['lobo', 'lobo', 'lobo_viejo'],
     objective: { type: 'defeat' },
     challenges: [{ id: 'sinBajas' }, { id: 'combo', n: 2 }],
-    expected: { level: 2, size: 3 },
+    expected: { level: 2, size: 3, classLevel: 1 },
     reward: { xp: 30, mats: { madera: 3, hierbas: 2 } },
   },
   cerro_veta: {
@@ -221,7 +272,7 @@ export const ENCOUNTERS = {
     enemies: ['bicho', 'bicho', 'bicho', 'bicho', 'bicho', 'bicho'],
     objective: { type: 'defeat' },
     challenges: [{ id: 'turnos', n: 6 }, { id: 'combo', n: 2 }],
-    expected: { level: 3, size: 3 },
+    expected: { level: 3, size: 3, classLevel: 2 },
     reward: { xp: 35, mats: { mineral: 3, piedra: 2 } },
   },
   cerro_rescate: {
@@ -242,7 +293,7 @@ export const ENCOUNTERS = {
     maxTurns: 14,
     objective: { type: 'rescue' },
     challenges: [{ id: 'rescateLimpio' }, { id: 'sinBajas' }],
-    expected: { level: 3, size: 3 },
+    expected: { level: 3, size: 3, classLevel: 2 },
     reward: { xp: 35, mats: { mineral: 2, piedra: 2 } },
   },
   banado_juncal: {
@@ -262,7 +313,7 @@ export const ENCOUNTERS = {
     waves: [{ turn: 2, kinds: ['lobo'] }, { turn: 3, kinds: ['lobo'] }, { turn: 4, kinds: ['lobo_viejo'] }],
     objective: { type: 'survive', turns: 5 },
     challenges: [{ id: 'sinBajas' }, { id: 'liderIntacto' }],
-    expected: { level: 4, size: 3, element: 'raiz' },
+    expected: { level: 4, size: 3, element: 'raiz', classLevel: 3 },
     reward: { xp: 40, mats: { hierbas: 3, madera: 2 } },
   },
   banado_bestia: {
@@ -281,7 +332,7 @@ export const ENCOUNTERS = {
     enemies: ['bestia'],
     objective: { type: 'defeat', boss: true },
     challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 8 }],
-    expected: { level: 5, size: 3, element: 'raiz' },
+    expected: { level: 5, size: 3, element: 'raiz', classLevel: 3 },
     reward: { xp: 80, mats: { hierbas: 4, madera: 3 }, page: 'p3', flag: 'bestia_vencida' },
     noMirrorJitter: true,
   },
@@ -302,7 +353,7 @@ export const ENCOUNTERS = {
     waves: [{ turn: 3, kinds: ['grumete'] }],
     objective: { type: 'defeat' },
     challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 6 }],
-    expected: { level: 6, size: 3, element: 'raiz' },
+    expected: { level: 6, size: 3, element: 'raiz', classLevel: 4 },
     reward: { xp: 45, mats: { madera: 2, mineral: 2, piedra: 2 } },
   },
   costa_capitana: {
@@ -322,7 +373,7 @@ export const ENCOUNTERS = {
     bridge: { hp: 10, kinds: ['grumete', 'tirador'] },
     objective: { type: 'defeat', boss: true },
     challenges: [{ id: 'pasarela' }, { id: 'sinBajas' }],
-    expected: { level: 7, size: 3, element: 'raiz' },
+    expected: { level: 7, size: 3, element: 'raiz', classLevel: 4 },
     reward: { xp: 100, mats: { mineral: 3, madera: 3, piedra: 2 }, page: 'p8', flag: 'capitana_vencida' },
     noMirrorJitter: true,
   },
@@ -330,5 +381,5 @@ export const ENCOUNTERS = {
 export const ENCOUNTER_IDS = Object.keys(ENCOUNTERS);
 // Orden del Acto 1 (plan, "Actos"): Bosque → Cerro (Núcleo de Raíz) → Bañado → Costa.
 export const ACT1 = ['bosque_claro', 'bosque_manada', 'cerro_veta', 'cerro_rescate', 'banado_juncal', 'banado_bestia', 'costa_muelle', 'costa_capitana'];
-// El grupo del tutorial: el líder y los tres roles del prototipo de expedición, nivel 1, sin herramientas ni elemento.
-export const TUTORIAL_PARTY = ['exploracion', 'ingenieria', 'sanidad'];
+// El grupo del tutorial: el líder y las tres clases del prototipo de expedición, nivel 1, sin herramientas ni elemento.
+export const TUTORIAL_PARTY = ['cazador', 'forjador', 'curandero'];

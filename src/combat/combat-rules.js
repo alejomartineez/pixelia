@@ -2,7 +2,9 @@
 // Node. `b` (la pelea) es JSON puro: se guarda cada turno en state.expedition.active y se retoma. Mismo seed + mismas
 // acciones = mismo resultado: toda la suerte sale de b.rs (estado del mulberry32).
 //
-//   newBattle({ encounter, seed, party, level, element, tools, equip, roleLevel, attempt }) → b
+//   newBattle({ encounter, seed, party, level, element, elements, leader, classLevel, picks, tools, equip, attempt }) → b
+//     party: clases de los integrantes (src/combat/classes.js; los roles viejos se traducen solos)
+//     level: nivel del líder (1..30) · leader: { cls, sub, picks } · classLevel: { clase: 1..10 } · picks: { clase: [ids] }
 //   view(b)                       → lo que se ve: casillas, unidades, intenciones a la vista, objetivo, desafíos
 //   move(b, unitId, x, y)         → { ok, why, events }
 //   act(b, unitId, abilityId, x, y) → { ok, why, events }   (abilityId 'item:botiquin' usa un consumible)
@@ -17,7 +19,8 @@
 // que marcaron el turno anterior (las casillas marcadas pegan a quien esté ahí, amigo o enemigo), sube el agua,
 // llegan refuerzos, y cada enemigo se mueve y marca su próximo golpe. Las marcas son relativas a quien ataca: si lo
 // empujan, su golpe se corre con él.
-import { COMBAT, TILES, MAP_CHARS, ABILITIES, ELEMENTS, ITEMS, UNITS, ENEMIES, CHALLENGES, ENCOUNTERS } from './combat-data.js';
+import { COMBAT, TILES, MAP_CHARS, ABILITIES, ITEMS, UNITS, ENEMIES, CHALLENGES, ENCOUNTERS } from './combat-data.js';
+import { memberKit, leaderKit, toClass } from './classes.js';
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const RING8 = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
@@ -147,8 +150,8 @@ function makeUnit(b, side, type, x, y, extra = {}) {
   return u;
 }
 
-export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], level = 1, element = null, tools = {}, equip = [],
-  roleLevel = {}, attempt = 1 } = {}) {
+export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], level = 1, element = null, elements = null, leader = null,
+  classLevel = null, picks = {}, roleLevel = null, tools = {}, equip = [], attempt = 1 } = {}) {
   const enc = ENCOUNTERS[encounter];
   if (!enc) throw new Error('encuentro desconocido: ' + encounter);
   const map = buildMap(enc, seed >>> 0);
@@ -162,7 +165,7 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
     maxTurns: enc.maxTurns || COMBAT.maxTurns[enc.kind] || 14,
     objective: { ...enc.objective },
     tools: { catalejo: 0, martillo: 0, cuerda: 0, botiquin: 0, farol: 0, ...tools }, ropeItem: false,
-    items: {}, level, element, attempt,
+    items: {}, level, element, attempt, intentPlus: 0, lootWin: 0,
     stats: { dmg: {}, kills: {}, combos: [], downs: 0, stolen: 0 },
   };
   for (const id of equip) if (ITEMS[id]) b.items[id] = 1;
@@ -170,20 +173,17 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
   const revHp = enc.kind === 'jefe' ? fails * COMBAT.revancha.hp : 0;
 
   // el líder y el grupo
-  const L = makeUnit(b, 'ally', 'lider', map.lead[0], map.lead[1]);
-  L.maxHp = L.hp = UNITS.lider.hp + COMBAT.leader.hp(level) + revHp;
-  L.atk = UNITS.lider.atk + COMBAT.leader.atk(level);
-  if (element && ELEMENTS[element]) {
-    const slots = COMBAT.leader.slots.filter(s => level >= s).length;
-    L.abilities.push(...ELEMENTS[element].abilities.slice(0, slots));
-  }
-  party.slice(0, 3).forEach((role, i) => {
+  const els = elements || (element ? [element] : []);
+  const lk = leaderKit({ cls: leader?.cls || null, sub: leader?.sub || null, picks: leader?.picks || [], level, elements: els });
+  b.leader = { cls: lk.cls, sub: lk.sub, classLevel: lk.classLevel };
+  applyKit(b, makeUnit(b, 'ally', 'lider', map.lead[0], map.lead[1]), lk, revHp);
+  // nivel de clase de cada integrante; un roleLevel viejo (1..5, nivel del edificio) vale 2 × nivel − 1
+  const cl = { ...Object.fromEntries(Object.entries(roleLevel || {}).map(([k, v]) => [toClass(k), 2 * Math.max(1, v | 0) - 1])), ...(classLevel || {}) };
+  party.map(toClass).slice(0, 3).forEach((cls, i) => {
     const p = map.allies[i];
-    if (!p || !UNITS[role]) return;
-    const u = makeUnit(b, 'ally', role, p[0], p[1]);
-    const rl = Math.max(1, roleLevel[role] || 1);
-    u.maxHp = u.hp = u.hp + (rl - 1) * COMBAT.roleLevel.hp + revHp;
-    u.atk += Math.floor((rl - 1) / COMBAT.roleLevel.atkEvery);
+    const kit = memberKit(cls, cl[cls] || 1, picks?.[cls] || []);
+    if (!p || !kit) return;
+    applyKit(b, makeUnit(b, 'ally', cls, p[0], p[1]), kit, revHp);
   });
   if (map.captive && enc.objective.type === 'rescue') makeUnit(b, 'ally', 'cautivo', map.captive[0], map.captive[1], { captive: true, freed: false, mv: 0 });
 
@@ -204,6 +204,20 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
   planIncoming(b, ev);
   return b;
 }
+
+/** Pone el kit de clase en una unidad del grupo (vida, ataque, movimiento, coraza, habilidades y pasivas en u.f). */
+function applyKit(b, u, kit, revHp = 0) {
+  u.maxHp = u.hp = kit.hp + revHp;
+  u.atk = kit.atk; u.mv = kit.mv; u.armor = kit.armor;
+  u.abilities = kit.abilities.slice();
+  u.f = { ...kit.flags };
+  if (kit.cls) u.cls = kit.cls;
+  u.lv = kit.level;
+  b.intentPlus += u.f.intentPlus || 0;
+  b.lootWin += u.f.lootWin || 0;
+  return u;
+}
+const flag = (u, k) => (u && u.f ? u.f[k] || 0 : 0);
 
 // ---------- movimiento ----------
 /** Costo de entrar a una casilla. Para el grupo: los enemigos tapan, los aliados se atraviesan. */
@@ -247,12 +261,12 @@ function pathTo(b, map, i) {
   for (let c = i; c !== -1; c = map.get(c).prev) out.push([c % b.w, (c / b.w) | 0]);
   return out.reverse();
 }
-/** Trabado: quien arranca al lado de un enemigo solo se mueve COMBAT.stuckMv (la guía no se traba). */
+/** Trabado: quien arranca al lado de un enemigo solo se mueve COMBAT.stuckMv (el monje no se traba: Paso libre). */
 export function isStuck(b, u) {
-  if (u.side !== 'ally' || u.type === 'guia') return false;
+  if (u.side !== 'ally' || flag(u, 'noStuck')) return false;
   return foes(b).some(e => man(e.x, e.y, u.x, u.y) === 1);
 }
-const stuckAt = (b, u, x, y) => u.type !== 'guia' && foes(b).some(e => man(e.x, e.y, x, y) === 1);
+const stuckAt = (b, u, x, y) => !flag(u, 'noStuck') && foes(b).some(e => man(e.x, e.y, x, y) === 1);
 const moveBudget = (b, u) => (isStuck(b, u) ? Math.min(u.mv, COMBAT.stuckMv) : u.mv);
 /** Casillas a las que puede llegar una unidad del grupo este turno: [{ x, y, cost }]. */
 export function reachable(b, unitId) {
@@ -304,14 +318,18 @@ function guardFor(b, t) {
   const L = leaderOf(b);
   return L && onBoard(L) && man(L.x, L.y, t.x, t.y) === 1 ? COMBAT.guard[lv] : 0;
 }
-/** src: { side: 'ally'|'enemy'|'env', unit, by (tipo del grupo para las estadísticas), high, pierce } */
+/** Protector (pasiva del guerrero): 1 menos si al lado hay alguien del grupo que la tenga. */
+function protectorFor(b, t) {
+  return allies(b).some(a => a !== t && !a.captive && flag(a, 'guardAdj') && man(a.x, a.y, t.x, t.y) === 1) ? 1 : 0;
+}
+/** src: { side: 'ally'|'enemy'|'env', unit, by (tipo del grupo para las estadísticas), high, pierce, loot } */
 function hurt(b, t, amount, src, ev) {
   if (!t || !onBoard(t) || amount <= 0) return 0;
   let dmg = amount;
   if (src.side === 'ally' && t.side === 'enemy' && t.marked) { dmg += t.marked; t.marked = 0; addCombo(b, 'marca', ev); }
   if (src.high) dmg += COMBAT.highDmg;
   if (t.armor && !src.pierce) dmg -= t.armor;
-  if (t.side === 'ally' && src.side === 'enemy' && !src.nip) dmg -= guardFor(b, t) + (b.cover[t.id] || 0);
+  if (t.side === 'ally' && src.side === 'enemy' && !src.nip) dmg -= guardFor(b, t) + (b.cover[t.id] || 0) + protectorFor(b, t);
   dmg = Math.max(1, dmg);
   const dealt = Math.min(dmg, t.hp);
   t.hp -= dealt;
@@ -326,6 +344,7 @@ function kill(b, u, src, ev) {
   ev.push({ type: 'down', id: u.id });
   if (u.side === 'ally' && !u.captive) b.stats.downs++;
   if (u.side === 'enemy' && src.by) b.stats.kills[src.by] = (b.stats.kills[src.by] || 0) + 1;
+  if (u.side === 'enemy' && (src.loot || flag(src.unit, 'lootKill'))) { b.stats.stolen++; ev.push({ type: 'stolen', id: u.id }); }
   if (u.side === 'enemy' && ENEMIES[u.type].explode) {
     ev.push({ type: 'explode', id: u.id, at: [u.x, u.y] });
     for (const [dx, dy] of DIRS) {
@@ -391,7 +410,8 @@ function canTarget(b, u, def, x, y, fx = u.x, fy = u.y) {
     case 'push': return !!other && other.side === 'enemy' && !ENEMIES[other.type].heavy;
     case 'trap': return !(x === fx && y === fy) && emptyPassable(b, x, y) && !isHighAt(b, x, y) && b.tiles[I(b, x, y)] !== 'pasarela';
     case 'wall': return !(x === fx && y === fy) && emptyPassable(b, x, y) && b.tiles[I(b, x, y)] !== 'pasarela';
-    case 'heal': { const t = (x === fx && y === fy) ? u : other; return !!t && t.side === 'ally' && !t.captive; }
+    case 'heal': { if (def.self) return x === fx && y === fy; const t = (x === fx && y === fy) ? u : other; return !!t && t.side === 'ally' && !t.captive; }
+    case 'leap': return !(x === fx && y === fy) && emptyPassable(b, x, y) && b.tiles[I(b, x, y)] !== 'pasarela';
     case 'healArea': case 'dazzle': case 'cover': case 'rope': return x === fx && y === fy;
     case 'swap': return !!other && other.side === 'ally' && !(other.captive && !other.freed);
     case 'free': return !!other && other.captive && !other.freed;
@@ -447,7 +467,16 @@ function resolve(b, u, def, x, y, ev) {
       if (o && o.side === 'enemy') {
         if (high) addCombo(b, 'desde_alto', ev);
         if (def.breaks && o.armor) { o.armor = 0; addCombo(b, 'sin_coraza', ev); }
-        hurt(b, o, dmg, { side: 'ally', unit: u, by, high, pierce: !!def.pierce }, ev);
+        hurt(b, o, dmg, { side: 'ally', unit: u, by, high, pierce: !!def.pierce, loot: !!def.lootKill }, ev);
+        if (def.rootHit && onBoard(o)) { o.root = Math.max(o.root, def.rootHit); ev.push({ type: 'root', id: o.id }); }
+        if (def.cleave) {
+          // los dos costados del blanco, mirando desde quien pega
+          const dx = Math.sign(x - u.x), dy = Math.sign(y - u.y);
+          for (const [sx, sy] of [[x - dy, y + dx], [x + dy, y - dx]]) {
+            const n = inB(b, sx, sy) ? unitAt(b, sx, sy) : null;
+            if (n && n.side === 'enemy') hurt(b, n, dmg, { side: 'ally', unit: u, by, high: false, pierce: !!def.pierce }, ev);
+          }
+        }
       } else if (b.tiles[I(b, x, y)] === 'pasarela') {
         hitBridge(b, dmg * (def.breaks ? 2 : 1), by, ev);
       } else if (def.breaks && b.tiles[I(b, x, y)] === 'roca') {
@@ -458,34 +487,35 @@ function resolve(b, u, def, x, y, ev) {
     }
     case 'mark':
       hurt(b, o, def.dmg, { side: 'ally', unit: u, by, high }, ev);
-      if (onBoard(o)) { o.marked = COMBAT.markBonus; ev.push({ type: 'mark', id: o.id }); }
+      if (onBoard(o)) { o.marked = COMBAT.markBonus + flag(u, 'markPlus'); ev.push({ type: 'mark', id: o.id }); }
       break;
     case 'trap': {
-      const extra = def === ABILITIES.trampa ? COMBAT.trapBonus[Math.max(0, Math.min(5, b.tools.martillo || 0))] : 0;
+      const extra = (flag(u, 'smith') ? COMBAT.trapBonus[Math.max(0, Math.min(5, b.tools.martillo || 0))] : 0) + flag(u, 'trapPlus');
       b.traps.push({ x, y, dmg: def.dmg + extra, root: def.root || 1, by });
       ev.push({ type: 'trap', at: [x, y] });
       break;
     }
     case 'wall': {
-      const extra = def === ABILITIES.barrera && (b.tools.martillo || 0) >= 3 ? 1 : 0;
+      const extra = (flag(u, 'smith') && (b.tools.martillo || 0) >= 3 ? 1 : 0) + flag(u, 'wallPlus');
       b.walls.push({ x, y, turns: def.turns + extra, by, root: def.element === 'raiz' });
       ev.push({ type: 'wall', at: [x, y], turns: def.turns + extra });
       break;
     }
     case 'heal': {
       const t = o || u;
-      const extra = u.type === 'sanidad' ? COMBAT.healBonus[Math.max(0, Math.min(5, b.tools.botiquin || 0))] : 0;
+      const extra = (flag(u, 'medic') ? COMBAT.healBonus[Math.max(0, Math.min(5, b.tools.botiquin || 0))] : 0) + flag(u, 'healPlus');
       heal(b, t, def.heal + extra, ev);
       break;
     }
     case 'healArea': {
-      const extra = u.type === 'sanidad' ? Math.ceil(COMBAT.healBonus[Math.max(0, Math.min(5, b.tools.botiquin || 0))] / 2) : 0;
+      const extra = (flag(u, 'medic') ? Math.ceil(COMBAT.healBonus[Math.max(0, Math.min(5, b.tools.botiquin || 0))] / 2) : 0) + flag(u, 'healPlus');
       for (const a of allies(b)) if (!a.captive && man(a.x, a.y, u.x, u.y) <= def.radius) heal(b, a, def.heal + extra, ev);
       break;
     }
     case 'disarm':
       hurt(b, o, def.dmg, { side: 'ally', unit: u, by, high }, ev);
       if (onBoard(o) && cancelIntent(b, o, ev)) { b.stats.stolen++; ev.push({ type: 'stolen', id: o.id }); }
+      if (def.rootHit && onBoard(o)) { o.root = Math.max(o.root, def.rootHit); ev.push({ type: 'root', id: o.id }); }
       break;
     case 'push': push(b, u, o, def, ev); break;
     case 'swap': {
@@ -498,9 +528,10 @@ function resolve(b, u, def, x, y, ev) {
     case 'root': {
       hurt(b, o, def.dmg, { side: 'ally', unit: u, by, high }, ev);
       if (!onBoard(o)) break;
-      cancelIntent(b, o, ev);
+      if (!def.noCancel) cancelIntent(b, o, ev);
       o.root = Math.max(o.root, def.root);
       ev.push({ type: 'root', id: o.id });
+      if (!def.wallTurns) break;
       // la pared de raíz sale en la casilla libre de al lado que queda más cerca de quien la lanzó
       let best = null;
       for (const [dx, dy] of DIRS) {
@@ -509,7 +540,8 @@ function resolve(b, u, def, x, y, ev) {
         const d = man(nx, ny, u.x, u.y);
         if (!best || d < best.d) best = { x: nx, y: ny, d };
       }
-      if (best) { b.walls.push({ x: best.x, y: best.y, turns: def.wallTurns, by, root: true }); ev.push({ type: 'wall', at: [best.x, best.y], turns: def.wallTurns }); }
+      const wt = def.wallTurns + flag(u, 'wallPlus');
+      if (best) { b.walls.push({ x: best.x, y: best.y, turns: wt, by, root: true }); ev.push({ type: 'wall', at: [best.x, best.y], turns: wt }); }
       break;
     }
     case 'free':
@@ -519,10 +551,23 @@ function resolve(b, u, def, x, y, ev) {
     case 'dazzle':
       for (const e of foes(b)) if (man(e.x, e.y, u.x, u.y) <= def.radius) cancelIntent(b, e, ev);
       break;
-    case 'cover':
-      for (const a of allies(b)) if (man(a.x, a.y, u.x, u.y) <= 1) b.cover[a.id] = def.cover;
+    case 'cover': {
+      const r = def.radius ?? 1;
+      for (const a of allies(b)) if (man(a.x, a.y, u.x, u.y) <= r) b.cover[a.id] = Math.max(b.cover[a.id] || 0, def.cover);
       ev.push({ type: 'cover', id: u.id });
       break;
+    }
+    case 'leap': {
+      const from = [u.x, u.y];
+      u.x = x; u.y = y;
+      ev.push({ type: 'leap', id: u.id, from, to: [x, y] });
+      if (def.leaveWall) {
+        const wt = def.leaveWall + flag(u, 'wallPlus');
+        b.walls.push({ x: from[0], y: from[1], turns: wt, by, root: def.element === 'raiz' });
+        ev.push({ type: 'wall', at: from, turns: wt });
+      }
+      break;
+    }
     case 'rope':
       b.ropeItem = true;
       ev.push({ type: 'rope', id: u.id });
@@ -899,7 +944,7 @@ export function retreat(b) {
 /** Enemigos cuyas intenciones se ven: los jefes siempre; del resto, los más cercanos al grupo (más con el Catalejo). */
 export function visibleIntentIds(b) {
   const lv = Math.max(0, Math.min(5, b.tools.catalejo || 0));
-  const n = COMBAT.intentsBase + COMBAT.catalejo[lv];
+  const n = COMBAT.intentsBase + COMBAT.catalejo[lv] + (b.intentPlus || 0);
   const al = allies(b);
   const dist = (e) => Math.min(99, ...al.map(a => man(a.x, a.y, e.x, e.y)));
   const list = foes(b).filter(e => !ENEMIES[e.type].boss).sort((a, c) => dist(a) - dist(c) || a.id.localeCompare(c.id));
@@ -939,7 +984,7 @@ export function view(b) {
     let intent = null;
     if (u.side === 'enemy' && u.intent) intent = vis.has(u.id) ? { name: u.intent.name, dmg: u.intent.dmg, tiles: intentTiles(b, u) } : { hidden: true };
     return {
-      id: u.id, side: u.side, type: u.type, name: d.name, x: u.x, y: u.y, hp: u.hp, maxHp: u.maxHp, mv: u.mv, atk: u.atk,
+      id: u.id, side: u.side, type: u.type, cls: u.cls || null, name: d.name, x: u.x, y: u.y, hp: u.hp, maxHp: u.maxHp, mv: u.mv, atk: u.atk,
       armor: u.armor, stuck: isStuck(b, u), moved: u.moved, acted: u.acted, root: u.root, marked: u.marked, high: isHigh(b, u),
       captive: !!u.captive, freed: !!u.freed, boss: !!(u.side === 'enemy' && ENEMIES[u.type].boss), phase: u.phase,
       heavy: !!(u.side === 'enemy' && ENEMIES[u.type].heavy), explode: !!(u.side === 'enemy' && ENEMIES[u.type].explode),
@@ -984,7 +1029,8 @@ export function result(b) {
   if (win) {
     for (const [k, n] of Object.entries(enc.reward.mats || {})) mats[k] = Math.max(1, Math.round(n * f));
     const keys = Object.keys(enc.reward.mats || {});
-    if (keys.length) for (let k = 0; k < b.stats.stolen; k++) mats[keys[k % keys.length]] = (mats[keys[k % keys.length]] || 0) + 1;
+    const extra = b.stats.stolen + (b.lootWin || 0);
+    if (keys.length) for (let k = 0; k < extra; k++) mats[keys[k % keys.length]] = (mats[keys[k % keys.length]] || 0) + 1;
   }
   const xp = Math.round((enc.reward.xp || 0) * (win ? 1 : b.outcome === 'lose' ? 0.3 : b.outcome === 'retreat' ? 0.2 : 0));
   return {

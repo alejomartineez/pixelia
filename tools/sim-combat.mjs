@@ -2,7 +2,8 @@
 // (src/combat/combat-rules.js) y reporta contra las metas de balance, con ✔/✘.
 //
 //   node tools/sim-combat.mjs                 reporte completo
-//   node tools/sim-combat.mjs --n 60          peleas por combinación de grupo (default 40; hay 10 combinaciones de roles)
+//   node tools/sim-combat.mjs --n 20          peleas por combinación de grupo (default 20; hay 20 combinaciones de 3 clases)
+//   node tools/sim-combat.mjs --noclass       el líder sin clase (como antes del paso 5b)
 //   node tools/sim-combat.mjs --only banado_bestia
 //   node tools/sim-combat.mjs --tools         suma una tabla con el efecto de cada herramienta (nivel 3)
 //
@@ -11,12 +12,12 @@
 // que el jugador ve (las intenciones a la vista, no las ocultas). Tiene un poco de ruido para no jugar perfecto.
 // Con `knows` (del segundo intento contra un jefe en adelante) sabe la mecánica: busca lo alto y va por la pasarela.
 import { pathToFileURL } from 'node:url';
-import { COMBAT, ENCOUNTERS, ENEMIES, ACT1, ROLE_IDS, TUTORIAL_PARTY } from '../src/combat/combat-data.js';
+import { COMBAT, ENCOUNTERS, ENEMIES, ACT1, CLASS_IDS, TUTORIAL_PARTY } from '../src/combat/combat-data.js';
 import * as R from '../src/combat/combat-rules.js';
 
 const man = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
-const RANGED = new Set(['exploracion']);
-const SUPPORT = new Set(['sanidad']);
+const RANGED = new Set(['cazador']);
+const SUPPORT = new Set(['curandero']);
 
 function mulberry(seed) {
   let a = seed | 0;
@@ -92,8 +93,9 @@ export function evalState(b, opt = {}) {
     if (u.captive) continue;
     const near = fo.length ? Math.min(...fo.map(e => man(u, e))) : 0;
     if (fo.length) {
-      if (RANGED.has(u.type)) s -= 0.35 * Math.abs(near - 3);
-      else if (SUPPORT.has(u.type)) {
+      const cls = u.cls || u.type;
+      if (RANGED.has(cls)) s -= 0.35 * Math.abs(near - 3);
+      else if (SUPPORT.has(cls) && !lead) {
         if (near <= 1) s -= 1.2;
         const hurt = al.filter(a => !a.captive && a !== u).sort((a, c) => a.hp / a.maxHp - c.hp / c.maxHp)[0];
         if (hurt) s -= 0.25 * Math.max(0, man(u, hurt) - 2);
@@ -201,24 +203,29 @@ export function playBattle(cfg, opt = {}) {
 // ---------------------------------------------------------------- reporte
 export function combos3() {
   const out = [];
-  for (let i = 0; i < ROLE_IDS.length; i++) for (let j = i + 1; j < ROLE_IDS.length; j++) for (let k = j + 1; k < ROLE_IDS.length; k++)
-    out.push([ROLE_IDS[i], ROLE_IDS[j], ROLE_IDS[k]]);
+  for (let i = 0; i < CLASS_IDS.length; i++) for (let j = i + 1; j < CLASS_IDS.length; j++) for (let k = j + 1; k < CLASS_IDS.length; k++)
+    out.push([CLASS_IDS[i], CLASS_IDS[j], CLASS_IDS[k]]);
   return out;
 }
 const pct = (x) => (100 * x).toFixed(1).padStart(5) + ' %';
 const ok = (c) => (c ? '✔' : '✘');
 
-function expectedCfg(id, party, seed, extra = {}) {
+/** Grupo esperado: nivel del líder y de clase de `expected`, el elemento, y el líder de la clase `lead` (null: sin clase). */
+export function expectedCfg(id, party, seed, extra = {}, lead = null) {
   const ex = ENCOUNTERS[id].expected || {};
-  return { encounter: id, seed, party, level: ex.level || 1, element: ex.element || null, ...extra };
+  const cl = ex.classLevel || 1;
+  return { encounter: id, seed, party, level: ex.level || 1, element: ex.element || null, leader: lead ? { cls: lead } : null,
+    classLevel: Object.fromEntries(party.map(c => [c, cl])), ...extra };
 }
+let LEAD_CLASSES = CLASS_IDS;
 
 function runEncounter(id, N, extra = {}, opt = {}) {
   const st = { n: 0, wins: 0, turns: 0, winTurns: 0, stars: 0, dmg: {}, kills: {}, share: {}, shareN: {}, killShare: {}, roleWin: {}, roleN: {}, reasons: {} };
   let seed = 1000;
   for (const party of combos3()) {
     for (let k = 0; k < N; k++) {
-      const { res } = playBattle(expectedCfg(id, party, ++seed, extra), opt);
+      const lead = LEAD_CLASSES[seed % LEAD_CLASSES.length] || null;
+      const { res } = playBattle(expectedCfg(id, party, ++seed, extra, lead), opt);
       st.n++;
       const win = res.outcome === 'win';
       st.wins += win;
@@ -227,12 +234,14 @@ function runEncounter(id, N, extra = {}, opt = {}) {
       st.reasons[res.reason] = (st.reasons[res.reason] || 0) + 1;
       const tot = Object.values(res.dmg).reduce((a, n) => a + n, 0) || 1;
       const ktot = Object.values(res.kills).reduce((a, n) => a + n, 0) || 1;
-      for (const t of ['lider', ...party]) {
-        st.share[t] = (st.share[t] || 0) + (res.dmg[t] || 0) / tot;
-        st.killShare[t] = (st.killShare[t] || 0) + (res.kills[t] || 0) / ktot;
-        st.shareN[t] = (st.shareN[t] || 0) + 1;
+      const keys = [['lider', 'lider'], ...party.map(c => [c, c])];
+      if (lead) keys.push(['lider', 'líder ' + lead]);
+      for (const [t, name] of keys) {
+        st.share[name] = (st.share[name] || 0) + (res.dmg[t] || 0) / tot;
+        st.killShare[name] = (st.killShare[name] || 0) + (res.kills[t] || 0) / ktot;
+        st.shareN[name] = (st.shareN[name] || 0) + 1;
       }
-      for (const r of ROLE_IDS) {
+      for (const r of CLASS_IDS) {
         const has = party.includes(r) ? 'con' : 'sin';
         st.roleN[r + has] = (st.roleN[r + has] || 0) + 1;
         st.roleWin[r + has] = (st.roleWin[r + has] || 0) + win;
@@ -245,7 +254,8 @@ function runEncounter(id, N, extra = {}, opt = {}) {
 function main() {
   const args = process.argv.slice(2);
   const opt = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : d; };
-  const N = Number(opt('n', 40));
+  const N = Number(opt('n', 20));
+  if (opt('noclass', false)) LEAD_CLASSES = [null];
   const ONLY = opt('only', null);
   const TOOLS = !!opt('tools', false);
   const t0 = Date.now();
@@ -254,7 +264,9 @@ function main() {
   const ids = ONLY ? [ONLY] : ACT1;
   const allShare = {}, allShareN = {}, allKill = {};
 
-  console.log(`Simulador de combate · ${N} peleas por grupo × 10 grupos (todas las combinaciones de 3 roles) · grupo esperado de cada encuentro\n`);
+  const allWin = {}, allWinN = {};
+  const addWins = (s) => { for (const [k, v] of Object.entries(s.roleWin)) { allWin[k] = (allWin[k] || 0) + v; allWinN[k] = (allWinN[k] || 0) + s.roleN[k]; } };
+  console.log(`Simulador de combate · ${N} peleas por grupo × 20 grupos (las combinaciones de 3 clases; el líder rota de clase) · grupo esperado\n`);
   console.log('Encuentro                 tipo    ganadas   turnos (gan.)  ★ prom.  meta');
   for (const id of ids) {
     const enc = ENCOUNTERS[id];
@@ -269,22 +281,26 @@ function main() {
       console.log(`${''.padEnd(25)}        ganado al 3.º o antes: ${pct(cum)}`);
       console.log(`${''.padEnd(25)}        duración del jefe (ganadas, 1.º): ${turns.toFixed(1)} turnos · 6–12 ${check(turns >= 6 && turns <= 12)}`);
       console.log(`${''.padEnd(25)}        cómo terminan (1.º): ${Object.entries(a[0].reasons).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+      addWins(a[0]);
       for (const t of Object.keys(a[0].share)) { allShare[t] = (allShare[t] || 0) + a[0].share[t]; allShareN[t] = (allShareN[t] || 0) + a[0].shareN[t]; allKill[t] = (allKill[t] || 0) + a[0].killShare[t]; }
     } else {
       const s = runEncounter(id, N);
       const p = s.wins / s.n;
       console.log(`${enc.name.padEnd(25)} común       ${pct(p)}  ${(s.winTurns / Math.max(1, s.wins)).toFixed(1).padStart(5)}          ${(s.stars / Math.max(1, s.wins)).toFixed(2)}   85–95 % ${check(p >= 0.85 && p <= 0.95)}`);
       console.log(`${''.padEnd(25)}        cómo terminan: ${Object.entries(s.reasons).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
+      addWins(s);
       for (const t of Object.keys(s.share)) { allShare[t] = (allShare[t] || 0) + s.share[t]; allShareN[t] = (allShareN[t] || 0) + s.shareN[t]; allKill[t] = (allKill[t] || 0) + s.killShare[t]; }
     }
   }
 
-  console.log('\nAporte por rol (promedio por pelea en la que está; el líder está siempre)');
-  console.log('Rol            daño      golpes finales   meta ≤ 35 %');
-  for (const t of ['lider', ...ROLE_IDS]) {
+  console.log('\nAporte por clase (promedio por pelea en la que está; el líder está siempre)');
+  console.log('Clase              daño      golpes finales   ganadas con / sin   meta ≤ 35 %');
+  for (const t of ['lider', ...CLASS_IDS, ...CLASS_IDS.map(c => 'líder ' + c)]) {
     if (!allShareN[t]) continue;
     const d = allShare[t] / allShareN[t], k = allKill[t] / allShareN[t];
-    console.log(`${t.padEnd(14)} ${pct(d)}   ${pct(k)}          ${check(d <= 0.35 && k <= 0.35)}`);
+    const lead = t.startsWith('líder ');
+    const w = allWin[t + 'con'] != null ? `${pct(allWin[t + 'con'] / allWinN[t + 'con'])} / ${pct(allWin[t + 'sin'] / allWinN[t + 'sin'])}` : ''.padEnd(17);
+    console.log(`${t.padEnd(18)} ${pct(d)}   ${pct(k)}          ${w}   ${lead ? '(como líder)' : check(d <= 0.35 && k <= 0.35)}`);
   }
 
   if (TOOLS) {

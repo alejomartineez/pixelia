@@ -70,7 +70,7 @@ function paths(v, mem) {
   const s = v.pos[1] * v.w + v.pos[0];
   dist[s] = 0;
   const TC = { llano: 1, bosque: 1, colina: 2, pantano: 2, roca: 3 };
-  const guia = mem.party.includes('guia');
+  const guia = mem.party.includes('monje');
   for (;;) {
     let u = -1, best = Infinity;
     for (let i = 0; i < N; i++) if (!done[i] && dist[i] < best) { best = dist[i]; u = i; }

@@ -45,7 +45,7 @@ function setup(profile, i) {
   return R.newRun({
     region: profile.region, zone: profile.zone, kind: profile.kind, seed,
     party: profile.party, equip: profile.equip || [], prov: profile.prov,
-    mods: { roleLevel: Object.fromEntries(profile.party.map(p => [p, profile.level])), cargoMax: profile.cargoMax, encantoStars: profile.encanto || 0 },
+    mods: { tier: Object.fromEntries(profile.party.map(p => [p, profile.level])), cargoMax: profile.cargoMax, encantoStars: profile.encanto || 0 },
   });
 }
 function runBatch(profile, bot) {
@@ -147,13 +147,13 @@ if (ONLY !== 'proto') {
   console.log('\n=== Regiones con la ciudad esperada (nivel de roles = tier, provisiones = provMax de ese nivel, carga = 6 + 3 × nivel del Establo) ===');
   for (const region of REGION_IDS) {
     const T = REGIONS[region].tier;
-    const party = T >= 3 ? ['exploracion', 'ingenieria', 'guia'] : ['exploracion', 'ingenieria'];
+    const party = T >= 3 ? ['cazador', 'forjador', 'monje'] : ['cazador', 'forjador'];
     for (const zone of [1, 3, 5]) {
       report(`${REGIONS[region].name} · zona ${zone}`, { region, zone, kind: KIND, party, level: T, prov: KIND === 'corta' ? 10 : EXP.provMax[Math.min(4, T)], cargoMax: 6 + 3 * Math.min(5, T + 1) }, { checks: zone === 1 });
     }
   }
   console.log('\n=== Grupo y nivel de roles (Bosque, zona 1, mismas provisiones y carga que el prototipo) ===');
-  for (const party of [[], ['exploracion'], ['ingenieria', 'sanidad'], ['guia', 'recoleccion'], ['exploracion', 'ingenieria', 'sanidad']]) {
+  for (const party of [[], ['cazador'], ['forjador', 'curandero'], ['monje', 'saqueador'], ['cazador', 'forjador', 'curandero'], ['guerrero', 'forjador']]) {
     for (const level of party.length ? [1, 3, 5] : [1]) report(`grupo ${party.join('+') || 'solo'} nv ${level}`, { ...PROTO, party, level }, { checks: false });
   }
 }

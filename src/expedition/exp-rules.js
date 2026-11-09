@@ -3,6 +3,8 @@
 // toda la suerte sale de run.rs (estado del mulberry32).
 //
 //   newRun({ region, zone, kind, seed, party, equip, prov, mods }) → run
+//     party: clases de los integrantes (paso 5b; los roles viejos se traducen solos). mods.tier: { clase: 1..5 } nivel de
+//     oficio (el del edificio, lo usan las decisiones); mods.classLevel / mods.picks / mods.leader: para el combate.
 //   view(run)              → lo que se ve: casillas visibles, pos, prov, ánimo, carga, regreso, movimientos, decisión pendiente
 //   move(run, x, y)        → { ok, events }        (un peligro o una ruina dejan run.pending sin moverse todavía)
 //   choose(run, optionId)  → { ok, outcome, p, events }   ('retroceder' cancela un peligro sin costo)
@@ -20,6 +22,8 @@ import { generateMap, hashSeed } from './exp-gen.js';
 import { WEATHER, NIGHT_FROM, isNightHour, hourText } from '../core/ambience.js';
 import { COMBAT, ENCOUNTERS, ELEMENTS as C_ELEMENTS, ITEMS } from '../combat/combat-data.js';
 import * as C from '../combat/combat-rules.js';
+import { toClass, LEADER } from '../combat/classes.js';
+import { TUTORIAL_PARTY } from '../combat/combat-data.js';
 
 const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 
@@ -35,8 +39,12 @@ const randInt = (run, lo, hi) => lo + Math.floor(rand(run) * (hi - lo + 1));
 // ---------- ayudas ----------
 const idx = (run, x, y) => y * run.w + x;
 const cellAt = (run, x, y) => (x < 0 || y < 0 || x >= run.w || y >= run.h ? null : run.cells[idx(run, x, y)]);
-export const hasRole = (run, role) => run.party.includes(role);
-export const roleLevel = (run, role) => (hasRole(run, role) ? Math.max(1, run.roleLevel[role] || 1) : 0);
+export const hasClass = (run, cls) => run.party.includes(cls);
+/** Nivel de oficio de una clase en la salida (1..5, el de su edificio; 0 si no fue). */
+export const classTier = (run, cls) => (hasClass(run, cls) ? Math.max(1, (run.tier || run.roleLevel || {})[cls] || 1) : 0);
+/** @deprecated nombres de antes del paso 5b. */
+export const hasRole = hasClass;
+export const roleLevel = classTier;
 const tier = (run) => (REGIONS[run.region] || REGIONS.bosque).tier;
 const cargoCount = (run) => Object.values(run.cargo).reduce((a, n) => a + n, 0);
 const hasEquip = (run, id) => run.equip.includes(id);
@@ -44,11 +52,11 @@ const hasEquip = (run, id) => run.equip.includes(id);
 export function stepCost(run, cell) {
   const t = TERRAIN[cell.terrain];
   // la tormenta y la nieve frenan en lo difícil (colina, bañado, roca): el llano y el monte siguen igual
-  return (hasRole(run, 'guia') ? t.guia : t.cost) + (t.cost >= 2 ? conditions(run).step : 0);
+  return (hasClass(run, 'monje') ? t.guia : t.cost) + (t.cost >= 2 ? conditions(run).step : 0);
 }
 
 function visionRadius(run) {
-  return Math.max(0, (hasRole(run, 'exploracion') ? EXP.visionExploracion : EXP.vision) + (run.mods.vision || 0) + conditions(run).vision);
+  return Math.max(0, (hasClass(run, 'cazador') ? EXP.visionExploracion : EXP.vision) + (run.mods.vision || 0) + conditions(run).vision);
 }
 
 // ---------- día y noche, y clima (PLAN-QUIEBRE §J3–J4) ----------
@@ -135,7 +143,7 @@ export function returnCostFrom(run, x, y, extra = null) {
   const d = homeSteps(run, x, y, extra);
   if (d === 0) return 0;
   if (d === Infinity) return 99;
-  return Math.max(1, Math.ceil(d / 3) - (hasRole(run, 'guia') ? 1 : 0));
+  return Math.max(1, Math.ceil(d / 3) - (hasClass(run, 'monje') ? 1 : 0));
 }
 export const returnCost = (run) => returnCostFrom(run, run.pos[0], run.pos[1]);
 
@@ -143,10 +151,10 @@ export const returnCost = (run) => returnCostFrom(run, run.pos[0], run.pos[1]);
 export function optionChance(run, hz, opt) {
   if (opt.base >= 100) return { p: 100, sure: true, parts: [] };
   const parts = [[opt.base, 'base']];
-  for (const [role, bonus] of Object.entries(opt.role || {})) {
-    if (!hasRole(run, role)) continue;
-    const lv = roleLevel(run, role);
-    parts.push([bonus + EXP.roleStep * (lv - 1), ROLE_NAMES[role] + (lv > 1 ? ' ' + lv : '')]);
+  for (const [cls, bonus] of Object.entries(opt.role || {})) {
+    if (!hasClass(run, cls)) continue;
+    const lv = classTier(run, cls);
+    parts.push([bonus + EXP.roleStep * (lv - 1), CLASS_NAMES[cls] + (lv > 1 ? ' ' + lv : '')]);
   }
   for (const [eq, bonus] of Object.entries(opt.equip || {})) if (hasEquip(run, eq)) parts.push([bonus, EQUIP_NAMES[eq]]);
   if (run.mods.regionBonus) parts.push([run.mods.regionBonus, 'hallazgos']);
@@ -156,13 +164,13 @@ export function optionChance(run, hz, opt) {
   const raw = parts.reduce((a, [n]) => a + n, 0);
   return { p: Math.max(EXP.probMin, Math.min(EXP.probMax, raw)), sure: false, parts };
 }
-const ROLE_NAMES = { exploracion: 'Exploración', ingenieria: 'Ingeniería', sanidad: 'Sanidad', recoleccion: 'Recolección', guia: 'Guía' };
+const CLASS_NAMES = { cazador: 'Cazador', forjador: 'Forjador', curandero: 'Curandero', saqueador: 'Saqueador', monje: 'Monje', guerrero: 'Guerrero' };
 const EQUIP_NAMES = { cuerda: 'Cuerda', pala: 'Pala', lona: 'Lona', farol: 'Farol', botiquin: 'Botiquín', carreta: 'Carreta' };
 
 /** Costo en provisiones de una opción (además del paso) y si se puede elegir. */
 function optionCost(run, opt) {
   let prov = opt.cost?.prov || 0, mats = null, can = true, why = '';
-  if (prov && opt.guiaProv && hasRole(run, 'guia')) prov += opt.guiaProv;
+  if (prov && opt.guiaProv && hasClass(run, 'monje')) prov += opt.guiaProv;
   if (prov && opt.lonaProv && hasEquip(run, 'lona')) prov += opt.lonaProv;
   if (opt.needs === 'fuego' && !hasEquip(run, 'farol')) {
     mats = { madera: 1 };
@@ -201,9 +209,12 @@ function describe(fx) {
 export function newRun({ region = 'bosque', zone = 1, kind = 'normal', seed = 1, party = [], equip = [], prov, mods = {} } = {}) {
   const map = generateMap({ region, zone, kind, seed, enemies: mods.noEnemies ? false : mods.firstFight ? { first: mods.firstFight } : undefined });
   const K = EXP.kinds[kind] || EXP.kinds.normal;
-  const roleLv = { ...(mods.roleLevel || {}) };
-  const sanidad = party.includes('sanidad');
-  const moraleMax = mods.moraleMax ?? EXP.morale + (sanidad ? EXP.moraleSanidad : 0);
+  party = [...new Set(party.map(toClass))];
+  const tierLv = Object.fromEntries(Object.entries({ ...(mods.roleLevel || {}), ...(mods.tier || {}) }).map(([k, v]) => [toClass(k), v]));
+  const sanidad = party.includes('curandero');
+  // quien lidera, cada 10 niveles, aguanta un poco más (L5: un bonus chico por nivel)
+  const leaderMorale = Math.floor((mods.leader?.level || 1) / LEADER.moraleEvery);
+  const moraleMax = mods.moraleMax ?? EXP.morale + (sanidad ? EXP.moraleSanidad : 0) + leaderMorale;
   // la salida corta va con la mochila chica: la mitad de la carga
   const cargoMax = Math.max(3, Math.ceil((mods.cargoMax ?? EXP.cargoBase + (equip.includes('carreta') ? EXP.carreta : 0)) * (K.cargoFactor || 1)));
   const startProv = prov ?? (kind === 'corta' ? K.prov : EXP.prototype.prov);
@@ -216,7 +227,7 @@ export function newRun({ region = 'bosque', zone = 1, kind = 'normal', seed = 1,
     prov: startProv, provStart: startProv,
     morale: moraleMax, moraleMax, cargoMax,
     cargo: {}, planos: 0, finds: [], colonos: 0,
-    steps: 0, party: party.slice(), equip: equip.slice(), roleLevel: roleLv, mods: { ...mods },
+    steps: 0, party: party.slice(), equip: equip.slice(), tier: tierLv, mods: { ...mods },
     used: {}, shield: sanidad,             // Sanidad: el primer peligro fallado baja 1 menos
     pending: null, ended: false, reason: null, objectiveDone: false, decisions: [], result: null,
     clock: { start: EXP.dawn, per: EXP.hoursPerStep }, front: makeFront(map.region, seed, kind),
@@ -260,7 +271,7 @@ export function view(run) {
 function itemsAvailable(run) {
   const out = [];
   if (hasEquip(run, 'botiquin') && !run.used.botiquin) out.push('botiquin');
-  if (roleLevel(run, 'sanidad') >= 3 && !run.used.atender) out.push('atender');
+  if (classTier(run, 'curandero') >= 3 && !run.used.atender) out.push('atender');
   return out;
 }
 
@@ -362,7 +373,7 @@ function enterCell(run, events) {
     switch (c.content) {
       case 'recurso': {
         const ring = ringOf(c.depth);
-        const lv = roleLevel(run, 'recoleccion');
+        const lv = classTier(run, 'saqueador');
         const n = EXP.ringAmount[ring] + (lv ? 1 + Math.floor(lv / 2) : 0) + Math.floor((tier(run) - 1) / 2);
         c.done = true;
         giveMats(run, { [c.sub]: n }, events, 'recurso');
@@ -370,14 +381,14 @@ function enterCell(run, events) {
       }
       case 'mirador': {
         c.done = true;
-        const rad = EXP.mirador + (roleLevel(run, 'exploracion') >= 3 ? EXP.miradorExploracion3 - EXP.mirador : 0) + (run.mods.miradorBonus || 0);
+        const rad = EXP.mirador + (classTier(run, 'cazador') >= 3 ? EXP.miradorExploracion3 - EXP.mirador : 0) + (run.mods.miradorBonus || 0);
         events.push({ type: 'mirador', x, y, radius: rad });
         reveal(run, x, y, rad, events, true);
         break;
       }
       case 'campamento': {
         run.pending = { kind: 'campamento', x, y, at: 'here', options: [
-          { id: 'descansar', label: 'Descansar', p: 100, sure: true, prov: 0, can: true, ok: { morale: EXP.camp + (hasRole(run, 'sanidad') ? EXP.campSanidad : 0) } },
+          { id: 'descansar', label: 'Descansar', p: 100, sure: true, prov: 0, can: true, ok: { morale: EXP.camp + (hasClass(run, 'curandero') ? EXP.campSanidad : 0) } },
           { id: 'seguir', label: 'Seguir de largo', p: 100, sure: true, prov: 0, can: true, ok: null, keep: true },
         ] };
         events.push({ type: 'decision', pending: run.pending });
@@ -423,18 +434,27 @@ function openVillage(run, x, y, free, events) {
 }
 
 // ---------- enemigos y combate (DESIGN-COMBAT.md §13) ----------
-const COMBAT_ROLES = ['exploracion', 'ingenieria', 'sanidad'];   // TUTORIAL_PARTY: la escolta si la ciudad no tiene a nadie
+const ESCORT = TUTORIAL_PARTY;   // la escolta si la ciudad no tiene a nadie: cazador, forjador y curandero
 /** Peleas ganadas de un encuentro: las de antes (mods.combatWins, de la ciudad) más las de esta salida. */
 export function combatWins(run, enc) {
   return (run.mods.combatWins?.[enc] || 0) + (run.fights || []).filter(f => f.enc === enc && f.outcome === 'win').length;
 }
 /**
  * El grupo que pelea: los que salieron y, si son menos de 3, la escolta (gente de la ciudad que acompaña hasta el
- * campamento: mods.escort, o los roles del tutorial). Sin escolta, quien lidera con uno solo pierde casi siempre.
+ * campamento: mods.escort, o las clases del tutorial). Sin escolta, quien lidera con uno solo pierde casi siempre.
  */
 export function fightParty(run) {
   const out = run.party.slice(0, 3);
-  for (const r of [...(run.mods.escort || []), ...COMBAT_ROLES]) { if (out.length >= 3) break; if (!out.includes(r)) out.push(r); }
+  for (const r of [...(run.mods?.escort || []).map(toClass), ...ESCORT]) { if (out.length >= 3) break; if (!out.includes(r)) out.push(r); }
+  return out;
+}
+/** Nivel de clase (1..10) de los que pelean: el de la ciudad (mods.classLevel); sin dato, 2 × oficio − 1. */
+export function fightClassLevels(run) {
+  const out = {};
+  for (const cls of fightParty(run)) {
+    const t = (run.tier || {})[cls] || run.mods.tier?.[cls] || 1;
+    out[cls] = Math.max(1, run.mods.classLevel?.[cls] || 2 * t - 1);
+  }
   return out;
 }
 /** Consumibles del Taller que llegan a la pelea: lo que se llevó (el Botiquín, si no se usó en el camino). */
@@ -465,10 +485,12 @@ export function makeBattle(run, enc, x, y) {
   const b = C.newBattle({
     encounter: enc, seed: hashSeed(run.seed, enc, x, y, (run.fights || []).length, 'pelea'),
     party: fightParty(run),
-    // hasta el paso 5b (nivel del líder por experiencia) pelea con el nivel que espera el encuentro
-    level: run.mods.leaderLevel ?? def.expected?.level ?? 1,
-    element: elements.find(id => !!C_ELEMENTS[id]) || null,
-    tools: { ...(run.mods.tools || {}) }, equip: fightItems(run), roleLevel: { ...run.roleLevel }, attempt: 1,
+    // el nivel real del líder (paso 5b, state.classes); sin él (simuladores, salidas viejas), el que espera el encuentro
+    level: run.mods.leader?.level ?? run.mods.leaderLevel ?? def.expected?.level ?? 1,
+    leader: run.mods.leader ? { cls: run.mods.leader.cls, sub: run.mods.leader.sub, picks: run.mods.leader.picks || [] } : null,
+    element: elements.find(id => !!C_ELEMENTS[id]) || null, elements: elements.filter(id => !!C_ELEMENTS[id]),
+    classLevel: fightClassLevels(run), picks: { ...(run.mods.picks || {}) },
+    tools: { ...(run.mods.tools || {}) }, equip: fightItems(run), attempt: 1,
   });
   if (tiredFight(run)) {
     // con el ánimo por el piso el grupo llega cansado: un poco menos de vida (se ve en la tarjeta antes de entrar)
@@ -660,7 +682,7 @@ export function useItem(run, id) {
     return { ok: true, events };
   }
   if (id === 'atender') {
-    if (roleLevel(run, 'sanidad') < 3 || run.used.atender) return { ok: false, events };
+    if (classTier(run, 'curandero') < 3 || run.used.atender) return { ok: false, events };
     run.used.atender = true;
     addMorale(run, EXP.atender, 'atender', events);
     return { ok: true, events };
