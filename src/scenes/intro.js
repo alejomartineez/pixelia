@@ -693,6 +693,10 @@ export default function create(ctx) {
       const lead = set.userData.people.thieves[0].position.x;
       camPos.x = lead + 0.4 + (1 - u) * 0.6; camLook.x = lead + 0.7;
     }
+    // los encuadres están pensados para 16:9: en una ventana más angosta (16:10, 4:3) la cámara se aleja un poco para
+    // que no se corten los costados
+    const wide = 16 / 9, asp = r.camera.aspect || wide;
+    if (asp < wide) camPos.sub(camLook).multiplyScalar(Math.min(1.5, wide / asp)).add(camLook);
     r.camera.position.copy(camPos);
     r.camera.lookAt(camLook);
     // fundido a negro entre planos y el subtítulo

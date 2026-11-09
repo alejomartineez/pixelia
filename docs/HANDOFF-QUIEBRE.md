@@ -81,6 +81,24 @@ tener que dar confirmaciones, le doy el si a todo".
 - Para no chocar con el 4a, las segundas partes de 5b y 6 no tocan `src/avatar/*`, `enemy-models.js`, onboarding,
   wardrobe, cofres, migraciones ni el esquife. Los jefes van en un archivo de modelos aparte.
 
+### Noche, recorrido como jugador nuevo: rama `claude/recorrido-noche`
+- **El informe** está en [docs/RECORRIDO-NOCHE.md](RECORRIDO-NOCHE.md), con lo que se ve mal o confunde, por
+  prioridad.
+- **Las capturas** están en `shots/recorrido/`, a 1920×1080. `00-hoja.png` las junta todas.
+- **El script** es `tools/recorrido.mjs`. No forma parte de `npm test`.
+- **Arreglado en la rama:**
+  - el HUD detrás de la llegada con Vera;
+  - la pista de Vera tapando la tarjeta del imprevisto;
+  - las pestañas de Construir escondidas con mouse;
+  - la lista del combate, que no resaltaba la selección y cortaba los nombres;
+  - la cinemática cortada en 16:10.
+- **Para la sesión de clases:** "Líder" contra el nombre de quien juega, los dos Cazadores y el rayado de la bestia en
+  el turno 1.
+- **Para la Raíz:** los 11 desbloqueos del nivel 3.
+- **Para decidir:** la escala de interfaz por defecto en PC a 1080p.
+- **El juego de PC** se probó 15 s con la app armada con el juego adentro, en un perfil aparte: la GPU llegó a 35 °C y
+  50 W como mucho.
+
 ## Paso 4 (cinemática El Quiebre y llegada con Vera): hecho, rama `claude/quiebre-4b-m4`
 - **La cinemática** está en `src/scenes/intro.js`, registrada en `SCENES` como `intro`.
   - Son seis planos en vóxel, de 7,5 a 9,5 s cada uno, con un subtítulo de una línea por plano:

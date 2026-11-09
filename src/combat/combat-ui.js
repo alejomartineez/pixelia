@@ -32,6 +32,7 @@ const CSS = `
 .scene-combat .cb-menu:hover { background:var(--surface-hover); }
 
 .scene-combat .cb-order { position:absolute; z-index:4; top:calc(var(--safe-t) + 10px); left:calc(var(--safe-l) + 12px); width:212px; padding:8px; display:flex; flex-direction:column; gap:3px; }
+@media (min-width: 1280px) { .scene-combat .cb-order { width:250px; } }
 .scene-combat .cb-order h4 { margin:2px 2px 2px; font-size:13px; font-weight:400; color:var(--gold-t); text-transform:uppercase; letter-spacing:.04em; }
 .scene-combat .cb-order h4.e { color:var(--coral); margin-top:6px; }
 .scene-combat .cb-o { display:flex; align-items:center; gap:6px; padding:3px 6px; border-radius:7px; font-size:16px; border:2px solid transparent; }
@@ -266,8 +267,8 @@ export function buildCombatUi(root, ctx, h) {
     const al = v.units.filter(u => u.side === 'ally'), en = v.units.filter(u => u.side === 'enemy');
     order.innerHTML = `<h4>${enemyPhase ? 'Ya jugó el grupo' : 'Juega el grupo'}</h4>${al.map(u => {
       const done = u.acted || (u.captive && !u.freed);
-      const st = u.captive && !u.freed ? 'atado' : u.acted ? 'listo' : u.moved ? 'se movió' : '';
-      return `<div class="cb-o ally${done ? ' done' : ''}${u.id === st.sel ? ' sel' : ''}" data-id="${u.id}"><i class="dot"></i><span class="nm">${esc(unitLabel(u))}</span><span class="st">${st}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`;
+      const tag = u.captive && !u.freed ? 'atado' : u.acted ? 'listo' : u.moved ? 'se movió' : '';
+      return `<div class="cb-o ally${done ? ' done' : ''}${u.id === st.sel ? ' sel' : ''}" data-id="${u.id}"><i class="dot"></i><span class="nm">${esc(unitLabel(u))}</span><span class="st">${tag}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`;
     }).join('')}<h4 class="e">${enemyPhase ? 'Juegan los enemigos' : 'Después, en orden'}</h4>${hiddenLine(en)}${en.map(u =>
       `<div class="cb-o enemy" data-hover="${u.id}"><i class="dot"></i><span class="nm">${esc(u.name)}</span><span class="st">${u.intent?.hidden ? '?' : u.intent ? '−' + u.intent.dmg : ''}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`).join('') || '<div class="cb-o"><span class="nm">Ninguno en pie</span></div>'}`;
     order.querySelectorAll('.cb-o.ally').forEach(el => { el.onclick = () => h.onSelect(el.dataset.id); });
