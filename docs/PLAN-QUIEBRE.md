@@ -437,7 +437,7 @@ También se oscurecen el splash, el HUD, los modales y las tarjetas. Hay que cui
 del texto pixel. Las pantallas nuevas (Ajustes, Bitácora, combate) usan los mismos tokens desde el principio.
 
 **J7. Fuera lo tierno.**
-- **Personajes.** Solo personas: se sacan gato, zorro, conejo y oso. Los cuerpos, peinados y ropa de viajero van con el
+- **Personajes.** Solo personas: se sacan gato, zorro, conejo y oso (actualizado en M2: ahora hay pueblos serios, nunca mascotas tiernas). Los cuerpos, peinados y ropa de viajero van con el
   mundo.
 - **Estilos de ciudad.** Los pastel, moderna y playa se reemplazan por estilos del mundo, por ejemplo ceniza, musgo,
   bruma, ocaso y escarcha.
@@ -597,7 +597,7 @@ dónde cavar. Por eso se quedó en las ruinas: quiere arreglar algo.
   Acto 4.
 
 **L5. La ciudad cuenta historias, y cada personaje trae una herramienta.**
-- **Cómo llegan.** A medida que crece la población, llegan personas con nombre: solo personas, sin animales que hablen
+- **Cómo llegan.** A medida que crece la población, llegan personas con nombre: personas de cualquier pueblo de M2, nunca mascotas que hablen
   (J7). Cada una dice 2 líneas al llegar y trae un dato del mundo.
 - **Vínculo.** Cada una tiene un nivel de **Vínculo**, de 1 a 5. Sube con sus encargos chicos (que van a la cadena de
   misiones) y con la historia.
@@ -642,6 +642,106 @@ traslúcidas que repiten de 5 a 8 s un momento de antes del Quiebre.
   Progreso.
 - **6** hace L1 con el Núcleo de Raíz, las pistas de L2, L4 y L6 en el Acto 1, y los primeros ecos.
 - **7** balancea L1 y L5 en los simuladores.
+
+### M. Personajes serios, pueblos del mundo, clases y un prólogo que atrape (pedido del usuario, 2026-11-09)
+El usuario mandó referencias de personajes (enano con hacha, mago, guerrero nórdico, monje, espadachín con sombrero de
+paja, gente-zorro, ranas guerreras, esqueleto, gólem de piedra, enano con martillo, orco). Son **inspiración, no
+copia**: no se reproduce ningún personaje de otro juego.
+
+Decisiones del usuario:
+- estilo mezcla;
+- pueblos del mundo, serios;
+- clases para el líder y el grupo, con subclases del líder según los elementos;
+- adelantar la cinemática.
+
+**M1. Estilo de los personajes ("mezcla").**
+- **Gente y unidades comunes: vóxel más detallado.** Siguen siendo cubos, como la ciudad, pero con más resolución por
+  personaje, más o menos el doble que el `avatarModel` actual (`src/avatar/avatar.js:62`).
+  - Proporciones robustas, de 3 a 4 cabezas, nada de cabezones tiernos.
+  - Caras serias: ceño, barba o cicatrices.
+  - Armaduras, cinturones, bolsos, capas y armas visibles, siempre según la clase.
+  - Paleta terrosa y apagada: marrones, grises, óxido, verdes musgo y algún acento.
+- **Criaturas grandes, gólems y jefes: low-poly facetado** (caras planas en ángulo), para que se distingan de inmediato y
+  se sientan pesados. Se arman con geometría propia en `src/combat/enemy-models.js` y se iluminan con la misma luz y el
+  mismo contorno tinta de `createPixelRenderer`.
+- **Alcance:**
+  - el avatar del jugador y su vestuario (con migración de los looks guardados);
+  - la gente de la ciudad;
+  - el grupo de la expedición;
+  - las unidades y enemigos del combate;
+  - los retratos de la Bitácora: Vera y los de L5 pasan a retratos serios en el mismo estilo.
+- **Fuera:** cualquier rastro de cabezón, ojos grandes o colores caramelo. Se suma a J7.
+
+**M2. Pueblos del mundo.** Cambia lo de J7 "solo personas": ahora hay **pueblos con cultura propia, siempre serios**.
+
+| Pueblo (borrador) | Elemento | Dónde vive | Postura | Estilo |
+|---|---|---|---|---|
+| Humanos | todos | islas y reinos | depende | vóxel |
+| Enanos de la Veta | Raíz | minas del Cerro y Bajo Mundo | desconfían de las Casas, que los hicieron cavar | vóxel robusto |
+| Anuros del Bañado (ranas guerreras) | Marea | bañados y ríos | guardianes del agua; la bestia del Bañado es su culpa o su dios | vóxel |
+| Gente-zorro del Céfiro | Céfiro | dirigibles y riscos | muchos son piratas del cielo; otros, mensajeros | vóxel |
+| Orcos de la Brasa | Brasa | volcanes del Bajo Mundo | los que más perdieron con el Quiebre, no perdonan | low-poly |
+| Vaciados | ninguno | minas viejas, ruinas | mineros consumidos por la veta, se mueven sin voluntad | vóxel |
+| Gólems de Raíz | Raíz | minas y templos | guardianes que siguen cumpliendo órdenes viejas | low-poly |
+
+- **Jugables:** los integrantes del grupo y la gente de la ciudad (L5) pueden ser de cualquier pueblo menos Vaciados y
+  gólems. Brígida, la herrera, pasa a ser enana.
+- **Historia:** cada pueblo tiene su versión del Quiebre y su página del diario. Los Vaciados y los gólems salen en el
+  Acto 1 (la mina del Cerro), y los Anuros en el Bañado.
+
+**M3. Clases.**
+- **Clases base** (borrador). Reemplazan a los 5 roles de hoy (`ROLES` en `src/expedition/exp-data.js:140`) y conservan
+  sus efectos en la expedición:
+
+  | Clase | Antes era | En combate | En la expedición |
+  |---|---|---|---|
+  | Guerrero | nueva | primera línea: aguanta y protege | abre paso por la fuerza |
+  | Cazador | exploración | a distancia y marcar | ve más y evita peligros |
+  | Forjador | ingeniería | barreras y trampas | cruzar y despejar |
+  | Curandero | sanidad | curar y limpiar estados | ánimo y provisiones |
+  | Monje | guía | movimiento, empujar y esquivar | trepar y seguir el camino |
+  | Saqueador | recolección | robar y romper | más botín |
+
+- **Nivel de clase.** Cada integrante tiene clase y nivel de clase, del 1 al 10. Sube con las peleas y las expediciones
+  y abre habilidades: dos activas elegibles de un grupo de cuatro, más pasivas.
+- **El líder** elige su clase base al empezar, en el onboarding, junto con el personaje.
+- **Subclases del líder, según los elementos.** Cada elemento descubierto abre la subclase de esa clase con ese
+  elemento, por ejemplo:
+  - Guerrero + Raíz → Guardián de Raíz;
+  - Cazador + Céfiro → Tirador del Viento;
+  - Monje + Marea → Monje de la Corriente.
+
+  La subclase se cambia en la ciudad. Cada una da 2 habilidades y una pasiva, y cambia el aspecto (M1).
+- **Alcance del Acto 1:** las 6 clases base y las 6 subclases de Raíz. Las de Marea, Brasa y Céfiro llegan en su acto.
+- **Encaje con lo que ya existe:**
+  - los Vínculos y herramientas de L5 se suman a la clase;
+  - el nivel del líder (1 a 30) sigue siendo el nivel general;
+  - el combate (`src/combat/combat-data.js`) pasa de roles a clases;
+  - `sim-combat` mantiene la meta: ninguna clase aporta más del 35 %.
+- **Migración:** las partidas guardadas pasan sus roles a la clase equivalente. El líder de una partida vieja elige
+  clase la primera vez que abre la ciudad.
+
+**M4. Prólogo y cinemática.**
+- **El problema.** El prólogo de texto con las vetas de colores no se entiende, porque las líneas no dicen qué son. Las
+  frases explican en vez de atrapar, y se saltean.
+- **Se adelanta la cinemática (B).**
+  - Muestra el Quiebre con imágenes que se entienden solas: el continente, las torres, el robo, la grieta y las islas que
+    suben.
+  - Usa los personajes nuevos de M1 y los pueblos de M2.
+  - Casi sin texto, con subtítulos de una línea.
+- **El prólogo de texto se reemplaza** por una llegada corta: tu bote toca la isla y Vera te recibe entre las ruinas.
+  - Son 3 o 4 líneas con personalidad y un gancho, del tipo "No viniste a mirar. Viniste porque abajo alguien te
+    nombró.", no una lección de historia.
+  - La historia del mundo queda para la cinemática, el diario y los ecos.
+- **Reglas de escritura** (se suman a DESIGN-STORY §9):
+  - cada línea tiene que dar ganas de leer la siguiente: una pregunta, una amenaza, algo personal;
+  - nada de explicar el lore de entrada;
+  - se muestra, no se cuenta.
+
+**Dónde entra en el orden de trabajo:**
+- **4a**, nuevo: M1 y M2, el estilo nuevo de los personajes y los pueblos.
+- **4**: la cinemática y la llegada con Vera (M4), que usan lo de 4a.
+- **5b**: suma M3, las clases y subclases, junto con L5.
 
 ### F. Documentación
 - `DESIGN-STORY.md` nuevo: canon, actos 1 a 4, facciones, elementos, jefes y reglas de escritura.
@@ -692,9 +792,14 @@ Sigue en pie la regla de CLAUDE.md: no tocar el otro proyecto de Supabase ni usa
     expedición. El combate y el Bajo Mundo lo usan cuando existan.
 3c. **K**: mezclador, sampler, compositor adaptativo, paisaje sonoro y la preparación de los archivos. Va después de 3b,
     que define los lugares, el clima y el día y la noche. Reemplaza la música sintetizada actual.
-4. **B**: cinemática, que ya usa la paleta, el ambiente oscuro y el motivo de El Quiebre (K3) en modo épico.
+4a. **M1 + M2**: personajes serios. Hay vóxel más detallado para la gente y low-poly para las criaturas grandes y los
+    jefes. Se suman los pueblos del mundo, y se rehacen el avatar, la gente de la ciudad, el grupo, los enemigos y los
+    retratos.
+4. **B + M4**: cinemática con los personajes nuevos, que ya usa la paleta, el ambiente oscuro y el motivo de El Quiebre
+   (K3) en modo épico. El prólogo de texto pasa a ser la llegada corta con Vera.
 5. **C**: combate. Primero el motor con sus tests, después la escena y la interfaz, después la casilla `enemigo`.
-5b. **L5**: personas con nombre, Vínculo, herramientas, nivel del líder y pestaña Progreso de la Bitácora.
+5b. **L5 + M3**: personas con nombre, Vínculo, herramientas, nivel del líder, clases y subclases según los elementos, y
+    pestaña Progreso de la Bitácora.
 6. **Acto 1 completo**: escenas, Núcleo de Raíz con la elección de extracción y la Grieta (L1), jefes, faro, abordaje
    pirata, pistas de Vera y del giro (L2, L4), primeros ecos de noche (L6) y E5–E6.
 7. **Balance y primer release**: `sim-combat` y `sim:economy` dentro de sus metas (incluidas L1 y L5), telemetría de
