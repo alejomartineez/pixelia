@@ -262,6 +262,15 @@ tener que dar confirmaciones, le doy el si a todo".
 - **Decisión para el usuario:** la escala de interfaz por defecto en PC a 1080p (hoy 100 %; se propone 115–125 %),
   punto B del informe del recorrido.
 
+### Mañana del 9/11: corte por contexto
+- El usuario pidió cortar las sesiones que se habían pasado de contexto y abrir nuevas. Se cortaron quiebre-6a,
+  quiebre-5b-clases y quiebre-4a-detalle. Lo que tenían a medias quedó commiteado como WIP en sus ramas.
+- quiebre-6a había terminado antes del corte: nivel 3 escalonado, primer turno de la bestia legible y capitana
+  alineada con la economía real (271b6ad, v46). Integrado por el coordinador.
+- Sesiones nuevas: **quiebre-nombres** (desde `claude/nombres-grupo`: "Líder" y el Cazador duplicado en el combate y en
+  Progreso) y **quiebre-telemetria** (desde `claude/fix-telemetry-order`: `test-telemetry` falla en la cadena).
+- Las sesiones viejas quedan abiertas e idle. Se archivan si el usuario lo pide.
+
 ## Decisiones tomadas
 - Plataforma:
   - Tauri v2 para Windows y macOS.
