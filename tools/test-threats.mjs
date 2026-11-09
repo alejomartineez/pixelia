@@ -227,8 +227,18 @@ try {
   await sleep(900);
   await shot('defensa-turno1');
   // un toque real en una casilla con agua
-  const tap = await run(`const c = window.__pixelia.city, d = c.defense.hook.d; let i = d.levels.findIndex(v => v > 0); const x = d.min + Math.floor(i / d.W), z = d.min + i % d.W;
-    const sp = c.ov.project(c.defense.hook.tileCenter(x, z), {}); return { x: sp.x, y: sp.y, before: d.levels[i], i, left: d.crewsLeft };`);
+  // la cámara vuela al grupo en riesgo al montar la defensa (cam.flyTo avanza por cuadro): con la máquina cargada
+  // sigue en vuelo a los 900 ms y el punto proyectado se corre. Se toca recién cuando el punto quedó quieto.
+  const projectTap = () => run(`const c = window.__pixelia.city, d = c.defense.hook.d; let i = d.levels.findIndex(v => v > 0); const x = d.min + Math.floor(i / d.W), z = d.min + i % d.W;
+    const sp = c.ov.project(c.defense.hook.tileCenter(x, z), {}); const top = document.elementFromPoint(sp.x, sp.y);
+    return { x: sp.x, y: sp.y, before: d.levels[i], i, left: d.crewsLeft, top: top?.tagName || null };`);
+  let tap = await projectTap();
+  for (let t0 = Date.now(), still = 0; Date.now() - t0 < 8000 && still < 2;) {
+    await sleep(250);
+    const p = await projectTap();
+    still = Math.hypot(p.x - tap.x, p.y - tap.y) < 0.5 && p.top === 'CANVAS' ? still + 1 : 0;
+    tap = p;
+  }
   await tapXY(tap.x, tap.y);
   await sleep(400);
   const after = await run(`const d = window.__pixelia.city.defense.hook.d; return { lv: d.levels[${tap.i}], left: d.crewsLeft, crews: d.crews.length };`);

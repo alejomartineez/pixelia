@@ -220,7 +220,9 @@ try {
   await page.waitForFunction(() => window.__pixelia?.store?.state && window.__pixelia.ctx.router.current === 'city', { timeout: 30000 });
   await sleep(1500);
   const s2 = await snapshot(page);
-  const pick = (s) => JSON.stringify({ v: s.v, materials: s.materials, buildings: s.buildings, gems: s.gems, equipment: s.equipment, items: s.items, have: s.have, brillitos: s.brillitos, planos: s.planos, v3: s.v3, avatar: s.avatar, car: s.car, home: s.home, theme: s.theme });
+  // v3.shown queda afuera: pasa a 1 cuando se arma el aviso de llegada, que con la máquina cargada sale después de
+  // tomar s1 (se chequea aparte en «el aviso queda marcado como visto»)
+  const pick = (s) => JSON.stringify({ v: s.v, materials: s.materials, buildings: s.buildings, gems: s.gems, equipment: s.equipment, items: s.items, have: s.have, brillitos: s.brillitos, planos: s.planos, v3: { ...s.v3, shown: undefined }, avatar: s.avatar, car: s.car, home: s.home, theme: s.theme });
   // entre las dos cargas se pegaron 8 hallazgos de prueba (Sierras): se comparan contra el estado ya guardado
   const s1b = { ...s1, have: (await run(page, `return S.album.have`)) };
   ok(pick(s2) === pick(s1b), 'materiales, edificios, gemas, equipo, Hallazgos y recursos iguales en la segunda carga', Object.keys(JSON.parse(pick(s2))).filter(k => JSON.stringify(JSON.parse(pick(s2))[k]) !== JSON.stringify(JSON.parse(pick(s1b))[k])).map(k => [k, JSON.parse(pick(s1b))[k], JSON.parse(pick(s2))[k]]));
