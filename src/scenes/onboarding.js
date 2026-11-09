@@ -92,9 +92,9 @@ export default function create(ctx) {
 
   const S = () => store.state;
   const look = normalizeLook(S().avatar);
-  // partida nueva: el personaje arranca con un tipo de "Gente" al azar (los animales quedan como opción en la lista)
+  // partida nueva: el personaje arranca con un pueblo al azar
   if (JSON.stringify(look) === JSON.stringify(normalizeLook({ ...avatarType(look.type).look, type: look.type }))) {
-    const people = AVATAR_TYPES.filter(t => t.family === 'casual');
+    const people = AVATAR_TYPES;   // pueblos jugables (plan §M2)
     const ty = people[Math.floor(Math.random() * people.length)];
     Object.assign(look, normalizeLook({ ...ty.look, type: ty.id }));
   }
