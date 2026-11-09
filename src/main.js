@@ -36,6 +36,7 @@ const SCENES = {
   onboarding: () => import('./scenes/onboarding.js'),   // primera vez: elegir personaje, nombre y ciudad
   home: () => import('./scenes/home.js'),   // Mi Casa por dentro (también la de una amistad: {visit})
   expedition: () => import('./expedition/exp-scene.js'),   // Expedición (DESIGN-CORE.md §2)
+  combat: () => import('./combat/combat-scene.js'),   // Combate táctico (DESIGN-COMBAT.md; ?scene=combat abre un encuentro de prueba)
 };
 
 const sceneEl = document.getElementById('scene');
