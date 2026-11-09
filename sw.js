@@ -4,7 +4,7 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v55';
+const VERSION = 'pixelia-v56';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
@@ -31,6 +31,7 @@ const CORE = [
   './assets/audio/sfx/ui_error4.m4a', './assets/audio/sfx/ui_error6.m4a', './assets/audio/sfx/ui_glass1.m4a', './assets/audio/sfx/ui_kclick3.m4a', './assets/audio/sfx/ui_krollover2.m4a',
   './assets/audio/sfx/ui_kswitch22.m4a', './assets/audio/sfx/ui_kswitch7.m4a', './assets/audio/sfx/ui_open1.m4a', './assets/audio/sfx/ui_open2.m4a', './assets/audio/sfx/ui_pluck1.m4a',
   './assets/audio/sfx/ui_scroll2.m4a', './assets/audio/sfx/ui_select1.m4a', './assets/audio/sfx/ui_select2.m4a', './assets/audio/sfx/ui_tick2.m4a', './assets/audio/sfx/ui_toggle2.m4a',
+  './assets/audio/voice/intro/01.m4a',
   './src/main.js',
   './src/album/album-art.js', './src/album/album-ui.js', './src/album/album.js',
   './src/art/sprite-outfits.js', './src/art/sprite-parts.js', './src/art/sprite2d.js',
@@ -40,6 +41,8 @@ const CORE = [
   './src/avatar/skiff.js', './src/avatar/wardrobe-stage.js',
   './src/chests/chest-model.js', './src/chests/chests-ui-common.js', './src/chests/chests-ui-opening.js', './src/chests/chests-ui-style.js', './src/chests/chests-ui.js',
   './src/chests/chests.js',
+  './src/cinema/labels.js', './src/cinema/narration.js', './src/cinema/pixel2d.js', './src/cinema/player.js', './src/cinema/poses.js',
+  './src/cinema/timeline.js',
   './src/city/models-cycle.js', './src/city/models-deco.js', './src/city/models-defense.js', './src/city/models-houses.js', './src/city/models-kit.js',
   './src/city/models-monuments.js', './src/city/models-raiz.js', './src/city/models-shops.js', './src/city/models-shops3.js', './src/city/models-special.js',
   './src/city/models-town.js', './src/city/models.js', './src/city/themes-ui.js', './src/city/themes.js',
