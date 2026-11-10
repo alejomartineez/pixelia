@@ -30,6 +30,9 @@
 //   lookdev.html?greedy=0               mallas sin unir caras (para comparar con el greedy meshing)
 //   lookdev.html?still=1                sin animación (para comparar capturas pixel a pixel)
 //   lookdev.html?async=1                arma el terreno con el worker de mallas y el caché de IndexedDB
+//   lookdev.html?m2=1                   piloto de M2: la casa de Madera armada con el kit .vox (16 vóxeles por tile)
+//                                       en el lugar de la casa de Piedra, al lado de la casa actual, con una persona
+//   lookdev.html?target=x,y,z&view=7    a dónde mira la isométrica y cuántas unidades entran de alto
 // Capturas: node tools/lookdev-shots.mjs  → shots/lookdev/
 import * as THREE from 'three';
 import { createPixelRenderer, addLights, setIsoCamera, Voxels, shade, meshStats, voxelMaterial, glowMaterial } from '../src/core/voxel.js';
@@ -38,6 +41,8 @@ import { WEATHER } from '../src/core/ambience.js';
 import { buildingModel, natureModel } from '../src/city/models.js';
 import { avatarModel } from '../src/avatar/avatar.js';
 import { loadVox } from '../src/core/vox-loader.js';
+import { loadKit, assembleKit, kitGroup } from '../src/core/vox-kit.js';
+import { MADERA_BASE, MADERA_PARTS, CASA_MADERA_A } from '../src/city/kits/madera.js';
 
 const q = new URLSearchParams(location.search);
 const hour = q.has('hour') ? Number(q.get('hour')) : 15;
@@ -47,6 +52,7 @@ const camId = q.get('cam') === 'cine' ? 'cine' : 'iso';
 const weather = WEATHER[q.get('weather')] ? q.get('weather') : 'despejado';
 const useAsync = q.get('async') === '1';
 const still = q.get('still') === '1';
+const m2 = q.get('m2') === '1';
 window.__ready = false;
 // en modo quieto, el azar (parpadeos, fases) sale siempre igual: dos capturas dan los mismos pixeles
 if (still) { let sd = 12345; Math.random = () => (sd = (sd * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; }
@@ -137,7 +143,7 @@ if (L) {
 // ---------- lo que va arriba ----------
 const put = (obj, tx, tz, rot = 0, scale = 1) => { obj.position.set(tx, 0, tz); obj.rotation.y = rot; obj.scale.setScalar(scale); world.add(obj); return obj; };
 put(buildingModel('casita', 1, { era: 1 }), 2.2, 2.0);                  // casa de época Madera
-put(buildingModel('casita', 2, { era: 2 }), 5.4, 1.9);                  // casa de época Piedra
+if (!m2) put(buildingModel('casita', 2, { era: 2 }), 5.4, 1.9);         // casa de época Piedra
 put(buildingModel('farol', 1, { era: 2 }), 3.9, 4.7);
 put(natureModel('tree', 1), 0.8, 4.9);
 put(natureModel('tree', 3), 7.1, 4.2);
@@ -165,6 +171,16 @@ try {
   put(g, 2.6, 5.4);
   voxInfo = { voxels: vox.voxels.size, size: vox.size };
 } catch (e) { console.error('[lookdev] farol.vox', e); }
+
+// piloto de M2: la casa de Madera del kit (2 × 2 tiles) y una persona a escala 1 para dar la medida
+let kitInfo = null;
+if (m2) {
+  const kit = await loadKit('../' + MADERA_BASE, MADERA_PARTS);
+  const casa = await kitGroup(assembleKit(kit, MADERA_PARTS, CASA_MADERA_A), { light: L, footprint: [32, 32] });
+  put(casa, 5.3, 2.1);
+  put(avatarModel({ ...LOOK, dressColor: 'verde', hair: 'largo', face: 'ninguna', acc: 'ninguno' }), 3.95, 3.45, 0.6);
+  kitInfo = casa.userData.kit;
+}
 
 // de noche los faroles prenden una luz cálida (la del juego la pone ambience-fx con el brillo de los materiales)
 const night = amb.look?.glow || 0;
@@ -199,7 +215,7 @@ function syncEnv() {
 }
 
 // ---------- cámaras ----------
-const target = new THREE.Vector3(0.6, -0.4, 1.2);
+const target = q.has('target') ? new THREE.Vector3(...q.get('target').split(',').map(Number)) : new THREE.Vector3(0.6, -0.4, 1.2);
 if (camId === 'iso') {
   setIsoCamera(r.camera, target, Math.PI / 4, 60, 0.62);
   // maqueta: foco corto también en la isométrica (lo de adelante y lo del fondo se van de foco)
@@ -223,7 +239,7 @@ r.onFrame((dt, t) => {
 r.start();
 const sceneTris = () => { let n = 0; r.scene.traverse(o => { const g = o.geometry; if (o.isMesh && g) n += (g.index ? g.index.count : g.attributes.position.count) / 3 * (o.isInstancedMesh ? o.count : 1); }); return Math.round(n); };
 window.__lookdev = {
-  r, amb, hour, render, cam: camId, vox: voxInfo, terrainMs, meshStats,
+  r, amb, hour, render, cam: camId, vox: voxInfo, kit: kitInfo, terrainMs, meshStats,
   stats: () => ({ render, cam: camId, hour, postOn: r.postOn, greedy: q.get('greedy') !== '0', async: useAsync, terrainMs: Math.round(terrainMs),
     meshes: meshStats.builds, quads: meshStats.quads, verts: meshStats.verts, faces: meshStats.faces, cacheHits: meshStats.cacheHits, workerBuilds: meshStats.workerBuilds,
     triangles: sceneTris(), fps: tAcc ? Math.round(frames / tAcc) : 0,
