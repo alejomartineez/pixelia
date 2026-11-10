@@ -43,8 +43,8 @@ nuevo), cerca de una hora de juego, para probar con jugadores y como demo de Ste
 ## Reglas para cada sesión
 - **Permiso del usuario (2026-11-10): sí a todo lo que haga falta para el plan**, sin preguntar: abrir sesiones nuevas
   (desde el orquestador o desde cualquier sesión), cambiarles modelo y esfuerzo, mergear ramas a master, bump y
-  commits. Siguen fuera: push a GitHub y releases (se piden aparte), claves y pagos (Steam, bancos), la clave
-  `service_role` y el otro proyecto de Supabase. Si la app rechaza abrir una sesión, dejar tarjeta y avisar.
+  commits. También publicar: `git push` a GitHub y releases del juego de PC (`npm run release`), con la suite en
+  verde. Siguen fuera: claves y pagos (Steam, bancos), la clave `service_role` y el otro proyecto de Supabase. Si la app rechaza abrir una sesión, dejar tarjeta y avisar.
 - Modelo: `claude-fable-5-2` con esfuerzo bajo en todas las sesiones, salvo R1 (motor de render y shaders), que va
   en `claude-opus-5-5` con esfuerzo medio. Verificar con `get_session` que quedó así.
 - Pasado el 35 % de contexto: commit WIP, anotar acá dónde quedó y terminar; el orquestador abre una sesión nueva
