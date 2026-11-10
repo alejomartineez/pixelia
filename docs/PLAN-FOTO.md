@@ -15,7 +15,7 @@ todo al nivel final, cerca de una hora de juego, que sirve para probar con jugad
 - **Se sacan los relojes y esperas** de celular y las gemas para saltear.
 - Modelos: más densidad, kit modular en `.vox`; las piezas protagonistas las hace una persona en MagicaVoxel.
 - Las viñetas 2D de El Quiebre siguen en 2D.
-- Sesiones: Fable 5.2 con esfuerzo bajo; **Etapa R1 (motor de render) en Opus 5.5 medio**. Al 35 % de contexto la
+- Sesiones: todas en Fable 5.2; esfuerzo bajo por defecto y medio en los pasos más difíciles (R1, A2, A4). Al 35 % de contexto la
   sesión cierra y sigue otra nueva.
 - **Permiso del usuario: sí a todo lo que haga falta para el plan**, sin preguntar (abrir sesiones desde cualquier
   chat, cambiar modelo y esfuerzo, mergear, bump y commits). Incluye publicar (push a GitHub y releases). Fuera: claves y pagos.
@@ -52,7 +52,7 @@ A5. **Prueba con jugadores** (3 a 5 personas, el prototipo con cubos): `docs/PLA
 
 ## Pista R: render y cámara (en paralelo con la pista A)
 R0. Base (en curso): greedy meshing, worker con caché, lector `.vox`, diorama `tools/lookdev.html`.
-R1. **Motor fotográfico** (`src/core/voxel.js`, `src/core/voxel-light.js`; Opus 5.5 medio): cadena HDR con
+R1. **Motor fotográfico** (`src/core/voxel.js`, `src/core/voxel-light.js`): cadena HDR con
     exposición y AgX; volumen 3D por escena (color y ocupación) con rayos para sombra del sol con penumbra,
     oclusión ambiental, un rebote de luz, reflejos en agua y vidrio, y sombras de hasta 8 luces puntuales; material
     PBR por vóxel; cielo físico; lente de maqueta (bokeh, grano, aberración leve, viñeteado); niebla volumétrica;

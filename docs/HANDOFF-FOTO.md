@@ -15,6 +15,23 @@ nuevo), cerca de una hora de juego, para probar con jugadores y como demo de Ste
 - `npm test` de la v62: pasa todo salvo el glosario (`settings.credits.music` en inglés decía "The Breaking" en vez de
   "Fracture"; es de la v61). La suite corta ahí, así que la prueba de SQL no corrió.
 
+- **v63 en master: R0 y A0 cerrados.**
+  - **R0** (rama `claude/foto-etapa0-b25a35`, mergeada): mallado en `src/core/voxel-mesh.js` (greedy meshing con
+    uniones en T cerradas; `?greedy=0`), `voxel-worker.js` y `Voxels.toGeometryAsync` con caché en IndexedDB
+    (`MESH_VERSION`), lector de MagicaVoxel `src/core/vox-loader.js`, `tools/make-vox.mjs`, `npm run test:vox`,
+    diorama `tools/lookdev.html` y `npm run lookdev`. Medido: 6 % menos de vértices (el jitter por vóxel impide unir
+    caras; R1 debería pasarlo al shader) y el armado de 1350 modelos bajó de ~5,7 s a ~2,6 s.
+  - **A0, combate** (rama `claude/sweet-ramanujan-18bcd8`, mergeada): la Bestia del Bañado en vóxel
+    (`boss-models.js`), color por clase (`class-accent.js`: aro, ropa, barra de vida y lista del turno) y fondo del
+    bioma (`combat-backdrop.js`). Se integró porque estaba completa y pasaba `test-combat-scene`, `test-act1` y
+    `test-class-look`; A2 parte de ahí.
+  - **A0, paso 2a** (`claude/nifty-nightingale-01cb64`): ya estaba contenida en master (su punta `139ab19` es
+    ancestro), no había nada que mergear. `test-social` pasa en master.
+  - Suite completa de la v63: pasa todo. `test-audio` fallaba por los saltos CRLF de `LICENSES.md` en Windows
+    (arreglada la prueba). Con varias sesiones corriendo a la vez, `test-place`, `test-mock`, `test-telemetry`,
+    `test-combat-exp`, `test-classes` y `test-class-look` fallan por tiempos y pasan al repetirlas solas: ante una
+    falla, repetir esa prueba suelta antes de tocar código.
+
 ### A2: combate apto para farmear (rama `claude/a2-combate-5384e9`, sin bump ni push; falta mergear)
 Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
 - **Medido**: una pelea común dura **66 a 69 s a ×1** y 53 s a ×2 en la escena real (bot + 2,5 s por jugada;
@@ -41,25 +58,19 @@ Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
   que ahí "Resolver rápido" da lo de antes; los comunes de la historia siguen en 8×8; el bot no usa reacciones; el arte
   de los enemigos nuevos son cubos. En el worktree, `tools/node_modules` es un enlace al del checkout principal.
 
-### En curso
-- **R0** en la rama `claude/foto-etapa0-b25a35` (sesión `local_1440b5bf`, worktree `.claude/worktrees/foto-etapa0-b25a35`):
-  commit WIP `238ed1d` con greedy meshing (`voxel.js`, `voxel-mesh.js`), `voxel-worker.js` con caché, `vox-loader.js`,
-  `tools/make-vox.mjs`, `tools/test-vox.mjs`, diorama de lookdev y el arreglo del glosario. Falta: suite completa,
-  bump, commit final y merge a master.
 
-### Pendiente de integrar (paso A0)
-- `claude/sweet-ramanujan-18bcd8` (sesión `local_8559c03b`, detenida a mitad de turno, **sin commit**): cambios en
-  `src/combat/boss-models.js`, `combat-scene.js`, `combat-ui.js`, `enemy-models.js`, `tools/test-act1.mjs` y archivos
-  nuevos `class-accent.js` y `combat-backdrop.js`. Revisar si sirve con el tablero 6×6 de A2 antes de terminarla.
-- `claude/nifty-nightingale-01cb64` (paso 2a de la Travesía: nivel 50, talentos, arsenal con rarezas, maestría;
-  `test-social` falla). Es la base de A3.
+### En curso (sesiones abiertas por el chat coordinador `local_377480f3`; el orquestador integra)
+- **A1** `local_2fe76e8b`, rama `claude/a1-travesia-3e736a`: terminó (commit `293aad4`; pasan `test-voyage` y
+  `test-i18n`). Falta revisarla, mergearla y correr la suite.
+- **A2** `local_b3df4020`, rama `claude/a2-combate-5384e9` (esfuerzo medio). La sesión `local_a28fd135` no arrancó: ignorarla.
+- **R1** `local_c19fef5f`, rama `claude/r1-render-024ec7` (Fable 5.2 medio).
+- **U1** `local_6f56642d` (rama u1-tono) y **mock de U2** `local_d69a3fd1` (rama u2-mock-hud; espera la aprobación
+  del usuario antes de pasar pantallas).
 
 ## Próximos pasos (ver "Orden" en el plan)
-1. Cerrar R0 y mergearla a master. A0: integrar las dos ramas de arriba.
-2. En paralelo: A1 (prototipo de la Travesía sin arte, `src/voyage/`), A2 (combate apto para farmear) y R1 (motor
-   fotográfico, en **Opus 5.5 medio**).
-3. A3 (botín, árbol, reliquias), U1 (guía de tono nueva) y el mock de U2 (HUD de PC) para que el usuario lo apruebe.
-4. A5: prueba con jugadores del prototipo con cubos. Recién después, arte.
+1. Integrar A1; después A2, R1 y U1 a medida que entreguen (revisar diff, mergear, suite, bump, commit y push).
+2. Cuando A2 esté integrada, abrir A3 (botín, árbol, reliquias) sobre el arsenal y la maestría del 2a, que ya está en master.
+3. A5: prueba con jugadores del prototipo con cubos. Recién después, arte.
 
 ## Lo que hace el usuario
 - Trámites de Steam (verificación de identidad, pago y esperas) y confirmar en Steamworks qué uso de IA se declara.
@@ -71,8 +82,9 @@ Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
   (desde el orquestador o desde cualquier sesión), cambiarles modelo y esfuerzo, mergear ramas a master, bump y
   commits. También publicar: `git push` a GitHub y releases del juego de PC (`npm run release`), con la suite en
   verde. Siguen fuera: claves y pagos (Steam, bancos), la clave `service_role` y el otro proyecto de Supabase. Si la app rechaza abrir una sesión, dejar tarjeta y avisar.
-- Modelo: `claude-fable-5-2` con esfuerzo bajo en todas las sesiones, salvo R1 (motor de render y shaders), que va
-  en `claude-opus-5-5` con esfuerzo medio. Verificar con `get_session` que quedó así.
+- Modelo: `claude-fable-5-2` en todas las sesiones. Esfuerzo bajo por defecto y **medio en los pasos más difíciles**
+  (R1, motor de render; A2, IA y balance del combate; y los que el orquestador juzgue así: economía sin relojes,
+  migraciones de guardado). Verificar con `get_session` que quedó así.
 - Pasado el 35 % de contexto: commit WIP, anotar acá dónde quedó y terminar; el orquestador abre una sesión nueva
   ("fresh"). Vale también para el orquestador.
 - El tono cambió: ya no es "cozy". Hasta que U1 reescriba la guía, usar "refugio cálido, mundo oscuro; voz sobria".
