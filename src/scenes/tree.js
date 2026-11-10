@@ -99,7 +99,7 @@ export default function create(ctx) {
     }
     if (best) { sel = best; why = ''; render(); }
   }
-  const back = () => ctx.router.go(ctx.router.params?.back || 'city');
+  const back = () => ctx.router.go(ctx.router.params?.back || 'city', ctx.router.params?.backParams || undefined);
   function onClick(e) {
     const node = e.target.closest('[data-node]');
     if (node) { if (sel === node.dataset.node && T.canTake(state(), sel).ok) return take(); sel = node.dataset.node; why = ''; return render(); }
