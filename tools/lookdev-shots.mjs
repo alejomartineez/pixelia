@@ -3,6 +3,7 @@
 //   node tools/lookdev-shots.mjs --hours 15,22.5 --cams cine --renders photo
 //   node tools/lookdev-shots.mjs --check         → no saca la serie: compara greedy=0 contra greedy=1 pixel a pixel y
 //                                                  prueba el worker de mallas con su caché (sale con 1 si algo no da)
+//   node tools/lookdev-shots.mjs --bench         → costo por cuadro de classic, post y photo con la GPU de verdad (corrida corta)
 //   --out <carpeta> (default shots/lookdev) · --size 1366x800 · --tag <sufijo>
 import http from 'node:http';
 import { readFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
@@ -15,9 +16,10 @@ const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf('--' + n); return i >= 0 ? (args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : true) : d; };
 const EXTRA = opt("query", "") ? "&" + opt("query") : "";
 const CHECK = !!opt('check', false);
+const BENCH = !!opt('bench', false);
 const HOURS = String(opt('hours', '9,15,19.5,22.5')).split(',').map(Number);
 const CAMS = String(opt('cams', 'iso,cine')).split(',');
-const RENDERS = String(opt('renders', 'classic,photo')).split(',');
+const RENDERS = String(opt('renders', BENCH ? 'classic,post,photo' : 'classic,photo')).split(',');
 const OUT = resolve(ROOT, String(opt('out', 'shots/lookdev')));
 const [W, H] = String(opt('size', '1366x800')).split('x').map(Number);
 const TAG = opt('tag', '') ? '-' + opt('tag') : '';
@@ -32,7 +34,7 @@ const server = http.createServer((req, res) => {
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${server.address().port}/tools/lookdev.html`;
 const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: BENCH ? ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] : ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const errors = [];
 let pass = 0, fail = 0;
 const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ✔', msg); } else { fail++; console.log('  ✘', msg, extra !== undefined ? JSON.stringify(extra) : ''); } return !!c; };
@@ -55,7 +57,14 @@ async function open(query, page) {
 }
 const stats = (page) => page.evaluate('window.__lookdev && window.__lookdev.stats()');
 
-if (!CHECK) {
+if (BENCH) {
+  for (const cam of CAMS) for (const render of RENDERS) {
+    const page = await open(`cam=${cam}&hour=${HOURS[0]}&render=${render}&still=1${EXTRA}`);
+    const b = await page.evaluate('window.__lookdev.bench(40)');
+    console.log(`bench ${cam} ${render}:`, JSON.stringify(b), JSON.stringify((await stats(page)).light));
+    await page.close();
+  }
+} else if (!CHECK) {
   mkdirSync(OUT, { recursive: true });
   for (const cam of CAMS) for (const h of HOURS) for (const render of RENDERS) {
     const page = await open(`cam=${cam}&hour=${h}&render=${render}${EXTRA}`);

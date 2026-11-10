@@ -2,6 +2,7 @@
 // Todos los módulos 3D deben usar esto para que el juego se vea coherente.
 import * as THREE from 'three';
 import { frameCap, FPS_PARAM } from './frame-cap.js';
+import { createVoxelLight } from './voxel-light.js';
 
 import { hexToInt, shade, packVoxels, meshPacked, MESH_VERSION } from './voxel-mesh.js';
 export { hexToInt, shade, AO_LEVELS, packVoxels } from './voxel-mesh.js';
@@ -277,6 +278,12 @@ const postParam = typeof location !== 'undefined' ? (/[?&]post=([01])\b/.exec(lo
  *   (focus = distancia a la cámara en unidades de mundo, range = cuánto alrededor queda nítido).
  */
 export const POST_DEFAULT = { bloom: 0.32, thr: 0.8, vignette: 0.1, contrast: 0.1, split: 0.12, dof: null };
+/**
+ * Lo que suma el render fotográfico (opts.photo, cadena HDR) al acabado de cámara:
+ *   exposure: exposición de la escena (multiplica la luz antes del mapeo de tonos AgX) · punch: contraste del AgX
+ *   (1 = neutro) · agxSat: saturación después del AgX. En HDR, thr es el brillo (ya expuesto) desde el que algo florece.
+ */
+export const PHOTO_DEFAULT = { exposure: 1, punch: 1.25, agxSat: 1.15, thr: 1.0, bloom: 0.5 };
 const live = new Set();
 /** Cuadros dibujados en total por todos los renderers (lo usa el contador de FPS de Ajustes). */
 export const frameStats = { frames: 0 };
@@ -303,6 +310,8 @@ export function graphics() { return GFX; }
 export function createPixelRenderer(container, opts = {}) {
   const { ortho = true, viewSize = 14, background = 0xbfe9ff, shadows = true, fov = 50 } = opts;
   const low = forcedLow || !!opts.lowQuality || (opts.pixelSize || 0) >= 2.5;
+  // render fotográfico (PLAN-FOTO R1): cadena HDR en float16 con AgX. En calidad baja queda el render clásico.
+  let photo = !!opts.photo && !low;
   let scale = 2, dpr = 1, level = 0;
   // ?outline=1 / ?outline=0 en la URL lo fuerza en todas las escenas (para comparar)
   const forced = typeof location !== 'undefined' && /[?&]outline=([01])/.exec(location.search);
@@ -321,15 +330,24 @@ export function createPixelRenderer(container, opts = {}) {
   // corrección de color del ambiente (saturación, tono y niebla por profundidad): va en el mismo pase final
   let grade = null;
   // acabado de cámara (bloom, tonos, viñeteado, desenfoque): también en el pase final
-  let post = { ...POST_DEFAULT, ...(opts.post || {}) };
+  const postBase = () => ({ ...POST_DEFAULT, ...(photo ? PHOTO_DEFAULT : {}), ...(opts.post || {}) });
+  let post = postBase();
   // opts.post: false apaga el acabado en esta escena (el render "classic" de tools/lookdev.html)
-  const wantPost = () => opts.post !== false && (postParam ? postParam === '1' : !low && GFX.post !== false) && renderer.capabilities.isWebGL2;
+  if (photo && !renderer.capabilities.isWebGL2) photo = false;
+  const wantPost = () => photo || (opts.post !== false && (postParam ? postParam === '1' : !low && GFX.post !== false) && renderer.capabilities.isWebGL2);
+  // luz con rayos en el volumen de la escena (voxel-light.js); solo con el render fotográfico
+  const light = photo ? createVoxelLight(renderer, {
+    cell: opts.lightCell,
+    classify: (m) => m === _mat ? 'solid' : m === _matEmissive ? 'glow' : m === _matWindow ? 'window'
+      : (m.isMeshLambertMaterial && m.vertexColors && !m.transparent ? 'solid' : null),
+  }) : null;
+  if (light) renderer.shadowMap.enabled = false;
   function buildOutline() {
     const lines = wantOutline(), n = samples(), pp = wantPost();
-    const key = lines || n || grade || pp ? `${lines}|${n}|${pp}|${JSON.stringify(sceneOutline ?? null)}` : '';
+    const key = lines || n || grade || pp ? `${lines}|${n}|${pp}|${photo}|${JSON.stringify(sceneOutline ?? null)}` : '';
     if (key === outlineKey) return false;
     outline?.dispose(); outline = null; outlineKey = key;
-    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines, pp);
+    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines, pp, photo, light);
     if (outline && grade) outline.setGrade(grade);
     outline?.setPost(post);
     return true;
@@ -428,7 +446,7 @@ export function createPixelRenderer(container, opts = {}) {
   function applyGfx() {
     if (level && !GFX.autoRes) level = 0;
     buildOutline();
-    const sh = shadows && GFX.shadows;
+    const sh = shadows && GFX.shadows && !light;
     if (sh !== shadowsOn) {
       shadowsOn = renderer.shadowMap.enabled = sh;
       scene.traverse(o => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; for (const m of ms) m.needsUpdate = true; });
@@ -476,12 +494,16 @@ export function createPixelRenderer(container, opts = {}) {
      * dof: { focus, range, amt } o null.
      */
     setPost(p) {
-      post = p === null ? { ...POST_DEFAULT, ...(opts.post || {}) } : { ...post, ...p };
+      post = p === null ? postBase() : { ...post, ...p };
       outline?.setPost(post);
     },
     get post() { return { ...post }; },
     /** ¿Hay bloom y demás (no en calidad baja)? */
     get postOn() { return !!outline?.post; },
+    /** ¿Render fotográfico (cadena HDR)? */
+    get photo() { return photo; },
+    /** Luz del render fotográfico (volumen, materiales, ambiente): ver voxel-light.js. null en el render clásico. */
+    light,
     /** ¿Se dibuja el contorno tinta? */
     get outline() { return !!outline && wantOutline(); },
     /** Muestras de antialias (0 = sin antialias). */
@@ -512,6 +534,7 @@ export function createPixelRenderer(container, opts = {}) {
       this.stop(); ro.disconnect(); loops.clear(); live.delete(applyGfx);
       mq?.removeEventListener?.('change', onDpr);
       outline?.dispose();
+      light?.dispose();
       disposeObject(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
@@ -527,12 +550,13 @@ export function createPixelRenderer(container, opts = {}) {
  * mide ≈1 px CSS a cualquier resolución y no hace escalones duros.
  * En perspectiva el umbral crece con la distancia para no rayar el piso lejano en ángulo rasante.
  */
-function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = false) {
+function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = false, hdr = false, light = null) {
   const cfg = typeof o === 'object' ? o : {};
   // RGBA8 en sRGB (no float16): la mitad de memoria y ancho de banda con MSAA, ~25% menos de GPU por
   // cuadro, y la imagen sale igual (la GPU guarda en sRGB y lee de vuelta en lineal, sin bandas).
+  // Con hdr (render fotográfico) sí va en float16 lineal: la luz pasa de 1 y el AgX la baja al final.
   const rt = new THREE.WebGLRenderTarget(1, 1, {
-    type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace,
+    ...(hdr ? { type: THREE.HalfFloatType } : { type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace }),
     minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: true, samples,
   });
   rt.depthTexture = new THREE.DepthTexture(1, 1);
@@ -543,19 +567,26 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
   const quadVS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
   // extracción: promedia 4×4 pixeles de la imagen completa y se queda con lo que pasa el umbral (thr < 0 = todo)
   const extract = withPost ? new THREE.ShaderMaterial({
-    uniforms: { tColor: { value: rt.texture }, texel: { value: new THREE.Vector2(1, 1) }, thr: { value: 0.8 } },
+    defines: hdr ? { HDR: '' } : {},
+    uniforms: { tColor: { value: rt.texture }, texel: { value: new THREE.Vector2(1, 1) }, thr: { value: 0.8 }, exposure: { value: 1 } },
     vertexShader: quadVS,
     fragmentShader: `
-      uniform sampler2D tColor; uniform vec2 texel; uniform float thr; varying vec2 vUv;
+      uniform sampler2D tColor; uniform vec2 texel; uniform float thr; uniform float exposure; varying vec2 vUv;
       void main() {
         vec3 s = vec3(0.0);
         for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) {
           vec4 c = texture2D(tColor, vUv + vec2(float(i) - 1.5, float(j) - 1.5) * texel);
+          #ifdef HDR
+          // luz real: se expone y se le pone techo (un pixel de sol no tiene que quemar todo el halo)
+          c.rgb = min(c.rgb * exposure, vec3(24.0));
+          if (thr >= 0.0) { float hb = max(c.r, max(c.g, c.b)); c.rgb *= smoothstep(thr, thr * 1.6 + 0.05, hb); }
+          #else
           if (thr >= 0.0) {
             vec3 u = c.a > 0.0 ? c.rgb / c.a : vec3(0.0);
             float b = max(u.r, max(u.g, u.b));
             c.rgb *= smoothstep(thr, thr + 0.2, b);
           }
+          #endif
           s += c.rgb;
         }
         gl_FragColor = vec4(s / 16.0, 1.0);
@@ -578,6 +609,7 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
   const mat = new THREE.ShaderMaterial({
     defines: withPost ? { POST: '' } : {},
     uniforms: {
+      exposure: { value: 1 }, punch: { value: 1.25 }, agxSat: { value: 1.15 },
       tColor: { value: rt.texture }, tDepth: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) },
       near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3d2f2a) }, lineW: { value: 2 },
       strength: { value: cfg.strength ?? 0.85 }, lines: { value: lines ? 1 : 0 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
@@ -599,6 +631,23 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       uniform float dofAmt; uniform float dofFocus; uniform float dofRange; uniform float vig; uniform float aspect;
       uniform float contrast; uniform float splitAmt; uniform vec3 splitLo; uniform vec3 splitHi;
       varying vec2 vUv;
+      #ifdef HDR
+      uniform float exposure; uniform float punch; uniform float agxSat;
+      // AgX (Troy Sobotka; aproximación de Benjamin Wrensch): entra luz lineal sin techo, sale lineal de pantalla 0..1
+      vec3 agx(vec3 v) {
+        const mat3 inM = mat3(0.842479062253094, 0.0423282422610123, 0.0423756549057051, 0.0784335999999992, 0.878468636469772, 0.0784336, 0.0792237451477643, 0.0791661274605434, 0.879142973793104);
+        const mat3 outM = mat3(1.19687900512017, -0.0528968517574562, -0.0529716355144438, -0.0980208811401368, 1.15190312990417, -0.0980434501171241, -0.0990297440797205, -0.0989611768448433, 1.15107367264116);
+        v = inM * max(v, vec3(0.0));
+        v = (clamp(log2(max(v, vec3(1e-10))), -12.47393, 4.026069) + 12.47393) / 16.5;
+        vec3 v2 = v * v, v4 = v2 * v2;
+        v = 15.5 * v4 * v2 - 40.14 * v4 * v + 31.96 * v4 - 6.868 * v2 * v + 0.4298 * v2 + 0.1191 * v - 0.00232;
+        // "look": más contraste (los negros bajan de verdad) y algo de saturación
+        v = pow(max(v, vec3(0.0)), vec3(punch));
+        float l = dot(v, vec3(0.2126, 0.7152, 0.0722));
+        v = l + agxSat * (v - l);
+        return pow(clamp(outM * v, 0.0, 1.0), vec3(2.2));
+      }
+      #endif
       float dist(vec2 uv) {
         float d = texture2D(tDepth, uv).x;
         #ifdef ORTHO
@@ -616,6 +665,9 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       }
       void main() {
         vec4 c = texture2D(tColor, vUv);
+        #ifdef HDR
+        c.rgb *= exposure;
+        #endif
         float dc = dist(vUv);
         float coc = 0.0;
         #ifdef POST
@@ -646,6 +698,9 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
           a = clamp(a + max(bl.r, max(bl.g, bl.b)), 0.0, 1.0);
           rgb = a > 0.0 ? lin / a : vec3(0.0);
         }
+        #endif
+        #ifdef HDR
+        rgb = agx(rgb);
         #endif
         float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
         rgb = max(mix(vec3(lum), rgb, sat) * tint, 0.0);
@@ -682,6 +737,7 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
     get post() { return withPost; },
     setSize(w, h, scale = 2) {
       rt.setSize(w, h); mat.uniforms.texel.value.set(1 / w, 1 / h);
+      light?.setSize(w, h);
       mat.uniforms.lineW.value = Math.max(1, Math.round((cfg.width ?? 1.1) * scale));
       mat.uniforms.aspect.value = w / Math.max(1, h);
       if (pp) {
@@ -693,7 +749,7 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
     render(scene, camera) {
       if (ortho !== !!camera.isOrthographicCamera) {
         ortho = !!camera.isOrthographicCamera;
-        mat.defines = { ...(withPost ? { POST: '' } : {}), ...(ortho ? { ORTHO: '' } : {}) };
+        mat.defines = { ...(withPost ? { POST: '' } : {}), ...(hdr ? { HDR: '' } : {}), ...(ortho ? { ORTHO: '' } : {}) };
         mat.needsUpdate = true;
         const u = mat.uniforms;
         if (ortho) { u.thrAbs.value = cfg.threshold ?? 0.3; u.thrLin.value = 0; u.thrSq.value = 0; }
@@ -701,6 +757,7 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       }
       mat.uniforms.near.value = camera.near; mat.uniforms.far.value = camera.far;
       const prev = renderer.getRenderTarget();
+      light?.prepare(scene, camera);
       renderer.setRenderTarget(rt);
       renderer.render(scene, camera);
       const u = mat.uniforms;
@@ -728,12 +785,15 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       const f = g.fog || {};
       u.fogAmt.value = f.amt || 0; if (f.color != null) u.fogColor.value.set(f.color);
       u.fogNear.value = f.near ?? 50; u.fogFar.value = f.far ?? 90;
-      bloomBoost = g.bloomBoost || 0;
+      // en HDR lo emisivo ya brilla de verdad de noche: no hace falta inflar el halo
+      bloomBoost = hdr ? 0 : g.bloomBoost || 0;
     },
     setPost(p) {
       P = { ...POST_DEFAULT, ...(p || {}) };
       const u = mat.uniforms;
       u.vig.value = P.vignette || 0; u.contrast.value = P.contrast || 0; u.splitAmt.value = P.split || 0;
+      u.exposure.value = P.exposure ?? 1; u.punch.value = P.punch ?? 1.25; u.agxSat.value = P.agxSat ?? 1.15;
+      if (extract) extract.uniforms.exposure.value = hdr ? (P.exposure ?? 1) : 1;
     },
     dispose() {
       rt.depthTexture.dispose(); rt.dispose(); quad.geometry.dispose(); mat.dispose();
