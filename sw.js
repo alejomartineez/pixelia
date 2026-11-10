@@ -4,7 +4,7 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v58';
+const VERSION = 'pixelia-v59';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
@@ -48,12 +48,13 @@ const CORE = [
   './src/city/models-town.js', './src/city/models.js', './src/city/themes-ui.js', './src/city/themes.js',
   './src/combat/boss-models.js', './src/combat/classes.js', './src/combat/combat-data.js', './src/combat/combat-rules.js', './src/combat/combat-scene.js',
   './src/combat/combat-ui.js', './src/combat/enemy-models.js',
-  './src/core/achievements.js', './src/core/ambience-fx.js', './src/core/ambience.js', './src/core/audio.js', './src/core/bus.js',
-  './src/core/classes-migrate.js', './src/core/classes.js', './src/core/data.js', './src/core/desktop.js', './src/core/economy.js',
-  './src/core/frame-cap.js', './src/core/hud.js', './src/core/i18n.js', './src/core/icons.js', './src/core/keys.js',
-  './src/core/monuments.js', './src/core/palette.js', './src/core/people-data.js', './src/core/people.js', './src/core/quests.js',
-  './src/core/raiz.js', './src/core/settings.js', './src/core/state.js', './src/core/tips.js', './src/core/tools-city.js',
-  './src/core/ui.js', './src/core/unlocks.js', './src/core/voxel.js',
+  './src/core/achievements.js', './src/core/ambience-fx.js', './src/core/ambience.js', './src/core/arsenal.js', './src/core/audio.js',
+  './src/core/bus.js', './src/core/classes-migrate.js', './src/core/classes.js', './src/core/data.js', './src/core/desktop.js',
+  './src/core/economy.js', './src/core/frame-cap.js', './src/core/gear.js', './src/core/hud.js', './src/core/i18n.js',
+  './src/core/icons.js', './src/core/keys.js', './src/core/monuments.js', './src/core/palette.js', './src/core/people-data.js',
+  './src/core/people.js', './src/core/power.js', './src/core/quests.js', './src/core/raiz.js', './src/core/settings.js',
+  './src/core/state.js', './src/core/talents.js', './src/core/tips.js', './src/core/tools-city.js', './src/core/ui.js',
+  './src/core/unlocks.js', './src/core/voxel.js',
   './src/core/icons/combat.js', './src/core/icons/hud.js', './src/core/icons/index.js', './src/core/icons/land.js', './src/core/icons/legacy.js',
   './src/core/icons/meta.js', './src/core/icons/palette.js', './src/core/icons/res.js', './src/core/icons/ui.js', './src/core/icons/weather.js',
   './src/core/icons/finds/autitos.js', './src/core/icons/finds/castillos.js', './src/core/icons/finds/fiesta.js', './src/core/icons/finds/flores.js', './src/core/icons/finds/index.js',
@@ -69,10 +70,10 @@ const CORE = [
   './src/scenes/arrival.js', './src/scenes/city-act1.js', './src/scenes/city-ambience.js', './src/scenes/city-batch.js', './src/scenes/city-camera.js',
   './src/scenes/city-common.js', './src/scenes/city-fx.js', './src/scenes/city-grieta.js', './src/scenes/city-life.js', './src/scenes/city-place.js',
   './src/scenes/city-ui.js', './src/scenes/city-visit.js', './src/scenes/city-world.js', './src/scenes/city.js', './src/scenes/class-pick.js',
-  './src/scenes/install-card.js', './src/scenes/intro.js', './src/scenes/onboarding.js', './src/scenes/panels-common.js', './src/scenes/panels-expedition.js',
-  './src/scenes/panels-progress.js', './src/scenes/panels-quests.js', './src/scenes/panels-rank.js', './src/scenes/panels-rewards.js', './src/scenes/panels-settings.js',
-  './src/scenes/panels-story.js', './src/scenes/panels-style.js', './src/scenes/panels-works.js', './src/scenes/panels-workshop.js', './src/scenes/panels.js',
-  './src/scenes/wardrobe.js',
+  './src/scenes/install-card.js', './src/scenes/intro.js', './src/scenes/onboarding.js', './src/scenes/panels-arsenal.js', './src/scenes/panels-common.js',
+  './src/scenes/panels-expedition.js', './src/scenes/panels-progress.js', './src/scenes/panels-quests.js', './src/scenes/panels-rank.js', './src/scenes/panels-rewards.js',
+  './src/scenes/panels-settings.js', './src/scenes/panels-story.js', './src/scenes/panels-style.js', './src/scenes/panels-works.js', './src/scenes/panels-workshop.js',
+  './src/scenes/panels.js', './src/scenes/wardrobe.js',
   './src/season/events-ui.js', './src/season/events.js', './src/season/season-data.js', './src/season/season-ui-common.js', './src/season/season-ui.js',
   './src/season/season.js',
   './src/story/act1.js', './src/story/echo-fx.js', './src/story/echoes.js', './src/story/raiz-ui.js', './src/story/story-data.js',

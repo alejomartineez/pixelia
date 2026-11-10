@@ -1,6 +1,6 @@
 [package]
 name = "pixelia"
-version = "0.58.0"
+version = "0.59.0"
 description = "Pixelia, un juego de Dezings"
 authors = ["Dezings"]
 edition = "2021"
