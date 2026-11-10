@@ -4,7 +4,7 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v57';
+const VERSION = 'pixelia-v58';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
@@ -56,6 +56,9 @@ const CORE = [
   './src/core/ui.js', './src/core/unlocks.js', './src/core/voxel.js',
   './src/core/icons/combat.js', './src/core/icons/hud.js', './src/core/icons/index.js', './src/core/icons/land.js', './src/core/icons/legacy.js',
   './src/core/icons/meta.js', './src/core/icons/palette.js', './src/core/icons/res.js', './src/core/icons/ui.js', './src/core/icons/weather.js',
+  './src/core/icons/finds/autitos.js', './src/core/icons/finds/castillos.js', './src/core/icons/finds/fiesta.js', './src/core/icons/finds/flores.js', './src/core/icons/finds/index.js',
+  './src/core/icons/finds/joyas.js', './src/core/icons/finds/mascotas.js', './src/core/icons/finds/musica.js', './src/core/icons/finds/noche.js', './src/core/icons/finds/playa.js',
+  './src/core/icons/finds/postres.js', './src/core/icons/finds/princesas.js', './src/core/icons/finds/vestidos.js',
   './src/expedition/exp-ambience.js', './src/expedition/exp-data.js', './src/expedition/exp-gen.js', './src/expedition/exp-guide.js', './src/expedition/exp-rules.js',
   './src/expedition/exp-scene.js', './src/expedition/exp-ui.js', './src/expedition/expedition.js',
   './src/i18n/de.js', './src/i18n/en.js', './src/i18n/es.js', './src/i18n/fr.js', './src/i18n/ja.js',
