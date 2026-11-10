@@ -45,6 +45,7 @@ const SCENES = {
   onboarding: () => import('./scenes/onboarding.js'),   // primera vez: elegir personaje, nombre y ciudad
   expedition: () => import('./expedition/exp-scene.js'),   // Expedición (DESIGN-CORE.md §2)
   tree: () => import('./scenes/tree.js'),   // árbol de habilidades (PLAN-FOTO, paso A3; ?scene=tree&veta=600)
+  voyage: () => import('./voyage/voyage-scene.js'),   // Travesía por nodos: prototipo sin arte (PLAN-FOTO §A1; ?scene=voyage&seed=N)
   combat: () => import('./combat/combat-scene.js'),   // Combate táctico (DESIGN-COMBAT.md; ?scene=combat abre un encuentro de prueba)
 };
 

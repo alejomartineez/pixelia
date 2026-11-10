@@ -19,8 +19,11 @@
 // más el farol de muestra importado de MagicaVoxel (assets/models/farol.vox).
 //
 //   lookdev.html?hour=19.5              hora del día (0..24, default 15)
-//   lookdev.html?render=classic|photo   classic = sin acabado de cámara; photo (default) = classic + Fase A
-//                                       (bloom, tonos, viñeteado y, en la cámara de cine, desenfoque)
+//   lookdev.html?render=classic|post|photo
+//                                       classic = el render del juego sin acabado de cámara · post = classic + Fase A
+//                                       (bloom, tonos, viñeteado y, en la cámara de cine, desenfoque) · photo (default)
+//                                       = render fotográfico de PLAN-FOTO R1 (HDR con AgX, luz con rayos en el volumen)
+//   lookdev.html?exposure=1.2           exposición del render fotográfico
 //   lookdev.html?post=0|1               fuerza el acabado, mande lo que mande ?render
 //   lookdev.html?cam=iso|cine           isométrica del juego (default) o cámara de cine baja con lente larga
 //   lookdev.html?weather=lluvia         clima (ids de WEATHER en src/core/ambience.js)
@@ -38,7 +41,8 @@ import { loadVox } from '../src/core/vox-loader.js';
 
 const q = new URLSearchParams(location.search);
 const hour = q.has('hour') ? Number(q.get('hour')) : 15;
-const render = q.get('render') === 'classic' ? 'classic' : 'photo';
+const render = ['classic', 'post'].includes(q.get('render')) ? q.get('render') : 'photo';
+const photo = render === 'photo';
 const camId = q.get('cam') === 'cine' ? 'cine' : 'iso';
 const weather = WEATHER[q.get('weather')] ? q.get('weather') : 'despejado';
 const useAsync = q.get('async') === '1';
@@ -47,10 +51,17 @@ window.__ready = false;
 // en modo quieto, el azar (parpadeos, fases) sale siempre igual: dos capturas dan los mismos pixeles
 if (still) { let sd = 12345; Math.random = () => (sd = (sd * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff; }
 
+// acabado del render fotográfico: sin tinta, viñeteado de lente y los negros abajo
+const num = (k, d) => q.has(k) ? Number(q.get(k)) : d;
+// la lente de maqueta: ?lensvig= caída de luz en los bordes · ?ca= aberración · ?grain= grano · ?dof=0 sin desenfoque
+const PHOTO = { bloom: 0.55, thr: 1.0, vignette: 0.08, contrast: 0.08, split: 0.14, exposure: num('exposure', 1.15), punch: 1.2, agxSat: 1.2, lensVig: num('lensvig', 0.55), ca: num('ca', 0.0016), grain: num('grain', 0.035) };
+// ?bounce= rebote difuso · ?fog= densidad de la niebla (se multiplica de noche) · ?taa=0 sin antialias temporal
+const BOUNCE = num('bounce', 0.7), FOG = num('fog', 0.03);
+const SUN_K = num('sunk', 2.6), SKY_K = num('skyk', 1.5), NIGHT_DIM = num('nightdim', 0.86), LAMP_I = num('lamp', 14);
 const POST = { bloom: 0.5, thr: 0.78, vignette: 0.3, contrast: 0.18, split: 0.2 };
 const r = createPixelRenderer(document.getElementById('view'), {
-  ortho: camId === 'iso', viewSize: 11, fov: 24, background: 0xbfe9ff, outline: true,
-  post: render === 'classic' && q.get('post') !== '1' ? false : POST,
+  ortho: camId === 'iso', viewSize: q.has('view') ? Number(q.get('view')) : 11, fov: 24, background: 0xbfe9ff, outline: !photo, photo, taa: q.get('taa') !== '0',
+  post: photo ? PHOTO : render === 'classic' && q.get('post') !== '1' ? false : POST,
 });
 const lights = addLights(r.scene, { shadowSize: 16, shadowRes: 2048 });
 const amb = createAmbience(r, { lights, sky: null, place: 'city', fog: { near: 40, far: 80 } });
@@ -71,7 +82,7 @@ for (let x = 0; x < W; x++) {
     const path = Math.abs(z - (30 + Math.round(2 * Math.sin(x * 0.12)))) <= 2;
     land.set(x, 0, z, path ? ((x + z) % 3 ? '#c9a878' : '#bf9c6c') : (((x >> 1) + (z >> 1)) % 2 ? '#86d672' : '#8fdc7a'));
     // solo la cáscara del acantilado (frente y costados): adentro no se ve
-    const shell = z >= front - 1 || x <= 0 || x >= W - 1 || z <= 0;
+    const shell = z >= front - 3 || x <= 0 || x >= W - 1 || z <= 0;
     if (!shell) continue;
     for (let y = 1; y <= CLIFF; y++) {
       const band = STRATA[Math.floor((y + Math.sin(x * 0.09) * 1.5 + 1.5) / 2.4) % STRATA.length];
@@ -108,6 +119,20 @@ const waterMat = new THREE.MeshLambertMaterial({ vertexColors: true, transparent
 // un poco más abajo que la grilla: si no, el agua pelea en profundidad con las rocas de la misma altura
 const SEA_Y = -S - 0.04;
 const seaM = mesh(seaG, waterMat, false); seaM.position.y = SEA_Y; seaM.renderOrder = 2;
+// render fotográfico: el terreno entra al volumen de luz desde sus grillas (relleno hacia abajo: es solo cáscara)
+const L = r.light;
+const nightAt0 = amb.look?.glow || 0;
+if (L) {
+  L.setBounds(new THREE.Vector3(-5.5, -2.25, -3.75), new THREE.Vector3(5.5, 4.25, 6.5));
+  const gm = new THREE.Matrix4().makeTranslation(-center.x, -S, -center.z);
+  L.add(land, gm, { scale: S, fillBelow: true });
+  L.add(bed, gm, { scale: S, fillBelow: true });
+  L.add(glowV, gm, { scale: S, emissive: 1.2 + 2.5 * nightAt0 });
+  for (const m of world.children) m.userData.noVolume = true;
+  L.debug = num('debug', 0);
+  if (still) L.time = 0;
+  seaM.material = L.material('water');
+}
 
 // ---------- lo que va arriba ----------
 const put = (obj, tx, tz, rot = 0, scale = 1) => { obj.position.set(tx, 0, tz); obj.rotation.y = rot; obj.scale.setScalar(scale); world.add(obj); return obj; };
@@ -125,10 +150,14 @@ const person = put(avatarModel(LOOK), 4.6, 4.9, 0.5, 0.62);
 let voxInfo = null;
 try {
   const vox = await loadVox('../assets/models/farol.vox');
-  const [emit, rest] = vox.split(m => m.emissive > 0);
+  const [emit, rest0] = vox.split(m => m.emissive > 0);
+  // material por vóxel: cada flag de MagicaVoxel (metal, vidrio) va a su material fotográfico
+  const kind = (m) => L ? L.kindOf(m) : 'solid';
+  const [metal] = vox.split(m => !(m.emissive > 0) && kind(m) === 'metal'), [glass] = vox.split(m => !(m.emissive > 0) && kind(m) === 'glass');
+  const [rest] = vox.split(m => !(m.emissive > 0) && kind(m) !== 'metal' && kind(m) !== 'glass');
   const g = new THREE.Group();
-  const b = rest.bounds(), ox = -(b.min[0] + b.max[0]) / 2, oz = -(b.min[2] + b.max[2]) / 2;
-  for (const [v, mat] of [[rest, voxelMaterial()], [emit, glowMaterial()]]) {
+  const b = rest0.bounds(), ox = -(b.min[0] + b.max[0]) / 2, oz = -(b.min[2] + b.max[2]) / 2;
+  for (const [v, mat] of [[rest, voxelMaterial()], [emit, glowMaterial()], [metal, L?.material('metal')], [glass, L?.material('glass')]]) {
     if (!v.size) continue;
     const m = new THREE.Mesh(v.toGeometry({ scale: 1 / 16 }), mat);
     m.position.set(ox / 16, 0, oz / 16); m.castShadow = mat !== glowMaterial(); m.receiveShadow = true; g.add(m);
@@ -139,24 +168,54 @@ try {
 
 // de noche los faroles prenden una luz cálida (la del juego la pone ambience-fx con el brillo de los materiales)
 const night = amb.look?.glow || 0;
-for (const [x, z] of [[3.9, 4.7], [2.6, 5.4]]) {
+const LAMPS = [[3.9, 1.45, 4.7], [2.6, 1.3, 5.4]];
+if (!L) for (const [x, y, z] of LAMPS) {
   const pl = new THREE.PointLight(0xffc46a, night * 5, 4.5, 1.6);
   pl.position.set(x, 1.45, z); world.add(pl);
+}
+if (L) {
+  L.adopt(world);
+  L.setPoints(LAMPS.map(([x, y, z]) => ({ position: new THREE.Vector3(x - center.x, y, z - center.z), color: 0xffb060, intensity: night * LAMP_I, radius: 5.5 })));
+}
+// luz del ambiente → render fotográfico. El sol manda sobre el cielo (sombras con contraste) y la noche es de verdad:
+// casi sin relleno, para que lo único que se vea bien sea lo que alumbran faroles y ventanas.
+const envSun = new THREE.Color(), envSky = new THREE.Color(), envGround = new THREE.Color(), envDir = new THREE.Vector3();
+function syncEnv() {
+  if (!L) return;
+  const n = amb.look?.glow || 0, dim = 1 - NIGHT_DIM * n;
+  envSun.copy(lights.sun.color).multiplyScalar(lights.sun.intensity / Math.PI * SUN_K * dim);
+  envSky.copy(lights.hemi.color).multiplyScalar(lights.hemi.intensity / Math.PI * SKY_K * dim);
+  envGround.copy(lights.hemi.groundColor).multiplyScalar(lights.hemi.intensity / Math.PI * SKY_K * 0.55 * dim);
+  // el sol del juego viene de atrás de la cámara (sombras escondidas). Acá entra de costado y baja con la hora,
+  // como una lámpara de estudio sobre la maqueta; de noche es la luna, alta y del otro lado. ?sun=azimut,altura (grados)
+  let az, el;
+  if (q.has('sun')) [az, el] = q.get('sun').split(',').map(Number);
+  else if (amb.look?.night) { az = 150; el = 58; }
+  else { const k = Math.sin(Math.PI * Math.max(0, Math.min(1, (hour - 5.5) / 14.5))); az = -62 + (hour - 12) * 7; el = 12 + 46 * k; }
+  az *= Math.PI / 180; el *= Math.PI / 180;
+  envDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+  // la niebla se queda abajo, sobre el agua y el pie del acantilado, y de noche espesa: la luz de los faroles se ve en el aire
+  L.setEnv({ sunDir: envDir, sun: envSun, sky: envSky, ground: envGround, glow: n, bounce: BOUNCE, fog: { density: FOG * (1 + 2.5 * n), height: -1.7, falloff: 0.9, glow: 0.6 } });
 }
 
 // ---------- cámaras ----------
 const target = new THREE.Vector3(0.6, -0.4, 1.2);
-if (camId === 'iso') setIsoCamera(r.camera, target, Math.PI / 4, 60, 0.62);
+if (camId === 'iso') {
+  setIsoCamera(r.camera, target, Math.PI / 4, 60, 0.62);
+  // maqueta: foco corto también en la isométrica (lo de adelante y lo del fondo se van de foco)
+  if (photo && q.get('dof') !== '0') r.setPost({ dof: { focus: 60, range: 4.5, amt: 0.8, bokeh: 4 } });
+}
 else {
   // cámara de cine: baja, lente larga, mirando a las casas con el acantilado en primer plano
   r.camera.position.set(8.5, 2.1, 12.5);
   const look = new THREE.Vector3(-0.3, 0.9, -0.6);
   r.camera.lookAt(look);
-  if (r.postOn) r.setPost({ dof: { focus: r.camera.position.distanceTo(look), range: 4.2, amt: 0.85 } });
+  if (r.postOn && q.get('dof') !== '0') r.setPost({ dof: { focus: r.camera.position.distanceTo(look), range: 4.2, amt: 0.85 } });
 }
 let frames = 0, tAcc = 0;
 r.onFrame((dt, t) => {
   amb.update(dt, { x: 0, z: 0 });
+  syncEnv();
   if (!still) { person.userData.update?.(dt, false); seaM.position.y = SEA_Y + Math.sin(t * 0.8) * 0.012; }
   frames++; tAcc += dt;
   if (frames === 6) window.__ready = true;
@@ -167,7 +226,18 @@ window.__lookdev = {
   r, amb, hour, render, cam: camId, vox: voxInfo, terrainMs, meshStats,
   stats: () => ({ render, cam: camId, hour, postOn: r.postOn, greedy: q.get('greedy') !== '0', async: useAsync, terrainMs: Math.round(terrainMs),
     meshes: meshStats.builds, quads: meshStats.quads, verts: meshStats.verts, faces: meshStats.faces, cacheHits: meshStats.cacheHits, workerBuilds: meshStats.workerBuilds,
-    triangles: sceneTris(), fps: tAcc ? Math.round(frames / tAcc) : 0 }),
+    triangles: sceneTris(), fps: tAcc ? Math.round(frames / tAcc) : 0,
+    light: L ? { ...L.stats, buildMs: Math.round(L.stats.buildMs), dims: L.bounds.dims } : null }),
+  /** Costo por cuadro: dibuja n cuadros esperando a la GPU (gl.finish) y devuelve los ms promedio. */
+  bench(n = 60) {
+    const gl = r.renderer.getContext(), px = new Uint8Array(4);
+    const sync = () => { gl.finish(); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); };
+    r.render(); sync();
+    const t = performance.now();
+    for (let i = 0; i < n; i++) { r.render(); sync(); }
+    const c = r.renderer.domElement;
+    return { ms: +((performance.now() - t) / n).toFixed(2), frames: n, buffer: [c.width, c.height], render, gpu: (() => { const e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : '?'; })() };
+  },
 };
 </script>
 </body>

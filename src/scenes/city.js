@@ -1075,6 +1075,16 @@ export default function create(ctx) {
       r.start();
       // gancho de depuración para pruebas headless (tools/smoke.mjs)
       if (window.__pixelia) window.__pixelia.city = { r, cam, entries, life, get world() { return world; }, ov, S, batch, get placing() { return placer?.state || null; }, get placer() { return placer; }, get theme() { return themeId; }, openThemes, get defense() { return defense; }, get decor() { return decor; }, get coverage() { return cov; }, get ambience() { return cityAmb; }, get grieta() { return grietaFx; }, get act1() { return act1; } };
+      // botón provisorio del prototipo de la Travesía por nodos (PLAN-FOTO §A1); se va con el HUD de PC (U2)
+      {
+        const vb = document.createElement('button');
+        vb.className = 'voyage-proto-btn';
+        vb.dataset.act = 'voyage';
+        vb.textContent = t('voyage.cityBtn');
+        vb.style.cssText = 'position:fixed;left:50%;bottom:104px;transform:translateX(-50%);z-index:40;padding:8px 14px;border:2px solid #6b5a34;background:#2c2718;color:#f6edd2;font:inherit;cursor:pointer';
+        vb.addEventListener('click', () => ctx.router.go('voyage', { resume: true }));
+        container.append(vb);
+      }
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },
     unmount() {

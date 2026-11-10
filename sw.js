@@ -4,7 +4,7 @@
 // CORE precachea TODOS los módulos (también los que se cargan con import() dinámico: escenas, minijuegos,
 // paneles...), así una escena que nunca se abrió con internet igual funciona offline.
 // Si agregás un archivo .js nuevo en src/, sumalo acá. Un archivo que falte no rompe la instalación.
-const VERSION = 'pixelia-v63';
+const VERSION = 'pixelia-v64';
 const NET_TIMEOUT = 4000;
 const CORE = [
   './', './index.html', './styles.css', './manifest.webmanifest', './vendor/supabase.min.js',
@@ -83,6 +83,7 @@ const CORE = [
   './src/story/story-ui.js', './src/story/story.js',
   './src/threats/threat-calendar.js', './src/threats/threat-data.js', './src/threats/threat-rules.js', './src/threats/threat-scene.js', './src/threats/threat-ui.js',
   './src/threats/threats.js',
+  './src/voyage/voyage-data.js', './src/voyage/voyage-gen.js', './src/voyage/voyage-rules.js', './src/voyage/voyage-scene.js',
 ];
 
 self.addEventListener('install', e => {

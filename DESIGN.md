@@ -5,45 +5,130 @@ ciudad es la base para salir de **expedición** y aguantar las **amenazas** de c
 Fase 5 (guardado v3); el ciclo nuevo (Expedición, Amenazas, Épocas, recursos, tutorial y migración) está en [DESIGN-CORE.md](DESIGN-CORE.md).
 Estética: **3D vóxel nítido** (modelos de vóxeles dibujados a alta resolución con antialias, oclusión ambiental y contorno tinta) + **UI oscura** pixel art (pizarra y madera oscura, bordes de metal gastado, texto claro, acentos dorado y azul Dezings ; ver **Interfaz oscura**). Desde El Quiebre ([docs/PLAN-QUIEBRE.md](docs/PLAN-QUIEBRE.md) §J) el mundo es más oscuro y serio; la ciudad sigue siendo el refugio cálido.
 Público: **adultos que juegan ratos cortos, en el celu y en la PC** (2 a 10 minutos, varias veces por día), solos o con su gente.
-Neutro de género: cada quien elige su personaje y los textos no suponen quién juega. El tono es **cozy adulto**: cálido pero
-sobrio, más cerca de Townscaper o Dorfromantik que de un juego infantil (ver **Guía de tono**). Tiene que ser **claro,
+Neutro de género: cada quien elige su personaje y los textos no suponen quién juega. El tono es **refugio cálido, mundo
+oscuro**: la aldea es la única luz en un mundo roto y la voz es sobria y seca (ver **Guía de tono**; el rumbo actual, juego de
+PC de farmeo con Travesía por nodos, está en [docs/PLAN-FOTO.md](docs/PLAN-FOTO.md)). Tiene que ser **claro,
 con decisiones que pesan y metas que se ven** (cada rato avanza algo, el progreso se nota de lejos), nunca frustrante
 (sin energía artificial: el límite son las provisiones que produce tu ciudad, con una salida corta gratis por día; sin
 muros de pago; las gemas se ganan jugando; nunca se pierde nada para siempre).
 Idioma: **español rioplatense** (vos, tocá, construí). Nada de marcas o personajes de juegos existentes: todo original.
 
 ## Guía de tono
-Vale para todo texto nuevo y para la pasada sobre lo que queda (Fase 6). Ante la duda: ¿lo diría una persona adulta del
-barrio, sin hablarle a un chico?
-- **Sin diminutivos** en sistemas, premios, botones, recursos ni nombres de edificios: "regalos", no "regalitos"; "casa",
-  no "casita". Se permiten solo cuando son la palabra normal del objeto ("bombilla", "palito") o en un chiste puntual.
-- **Humor seco y local** en vez de tierno: observaciones del barrio, ironía suave, cosas que pasan en cualquier pueblo.
-  "El arroyo creció. Como todos los años, nadie movió el auto". Nada de "¡¡Yaaay!!", corazones ni "mimos".
-- **Neutro de género con sustantivos**, no con "@", "x" ni "e": gente, vecindad, el grupo, contactos, quien lidera, la
-  persona que te visita. "Llegó gente nueva", no "llegaron vecinos/as". Sin "amigas" ni "princesas" como público supuesto.
-- **Premios y festejos proporcionados**: un toast o un sonido para lo chico; **confeti y fanfarria solo en momentos grandes**:
-  cambio de época, monumento terminado, amenaza superada con ≥ 90%, región explorada completa. Una subida de nivel o un
-  cobro no llevan confeti.
-- **Exclamaciones con medida**: una por pantalla como mucho. Los títulos de resultado describen lo que pasó ("Volvieron
-  todos", "Zona explorada", "Casi") en vez de calificar ("¡Divino!", "¡Increíble!").
-- **Números a la vista y frases cortas**: "Cruzar el arroyo · 70%", "Volver · 3 provisiones". Los textos de ayuda dicen qué
-  hacer, no venden.
-- **Ausencias sin culpa**: "Mientras no estabas pasó la tormenta: salvaste el 92%". Nunca "¡Te extrañamos!" ni "¡No nos
-  abandones!".
-- **Nombres sobrios**: edificios por lo que son (Panadería, Taller, Dispensario), estilos por estación o lugar (Otoño, Bruma, Ceniza).
-- **Fuera lo tierno** (El Quiebre, §J7): personajes solo personas; nada de mascotas-avatar, tutús, orejitas ni "mimosos".
-  Los Hallazgos se nombran como cosas que se encuentran en la isla ("Ancla Oxidada", "Pato del Bañado"), no como peluches.
+**Refugio cálido, mundo oscuro** (PLAN-FOTO, paso U1; reemplaza a "cozy adulto"). El mundo se partió y lo que quedó
+afuera es frío, callado y peligroso. La aldea es la única luz: adentro hay fuego, pan y gente; afuera, no. Todo texto,
+color y sonido responde a esa frontera. Ante la duda: ¿lo diría alguien que volvió de afuera, cansado, sin ganas de
+adornar nada?
 
+Vale para todo texto nuevo. Lo que ya está escrito y choca se lista en [docs/TONO-PENDIENTES.md](docs/TONO-PENDIENTES.md).
+
+### La voz
+- **Sobria y seca.** Frases cortas, hechos, números. Se dice lo que pasó y lo que cuesta; no se califica ni se
+  festeja. "Volvieron tres", no "¡Qué gran salida!".
+- **Español rioplatense** (vos, tocá, construí), sin lunfardo de postal ni chistes de barrio.
+- **Sin diminutivos** en ningún sistema, botón, recurso ni nombre. Solo cuando son la palabra normal del objeto
+  ("bombilla", "martillo").
+- **Cálido por lo que se hace, no por lo que se dice.** El calor está en el fuego prendido, en que alguien guardó un
+  plato, en que Vera espera en el muelle. Nunca en adjetivos ("lindo", "hermoso", "acogedor") ni en mimos.
+- **El humor queda, pero es de trinchera:** seco, corto, de gente cansada. Una línea cada tanto, nunca en un cartel de
+  interfaz. "El puente aguantó. El que lo hizo, no tanto."
+- **La oscuridad no se explica ni se exagera.** Nada de "terrible", "maldito", "siniestro", "ancestral" ni mayúsculas
+  de más. Se nombra lo que hay: "la veta les comió algo por dentro". Sin gore gratuito: la muerte se dice, no se describe.
+- **Sin exclamaciones** en la interfaz. En diálogo, solo cuando alguien grita de verdad.
+- **Neutro de género con sustantivos**, no con "@", "x" ni "e": gente, el grupo, contactos, quien lidera.
+- **Ausencias sin culpa y sin relojes.** El juego no reclama ni apura: nada de "¡Te extrañamos!", "¡Apurate!" ni
+  "Volvé en 2 h". Si pasó algo mientras no estabas, se informa: "Pasó la tormenta. Se salvó el 92 %".
+- **Números a la vista:** "Cruzar el arroyo · 70 %", "Élite · Fuerza 140". Los textos de ayuda dicen qué hace algo,
+  no lo venden.
+
+### Palabras
+| Usar | Evitar |
+|---|---|
+| aldea, refugio, adentro, el fuego, el cerco | ciudad feliz, barrio, pueblo lindo, hogar dulce hogar |
+| afuera, la niebla, lo que quedó, lo de abajo | aventura, paseo, mundo mágico, tierras misteriosas |
+| volver, aguantar, traer, alcanzar, quedar, faltar | disfrutar, divertirse, descubrir maravillas, coleccionar |
+| botín, lo que se trajo, pieza, resto | premio, regalo, sorpresa, tesoro (salvo que sea un tesoro) |
+| cayó, no volvió, quedó afuera | fue derrotado, se desmayó, "¡Oh, no!" |
+| gente, el grupo, quien lidera | amigos, vecinitos, héroes, campeones |
+| cobrar, guardar, seguir, zarpar | ¡Genial!, ¡Bien!, ¡Listo!, ¡Dale! |
+| abrigo, calma, temple, oficio | felicidad, alegría, encanto, magia |
+| nombres por lo que son y de dónde vienen (Bestia del Bañado, Hacha rara) | nombres tiernos, épicos de más o con adjetivo grande (Destructor Infernal) |
+
+Giros que sirven: la frase partida en dos ("Esto es lo que quedó. Y ahora es tuyo."), el sujeto tácito ("Faltan
+materiales"), el pasado simple para lo que ya no tiene arreglo ("Nadie paró"). Giros que no: preguntas retóricas,
+segunda persona entusiasta ("¡Vas muy bien!"), primera del plural de empresa ("¡Te preparamos algo!").
+
+### Antes y después
+Textos reales de `src/i18n/es.js` (todavía sin cambiar; la lista completa está en `docs/TONO-PENDIENTES.md`):
+
+| Clave | Antes | Después |
+|---|---|---|
+| `boot.tips` | Plantando árboles… · Regando las flores… · Horneando medialunas… · Afinando la calesita… | Encendiendo los faroles… · Revisando el mapa viejo… · Atando los botes… · Contando lo que quedó… |
+| `ui.reward.title` / `ui.reward.ok` | ¡Bien! / Genial | Botín / Guardar |
+| `hud.rank.ready` | ¡Ya podés subir a {rank}! | Rango {rank} disponible |
+| `hud.quest.claim` | ¡Hacé clic para cobrar! | Cobrar |
+| `hud.happy` y `hud.happy.tip` | Felicidad · "Árboles, plantas y deco la suben. Con la ciudad feliz todo produce hasta un 50 % más." | Abrigo · "Lo dan los árboles, los faroles y lo que se cuida. Con abrigo, todo rinde hasta un 50 % más." |
+| `city.float.level` / `city.info.monDone` | ¡Nivel {n}! / ¡Monumento terminado! | Nivel {n} / Monumento terminado |
+| `settings.gfx.particlesHelp` | Confeti, polvo y brillos. | Chispas, polvo y ceniza. |
+| `arsenal.trait.botin.name` | Afortunada | Carroñera |
+| `talents.sup_botin.name` / `talents.sup_animo.name` | Mochila llena / Buen ánimo | No se deja nada / Cabeza fría |
+| `settings.acc.shareText` | Sumame en Pixelia. Mi código de amistad es {code} | Estoy en Pixelia. Mi código es {code} |
+
+Ya están en tono y sirven de modelo: `boot.sub` ("Reconstruí lo que quedó"), todas las `intro.line.*`, las
+`intro.label.*.line` ("roban para comer", "lo que no subió") y los textos de técnicas y rasgos ("+1 de coraza.").
+
+### Quién habla y cómo
+- **Narrador** (cinemáticas, prólogo, cierre de isla): pasado simple, frases de una sola idea, sin adjetivos grandes
+  ni signos. Cuenta sin tomar partido: los de arriba y los de abajo tienen sus razones. "Nadie paró. Ni los de arriba
+  ni los de abajo. Hasta que la tierra se partió."
+- **Guías** (Vera y quienes se sumen; DESIGN-STORY.md): presente, práctico, pocas palabras. Dan una indicación y un
+  motivo, no un tutorial con entusiasmo. Se permiten una línea de humor seco o de cuidado, nunca las dos juntas.
+  "Despacio. El golpe fue fuerte." No dicen "¡Muy bien!"; a lo sumo, "Sirve".
+- **Enemigos y jefes:** casi no hablan. Se los conoce por el nombre (qué son y de dónde: "Orcos de la Brasa", "Bestia
+  del Bañado"), por una línea de cartel ("la veta les comió algo por dentro") y por lo que hacen en el tablero. Nada de
+  monólogos de villano ni amenazas en mayúsculas. Los que hablan (las Casas, la Cofradía) son corteses y fríos: la
+  amenaza está en lo que ofrecen. La intención de un enemigo se escribe como dato: "Carga en línea · 4 de daño".
+- **Carteles de interfaz** (botones, avisos, ayudas): verbo en infinitivo o imperativo y número. Sin exclamaciones, sin
+  emojis, sin "nosotros". Los errores dicen qué falta: "Faltan 3 de madera". Los títulos de resultado describen:
+  "Volvieron todos", "Isla despejada", "Cayó el grupo".
+- **Descripciones de botín:** el nombre es tipo, rareza y origen ("Hacha rara, afín a la Raíz"). Los rasgos son un
+  nombre de una palabra y un efecto con número ("Templada · +1 de coraza"). Si lleva una línea de ambiente, es una sola,
+  dice de quién fue o dónde estaba, y no promete poder: "Estaba clavada en la puerta de un depósito. Del lado de adentro."
+- **La aldea** (vecinos, carteles de edificios): es el único lugar donde la voz afloja. Se habla de comida, de arreglos
+  y del tiempo. Sigue sobria: alivio, no ternura. "Hay pan. Hoy alcanzó para todos."
+
+### Premios y festejos
+- **Sin confeti ni fanfarria.** Lo chico (cobrar, subir de nivel, un material) lleva un sonido y un número. Lo grande
+  (jefe caído, pieza de reliquia, cambio de época, monumento) se marca con **luz**: un destello cálido, la cámara que se
+  queda un segundo y un sonido grave. El silencio antes también cuenta.
+- El botín raro se siente por el color de la rareza y el sonido, no por el texto. El cartel sigue diciendo "Hacha épica".
+
+### Color
+- **Cálidos solo adentro y en lo que da luz.** Ámbar, naranja de fuego y dorado son de la aldea y de las fuentes de
+  luz: fogatas, faroles, ventanas, brasas, la forja, un campamento en la Travesía. Si algo es cálido, emite luz o está
+  iluminado por algo que la emite.
+- **Afuera, fríos y desaturados:** azules pizarra, verdes grises, pardos apagados, niebla. **Negros profundos**: la
+  sombra llega a negro y la luz cae rápido (PLAN-FOTO, R1). Ningún color saturado en el terreno ni en la vegetación.
+- **La aldea de noche es el plano modelo:** un grupo de ventanas ámbar en un cuadro casi negro.
+- **Los elementos tienen su color pero apagado** afuera (Raíz verde musgo, Marea azul acero, Brasa rojo óxido, Céfiro
+  gris claro) y solo se encienden cuando actúan: un golpe, una veta viva, una reacción.
+- **El rojo saturado es peligro o sangre** y nada más: la casilla que marca el enemigo, la vida baja. No decora.
+- **Interfaz:** paneles oscuros y neutros (ver **Interfaz oscura**). El dorado es el acento cálido y sigue la misma
+  regla: marca lo que "da luz" en la pantalla (la acción principal, lo recién ganado, lo seleccionado). Los colores de
+  rareza y de elemento son información, se usan en bordes y nombres, nunca en fondos enteros. El azul Dezings queda
+  para la marca y los enlaces.
+- **Los temas y trajes** no rompen la regla: afuera se ven con la luz de afuera.
+
+### Idiomas y registro
 - **Idiomas** (La Travesía 4a): el español rioplatense es el texto fuente, en `src/i18n/es.js`. Todo texto nuevo va por
   `t()` con su clave (`hud.zarpar`, `building.<id>.name`); nada de texto escrito en el código. Las traducciones siguen
-  esta guía en su idioma: cálido y sobrio, sin diminutivos ni infantilizar, y se traduce el sentido, no el voseo. La
+  esta guía en su idioma: sobrio y seco, sin diminutivos ni infantilizar, y se traduce el sentido, no el voseo. La
   interfaz no fija anchos para el texto: botones, pestañas y tarjetas crecen o bajan de línea. Fuentes: Jersey 10 para
   el latín y Fusion Pixel 12px (OFL) para el cirílico y el CJK, recortada por `tools/subset-fonts.mjs`.
-- **Registro épico** (El Quiebre, [DESIGN-STORY.md](DESIGN-STORY.md)): solo en el prólogo, los jefes y las revelaciones.
-  Frases cortas y concretas, sin mayúsculas, signos de más ni adjetivos grandes: "La tierra se vació por dentro y se
-  partió", no "¡El cataclismo más terrible de la historia!". La ciudad sigue cálida y sobria.
+- **Registro épico** (El Quiebre, [DESIGN-STORY.md](DESIGN-STORY.md)): ya no es una excepción, es la misma voz con más
+  peso. Frases cortas y concretas: "La tierra se vació por dentro y se partió", no "¡El cataclismo más terrible de la
+  historia!".
 
-Reemplazos de ejemplo:
+### Reemplazos ya hechos (siguen valiendo)
 
 | Antes | Ahora |
 |---|---|
@@ -55,7 +140,7 @@ Reemplazos de ejemplo:
 | tema Dulce Pastel | Otoño (o Puerto) |
 | Panadería Dulce, Café Gatito, Tienda Brillo | Panadería, Café, Tienda |
 | Casita, Banquito, florcitas, pajaritos | Casa, Banco, flores, pájaros |
-| figuritas / Álbum | Hallazgos (cuando llegue la Fase 5) |
+| figuritas / Álbum | Hallazgos |
 | "¡Te extrañamos!" | "Mientras no estabas…" |
 | tipo de personaje por defecto Chica, "animalitos" | Gente (desde la v4, solo personas: los animales se migran a una persona) |
 | Vestidor, "boutique rosa" | Equipaje, la Sastrería (madera oscura, cuero y bronce) |
@@ -201,6 +286,198 @@ Todo color de la interfaz sale de los tokens de `:root` en `styles.css`; las pan
 - **Oclusión ambiental por vértice**: `Voxels.toGeometry` oscurece cada esquina según sus 3 vecinos (rincones, aleros, pie de las paredes) — es lo que da volumen y lectura. `{ ao: false }` la apaga. Pisos con variación en manchas de 2×2 y contraste bajo.
 - **Contorno tinta**: `createPixelRenderer({ outline: true })` pinta ≈1 px CSS de tinta `#3b2340` por fuera de las siluetas (saltos de profundidad), con borde suavizado (`?outline=0|1` lo fuerza para comparar). Las miniaturas offscreen (edificios, personajes, temas, cofres) se dibujan a **3×** con antialias y `outlineCanvas(canvas, ancho)` de `voxel.js`; se muestran achicadas sin `pixelated`.
 - **2D sigue siendo pixel art**: íconos de `icons.js` (grillas de 16 y 24 dibujadas a mano, bloques enteros), tableros de Joyas/Bloques, cielo de Ruta Pixel y burbujas `makeBillboard` conservan `pixelated`: la UI y los sprites son pixel art, el mundo 3D es vóxel nítido.
+
+## Regla de modelos (PLAN-FOTO, paso M1)
+Vale para todo modelo nuevo de la porción vertical: kits modulares en `.vox` de MagicaVoxel, ensamblados por código y
+vistos con el render fotográfico (`createPixelRenderer({ photo: true })`). Los modelos hechos en código
+(`src/city/models*.js`, 8 vóxeles por tile) siguen como están hasta que el kit los reemplace; no se mezclan las dos
+densidades en una misma escena.
+
+### Densidad
+- **16 vóxeles por tile** (`scale: 1/16`) en todo el kit: terreno, módulos de edificio, árboles, utilería, enemigos comunes.
+- **32 vóxeles por tile** (`scale: 1/32`) en las **piezas protagonistas**: las que la cámara de cine encuadra de cerca
+  o las que el jugador mira durante minutos (ver la lista del kit).
+- Nada intermedio ni mezclado en una pieza: una pieza es de 16 o de 32. Un módulo de 32 se apoya sobre uno de 16
+  porque los dos miden en tiles.
+- El volumen de luz tiene celdas de 1/8 de tile (dos vóxeles de 16, cuatro de 32): un detalle más fino que una celda
+  se ve, pero no da sombra ni rebote propios. Lo que tiene que proyectar sombra (un alero, una viga, un brazo) mide al
+  menos 2 vóxeles de 16 o 4 de 32.
+
+### Escalas de referencia
+1 tile = 1 unidad de mundo. Medidas en vóxeles de 16 (en una pieza de 32, el doble).
+
+| Pieza | Alto | Ancho × fondo | Nota |
+|---|---|---|---|
+| Persona | 16 (1 tile) | 6 × 4 | Cabeza de 5 de alto: proporción de maqueta, no realista. La gente del juego ya mide ≈1 unidad (`avatar.js`) |
+| Puerta | 20 | 10 de vano | La persona pasa con 4 de aire arriba |
+| Ventana | 8 | 6 | Antepecho a 8 del piso: a la altura de los ojos |
+| Piso de un edificio | 24 | — | De piso a cielorraso; el segundo piso arranca en 24 |
+| Casa de Madera | 40 a la cumbrera | 32 × 32 (2 × 2 tiles) | Pared de 24 y techo a dos aguas de 16 |
+| Árbol | 40 a 56 | copa de 24 a 32 | Siempre más alto que una casa: el bosque tapa |
+| Arbusto, roca chica | 6 a 10 | 8 a 12 | No tapa a una persona |
+| Farol | 24 | 4 | La luz queda arriba de la cabeza |
+| Enemigo común | 12 a 20 | hasta 16 × 16 | Entra en una casilla del tablero |
+| La Bestia | 40 a 48 | 32 × 48 (2 × 3 tiles) | Tres personas de alto |
+
+Regla de proporción: **una persona al lado de cualquier pieza tiene que dar la escala a simple vista**. Cada pieza
+nueva se captura con una persona parada al lado en `tools/lookdev.html`.
+
+### Paleta
+Sigue la sección **Color** de la Guía de tono; acá va lo que cambia al modelar.
+- **Cálidos solo en la aldea y en lo que da luz.** Ámbar, naranja y dorado se usan en vóxeles emisivos (ventana
+  encendida, brasa, farol, veta viva) y en los materiales de la aldea que esa luz toca (madera, paja, tela, pan).
+  Fuera del cerco, ningún vóxel cálido que no emita.
+- **Afuera, fríos y desaturados:** saturación HSV de 35 % como máximo en terreno, vegetación, roca y ruinas. Verdes
+  hacia el gris azulado, pardos hacia el gris. Los enemigos, lo mismo; su elemento es un acento chico (ojos, veta,
+  lomo) que se enciende al actuar.
+- **Tonos por material: 3** (claro, base, oscuro). **4 en piezas protagonistas** (se suma un medio tono). Un modelo
+  usa 5 materiales como máximo: 15 colores, 20 en protagonistas. Si hace falta otro tono, sobra un material.
+- **Sin sombrear hacia negro.** El tono oscuro de un material baja el valor un 25 a 30 % y corre el matiz hacia el
+  azul; nunca por debajo de 12 % de valor. El negro lo pone el render (sombra y oclusión): si el modelo ya viene
+  oscuro, la luz no tiene de dónde agarrarse. Tampoco blanco puro: 90 % de valor como máximo.
+- **Sin luz pintada.** Nada de degradés de arriba hacia abajo, sombras bajo los aleros ni brillos dibujados: el
+  motor calcula sol, oclusión y rebote. Los tres tonos son para **variar el material** (tablas distintas, vetas,
+  desgaste), no para simular luz.
+- **Rojo saturado:** solo sangre o peligro. Ninguna flor, bandera ni techo rojo.
+- **Prueba de grises:** la captura en blanco y negro tiene que separar las piezas por valor.
+
+### Forma
+- **Silueta primero.** La pieza se reconoce en negro pleno, a la distancia de juego (cámara isométrica) y a 64 px de
+  alto. Si dos piezas del kit se confunden en silueta, una se rehace.
+- **Nada de ruido al azar.** Ni vóxeles sueltos de otro tono salpicados ni superficies "picadas". La variación va en
+  **grupos con sentido**: una tabla entera más clara, una hilada de piedras, una mancha de musgo de 3 × 2 en la base.
+  El motor ya mueve un poco cada vóxel (`jitter`); a mano no se agrega más.
+- **Detalle donde mira la cámara.** El frente (+Z) y la cara de arriba llevan el trabajo; el fondo y lo que queda
+  bajo el alero, planos. En piezas de aldea, el detalle se concentra entre 8 y 24 de alto (la franja de la persona).
+- **Biseles de 1 vóxel** en esquinas de pilares, bordes de techo, zócalos y dinteles: rompen el cubo y agarran luz.
+  No en todo: una pared lisa con marco biselado se lee mejor que una pared toda trabajada.
+- **Espesores reales:** pared de 2, techo de 2 con alero de 2 a 3, viga de 2 × 2, tabla de 1. Nada de láminas de 1
+  vóxel en paredes: el volumen de luz las atraviesa.
+- **Macizo por dentro.** Los modelos no son cáscaras huecas: el relleno evita fugas de luz y el mallado une las caras.
+  Hueco solo donde la cámara entra (un interior).
+- **Asimetría chica.** Un poste torcido, una teja que falta, un lado más gastado. Una por pieza, no cinco.
+- **Módulos que encastran:** las piezas modulares miden múltiplos de 8 vóxeles en planta y sus bordes de unión son
+  planos, sin detalle que sobresalga.
+
+### Materiales del motor
+El lector (`src/core/vox-loader.js`) saca del `.vox` un material por índice de paleta: `{ emissive, metal, glass,
+water, rough }`. El motor (`r.light.kindOf(material)` en `src/core/voxel-light.js`) lo pasa a uno de seis tipos:
+
+| Tipo | En MagicaVoxel (pestaña Matter) | Qué hace | Para qué |
+|---|---|---|---|
+| `solid` | Diffuse (por defecto) | Luz de sol con sombra, oclusión y rebote | Casi todo |
+| `glow` | Emit (`emissive` = emit × 2^flux) | Emite al volumen de luz y da halo | Brasas, llama, veta viva, ojos |
+| `metal` | Metal con metal > 0,5 y roughness < 0,7 | Refleja la escena y el cielo, brillo del sol | Herrajes, filos, campana |
+| `glass` | Glass | Refleja con Fresnel | Frascos, vidrio apagado |
+| `water` | Glass con IOR 1,33 | Reflejo, ondas por vóxel y luz propia; no entra al volumen | Arroyo, charcos, bañado |
+| `window` | No sale del archivo: lo asigna el código | Se prende de noche (cálido) y de día refleja | Ventanas de la aldea |
+
+- Hoy cada tipo es **una malla aparte** (`vox.split`), así que un modelo usa `solid` y, como mucho, dos tipos más.
+- `rough` solo decide si un metal refleja; no hay rugosidad continua ni mapa de normales. Un metal gastado (roughness
+  ≥ 0,7) se dibuja como `solid`.
+- Los reflejos leen el volumen a 1/8 de tile: son manchas de color, no espejos. No diseñar nada que dependa de un
+  reflejo nítido.
+- La fuerza de lo emisivo se regula en el archivo (emit y flux), no con un color más claro. Emisivos chicos y pocos:
+  una ventana, una brasa. Un modelo entero emisivo aplana la escena.
+- Para marcar un material sin abrir MagicaVoxel: `loadVox(url, { materials: { índice: { water: true } } })`.
+
+**Índices reservados de la paleta** (iguales en todos los archivos, así el código no adivina):
+
+| Índice | Uso |
+|---|---|
+| 1 a 240 | Colores `solid` del modelo |
+| 241 a 244 | `glow`: llama, brasa, veta fría, veta cálida |
+| 245 | `window` (el código lo pasa a ventana) |
+| 246 | `water` |
+| 247 | `glass` |
+| 248 a 250 | `metal`: hierro, bronce, acero |
+| 251 a 255 | Libres |
+
+### Archivos `.vox`
+- **Carpeta:** `assets/models/`, con una subcarpeta por kit: `madera/`, `bosque/`, `enemigos/`, `jefes/`,
+  `quiebre/`, `comun/`. El archivo de trabajo con varias piezas juntas no va al repo; se exporta una pieza por archivo.
+- **Nombre:** `<pieza>[-<variante>][-<parte>].vox`, en minúsculas, sin acentos ni espacios, con guiones. Variantes con
+  letra (`pared-a`, `pared-b`); partes animables con nombre (`bestia-cabeza`, `bestia-cola`). Ejemplos:
+  `madera/pared-ventana-a.vox`, `bosque/arbol-alto-b.vox`, `enemigos/jabali.vox`.
+- **Orientación:** en MagicaVoxel z es arriba y **el frente mira a −y** (hacia la cámara por defecto). El lector lo
+  gira a y arriba y frente a **+Z**, que es el frente de todos los modelos del juego. No se espeja.
+- **Pivote:** el lector lleva la esquina mínima a (0, 0, 0) y la base a y = 0; el código centra con
+  `toMesh({ center: 'xz' })`. Entonces: **la pieza se apoya en el piso del archivo y su caja es su huella**. Un
+  módulo de 1 × 1 tile ocupa 16 × 16 en planta aunque el dibujo no llegue al borde (un vóxel de esquina en la capa de
+  base fija la caja). Una parte animable gira alrededor del centro de su caja en la base; si necesita otro eje (una
+  mandíbula, una puerta), se anota en la tabla del kit en código.
+- **Tamaño máximo:** 126 por lado y por archivo. Módulo de kit: hasta 32 × 32 en planta y 64 de alto. Pieza
+  protagonista: hasta 126 × 126 × 126; si no entra, se parte en partes.
+- **Un modelo por archivo**, sin escena con varios objetos salvo que sean partes de la misma pieza ya ubicadas.
+- **Paleta:** la del archivo, con los índices reservados de arriba. Los colores que no se usan se borran.
+- **Revisión:** cada pieza nueva pasa por `npm run test:vox` y por una captura en `tools/lookdev.html` a las 15 h y
+  a las 22.5 h, con una persona al lado.
+
+### Kit de la porción vertical
+**P** = protagonista: 32 vóxeles por tile, hecha a mano por una persona en MagicaVoxel. El resto, 16 vóxeles por
+tile, lo hace Claude con revisión por capturas. Hoja de referencias en `docs/ref/`.
+
+**Aldea, época Madera** (`madera/`)
+
+| Pieza | Variantes | |
+|---|---|---|
+| Pared lisa, pared con ventana, pared con puerta, esquina | 2 de cada una | |
+| Techo a dos aguas: tramo, remate, cumbrera, alero; chimenea | 2 de tramo | |
+| Piso de tablas, escalón, zócalo de piedra | 1 | |
+| Cerco: tramo, poste, portón | 1 | |
+| Casa armada con el kit (prueba de encastre) | 2 | |
+| **Municipalidad de Madera** (el centro de la aldea) | 1 | **P** |
+| **Fogón central** (la luz del plano modelo de noche) | 1 | **P** |
+| **Muelle y esquife amarrado** (de donde se zarpa) | 1 | **P** |
+| Taller, depósito y panadería: fachada propia sobre el kit | 1 de cada uno | |
+| Farol de poste, farol de pared | 1 | |
+| Utilería: barril, cajón, leñera, carro, banco, tendedero, pozo | 1 de cada uno | |
+
+**Isla: Bosque del Arroyo** (`bosque/`)
+
+| Pieza | Variantes | |
+|---|---|---|
+| Terreno: pasto, tierra, barro, roca, orilla, borde de isla (acantilado) | 2 de cada uno | |
+| Arroyo: tramo recto, curva, vado, cascada chica | 1 | |
+| Árbol alto, árbol joven, pino, tronco caído, tocón | 3, 2, 2, 1, 1 | |
+| Matorral (cobertura del tablero), helechos, juncos, hongos | 2 de cada uno | |
+| Roca grande (bloquea), roca rompible, piedras sueltas | 2, 1, 1 | |
+| Ruinas: muro roto, arco, columna caída, losa | 2, 1, 1, 1 | |
+| Veta: afloramiento apagado y vivo (emisivo) | 1 de cada uno | |
+| Puente de troncos, pasarela, cartel viejo | 1 | |
+| **Árbol viejo del claro** (hito de la isla, fondo de las peleas) | 1 | **P** |
+| **Campamento de la Travesía** (carpa, fogata; la única luz cálida de afuera) | 1 | **P** |
+| **Altar de la veta** (evento y decisión de historia) | 1 | **P** |
+| Nodos del mapa: marca de pelea, élite, evento, campamento, jefe | 1 de cada uno | |
+
+**Enemigos** (`enemigos/`; uno por archivo, con partes si se animan)
+
+| Pieza | |
+|---|---|
+| Lobo de ojos brillantes, Hondero del monte, Guardián de corteza, Nido de larvas, Larva, Jabalí de colmillo, Hongo hinchado, Musgo viejo, Ascua errante, Sapo de marea, Cuervo de céfiro, Bicho de veta | |
+| **Lobo viejo** (élite: La manada del lobo viejo) | **P** |
+| **La colmena** (élite: el nido grande y su entorno) | **P** |
+
+**Jefe** (`jefes/`)
+
+| Pieza | |
+|---|---|
+| **Bestia del Bañado**: cuerpo, cabeza, mandíbula, patas y cola como partes (hoy en código, `src/combat/boss-models.js`) | **P** |
+| **Arena del Bañado**: agua baja, juncal, islotes | **P** |
+
+**El Quiebre y la llegada** (`quiebre/`)
+
+| Pieza | |
+|---|---|
+| Decorados de fondo: borde partido, puente cortado, casas caídas | |
+| **La grieta con la veta a la vista** (plano central de la cinemática) | **P** |
+| **El esquife en vuelo** (llegada) | **P** |
+
+**Gente:** el personaje, Vera y los vecinos siguen con el sistema de piezas a 1/48 de `src/avatar/figure.js`
+(reglas en [docs/ARTE-PERSONAJES.md](docs/ARTE-PERSONAJES.md)); no pasan a `.vox` en la porción.
+
+Total: unas 95 piezas de kit y **12 protagonistas**. Orden sugerido para las de mano: Bestia, fogón, árbol viejo,
+Municipalidad, muelle y esquife; el resto después de la segunda prueba con jugadores.
 
 ## Sonidos disponibles
 `audio.sfx(name)`: tap, open, close, coin, gem, build, place, done, levelup, error, match, combo(n), pop, clear, swoosh, star, win, lose, horn, crash, bump, select, buy.
