@@ -41,6 +41,22 @@ Acento: español rioplatense sobrio y natural (Buenos Aires), sin exagerar.
 #### TRANSCRIPT
 `;
 
+// Vera, la cartógrafa (DESIGN-STORY §2): habla en los planos 10 y 11 de El Quiebre. Seca, práctica, con humor de barrio.
+export const VERA_STYLE = `# AUDIO PROFILE: Vera, la cartógrafa
+Mujer mayor, cartógrafa que vive sola en una isla del cielo. Voz grave y cálida, un poco ronca.
+
+## THE SCENE
+Al atardecer, entre ruinas, encuentra a alguien tirado en el suelo que recién vuelve en sí. Le habla de cerca.
+
+### DIRECTOR'S NOTES
+Estilo: seca y práctica, sin dramatismo, con una ternura que no se dice. Nada de actuación exagerada.
+Ritmo: tranquilo, frases cortas, una pausa breve en cada punto.
+Acento: español rioplatense natural (Buenos Aires), voseo.
+
+#### TRANSCRIPT
+`;
+export const STYLES = { narrador: STYLE, vera: VERA_STYLE };
+
 function apiKey() {
   if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY.trim();
   if (!existsSync(ENV_FILE)) throw new Error('No hay GEMINI_API_KEY en el entorno ni en el .env de SignBoox.');
@@ -151,7 +167,8 @@ async function record() {
   const done = [];
   for (const l of lines) {
     if (only && l.id !== only) continue;
-    const { wav: w, model } = await speakChecked(l.text, { voice: l.voice || voice, model: arg('--model') });
+    if (arg('--skip') && arg('--skip').split(',').includes(l.id)) continue;
+    const { wav: w, model } = await speakChecked(l.text, { voice: l.voice || voice, style: STYLES[l.style] || STYLE, model: arg('--model') });
     const f = join(tmp, slug(l.id) + '.wav');
     writeFileSync(f, w);
     done.push({ id: 'voice/' + l.id.replace(/^voice\//, ''), wav: f });

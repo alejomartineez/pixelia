@@ -721,6 +721,96 @@
    "cat": "voice",
    "dur": 7.6,
    "src": "gemini"
+  },
+  "voice/intro/02": {
+   "file": "voice/intro/02.m4a",
+   "cat": "voice",
+   "dur": 8.6,
+   "src": "gemini"
+  },
+  "voice/intro/03": {
+   "file": "voice/intro/03.m4a",
+   "cat": "voice",
+   "dur": 8.3,
+   "src": "gemini"
+  },
+  "voice/intro/04": {
+   "file": "voice/intro/04.m4a",
+   "cat": "voice",
+   "dur": 8.5,
+   "src": "gemini"
+  },
+  "voice/intro/05": {
+   "file": "voice/intro/05.m4a",
+   "cat": "voice",
+   "dur": 9.4,
+   "src": "gemini"
+  },
+  "voice/intro/06": {
+   "file": "voice/intro/06.m4a",
+   "cat": "voice",
+   "dur": 4.8,
+   "src": "gemini"
+  },
+  "voice/intro/07": {
+   "file": "voice/intro/07.m4a",
+   "cat": "voice",
+   "dur": 4.1,
+   "src": "gemini"
+  },
+  "voice/intro/08": {
+   "file": "voice/intro/08.m4a",
+   "cat": "voice",
+   "dur": 8.2,
+   "src": "gemini"
+  },
+  "voice/intro/09": {
+   "file": "voice/intro/09.m4a",
+   "cat": "voice",
+   "dur": 5.5,
+   "src": "gemini"
+  },
+  "voice/intro/10": {
+   "file": "voice/intro/10.m4a",
+   "cat": "voice",
+   "dur": 5.9,
+   "src": "gemini"
+  },
+  "voice/intro/11": {
+   "file": "voice/intro/11.m4a",
+   "cat": "voice",
+   "dur": 8.3,
+   "src": "gemini"
+  },
+  "voice/intro/12": {
+   "file": "voice/intro/12.m4a",
+   "cat": "voice",
+   "dur": 10.2,
+   "src": "gemini"
+  },
+  "voice/intro/13": {
+   "file": "voice/intro/13.m4a",
+   "cat": "voice",
+   "dur": 5.4,
+   "src": "gemini"
+  },
+  "voice/intro/14": {
+   "file": "voice/intro/14.m4a",
+   "cat": "voice",
+   "dur": 2.967,
+   "src": "gemini"
+  },
+  "voice/intro/15": {
+   "file": "voice/intro/15.m4a",
+   "cat": "voice",
+   "dur": 3.5,
+   "src": "gemini"
+  },
+  "voice/intro/16": {
+   "file": "voice/intro/16.m4a",
+   "cat": "voice",
+   "dur": 3.3,
+   "src": "gemini"
   }
  },
  "instruments": {

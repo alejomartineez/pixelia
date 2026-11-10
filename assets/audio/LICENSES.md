@@ -121,3 +121,8 @@ De Freesound se usaron las vistas previas en MP3 (`-hq`, se bajan sin cuenta); l
 - Autor: voz generada con Gemini TTS (Google) para Pixelia, con `tools/audio/narrate.mjs`
 - Licencia: generada para el juego (no es CC0)
 - Archivos: `voice/intro/01.m4a`
+
+## Narrador
+- Autor: voz generada con Gemini TTS (Google) para Pixelia, con `tools/audio/narrate.mjs`
+- Licencia: generada para el juego (no es CC0)
+- Archivos: `voice/intro/01.m4a`, `voice/intro/02.m4a`, `voice/intro/03.m4a`, `voice/intro/04.m4a`, `voice/intro/05.m4a`, `voice/intro/06.m4a`, `voice/intro/07.m4a`, `voice/intro/08.m4a`, `voice/intro/09.m4a`, `voice/intro/10.m4a`, `voice/intro/11.m4a`, `voice/intro/12.m4a`, `voice/intro/13.m4a`, `voice/intro/14.m4a`, `voice/intro/15.m4a`, `voice/intro/16.m4a`
