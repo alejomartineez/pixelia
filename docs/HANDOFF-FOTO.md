@@ -32,17 +32,66 @@ nuevo), cerca de una hora de juego, para probar con jugadores y como demo de Ste
     `test-combat-exp`, `test-classes` y `test-class-look` fallan por tiempos y pasan al repetirlas solas: ante una
     falla, repetir esa prueba suelta antes de tocar código.
 
+- **v64 en master**: A1 mergeada (Travesía por nodos sin arte, `src/voyage/`; detalle abajo). Suite completa en verde.
+
 ### En curso (sesiones abiertas por el chat coordinador `local_377480f3`; el orquestador integra)
-- **A1** `local_2fe76e8b`, rama `claude/a1-travesia-3e736a`: terminó (commit `293aad4`; pasan `test-voyage` y
-  `test-i18n`). Falta revisarla, mergearla y correr la suite.
-- **A2** `local_b3df4020`, rama `claude/a2-combate-5384e9` (esfuerzo medio). La sesión `local_a28fd135` no arrancó: ignorarla.
-- **R1** `local_c19fef5f`, rama `claude/r1-render-024ec7` (Fable 5.2 medio).
-- **U1** `local_6f56642d` (rama u1-tono) y **mock de U2** `local_d69a3fd1` (rama u2-mock-hud; espera la aprobación
-  del usuario antes de pasar pantallas).
+- **Listas para integrar en la v65** (una sola suite): **A2** `claude/a2-combate-5384e9` (`a486c5f`; pelea común de
+  66 a 69 s a ×1), **R1** `claude/relaxed-goldstine-ad8744` (`58ead34`: hitos 1 a 5 en el diorama, photo a 6,5 ms
+  por cuadro; quedan las franjas del acantilado atenuadas pero no resueltas, la subida parcial del volumen y el cielo
+  físico; la rama vieja `claude/r1-render-024ec7` ya está contenida ahí), **U1** `claude/u1-tono-b277a7`
+  (`c4837e1`; los renombres de sistema esperan al usuario) y el **mock de U2** `claude/u2-mock-hud-89e8ea`
+  (`tools/hud-mock.html`; dirección aprobada por el usuario).
+- **A3** `local_dddd2571` (rama a3-botin, Fable 5.2 medio), cortada desde la rama de A2.
+
+### A1: prototipo de la Travesía por nodos (rama `claude/a1-travesia-3e736a`, mergeada en la v64)
+**Qué quedó** (se juega de punta a punta con `?scene=voyage&seed=N` o con el botón provisorio "Travesía (prototipo)"
+de la ciudad):
+- `src/voyage/voyage-gen.js`: mapa con semilla, de 5 a 7 filas (la última es el jefe), de 2 a 4 nodos por fila, uniones
+  sin cruces que se bifurcan y se juntan, 5 tipos (pelea, élite, evento, campamento, jefe) y de 3 a 5 peleas en
+  cualquier camino.
+- `src/voyage/voyage-rules.js` (puro, la salida es JSON): elegir nodo conectado, vida del grupo que sigue de pelea en
+  pelea, 1 de 3 recompensas tras cada pelea, 5 eventos con consecuencia segura y a la vista, campamento (descansar o
+  entrenar), 6 reliquias, caer o retirarse = mitad del botín, volver desde el mapa = todo. Sin provisiones ni relojes.
+- `src/voyage/voyage-data.js`: tablas. **Extensión para A3**: `RELICS` (modificadores en `mods` y funciones en
+  `on`: battle, fightWon, enter, finish), `REWARDS`, `registerRelic` y `registerReward`; los efectos son
+  declarativos (`applyFx`).
+- `src/voyage/voyage-scene.js`: escena `voyage` en DOM, sin arte. Guarda en `state.voyage` (`active`, `runs`,
+  `wins`) y acredita los materiales con `store.grant` al terminar. Emite `voyage:finished` y `voyage:combat`.
+- `tools/sim-voyage.mjs` (`npm run sim:voyage`): 200 salidas con la IA de `sim-combat`. Hoy: prudente 76 % de
+  victorias, 6 nodos, 3,6 peleas, 6,9 turnos por pelea, 14,4 min estimados (28 s por turno, a ojo); codicioso 91 %;
+  azar 66 %.
+- `tools/test-voyage.mjs` (82 chequeos, en `npm test`; `--node` corre solo los motores). Corrí esa y `test-i18n`;
+  la suite completa no.
+
+**Qué falta o hay que saber:**
+- El grupo es fijo (líder nivel 4 con Raíz, cazador, forjador y curandero nivel 2): no lee la partida. A3 lo arma con
+  lo que llevás puesto.
+- La ruta de élites domina (91 %): la élite es solo +40 % de vida y siempre da reliquia. Subir su dificultad o bajar
+  el premio cuando A2 cierre el combate.
+- Los minutos son una estimación; hay que medirlos con gente (A5) y con el tablero 6×6 de A2.
+- Los textos `voyage.*` están solo en español: `test-i18n` los exceptúa de en y ja hasta A5 (son provisorios).
+- El botón de la ciudad es un `position:fixed` puesto en `city.js`; se va con el HUD de PC (U2).
+- No se retiró la expedición por grilla. No hay XP de líder ni de clases, ni "repetir travesía", ni Marea.
+- Falta `npm run bump` (archivos nuevos en `src/voyage/` para `sw.js`) al integrar.
+- En el worktree, `tools/node_modules` es un enlace al del checkout principal (no está en git).
+
+**Qué necesita la Travesía del combate (para A2):**
+- Hoy la Travesía escribe sobre la pelea recién creada con `newBattle`: vida actual y máxima, ataque y coraza de
+  cada aliado, vida de los enemigos y `b.foe` (para los refuerzos). Mejor que `newBattle` lo reciba:
+  `allies: { tipo: { hp, maxHp, atk, armor } }` y `foeHp` (multiplicador), sin depender de `power`.
+- Lee de la pelea terminada `units[].hp/alive/type` y `items` (los gastados quedan en 0): que eso no cambie, o
+  que `result(b)` devuelva `allies: { tipo: hp }` y `itemsUsed`.
+- Usa `router.go('combat', { battle, noRetry: true, onSave, onEnd })`, `hashSeed`, `retreat` y `result`.
+- La resolución automática de A2: que sea una función pura que devuelva el mismo `result` y la vida con que queda
+  cada uno, así la Travesía la ofrece en la tarjeta de pelea.
+- Para reliquias que cambian reglas adentro de la pelea (A3) hacen falta ganchos en el motor: primera habilidad
+  gratis, daño por elemento, efecto al matar. Hoy solo se puede tocar el estado inicial.
+- Élite: hoy es el mismo encuentro con más vida. Hace falta una marca de élite en los encuentros o un modificador
+  (comportamiento, no solo números).
 
 ## Próximos pasos (ver "Orden" en el plan)
-1. Integrar A1; después A2, R1 y U1 a medida que entreguen (revisar diff, mergear, suite, bump, commit y push).
-2. Cuando A2 esté integrada, abrir A3 (botín, árbol, reliquias) sobre el arsenal y la maestría del 2a, que ya está en master.
+1. v65: mergear A2, R1, U1 y el mock de U2; suite, bump, commit y push.
+2. Integrar A3 cuando entregue. Después U2 completo sobre el mock aprobado.
 3. A5: prueba con jugadores del prototipo con cubos. Recién después, arte.
 
 ## Lo que hace el usuario

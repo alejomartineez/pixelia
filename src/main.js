@@ -44,6 +44,7 @@ const SCENES = {
   intro: () => import('./scenes/intro.js'),   // cinemática "El Quiebre" (PLAN-QUIEBRE §B): lo primero de una partida nueva
   onboarding: () => import('./scenes/onboarding.js'),   // primera vez: elegir personaje, nombre y ciudad
   expedition: () => import('./expedition/exp-scene.js'),   // Expedición (DESIGN-CORE.md §2)
+  voyage: () => import('./voyage/voyage-scene.js'),   // Travesía por nodos: prototipo sin arte (PLAN-FOTO §A1; ?scene=voyage&seed=N)
   combat: () => import('./combat/combat-scene.js'),   // Combate táctico (DESIGN-COMBAT.md; ?scene=combat abre un encuentro de prueba)
 };
 
