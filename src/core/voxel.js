@@ -282,8 +282,10 @@ export const POST_DEFAULT = { bloom: 0.32, thr: 0.8, vignette: 0.1, contrast: 0.
  * Lo que suma el render fotográfico (opts.photo, cadena HDR) al acabado de cámara:
  *   exposure: exposición de la escena (multiplica la luz antes del mapeo de tonos AgX) · punch: contraste del AgX
  *   (1 = neutro) · agxSat: saturación después del AgX. En HDR, thr es el brillo (ya expuesto) desde el que algo florece.
+ *   Lente de maqueta: lensVig = caída de luz hacia los bordes (antes del AgX, como en un lente) · ca = aberración
+ *   cromática en los bordes (fracción del ancho) · grain = grano de película. Con dof, lo borroso sale en discos (bokeh).
  */
-export const PHOTO_DEFAULT = { exposure: 1, punch: 1.25, agxSat: 1.15, thr: 1.0, bloom: 0.5 };
+export const PHOTO_DEFAULT = { exposure: 1, punch: 1.25, agxSat: 1.15, thr: 1.0, bloom: 0.5, lensVig: 0.3, ca: 0.0012, grain: 0.03 };
 const live = new Set();
 /** Cuadros dibujados en total por todos los renderers (lo usa el contador de FPS de Ajustes). */
 export const frameStats = { frames: 0 };
@@ -324,7 +326,9 @@ export function createPixelRenderer(container, opts = {}) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const canvas = renderer.domElement;
   canvas.className = 'pixel-canvas voxel-canvas';
-  const samples = () => (low || !GFX.aa || !renderer.capabilities.isWebGL2) ? 0 : 4;
+  // render fotográfico: el antialias es temporal (TAA con reproyección) y reemplaza al MSAA. opts.taa: false lo apaga
+  const taa = () => photo && opts.taa !== false;
+  const samples = () => (low || !GFX.aa || !renderer.capabilities.isWebGL2 || taa()) ? 0 : 4;
   const wantOutline = () => (forced ? forced[1] === '1' : !!sceneOutline && GFX.outline);
   let outline = null, outlineKey = '';
   // corrección de color del ambiente (saturación, tono y niebla por profundidad): va en el mismo pase final
@@ -347,7 +351,7 @@ export function createPixelRenderer(container, opts = {}) {
     const key = lines || n || grade || pp ? `${lines}|${n}|${pp}|${photo}|${JSON.stringify(sceneOutline ?? null)}` : '';
     if (key === outlineKey) return false;
     outline?.dispose(); outline = null; outlineKey = key;
-    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines, pp, photo, light);
+    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines, pp, photo, light, taa());
     if (outline && grade) outline.setGrade(grade);
     outline?.setPost(post);
     return true;
@@ -550,7 +554,7 @@ export function createPixelRenderer(container, opts = {}) {
  * mide ≈1 px CSS a cualquier resolución y no hace escalones duros.
  * En perspectiva el umbral crece con la distancia para no rayar el piso lejano en ángulo rasante.
  */
-function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = false, hdr = false, light = null) {
+function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = false, hdr = false, light = null, taa = false) {
   const cfg = typeof o === 'object' ? o : {};
   // RGBA8 en sRGB (no float16): la mitad de memoria y ancho de banda con MSAA, ~25% menos de GPU por
   // cuadro, y la imagen sale igual (la GPU guarda en sRGB y lee de vuelta en lineal, sin bandas).
@@ -606,10 +610,70 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       }`,
     depthTest: false, depthWrite: false, blending: THREE.NoBlending,
   }) : null;
+  // ---------- render fotográfico: historia (TAA), niebla y bokeh ----------
+  // El pase de historia mezcla el cuadro nuevo (con la niebla volumétrica ya sumada) con los anteriores, reproyectados
+  // con la profundidad. La cámara se corre menos de un pixel por cuadro: al promediar, los bordes quedan suaves.
+  const histRT = () => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false });
+  const hist = hdr ? [histRT(), histRT()] : null;
+  let hi = 0, histOk = false, frameN = 0;
+  const prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4(), tmpM = new THREE.Matrix4();
+  const resolve = hdr ? new THREE.ShaderMaterial({
+    uniforms: { tCur: { value: rt.texture }, tHist: { value: null }, tDepth: { value: rt.depthTexture }, tFog: { value: null }, fogOn: { value: 0 }, reproj: { value: new THREE.Matrix4() }, texel: { value: new THREE.Vector2(1, 1) }, blend: { value: 1 } },
+    vertexShader: quadVS,
+    fragmentShader: `
+      uniform sampler2D tCur; uniform sampler2D tHist; uniform sampler2D tDepth; uniform sampler2D tFog;
+      uniform mat4 reproj; uniform vec2 texel; uniform float blend; uniform float fogOn; varying vec2 vUv;
+      float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+      void main() {
+        vec4 c = texture2D(tCur, vUv);
+        vec3 a = texture2D(tCur, vUv + vec2(texel.x, 0.0)).rgb, b = texture2D(tCur, vUv - vec2(texel.x, 0.0)).rgb;
+        vec3 d = texture2D(tCur, vUv + vec2(0.0, texel.y)).rgb, e = texture2D(tCur, vUv - vec2(0.0, texel.y)).rgb;
+        vec3 mn = min(c.rgb, min(min(a, b), min(d, e))), mx = max(c.rgb, max(max(a, b), max(d, e)));
+        if (fogOn > 0.0) {
+          vec4 f = texture2D(tFog, vUv);
+          c.rgb = c.rgb * f.a + f.rgb; mn = mn * f.a + f.rgb; mx = mx * f.a + f.rgb;
+        }
+        float w = blend;
+        vec3 o = c.rgb;
+        if (w < 1.0) {
+          vec4 h = reproj * vec4(vUv * 2.0 - 1.0, texture2D(tDepth, vUv).x * 2.0 - 1.0, 1.0);
+          vec2 p = h.xy / h.w * 0.5 + 0.5;
+          if (p.x < 0.0 || p.y < 0.0 || p.x > 1.0 || p.y > 1.0) w = 1.0;
+          else {
+            // la historia no puede salirse de lo que hay alrededor en el cuadro nuevo: así no deja estelas
+            vec3 ext = (mx - mn) * 0.25 + 0.02 * c.rgb;
+            vec3 hc = clamp(texture2D(tHist, p).rgb, mn - ext, mx + ext);
+            float wc = w / (1.0 + luma(c.rgb)), wh = (1.0 - w) / (1.0 + luma(hc));
+            o = (c.rgb * wc + hc * wh) / (wc + wh);
+          }
+        }
+        gl_FragColor = vec4(max(o, vec3(0.0)), c.a);
+      }`,
+    depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+  }) : null;
+  // desenfoque en discos: 16 muestras en espiral, donde lo más brillante pesa más (las luces fuera de foco hacen círculos)
+  const bokeh = withPost && hdr ? new THREE.ShaderMaterial({
+    uniforms: { tSrc: { value: null }, px: { value: new THREE.Vector2(1, 1) }, rad: { value: 5 }, rot: { value: 0 } },
+    vertexShader: quadVS,
+    fragmentShader: `
+      uniform sampler2D tSrc; uniform vec2 px; uniform float rad; uniform float rot; varying vec2 vUv;
+      void main() {
+        vec3 s = vec3(0.0); float ws = 0.0;
+        for (int i = 0; i < 16; i++) {
+          float r = sqrt((float(i) + 0.5) / 16.0) * rad, a = float(i) * 2.39996 + rot;
+          vec3 c = texture2D(tSrc, vUv + vec2(cos(a), sin(a)) * r * px).rgb;
+          float w = 1.0 + dot(c, vec3(0.6));
+          s += c * w; ws += w;
+        }
+        gl_FragColor = vec4(s / ws, 1.0);
+      }`,
+    depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+  }) : null;
+  const HALTON = [[0.5, 0.3333], [0.25, 0.6667], [0.75, 0.1111], [0.125, 0.4444], [0.625, 0.7778], [0.375, 0.2222], [0.875, 0.5556], [0.0625, 0.8889]];
   const mat = new THREE.ShaderMaterial({
     defines: withPost ? { POST: '' } : {},
     uniforms: {
-      exposure: { value: 1 }, punch: { value: 1.25 }, agxSat: { value: 1.15 },
+      exposure: { value: 1 }, punch: { value: 1.25 }, agxSat: { value: 1.15 }, lensVig: { value: 0 }, ca: { value: 0 }, grain: { value: 0 }, grainPx: { value: 2 }, seed: { value: 0 },
       tColor: { value: rt.texture }, tDepth: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) },
       near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3d2f2a) }, lineW: { value: 2 },
       strength: { value: cfg.strength ?? 0.85 }, lines: { value: lines ? 1 : 0 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
@@ -633,6 +697,7 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       varying vec2 vUv;
       #ifdef HDR
       uniform float exposure; uniform float punch; uniform float agxSat;
+      uniform float lensVig; uniform float ca; uniform float grain; uniform float grainPx; uniform float seed;
       // AgX (Troy Sobotka; aproximación de Benjamin Wrensch): entra luz lineal sin techo, sale lineal de pantalla 0..1
       vec3 agx(vec3 v) {
         const mat3 inM = mat3(0.842479062253094, 0.0423282422610123, 0.0423756549057051, 0.0784335999999992, 0.878468636469772, 0.0784336, 0.0792237451477643, 0.0791661274605434, 0.879142973793104);
@@ -666,7 +731,15 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       void main() {
         vec4 c = texture2D(tColor, vUv);
         #ifdef HDR
-        c.rgb *= exposure;
+        // lente: aberración cromática (rojo y azul se separan hacia los bordes) y caída de luz, antes del mapeo de tonos
+        vec2 lq = (vUv - 0.5) * vec2(aspect, 1.0);
+        float lr2 = dot(lq, lq) / (0.25 * (aspect * aspect + 1.0));
+        if (ca > 0.0) {
+          vec2 off = (vUv - 0.5) * (ca * lr2);
+          c.r = texture2D(tColor, vUv + off).r; c.b = texture2D(tColor, vUv - off).b;
+        }
+        float lensFall = 1.0 / ((1.0 + lensVig * lr2) * (1.0 + lensVig * lr2));
+        c.rgb *= exposure * lensFall;
         #endif
         float dc = dist(vUv);
         float coc = 0.0;
@@ -674,7 +747,11 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
         // desenfoque de profundidad: lo que está lejos del foco se mezcla con la versión borrosa (y pierde la tinta)
         if (dofAmt > 0.0) {
           coc = dofAmt * smoothstep(dofRange * 0.5, dofRange * 1.6, abs(dc - dofFocus));
-          c = mix(c, vec4(texture2D(tBlur, vUv).rgb, 1.0), coc);
+          vec3 blurC = texture2D(tBlur, vUv).rgb;
+          #ifdef HDR
+          blurC *= lensFall;
+          #endif
+          c = mix(c, vec4(blurC, 1.0), coc);
         }
         #endif
         float thr = thrAbs + dc * thrLin + dc * dc * thrSq;
@@ -694,6 +771,9 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
         // bloom: el halo de las luces se suma (sobre el cielo transparente de la ciudad también se ve)
         if (bloomAmt > 0.0) {
           vec3 bl = texture2D(tBloom, vUv).rgb * bloomAmt;
+          #ifdef HDR
+          bl *= lensFall;
+          #endif
           vec3 lin = rgb * a + bl;
           a = clamp(a + max(bl.r, max(bl.g, bl.b)), 0.0, 1.0);
           rgb = a > 0.0 ? lin / a : vec3(0.0);
@@ -714,6 +794,15 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
         vec2 q = (vUv - 0.5) * vec2(aspect, 1.0);
         float vd = length(q) / length(vec2(aspect, 1.0) * 0.5);
         rgb *= 1.0 - vig * smoothstep(0.4, 1.05, vd);
+        #endif
+        #ifdef HDR
+        // grano de película: del tamaño de un pixel de pantalla, más visible en los medios y las sombras
+        if (grain > 0.0) {
+          vec2 gp = floor(gl_FragCoord.xy / grainPx) + seed * 17.0;
+          float gn = fract(sin(dot(gp, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+          vec3 gs = sqrt(clamp(rgb, 0.0, 1.0)) + gn * grain * (1.0 - 0.6 * dot(rgb, vec3(0.333)));
+          rgb = max(gs, 0.0) * max(gs, 0.0);
+        }
         #endif
         gl_FragColor = vec4(rgb, 1.0);
         #include <colorspace_fragment>
@@ -738,6 +827,8 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
     setSize(w, h, scale = 2) {
       rt.setSize(w, h); mat.uniforms.texel.value.set(1 / w, 1 / h);
       light?.setSize(w, h);
+      if (hist) { hist[0].setSize(w, h); hist[1].setSize(w, h); resolve.uniforms.texel.value.set(1 / w, 1 / h); histOk = false; }
+      mat.uniforms.grainPx.value = Math.max(1, Math.round(scale));
       mat.uniforms.lineW.value = Math.max(1, Math.round((cfg.width ?? 1.1) * scale));
       mat.uniforms.aspect.value = w / Math.max(1, h);
       if (pp) {
@@ -757,10 +848,35 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       }
       mat.uniforms.near.value = camera.near; mat.uniforms.far.value = camera.far;
       const prev = renderer.getRenderTarget();
+      // TAA: la proyección se corre una fracción de pixel distinta en cada cuadro (y se devuelve a su lugar al final)
+      let jx = 0, jy = 0;
+      const pe = camera.projectionMatrix.elements, ji = ortho ? 12 : 8;
+      if (hist) {
+        if (camera.parent === null) camera.updateMatrixWorld();
+        curVP.multiplyMatrices(camera.projectionMatrix, tmpM.copy(camera.matrixWorld).invert());
+        if (taa) {
+          const j = HALTON[frameN++ % 8];
+          jx = (j[0] - 0.5) * 2 / rt.width; jy = (j[1] - 0.5) * 2 / rt.height;
+          pe[ji] += jx; pe[ji + 1] += jy;
+          camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
+        }
+      }
       light?.prepare(scene, camera);
       renderer.setRenderTarget(rt);
       renderer.render(scene, camera);
       const u = mat.uniforms;
+      if (hist) {
+        if (taa) { pe[ji] -= jx; pe[ji + 1] -= jy; camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert(); }
+        const ru = resolve.uniforms, out = hist[hi ^= 1];
+        ru.tHist.value = hist[hi ^ 1].texture;
+        ru.tFog.value = light?.fogTexture ?? null; ru.fogOn.value = light?.fogOn ? 1 : 0;
+        ru.reproj.value.copy(prevVP).multiply(tmpM.copy(curVP).invert());
+        ru.blend.value = taa && histOk ? 0.1 : 1;
+        pass(resolve, out);
+        prevVP.copy(curVP); histOk = true;
+        u.tColor.value = out.texture; if (extract) extract.uniforms.tColor.value = out.texture;
+        u.seed.value = frameN % 61;
+      }
       u.bloomAmt.value = 0; u.dofAmt.value = 0;
       if (pp && bloomOn()) {
         extract.uniforms.thr.value = P.thr ?? 0.8;
@@ -771,7 +887,11 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       if (pp && dofOn()) {
         extract.uniforms.thr.value = -1;
         pass(extract, pp.c);
-        blurInto(pp.c, pp.d, 1); blurInto(pp.c, pp.d, 1.8);
+        if (bokeh) {
+          const bu = bokeh.uniforms; bu.px.value.set(1 / sw, 1 / sh);
+          bu.tSrc.value = pp.c.texture; bu.rad.value = P.dof.bokeh ?? 5; bu.rot.value = 0; pass(bokeh, pp.d);
+          bu.tSrc.value = pp.d.texture; bu.rad.value = (P.dof.bokeh ?? 5) * 0.4; bu.rot.value = 1.2; pass(bokeh, pp.c);
+        } else { blurInto(pp.c, pp.d, 1); blurInto(pp.c, pp.d, 1.8); }
         u.dofAmt.value = Math.min(1, P.dof.amt ?? 1); u.dofFocus.value = P.dof.focus ?? 10; u.dofRange.value = Math.max(0.05, P.dof.range ?? 4);
       }
       quad.material = mat;
@@ -794,9 +914,12 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       u.vig.value = P.vignette || 0; u.contrast.value = P.contrast || 0; u.splitAmt.value = P.split || 0;
       u.exposure.value = P.exposure ?? 1; u.punch.value = P.punch ?? 1.25; u.agxSat.value = P.agxSat ?? 1.15;
       if (extract) extract.uniforms.exposure.value = hdr ? (P.exposure ?? 1) : 1;
+      if (hdr) { u.lensVig.value = P.lensVig || 0; u.ca.value = P.ca || 0; u.grain.value = P.grain || 0; }
     },
     dispose() {
       rt.depthTexture.dispose(); rt.dispose(); quad.geometry.dispose(); mat.dispose();
+      if (hist) { hist[0].dispose(); hist[1].dispose(); resolve.dispose(); }
+      bokeh?.dispose();
       if (pp) { for (const t of Object.values(pp)) t.dispose(); extract.dispose(); blur.dispose(); }
     },
   };

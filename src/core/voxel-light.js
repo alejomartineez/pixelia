@@ -27,15 +27,11 @@ const WINDOW_COLOR = [1.0, 0.62, 0.26];
 
 const QUAD_VS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
 
-const LIGHT_FS = `
+// Lo que comparten el pase de luz, la niebla y los materiales que reflejan: leer el volumen y marchar conos.
+const VOL_GLSL = `
 precision highp float; precision highp sampler3D;
-uniform sampler2D tDepth; uniform sampler2D tNormal; uniform sampler3D tVol;
-uniform mat4 invProj; uniform mat4 camWorld;
-uniform vec3 volMin; uniform vec3 volSize; uniform float cell;
-uniform vec3 sunDir; uniform float sunOn; uniform float sunAp;
-uniform vec3 skyCol; uniform vec3 groundCol; uniform float giGain; uniform float aoPow;
-uniform vec4 pPos[${MAX_POINTS}]; uniform vec3 pCol[${MAX_POINTS}]; uniform int pCount;
-varying vec2 vUv;
+uniform sampler3D tVol; uniform vec3 volMin; uniform vec3 volSize; uniform float cell;
+uniform vec3 skyCol; uniform vec3 groundCol;
 
 vec4 vol(vec3 p, float lod) {
   vec3 u = (p - volMin) / volSize;
@@ -68,6 +64,17 @@ float shadowCone(vec3 o, vec3 d, float maxT, float ap) {
   return T;
 }
 vec3 skyAt(vec3 d) { return mix(groundCol, skyCol, smoothstep(-0.6, 0.15, d.y)); }
+// la luz que sale de una celda (emitida + rebote horneado): el rgb va premultiplicado por la ocupación y como raíz
+vec3 radiance(vec4 s) { return s.rgb * s.rgb * (${RAD_MAX.toFixed(1)} / max(s.a, 0.06)); }
+`;
+
+const LIGHT_FS = VOL_GLSL + `
+uniform sampler2D tDepth; uniform sampler2D tNormal;
+uniform mat4 invProj; uniform mat4 camWorld;
+uniform vec3 sunDir; uniform float sunOn; uniform float sunAp;
+uniform float giGain; uniform float aoPow;
+uniform vec4 pPos[${MAX_POINTS}]; uniform vec3 pCol[${MAX_POINTS}]; uniform int pCount;
+varying vec2 vUv;
 // Cono ancho: junta la luz de lo emisivo que encuentra y, con lo que queda libre, la del cielo.
 vec3 gather(vec3 o, vec3 d, out float open) {
   float ex = exitT(o, d);
@@ -98,6 +105,9 @@ void main() {
   vec3 P = (camWorld * vec4(v.xyz / v.w, 1.0)).xyz;
   vec3 N = normalize(mat3(camWorld) * (texture2D(tNormal, vUv).xyz * 2.0 - 1.0));
   vec3 o = P + N * cell * 0.75;
+  // si el punto de partida cae dentro de un sólido (caras tapadas por el relleno, uniones), se saca hacia afuera
+  float ins = vol(o, 0.0).a;
+  if (ins > 0.6) { o += N * cell; ins = vol(o, 0.0).a; if (ins > 0.6) { o += N * cell; ins = vol(o, 0.0).a; } }
 
   float sun = 0.0;
   if (sunOn > 0.0 && dot(N, sunDir) > 0.0) sun = shadowCone(o, sunDir, 60.0, sunAp);
@@ -114,6 +124,10 @@ void main() {
   d = normalize(N * 0.707 - t2 * 0.707); g = gather(o, d, open); E += 0.1875 * g; ao += 0.1875 * open; skyL += 0.1875 * open * skyAt(d);
   // la oclusión se aprieta un poco (aoPow > 1): los rincones cierran más, como en una maqueta
   E += skyL * pow(max(ao, 1e-3), aoPow - 1.0);
+  // piso de luz para lo que sigue enterrado: una franja negra pura se lee como un error, no como sombra
+  if (ins > 0.6) E = max(E, skyAt(N) * 0.1);
+  // y para las ranuras de un vóxel de ancho, donde los cinco conos chocan enseguida con la pared de enfrente
+  E += skyAt(N) * (0.24 * (1.0 - ao));
 
   for (int i = 0; i < ${MAX_POINTS}; i++) {
     if (i >= pCount) break;
@@ -134,7 +148,7 @@ void main() {
 }`;
 
 const MAT_VS = `
-varying vec3 vCol; varying vec3 vN; varying float vViewZ;
+varying vec3 vCol; varying vec3 vN; varying float vViewZ; varying vec3 vWorld;
 void main() {
   vCol = color;
   vec4 wp = vec4(position, 1.0);
@@ -144,12 +158,84 @@ void main() {
   #endif
   wp = modelMatrix * wp;
   vN = normalize(mat3(modelMatrix) * n);
+  vWorld = wp.xyz;
   vec4 mv = viewMatrix * wp;
   vViewZ = -mv.z;
   gl_Position = projectionMatrix * mv;
 }`;
 
+// Niebla volumétrica (media resolución): marcha del ojo a la superficie dentro de la caja del volumen. La niebla es
+// más densa abajo (fogP: densidad, altura base, caída con la altura) y junta sol con sombra, cielo, luces puntuales y
+// lo que brilla cerca. Sale rgb = luz que suma la niebla, a = cuánto deja pasar.
+const FOG_FS = VOL_GLSL + `
+uniform sampler2D tDepth; uniform mat4 invProj; uniform mat4 camWorld;
+uniform vec3 sunDir; uniform vec3 sunCol; uniform vec3 fogP; uniform float frame; uniform float fogGlow;
+uniform vec4 pPos[${MAX_POINTS}]; uniform vec3 pCol[${MAX_POINTS}]; uniform int pCount;
+varying vec2 vUv;
+vec3 world(float z) { vec4 v = invProj * vec4(vUv * 2.0 - 1.0, z, 1.0); return (camWorld * vec4(v.xyz / v.w, 1.0)).xyz; }
+float sunLite(vec3 p) {
+  float t = cell * 1.5, T = 1.0;
+  for (int i = 0; i < 6; i++) {
+    float lod = log2(max(1.0, 0.45 * t / cell));
+    T *= 1.0 - min(1.0, vol(p + sunDir * t, lod).a * 1.6);
+    t *= 1.8;
+  }
+  return T;
+}
+void main() {
+  float depth = texture2D(tDepth, vUv).x;
+  vec3 A = world(-1.0), B = world(min(depth, 0.99999) * 2.0 - 1.0);
+  vec3 d = B - A; float len = length(d); d /= len;
+  vec3 dd = mix(d, vec3(1e-5), lessThan(abs(d), vec3(1e-5)));
+  vec3 ta = (volMin - A) / dd, tb = (volMin + volSize - A) / dd;
+  vec3 mn = min(ta, tb), mx = max(ta, tb);
+  float t0 = max(max(mn.x, max(mn.y, mn.z)), 0.0), t1 = min(min(mx.x, min(mx.y, mx.z)), len);
+  if (t1 <= t0 || fogP.x <= 0.0) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+  float dt = (t1 - t0) / 10.0;
+  float jit = fract(52.9829189 * fract(dot(gl_FragCoord.xy + frame * 5.588, vec2(0.06711056, 0.00583715))));
+  vec3 acc = vec3(0.0); float T = 1.0;
+  for (int i = 0; i < 10; i++) {
+    vec3 p = A + d * (t0 + (float(i) + jit) * dt);
+    float dens = fogP.x * exp(-max(p.y - fogP.y, 0.0) * fogP.z);
+    if (dens < 1e-4) continue;
+    vec3 Lg = skyAt(vec3(0.0, 1.0, 0.0)) * 0.35;
+    if (sunCol.r + sunCol.g + sunCol.b > 1e-4) Lg += sunCol * (0.3 * sunLite(p));
+    Lg += radiance(vol(p, 2.0)) * vol(p, 2.0).a * fogGlow;
+    for (int k = 0; k < ${MAX_POINTS}; k++) {
+      if (k >= pCount) break;
+      float dist = distance(pPos[k].xyz, p), r = pPos[k].w;
+      if (dist >= r) continue;
+      float fall = 1.0 - dist / r;
+      Lg += pCol[k] * (0.5 * fall * fall / (1.0 + dist * dist * 1.5));
+    }
+    float st = 1.0 - exp(-dens * dt);
+    acc += T * st * Lg; T *= 1.0 - st;
+  }
+  if (!(acc.r >= 0.0 && acc.g >= 0.0 && acc.b >= 0.0)) acc = vec3(0.0);
+  gl_FragColor = vec4(min(acc, vec3(32.0)), T);
+}`;
+
 const MAT_FS = `
+#ifdef REFLECT
+${VOL_GLSL}
+uniform float f0; uniform float metalTint; uniform float ripple; uniform float time; uniform vec3 bgCol;
+// cono fino por el reflejo: junta lo que brilla (y el rebote horneado) y, con lo que queda libre, el cielo
+vec3 reflCone(vec3 o, vec3 d, float ap) {
+  float ex = exitT(o, d), t = cell, T = 1.0;
+  vec3 acc = vec3(0.0);
+  for (int i = 0; i < 28; i++) {
+    if (t >= ex) break;
+    float diam = max(cell, ap * t), lod = log2(diam / cell);
+    vec4 s = vol(o + d * t, lod);
+    float a = min(1.0, s.a * (1.0 + lod));
+    acc += T * a * radiance(s); T *= 1.0 - a;
+    if (T < 0.03) { T = 0.0; break; }
+    t += diam * 0.7;
+  }
+  return acc + T * bgCol * smoothstep(-0.2, 0.1, d.y);
+}
+#endif
+varying vec3 vWorld;
 uniform sampler2D tLight; uniform sampler2D tGN; uniform sampler2D tGD;
 uniform vec2 halfSize; uniform vec2 fullSize; uniform float camNear; uniform float camFar;
 uniform vec3 sunDir; uniform vec3 sunCol;
@@ -178,11 +264,36 @@ void main() {
   acc /= ws;
   float ndl = max(dot(N, sunDir), 0.0);
   vec3 lit = vCol * (sunCol * (ndl * acc.a) + acc.rgb);
+  float alpha = opacity;
+  #ifdef REFLECT
+  // agua, metal y vidrio: reflejo de la escena (el volumen) y del cielo, con Fresnel, y el brillo del sol
+  vec3 V = normalize(isOrthographic ? vec3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]) : cameraPosition - vWorld);
+  vec3 Nr = N;
+  #ifdef WATER
+  // el agua no está en el pre-pase: calcula su propia luz. Las ondas van por vóxel, para que siga siendo pixel art
+  vec2 g = floor(vWorld.xz * 8.0 + 0.5) / 8.0;
+  Nr = normalize(N + ripple * vec3(sin(g.x * 5.1 + time * 1.3) + sin(g.y * 3.3 + g.x * 2.0 + time * 0.9), 0.0, cos(g.y * 4.7 - time * 1.1) + sin(g.x * 2.9 - time * 0.7)));
+  float sv = ndl > 0.0 && sunCol.r + sunCol.g + sunCol.b > 1e-4 ? shadowCone(vWorld + N * cell, sunDir, 30.0, 0.1) : 0.0;
+  lit = vCol * (sunCol * (ndl * sv) + skyCol * 0.5);
+  #else
+  float sv = acc.a;
+  #endif
+  vec3 R = reflect(-V, Nr);
+  if (dot(R, N) < 0.02) R = normalize(R + N * (0.02 - dot(R, N)));
+  float fr = f0 + (1.0 - f0) * pow(1.0 - max(dot(Nr, V), 0.0), 5.0);
+  vec3 refl = reflCone(vWorld + N * cell * 1.5, R, 0.06) * mix(vec3(1.0), vCol, metalTint);
+  refl += sunCol * (sv * 6.0 * pow(max(dot(R, sunDir), 0.0), 240.0));
+  lit = lit * (1.0 - fr) * (1.0 - metalTint * 0.7) + refl * fr;
+  alpha = mix(opacity, 1.0, fr);
+  #endif
   lit += mix(vCol, emitCol, emitTint) * emit;
   // vistas de diagnóstico (r.light.debug = 1 sol · 2 luz sin sol · 3 normal · 4 color)
   if (debugView == 1) lit = vec3(acc.a); else if (debugView == 2) lit = acc.rgb; else if (debugView == 3) lit = N * 0.5 + 0.5; else if (debugView == 4) lit = vCol;
-  gl_FragColor = vec4(lit, opacity);
+  gl_FragColor = vec4(lit, alpha);
 }`;
+
+/** Cómo refleja cada material: f0 = reflejo de frente, tint = cuánto tiñe el reflejo (metal), ripple = ondas. */
+const REFLECT = { water: { f0: 0.03, tint: 0, ripple: 0.035 }, metal: { f0: 0.6, tint: 1 }, glass: { f0: 0.08, tint: 0 }, window: { f0: 0.06, tint: 0 } };
 
 export function createVoxelLight(renderer, opts = {}) {
   const cell = opts.cell ?? 1 / 8;
@@ -192,7 +303,7 @@ export function createVoxelLight(renderer, opts = {}) {
   let nx = 1, ny = 1, nz = 1, cov = null, alb = null, emi = null, data = null, tex = null;
   const entries = new Map();
   let seq = 0, dirty = null, glow = 0, builtGlow = 0;
-  const stats = { cells: 0, entries: 0, builds: 0, buildMs: 0, splats: 0 };
+  const stats = { cells: 0, entries: 0, builds: 0, buildMs: 0, splats: 0, bakes: 0, bakeMs: 0 };
   const uVol = { value: null };
   function alloc() {
     nx = Math.max(1, Math.ceil(size.x / cell - 1e-6)); ny = Math.max(1, Math.ceil(size.y / cell - 1e-6)); nz = Math.max(1, Math.ceil(size.z / cell - 1e-6));
@@ -287,19 +398,62 @@ export function createVoxelLight(renderer, opts = {}) {
     }
     // se vuelven a volcar las entradas que tocan la zona (las nuevas todavía no tienen caja)
     for (const en of entries.values()) if (!en.box || en.fresh || touch(en.box, c)) { en.fresh = false; splatEntry(en); }
-    for (let z = c[2]; z <= c[5]; z++) for (let y = c[1]; y <= c[4]; y++) for (let x = c[0]; x <= c[3]; x++) {
-      const i = x + nx * (y + ny * z), o = i * 4, w = cov[i];
+    dirty = null; clip = null; builtGlow = glow;
+    stats.builds++; stats.buildMs = performance.now() - t0; stats.entries = entries.size;
+    bakeDirty = true;
+  }
+  // Rebote difuso (hito 4): a cada celda de superficie se le hornea en CPU la luz que devuelve (sol con sombra y
+  // algo de cielo, por su color), sumada a lo que emite. Los conos del pase de luz, la niebla y los reflejos leen
+  // ese rgb, así que el rebote sale gratis en GPU. Se rehace todo el volumen cuando cambia la escena o el sol.
+  const baked = { dir: new THREE.Vector3(), sun: new THREE.Color(), sky: new THREE.Color(), t: -1e9 };
+  let bakeDirty = true, bounce = opts.bounce ?? 0.7;
+  function sunVis(x, y, z, dx, dy, dz) {
+    let T = 1;
+    for (let s = 0; s < 96; s++) {
+      x += dx; y += dy; z += dz;
+      const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+      if (ix < 0 || iy < 0 || iz < 0 || ix >= nx || iy >= ny || iz >= nz) break;
+      const c = cov[ix + nx * (iy + ny * iz)];
+      if (c > 0) { T *= 1 - Math.min(1, c); if (T < 0.05) return 0; }
+    }
+    return T;
+  }
+  function bake() {
+    const t0 = performance.now();
+    const sd = env.sunDir, S = env.sun, K = env.sky, G = env.ground, sunOn = S.r + S.g + S.b > 1e-4;
+    const FREE = 0.3, sxy = nx * ny;
+    for (let z = 0, i = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++, i++) {
+      const o = i * 4, w = cov[i];
       if (w <= 0) { data[o] = data[o + 1] = data[o + 2] = data[o + 3] = 0; continue; }
       const a = Math.min(1, w), k = a / w / RAD_MAX;
-      data[o] = Math.min(255, Math.sqrt(emi[i * 3] * k) * 255 + 0.5);
-      data[o + 1] = Math.min(255, Math.sqrt(emi[i * 3 + 1] * k) * 255 + 0.5);
-      data[o + 2] = Math.min(255, Math.sqrt(emi[i * 3 + 2] * k) * 255 + 0.5);
+      let r = emi[i * 3], g = emi[i * 3 + 1], b = emi[i * 3 + 2];
+      if (bounce > 0 && w > FREE) {
+        // normal de la celda: hacia los vecinos libres
+        const fx = (x === nx - 1 || cov[i + 1] < FREE ? 1 : 0) - (x === 0 || cov[i - 1] < FREE ? 1 : 0);
+        const fy = (y === ny - 1 || cov[i + nx] < FREE ? 1 : 0) - (y === 0 || cov[i - nx] < FREE ? 1 : 0);
+        const fz = (z === nz - 1 || cov[i + sxy] < FREE ? 1 : 0) - (z === 0 || cov[i - sxy] < FREE ? 1 : 0);
+        const l = Math.hypot(fx, fy, fz);
+        if (l > 0) {
+          const n0 = fx / l, n1 = fy / l, n2 = fz / l;
+          const ndl = n0 * sd.x + n1 * sd.y + n2 * sd.z;
+          const sv = sunOn && ndl > 0 ? ndl * sunVis(x + 0.5 + fx, y + 0.5 + fy, z + 0.5 + fz, sd.x, sd.y, sd.z) : 0;
+          const up = 0.5 + 0.5 * n1, sk = 0.3 * bounce, sb = sv * bounce;
+          r += alb[i * 3] * (S.r * sb + (K.r * up + G.r * (1 - up)) * sk);
+          g += alb[i * 3 + 1] * (S.g * sb + (K.g * up + G.g * (1 - up)) * sk);
+          b += alb[i * 3 + 2] * (S.b * sb + (K.b * up + G.b * (1 - up)) * sk);
+        }
+      }
+      data[o] = Math.min(255, Math.sqrt(r * k) * 255 + 0.5);
+      data[o + 1] = Math.min(255, Math.sqrt(g * k) * 255 + 0.5);
+      data[o + 2] = Math.min(255, Math.sqrt(b * k) * 255 + 0.5);
       data[o + 3] = a * 255 + 0.5;
     }
     tex.needsUpdate = true;
-    dirty = null; clip = null; builtGlow = glow;
-    stats.builds++; stats.buildMs = performance.now() - t0; stats.entries = entries.size;
+    bakeDirty = false;
+    baked.dir.copy(sd); baked.sun.copy(S); baked.sky.copy(K); baked.t = t0;
+    stats.bakes++; stats.bakeMs = performance.now() - t0;
   }
+  const far = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b) > 0.04 * (a.r + a.g + a.b + b.r + b.g + b.b) + 1e-4;
   // caja (en celdas) que va a ocupar una entrada, estimada desde su caja local: para saber qué zona rehacer
   const bb = new THREE.Box3();
   function estimate(en) {
@@ -338,6 +492,18 @@ export function createVoxelLight(renderer, opts = {}) {
     },
     vertexShader: QUAD_VS, fragmentShader: LIGHT_FS, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
   });
+  const fRT = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false });
+  const lu = lightMat.uniforms;
+  const fogMat = new THREE.ShaderMaterial({
+    uniforms: {
+      tDepth: lu.tDepth, tVol: uVol, invProj: lu.invProj, camWorld: lu.camWorld, volMin: lu.volMin, volSize: lu.volSize, cell: lu.cell,
+      sunDir: lu.sunDir, sunCol: { value: env.sun }, skyCol: lu.skyCol, groundCol: lu.groundCol,
+      fogP: { value: new THREE.Vector3(0, 0, 1) }, frame: { value: 0 }, fogGlow: { value: 0.6 },
+      pPos: lu.pPos, pCol: lu.pCol, pCount: lu.pCount,
+    },
+    vertexShader: QUAD_VS, fragmentShader: FOG_FS, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+  });
+  let fogOn = false, frame = 0, clock = null;
   const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), lightMat); quad.frustumCulled = false;
   const qScene = new THREE.Scene(); qScene.add(quad);
   const qCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -347,16 +513,23 @@ export function createVoxelLight(renderer, opts = {}) {
     tLight: { value: lRT.texture }, tGN: { value: gRT.texture }, tGD: { value: gRT.depthTexture },
     halfSize: { value: new THREE.Vector2(1, 1) }, fullSize: { value: new THREE.Vector2(1, 1) },
     camNear: { value: 0.1 }, camFar: { value: 100 }, sunDir: { value: env.sunDir }, sunCol: { value: env.sun }, debugView: { value: 0 },
+    tVol: uVol, volMin: lu.volMin, volSize: lu.volSize, cell: lu.cell, skyCol: lu.skyCol, groundCol: lu.groundCol,
+    time: { value: 0 }, bgCol: { value: new THREE.Color(0.5, 0.6, 0.8) },
   };
   const mats = new Map();
-  /** Material fotográfico: 'solid' | 'glow' (luces) | 'window' (se prende de noche) | 'water'. */
+  /**
+   * Material fotográfico: 'solid' | 'glow' (luces) | 'window' (se prende de noche y de día refleja) | 'water' |
+   * 'metal' | 'glass'. Los cuatro últimos reflejan la escena y el cielo (REFLECT).
+   */
   function material(kind = 'solid', o = {}) {
     const key = kind + (o.opacity != null ? ':' + o.opacity : '');
     if (mats.has(key)) return mats.get(key);
     const transparent = kind === 'water' || (o.opacity != null && o.opacity < 1);
+    const rf = REFLECT[kind];
     const m = new THREE.ShaderMaterial({
+      defines: rf ? { REFLECT: '', ...(kind === 'water' ? { WATER: '' } : {}) } : {},
       uniforms: {
-        ...shared, emit: { value: emitOf(kind) }, emitCol: { value: new THREE.Vector3(...WINDOW_COLOR) },
+        ...shared, f0: { value: rf?.f0 ?? 0.04 }, metalTint: { value: rf?.tint ?? 0 }, ripple: { value: rf?.ripple ?? 0 }, emit: { value: emitOf(kind) }, emitCol: { value: new THREE.Vector3(...WINDOW_COLOR) },
         emitTint: { value: kind === 'window' ? 1 : 0 }, opacity: { value: o.opacity ?? (kind === 'water' ? 0.82 : 1) },
       },
       vertexShader: MAT_VS, fragmentShader: MAT_FS, vertexColors: true, transparent, depthWrite: !transparent,
@@ -370,6 +543,15 @@ export function createVoxelLight(renderer, opts = {}) {
   const api = {
     cell, stats, material,
     get texture() { return tex; },
+    /**
+     * Material por vóxel: de los flags de un material de MagicaVoxel (vox-loader.js: emissive, metal, glass, water,
+     * rough) al tipo de material fotográfico. Uso: vox.split(m => L.kindOf(m) === 'metal') y una malla por tipo.
+     */
+    kindOf(m) { return !m ? 'solid' : m.emissive > 0 ? 'glow' : m.water ? 'water' : m.glass ? 'glass' : m.metal > 0.5 && (m.rough ?? 1) < 0.7 ? 'metal' : 'solid'; },
+    /** Reloj de las ondas del agua (segundos). null = el del sistema; un número lo deja quieto (capturas). */
+    set time(v) { clock = v; },
+    get fogTexture() { return fRT.texture; },
+    get fogOn() { return fogOn; },
     get debug() { return shared.debugView.value; }, set debug(v) { shared.debugView.value = v | 0; },
     get bounds() { return { min: min.clone(), size: size.clone(), dims: [nx, ny, nz] }; },
     /** Caja del volumen en coordenadas de mundo. Tira lo armado: llamarla antes de agregar. */
@@ -443,6 +625,14 @@ export function createVoxelLight(renderer, opts = {}) {
       if (e.sunAperture != null) lightMat.uniforms.sunAp.value = e.sunAperture;
       if (e.giGain != null) lightMat.uniforms.giGain.value = e.giGain;
       if (e.aoPow != null) lightMat.uniforms.aoPow.value = e.aoPow;
+      if (e.bounce != null && e.bounce !== bounce) { bounce = e.bounce; bakeDirty = true; }
+      // niebla volumétrica: { density (por unidad de mundo; 0 = sin niebla), height (y donde empieza a aflojar), falloff, glow }
+      if (e.fog !== undefined) {
+        const f = e.fog || {};
+        fogMat.uniforms.fogP.value.set(f.density || 0, f.height ?? 0, f.falloff ?? 1);
+        if (f.glow != null) fogMat.uniforms.fogGlow.value = f.glow;
+        fogOn = (f.density || 0) > 0;
+      }
       if (e.glow != null) {
         glow = Math.max(0, Math.min(1, e.glow));
         for (const m of mats.values()) m.uniforms.emit.value = emitOf(m.userData.photoKind);
@@ -450,6 +640,8 @@ export function createVoxelLight(renderer, opts = {}) {
         if (Math.abs(glow - builtGlow) > 0.04) for (const en of entries.values()) if (en.type === 'mesh' && EMIT[en.kind]) mark(en);
       }
       lightMat.uniforms.sunOn.value = env.sun.r + env.sun.g + env.sun.b > 1e-4 ? 1 : 0;
+      // el rebote se vuelve a hornear si el sol o el cielo cambiaron (a lo sumo dos veces por segundo)
+      if (!bakeDirty && bounce > 0 && performance.now() - baked.t > 500 && (baked.dir.dot(env.sunDir) < 0.9995 || far(baked.sun, env.sun) || far(baked.sky, env.sky))) bakeDirty = true;
     },
     /** Luces puntuales con sombra (hasta 8): [{ position: Vector3 (mundo), color, intensity, radius }]. */
     setPoints(list = []) {
@@ -464,12 +656,16 @@ export function createVoxelLight(renderer, opts = {}) {
     },
     setSize(w, h) {
       const hw = Math.max(1, Math.ceil(w / 2)), hh = Math.max(1, Math.ceil(h / 2));
-      gRT.setSize(hw, hh); lRT.setSize(hw, hh);
+      gRT.setSize(hw, hh); lRT.setSize(hw, hh); fRT.setSize(hw, hh);
       shared.halfSize.value.set(hw, hh); shared.fullSize.value.set(w, h);
     },
     /** Antes del dibujo principal: rehace el volumen si hace falta, pre-pase de profundidad y normales, y pase de luz. */
     prepare(scene, camera) {
       rebuild();
+      if (bakeDirty && cov) bake();
+      frame++;
+      shared.time.value = clock ?? performance.now() / 1000;
+      if (scene.background?.isColor) shared.bgCol.value.copy(scene.background); else shared.bgCol.value.copy(env.sky);
       const prevRT = renderer.getRenderTarget(), bg = scene.background, ov = scene.overrideMaterial, sh = renderer.shadowMap.autoUpdate;
       hidden.length = 0;
       scene.traverse(o => {
@@ -491,10 +687,11 @@ export function createVoxelLight(renderer, opts = {}) {
       shared.camNear.value = camera.near; shared.camFar.value = camera.far;
       renderer.setRenderTarget(lRT);
       renderer.render(qScene, qCam);
+      if (fogOn) { fogMat.uniforms.frame.value = frame % 64; quad.material = fogMat; renderer.setRenderTarget(fRT); renderer.render(qScene, qCam); quad.material = lightMat; }
       renderer.setRenderTarget(prevRT);
     },
     dispose() {
-      tex?.dispose(); gRT.depthTexture.dispose(); gRT.dispose(); lRT.dispose(); normalMat.dispose(); lightMat.dispose(); quad.geometry.dispose();
+      tex?.dispose(); gRT.depthTexture.dispose(); gRT.dispose(); lRT.dispose(); fRT.dispose(); fogMat.dispose(); normalMat.dispose(); lightMat.dispose(); quad.geometry.dispose();
       for (const m of mats.values()) m.dispose();
       mats.clear(); entries.clear();
     },
