@@ -110,6 +110,13 @@ try {
   await click('.scene-intro .in-root');
   ok(await waitFor(`window.__pixelia.intro?.shot === 1 && /Casas/.test(document.querySelector('.scene-intro .in-sub')?.textContent || '')`, 3000), 'un clic pasa al plano siguiente (las torres de las Casas)');
   await shot('intro-torres');
+  // El Quiebre del paso 3b: once planos (3D y viñetas 2D), con voz en cada uno y carteles la primera vez
+  const qb = await run(`const I = window.__pixelia.intro, tl = I.cinema.timeline; const out = { n: I.count, voice: 0, labels: 0, d2: [] };
+    for (let i = 0; i < I.count; i++) { I.go(i); const S = tl.S; if (S.subs.some(s => s.voice)) out.voice++; out.labels += S.events.filter(e => e.label).length; if (S.vignette) out.d2.push(i + 1); }
+    I.go(3); I.seek(1.5); out.is2d = document.querySelector('.scene-intro .in-root').classList.contains('is-2d'); out.lab2d = document.querySelectorAll('.scene-intro .in-lab2d .cn-label').length;
+    I.go(1); return out;`);
+  ok(qb.n === 11 && qb.voice === 11 && qb.labels >= 16, 'El Quiebre: 11 planos con voz y sus carteles', qb);
+  ok(JSON.stringify(qb.d2) === '[4,5,6,9]' && qb.is2d && qb.lab2d >= 1, 'la orden, el robo, la caída y la Cofradía van en viñeta 2D, con carteles encima', qb);
   await page.keyboard.press('KeyB');
   await sleep(200);
   ok(!(await has('.modal')), 'las teclas del juego no llegan durante la cinemática');

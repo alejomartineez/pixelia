@@ -248,6 +248,50 @@ ok(!/AIza[0-9A-Za-z_-]{20,}/.test(narr) && !/console\.log\([^)]*KEY/.test(narr),
 const N = await import(pathToFileURL(join(ROOT, 'src/cinema/narration.js')).href);
 ok(N.NARRATION.intro.length >= 1 && N.narrationLine('intro/01')?.text.startsWith('Antes del cielo'), 'guion del narrador con la línea de apertura');
 
+// ---------- El Quiebre (paso 3b): guion, voces, idiomas y viñetas ----------
+console.log('\nEl Quiebre: guion, voces y viñetas');
+const DICT = {};
+for (const l of ['es', 'en', 'ja']) DICT[l] = (await import(pathToFileURL(join(ROOT, `src/i18n/${l}.js`)).href)).default;
+const MAN = JSON.parse(readFileSync(join(ROOT, 'assets/audio/manifest.json'), 'utf8'));
+const lines = N.NARRATION.intro;
+ok(lines.length === 16 && lines.every(l => l.key && DICT.es[l.key] === l.text), 'las 16 líneas salen de es.js (lo que se oye es lo que se lee)', lines.length);
+ok(lines.every(l => DICT.en[l.key] && DICT.ja[l.key]), 'cada línea tiene inglés y japonés');
+ok(lines.every(l => MAN.files['voice/' + l.id]?.dur > 1 && existsSync(join(ROOT, 'assets/audio', MAN.files['voice/' + l.id].file))), 'cada línea tiene su .m4a con duración en el manifest');
+ok(lines.filter(l => l.style === 'vera').map(l => l.id).join() === 'intro/13,intro/14,intro/15,intro/16', 'Vera dice las cuatro últimas; el narrador, el resto');
+const labelKeys = Object.keys(DICT.es).filter(k => k.startsWith('intro.label.') || k === 'intro.title' || k === 'cinema.skip');
+ok(labelKeys.length >= 30 && labelKeys.every(k => DICT.en[k] && DICT.ja[k]), 'carteles, título y "Saltar" en es, en y ja', labelKeys.filter(k => !DICT.en[k] || !DICT.ja[k]));
+const vq = await page.evaluate(async () => {
+  const { createVignette, VIGNETTES } = await import('/src/cinema/pixel2d.js');
+  const VI = await import('/src/cinema/vignettes-intro.js');
+  const hash = (v) => { const d = v.canvas.getContext('2d').getImageData(0, 0, v.canvas.width, v.canvas.height).data; let h = 0; for (let i = 0; i < d.length; i += 7) h = (h * 31 + d[i]) | 0; return h; };
+  const at = (id, s) => { const v = createVignette(id); v.seek(s); v.draw(); return { st: v.state, h: hash(v) }; };
+  const det = ['orden', 'robo', 'caida', 'cofradia'].map(id => { const a = at(id, 5.3), b = at(id, 5.3); return a.h === b.h; });
+  // nadie se pisa: entre dos personajes de pie en el mismo piso, al menos 14 px (cuerpos de ~14 px)
+  const close = [];
+  for (const id of ['orden', 'robo', 'caida', 'cofradia']) {
+    const v = createVignette(id);
+    for (let s = 0; s <= v.dur; s += 0.25) {
+      v.seek(s);
+      const A = v.state.actors.filter(a => a.anim !== 'fall' && a.x > -20 && a.x < 420);
+      for (let i = 0; i < A.length; i++) for (let j = i + 1; j < A.length; j++) if (Math.abs(A[i].y - A[j].y) < 4 && Math.abs(A[i].x - A[j].x) < 14) close.push(`${id}@${s}`);
+    }
+  }
+  return {
+    ids: Object.keys(VIGNETTES), det, close,
+    orden7: at('orden', 7).st, orden12: at('orden', 11.9).st,
+    robo69: at('robo', 6.9).st, robo10: at('robo', 10).st,
+    caida9: at('caida', 9).st, caida108: at('caida', 10.8).st, caida15: at('caida', 15).st,
+    cof5: at('cofradia', 5).st, cof11: at('cofradia', 11).st,
+    G: { orden: VI.ORDEN.GROUND, caida: VI.CAIDA.GROUND },
+  };
+});
+ok(['orden', 'robo', 'caida', 'cofradia'].every(id => vq.ids.includes(id)) && vq.det.every(Boolean), 'las cuatro viñetas están y se arman igual cada vez', vq);
+ok(vq.close.length === 0, 'en las viñetas nadie se pisa con nadie', vq.close.slice(0, 8));
+ok(vq.orden7.actors[1].anim === 'point' && vq.orden12.actors[2].y > vq.G.orden + 20, 'la orden: la noble señala la mina y el capataz baja', [vq.orden7.actors[1], vq.orden12.actors[2]]);
+ok(!vq.robo69.props[0].visible && vq.robo69.actors[1].anim === 'lift' && vq.robo10.actors[2].flip && vq.robo10.actors[2].x < 120, 'el robo: el cristal pasa al cómplice y la guardia persigue', [vq.robo69, vq.robo10.actors]);
+ok(vq.caida9.actors[2].y > vq.G.caida + 40 && vq.caida108.actors[0].y > vq.G.caida + 10 && vq.caida15.actors[0].y === vq.G.caida + 1, 'el Quiebre: la vecina cae, el enano queda colgado y el guardia lo saca', [vq.caida9.actors[2], vq.caida108.actors[0], vq.caida15.actors[0]]);
+ok(vq.cof5.actors[2].anim === 'point' && vq.cof11.actors[1].x < vq.cof11.actors[0].x - 40, 'la Cofradía: uno señala; el que no se sorprende se va', vq.cof11.actors);
+
 ok(errors.length === 0, 'sin errores de consola', errors);
 await browser.close(); server.close();
 console.log(`\n${pass} ok, ${fail} mal`);

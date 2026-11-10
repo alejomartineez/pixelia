@@ -1,14 +1,16 @@
-// Cinemática "El Quiebre" (PLAN-QUIEBRE §B y §M4): seis planos en vóxel que cuentan el colapso con imágenes que se
-// entienden solas, con un subtítulo de una línea por plano.
-//  1. El continente, con las cuatro vetas latiendo por dentro.
-//  2. Las torres de las Casas sacando la veta; enanos de la Veta empujando las vagonetas.
-//  3. De noche, gente sin nada (humanos y gente-zorro) roba cristales y la guardia la persigue con faroles.
-//  4. La tierra se agrieta y se abre; abajo, la Brasa.
-//  5. Los pedazos con Céfiro suben entre las nubes; abajo quedan la oscuridad, la lava y los orcos mirando.
-//  6. Tu fragmento en ruinas al atardecer y un esquife que llega.
+// Cinemática "El Quiebre" (PLAN-TRAVESIA §3b): once planos, unos dos minutos, que cuentan el mundo y su colapso con un
+// narrador (planos 1 a 9) y con Vera (10 y 11). Los planos grandes van en vóxel 3D; la acción entre personajes, en
+// viñetas 2D en pixel art (src/cinema/vignettes-intro.js). La primera vez que aparece cada cosa, un cartel la presenta.
+//   1. el mundo y las cuatro vetas (3D, carteles de color)      7. las islas que suben (3D)
+//   2. las torres de las Casas (3D)                              8. el Bajo Mundo: orcos de la Brasa y Vaciados (3D)
+//   3. los enanos de la Veta empujando las vagonetas (3D)        9. la Cofradía mira desde lejos (2D)
+//   4. la orden: una noble y el capataz (2D)                     10. Vera en su esquife llega a tu fragmento (3D)
+//   5. el robo: forcejeo, el cristal cambia de mano (2D)         11. tu personaje despierta; Vera le habla (3D)
+//   6. el Quiebre: la tierra se parte, gente que cae (2D)
+// Textos por t() (intro.line.NN, intro.label.*); voces en assets/audio/voice/intro/NN.m4a (src/cinema/narration.js).
 // Es la primera escena de una partida nueva (main.js, `!state.introSeen`) y se vuelve a ver desde la Bitácora
 // ({replay: 1, back: 'city'}). Clic, Enter o Espacio pasan al plano siguiente; Esc o "Saltar" la terminan.
-// Corre sobre el motor de cinemáticas (src/cinema/player.js): acá quedan los decorados, la luz y los planos.
+// Música: la pista grabada 'intro' (audio.track, la de Suno) si está en el manifest; si no, el modo épico de siempre.
 // Calidad: el renderer respeta ?quality=low y los Ajustes (sombras, contorno, tope de FPS).
 import * as THREE from 'three';
 import { Voxels, createPixelRenderer, addLights, voxelMaterial } from '../core/voxel.js';
@@ -17,17 +19,18 @@ import { skiffModel } from '../avatar/skiff.js';
 import { natureModel } from '../city/models.js';
 import { createCinema } from '../cinema/player.js';
 import { travel } from '../cinema/timeline.js';
+import { createVignette } from '../cinema/pixel2d.js';
+import { ORDEN, ROBO, CAIDA, COFRADIA } from '../cinema/vignettes-intro.js';
+import { applyPose, poseWeight } from '../cinema/poses.js';
+import { CHARACTERS } from '../story/story-data.js';
+import { t } from '../core/i18n.js';
 
-// ---------- Texto (M4: una línea por plano, que dé ganas de ver la siguiente) ----------
-export const INTRO_LINES = [
-  'Antes del cielo hubo una sola tierra. Y por dentro estaba viva.',
-  'Las Casas la cavaron para tener más. Siempre un poco más.',
-  'Los de abajo robaban lo que quedaba. Alguien tenía que comer.',
-  'Nadie paró. Ni los de arriba ni los de abajo.',
-  'Lo que tenía Céfiro subió. Lo demás se quedó abajo, a oscuras.',
-  'De uno de esos pedazos nadie se acordó. Hasta hoy.',
-];
-export const INTRO_TITLE = 'El Quiebre';
+// ---------- Texto: claves de src/i18n/es.js (intro.line.NN y intro.label.<id>) ----------
+export const INTRO_VOICES = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16'];
+
+// ---------- Despertar (planos 10 y 11): dónde está tirado tu personaje y dónde se para Vera ----------
+const HERO = { pos: [-1.9, 0.125, 1.9], rot: -1.05 };
+const VERA = { pos: [-2.85, 0.125, 2.45] };
 
 // ---------- Colores ----------
 const VEIN = { raiz: 0x86c96a, marea: 0x4f9fd6, brasa: 0xe8703a, cefiro: 0xd4ecf2 };
@@ -66,9 +69,9 @@ const lerp3 = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2],
 export default function create(ctx) {
   let r = null, root = null, alive = false, offFrame = null, onKey = null, params = {};
   const own = [];        // geometrías y materiales propios (los modelos de gente y árboles se comparten: no se tocan)
-  const sets = [];       // un grupo por plano
+  const sets = {};       // decorados 3D por nombre (world, towers, rise, frag); un decorado puede servir a dos planos
   let shot = 0, cin = null;
-  let lights = null, lamps = [];
+  let lights = null;
   const shake = { amp: 0 };
 
   // ---------- Ayudas de armado ----------
@@ -190,7 +193,7 @@ export default function create(ctx) {
     return g;
   }
 
-  // ---------- Plano 2: las torres de las Casas ----------
+  // ---------- Planos 2 y 3: las torres de las Casas y los enanos de la Veta ----------
   function buildTowers() {
     const g = new THREE.Group();
     const V = 1 / 8, W = 112, D = 72;
@@ -283,6 +286,7 @@ export default function create(ctx) {
     noble.position.set(ox + 24 * V, 33 * V, oz + 22 * V);
     guard.position.set(ox + 36 * V, 0.25, oz + 24 * V); guard.rotation.y = -0.4;
     digger.position.set(ox + 38 * V, 0.08, oz + 60 * V); digger.rotation.y = -1.7;
+    g.userData.carts = carts; g.userData.noble = noble;
     g.userData.update = (dt, tt, st) => {
       for (const c of carts) {
         c.position.x = c.userData.x0 + st * 0.36;
@@ -302,159 +306,7 @@ export default function create(ctx) {
     return g;
   }
 
-  // ---------- Plano 3: de noche, el robo ----------
-  function buildTheft() {
-    const g = new THREE.Group();
-    const V = 1 / 8, W = 176, D = 44;
-    const v = new Voxels(), gv = new Voxels();
-    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) {
-      for (let y = -3; y <= 0; y++) v.set(x, y, z, y === 0 ? ((x + (z >> 1)) % 4 === 0 || z % 4 === 0 ? '#2e2c2a' : pick(C.cobble, x, y, z)) : C.deep[0]);
-    }
-    // depósito de las Casas al fondo: pared con portones, un portón roto
-    for (let x = 0; x < W; x++) for (let y = 1; y < 34; y++) for (let z = 0; z < 4; z++) {
-      const gate = (x % 44 > 16 && x % 44 < 28) && y < 20;
-      if (gate && z > 0) continue;
-      const broken = x >= 104 && x < 116 && y < 20;
-      if (broken && z > 0) continue;
-      v.set(x, y, z, gate ? (broken ? null : (x % 2 ? C.woodD : C.wood)) : y % 7 === 0 ? C.mortar : pick(C.stone, x, y, z));
-    }
-    // cajones con cristales a la vista (los que se cayeron del portón roto)
-    const crate = (x0, z0, s) => {
-      v.box(x0, 1, z0, s, s - 1, s, (x, y, z) => (x === x0 || x === x0 + s - 1 || z === z0 || z === z0 + s - 1) && y % 3 !== 0 ? C.woodD : C.wood);
-      for (let x = x0 + 1; x < x0 + s - 1; x++) for (let z = z0 + 1; z < z0 + s - 1; z++) if (h2(x, z, 3) < 0.6) gv.set(x, s, z, VEIN.cefiro);
-    };
-    crate(100, 8, 7); crate(110, 12, 6); crate(92, 14, 5); crate(36, 9, 7); crate(150, 10, 6);
-    for (let i = 0; i < 18; i++) { const x = 96 + Math.floor(h2(i, 1, 2) * 26), z = 18 + Math.floor(h2(i, 2, 2) * 14); gv.set(x, 1, z, h2(i, 3, 3) < 0.5 ? VEIN.cefiro : VEIN.marea); }
-    const land = mesh(v, V), gm = mesh(gv, V, glow('loot'), { shadow: false });
-    g.add(land, gm);
-    for (const c of [land, gm]) { c.position.x -= W * V / 2; c.position.z -= 2.4; }
-    const thieves = [
-      { type: 'humano', build: 'esbelto', skin: 4, hair: 'despeinado', hairColor: 'negro', face: 'ninguna', dress: 'viajero', dressColor: 'negro', crown: 'capucha', acc: 'bolso' },
-      { type: 'zorro', build: 'esbelto', skin: 0, hair: 'coleta', hairColor: 'blanco', face: 'ninguna', dress: 'cuero', dressColor: 'azul', crown: 'bandana', acc: 'ninguno' },
-      { type: 'humano', build: 'recio', skin: 1, hair: 'corto', hairColor: 'castano', face: 'barba_corta', dress: 'pieles', dressColor: 'verde', crown: 'gorro', acc: 'mochila' },
-    ].map((look, i) => {
-      const p = person(look);
-      const loot = cube(0.12, i === 1 ? VEIN.marea : VEIN.cefiro);
-      loot.position.set(i === 1 ? -0.2 : 0.22, 0.55, 0.12);
-      p.add(loot);
-      p.userData.ox = [0, -0.7, -1.3][i]; p.userData.oz = [0.9, 1.6, 0.5][i];
-      g.add(p);
-      return p;
-    });
-    const guards = [0, 1].map(i => {
-      const p = person({ type: 'humano', build: 'recio', skin: 2 + i, hair: 'cortito', hairColor: i ? 'gris' : 'negro', face: i ? 'cicatriz' : 'barba_corta', dress: 'tabardo', dressColor: 'rojo', crown: 'casco', acc: i ? 'lanza' : 'farolito' });
-      p.userData.ox = 2.6 + i * 0.9; p.userData.oz = [1.0, 1.9][i];
-      g.add(p);
-      return p;
-    });
-    g.userData.people = { thieves, guards };
-    g.userData.update = (dt, tt, st) => {
-      const lead = 4.5 - st * 1.15;
-      for (const p of thieves) { p.position.set(lead + p.userData.ox, 0.13, p.userData.oz); p.rotation.y = -Math.PI / 2; p.userData.update?.(dt, true); }
-      guards.forEach((p, i) => { p.position.set(lead + p.userData.ox, 0.13, p.userData.oz); p.rotation.y = -Math.PI / 2; p.userData.update?.(dt, true); });
-      // los faroles de la guardia y el brillo de lo robado
-      if (lamps.length) {
-        lamps[0].position.set(guards[0].position.x - 0.25, 0.9, guards[0].position.z + 0.3);
-        lamps[1].position.set(guards[1].position.x - 0.2, 1.1, guards[1].position.z + 0.2);
-        lamps[2].position.set(thieves[0].position.x, 0.7, thieves[0].position.z + 0.3);
-        lamps[0].intensity = 2.6 + Math.sin(tt * 13) * 0.25;
-        lamps[1].intensity = 1.8 + Math.sin(tt * 11 + 1) * 0.2;
-      }
-      glowMats.loot.color.setScalar(0.85 + 0.15 * Math.sin(tt * 4));
-    };
-    return g;
-  }
-
-  // ---------- Plano 4: la grieta ----------
-  function buildCrack() {
-    const g = new THREE.Group();
-    const V = 1 / 8, W = 112, D = 80, TH = 14;
-    const left = new Voxels(), right = new Voxels();
-    const crackX = (z) => 56 + Math.round(Math.sin(z * 0.22) * 4 + Math.sin(z * 0.61) * 1.5);
-    const huts = [[22, 18], [30, 52], [80, 24], [88, 56], [70, 40]];
-    for (let x = 0; x < W; x++) for (let z = 0; z < D; z++) {
-      const cx = crackX(z);
-      if (Math.abs(x - cx) < 1) continue;
-      const side = x < cx ? left : right;
-      const hTop = Math.floor(fbm(x * 0.05, z * 0.05, 31) * 2.5);
-      for (let y = -TH; y <= hTop; y++) {
-        const dTop = hTop - y;
-        // cerca del corte la roca se pone caliente
-        const near = Math.abs(x - cx) < 3 && y < -6;
-        const col = near ? (h2(x, y, z) < 0.5 ? '#6a3524' : '#4e2a20') : dTop === 0 ? pick(C.grass, x, y, z) : dTop <= 2 ? pick(C.dirt, x, y, z) : y > -7 ? pick(C.rock, x, y, z) : pick(C.deep, x, y, z);
-        side.set(x, y, z, col);
-      }
-    }
-    // chozas de piedra con techo de paja
-    for (const [hx, hz] of huts) {
-      const side = hx < crackX(hz) ? left : right;
-      const base = Math.floor(fbm(hx * 0.05, hz * 0.05, 31) * 2.5) + 1;
-      side.box(hx, base, hz, 9, 7, 8, (x, y, z) => (x === hx || x === hx + 8 || z === hz || z === hz + 7) ? ((y === base + 3 && (x === hx + 4 || z === hz + 3)) ? '#1a1514' : pick(C.stone, x, y, z)) : null);
-      for (let s = 0; s < 5; s++) side.box(hx - 1 + s, base + 7 + s, hz - 1, 11 - s * 2, 1, 10, s % 2 ? '#8a7448' : '#7a6640');
-    }
-    const ox = -W * V / 2, oz = -D * V / 2;
-    const L = new THREE.Group(), R = new THREE.Group();
-    const lm = mesh(left, V), rm = mesh(right, V);
-    lm.position.set(ox, 0, oz); rm.position.set(ox, 0, oz);
-    L.add(lm); R.add(rm);
-    g.add(L, R);
-    // la Brasa abajo: un plano que brilla en el fondo de la grieta
-    const lavaG = new THREE.PlaneGeometry(4, 11);
-    const lavaM = new THREE.MeshBasicMaterial({ color: C.lava });
-    own.push(lavaG, lavaM);
-    const lava = new THREE.Mesh(lavaG, lavaM);
-    lava.rotation.x = -Math.PI / 2; lava.position.set(0, -1.6, 0);
-    g.add(lava);
-    // gente que retrocede del borde
-    const folks = [
-      [{ type: 'humano', build: 'recio', skin: 2, hair: 'despeinado', hairColor: 'castano', face: 'barba_corta', dress: 'viajero', dressColor: 'verde', crown: 'ninguna', acc: 'ninguno' }, L, -0.6, 1.4, -1],
-      [{ type: 'enano', build: 'recio', skin: 4, hair: 'cortito', hairColor: 'negro', face: 'barba_larga', dress: 'minero', dressColor: 'negro', crown: 'ninguna', acc: 'martillo' }, L, -1.3, -0.4, -1],
-      [{ type: 'zorro', build: 'esbelto', skin: 2, hair: 'coleta', hairColor: 'gris', face: 'ninguna', dress: 'abrigo', dressColor: 'azul', crown: 'ninguna', acc: 'ninguno' }, R, 0.9, 0.8, 1],
-      [{ type: 'humano', build: 'esbelto', skin: 0, hair: 'largo', hairColor: 'rubio', face: 'ninguna', dress: 'vestido', dressColor: 'durazno', crown: 'ninguna', acc: 'ninguno' }, R, 1.4, -1.1, 1],
-    ].map(([look, side, x, z, dir]) => {
-      const p = person(look);
-      const y = (Math.floor(fbm((x / V + 56) * 0.05, (z / V + 40) * 0.05, 31) * 2.5) + 1) * V;
-      p.position.set(x, y, z); p.rotation.y = dir < 0 ? Math.PI / 2 : -Math.PI / 2;
-      p.userData = { ...p.userData, x0: x, dir };
-      side.add(p);
-      return p;
-    });
-    // piedras que caen en la grieta
-    const debris = [];
-    for (let i = 0; i < 26; i++) {
-      const d = cube(0.11 + h2(i, 1, 1) * 0.1, i % 3 ? 0x4a4540 : 0x6b5236, false);
-      d.castShadow = true;
-      const z = (h2(i, 2, 1) - 0.5) * 9;
-      d.userData = { x: (crackX(Math.round(z / V + 40)) - 56) * V + (h2(i, 3, 1) - 0.5) * 0.3, z, t0: 1.7 + h2(i, 4, 1) * 4, vy: 0 };
-      d.visible = false;
-      debris.push(d); g.add(d);
-    }
-    let cracked = false;
-    g.userData.update = (dt, tt, st) => {
-      const open = ease((st - 1.6) / 3.6);
-      L.position.set(-open * 0.75, -open * 0.12, 0); L.rotation.z = open * 0.05;
-      R.position.set(open * 0.55, -open * 0.35, 0); R.rotation.z = -open * 0.035;
-      shake.amp = st < 1.6 ? 0.012 + st * 0.01 : Math.max(0, 0.06 * (1 - (st - 1.6) / 4)) + 0.01;
-      if (!cracked && st >= 1.6) { cracked = true; try { ctx.audio.sfx('crash'); } catch {} }
-      for (const p of folks) {
-        const back = ease((st - 1.2) / 2.4);
-        p.position.x = p.userData.x0 + p.userData.dir * back * 0.9;
-        p.userData.update?.(dt, st > 1.2 && st < 3.8);
-      }
-      for (const d of debris) {
-        const u = d.userData;
-        if (st < u.t0) continue;
-        if (!d.visible) { d.visible = true; d.position.set(u.x, 0.2, u.z); u.vy = 0; }
-        u.vy -= 9 * dt; d.position.y += u.vy * dt; d.rotation.x += dt * 3; d.rotation.z += dt * 2;
-        if (d.position.y < -2.2) d.visible = false;
-      }
-      lavaM.color.setHex(C.lava).multiplyScalar(0.35 + open * 0.75 + Math.sin(tt * 5) * 0.05);
-    };
-    g.userData.reset = () => { cracked = false; for (const d of debris) d.visible = false; };
-    return g;
-  }
-
-  // ---------- Plano 5: las islas suben ----------
+  // ---------- Planos 7 y 8: las islas suben; abajo, el Bajo Mundo ----------
   function buildRise() {
     const g = new THREE.Group();
     // el Bajo Mundo: llanura de ceniza con ríos de lava y un volcán
@@ -531,10 +383,11 @@ export default function create(ctx) {
       glowMats.lava5.color.setScalar(0.8 + 0.2 * Math.sin(tt * 1.7));
       glowMats.cef5.color.setScalar(0.8 + 0.2 * Math.sin(tt * 2.6));
     };
+    g.userData.isles = isles; g.userData.below = below;
     return g;
   }
 
-  // ---------- Plano 6: tu fragmento y el esquife que llega ----------
+  // ---------- Planos 10 y 11: tu fragmento, el esquife de Vera y el despertar ----------
   function buildFragment() {
     const g = new THREE.Group();
     const v = new Voxels(), R = 30;
@@ -575,19 +428,55 @@ export default function create(ctx) {
       const iv = new Voxels(); islandVox(iv, rr, 7, 140 + i);
       const m = mesh(iv, 1 / 8); m.position.set(x, y, z); g.add(m); return m;
     });
-    // el esquife: en la primera vez llega alguien con capucha; al volver a verla, tu personaje
+    // el esquife de Vera llega (plano 10); en el 11 queda amarrado y vacío, y ella está de pie junto a tu personaje
+    const veraLook = CHARACTERS.cartografa.look;
+    const skiff = skiffModel(ctx.state?.car || {}, { driver: veraLook });
+    const moored = skiffModel(ctx.state?.car || {}, {});
+    skiff.scale.setScalar(1.25); moored.scale.setScalar(1.25);
+    g.add(skiff, moored);
+    const from = [-9.5, -0.6, 9], to = [-4.35, 0.05, 1.75], heading = Math.atan2(to[0] - from[0], to[2] - from[2]);
+    moored.position.set(...to); moored.rotation.y = heading;
+    // tu personaje, tirado entre las ruinas: la primera vez alguien con capucha; al volver a verla, el tuyo
     const look = params.replay && ctx.state?.onboarded && ctx.state.avatar ? ctx.state.avatar
       : { type: 'humano', build: 'recio', skin: 2, hair: 'cortito', hairColor: 'castano', face: 'ninguna', dress: 'capa_viaje', dressColor: 'verde', crown: 'capucha', acc: 'ninguno' };
-    const skiff = skiffModel(ctx.state?.car || {}, { driver: look });
-    skiff.scale.setScalar(1.25);
-    g.add(skiff);
-    const from = [-9.5, -0.6, 9], to = [-4.35, 0.05, 1.75];
+    const hero = person(look), vera = person(veraLook);
+    hero.position.set(...HERO.pos); hero.rotation.y = HERO.rot;
+    vera.position.set(...VERA.pos); vera.rotation.y = Math.atan2(HERO.pos[0] - VERA.pos[0], HERO.pos[2] - VERA.pos[2]);
+    g.add(hero, vera);
+    // las poses mezclan con lo que hay: cada cuadro se vuelve a la postura de reposo (si no, el que cae queda tirado)
+    const restOf = (m) => {
+      const P = m.userData.parts || {};
+      const snap = [P.body, P.upper, P.head, P.armL, P.armR, ...(P.legs || [])].filter(Boolean).map(o => [o, o.rotation.clone(), o.position.clone()]);
+      return () => { for (const [o, r0, p0] of snap) { o.rotation.copy(r0); o.position.copy(p0); } };
+    };
+    const heroRest = restOf(hero), veraRest = restOf(vera);
+    let mode = 'arrive';
+    g.userData.hero = hero; g.userData.vera = vera; g.userData.skiff = skiff;
+    g.userData.mode = (m) => { mode = m; skiff.visible = m === 'arrive'; moored.visible = vera.visible = m === 'wake'; };
+    g.userData.mode('arrive');
     g.userData.update = (dt, tt, st) => {
-      const u = ease(st / 8.2);
-      const [x, y, z] = lerp3(from, to, u);
-      skiff.position.set(x, y + Math.sin(tt * 1.6) * 0.04, z);
-      skiff.rotation.y = Math.atan2(to[0] - from[0], to[2] - from[2]) + (1 - u) * 0.2;
-      skiff.userData.update?.(dt, (1 - u) * 1.6, -0.2 * (1 - u));
+      if (mode === 'arrive') {
+        const u = ease(st / 8.2);
+        const [x, y, z] = lerp3(from, to, u);
+        skiff.position.set(x, y + Math.sin(tt * 1.6) * 0.04, z);
+        skiff.rotation.y = heading + (1 - u) * 0.2;
+        skiff.userData.update?.(dt, (1 - u) * 1.6, -0.2 * (1 - u));
+      } else moored.position.y = to[1] + Math.sin(tt * 1.6) * 0.03;
+      heroRest(); veraRest();
+      hero.userData.update?.(dt, false);
+      vera.userData.update?.(dt, false);
+      // tu personaje: tirado boca abajo; en el 11 se arrodilla (3,8–6,2 s) y se pone de pie (7,4–9,4 s)
+      if (mode === 'arrive' || st < 3.8) applyPose(hero, 'caer', { w: 1, p: 1 });
+      else if (st < 7.4) {
+        const a = ease((st - 3.8) / 2.4);
+        applyPose(hero, 'caer', { w: 1 - a, p: 1 });
+        applyPose(hero, 'arrodillarse', { w: a, p: 1 });
+      } else applyPose(hero, 'arrodillarse', { w: 1 - ease((st - 7.4) / 2), p: 1 });
+      // Vera le tiende la mano mientras se levanta y después lo mira
+      if (mode === 'wake') {
+        applyPose(vera, 'entregar', { w: poseWeight(st, 2.4, 8.6, 0.6), side: 'R', t: st });
+        applyPose(vera, 'mirar', { w: poseWeight(st, 8.6, 30, 0.6), look: 0.1, up: -0.1 });
+      }
       islets[0].position.y = -1.2 + Math.sin(tt * 0.7) * 0.06;
       islets[1].position.y = -2 + Math.sin(tt * 0.6 + 2) * 0.05;
       glowMats.cef6.color.setScalar(0.8 + 0.2 * Math.sin(tt * 2));
@@ -595,55 +484,99 @@ export default function create(ctx) {
     return g;
   }
 
-  // ---------- Planos: duración, cámara y luz ----------
-  // cam: [desde, hasta] (posición), look: [desde, hasta] (a dónde mira). light: cielo, piso, intensidades y niebla.
+  // ---------- Planos: duración, cámara, luz, voz y carteles ----------
+  const L = {
+    world: { bg: 0x0b0d13, sky: 0x9fb0d0, ground: 0x2a2420, hemi: 1.15, sun: 0xffe2b8, sunI: 2.0, sunPos: [-10, 20, 12], fog: [0x0b0d13, 30, 60] },
+    towers: { bg: 0x1d1a1c, sky: 0xb5a796, ground: 0x2e2620, hemi: 1.0, sun: 0xffc890, sunI: 2.2, sunPos: [14, 16, 10], fog: [0x1d1a1c, 14, 34] },
+    rise: { bg: 0x0d1018, sky: 0x8e9cb8, ground: 0x3a1a10, hemi: 0.85, sun: 0xd6e2ff, sunI: 1.5, sunPos: [6, 26, 4], fog: [0x0d1018, 16, 42] },
+    below: { bg: 0x120c0c, sky: 0x9a8a9e, ground: 0x5a2614, hemi: 1.3, sun: 0xffb080, sunI: 1.9, sunPos: [-4, 18, 14], fog: [0x120c0c, 8, 26] },
+    dusk: { bg: 0x2a2028, sky: 0xe0a888, ground: 0x2e2430, hemi: 1.05, sun: 0xffa868, sunI: 2.3, sunPos: [-14, 8, 10], fog: [0x2a2028, 16, 34] },
+  };
+  const line = (at, k) => ({ at, text: t('intro.line.' + k), voice: 'intro/' + k });
+  const VCOL = { raiz: '#86c96a', marea: '#4f9fd6', brasa: '#e8703a', cefiro: '#d4ecf2' };
+  /** Cartel: id de intro.label.<id>; where: { pos } (3D), { follow, off } (algo que se mueve) o { px } (viñeta 2D). */
+  const label = (at, id, where, o = {}) => ({ at, label: { id, name: () => t('intro.label.' + id), line: () => t('intro.label.' + id + '.line'), dur: 4.4, ...where, ...o } });
+  const keys = (...k) => ({ keys: k.map(([tt, pos, look]) => ({ t: tt, pos, look })), ease: 'smooth' });
+  // un punto sobre la veta i en el corte del frente (la misma curva que buildContinent), en la columna de vóxeles x
+  const veinAt = (i, x) => { const y = Math.round(-3 - i * 2.2 + Math.sin(x * 0.11 + i * 1.7) * 1.6 + Math.sin(x * 0.045 + i) * 1.2); return [(x + 0.5) / 4 - 12, (y + 0.5) / 4, 7.55]; };
+  const VEIN_COL = [30, 42, 54, 66];
   const SHOTS = [
-    { build: buildContinent, dur: 8, cam: [[-3, 13, 26], [3.5, 3.6, 14]], look: [[0, -0.5, 0], [1, -1.6, 4]], shadow: 34,
-      light: { bg: 0x0b0d13, sky: 0x9fb0d0, ground: 0x2a2420, hemi: 1.15, sun: 0xffe2b8, sunI: 2.0, sunPos: [-10, 20, 12], fog: [0x0b0d13, 30, 60] } },
-    { build: buildTowers, dur: 8.5, cam: [[-7.4, 1.6, 7.6], [4.6, 3.0, 9.6]], look: [[-3.4, 1.4, 0.2], [-1.6, 3.4, -2]], shadow: 22,
-      light: { bg: 0x1d1a1c, sky: 0xb5a796, ground: 0x2e2620, hemi: 1.0, sun: 0xffc890, sunI: 2.2, sunPos: [14, 16, 10], fog: [0x1d1a1c, 14, 34] } },
-    { build: buildTheft, dur: 8.5, cam: [[5.5, 1.8, 6.6], [-4.5, 1.6, 6.2]], look: [[3.2, 0.6, 0.8], [-5.6, 0.6, 0.8]], shadow: 24, night: true,
-      light: { bg: 0x07090f, sky: 0x3a4a6e, ground: 0x0a0a10, hemi: 0.55, sun: 0x8aa0d0, sunI: 0.45, sunPos: [-6, 14, 10], fog: [0x07090f, 6, 16] } },
-    { build: buildCrack, dur: 7.5, cam: [[0.5, 6.2, 9.5], [0.2, 4.2, 6.2]], look: [[0, 0, 0], [0, -0.6, 0]], shadow: 20,
-      light: { bg: 0x140f0e, sky: 0xa79888, ground: 0x3a2018, hemi: 0.95, sun: 0xffb070, sunI: 1.7, sunPos: [8, 14, 6], fog: [0x140f0e, 12, 26] } },
-    { build: buildRise, dur: 8.5, cam: [[2.6, -4.6, 7.8], [3.4, -3.4, 9.4]], look: [[0.8, -4.4, 0], [0, 3.2, -1.5]], shadow: 30,
-      light: { bg: 0x0d1018, sky: 0x8e9cb8, ground: 0x3a1a10, hemi: 0.85, sun: 0xd6e2ff, sunI: 1.5, sunPos: [6, 26, 4], fog: [0x0d1018, 16, 42] } },
-    { build: buildFragment, dur: 9.5, cam: [[7.5, 3.2, 13.5], [3.2, 1.7, 8.6]], look: [[0, 0.3, 0], [-2.2, 0.5, 1.2]], shadow: 18, title: true,
-      light: { bg: 0x2a2028, sky: 0xe0a888, ground: 0x2e2430, hemi: 1.05, sun: 0xffa868, sunI: 2.3, sunPos: [-14, 8, 10], fog: [0x2a2028, 16, 34] } },
+    // 1 · el mundo y las cuatro vetas: de lejos, y de frente al corte; cada veta con su cartel en su color
+    { set: 'world', dur: 21, light: L.world, shadow: 34,
+      cam: keys([0, [-3, 13, 26], [0, -0.5, 0]], [8.5, [0, 4.4, 21], [0, -0.8, 7]], [21, [0.8, 2.2, 18.4], [0.4, -1.3, 7.4]]),
+      subs: [line(0.6, '01'), line(8.9, '02')],
+      events: ['raiz', 'marea', 'brasa', 'cefiro'].map((id, i) => label(12.6 + i * 1.2, id, { pos: veinAt(i, VEIN_COL[i]) }, { color: VCOL[id], dur: 21 - 12.6 - i * 1.2 - 0.6 })) },
+    // 2 · las torres de las Casas, con la noble en el balcón
+    { set: 'towers', dur: 9.8, light: L.towers, shadow: 22,
+      cam: travel(9.8, [[-7.4, 1.6, 7.6], [-3.4, 1.4, 0.2]], [[4.6, 3.0, 9.6], [-1.6, 3.4, -2]]),
+      subs: [line(0.6, '03')],
+      events: [label(2.6, 'casas', { follow: () => sets.towers.userData.noble, off: [0, 1.0, 0] })] },
+    // 3 · los enanos de la Veta empujando las vagonetas (mismo decorado, cámara baja)
+    { set: 'towers', dur: 10, light: L.towers, shadow: 22,
+      cam: travel(10, [[-5.6, 1.8, 5.2], [-4.8, 0.5, 0.4]], [[-4.6, 1.6, 5.0], [-3.9, 0.5, 0.4]]),
+      subs: [line(0.6, '04')],
+      events: [label(2.2, 'enanos', { follow: () => sets.towers.userData.carts[1], off: [0, 1.1, 0] })] },
+    // 4 · la orden (viñeta)
+    { vig: 'orden', dur: 12, subs: [line(0.8, '05')],
+      events: [label(0.9, 'noble', { px: [ORDEN.noble, ORDEN.GROUND - ORDEN.DAIS - 32] }, { dur: 4 }), label(2.7, 'capataz', { px: (v) => [v.state.actors[2].x, ORDEN.GROUND - 30] }, { dur: 3.6 })] },
+    // 5 · el robo (viñeta)
+    { vig: 'robo', dur: 11.2, subs: [line(0.6, '06'), line(6.4, '07')],
+      events: [label(0.7, 'ladrones', { px: [102, ROBO.GROUND - 34] }, { dur: 2.6 }), label(3.2, 'guardia', { px: (v) => [v.state.actors[2].x, ROBO.GROUND - 34] }, { dur: 2.8 })] },
+    // 6 · el Quiebre (viñeta)
+    { vig: 'caida', dur: 16.2, subs: [line(0.6, '08'), line(9.6, '09')] },
+    // 7 · las islas que suben: desde abajo, mirando para arriba
+    { set: 'rise', dur: 8.6, light: L.rise, shadow: 30,
+      cam: travel(8.6, [[2.6, -4.2, 7.8], [0.8, -2.6, 0]], [[3.4, -3.4, 9.4], [0, 3.2, -1.5]]),
+      subs: [line(0.6, '10')],
+      events: [label(4.4, 'islas', { follow: () => sets.rise.userData.isles[1], off: [0, 0.5, 0] }, { color: VCOL.cefiro, dur: 3.8 })] },
+    // 8 · el Bajo Mundo: orcos de la Brasa y un vaciado miran subir lo que se va
+    { set: 'rise', dur: 9.8, light: L.below, shadow: 20,
+      cam: travel(9.8, [[-0.2, -4.75, 0.3], [1.4, -5.05, 4.8]], [[2.6, -4.7, 0.9], [1.8, -5.0, 4.6]]),
+      subs: [line(0.6, '11')],
+      events: [label(0.9, 'bajo', { pos: [3.6, -5.0, 6.8] }, { dur: 3.2, color: VCOL.brasa }),
+        label(4.3, 'orcos', { follow: () => sets.rise.userData.below[1], off: [0, 1.15, 0] }, { dur: 3.6 }),
+        label(6.4, 'vaciados', { follow: () => sets.rise.userData.below[2], off: [0, 1.1, 0] }, { dur: 3.2 })] },
+    // 9 · la Cofradía mira desde lejos (viñeta)
+    { vig: 'cofradia', dur: 11.8, subs: [line(0.8, '12')],
+      events: [label(3.9, 'cofradia', { px: [90, COFRADIA.GROUND - 34] }, { dur: 3.6 })] },
+    // 10 · Vera llega en su esquife a tu fragmento
+    { set: 'frag', mode: 'arrive', dur: 11.4, light: L.dusk, shadow: 18,
+      cam: travel(11.4, [[7.5, 3.2, 13.5], [0, 0.3, 0]], [[0.6, 1.5, 6.2], [-2.0, 0.3, 1.9]]),
+      subs: [line(1.2, '13'), line(7.6, '14')],
+      events: [label(2.4, 'vera', { follow: () => sets.frag.userData.skiff, off: [0, 1.7, 0] }, { dur: 3.8 }),
+        label(7.8, 'fragmento', { follow: () => sets.frag.userData.hero, off: [0, 0.9, 0] }, { dur: 3.4 })] },
+    // 11 · tu personaje despierta; Vera le tiende la mano. Título.
+    { set: 'frag', mode: 'wake', dur: 12.6, light: L.dusk, shadow: 14, title: true, hold: 1.4,
+      cam: travel(12.6, [[HERO.pos[0] + 1.5, 1.25, HERO.pos[2] + 2.8], [HERO.pos[0] - 0.45, 0.4, HERO.pos[2] + 0.1]], [[HERO.pos[0] + 1.25, 1.1, HERO.pos[2] + 2.6], [HERO.pos[0] - 0.45, 0.8, HERO.pos[2] + 0.1]]),
+      subs: [line(1.8, '15'), line(6.4, '16')] },
   ];
 
-  function applyLight(L, size) {
-    r.scene.background = new THREE.Color(L.bg);
-    r.scene.fog = new THREE.Fog(L.fog[0], L.fog[1], L.fog[2]);
-    lights.hemi.color.setHex(L.sky); lights.hemi.groundColor.setHex(L.ground); lights.hemi.intensity = L.hemi;
-    lights.sun.color.setHex(L.sun); lights.sun.intensity = L.sunI;
-    lights.sun.position.set(...L.sunPos); lights.sun.target.position.set(0, 0, 0);
-    const s = size / 2, cam = lights.sun.shadow.camera;
-    Object.assign(cam, { left: -s, right: s, top: s, bottom: -s, near: 1, far: 90 });
+  function applyLight(Li, size) {
+    r.scene.background = new THREE.Color(Li.bg);
+    r.scene.fog = new THREE.Fog(Li.fog[0], Li.fog[1], Li.fog[2]);
+    lights.hemi.color.setHex(Li.sky); lights.hemi.groundColor.setHex(Li.ground); lights.hemi.intensity = Li.hemi;
+    lights.sun.color.setHex(Li.sun); lights.sun.intensity = Li.sunI;
+    lights.sun.position.set(...Li.sunPos); lights.sun.target.position.set(0, 0, 0);
+    const sz = size / 2, cam = lights.sun.shadow.camera;
+    Object.assign(cam, { left: -sz, right: sz, top: sz, bottom: -sz, near: 1, far: 90 });
     cam.updateProjectionMatrix();
   }
 
   // ---------- Planos sobre el motor de cinemáticas (src/cinema/) ----------
-  // cada plano de SHOTS pasa a la línea de tiempo: travelling de dos puntos con ease, un subtítulo de 0,7 s hasta
-  // medio segundo antes del final, y el último con el título y 1,4 s de espera.
   function cinemaShots() {
-    return SHOTS.map((S, i) => ({
-      set: sets[i], dur: S.dur, tail: 0.5, light: S.light, shadow: S.shadow, title: !!S.title, hold: S.title ? 1.4 : 0,
-      cam: travel(S.dur, [S.cam[0], S.look[0]], [S.cam[1], S.look[1]]),
-      subs: [{ at: 0.7, text: INTRO_LINES[i], dur: S.dur - 1.2 }],
-      // el plano del robo sigue a los que corren
-      camFn: S.night ? (tt, cam, u) => {
-        const people = sets[i].userData.people;
-        if (!people) return;
-        const lead = people.thieves[0].position.x, e = ease(u);
-        cam.pos.x = lead + 0.4 + (1 - e) * 0.6; cam.look.x = lead + 0.7;
-      } : null,
-    }));
+    return SHOTS.map((S) => {
+      const out = { dur: S.dur, tail: 0.5, subs: S.subs, events: S.events || [] };
+      // los carteles que siguen algo: la función se resuelve al disparar (los decorados ya están armados)
+      for (const e of out.events) if (e.label && typeof e.label.follow === 'function') { const fn = e.label.follow; e.label = { ...e.label, follow: undefined, followFn: fn }; }
+      if (S.vig) out.vignette = () => createVignette(S.vig);
+      else Object.assign(out, { set: sets[S.set], cam: S.cam, light: S.light, shadow: S.shadow, title: !!S.title, hold: S.hold || 0 });
+      return out;
+    });
   }
   function onShot(i) {
     shot = i;
-    for (const l of lamps) l.intensity = 0;
-    if (SHOTS[i].night && lamps.length) lamps[2].intensity = 1.2;
+    const S = SHOTS[i];
+    if (S.mode) sets[S.set].userData.mode(S.mode);
   }
   async function finish(how) {
     const s = ctx.state;
@@ -666,10 +599,11 @@ export default function create(ctx) {
       r = createPixelRenderer(container, { ortho: false, fov: 42, background: 0x0b0d13, outline: true });
       lights = addLights(r.scene, { shadowSize: 30, shadowRes: 2048 });
       // faroles de la guardia y el brillo de lo robado (siempre en la escena: así no se recompilan los materiales)
-      lamps = [new THREE.PointLight(0xffb060, 0, 5, 1.6), new THREE.PointLight(0xffb060, 0, 4.5, 1.6), new THREE.PointLight(0xa8e0ff, 0, 3, 1.6)];
-      r.scene.add(...lamps);
-      for (const S of SHOTS) { const g = S.build(); g.visible = false; sets.push(g); r.scene.add(g); }
-      cin = createCinema(ctx, container, { r, shots: cinemaShots(), prefix: 'in', title: INTRO_TITLE, applyLight, onShot, onFinish: finish, shake, advanceSfx: 'select' });
+      const BUILD = { world: buildContinent, towers: buildTowers, rise: buildRise, frag: buildFragment };
+      for (const [k, fn] of Object.entries(BUILD)) { const g = fn(); g.visible = false; sets[k] = g; r.scene.add(g); }
+      // la pista grabada de El Quiebre (Suno), cuando esté en el manifest; si no, sigue el modo épico
+      try { ctx.audio?.track?.('intro'); } catch {}
+      cin = createCinema(ctx, container, { r, shots: cinemaShots(), prefix: 'in', title: t('intro.title'), applyLight, onShot, onFinish: finish, shake, advanceSfx: 'select' });
       cin.go(Math.max(0, Math.min(SHOTS.length - 1, Number(params.shot) || 0)));
       offFrame = r.onFrame((dt, tt) => cin.frame(dt, tt));
       onKey = (e) => {
@@ -688,9 +622,10 @@ export default function create(ctx) {
       offFrame?.();
       if (r) { r.stop(); r.dispose(); }
       for (const o of own.splice(0)) o.dispose?.();
-      sets.length = 0; lamps = [];
+      for (const k of Object.keys(sets)) delete sets[k];
       cin?.dispose(); cin = null;
       if (window.__pixelia) delete window.__pixelia.intro;
+      try { if (ctx.audio?.trackId === 'intro') ctx.audio.track(null); } catch {}
       r = null;
     },
   };

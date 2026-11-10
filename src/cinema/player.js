@@ -101,7 +101,7 @@ export function createCinema(ctx, container, opts = {}) {
         const L = e.label, name = typeof L.name === 'function' ? L.name() : L.name, line = typeof L.line === 'function' ? L.line() : L.line;
         // en una viñeta, px: [x, y] (o una función que lo da) en píxeles del mundo 2D
         if (L.px && vignette) labels.introduce(L.id, null, name, line, { ...L, host: lab2d, screen: () => vigToScreen(typeof L.px === 'function' ? L.px(vignette) : L.px) });
-        else labels.introduce(L.id, L.pos, name, line, L);
+        else labels.introduce(L.id, L.pos, name, line, L.followFn ? { ...L, follow: L.followFn() } : L);
       }
       if (e.run) e.run(S, { labels, shake, vignette });
     } catch (err) { console.warn('[cine]', err); }
@@ -193,7 +193,8 @@ function ensureStyle(p) {
   el.textContent = `
 .${p}-root { position: absolute; inset: 0; z-index: 5; pointer-events: auto; cursor: pointer; user-select: none; transition: opacity .38s; }
 .${p}-root.out { opacity: 0; }
-.${p}-stage2d { position: absolute; inset: 0; z-index: 0; display: none; background: #050506; }
+.${p}-stage2d { position: absolute; left: 0; right: 0; top: 9vh; bottom: calc(9vh + 2.6em + 30px); font-size: clamp(20px, 2.3vw, 28px); z-index: 0; display: none; background: #050506; }
+.${p}-root.is-2d { background: #050506; }
 .${p}-root.is-2d .${p}-stage2d { display: flex; align-items: center; justify-content: center; }
 .${p}-lab2d { z-index: 1; }
 .${p}-stage2d canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }

@@ -370,8 +370,9 @@ try {
   await tapXY(VIEW.width / 2, VIEW.height * 0.7);
   ok(await waitFor(`window.__pixelia?.ctx.router.current === 'intro' && !!document.querySelector('.scene-intro .in-skip')`, 15000), 'cinemática');
   await sleep(3500);
-  await shot('intro-1-continente');
-  for (const [i, t, n] of [[1, 5, 'intro-2-torres'], [2, 5, 'intro-3-robo'], [3, 4.5, 'intro-4-grieta'], [4, 5.5, 'intro-5-subida'], [5, 8, 'intro-6-fragmento']]) {
+  await shot('intro-01-mundo');
+  // El Quiebre (paso 3b): once planos, 3D y viñetas 2D
+  for (const [i, t, n] of [[1, 6, 'intro-02-casas'], [2, 4, 'intro-03-enanos'], [3, 7, 'intro-04-orden'], [4, 5, 'intro-05-robo'], [5, 11, 'intro-06-quiebre'], [6, 5.5, 'intro-07-islas'], [7, 6.5, 'intro-08-bajo'], [8, 5, 'intro-09-cofradia'], [9, 10.5, 'intro-10-vera'], [10, 11, 'intro-11-despierta']]) {
     await ev((a) => { window.__pixelia.intro.go(a[0]); window.__pixelia.intro.seek(a[1]); }, [i, t]);
     await sleep(1500);
     await shot(n);

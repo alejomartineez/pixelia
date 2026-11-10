@@ -15,7 +15,7 @@ export function createLabels(container, r, { seen = new Set() } = {}) {
   /** Muestra un cartel en pos (Vector3 o [x,y,z]). Si el id ya se presentó, no hace nada (devuelve null). */
   // color: borde y nombre del color de lo presentado (una veta). screen: () => ({ x, y }) en píxeles del contenedor, para
   // carteles sobre una viñeta 2D (no hay punto 3D); host: dónde va ese cartel (encima del canvas 2D).
-  function introduce(id, pos, name, line = '', { dur = 4.2, side = 'up', force = false, color = null, screen = null, host = null } = {}) {
+  function introduce(id, pos, name, line = '', { dur = 4.2, side = 'up', force = false, color = null, screen = null, host = null, follow = null, off = null } = {}) {
     if (id && seen.has(id) && !force) return null;
     if (id) seen.add(id);
     const el = document.createElement('div');
@@ -32,7 +32,12 @@ export function createLabels(container, r, { seen = new Set() } = {}) {
       (host || ov.layer).append(wrap);
       it = { wrap, el, screen, sx: -9999, sy: -9999, onScreen: true };
       place(it);
-    } else it = ov.add(el, Array.isArray(pos) ? new THREE.Vector3(...pos) : pos.clone());
+    } else {
+      // follow: un Object3D que se mueve (el cartel lo sigue, corrido off); si no, el punto fijo pos
+      const p = follow ? follow.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(...(off || [0, 0, 0]))) : Array.isArray(pos) ? new THREE.Vector3(...pos) : pos.clone();
+      it = ov.add(el, p);
+      if (follow) Object.assign(it, { follow, off: new THREE.Vector3(...(off || [0, 0, 0])) });
+    }
     const L = { id, it, el, t: 0, dur };
     live.push(L);
     requestAnimationFrame(() => el.classList.add('on'));
@@ -54,6 +59,7 @@ export function createLabels(container, r, { seen = new Set() } = {}) {
         L.t += dt;
         if (L.t > L.dur && !L.out) { L.out = true; L.el.classList.remove('on'); setTimeout(() => drop(L), 500); }
         if (L.it.screen) place(L.it);
+        else if (L.it.follow) L.it.follow.getWorldPosition(L.it.pos).add(L.it.off);
       }
       ov.update();
     },

@@ -2,7 +2,7 @@
 // motor de src/cinema/pixel2d.js y se revisan cuadro a cuadro en tools/cinema.html (?v=orden&view=strip).
 //   orden    · plano 4: el capataz enano le muestra a una noble que la veta se apaga; ella señala la mina: más hondo.
 //   robo     · plano 5: el forcejeo frente al depósito, el cristal pasa a la mano del cómplice y la guardia los persigue.
-//   caida    · plano 6: un enano cava, la tierra se parte, gente que cae y el mismo enano que saca a un guardia del borde.
+//   caida    · plano 6: un enano cava, la tierra se parte, gente que cae; el enano queda colgado y un guardia lo saca.
 //   cofradia · plano 9: tres de la Cofradía miran subir las islas desde un risco; dos se alarman, uno no, y se va.
 // Los carteles que presentan a cada quien los pone intro.js (eventos `label` con `px`); acá se exportan los puntos.
 import { defineVignette, skyBands, rooftops, halo, pixels, dither, crystalProp, depotNight } from './pixel2d.js';
@@ -17,7 +17,7 @@ export const CAST = {
   guardiaLanza: { type: 'humano', build: 'recio', skin: 3, hair: 'cortito', hairColor: 'negro', face: 'barba_corta', dress: 'tabardo', dressColor: 'rojo', crown: 'casco', acc: 'lanza' },
   guardiaFarol: { type: 'humano', build: 'recio', skin: 1, hair: 'cortito', hairColor: 'gris', face: 'cicatriz', dress: 'tabardo', dressColor: 'rojo', crown: 'casco', acc: 'farolito' },
   capataz: { type: 'enano', build: 'recio', skin: 1, hair: 'cortito', hairColor: 'pelirrojo', face: 'barba_larga', dress: 'minero', dressColor: 'durazno', crown: 'casco', acc: 'ninguno' },
-  cavador: { type: 'enano', build: 'recio', skin: 3, hair: 'trenzas', hairColor: 'negro', face: 'barba_larga', dress: 'minero', dressColor: 'negro', crown: 'vincha', acc: 'martillo' },
+  cavador: { type: 'enano', build: 'recio', skin: 3, hair: 'trenzas', hairColor: 'negro', face: 'barba_larga', dress: 'minero', dressColor: 'dorado', crown: 'vincha', acc: 'martillo' },
   ladrona: { type: 'zorro', build: 'esbelto', skin: 0, hair: 'coleta', hairColor: 'blanco', face: 'ninguna', dress: 'cuero', dressColor: 'negro', crown: 'capucha', acc: 'ninguno' },
   complice: { type: 'humano', build: 'esbelto', skin: 4, hair: 'despeinado', hairColor: 'castano', face: 'ninguna', dress: 'viajero', dressColor: 'verde', crown: 'gorra', acc: 'ninguno' },
   vecino: { type: 'humano', build: 'esbelto', skin: 2, hair: 'corto', hairColor: 'castano', face: 'ninguna', dress: 'jubon', dressColor: 'azul', crown: 'ninguna', acc: 'ninguno' },
@@ -280,26 +280,26 @@ defineVignette('caida', (v) => {
   v.tween(fallB, { x: CX - 3 }, { at: 7.4, dur: 0.5, ease: 'in' });
   v.tween(fallB, { y: GROUND + 70 }, { at: 7.8, dur: 1.2, ease: 'in' });
   v.at(7.6, () => watch.play('point', { loop: false, hold: 1 }));
-  // 9,4 s: el guardia se asoma; el borde cede y queda colgado con las manos en el borde
-  v.at(9.0, () => boss.play('walk'));
-  v.tween(boss, { x: CX + MAXW / 2 + 9 }, { at: 9.0, dur: 0.8, ease: 'out' });
-  v.at(9.9, (vv) => { boss.play('hurt'); vv.shake(2); vv.burst('polvo', CX + MAXW / 2 + 2, GROUND, 10, { speed: 18, life: 0.9 }); });
-  v.tween(boss, { x: CX + MAXW / 2 - 2, y: GROUND + 20 }, { at: 10.0, dur: 0.35, ease: 'in' });
-  v.at(10.35, () => { boss.opts = { item: 'nada' }; boss.play('lift', { loop: false, hold: 1 }); });
-  v.tween(v.cam, { x: 190, y: 122 }, { at: 10.2, dur: 0.9, ease: 'inOut' });
-  // 11 s: el enano suelta el martillo, se acerca y le da la mano
-  v.at(11.0, () => { digger.look = { ...CAST.cavador, acc: 'ninguno' }; digger.play('walk'); });
-  v.tween(digger, { x: CX + MAXW / 2 + 20 }, { at: 11.0, dur: 0.6, ease: 'out' });
-  v.at(11.6, () => { digger.opts = { item: 'nada' }; digger.play('point', { loop: false, hold: 1 }); });
-  // 12,2 s: lo saca: el guardia sube al borde y los dos retroceden
-  v.tween(boss, { y: GROUND + 1, x: CX + MAXW / 2 + 6 }, { at: 12.2, dur: 0.8, ease: 'out' });
-  v.tween(digger, { x: CX + MAXW / 2 + 30 }, { at: 12.2, dur: 0.8, ease: 'out' });
+  // 9 s: el enano se asoma a mirar a los que cayeron; el borde cede y queda colgado (suelta el martillo, que cae)
+  v.at(9.0, () => digger.play('walk'));
+  v.tween(digger, { x: CX + MAXW / 2 + 9 }, { at: 9.0, dur: 0.8, ease: 'out' });
+  v.at(9.9, (vv) => { digger.look = { ...CAST.cavador, acc: 'ninguno' }; digger.play('hurt'); vv.shake(2); vv.burst('polvo', CX + MAXW / 2 + 2, GROUND, 10, { speed: 18, life: 0.9 }); });
+  v.tween(digger, { x: CX + MAXW / 2 - 2, y: GROUND + 18 }, { at: 10.0, dur: 0.35, ease: 'in' });
+  v.at(10.35, () => { digger.opts = { item: 'nada' }; digger.play('lift', { loop: false, hold: 1 }); });
+  v.tween(v.cam, { x: 192, y: 122 }, { at: 10.2, dur: 0.9, ease: 'inOut' });
+  // 10,6 s: el guardia que le marcaba dónde cavar corre y le da la mano
+  v.at(10.6, () => boss.play('walk'));
+  v.tween(boss, { x: CX + MAXW / 2 + 20 }, { at: 10.6, dur: 0.9, ease: 'out' });
+  v.at(11.6, () => { boss.opts = { item: 'nada' }; boss.play('point', { loop: false, hold: 1 }); });
+  // 12,2 s: lo saca: el enano sube al borde y los dos se apartan de la grieta
+  v.tween(digger, { y: GROUND + 1, x: CX + MAXW / 2 + 6 }, { at: 12.2, dur: 0.8, ease: 'out' });
+  v.tween(boss, { x: CX + MAXW / 2 + 30 }, { at: 12.2, dur: 0.8, ease: 'out' });
   v.at(13.0, () => { boss.opts = {}; digger.opts = {}; boss.play('idle'); digger.play('idle'); });
   v.at(13.4, () => { boss.flip = false; digger.flip = false; boss.play('walk'); digger.play('walk'); });
-  v.tween(boss, { x: CX + MAXW / 2 + 16 }, { at: 13.4, dur: 0.8, ease: 'out' });
-  v.tween(digger, { x: CX + MAXW / 2 + 40 }, { at: 13.4, dur: 0.8, ease: 'out' });
+  v.tween(digger, { x: CX + MAXW / 2 + 20 }, { at: 13.4, dur: 0.8, ease: 'out' });
+  v.tween(boss, { x: CX + MAXW / 2 + 42 }, { at: 13.4, dur: 0.8, ease: 'out' });
   v.at(14.2, () => { boss.flip = true; digger.flip = true; boss.play('idle'); digger.play('idle'); });
-  v.tween(v.cam, { x: 172, y: 124 }, { at: 13.6, dur: 1.4, ease: 'inOut' });
+  v.tween(v.cam, { x: 176, y: 124 }, { at: 13.6, dur: 1.4, ease: 'inOut' });
 }, { dur: 16, seed: 21 });
 /** Medio ancho de la grieta a la altura y: se abre hacia abajo con bordes mordidos. */
 function crackHalf(y, w, GROUND) {
