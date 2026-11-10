@@ -176,6 +176,8 @@ las cinemáticas. Archivos: `src/core/voxel.js`, `src/core/voxel-light.js` (nuev
     hora de `ambience.js`, el clima (`WEATHER.dark`) nubla y apaga, de noche quedan la luna (`?moonk=`) y el cielo
     nocturno (`?nightk=`). `?sky=flat` vuelve al cielo de antes. No hay estrellas ni nubes.
   - El classic no cambió: capturas idénticas byte a byte antes y después (iso, 15 h y 22.5 h, `still=1`).
+  - Costo (`--bench`, RTX 3060 Ti, buffer 2732×1600): iso 22.5 h **3,8 ms**, cine 22.5 h 4,3 ms, cine 15 h 4,9 ms.
+    Pruebas en verde: `test-vox` 37, `lookdev-shots --check` 10, `test-ambience` 65, `test-stress` 17, `test-cinema` 67.
   - En un worktree nuevo, `tools/node_modules` hay que enlazarlo al del checkout principal (junction).
 - **Sigue**: integrar a la ciudad y a las cinemáticas (hoy solo el diorama); mirar el TAA en movimiento.
 
