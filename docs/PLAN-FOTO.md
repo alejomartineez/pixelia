@@ -1,94 +1,104 @@
-# Pixelia "maqueta fotografiada": render físico, cámara de cine y los primeros minutos primero (solo Windows)
+# Pixelia: porción vertical "refugio cálido, mundo oscuro" (solo Windows)
 
 ## Contexto
-El usuario quiere que Pixelia se vea pulido y fotográfico, como **una maqueta real fotografiada** (punto medio entre
-Town to City y Teardown, sin perder lo cozy), y que eso impacte primero en los **primeros minutos de juego**.
-Decisiones tomadas:
-- Render **"Teardown liviano"** sobre three.js en Tauri; WebGL2 primero, con los datos pensados para pasar a WebGPU después.
-- **Solo Windows** (WebView2) por ahora; la web y Mac, después, con el render clásico como respaldo.
-- **Modelos con más densidad, por etapas**, empezando por lo que se ve en los primeros minutos.
-- Las cuatro **viñetas 2D de El Quiebre** (la Orden, el robo, la caída, la Cofradía) **siguen en 2D**: solo se
-  ajustan para que el pase entre 2D y 3D quede prolijo (mismo grano, misma temperatura de color y fundido).
-- Hecho y sin commit: el posproceso de la Fase A (bloom, curva de tonos, split-toning, viñeteado, DOF por plano) en
-  `src/core/voxel.js`, `settings.js`, `ambience-fx.js`, `src/cinema/player.js` e `intro.js`; falta `npm test`.
-  `src/combat/` lo trabaja otra sesión (`local_8559c03b`): integrarla antes de tocar el combate.
+El usuario quiere convertir Pixelia en un juego de PC de farmeo, oscuro y atrapante, con gráficos de "maqueta
+fotografiada", HUD de PC (referencias: Path of Exile, Albion), árbol de habilidades e historia que reacciona.
+Diagnóstico de hoy: la expedición por grilla es clic, casilla y dado; el combate táctico (lo más profundo) casi no
+aparece; la economía conserva relojes de celular; los modelos hechos en código se ven baratos.
+Son demasiados frentes para hacerlos todos a lo ancho, así que se hace **una porción vertical**: una sola isla con
+todo al nivel final, cerca de una hora de juego, que sirve para probar con jugadores y como demo de Steam.
 
-## Etapa 0: base (rendimiento y producción)
-1. Cerrar la Fase A: `npm test`, `npm run bump` y commit, stageando los archivos por nombre.
-2. **Greedy meshing** en `Voxels.toGeometry`, respetando colores y oclusión.
-3. **Mallas en segundo plano**: `toGeometry` en un Web Worker (`src/core/voxel-worker.js`) más un caché en IndexedDB.
-4. **Importar MagicaVoxel `.vox`**: `src/core/vox-loader.js` (sin dependencias) arma un `Voxels` con paleta y flags
-   de material por índice (emisivo, metal, vidrio, agua, rugosidad). Los modelos nuevos van en `assets/models/`.
-5. **Diorama de prueba** `tools/lookdev.html` (casa, farol, agua, árbol, personaje, acantilado) con
-   `?hour`, `?render=classic|photo` y cámara de cine, más `tools/lookdev-shots.mjs` → `shots/lookdev/`.
+**Decisiones tomadas (2026-11-10):**
+- Motor: three.js en Tauri, render "Teardown liviano", WebGL2. Solo Windows; Mac y web después con el render clásico.
+- Look: maqueta fotografiada. Tono: **la aldea es la única luz en un mundo roto** (adentro cálido, afuera oscuro).
+- Aventura: **Travesía por nodos con el combate al centro**; la grilla se retira. Juego de **farmeo**.
+- **Se sacan los relojes y esperas** de celular y las gemas para saltear.
+- Modelos: más densidad, kit modular en `.vox`; las piezas protagonistas las hace una persona en MagicaVoxel.
+- Las viñetas 2D de El Quiebre siguen en 2D.
+- Sesiones: Fable 5.2 con esfuerzo bajo; **Etapa R1 (motor de render) en Opus 5.5 medio**. Al 35 % de contexto la
+  sesión cierra y sigue otra nueva.
+- Hecho: v62 con el posproceso (bloom, tonos, viñeteado, DOF) en master. En curso: Etapa R0 en la rama
+  `claude/foto-etapa0-b25a35` (greedy meshing, worker, lector `.vox`; commit WIP `238ed1d`).
+- Pendiente de integrar: rama 2a de la Travesía (`claude/nifty-nightingale-01cb64`: nivel 50, talentos, arsenal con
+  rarezas, maestría; `test-social` falla) y la sesión de la Bestia y el combate (`claude/sweet-ramanujan-18bcd8`, detenida).
 
-## Etapa 1: render fotográfico (`src/core/voxel.js` y módulo nuevo `src/core/voxel-light.js`)
-- **Cadena en HDR**: el target de la escena pasa a float16. Luz en unidades físicas, **exposición** (con adaptación
-  suave en las cinemáticas) y mapeo de tonos **AgX**. El bloom de la Fase A pasa a trabajar sobre HDR real: las luces
-  brillan por encima de 1, no por umbral de color.
-- **Volumen 3D por escena** (RGBA8 con mipmaps, color + ocupación, una celda cada 2 vóxeles), armado desde las grillas
-  `Voxels` y actualizado por zonas. Permite:
-  - **Sombra del sol con rayos** y penumbra física (más blanda cuanto más lejos del objeto que la proyecta).
-  - **Oclusión ambiental** con 4 a 6 rayos cortos.
-  - **Un rebote de luz** (GI de 1 salto): pocos rayos difusos que leen color y luz del volumen, de modo que la pared
-    roja tiñe el piso.
-  - **Reflejos con rayos** en el agua y el vidrio (con fallback al reflejo del cielo).
-  - **Sombras con rayos de las luces puntuales cercanas** (hasta unas 8 por cuadro: faroles, fuego, vetas), para
-    que cada farol pinte su charco de luz con sombra.
-- **Material PBR por vóxel** (rugosidad, metal, emisión, vidrio, agua) desde la paleta o el `.vox`; especular con
-  cielo físico (PMREM desde `ambience.js`), luz de borde y microvariación con ruido coherente para que las
-  superficies "tengan material".
-- **Cielo físico** (dispersión simple) que manda la luz de cielo y del sol según `ambience.js`.
-- **Lente de maqueta**: desenfoque de profundidad con bokeh (de una a dos pasadas a media resolución), foco
-  automático en lo que se mira, grano de película leve, aberración cromática muy suave en los bordes, viñeteado
-  físico y destello de lente sutil en el sol y las luces fuertes. Todo por escena, con más intensidad en el cine.
-- **Niebla volumétrica y rayos de luz** a baja resolución usando la sombra del volumen.
-- **Costo**: los rayos se calculan a media resolución con upsample bilateral y acumulación temporal (**TAA** con
-  reproyección). Tope de 60 FPS; la calidad baja usa el render clásico. Presupuesto alto en escenas chicas
-  (cinemáticas, elección de personaje, llegada) y medio en la ciudad.
+## Qué entra en la porción vertical
+Arranque → El Quiebre → personaje → llegada → aldea mínima → **una isla (Bosque del Arroyo) farmeable** → jefe (la
+Bestia del Bañado) → una decisión de historia. Todo con el render, el HUD y el tono nuevos.
 
-## Etapa 2: cámara de cine (`src/cinema/timeline.js`, `player.js`, `poses.js`)
-- Lente por plano (`lens: mm`), cambio de foco (`focusOn: objeto` o claves), cámara en mano con ruido suave (se apaga
-  con "reducir movimiento"), encuadre por tercios (`frame(subject, { thirds, size })`), plano/contraplano, dolly,
-  paneo, grúa y dolly zoom con aceleración y frenado suaves.
-- Fundido de cámara juego ↔ escena sin corte, para las llegadas y las escenas de historia en la ciudad.
-- Luz de tres puntos por plano (clave, relleno, borde) con luces físicas.
+## Pista A: diversión (primero, con cubos; Fable 5.2 bajo)
+A0. **Integrar** la rama 2a y la de la Bestia: revisar, arreglar `test-social`, mergear o descartar con motivo.
+A1. **Prototipo de la Travesía sin arte** en `src/voyage/` (según `docs/PLAN-TRAVESIA.md` §2c, recortado):
+    mapa de nodos de 5 a 7 filas con 5 tipos (pelea, élite, evento, campamento, jefe); 3 a 5 peleas por salida;
+    salida de 10 a 15 minutos; se zarpa cuando se quiere.
+A2. **Combate apto para farmear** (`src/combat/`): tablero 6×6 y peleas de 1 a 2 minutos; velocidad ×2 y ×3;
+    **resolución automática con botín completo** para lo ya superado; 10 a 12 enemigos con comportamientos distintos
+    (huye, protege, invoca, carga en línea); terreno que importa; elementos con reacciones (plan 2d, recortado).
+A3. **Botín y construcción de personaje**:
+    - Objetos con rareza y de 1 a 4 rasgos al azar que modifican habilidades (sobre el arsenal de la rama 2a).
+    - "Sos lo que llevás puesto": el arma define las habilidades activas (sobre la maestría de la rama 2a).
+    - **Árbol de habilidades** de 60 a 100 nodos con 8 a 10 nodos clave que cambian reglas (datos en
+      `src/core/tree-data.js`, pantalla nueva). En la porción vertical, un tercio del árbol.
+    - 12 a 15 reliquias de salida que cambian reglas.
+    - Niveles de dificultad de la isla (Marea I a III en la porción) con mejor botín.
+A4. **Sin relojes** (`src/core/economy.js`, `data.js`, `chests.js`, pase, misiones): las obras se pagan con lo que
+    se trae de la aventura y se terminan al instante o jugando; fuera gemas para saltear y constructores pagos;
+    amenazas mientras jugás. Metas nuevas en DESIGN-CORE.md §8 (sesión de 1 a 2 horas) con `npm run sim:economy`.
+    Migración de guardado v7.
+A5. **Prueba con jugadores** (3 a 5 personas, el prototipo con cubos): `docs/PLAYTEST-1.md`. Si el farmeo no
+    engancha, se ajusta acá, antes de ponerle arte.
 
-## Etapa 3: los primeros minutos, escena por escena (el corazón de este plan)
-Recorrido de referencia: `shots/recorrido/` 01 a 46. Cada escena se rehace con modelos `.vox` de densidad nueva
-(16 vóxeles por tile; 32 en objetos protagonistas de primer plano), la luz nueva y la cámara nueva:
-1. **Logo y splash**: un plano 3D corto en el render nuevo detrás del logo (luz de amanecer sobre la isla).
-2. **El Quiebre** (`src/scenes/intro.js`): decorados 3D `world`, `towers`, `rise` y `frag` remodelados (el corte de
-   la tierra con estratos con textura y vetas emisivas que tiñen la roca), cámara nueva y luz de tres puntos.
-   Las viñetas 2D quedan, con transición cuidada.
-3. **Elección de personaje, clase y nombre** (`onboarding.js`, `wardrobe.js`): estudio de foto (pedestal de
-   madera, luz clave cálida y borde frío, bokeh de fondo) y personajes revisados en la densidad nueva.
-4. **Llegada con Vera** (las 4 escenas de llegada): de noche, con el esquife de Vera y el farol tiñendo la cabaña,
-   cámara que baja hasta el juego con fundido de cámara.
-5. **Primeros minutos en la ciudad**: terreno inicial, cabaña, primera Casa (época Madera), obra en curso y huerta,
-   en la densidad nueva.
-6. **Primera expedición y primer combate**: tablero, bosque y lobos (combate, después de integrar la sesión de la
-   Bestia).
-Criterio por escena: capturas antes y después, revisión cuadro a cuadro (nada superpuesto ni ilegible, nada de cubos
-sueltos) y FPS medido en el juego de PC.
+## Pista R: render y cámara (en paralelo con la pista A)
+R0. Base (en curso): greedy meshing, worker con caché, lector `.vox`, diorama `tools/lookdev.html`.
+R1. **Motor fotográfico** (`src/core/voxel.js`, `src/core/voxel-light.js`; Opus 5.5 medio): cadena HDR con
+    exposición y AgX; volumen 3D por escena (color y ocupación) con rayos para sombra del sol con penumbra,
+    oclusión ambiental, un rebote de luz, reflejos en agua y vidrio, y sombras de hasta 8 luces puntuales; material
+    PBR por vóxel; cielo físico; lente de maqueta (bokeh, grano, aberración leve, viñeteado); niebla volumétrica;
+    TAA. Rayos a media resolución, tope de 60 FPS, calidad baja con el render clásico.
+    Para el tono: la oscuridad es de verdad (negros profundos, luz que cae rápido) y la aldea emite luz cálida.
+R2. **Cámara de cine** (`src/cinema/`): lente por plano, cambio de foco, cámara en mano, encuadre por tercios,
+    plano y contraplano, fundido de cámara juego ↔ escena, luz de tres puntos.
 
-## Etapa 4: el resto del juego, por etapas
-Las demás épocas de la ciudad, regiones de expedición, enemigos y llegadas a islas, con la misma regla de densidad
-(documentada en DESIGN.md, sección de arte) y los mismos materiales.
+## Pista U: HUD de PC y tono
+U1. **Guía de tono nueva** en DESIGN.md (reemplaza "cozy adulto"): refugio cálido y mundo oscuro; voz sobria y
+    seca; reglas de color (cálidos solo en la aldea y en lo que da luz). Actualizar CLAUDE.md.
+U2. **Sistema de interfaz de PC** (`src/core/ui.js`, estilos): paneles oscuros y densos con marcos trabajados,
+    inventario en grilla, ficha de objeto con rasgos y comparación al pasar el mouse, barra de habilidades,
+    pantalla de personaje y del árbol, atajos de teclado. Diseñar primero un mock con la skill `impeccable` y
+    aprobarlo con el usuario antes de pasar todas las pantallas. Sin anchos fijos (9 idiomas).
+U3. **Historia que reacciona**: una decisión grande al final de la isla (qué se hace con la veta, o a qué Casa se
+    apoya) guardada en `story.flags`, que cambia qué enemigos, mercader y escena aparecen después. Pocas y grandes.
 
-## Qué esperar
-- En las escenas de los primeros minutos (chicas y con presupuesto alto), cerca del nivel de Town to City y con buena
-  parte del realismo de Teardown. Lo que falta: GI de varios saltos y sombras con rayos de todas las luces a la vez.
-- En la ciudad grande, algo por debajo: por presupuesto se reducen los rayos, el rebote y la cantidad de luces con sombra.
-- Riesgos: el mantenimiento del render propio (probar en GPUs Intel y AMD antes de publicar), la carga de la GPU
-  (media resolución, TAA y tope de 60) y el tiempo de modelado (por eso `.vox`).
-- Si el diorama de la Etapa 0 y la Etapa 1 no llega al nivel buscado, se reevalúa Unreal 5 con evidencia.
+## Pista M: modelos de la porción
+M1. Regla de densidad (16 vóxeles por tile; 32 en protagonistas) y paleta del tono nuevo en DESIGN.md.
+M2. Kit modular de la época Madera, decorados de El Quiebre, la isla del Bosque (terreno, árboles, ruinas),
+    enemigos y la Bestia, en `.vox` (`assets/models/`), ensamblados por código. Hoja de referencias en `docs/ref/`.
+    Las piezas protagonistas, hechas a mano por el usuario o un artista; el resto, Claude con revisión por capturas.
+
+## Orden
+1. A0 y cierre de R0. 2. A1, A2 y R1 en paralelo. 3. A3, U1 y el mock de U2. 4. A5 (prueba con cubos).
+5. A4, R2, U2 completo y M1 y M2. 6. Arte y render sobre la Travesía; El Quiebre, personaje y llegada con cámara
+nueva; U3. 7. Segunda prueba con jugadores y demo.
+Frente del usuario, en paralelo: trámites de Steam (verificación de 15 a 30 días, 100 USD y 30 días de espera,
+página "Próximamente" 2 semanas antes) y confirmar en Steamworks qué uso de IA hay que declarar.
+
+## Fuera de la porción (después)
+Las demás islas y épocas, el Cuartel con encargos, el resto del árbol, Mareas IV a X y la Grieta profunda, más
+decisiones de historia, traducción (bloque 4b), Mac y web.
+
+## Riesgos
+- Farmeo con combate por turnos: si las peleas no bajan a 1 o 2 minutos y el botín no se siente, no engancha. Se
+  valida en A5 antes de invertir en arte.
+- Tamaño: es casi un juego nuevo. La porción vertical es el corte; no se ensancha hasta cerrarla.
+- Render propio: mantenimiento nuestro y carga de GPU (probar también en Intel y AMD). Si el diorama no llega al
+  nivel buscado tras R1, se reevalúa Unreal 5 con evidencia.
+- Consumo de la cuenta: el límite semanal iba por 88 %; sesiones cortas, commits WIP y la suite completa una vez por paso.
 
 ## Verificación
-- Cada paso: capturas antes y después (diorama y escenas reales; día, atardecer, noche) enviadas con SendUserFile, y
-  revisión cuadro a cuadro de las cinemáticas con `tools/cinema.html?view=strip`.
-- `npm test` completo, más `test-stress` (FPS, vértices y tiempo de armado con la ciudad llena).
-- FPS y temperatura en el juego de PC (`npm run desktop:dev`), en corridas cortas: parar a 70 °C o 100 W.
-- `node test-desktop.mjs` con el `.exe` antes de publicar; `npm run bump` antes de cada commit; stagear los
-  archivos por nombre.
-- Trabajo largo: pasado el 40 % de contexto, seguir en una sesión nueva con el estado anotado en el HANDOFF.
+- Pista A: pruebas nuevas por sistema en `tools/` (travesía, botín, árbol, economía sin relojes), `npm run
+  sim:economy` y la prueba con jugadores.
+- Pistas R, U y M: capturas antes y después (diorama y escenas reales; día y noche) enviadas con SendUserFile,
+  revisión cuadro a cuadro de cinemáticas con `tools/cinema.html?view=strip`, y `test-stress` para FPS y armado.
+- Siempre: `npm test` completo al cerrar cada paso, FPS y temperatura en `npm run desktop:dev` (parar a 70 °C o
+  100 W), `node test-desktop.mjs` antes de publicar, `npm run bump` antes de cada commit, stagear por nombre.
+- Estado al día en `docs/PLAN-FOTO.md` (este plan) y `docs/HANDOFF-FOTO.md`.

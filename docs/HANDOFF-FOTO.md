@@ -1,42 +1,56 @@
-# HANDOFF: Pixelia "maqueta fotografiada"
+# HANDOFF: porción vertical "refugio cálido, mundo oscuro"
 
-Plan: [PLAN-FOTO.md](PLAN-FOTO.md). Objetivo: un render físico estilo "maqueta fotografiada" (Town to City +
-Teardown liviano), una cámara de cine y los primeros minutos de juego rehechos primero. Solo Windows por ahora.
+Plan: [PLAN-FOTO.md](PLAN-FOTO.md) (aprobado por el usuario el 2026-11-10; reemplaza el orden de
+[PLAN-TRAVESIA.md](PLAN-TRAVESIA.md), del que se reusa el diseño de la Travesía §2c, los elementos y el farmeo).
+Objetivo: una sola isla con todo al nivel final (render fotográfico, HUD de PC, farmeo con botín y árbol, tono
+nuevo), cerca de una hora de juego, para probar con jugadores y como demo de Steam. Solo Windows.
 
 ## Estado (2026-11-10)
 
-### Hecho: Fase A, posproceso (commit "Acabado de cámara: bloom, tonos, viñeteado y DOF")
-- `src/core/voxel.js`
-  - `createOutlinePass(renderer, cfg, samples, lines, withPost)`: con `withPost`, bloom (extracción 4×4 a 1/4 de
-    resolución en float16 y dos blur separables), DOF (mezcla con una versión borrosa según la distancia al foco; la
-    tinta se apaga en lo desenfocado), curva en S, split-toning (sombras frías y luces cálidas) y viñeteado.
-  - Renderer: `POST_DEFAULT`, `r.setPost(patch | null)`, `r.post`, `r.postOn`. `GFX.post` (Ajustes:
-    `post: gfxPreset !== 'low'`). `?post=0|1` manda sobre los Ajustes.
-  - `setGrade` acepta `bloomBoost` (ambience-fx lo manda con `look.glow * 1.6`: de noche las luces brillan más).
-- `src/cinema/player.js`: `opts.post` (toda la cinemática) y `S.post` por plano; `dof.focus: 'look'` enfoca el punto que
-  mira la cámara en cada cuadro (`focusFn(t, camPos)` para enfocar a mano).
-- `src/scenes/intro.js`: `POST` de El Quiebre (bloom 0,6, viñeteado 0,42, contraste 0,22, split 0,22) y DOF en los
-  planos 3D.
-- Capturas de comparación en `shots/review-v62/` (`intro-N-post0|1.png`, `city-h*-post0|1.png`).
-- Límite conocido: el target de la escena sigue en RGBA8 sRGB (LDR), así que el bloom trabaja por umbral. La Etapa 1
-  lo pasa a HDR.
+### Hecho
+- **v62 en master** (`20bea9a`): posproceso en `src/core/voxel.js` (`createOutlinePass(..., withPost)`: bloom a 1/4 de
+  resolución, DOF, curva en S, split-toning, viñeteado; `r.setPost`, `POST_DEFAULT`, `?post=0|1`, apagado en el preset
+  bajo), `bloomBoost` de noche en `ambience-fx.js`, acabado por cinemática y por plano en `src/cinema/player.js`
+  (`dof.focus: 'look'`) y en `src/scenes/intro.js`. Capturas en `shots/review-v62/`.
+- `npm test` de la v62: pasa todo salvo el glosario (`settings.credits.music` en inglés decía "The Breaking" en vez de
+  "Fracture"; es de la v61). La suite corta ahí, así que la prueba de SQL no corrió.
 
-### Sesiones paralelas
-- `local_8559c03b` ("Bestia del Bañado en vóxel y legibilidad del combate"): trabaja en `src/combat/` en su propia
-  rama. Mergear antes de tocar el combate (Etapa 3.6).
+### En curso
+- **R0** en la rama `claude/foto-etapa0-b25a35` (sesión `local_1440b5bf`, worktree `.claude/worktrees/foto-etapa0-b25a35`):
+  commit WIP `238ed1d` con greedy meshing (`voxel.js`, `voxel-mesh.js`), `voxel-worker.js` con caché, `vox-loader.js`,
+  `tools/make-vox.mjs`, `tools/test-vox.mjs`, diorama de lookdev y el arreglo del glosario. Falta: suite completa,
+  bump, commit final y merge a master.
 
-## Próximo paso: Etapa 0
-1. Greedy meshing en `Voxels.toGeometry` (respetando el color y la oclusión por vértice; medir con `test-stress`).
-2. `toGeometry` en un Web Worker (`src/core/voxel-worker.js`) y caché en IndexedDB.
-3. `src/core/vox-loader.js` (lector MagicaVoxel `.vox`, sin dependencias; flags de material por índice de paleta).
-4. `tools/lookdev.html` y `tools/lookdev-shots.mjs` (diorama fijo, `?hour`, `?render=classic|photo`).
+### Pendiente de integrar (paso A0)
+- `claude/sweet-ramanujan-18bcd8` (sesión `local_8559c03b`, detenida a mitad de turno, **sin commit**): cambios en
+  `src/combat/boss-models.js`, `combat-scene.js`, `combat-ui.js`, `enemy-models.js`, `tools/test-act1.mjs` y archivos
+  nuevos `class-accent.js` y `combat-backdrop.js`. Revisar si sirve con el tablero 6×6 de A2 antes de terminarla.
+- `claude/nifty-nightingale-01cb64` (paso 2a de la Travesía: nivel 50, talentos, arsenal con rarezas, maestría;
+  `test-social` falla). Es la base de A3.
+
+## Próximos pasos (ver "Orden" en el plan)
+1. Cerrar R0 y mergearla a master. A0: integrar las dos ramas de arriba.
+2. En paralelo: A1 (prototipo de la Travesía sin arte, `src/voyage/`), A2 (combate apto para farmear) y R1 (motor
+   fotográfico, en **Opus 5.5 medio**).
+3. A3 (botín, árbol, reliquias), U1 (guía de tono nueva) y el mock de U2 (HUD de PC) para que el usuario lo apruebe.
+4. A5: prueba con jugadores del prototipo con cubos. Recién después, arte.
+
+## Lo que hace el usuario
+- Trámites de Steam (verificación de identidad, pago y esperas) y confirmar en Steamworks qué uso de IA se declara.
+- Conseguir 3 a 5 personas para las pruebas.
+- Decidir si modela a mano o encarga las piezas protagonistas (MagicaVoxel).
 
 ## Reglas para cada sesión
-- Pasado el 40 % de contexto: commit WIP, anotar acá dónde quedó y terminar; el orquestador abre una sesión nueva
-  ("fresh").
+- Modelo: `claude-fable-5-2` con esfuerzo bajo en todas las sesiones, salvo R1 (motor de render y shaders), que va
+  en `claude-opus-5-5` con esfuerzo medio. Verificar con `get_session` que quedó así.
+- Pasado el 35 % de contexto: commit WIP, anotar acá dónde quedó y terminar; el orquestador abre una sesión nueva
+  ("fresh"). Vale también para el orquestador.
+- El tono cambió: ya no es "cozy". Hasta que U1 reescriba la guía, usar "refugio cálido, mundo oscuro; voz sobria".
 - Textos por `t()` (i18n); español rioplatense. Sin build ni dependencias en tiempo de ejecución.
 - GPU RTX 3060 Ti: tope de 60 FPS, corridas cortas, parar a 70 °C o 100 W. Las capturas con `smoke.mjs` usan
   SwiftShader (CPU).
+- Consumo: el límite semanal de la cuenta iba por 88 % el 2026-11-10 (se renueva el 13). Commits WIP seguido; la
+  suite completa, una vez por paso.
 - El checkout principal es compartido: stagear los archivos por nombre, nunca `git add -u`. `npm run bump` antes de
-  cada commit que cambie archivos del juego.
+  cada commit que cambie archivos del juego. Las sesiones trabajan en worktrees; el orquestador mergea.
 - PushNotification al terminar un paso, en cada handoff y al quedar bloqueado.
