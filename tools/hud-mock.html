@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixelia · mock del HUD de PC (U2)</title>
+<!--
+  Mock estático del sistema de interfaz de PC (PLAN-FOTO, paso U2). No toca el juego.
+  Teclas: 1 a 5 cambian de pantalla, P estira los textos un 30 % (como ?pseudo=1).
+  URL: ?s=2 abre una pantalla, ?pseudo=1 estira los textos.
+  Regla de color: fríos y hueso para el mundo; cálidos solo para lo que da luz o es de la aldea.
+-->
+<style>
+@font-face { font-family: 'Jersey'; src: url('../fonts/jersey10.woff2') format('woff2'); font-display: block; size-adjust: 122%; }
+@font-face { font-family: 'PixelNames'; src: url('../fonts/pixel-names.woff2') format('woff2'); font-display: swap; }
+:root {
+  --void: #050607; --soot: #0b0d10; --panel: #13161a; --panel-2: #1a1e23; --well: #08090b;
+  --iron-d: #23282e; --iron: #3b424a; --iron-l: #6a737d;
+  --bone: #e4dfd0; --ink: #c9c6bc; --dim: #8e8f8c; --faint: #7d8388;
+  --blood: #b8402f; --blood-d: #6e1f18; --mist: #6f9db5; --mist-d: #2f4f60; --venom: #7fae5a;
+  --ember: #e58c3a; --ember-d: #8c4a1b; --flame: #f4c56c; --hearth: #2a1c12; --bronze: #7a552f; --bronze-l: #c98f4c;
+  --r-c: #a9a79d; --r-r: #6fa5dc; --r-e: #b78be0; --r-l: #eba43d;
+  --up: #86b862; --down: #d0604f;
+  --frame: var(--iron); --corner: var(--iron-l);
+  --font: 'Jersey', 'PixelNames', ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; }
+html { font-size: clamp(12.5px, 0.9375vw, 22px); }
+body { height: 100vh; overflow: hidden; background: var(--void); color: var(--ink); font: 1.15rem/1.15 var(--font);
+  letter-spacing: .02em; font-variant-numeric: tabular-nums; -webkit-font-smoothing: none; display: grid; grid-template-rows: auto 1fr; }
+::selection { background: var(--mist-d); color: var(--bone); }
+* { scrollbar-width: thin; scrollbar-color: var(--iron) var(--well); }
+button { font: inherit; color: inherit; letter-spacing: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; }
+:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
+svg.px { display: block; width: 100%; height: 100%; shape-rendering: crispEdges; }
+svg.px .hi { fill: #fff; fill-opacity: .5; } svg.px .lo { fill: #000; fill-opacity: .5; }
+
+/* ---------- tira del mock (no es parte del juego) ---------- */
+.mockbar { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem 1rem; padding: .15rem .8rem; background: #000;
+  border-bottom: 1px dashed var(--iron); color: var(--dim); font-size: .95rem; }
+.mockbar b { font-weight: normal; color: var(--bone); }
+.mockbar nav { display: flex; flex-wrap: wrap; gap: .2rem; }
+.mockbar nav button { padding: .1rem .6rem; border: 1px solid transparent; color: var(--dim); }
+.mockbar nav button[aria-selected=true] { border-color: var(--iron-l); color: var(--bone); background: var(--panel); }
+.mockbar nav button:hover { color: var(--bone); }
+.mockbar .sp { margin-left: auto; }
+
+/* ---------- piezas del sistema ---------- */
+.k { display: inline-block; min-width: 1.45em; padding: 0 .3em; border: 1px solid var(--iron-l); border-bottom-width: 2px;
+  background: #07080a; color: var(--bone); font-size: .9em; line-height: 1.1; text-align: center; white-space: nowrap; }
+.panel { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0;
+  background: linear-gradient(#171a1f, #101216); border: 2px solid var(--frame);
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000, inset 0 0 0 2px rgba(255,255,255,.035), 0 .7rem 1.6rem -.3rem rgba(0,0,0,.85); }
+.panel::before { content: ''; position: absolute; inset: -4px; pointer-events: none; z-index: 2;
+  background:
+    linear-gradient(var(--corner), var(--corner)) 0 0 / 8px 8px no-repeat, linear-gradient(var(--corner), var(--corner)) 100% 0 / 8px 8px no-repeat,
+    linear-gradient(var(--corner), var(--corner)) 0 100% / 8px 8px no-repeat, linear-gradient(var(--corner), var(--corner)) 100% 100% / 8px 8px no-repeat,
+    linear-gradient(#000, #000) 2px 2px / 4px 4px no-repeat, linear-gradient(#000, #000) calc(100% - 2px) 2px / 4px 4px no-repeat,
+    linear-gradient(#000, #000) 2px calc(100% - 2px) / 4px 4px no-repeat, linear-gradient(#000, #000) calc(100% - 2px) calc(100% - 2px) / 4px 4px no-repeat;
+  background-blend-mode: normal; }
+.panel::before { background-origin: border-box; }
+/* el punto negro va arriba de la esquina: se invierte el orden de capas */
+.panel::before { background:
+    linear-gradient(#000, #000) 2px 2px / 4px 4px no-repeat, linear-gradient(#000, #000) calc(100% - 2px) 2px / 4px 4px no-repeat,
+    linear-gradient(#000, #000) 2px calc(100% - 2px) / 4px 4px no-repeat, linear-gradient(#000, #000) calc(100% - 2px) calc(100% - 2px) / 4px 4px no-repeat,
+    linear-gradient(var(--corner), var(--corner)) 0 0 / 8px 8px no-repeat, linear-gradient(var(--corner), var(--corner)) 100% 0 / 8px 8px no-repeat,
+    linear-gradient(var(--corner), var(--corner)) 0 100% / 8px 8px no-repeat, linear-gradient(var(--corner), var(--corner)) 100% 100% / 8px 8px no-repeat; }
+.panel.warm { --frame: var(--bronze); --corner: var(--bronze-l); background: linear-gradient(#1d1611, #130f0c); }
+.ph { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .1rem .8rem; padding: .3rem .7rem;
+  background: #090a0c; border-bottom: 1px solid #000; box-shadow: 0 1px 0 rgba(255,255,255,.05);
+  color: var(--bone); text-transform: uppercase; letter-spacing: .09em; }
+.ph small { font-size: 1em; color: var(--dim); text-transform: none; letter-spacing: .02em; }
+.warm > .ph { background: #0e0a07; color: var(--flame); }
+.pb { padding: .6rem .7rem; min-height: 0; overflow: auto; flex: 1; }
+.rule { height: 3px; margin: .5rem 0; border: 0; background: linear-gradient(90deg, transparent, var(--iron) 15%, var(--iron) 85%, transparent) center / 100% 1px no-repeat; position: relative; }
+.rule::after { content: ''; position: absolute; left: 50%; top: -1px; width: 5px; height: 5px; margin-left: -2px; background: var(--iron-l); transform: rotate(45deg); }
+p, li, .skl span, .intent, .threat, .hint { line-height: 1.3; }
+.h { color: var(--bone); text-transform: uppercase; letter-spacing: .09em; margin: .7rem 0 .25rem; }
+.h:first-child { margin-top: 0; }
+.dim { color: var(--dim); } .bone { color: var(--bone); } .up { color: var(--up); } .down { color: var(--down); } .warmt { color: var(--ember); }
+.bar { position: relative; height: 1.05rem; background: var(--well); border: 1px solid #000; box-shadow: 0 0 0 1px var(--iron-d); overflow: hidden; }
+.bar > i { position: absolute; inset: 0 auto 0 0; width: var(--v); background: linear-gradient(#cf4c39, #8d2a20 60%, #6e1f18); box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+.bar.mist > i { background: linear-gradient(#86b6cf, #4b7f9a 60%, #2f4f60); }
+.bar.xp > i { background: linear-gradient(#d9d3c0, #9a968a); }
+.bar.thin { height: .5rem; }
+.bar > span { position: relative; display: block; text-align: center; line-height: 1; color: #fff; text-shadow: 1px 1px 0 #000, -1px 1px 0 #000; font-size: .95rem; white-space: nowrap; }
+.pips { display: flex; gap: 3px; } .pips i { width: .8rem; height: .8rem; background: var(--well); border: 1px solid var(--mist-d); transform: rotate(45deg); margin: .15rem; }
+.pips i.on { background: var(--mist); border-color: #cfe6f2; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .3rem .8rem; color: var(--bone);
+  background: linear-gradient(#23282e, #171a1f); border: 1px solid var(--iron-l); box-shadow: 0 0 0 1px #000, inset 0 1px 0 rgba(255,255,255,.08); text-align: center; }
+.btn:hover { background: linear-gradient(#2c3239, #1c2025); border-color: var(--bone); }
+.btn:active { transform: translateY(1px); }
+.btn[disabled] { color: var(--faint); border-color: var(--iron-d); cursor: default; background: #101216; }
+.btn.fire { color: #1a0e05; background: linear-gradient(#f4c56c, #e58c3a 55%, #b9621f); border-color: #ffe2a6;
+  box-shadow: 0 0 0 1px #000, 0 .2rem 1.6rem -.2rem rgba(229,140,58,.55), inset 0 1px 0 rgba(255,255,255,.4); }
+.btn.fire:hover { background: linear-gradient(#ffd98a, #f09a46 55%, #c96d25); }
+.btn.fire .k { background: #1a0e05; border-color: #1a0e05; color: var(--flame); }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+.tabs button { padding: .15rem .6rem; color: var(--dim); background: #0c0e11; border: 1px solid var(--iron-d); border-bottom: 0; }
+.tabs button[aria-selected=true] { color: var(--bone); background: var(--panel-2); border-color: var(--iron-l); }
+.tabs button:hover { color: var(--bone); }
+.slot { position: relative; aspect-ratio: 1; background: radial-gradient(#15181c, #07080a); border: 1px solid var(--iron-d);
+  box-shadow: inset 0 0 0 1px #000; color: var(--faint); padding: 0; min-width: 0; }
+.slot > svg.px { position: absolute; inset: 14%; width: 72%; height: 72%; }
+.slot[data-r] { cursor: pointer; }
+.slot[data-r=c] { color: var(--r-c); } .slot[data-r=r] { color: var(--r-r); border-color: #2f4a66; background: radial-gradient(#162230, #07080a); }
+.slot[data-r=e] { color: var(--r-e); border-color: #513a6b; background: radial-gradient(#221830, #07080a); }
+.slot[data-r=l] { color: var(--r-l); border-color: #7a521c; background: radial-gradient(#2e1f0c, #07080a); }
+.slot:hover, .slot.hot { border-color: var(--bone); box-shadow: inset 0 0 0 1px #000, 0 0 0 1px var(--bone); z-index: 1; }
+.slot .q { position: absolute; right: 2px; bottom: 0; color: var(--bone); font-size: .95rem; text-shadow: 1px 1px 0 #000; }
+.slot .kb { position: absolute; left: -1px; top: -1px; }
+.slot .eq { position: absolute; left: 2px; top: 2px; width: 5px; height: 5px; background: var(--bone); }
+.ico { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em; flex: none; }
+
+/* ---------- escenario ---------- */
+.stage { position: relative; min-height: 0; overflow: hidden; }
+.screen { position: absolute; inset: 0; display: none; padding: .9rem; gap: .9rem; }
+.screen.on { display: grid; }
+.scene { position: absolute; inset: 0; z-index: -1; }
+.scene.wild { background: radial-gradient(60% 55% at 50% 52%, #1b2a30 0, #0c1316 45%, #040506 100%); }
+.scene.dimmed { background: radial-gradient(70% 60% at 50% 40%, #11171a 0, #050607 80%); }
+.scene.home { background: radial-gradient(42% 50% at 50% 62%, #5a3415 0, #2a1709 35%, #0a0705 70%, #040404 100%); }
+.note { position: absolute; left: 50%; transform: translateX(-50%); color: var(--faint); font-size: .95rem; white-space: nowrap; }
+
+/* 1 · combate */
+#s1 { grid-template-columns: minmax(16rem, 22rem) 1fr minmax(16rem, 22rem); grid-template-rows: auto 1fr auto; grid-template-areas: 'party turn map' 'party mid map' 'log bar foe'; align-items: start; }
+.party { grid-area: party; display: grid; gap: .5rem; }
+.unit { display: grid; grid-template-columns: 3.2rem 1fr; gap: .5rem; padding: .4rem; }
+.unit .face { aspect-ratio: 1; background: var(--well); border: 1px solid var(--iron); color: var(--ink); padding: 10%; }
+.unit.act { --frame: var(--bone); --corner: #fff; }
+.unit .nm { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 .5rem; color: var(--bone); }
+.unit .st { display: flex; flex-wrap: wrap; gap: .1rem .5rem; margin-top: .2rem; font-size: 1rem; color: var(--dim); }
+.unit .bar { margin-top: .2rem; }
+.turn { grid-area: turn; justify-self: center; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .4rem .9rem; padding: .35rem .8rem; flex-direction: row; }
+.order { display: flex; gap: 3px; } .order i { width: 1.9rem; height: 1.9rem; padding: 3px; background: var(--well); border: 1px solid var(--iron-d); color: var(--ink); }
+.order i.foe { color: #c96a5a; } .order i.now { border-color: var(--bone); box-shadow: 0 0 0 1px var(--bone); }
+.speed { display: flex; gap: 2px; } .speed .btn { padding: .1rem .5rem; } .speed .btn[aria-pressed=true] { border-color: var(--bone); background: var(--panel-2); box-shadow: 0 0 0 1px var(--bone); }
+.map { grid-area: map; }
+.map svg { display: block; width: 100%; height: auto; background: var(--well); border: 1px solid #000; }
+.map .legend { display: flex; flex-wrap: wrap; gap: .1rem .7rem; margin-top: .4rem; font-size: 1rem; color: var(--dim); }
+.relics { display: flex; gap: 3px; margin-top: .4rem; } .relics .slot { width: 2.6rem; height: 2.6rem; flex: none; }
+.board { grid-area: mid; align-self: center; justify-self: center; width: min(27rem, 100%); aspect-ratio: 1; position: relative; }
+.board .g { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(6, 1fr); gap: 3px; }
+.board .g i { background: #16222a; border: 1px solid #263842; }
+.board .g i.mv { background: #2b3f48; } .board .g i.aim { background: #5a2a22; } .board .g i.ally { background: var(--bone); } .board .g i.foe { background: #a8402f; } .board .g i.rock { background: #05080a; }
+.board .note { bottom: -1.5rem; }
+.log { grid-area: log; align-self: end; }
+.log .pb { height: 9.5rem; font-size: 1.05rem; display: flex; flex-direction: column; justify-content: flex-end; gap: .12rem; }
+.log p { color: var(--dim); } .log p b { font-weight: normal; color: var(--bone); } .log p .dmg { color: #e0705f; } .log p .loot { color: var(--r-r); }
+#s1 > .foe { grid-area: foe; align-self: end; }
+.foe .intent { display: flex; gap: .5rem; align-items: flex-start; margin-top: .45rem; padding: .35rem .5rem; background: var(--well); border: 1px solid var(--blood-d); color: var(--ink); }
+.foe .intent .ico { color: #e0705f; margin-top: .1rem; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: .1rem 1rem; } .kv > :nth-child(odd) { color: var(--dim); } .kv > :nth-child(even) { color: var(--bone); text-align: right; }
+.action { grid-area: bar; align-self: end; justify-self: center; display: grid; gap: .35rem; padding: .55rem .7rem; max-width: 100%; }
+.action .vit { display: grid; grid-template-columns: 1fr auto; gap: .2rem .8rem; align-items: center; }
+.skills { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: .35rem; }
+.skills .slot { width: 4.1rem; height: 4.1rem; flex: none; border-color: var(--iron); color: var(--bone); cursor: pointer; }
+.skills .slot.sel { border-color: var(--bone); box-shadow: 0 0 0 2px var(--bone), 0 0 0 3px #000; }
+.skills .slot.fire { color: var(--ember); } .skills .slot.cd { color: var(--faint); }
+.skills .slot .cost { position: absolute; right: 1px; top: -1px; color: #cfe6f2; font-size: .95rem; text-shadow: 1px 1px 0 #000; }
+.skills .slot .wait { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.6); color: var(--bone); font-size: 1.6rem; }
+.skills .gap { width: 1px; background: var(--iron); margin: 0 .3rem; }
+.skills .end { align-self: stretch; flex-direction: column; gap: .1rem; }
+.hint { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .1rem 1rem; font-size: 1rem; color: var(--dim); }
+.hint b { font-weight: normal; color: var(--bone); }
+
+/* 2 · inventario */
+#s2, #s3 { align-content: center; padding-bottom: 8vh; }
+#s2 { grid-template-columns: minmax(18rem, 22rem) minmax(24rem, 40rem) 1fr; align-items: start; }
+.doll { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; }
+.doll .cap { grid-column: 1 / -1; }
+.slot .lab { position: absolute; left: 3px; bottom: 1px; font-size: .85rem; color: var(--faint); pointer-events: none; }
+.bag { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
+.mats { display: flex; flex-wrap: wrap; gap: .2rem 1.1rem; }
+.mats span { display: inline-flex; align-items: center; gap: .3rem; color: var(--bone); white-space: nowrap; } .mats .ico { color: var(--dim); }
+.tipwrap { position: fixed; z-index: 20; display: flex; align-items: flex-start; gap: .6rem; pointer-events: none; }
+.tip { width: max-content; min-width: 15rem; max-width: 19rem; --frame: var(--rc); --corner: var(--rc); }
+.tip[data-r=c] { --rc: var(--r-c); } .tip[data-r=r] { --rc: var(--r-r); } .tip[data-r=e] { --rc: var(--r-e); } .tip[data-r=l] { --rc: var(--r-l); }
+.tip .tag { padding: .1rem .7rem; background: #000; color: var(--dim); text-transform: uppercase; letter-spacing: .09em; font-size: 1rem; border-bottom: 1px solid var(--iron-d); }
+.tip header { padding: .45rem .7rem .4rem; background: linear-gradient(color-mix(in srgb, var(--rc) 22%, #0a0b0d), #0a0b0d); border-bottom: 1px solid #000; }
+.tip header b { display: block; font-weight: normal; font-size: 1.4rem; line-height: 1; color: var(--rc); text-wrap: balance; }
+.tip header span { color: var(--dim); }
+.tip .pb { overflow: visible; }
+.tip ul { list-style: none; padding: 0; display: grid; gap: .2rem; }
+.tip li { display: grid; grid-template-columns: auto 1fr; gap: .45rem; color: var(--bone); }
+.tip li::before { content: ''; width: .45rem; height: .45rem; margin-top: .35rem; background: var(--rc); transform: rotate(45deg); }
+.tip .fl { color: var(--dim); font-style: normal; margin-top: .1rem; }
+.tip .cmp { margin: 0 -.7rem -.6rem; padding: .45rem .7rem; background: #090a0c; border-top: 1px solid var(--iron-d); }
+.tip .keys { display: flex; flex-wrap: wrap; gap: .1rem .9rem; padding: .3rem .7rem; background: #000; border-top: 1px solid var(--iron-d); color: var(--dim); font-size: 1rem; }
+
+/* 3 · personaje */
+#s3 { grid-template-columns: minmax(20rem, 30rem) minmax(20rem, 1fr) minmax(18rem, 26rem); align-items: start; max-width: 100rem; margin: 0 auto; }
+.figure { display: grid; grid-template-columns: 1fr 2.2fr 1fr; gap: .4rem; align-items: center; }
+.figure .col { display: grid; gap: .4rem; }
+.figure .body { aspect-ratio: .7; color: #2b3138; padding: 4%; background: radial-gradient(60% 50% at 50% 70%, #1b2126, transparent); }
+.statgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0 1.6rem; }
+.kv.z > * { padding: .12rem .3rem; } .kv.z > :nth-child(4n+1), .kv.z > :nth-child(4n+2) { background: rgba(255,255,255,.03); }
+.skl { display: grid; grid-template-columns: 2.9rem 1fr; gap: .1rem .6rem; align-items: center; padding: .3rem 0; border-top: 1px solid var(--iron-d); }
+.skl:first-of-type { border-top: 0; } .skl .slot { grid-row: span 2; width: 2.9rem; height: 2.9rem; color: var(--bone); } .skl b { font-weight: normal; color: var(--bone); } .skl span { color: var(--dim); font-size: 1.05rem; }
+
+/* 4 · árbol */
+#s4 { grid-template-columns: 1fr minmax(18rem, 25rem); }
+.tree { padding: 0; } .tree svg { display: block; width: 100%; height: 100%; }
+.tree .e { stroke: var(--iron-d); stroke-width: 4; } .tree .e.on { stroke: var(--ember-d); } .tree .e.on2 { stroke: var(--flame); stroke-width: 1.5; }
+.tree .n { cursor: pointer; } .tree .n .f { fill: #0b0d10; stroke: var(--iron); stroke-width: 2.5; } .tree .n .c { fill: var(--iron-d); }
+.tree .n.v .f { stroke: var(--bone); } .tree .n.v .c { fill: var(--faint); }
+.tree .n.a .f { fill: #2a1708; stroke: var(--ember); } .tree .n.a .c { fill: var(--flame); }
+.tree .n.k .f { stroke-width: 3.5; } .tree .n.k .o { fill: none; stroke: var(--iron-l); stroke-width: 1.5; }
+.tree .n.sel .s { stroke: var(--bone); } .tree .n .s { fill: none; stroke: transparent; stroke-width: 2; stroke-dasharray: 5 4; }
+.tree .n:hover .f { stroke: #fff; }
+.tree text { font-family: var(--font); fill: var(--ink); paint-order: stroke; stroke: #101216; stroke-width: 6px; stroke-linejoin: round; font-size: 19px; letter-spacing: .5px; text-anchor: middle; }
+.tree text.kn { fill: var(--bone); font-size: 22px; text-transform: uppercase; letter-spacing: 2px; }
+.tree text.br { stroke: none; fill: var(--faint); font-size: 26px; text-transform: uppercase; letter-spacing: 6px; }
+.treekey { display: flex; flex-wrap: wrap; gap: .1rem 1rem; padding: .3rem .7rem; border-top: 1px solid #000; background: #090a0c; color: var(--dim); font-size: 1rem; }
+.treekey i { display: inline-block; width: .7rem; height: .7rem; border: 2px solid var(--iron); margin-right: .35rem; vertical-align: -.05em; transform: rotate(45deg); }
+.treekey i.a { border-color: var(--ember); background: var(--flame); } .treekey i.v { border-color: var(--bone); }
+
+/* 5 · aldea */
+#s5 { grid-template-columns: minmax(18rem, 25rem) 1fr minmax(18rem, 24rem); grid-template-rows: auto 1fr auto; grid-template-areas: 'res res res' 'works mid board' 'works go board'; align-items: start; }
+.res { grid-area: res; justify-self: center; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: center; gap: .2rem 1.4rem; padding: .35rem 1rem; max-width: 100%; }
+.res span { display: inline-flex; align-items: center; gap: .35rem; color: var(--bone); white-space: nowrap; } .res .ico { color: var(--bronze-l); } .res small { font-size: 1em; color: var(--dim); }
+.res .sep { width: 1px; align-self: stretch; background: var(--bronze); }
+.works { grid-area: works; align-self: stretch; }
+.work { padding: .5rem 0; border-top: 1px solid #2c2118; display: grid; gap: .25rem; } .work:first-child { border-top: 0; padding-top: 0; }
+.work b { font-weight: normal; color: var(--bone); font-size: 1.25rem; } .work p { color: var(--dim); font-size: 1.05rem; }
+.work .cost { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .9rem; } .work .cost span { display: inline-flex; gap: .3rem; align-items: center; color: var(--bone); white-space: nowrap; }
+.work .cost .no { color: var(--down); } .work .cost .ico { color: var(--bronze-l); } .work .btn { margin-left: auto; }
+.town { grid-area: mid; align-self: end; justify-self: center; width: min(46rem, 100%); position: relative; }
+.town svg .hi { fill: var(--flame); fill-opacity: 1; } .town svg { color: #0b0806; filter: drop-shadow(0 0 1.4rem rgba(229,140,58,.35)); }
+.town .note { top: -1.6rem; }
+.go { grid-area: go; justify-self: center; display: grid; gap: .5rem; padding: .6rem .7rem; max-width: 100%; }
+.go .row { display: flex; flex-wrap: wrap; align-items: stretch; justify-content: center; gap: .35rem; }
+.go .btn { flex-direction: column; gap: .05rem; padding: .3rem .7rem; }
+.go .btn.fire { flex-direction: row; gap: .6rem; font-size: 1.45rem; padding: .3rem 1.3rem; }
+.tide { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .3rem .8rem; color: var(--dim); }
+.tide .speed .btn[disabled] { opacity: .7; }
+.sideb { grid-area: board; display: grid; gap: .9rem; align-self: stretch; align-content: start; }
+.threat { display: grid; grid-template-columns: 2.6rem 1fr; gap: .6rem; } .threat .slot { width: 2.6rem; height: 2.6rem; color: var(--mist); }
+</style>
+</head>
+<body>
+<div class="mockbar">
+  <span><b>Pixelia</b> · mock del HUD de PC (U2)</span>
+  <nav id="nav" role="tablist"></nav>
+  <span class="sp"><span class="k" data-np>1</span>–<span class="k" data-np>5</span> pantallas · <span class="k" data-np>P</span> textos +30 %</span>
+</div>
+
+<main class="stage" id="stage">
+
+<!-- ===== 1 · COMBATE / TRAVESÍA ===== -->
+<section class="screen" id="s1">
+  <div class="scene wild"></div>
+  <div class="party" id="party"></div>
+
+  <div class="panel turn">
+    <span class="bone">Ronda 3</span>
+    <div class="order" id="order"></div>
+    <div class="speed"><button class="btn" aria-pressed="true">×1</button><button class="btn">×2</button><button class="btn">×3</button></div>
+    <button class="btn">Resolver sola <span class="k" data-np>R</span></button>
+  </div>
+
+  <div class="board"><div class="g" id="board"></div><span class="note">acá va la escena 3D · tablero 6×6</span></div>
+
+  <div class="panel map">
+    <div class="ph">Bañado del Sur <small>Marea II · nodo 4 de 7</small></div>
+    <div class="pb">
+      <svg id="minimap" viewBox="0 0 220 200"></svg>
+      <div class="legend" id="legend"></div>
+      <div class="h">Reliquias de la salida</div>
+      <div class="relics" id="relics"></div>
+    </div>
+  </div>
+
+  <div class="panel log">
+    <div class="ph"><div class="tabs"><button aria-selected="true">Combate</button><button>Botín</button><button>Todo</button></div><small><span class="k" data-np>Enter</span></small></div>
+    <div class="pb">
+      <p>Ronda 2. La <b>Garza Hueca</b> retrocede dos casillas.</p>
+      <p><b>Irupé</b> usa Tajo sobre el <b>Carpincho Rabioso</b>: <span class="dmg">27 de daño</span>, Sangrado 2 turnos.</p>
+      <p>El <b>Carpincho Rabioso</b> carga en línea: <b>Tobías</b> recibe <span class="dmg">14 de daño</span>.</p>
+      <p><b>Tobías</b> levanta la Guardia: bloquea el próximo golpe.</p>
+      <p>Cae el <b>Carpincho Rabioso</b>. Botín: <span class="loot">Facón Mellado</span>, 6 de cuero.</p>
+      <p>Ronda 3. Turno de <b>Irupé</b>.</p>
+    </div>
+  </div>
+
+  <div class="panel action">
+    <div class="vit">
+      <div class="bar" style="--v:79%"><i></i><span>Vida 142 / 180</span></div>
+      <div style="display:flex;align-items:center;gap:.4rem"><span class="dim">Aliento</span><div class="pips"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
+    </div>
+    <div class="skills" id="skills"></div>
+    <div class="hint"><span><b>Golpe Amplio</b> · 2 de Aliento · pega a las 3 casillas de adelante</span><span><span class="k" data-np>Tab</span> siguiente objetivo · <span class="k" data-np>Esc</span> cancelar</span></div>
+  </div>
+
+  <div class="panel foe">
+    <div class="ph">Garza Hueca <small>Élite · nivel 9</small></div>
+    <div class="pb">
+      <div class="bar" style="--v:46%"><i></i><span>83 / 180</span></div>
+      <div class="intent"><span class="ico" data-i="skull"></span><span>Va a <span class="bone">invocar 2 crías</span> en su próximo turno. Huye si le pegan de cerca.</span></div>
+      <div class="kv" style="margin-top:.45rem"><span>Armadura</span><span>12</span><span>Débil a</span><span class="warmt">Fuego</span><span>Resiste</span><span>Agua</span><span>Estados</span><span>Sangrado 1</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 2 · INVENTARIO ===== -->
+<section class="screen" id="s2">
+  <div class="scene dimmed"></div>
+  <div class="panel">
+    <div class="ph">Equipo <small><span class="k" data-np>C</span> personaje</small></div>
+    <div class="pb">
+      <div class="doll" id="doll"></div>
+      <hr class="rule">
+      <div class="kv"><span>Daño</span><span>19–26</span><span>Armadura</span><span>41</span><span>Vida</span><span>180</span><span>Aliento por turno</span><span>3</span></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph">Alforja <small>37 / 60 lugares</small></div>
+    <div class="pb">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:.4rem;margin-bottom:.5rem">
+        <div class="tabs"><button aria-selected="true">Todo</button><button>Armas</button><button>Armadura</button><button>Reliquias</button><button>Materiales</button></div>
+        <button class="btn">Ordenar <span class="k" data-np>O</span></button>
+      </div>
+      <div class="bag" id="bag"></div>
+      <hr class="rule">
+      <div class="mats" id="mats"></div>
+    </div>
+    <div class="treekey"><span><span class="k" data-np>Clic der.</span> equipar</span><span><span class="k" data-np>Shift</span> comparar</span><span><span class="k" data-np>Supr</span> desarmar en materiales</span><span><span class="k" data-np>F</span> marcar favorito</span></div>
+  </div>
+  <div></div>
+</section>
+
+<!-- ===== 3 · PERSONAJE ===== -->
+<section class="screen" id="s3">
+  <div class="scene dimmed"></div>
+  <div class="panel">
+    <div class="ph">Irupé <small>Hachera · nivel 12</small></div>
+    <div class="pb">
+      <div class="figure" id="figure"></div>
+      <hr class="rule">
+      <div class="dim" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0 1rem"><span>Experiencia</span><span class="bone">2.340 / 3.100</span></div>
+      <div class="bar xp thin" style="--v:75%;margin:.2rem 0 .5rem"><i></i></div>
+      <div class="dim" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:0 1rem"><span>Maestría con hachas</span><span class="bone">Rango 3</span></div>
+      <div class="bar xp thin" style="--v:40%;margin-top:.2rem"><i></i></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph">Estadísticas <small>con el equipo puesto</small></div>
+    <div class="pb"><div class="statgrid" id="stats"></div></div>
+  </div>
+  <div class="panel">
+    <div class="ph">Habilidades <small>las da el arma</small></div>
+    <div class="pb" id="skl"></div>
+    <div class="treekey"><span>Cambiás de arma, cambiás de oficio.</span><span><span class="k" data-np>K</span> árbol · 3 puntos sin usar</span></div>
+  </div>
+</section>
+
+<!-- ===== 4 · ÁRBOL ===== -->
+<section class="screen" id="s4">
+  <div class="scene dimmed"></div>
+  <div class="panel tree">
+    <div class="ph">Árbol de habilidades <small>9 de 25 nodos · un tercio del árbol</small></div>
+    <div style="flex:1;min-height:0"><svg id="tree" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet"></svg></div>
+    <div class="treekey"><span><i class="a"></i>Encendido</span><span><i class="v"></i>Disponible</span><span><i></i>Bloqueado</span><span><span class="k" data-np>Clic</span> encender</span><span><span class="k" data-np>Clic der.</span> apagar (gratis en la aldea)</span><span><span class="k" data-np>Rueda</span> acercar</span></div>
+  </div>
+  <div style="display:grid;gap:.9rem;align-content:start;min-width:0">
+    <div class="panel">
+      <div class="ph">Puntos <small>3 sin usar</small></div>
+      <div class="pb"><div class="kv"><span>Filo</span><span>4 nodos</span><span>Aguante</span><span>3 nodos</span><span>Brasa</span><span>1 nodo</span></div></div>
+    </div>
+    <div class="panel" id="nodeinfo"></div>
+    <div class="panel">
+      <div class="ph">Lo que suma el árbol</div>
+      <div class="pb"><div class="kv z"><span>Daño con armas de filo</span><span class="up">+14 %</span><span>Sangrado</span><span class="up">+1 turno</span><span>Vida máxima</span><span class="up">+30</span><span>Armadura</span><span class="up">+8</span><span>Daño de Fuego</span><span class="up">+6 %</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== 5 · ALDEA ===== -->
+<section class="screen" id="s5">
+  <div class="scene home"></div>
+  <div class="panel warm res" id="res"></div>
+
+  <div class="panel warm works">
+    <div class="ph">Obras <small><span class="k" data-np>B</span></small></div>
+    <div class="pb" id="works"></div>
+  </div>
+
+  <div class="town"><div id="town"></div><span class="note">acá va la aldea en 3D · la única luz</span></div>
+
+  <div class="panel warm go">
+    <div class="tide"><span>Bañado del Sur</span><div class="speed"><button class="btn">Marea I</button><button class="btn" aria-pressed="true">Marea II</button><button class="btn" disabled>Marea III</button></div><span>mejor botín, enemigos más duros</span></div>
+    <div class="row" id="menu"></div>
+  </div>
+
+  <div class="sideb">
+    <div class="panel">
+      <div class="ph">Amenaza de la temporada</div>
+      <div class="pb">
+        <div class="threat"><div class="slot" data-i="potion"></div><div><span class="bone">Crecida</span><br><span class="dim">Llega cuando vuelvas de la segunda salida. La Empalizada aguanta 2 de 3 golpes.</span></div></div>
+      </div>
+    </div>
+    <div class="panel warm">
+      <div class="ph">Última salida</div>
+      <div class="pb">
+        <div class="kv"><span>Nodos</span><span>6 de 7</span><span>Peleas ganadas</span><span>4</span><span>Objetos</span><span>5 (1 épico)</span><span>Materiales</span><span>+38 madera, +14 hierro</span></div>
+        <hr class="rule">
+        <p class="dim">Volviste con el farol prendido. La aldea lo anota.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="tipwrap" id="tip" hidden></div>
+
+<script>
+// ---------- íconos en pixel art (12×12): # base, + luz, - sombra ----------
+const ICONS = {
+  axe: ['........##..','.......###+.','......####+.','.....#####+.','......-##++.','.....-..#+..','....-.......','...-........','..-.........','.-..........','-...........','............'],
+  sword: ['..........++','.........+#+','........+#+.','.......+#+..','......+#+...','.....+#+....','.-..+#+.....','.--+#+......','..---.......','.--.--......','--....-.....','-...........'],
+  spear: ['..........+#','.........+##','........###.','.......-#...','......-.....','.....-......','....-.......','...-........','..-.........','.-..........','-...........','............'],
+  bow: ['...###......','..-..##.....','..-...##....','..-....#....','..-....##...','..-.....#...','..-.....#...','..-....##...','..-....#....','..-...##....','..-..##.....','...###......'],
+  shield: ['.##########.','.#++++++++#.','.#+######-#.','.#+######-#.','.#+######-#.','.#+######-#.','.#+######-#.','..#+####-#..','..#+####-#..','...#+##-#...','....#--#....','.....##.....'],
+  helm: ['....####....','..########..','.##++######.','.#++#######.','.#+########.','.##########.','.###----###.','.##-....-##.','.##-....-##.','.##-.##.-##.','.##..##..##.','............'],
+  armor: ['............','.##..##..##.','####.##.####','############','#+########-#','.#+######-#.','..#+####-#..','..#+####-#..','..#+####-#..','..#+####-#..','..########..','............'],
+  boots: ['............','..###.......','..#+#.......','..#+#.......','..#+#.......','..#+#.......','..#+##......','..#+####....','..#++#####..','..########-.','..---------.','............'],
+  ring: ['............','....+##.....','....####....','.....--.....','...######...','..##....##..','..#......#..','..#......#..','..##....##..','...######...','............','............'],
+  amulet: ['..#......#..','..#......#..','...#....#...','...#....#...','....#..#....','.....##.....','....####....','...#+###-...','...#+###-...','....###-....','.....--.....','............'],
+  potion: ['....####....','.....--.....','.....##.....','.....##.....','....####....','...######...','..#+######..','..#+#####-..','..#+####--..','..##-----#..','...######...','............'],
+  ore: ['............','....###.....','...#++##....','..#+####-...','.##+##+##-..','.#####+###-.','.###-#####-.','.##--####--.','..#######-..','...-----....','............','............'],
+  wood: ['............','............','..########..','.#++++++++#.','.#########-.','.##-####-#-.','.#########-.','.#-####-##-.','..--------..','............','............','............'],
+  hide: ['............','.##..##..##.','.##########.','..########..','..#+######..','.##+######-.','.##+######-.','..########..','..########..','.###.##.###.','.##......##.','............'],
+  lamp: ['.....##.....','....#..#....','...######...','...#-++-#...','...#+++##...','...#+++-#...','...#-++-#...','...######...','....####....','............','............','............'],
+  skull: ['...######...','..########..','.##########.','.##--##--##.','.##--##--##.','.####--####.','..########..','...#-#-#-...','...######...','............','............','............'],
+  fire: ['.....#......','....##......','....###.....','...####.#...','..#####.##..','..###+####..','.###++####..','.##+++##+#..','.##++++++#..','..##++++##..','...######...','............'],
+  body: ['....####....','....####....','....####....','.....##.....','..########..','.##########.','.#.######.#.','.#.######.#.','.#.######.#.','...######...','...##..##...','...##..##...','...##..##...','...##..##...','...##..##...','..###..###..'],
+  town: ['........................#...............','..............##.......###..............','....##.......####......###.....##.......','...####.....######....#####...####......','..######....#+##+#....##+##..######..#..','..#+##+#..###+##+###..##+##..#+##+#.###.','.##+##+##.##########.#######.#+##+#.#+#.','.########.####++####.###+###.######.#+#.','########################################'],
+};
+function px(name) {
+  const rows = ICONS[name] || ICONS.ore, w = rows[0].length, h = rows.length; let s = '';
+  rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const c = r[x]; if (c === '.') continue;
+    s += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="currentColor"/>`;
+    if (c !== '#') s += `<rect class="${c === '+' ? 'hi' : 'lo'}" x="${x}" y="${y}" width="1.02" height="1.02"/>`; } });
+  return `<svg class="px" viewBox="0 0 ${w} ${h}" aria-hidden="true">${s}</svg>`;
+}
+const $ = (s, el = document) => el.querySelector(s);
+const ico = n => `<span class="ico">${px(n)}</span>`;
+const key = k => `<span class="k" data-np>${k}</span>`;
+
+// ---------- datos de ejemplo ----------
+const RAR = { c: 'Común', r: 'Raro', e: 'Épico', l: 'Legendario' };
+const ITEMS = {
+  eqAxe: { n: 'Hacha de Monte', i: 'axe', r: 'r', t: 'Hacha a dos manos', lvl: 9, base: [['Daño', '19–26'], ['Crítico', '8 %'], ['Alcance', '1 casilla']],
+    traits: ['+12 % de daño de Golpe Amplio', 'Tajo aplica Sangrado por 1 turno'], fl: 'Corta leña y lo que haga falta.' },
+  axe: { n: 'Hacha del Leñador Ahogado', i: 'axe', r: 'l', t: 'Hacha a dos manos', lvl: 12, base: [['Daño', '24–31'], ['Crítico', '6 %'], ['Alcance', '1 casilla']],
+    traits: ['+18 % de daño de Golpe Amplio', 'Tajo aplica Sangrado por 2 turnos', '+1 de Aliento al matar', 'Carga recorre 1 casilla más y prende Fuego donde termina'],
+    fl: 'La sacaron del Bañado con la mano todavía agarrada.',
+    cmp: [['Daño', '+5', 1], ['Crítico', '−2 %', 0], ['Golpe Amplio', '+6 %', 1], ['Sangrado', '+1 turno', 1], ['Rasgos', '4 contra 2', 1]] },
+  facon: { n: 'Facón Mellado', i: 'sword', r: 'r', t: 'Arma de una mano', lvl: 8, base: [['Daño', '12–17'], ['Crítico', '14 %']], traits: ['+1 casilla de movimiento después de Tajo', 'Crítico cura 6 de vida'], fl: 'Mellado, pero todavía entra.', cmp: [['Daño', '−8', 0], ['Crítico', '+6 %', 1], ['Habilidades', 'cambian a Facón', 1]] },
+  chuza: { n: 'Chuza de Junco', i: 'spear', r: 'c', t: 'Lanza', lvl: 6, base: [['Daño', '10–15'], ['Alcance', '2 casillas']], traits: ['+5 % de daño a enemigos que huyen'], fl: 'Liviana. Se rompe antes que vos.', cmp: [['Daño', '−10', 0], ['Alcance', '+1 casilla', 1]] },
+  arco: { n: 'Arco de Tala', i: 'bow', r: 'e', t: 'Arco', lvl: 11, base: [['Daño', '16–22'], ['Alcance', '4 casillas']], traits: ['Disparo atraviesa al primer enemigo', '+20 % de daño desde terreno alto', 'Flecha de Brasa cuesta 1 de Aliento menos'], fl: 'Madera dura de un árbol que ya no está.', cmp: [['Daño', '−4', 0], ['Alcance', '+3 casillas', 1], ['Habilidades', 'cambian a Arco', 1]] },
+  yelmo: { n: 'Capacete de Quebracho', i: 'helm', r: 'r', t: 'Cabeza', lvl: 10, base: [['Armadura', '14']], traits: ['+20 de vida', 'Inmune a Aturdido el primer turno'], fl: 'Pesa. Para eso está.', cmp: [['Armadura', '+5', 1], ['Vida', '+20', 1]] },
+  eqHelm: { n: 'Gorra de Cuero', i: 'helm', r: 'c', t: 'Cabeza', lvl: 5, base: [['Armadura', '9']], traits: ['+4 % de esquive'], fl: '' },
+  eqArmor: { n: 'Coleto del Baqueano', i: 'armor', r: 'e', t: 'Pecho', lvl: 11, base: [['Armadura', '22']], traits: ['+30 de vida', 'Guardia dura 1 turno más', 'Resistencia al Agua +15 %'], fl: 'Cosido tres veces por tres manos distintas.' },
+  eqBoots: { n: 'Botas de Potro', i: 'boots', r: 'r', t: 'Pies', lvl: 8, base: [['Armadura', '6'], ['Movimiento', '+1']], traits: ['El barro no te frena', 'Carga cuesta 1 de Aliento menos'], fl: '' },
+  eqRing: { n: 'Anillo de Alambre', i: 'ring', r: 'c', t: 'Anillo', lvl: 4, base: [['Crítico', '+3 %']], traits: ['+2 de daño'], fl: '' },
+  eqAmu: { n: 'Diente de la Bestia', i: 'amulet', r: 'e', t: 'Amuleto', lvl: 12, base: [['Daño', '+4']], traits: ['+10 % de daño a Élites', 'Grito asusta a 1 enemigo más', 'Al bajar de 30 % de vida, +1 de Aliento'], fl: 'Todavía está tibio.' },
+  eqLamp: { n: 'Farol de la Aldea', i: 'lamp', r: 'l', t: 'Reliquia', lvl: 1, base: [['Luz', '3 casillas']], traits: ['Los nodos vecinos se ven antes de elegir', 'En el campamento curás 15 % más'], fl: 'Mientras esté prendido, hay adónde volver.' },
+  escudo: { n: 'Rodela Remendada', i: 'shield', r: 'c', t: 'Mano izquierda', lvl: 7, base: [['Bloqueo', '18 %']], traits: ['+6 de armadura'], fl: '', cmp: [['No se puede usar', 'con hacha a dos manos', 0]] },
+  anillo: { n: 'Sortija del Estero', i: 'ring', r: 'e', t: 'Anillo', lvl: 11, base: [['Crítico', '+5 %']], traits: ['Sangrado hace 2 de daño más por turno', '+8 % de daño de Agua', 'El primer golpe de cada pelea es crítico'], fl: 'Verde por dentro.', cmp: [['Crítico', '+2 %', 1], ['Daño', '−2', 0], ['Rasgos', '3 contra 1', 1]] },
+  pocion: { n: 'Caña Quemada', i: 'potion', r: 'c', t: 'Consumible', lvl: 1, base: [['Cura', '40 de vida']], traits: ['Saca Sangrado'], fl: 'No es remedio, pero ayuda.' },
+};
+const mat = (n, i, q) => ({ n, i, r: 'c', t: 'Material', lvl: 1, base: [['Cantidad', String(q)]], traits: ['Se usa en las obras de la aldea'], fl: '', q });
+Object.assign(ITEMS, { mMad: mat('Madera de monte', 'wood', 86), mHie: mat('Mineral de hierro', 'ore', 23), mCue: mat('Cuero crudo', 'hide', 31) });
+const BAG = ['facon','mMad','chuza','arco','yelmo','escudo','anillo','pocion','pocion','axe','mHie','mCue','facon','chuza','yelmo','escudo','eqRing','chuza','pocion','mMad',
+  'arco','facon','eqHelm','chuza','mHie','anillo','escudo','eqRing','facon','mCue','chuza','yelmo','pocion','eqHelm','facon','mMad','chuza'];
+const EQUIPPED = { 'Hacha a dos manos': 'eqAxe', 'Arma de una mano': 'eqAxe', 'Lanza': 'eqAxe', 'Arco': 'eqAxe', 'Mano izquierda': 'eqAxe', 'Cabeza': 'eqHelm', 'Anillo': 'eqRing' };
+
+function slot(id, extra = '') { const it = ITEMS[id]; return `<button class="slot" data-r="${it.r}" data-item="${id}" aria-label="${it.n}">${px(it.i)}${it.q ? `<span class="q">${it.q}</span>` : ''}${extra}</button>`; }
+function card(id, opts = {}) {
+  const it = ITEMS[id];
+  return `<div class="panel tip" data-r="${it.r}">${opts.tag ? `<div class="tag">${opts.tag}</div>` : ''}
+    <header><b>${it.n}</b><span>${RAR[it.r]} · ${it.t} · nivel ${it.lvl}</span></header>
+    <div class="pb"><div class="kv">${it.base.map(([a, b]) => `<span>${a}</span><span>${b}</span>`).join('')}</div>
+    <hr class="rule"><ul>${it.traits.map(t => `<li>${t}</li>`).join('')}</ul>
+    ${it.fl ? `<hr class="rule"><p class="fl">${it.fl}</p>` : ''}
+    ${opts.cmp && it.cmp ? `<div class="cmp" style="margin-top:.6rem"><div class="h">Contra lo que llevás puesto</div><div class="kv">${it.cmp.map(([a, b, up]) => `<span>${a}</span><span class="${up ? 'up' : 'down'}">${b}</span>`).join('')}</div></div>` : ''}
+    </div>${opts.keys ? `<div class="keys"><span>${key('Clic der.')} equipar</span><span>${key('Supr')} desarmar</span></div>` : ''}</div>`;
+}
+
+// ---------- 1 · combate ----------
+$('#party').innerHTML = [
+  ['Irupé', 'Hachera', 'axe', 79, '142 / 180', 3, ['Sangra al pegar'], 1],
+  ['Tobías', 'Rodelero', 'shield', 55, '121 / 220', 2, ['En guardia', 'Mojado'], 0],
+  ['La Tala', 'Arquera', 'bow', 100, '110 / 110', 4, ['En terreno alto'], 0],
+].map(([n, c, i, v, t, al, st, act]) => `<div class="panel unit${act ? ' act' : ''}"><div class="face">${px(i)}</div><div>
+  <div class="nm"><span>${n}</span><span class="dim">${c}</span></div>
+  <div class="bar" style="--v:${v}%"><i></i><span>${t}</span></div>
+  <div class="st"><span class="pips" style="transform:scale(.7);transform-origin:0 50%">${[0,1,2,3,4].map(k => `<i class="${k < al ? 'on' : ''}"></i>`).join('')}</span>${st.map(s => `<span>${s}</span>`).join('')}</div></div></div>`).join('');
+$('#order').innerHTML = [['axe', 0, 1], ['skull', 1], ['shield', 0], ['skull', 1], ['bow', 0], ['skull', 1]].map(([i, f, now]) => `<i class="${f ? 'foe' : ''}${now ? ' now' : ''}">${px(i)}</i>`).join('');
+{ const cells = Array(36).fill(''); const set = (x, y, c) => cells[y * 6 + x] = c;
+  [[1,3],[2,3],[1,4],[2,4],[3,4],[2,5],[0,4],[1,5]].forEach(([x, y]) => set(x, y, 'mv'));
+  [[2,2],[3,2],[4,2]].forEach(([x, y]) => set(x, y, 'aim'));
+  set(1, 4, 'ally'); set(3, 3, 'ally'); set(0, 5, 'ally'); set(3, 2, 'foe'); set(4, 1, 'foe'); set(5, 0, 'foe'); set(0, 1, 'rock'); set(4, 4, 'rock');
+  $('#board').innerHTML = cells.map(c => `<i class="${c}"></i>`).join(''); }
+$('#skills').innerHTML = [
+  ['1', 'sword', 'Tajo', 1, ''], ['2', 'axe', 'Golpe Amplio', 2, 'sel'], ['3', 'boots', 'Carga', 2, ''], ['4', 'skull', 'Grito', 1, 'cd', 2],
+  ['5', 'fire', 'Filo de Brasa', 3, 'fire'], ['6', 'shield', 'Aguantar', 1, ''],
+].map(([k, i, n, c, cls, w]) => `<button class="slot ${cls}" aria-label="${n}">${px(i)}<span class="k kb" data-np>${k}</span><span class="cost" data-np>${c}</span>${w ? `<span class="wait" data-np>${w}</span>` : ''}</button>`).join('')
+  + `<span class="gap"></span><button class="slot" aria-label="Caña Quemada">${px('potion')}<span class="k kb" data-np>Q</span><span class="q" data-np>3</span></button>`
+  + `<button class="slot" style="color:var(--ember)" aria-label="Farol">${px('lamp')}<span class="k kb" data-np>E</span></button>`
+  + `<span class="gap"></span><button class="btn end"><span>Terminar turno</span>${key('Espacio')}</button>`;
+{ // minimapa de nodos: 7 filas, de abajo hacia arriba
+  const N = { a: [110, 185, 'sword', 2], b: [60, 158, 'sword', 2], c: [160, 158, 'q', 0], d: [40, 128, 'skull', 2], e: [110, 128, 'fire', 2], f: [180, 128, 'sword', 0],
+    g: [75, 98, 'sword', 1], h: [145, 98, 'q', 1], i: [45, 68, 'fire', 0], j: [110, 68, 'skull', 0], k: [175, 68, 'sword', 0], l: [80, 40, 'q', 0], m: [140, 40, 'fire', 0], z: [110, 14, 'skull', 0] };
+  const E = ['ab','ac','bd','be','ce','cf','dg','eg','eh','fh','gi','gj','hj','hk','il','jl','jm','km','lz','mz'], done = ['ab','be'];
+  let s = E.map(e => { const [p, q] = [N[e[0]], N[e[1]]]; const on = done.includes(e); return `<line x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}" stroke="${on ? '#e4dfd0' : '#2c3238'}" stroke-width="${on ? 2 : 1.5}" ${on ? '' : 'stroke-dasharray="3 3"'}/>`; }).join('');
+  for (const [id, [x, y, t, st]] of Object.entries(N)) { // st: 2 hecho, 1 se puede elegir, 0 lejos
+    const boss = id === 'z', r = boss ? 11 : 8, col = t === 'fire' ? '#e58c3a' : st === 0 ? '#5f6468' : '#e4dfd0';
+    s += `<rect x="${x - r}" y="${y - r}" width="${r * 2}" height="${r * 2}" fill="${st === 2 ? '#1a1e23' : '#08090b'}" stroke="${id === 'e' ? '#fff' : st === 1 ? '#e4dfd0' : boss ? '#b8402f' : '#3b424a'}" stroke-width="${id === 'e' ? 2 : 1}" ${t === 'skull' ? `transform="rotate(45 ${x} ${y})"` : ''}/>`;
+    if (t === 'q') s += `<text x="${x}" y="${y + 5}" text-anchor="middle" font-family="Jersey" font-size="14" fill="${col}">?</text>`;
+    else s += `<svg x="${x - r + 3}" y="${y - r + 3}" width="${r * 2 - 6}" height="${r * 2 - 6}" viewBox="0 0 12 12" style="color:${boss ? '#d0604f' : col}" shape-rendering="crispEdges">${px(t).replace(/^<svg[^>]*>|<\/svg>$/g, '')}</svg>`; }
+  $('#minimap').innerHTML = s;
+  $('#legend').innerHTML = [['sword', 'Pelea'], ['skull', 'Élite'], ['fire', 'Campamento', 1], ['skull', 'Jefe']].map(([i, n, w]) => `<span ${w ? 'class="warmt"' : ''}>${ico(i)} ${n}</span>`).join('') + '<span>? Evento</span>';
+  $('#relics').innerHTML = slot('eqLamp') + slot('eqAmu') + '<div class="slot"></div><div class="slot"></div><div class="slot"></div>'; }
+
+// ---------- 2 · inventario ----------
+$('#doll').innerHTML = [['eqHelm', 'Cabeza'], ['eqAmu', 'Amuleto'], ['eqLamp', 'Reliquia'], ['eqAxe', 'Arma'], ['eqArmor', 'Pecho'], [null, 'Mano izq.'], ['eqRing', 'Anillo'], ['eqBoots', 'Pies'], [null, 'Anillo']]
+  .map(([id, lab]) => id ? slot(id, `<span class="lab">${lab}</span>`) : `<div class="slot"><span class="lab">${lab}</span></div>`).join('');
+$('#bag').innerHTML = Array.from({ length: 60 }, (_, k) => BAG[k] ? slot(BAG[k]) : '<div class="slot"></div>').join('');
+$('#mats').innerHTML = [['wood', 'Madera', 86], ['ore', 'Hierro', 23], ['hide', 'Cuero', 31], ['ore', 'Piedra', 54], ['fire', 'Brasas', 7]].map(([i, n, q]) => `<span>${ico(i)}${n} <b style="font-weight:normal">${q}</b></span>`).join('');
+
+// ---------- 3 · personaje ----------
+{ const s = (id, lab) => id ? slot(id, `<span class="lab">${lab}</span>`) : `<div class="slot"><span class="lab">${lab}</span></div>`;
+  $('#figure').innerHTML = `<div class="col">${s('eqHelm', 'Cabeza')}${s('eqAxe', 'Arma')}${s('eqRing', 'Anillo')}${s('eqBoots', 'Pies')}</div><div class="body">${px('body')}</div><div class="col">${s('eqAmu', 'Amuleto')}${s('eqArmor', 'Pecho')}${s(null, 'Anillo')}${s('eqLamp', 'Reliquia')}</div>`;
+  const G = [['Ataque', [['Daño por golpe', '19–26'], ['Crítico', '11 %'], ['Daño crítico', '+50 %'], ['Daño a Élites', '+10 %'], ['Sangrado por turno', '6']]],
+    ['Defensa', [['Vida', '180'], ['Armadura', '41'], ['Esquive', '4 %'], ['Bloqueo', '0 %'], ['Curación recibida', '+15 %']]],
+    ['Turno', [['Aliento por turno', '3'], ['Aliento máximo', '5'], ['Movimiento', '4 casillas'], ['Iniciativa', '14']]],
+    ['Elementos', [['Daño de Fuego', '+6 %'], ['Resistencia al Fuego', '0 %'], ['Resistencia al Agua', '+15 %'], ['Resistencia al Veneno', '−10 %']]]];
+  $('#stats').innerHTML = G.map(([h, rows]) => `<div><div class="h">${h}</div><div class="kv z" style="margin-bottom:.6rem">${rows.map(([a, b]) => `<span>${a}</span><span${b.startsWith('−') ? ' class="down"' : ''}>${b}</span>`).join('')}</div></div>`).join('');
+  $('#skl').innerHTML = [['sword', 'Tajo', '1 de Aliento. Pega 19–26 y deja Sangrado 1 turno.'], ['axe', 'Golpe Amplio', '2 de Aliento. Pega a las 3 casillas de adelante, +12 %.'],
+    ['boots', 'Carga', '2 de Aliento. Corrés en línea hasta 3 casillas y empujás.'], ['skull', 'Grito', '1 de Aliento. Asusta a 2 enemigos: pierden su próximo movimiento.'],
+    ['fire', 'Filo de Brasa', '3 de Aliento. El hacha prende Fuego por 2 turnos. Viene del árbol.'], ['shield', 'Aguantar', '1 de Aliento. La mitad del daño hasta tu próximo turno.']]
+    .map(([i, n, d], k) => `<div class="skl"><div class="slot"${i === 'fire' ? ' style="color:var(--ember)"' : ''}>${px(i)}<span class="k kb" data-np>${k + 1}</span></div><b>${n}</b><span>${d}</span></div>`).join(''); }
+
+// ---------- 4 · árbol ----------
+const NODES = { // tipo: s chico, n notable, k clave · estado: a encendido, v disponible, l bloqueado
+  O: [500, 530, 'n', 'a', 'Origen', 'Donde empieza todo. +10 de vida.'],
+  L1: [405, 490, 's', 'a', 'Filo', '+4 % de daño con armas de filo.'], L2: [325, 435, 's', 'a', 'Filo', '+4 % de daño con armas de filo.'],
+  L3: [245, 390, 'n', 'a', 'Mano Pesada', 'Sangrado dura 1 turno más.'], L4: [315, 310, 's', 'a', 'Filo', '+6 % de daño con armas de filo.'],
+  L5: [165, 310, 's', 'v', 'Crítico', '+3 % de crítico.'], L6: [255, 215, 'n', 'v', 'Corte Limpio', 'Los críticos ignoran la armadura.'],
+  L7: [125, 205, 's', 'l', 'Crítico', '+3 % de crítico.'], K1: [185, 105, 'k', 'l', 'Sed de Filo', 'Matar a un enemigo que sangra te devuelve todo el Aliento. Ya no podés curarte con consumibles.'],
+  C1: [500, 465, 's', 'a', 'Aguante', '+10 de vida.'], C2: [500, 385, 'n', 'a', 'Cuero Curtido', '+8 de armadura.'],
+  C3: [440, 305, 's', 'a', 'Aguante', '+10 de vida.'], C4: [560, 305, 's', 'v', 'Aguante', '+10 de vida.'],
+  C5: [440, 220, 's', 'v', 'Armadura', '+4 de armadura.'], C6: [560, 220, 's', 'l', 'Armadura', '+4 de armadura.'],
+  C7: [500, 165, 'n', 'l', 'Pie Firme', 'No te pueden empujar ni asustar.'], K2: [500, 80, 'k', 'l', 'Raíz Vieja', 'Si no te movés en tu turno, la armadura vale el doble. Tu movimiento baja a 2 casillas.'],
+  R1: [595, 490, 's', 'a', 'Brasa', '+6 % de daño de Fuego.'], R2: [675, 435, 's', 'v', 'Brasa', '+6 % de daño de Fuego.'],
+  R3: [755, 390, 'n', 'l', 'Rescoldo', 'El Fuego que prendés dura 1 turno más.'], R4: [685, 310, 's', 'l', 'Brasa', '+6 % de daño de Fuego.'],
+  R5: [835, 310, 's', 'l', 'Luz', 'El Farol alumbra 1 casilla más.'], R6: [745, 215, 'n', 'l', 'Fogonero', 'Descansar en el campamento da 1 Brasa.'],
+  R7: [875, 205, 's', 'l', 'Luz', 'El Farol alumbra 1 casilla más.'], K3: [815, 105, 'k', 'l', 'Corazón de Brasa', 'Todo tu daño es de Fuego y prende la casilla. El Agua te hace el doble de daño.'],
+};
+const EDGES = 'O-L1 L1-L2 L2-L3 L3-L4 L3-L5 L4-L6 L5-L7 L6-K1 L7-K1 O-C1 C1-C2 C2-C3 C2-C4 C3-C5 C4-C6 C5-C7 C6-C7 C7-K2 O-R1 R1-R2 R2-R3 R3-R4 R3-R5 R4-R6 R5-R7 R6-K3 R7-K3 L4-C3 C4-R4'.split(' ').map(e => e.split('-'));
+let selNode = 'K1';
+function drawTree() {
+  let s = `<text class="br" x="185" y="575">Filo</text><text class="br" x="500" y="592">Aguante</text><text class="br" x="815" y="575">Brasa</text>`;
+  for (const [a, b] of EDGES) { const p = NODES[a], q = NODES[b], on = p[3] === 'a' && q[3] === 'a';
+    s += `<line class="e${on ? ' on' : ''}" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"/>${on ? `<line class="e on2" x1="${p[0]}" y1="${p[1]}" x2="${q[0]}" y2="${q[1]}"/>` : ''}`; }
+  for (const [id, [x, y, t, st, n]] of Object.entries(NODES)) {
+    const r = t === 'k' ? 30 : t === 'n' ? 19 : 12, d = (rr) => `M${x} ${y - rr}L${x + rr} ${y}L${x} ${y + rr}L${x - rr} ${y}Z`;
+    const shape = t === 's' ? `<circle class="f" cx="${x}" cy="${y}" r="${r}"/><circle class="c" cx="${x}" cy="${y}" r="4"/>`
+      : t === 'n' ? `<path class="f" d="${d(r)}"/><path class="c" d="${d(7)}"/>`
+      : `<path class="o" d="${d(r + 9)}"/><path class="f" d="${d(r)}"/><path class="c" d="${d(12)}"/><rect class="o" x="${x - r - 13}" y="${y - 3}" width="6" height="6"/><rect class="o" x="${x + r + 7}" y="${y - 3}" width="6" height="6"/>`;
+    s += `<g class="n ${st} ${t}${id === selNode ? ' sel' : ''}" data-node="${id}" tabindex="0"><circle class="s" cx="${x}" cy="${y}" r="${r + (t === 'k' ? 18 : 9)}"/>${shape}`
+      + (t !== 's' && id !== 'O' ? `<text class="${t === 'k' ? 'kn' : ''}" x="${x}" y="${t === 'k' ? y - r - 22 : y + r + 20}">${n}</text>` : '') + '</g>';
+  }
+  $('#tree').innerHTML = s;
+  const [, , t, st, n, desc] = NODES[selNode];
+  $('#nodeinfo').innerHTML = `<div class="ph">${n} <small>${t === 'k' ? 'Nodo clave' : t === 'n' ? 'Nodo notable' : 'Nodo'}</small></div><div class="pb">
+    <p class="bone">${desc}</p>${t === 'k' ? '<hr class="rule"><p class="dim">Los nodos clave cambian una regla. Dan algo grande y te sacan otra cosa.</p>' : ''}
+    <hr class="rule"><div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4rem">
+    <span class="${st === 'a' ? 'warmt' : 'dim'}">${st === 'a' ? 'Encendido' : st === 'v' ? 'Disponible · cuesta 1 punto' : 'Bloqueado · falta encender un nodo vecino'}</span>
+    <button class="btn"${st === 'v' ? '' : ' disabled'}>Encender</button></div></div>`;
+}
+
+// ---------- 5 · aldea ----------
+$('#res').innerHTML = [['wood', 'Madera', 86], ['ore', 'Piedra', 54], ['ore', 'Hierro', 23], ['hide', 'Cuero', 31], ['fire', 'Brasas', 7]].map(([i, n, q]) => `<span>${ico(i)}<small>${n}</small> ${q}</span>`).join('')
+  + '<i class="sep"></i><span><small>Época</small> Piedra</span><span><small>Rango</small> 6</span><span><small>Vecinos</small> 14</span>';
+$('#works').innerHTML = [
+  ['Herrería', 'Deja mejorar la rareza de un arma por salida.', [['wood', 40, 1], ['ore', 20, 1]], 'Construir'],
+  ['Empalizada del río', 'La crecida rompe una casa menos. Aguanta 3 golpes.', [['wood', 60, 1], ['hide', 12, 1]], 'Construir'],
+  ['Fogón grande', 'Las salidas arrancan con 1 Brasa más.', [['ore', 35, 0], ['fire', 4, 1]], null, 'Faltan 12 de hierro'],
+  ['Taller del curtidor', 'Convierte cuero en armadura común.', [['hide', 45, 0], ['wood', 30, 1]], null, 'Faltan 14 de cuero'],
+].map(([n, d, cost, go, miss]) => `<div class="work"><b>${n}</b><p>${d}</p><div class="cost">${cost.map(([i, q, ok]) => `<span class="${ok ? '' : 'no'}">${ico(i)}${q}</span>`).join('')}
+  ${go ? `<button class="btn fire">${go}</button>` : `<button class="btn" disabled>${miss}</button>`}</div></div>`).join('')
+  + '<hr class="rule"><p class="dim">Las obras se pagan con lo que traés y quedan listas en el momento.</p>';
+$('#town').innerHTML = px('town');
+$('#menu').innerHTML = [['C', 'Personaje'], ['I', 'Alforja'], ['K', 'Árbol'], ['B', 'Obras'], ['J', 'Bitácora']].map(([k, n]) => `<button class="btn"><span>${n}</span>${key(k)}</button>`).join('')
+  + `<button class="btn fire"><span>Salir a la Travesía</span>${key('Espacio')}</button>`;
+
+// ---------- íconos sueltos, pestañas, ficha y textos largos ----------
+document.querySelectorAll('[data-i]').forEach(el => el.innerHTML = px(el.dataset.i));
+const SCREENS = ['Combate', 'Alforja', 'Personaje', 'Árbol', 'Aldea'], q = new URLSearchParams(location.search);
+const pseudoOn = q.get('pseudo') === '1';
+function pseudo(root) { // estira ~30 % duplicando vocales, como ?pseudo=1 del juego
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); let n; const list = [];
+  while ((n = w.nextNode())) if (!n.parentElement.closest('[data-np], script, style') && /[a-záéíóúñ]{3}/i.test(n.nodeValue)) list.push(n);
+  list.forEach(n => { let k = 0; n.nodeValue = n.nodeValue.replace(/[aeiouáéíóú]/g, v => (k++ % 5 < 3 ? v + v : v)); });
+}
+const tip = $('#tip'); let pinned = null;
+function showTip(el) {
+  document.querySelectorAll('.slot.hot').forEach(s => s.classList.remove('hot')); el.classList.add('hot');
+  const id = el.dataset.item, it = ITEMS[id], eq = EQUIPPED[it.t], inBag = !!el.closest('#bag');
+  tip.innerHTML = card(id, { cmp: inBag, keys: inBag }) + (inBag && eq && eq !== id ? card(eq, { tag: 'Lo que llevás puesto' }) : '');
+  if (pseudoOn) pseudo(tip);
+  tip.hidden = false;
+  const r = el.getBoundingClientRect(), t = tip.getBoundingClientRect(), m = 10;
+  let x = r.right + m; if (x + t.width > innerWidth - m) x = Math.max(m, r.left - m - t.width);
+  tip.style.left = x + 'px'; tip.style.top = Math.max(m, Math.min(r.top, innerHeight - t.height - m)) + 'px';
+}
+function hideTip() { tip.hidden = true; document.querySelectorAll('.slot.hot').forEach(s => s.classList.remove('hot')); }
+document.addEventListener('mouseover', e => { const el = e.target.closest('[data-item]'); if (el) { pinned = null; showTip(el); } else if (!pinned) hideTip(); });
+function show(n) {
+  document.querySelectorAll('.screen').forEach((s, k) => s.classList.toggle('on', k === n - 1));
+  $('#nav').innerHTML = SCREENS.map((s, k) => `<button role="tab" aria-selected="${k === n - 1}" data-s="${k + 1}">${k + 1} · ${s}</button>`).join('');
+  hideTip(); pinned = null;
+  if (n === 2) { pinned = $('#bag [data-item=axe]'); showTip(pinned); }
+  history.replaceState(null, '', `?s=${n}${pseudoOn ? '&pseudo=1' : ''}`);
+}
+$('#nav').addEventListener('click', e => { const b = e.target.closest('[data-s]'); if (b) show(+b.dataset.s); });
+$('#tree').addEventListener('click', e => { const g = e.target.closest('[data-node]'); if (g) { selNode = g.dataset.node; drawTree(); if (pseudoOn) { pseudo($('#tree')); pseudo($('#nodeinfo')); } } });
+addEventListener('keydown', e => { if (/^[1-5]$/.test(e.key)) show(+e.key);
+  if (e.key.toLowerCase() === 'p') location.search = `?s=${document.querySelector('.screen.on').id.slice(1)}${pseudoOn ? '' : '&pseudo=1'}`; });
+drawTree();
+if (pseudoOn) pseudo($('#stage'));
+document.fonts.ready.then(() => show(Math.min(5, Math.max(1, +q.get('s') || 1))));
+</script>
+</body>
+</html>
