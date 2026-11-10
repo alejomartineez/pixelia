@@ -287,6 +287,198 @@ Todo color de la interfaz sale de los tokens de `:root` en `styles.css`; las pan
 - **Contorno tinta**: `createPixelRenderer({ outline: true })` pinta ≈1 px CSS de tinta `#3b2340` por fuera de las siluetas (saltos de profundidad), con borde suavizado (`?outline=0|1` lo fuerza para comparar). Las miniaturas offscreen (edificios, personajes, temas, cofres) se dibujan a **3×** con antialias y `outlineCanvas(canvas, ancho)` de `voxel.js`; se muestran achicadas sin `pixelated`.
 - **2D sigue siendo pixel art**: íconos de `icons.js` (grillas de 16 y 24 dibujadas a mano, bloques enteros), tableros de Joyas/Bloques, cielo de Ruta Pixel y burbujas `makeBillboard` conservan `pixelated`: la UI y los sprites son pixel art, el mundo 3D es vóxel nítido.
 
+## Regla de modelos (PLAN-FOTO, paso M1)
+Vale para todo modelo nuevo de la porción vertical: kits modulares en `.vox` de MagicaVoxel, ensamblados por código y
+vistos con el render fotográfico (`createPixelRenderer({ photo: true })`). Los modelos hechos en código
+(`src/city/models*.js`, 8 vóxeles por tile) siguen como están hasta que el kit los reemplace; no se mezclan las dos
+densidades en una misma escena.
+
+### Densidad
+- **16 vóxeles por tile** (`scale: 1/16`) en todo el kit: terreno, módulos de edificio, árboles, utilería, enemigos comunes.
+- **32 vóxeles por tile** (`scale: 1/32`) en las **piezas protagonistas**: las que la cámara de cine encuadra de cerca
+  o las que el jugador mira durante minutos (ver la lista del kit).
+- Nada intermedio ni mezclado en una pieza: una pieza es de 16 o de 32. Un módulo de 32 se apoya sobre uno de 16
+  porque los dos miden en tiles.
+- El volumen de luz tiene celdas de 1/8 de tile (dos vóxeles de 16, cuatro de 32): un detalle más fino que una celda
+  se ve, pero no da sombra ni rebote propios. Lo que tiene que proyectar sombra (un alero, una viga, un brazo) mide al
+  menos 2 vóxeles de 16 o 4 de 32.
+
+### Escalas de referencia
+1 tile = 1 unidad de mundo. Medidas en vóxeles de 16 (en una pieza de 32, el doble).
+
+| Pieza | Alto | Ancho × fondo | Nota |
+|---|---|---|---|
+| Persona | 16 (1 tile) | 6 × 4 | Cabeza de 5 de alto: proporción de maqueta, no realista. La gente del juego ya mide ≈1 unidad (`avatar.js`) |
+| Puerta | 20 | 10 de vano | La persona pasa con 4 de aire arriba |
+| Ventana | 8 | 6 | Antepecho a 8 del piso: a la altura de los ojos |
+| Piso de un edificio | 24 | — | De piso a cielorraso; el segundo piso arranca en 24 |
+| Casa de Madera | 40 a la cumbrera | 32 × 32 (2 × 2 tiles) | Pared de 24 y techo a dos aguas de 16 |
+| Árbol | 40 a 56 | copa de 24 a 32 | Siempre más alto que una casa: el bosque tapa |
+| Arbusto, roca chica | 6 a 10 | 8 a 12 | No tapa a una persona |
+| Farol | 24 | 4 | La luz queda arriba de la cabeza |
+| Enemigo común | 12 a 20 | hasta 16 × 16 | Entra en una casilla del tablero |
+| La Bestia | 40 a 48 | 32 × 48 (2 × 3 tiles) | Tres personas de alto |
+
+Regla de proporción: **una persona al lado de cualquier pieza tiene que dar la escala a simple vista**. Cada pieza
+nueva se captura con una persona parada al lado en `tools/lookdev.html`.
+
+### Paleta
+Sigue la sección **Color** de la Guía de tono; acá va lo que cambia al modelar.
+- **Cálidos solo en la aldea y en lo que da luz.** Ámbar, naranja y dorado se usan en vóxeles emisivos (ventana
+  encendida, brasa, farol, veta viva) y en los materiales de la aldea que esa luz toca (madera, paja, tela, pan).
+  Fuera del cerco, ningún vóxel cálido que no emita.
+- **Afuera, fríos y desaturados:** saturación HSV de 35 % como máximo en terreno, vegetación, roca y ruinas. Verdes
+  hacia el gris azulado, pardos hacia el gris. Los enemigos, lo mismo; su elemento es un acento chico (ojos, veta,
+  lomo) que se enciende al actuar.
+- **Tonos por material: 3** (claro, base, oscuro). **4 en piezas protagonistas** (se suma un medio tono). Un modelo
+  usa 5 materiales como máximo: 15 colores, 20 en protagonistas. Si hace falta otro tono, sobra un material.
+- **Sin sombrear hacia negro.** El tono oscuro de un material baja el valor un 25 a 30 % y corre el matiz hacia el
+  azul; nunca por debajo de 12 % de valor. El negro lo pone el render (sombra y oclusión): si el modelo ya viene
+  oscuro, la luz no tiene de dónde agarrarse. Tampoco blanco puro: 90 % de valor como máximo.
+- **Sin luz pintada.** Nada de degradés de arriba hacia abajo, sombras bajo los aleros ni brillos dibujados: el
+  motor calcula sol, oclusión y rebote. Los tres tonos son para **variar el material** (tablas distintas, vetas,
+  desgaste), no para simular luz.
+- **Rojo saturado:** solo sangre o peligro. Ninguna flor, bandera ni techo rojo.
+- **Prueba de grises:** la captura en blanco y negro tiene que separar las piezas por valor.
+
+### Forma
+- **Silueta primero.** La pieza se reconoce en negro pleno, a la distancia de juego (cámara isométrica) y a 64 px de
+  alto. Si dos piezas del kit se confunden en silueta, una se rehace.
+- **Nada de ruido al azar.** Ni vóxeles sueltos de otro tono salpicados ni superficies "picadas". La variación va en
+  **grupos con sentido**: una tabla entera más clara, una hilada de piedras, una mancha de musgo de 3 × 2 en la base.
+  El motor ya mueve un poco cada vóxel (`jitter`); a mano no se agrega más.
+- **Detalle donde mira la cámara.** El frente (+Z) y la cara de arriba llevan el trabajo; el fondo y lo que queda
+  bajo el alero, planos. En piezas de aldea, el detalle se concentra entre 8 y 24 de alto (la franja de la persona).
+- **Biseles de 1 vóxel** en esquinas de pilares, bordes de techo, zócalos y dinteles: rompen el cubo y agarran luz.
+  No en todo: una pared lisa con marco biselado se lee mejor que una pared toda trabajada.
+- **Espesores reales:** pared de 2, techo de 2 con alero de 2 a 3, viga de 2 × 2, tabla de 1. Nada de láminas de 1
+  vóxel en paredes: el volumen de luz las atraviesa.
+- **Macizo por dentro.** Los modelos no son cáscaras huecas: el relleno evita fugas de luz y el mallado une las caras.
+  Hueco solo donde la cámara entra (un interior).
+- **Asimetría chica.** Un poste torcido, una teja que falta, un lado más gastado. Una por pieza, no cinco.
+- **Módulos que encastran:** las piezas modulares miden múltiplos de 8 vóxeles en planta y sus bordes de unión son
+  planos, sin detalle que sobresalga.
+
+### Materiales del motor
+El lector (`src/core/vox-loader.js`) saca del `.vox` un material por índice de paleta: `{ emissive, metal, glass,
+water, rough }`. El motor (`r.light.kindOf(material)` en `src/core/voxel-light.js`) lo pasa a uno de seis tipos:
+
+| Tipo | En MagicaVoxel (pestaña Matter) | Qué hace | Para qué |
+|---|---|---|---|
+| `solid` | Diffuse (por defecto) | Luz de sol con sombra, oclusión y rebote | Casi todo |
+| `glow` | Emit (`emissive` = emit × 2^flux) | Emite al volumen de luz y da halo | Brasas, llama, veta viva, ojos |
+| `metal` | Metal con metal > 0,5 y roughness < 0,7 | Refleja la escena y el cielo, brillo del sol | Herrajes, filos, campana |
+| `glass` | Glass | Refleja con Fresnel | Frascos, vidrio apagado |
+| `water` | Glass con IOR 1,33 | Reflejo, ondas por vóxel y luz propia; no entra al volumen | Arroyo, charcos, bañado |
+| `window` | No sale del archivo: lo asigna el código | Se prende de noche (cálido) y de día refleja | Ventanas de la aldea |
+
+- Hoy cada tipo es **una malla aparte** (`vox.split`), así que un modelo usa `solid` y, como mucho, dos tipos más.
+- `rough` solo decide si un metal refleja; no hay rugosidad continua ni mapa de normales. Un metal gastado (roughness
+  ≥ 0,7) se dibuja como `solid`.
+- Los reflejos leen el volumen a 1/8 de tile: son manchas de color, no espejos. No diseñar nada que dependa de un
+  reflejo nítido.
+- La fuerza de lo emisivo se regula en el archivo (emit y flux), no con un color más claro. Emisivos chicos y pocos:
+  una ventana, una brasa. Un modelo entero emisivo aplana la escena.
+- Para marcar un material sin abrir MagicaVoxel: `loadVox(url, { materials: { índice: { water: true } } })`.
+
+**Índices reservados de la paleta** (iguales en todos los archivos, así el código no adivina):
+
+| Índice | Uso |
+|---|---|
+| 1 a 240 | Colores `solid` del modelo |
+| 241 a 244 | `glow`: llama, brasa, veta fría, veta cálida |
+| 245 | `window` (el código lo pasa a ventana) |
+| 246 | `water` |
+| 247 | `glass` |
+| 248 a 250 | `metal`: hierro, bronce, acero |
+| 251 a 255 | Libres |
+
+### Archivos `.vox`
+- **Carpeta:** `assets/models/`, con una subcarpeta por kit: `madera/`, `bosque/`, `enemigos/`, `jefes/`,
+  `quiebre/`, `comun/`. El archivo de trabajo con varias piezas juntas no va al repo; se exporta una pieza por archivo.
+- **Nombre:** `<pieza>[-<variante>][-<parte>].vox`, en minúsculas, sin acentos ni espacios, con guiones. Variantes con
+  letra (`pared-a`, `pared-b`); partes animables con nombre (`bestia-cabeza`, `bestia-cola`). Ejemplos:
+  `madera/pared-ventana-a.vox`, `bosque/arbol-alto-b.vox`, `enemigos/jabali.vox`.
+- **Orientación:** en MagicaVoxel z es arriba y **el frente mira a −y** (hacia la cámara por defecto). El lector lo
+  gira a y arriba y frente a **+Z**, que es el frente de todos los modelos del juego. No se espeja.
+- **Pivote:** el lector lleva la esquina mínima a (0, 0, 0) y la base a y = 0; el código centra con
+  `toMesh({ center: 'xz' })`. Entonces: **la pieza se apoya en el piso del archivo y su caja es su huella**. Un
+  módulo de 1 × 1 tile ocupa 16 × 16 en planta aunque el dibujo no llegue al borde (un vóxel de esquina en la capa de
+  base fija la caja). Una parte animable gira alrededor del centro de su caja en la base; si necesita otro eje (una
+  mandíbula, una puerta), se anota en la tabla del kit en código.
+- **Tamaño máximo:** 126 por lado y por archivo. Módulo de kit: hasta 32 × 32 en planta y 64 de alto. Pieza
+  protagonista: hasta 126 × 126 × 126; si no entra, se parte en partes.
+- **Un modelo por archivo**, sin escena con varios objetos salvo que sean partes de la misma pieza ya ubicadas.
+- **Paleta:** la del archivo, con los índices reservados de arriba. Los colores que no se usan se borran.
+- **Revisión:** cada pieza nueva pasa por `npm run test:vox` y por una captura en `tools/lookdev.html` a las 15 h y
+  a las 22.5 h, con una persona al lado.
+
+### Kit de la porción vertical
+**P** = protagonista: 32 vóxeles por tile, hecha a mano por una persona en MagicaVoxel. El resto, 16 vóxeles por
+tile, lo hace Claude con revisión por capturas. Hoja de referencias en `docs/ref/`.
+
+**Aldea, época Madera** (`madera/`)
+
+| Pieza | Variantes | |
+|---|---|---|
+| Pared lisa, pared con ventana, pared con puerta, esquina | 2 de cada una | |
+| Techo a dos aguas: tramo, remate, cumbrera, alero; chimenea | 2 de tramo | |
+| Piso de tablas, escalón, zócalo de piedra | 1 | |
+| Cerco: tramo, poste, portón | 1 | |
+| Casa armada con el kit (prueba de encastre) | 2 | |
+| **Municipalidad de Madera** (el centro de la aldea) | 1 | **P** |
+| **Fogón central** (la luz del plano modelo de noche) | 1 | **P** |
+| **Muelle y esquife amarrado** (de donde se zarpa) | 1 | **P** |
+| Taller, depósito y panadería: fachada propia sobre el kit | 1 de cada uno | |
+| Farol de poste, farol de pared | 1 | |
+| Utilería: barril, cajón, leñera, carro, banco, tendedero, pozo | 1 de cada uno | |
+
+**Isla: Bosque del Arroyo** (`bosque/`)
+
+| Pieza | Variantes | |
+|---|---|---|
+| Terreno: pasto, tierra, barro, roca, orilla, borde de isla (acantilado) | 2 de cada uno | |
+| Arroyo: tramo recto, curva, vado, cascada chica | 1 | |
+| Árbol alto, árbol joven, pino, tronco caído, tocón | 3, 2, 2, 1, 1 | |
+| Matorral (cobertura del tablero), helechos, juncos, hongos | 2 de cada uno | |
+| Roca grande (bloquea), roca rompible, piedras sueltas | 2, 1, 1 | |
+| Ruinas: muro roto, arco, columna caída, losa | 2, 1, 1, 1 | |
+| Veta: afloramiento apagado y vivo (emisivo) | 1 de cada uno | |
+| Puente de troncos, pasarela, cartel viejo | 1 | |
+| **Árbol viejo del claro** (hito de la isla, fondo de las peleas) | 1 | **P** |
+| **Campamento de la Travesía** (carpa, fogata; la única luz cálida de afuera) | 1 | **P** |
+| **Altar de la veta** (evento y decisión de historia) | 1 | **P** |
+| Nodos del mapa: marca de pelea, élite, evento, campamento, jefe | 1 de cada uno | |
+
+**Enemigos** (`enemigos/`; uno por archivo, con partes si se animan)
+
+| Pieza | |
+|---|---|
+| Lobo de ojos brillantes, Hondero del monte, Guardián de corteza, Nido de larvas, Larva, Jabalí de colmillo, Hongo hinchado, Musgo viejo, Ascua errante, Sapo de marea, Cuervo de céfiro, Bicho de veta | |
+| **Lobo viejo** (élite: La manada del lobo viejo) | **P** |
+| **La colmena** (élite: el nido grande y su entorno) | **P** |
+
+**Jefe** (`jefes/`)
+
+| Pieza | |
+|---|---|
+| **Bestia del Bañado**: cuerpo, cabeza, mandíbula, patas y cola como partes (hoy en código, `src/combat/boss-models.js`) | **P** |
+| **Arena del Bañado**: agua baja, juncal, islotes | **P** |
+
+**El Quiebre y la llegada** (`quiebre/`)
+
+| Pieza | |
+|---|---|
+| Decorados de fondo: borde partido, puente cortado, casas caídas | |
+| **La grieta con la veta a la vista** (plano central de la cinemática) | **P** |
+| **El esquife en vuelo** (llegada) | **P** |
+
+**Gente:** el personaje, Vera y los vecinos siguen con el sistema de piezas a 1/48 de `src/avatar/figure.js`
+(reglas en [docs/ARTE-PERSONAJES.md](docs/ARTE-PERSONAJES.md)); no pasan a `.vox` en la porción.
+
+Total: unas 95 piezas de kit y **12 protagonistas**. Orden sugerido para las de mano: Bestia, fogón, árbol viejo,
+Municipalidad, muelle y esquife; el resto después de la segunda prueba con jugadores.
+
 ## Sonidos disponibles
 `audio.sfx(name)`: tap, open, close, coin, gem, build, place, done, levelup, error, match, combo(n), pop, clear, swoosh, star, win, lose, horn, crash, bump, select, buy.
 `audio.music(name)`: city, game, drive, calm, null. (El router pone la música de la escena según `music`.)
