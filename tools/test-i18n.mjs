@@ -52,7 +52,9 @@ for (const code of CODES.filter(c => c !== 'es')) {
   const d = DICTS[code];
   const n = Object.keys(d).length;
   if (!n) { console.log(`  · ${code}: sin traducir todavía (paso 4b), cae al español`); continue; }
-  const miss = Object.keys(ES).filter(k => !(k in d));
+  // el prototipo de la Travesía por nodos (PLAN-FOTO §A1) va solo en español hasta la prueba con jugadores (A5):
+  // sus textos son provisorios y caen al español en los demás idiomas
+  const miss = Object.keys(ES).filter(k => !(k in d) && !k.startsWith('voyage.'));
   const extra = Object.keys(d).filter(k => !(k in ES));
   ok(!miss.length, `${code}: tiene las ${Object.keys(ES).length} claves de es`, miss.slice(0, 12).join(', '));
   ok(!extra.length, `${code}: no tiene claves que es no tenga`, extra.join(', '));
