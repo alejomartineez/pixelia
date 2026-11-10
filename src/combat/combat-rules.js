@@ -19,7 +19,7 @@
 // que marcaron el turno anterior (las casillas marcadas pegan a quien esté ahí, amigo o enemigo), sube el agua,
 // llegan refuerzos, y cada enemigo se mueve y marca su próximo golpe. Las marcas son relativas a quien ataca: si lo
 // empujan, su golpe se corre con él.
-import { COMBAT, TILES, MAP_CHARS, ABILITIES, ITEMS, UNITS, ENEMIES, CHALLENGES, ENCOUNTERS, FRAGMENTS, COMBOS } from './combat-data.js';
+import { COMBAT, TILES, MAP_CHARS, ABILITIES, ITEMS, UNITS, ENEMIES, CHALLENGES, ENCOUNTERS, FRAGMENTS, COMBOS, FARM } from './combat-data.js';
 import { memberKit, leaderKit, toClass } from './classes.js';
 import { recPower, foeScale } from '../core/power.js';
 
@@ -128,7 +128,7 @@ function buildMap(enc, seed) {
     const special = [out.lead, ...out.allies, ...out.foes, ...out.waves, ...(out.captive ? [out.captive] : []), ...out.exits, ...out.fires];
     const near = (x, y) => special.some(([sx, sy]) => man(x, y, sx, sy) <= 1);
     const n = enc.farm ? Math.floor(r() * 2) : Math.floor(r() * 3);
-    const obst = enc.region === 'bosque' || enc.region === 'banado' ? 'arbol' : 'roca';
+    const obst = enc.region === 'bosque' || enc.region === 'banado' || enc.region === 'arroyo' ? 'arbol' : 'roca';
     for (let k = 0, tries = 0; k < n && tries < 30; tries++) {
       const x = Math.floor(r() * w), y = Math.floor(r() * h);
       const i = y * w + x;
@@ -651,7 +651,10 @@ export function act(b, unitId, abilityId, x, y) {
   if (def.element && (def.kind === 'attack' || def.kind === 'push' || def.kind === 'root' || def.kind === 'disarm')) {
     const at = tgt && tgt !== u && onBoard(tgt) ? [tgt.x, tgt.y] : [x, y];
     const dir = Math.abs(x - u.x) >= Math.abs(y - u.y) ? [Math.sign(x - u.x), 0] : [0, Math.sign(y - u.y)];
-    if (!b.ended && (!tgt || tgt === u || onBoard(tgt) || def.ground)) applyElement(b, def.element, at[0], at[1], { side: 'ally', unit: u, by: u.type }, dir, ev);
+    const src = { side: 'ally', unit: u, by: u.type };
+    // si lo corrieron, el viento y el agua pasan igual por donde estaba (fuego y vapor de esa casilla)
+    if (!b.ended && (at[0] !== x || at[1] !== y) && (fireAt(b, x, y) || steamAt(b, x, y))) applyElement(b, def.element, x, y, src, dir, ev);
+    if (!b.ended && (!tgt || tgt === u || onBoard(tgt) || def.ground)) applyElement(b, def.element, at[0], at[1], src, dir, ev);
   }
   u.acted = true; u.moved = true;
   if (av.item) b.items[abilityId.slice(5)]--;
@@ -1461,6 +1464,19 @@ export function quickResolve({ encounter, wins = 1, stars = 0, marea = 1, lootWi
     loot: { mats }, xp: Math.round((enc.reward.xp || 0) * 0.5), morale: 0, combos: [], comboCount: 0, downs: 0,
     dmg: {}, kills: {}, page: null, flag: null, attempt: 1,
   };
+}
+
+/**
+ * Elige un encuentro del farmeo de una isla (paso A2). Misma semilla = mismo encuentro. avoid: ids que ya salieron en
+ * esta salida (no repite hasta agotar la lista).
+ */
+export function pickEncounter({ island = 'arroyo', seed = 1, elite = false, avoid = [] } = {}) {
+  const f = FARM[island];
+  if (!f) return null;
+  const all = elite ? f.elites : f.comunes;
+  const list = all.filter(id => !avoid.includes(id));
+  const from = list.length ? list : all;
+  return from[Math.floor(localRng(hashSeed(island, seed, elite ? 'elite' : 'comun'))() * from.length)];
 }
 
 // ---------- copia y previsualización ----------

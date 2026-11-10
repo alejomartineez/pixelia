@@ -44,7 +44,11 @@ export const COMBAT = {
   igniteDmg: 2,                   // incendio: Brasa sobre alguien enredado
   crashDmg: 2,                    // el jabalí que carga y se estrella
   // Marea del Quiebre I a III (la porción vertical): vida y golpe de los enemigos, uno más en la III, y mejor botín
-  marea: [null, { hp: 1, dmg: 0, extra: 0, loot: 1, xp: 1 }, { hp: 1.3, dmg: 1, extra: 0, loot: 1.5, xp: 1.3 }, { hp: 1.6, dmg: 1, extra: 1, loot: 2, xp: 1.6 }],
+  // expected: el grupo con el que se calibra cada Marea en sim-farm.mjs (nivel del líder y nivel de clase)
+  marea: [null,
+    { hp: 1, dmg: 0, extra: 0, loot: 1, xp: 1, expected: { level: 3, classLevel: 2 } },
+    { hp: 1.3, dmg: 1, extra: 0, loot: 1.5, xp: 1.3, expected: { level: 6, classLevel: 4 } },
+    { hp: 1.4, dmg: 1, extra: 1, loot: 2, xp: 1.6, expected: { level: 9, classLevel: 6 } }],
 };
 
 // Casillas. block: no se puede pisar; low: se puede inundar.
@@ -456,6 +460,188 @@ export const ENCOUNTERS = {
     noMirrorJitter: true,
   },
 };
+
+// ---------- paso A2 (PLAN-FOTO): los encuentros del farmeo, isla del Bosque del Arroyo ----------
+// Tablero de 6×6, peleas de 3 a 5 turnos. farm: usan la vida de farmeo (farmHp) y el tope corto de turnos. Se juegan en
+// Marea I a III (newBattle({ marea })): COMBAT.marea sube vida, golpe y botín, y en la III se suma un enemigo (extra).
+// Los combos de la isla se arman con FARM.arroyo o pickEncounter() de combat-rules.js.
+const FARM_EXPECTED = { level: 3, size: 3, element: 'raiz', classLevel: 2 };
+const FARM_ENCOUNTERS = {
+  arroyo_lobos: {
+    id: 'arroyo_lobos', name: 'Lobos en el sendero', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Tres lobos de ojos brillantes cierran el paso.',
+    map: ['e.T..e', '...e..', '.M..T.', '......', '.a.La.', 'T..a..'],
+    enemies: ['lobo', 'lobo', 'lobo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 4 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_honderos: {
+    id: 'arroyo_honderos', name: 'Piedras desde la loma', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Dos honderos tiran desde lejos mientras un lobo te busca.',
+    map: ['e.A..e', '..e...', '.T..M.', '.M...T', '..aL.a', '...a..'],
+    enemies: ['hondero', 'hondero', 'lobo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 4 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_guardian: {
+    id: 'arroyo_guardian', name: 'El que cubre', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Un guardián de corteza tapa a dos honderos.',
+    map: ['.e.e..', '..e..T', 'T.....', '..M.M.', '.a.La.', '..a...'],
+    enemies: ['hondero', 'hondero', 'guardian'], extra: ['lobo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 4 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_nido: {
+    id: 'arroyo_nido', name: 'El nido', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Un nido de larvas late entre los árboles. Mientras siga en pie, salen más.',
+    map: ['..e.eT', '.e..e.', '...T..', '.M....', '.aL.a.', 'T..a..'],
+    enemies: ['nido', 'lobo', 'larva', 'larva'], extra: ['larva'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 4 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_jabalies: {
+    id: 'arroyo_jabalies', name: 'Colmillos', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Dos jabalíes toman carrera. Los árboles están de tu lado.',
+    map: ['e..T.e', '......', '.T.e..', '....T.', 'a.L..a', '.T.a..'],
+    enemies: ['jabali', 'jabali', 'hongo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'combo', n: 1 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_hongos: {
+    id: 'arroyo_hongos', name: 'Esporas', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Tres hongos hinchados vienen corriendo detrás de un guardián.',
+    map: ['.e..e.', '..ee..', 'T....T', '..M...', '.a.La.', '...a..'],
+    enemies: ['hongo', 'hongo', 'guardian', 'hongo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'combo', n: 1 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_musgo: {
+    id: 'arroyo_musgo', name: 'Musgo viejo', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Un musgo viejo cura a los lobos por detrás.',
+    map: ['..e..T', 'T..e.e', '......', '.M..A.', '.aL..a', '..a...'],
+    enemies: ['musgo', 'lobo_viejo', 'lobo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 4 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_brasas: {
+    id: 'arroyo_brasas', name: 'Claro quemado', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Dos ascuas errantes rondan un claro seco. El matorral arde fácil.',
+    map: ['e..M.e', '.M.e..', '..F..M', '.M....', '.a.La.', '..a..T'],
+    enemies: ['ascua_errante', 'ascua_errante', 'hondero'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'reaccion' }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_vado: {
+    id: 'arroyo_vado', name: 'El vado', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Sapos de marea en el arroyo. La corriente arrastra a quien se quede en ella.',
+    map: ['e.~~.e', '..>>v.', '.e.~v.', '~~..~~', '.aL.a.', '..a...'],
+    enemies: ['sapo', 'sapo', 'lobo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 4 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_cuervos: {
+    id: 'arroyo_cuervos', name: 'Alas sobre el agua', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Cuervos de céfiro buscan a quien esté mojado. Un sapo se encarga de mojarlo.',
+    map: ['e..e.e', '.~~...', '..~~e.', '.....~', '.a.La.', 'T.a...'],
+    enemies: ['cuervo', 'cuervo', 'cuervo', 'sapo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'liderIntacto' }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_emboscada: {
+    id: 'arroyo_emboscada', name: 'Emboscada', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Dos lobos adelante. Los honderos llegan después.',
+    map: ['w.T..w', '......', 'e..T.e', '.M....', '.aL.a.', '..a..T'],
+    enemies: ['lobo', 'lobo'],
+    waves: [{ turn: 2, kinds: ['hondero', 'hondero'] }],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 5 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_carga: {
+    id: 'arroyo_carga', name: 'La carga', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Un jabalí carga, un guardián lo cubre y un musgo los cura.',
+    map: ['.e.e..', 'T.e...', '.....T', '.T....', 'a.L.a.', '..a..T'],
+    enemies: ['musgo', 'jabali', 'guardian'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 4 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_enjambre: {
+    id: 'arroyo_enjambre', name: 'Enjambre', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Dos nidos y un hongo. Cada turno que pasa hay más larvas.',
+    map: ['e....e', '..T...', '...e..', '.M..M.', '.a.La.', '..a...'],
+    enemies: ['nido', 'nido', 'hongo'], extra: ['larva'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 4 }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_aguante: {
+    id: 'arroyo_aguante', name: 'Aguantar el claro', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Vienen de todos lados. Hay que aguantar 4 turnos.',
+    map: ['w..e.w', '.T....', 'e...T.', '..A...', '.aL.a.', 'w.a..w'],
+    enemies: ['lobo', 'lobo'],
+    waves: [{ turn: 2, kinds: ['hongo'] }, { turn: 3, kinds: ['jabali'] }],
+    objective: { type: 'survive', turns: 4 },
+    challenges: [{ id: 'sinBajas' }, { id: 'liderIntacto' }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_matorral: {
+    id: 'arroyo_matorral', name: 'Matorral seco', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Un ascua errante entre el matorral, con cuervos encima.',
+    map: ['e.M..e', '.MM.e.', '..e.M.', 'M.....', '.aL.a.', '..a.M.'],
+    enemies: ['ascua_errante', 'cuervo', 'cuervo', 'lobo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'reaccion' }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_tormenta: {
+    id: 'arroyo_tormenta', name: 'Tormenta chica', region: 'arroyo', kind: 'comun', farm: true,
+    text: 'Agua, brasa y viento en el mismo claro. Todo reacciona con todo.',
+    map: ['e.~..e', '.~~e..', '..~.e.', '.M..~.', '.aL.a.', '..a...'],
+    enemies: ['sapo', 'ascua_errante', 'cuervo', 'cuervo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'reaccion' }],
+    expected: FARM_EXPECTED, reward: { xp: 15, mats: { madera: 2, hierbas: 1 } },
+  },
+  arroyo_elite_manada: {
+    id: 'arroyo_elite_manada', name: 'La manada del lobo viejo', region: 'arroyo', kind: 'comun', farm: true, elite: true, maxTurns: 10,
+    text: 'Élite: el lobo viejo con los suyos, un guardián y un musgo que los cura.',
+    map: ['.e.e..', 'e..e.T', '..e...', '.T..M.', '.aL.a.', '..a...'],
+    enemies: ['musgo', 'guardian', 'lobo', 'lobo', 'lobo_viejo'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 5 }],
+    expected: FARM_EXPECTED, reward: { xp: 30, mats: { madera: 3, hierbas: 2 } },
+  },
+  arroyo_elite_colmena: {
+    id: 'arroyo_elite_colmena', name: 'La colmena', region: 'arroyo', kind: 'comun', farm: true, elite: true, maxTurns: 10,
+    text: 'Élite: un nido bien cuidado, hongos adelante y dos jabalíes tomando carrera.',
+    map: ['e.e..e', '..T...', '.e..e.', '....T.', '.aL.a.', 'T.a...'],
+    enemies: ['nido', 'hongo', 'hongo', 'jabali', 'jabali'],
+    objective: { type: 'defeat' },
+    challenges: [{ id: 'sinBajas' }, { id: 'turnos', n: 5 }],
+    expected: FARM_EXPECTED, reward: { xp: 30, mats: { madera: 3, hierbas: 2 } },
+  },
+};
+Object.assign(ENCOUNTERS, FARM_ENCOUNTERS);
+/** Por isla: los comunes y los élite del farmeo. */
+export const FARM = {
+  arroyo: {
+    comunes: Object.keys(FARM_ENCOUNTERS).filter(id => !FARM_ENCOUNTERS[id].elite),
+    elites: Object.keys(FARM_ENCOUNTERS).filter(id => FARM_ENCOUNTERS[id].elite),
+    jefe: 'banado_bestia',
+  },
+};
+export const MAREA_MAX = COMBAT.marea.length - 1;
 export const ENCOUNTER_IDS = Object.keys(ENCOUNTERS);
 // Orden del Acto 1 (plan, "Actos"): Bosque → Cerro (Núcleo de Raíz) → Bañado → Costa.
 export const ACT1 = ['bosque_claro', 'bosque_manada', 'cerro_veta', 'cerro_rescate', 'banado_juncal', 'banado_bestia', 'costa_muelle', 'costa_capitana'];
