@@ -34,14 +34,21 @@ nuevo), cerca de una hora de juego, para probar con jugadores y como demo de Ste
 
 - **v64 en master**: A1 mergeada (Travesía por nodos sin arte, `src/voyage/`; detalle abajo). Suite completa en verde.
 
-### En curso (sesiones abiertas por el chat coordinador `local_377480f3`; el orquestador integra)
-- **Listas para integrar en la v65** (una sola suite): **A2** `claude/a2-combate-5384e9` (`a486c5f`; pelea común de
-  66 a 69 s a ×1), **R1** `claude/relaxed-goldstine-ad8744` (`58ead34`: hitos 1 a 5 en el diorama, photo a 6,5 ms
-  por cuadro; quedan las franjas del acantilado atenuadas pero no resueltas, la subida parcial del volumen y el cielo
-  físico; la rama vieja `claude/r1-render-024ec7` ya está contenida ahí), **U1** `claude/u1-tono-b277a7`
-  (`c4837e1`; los renombres de sistema esperan al usuario) y el **mock de U2** `claude/u2-mock-hud-89e8ea`
-  (`tools/hud-mock.html`; dirección aprobada por el usuario).
-- **A3** `local_dddd2571` (rama a3-botin, Fable 5.2 medio), cortada desde la rama de A2.
+- **v65 en master**: A2 (combate apto para farmear), R1 (hitos 1 a 5 en el diorama, detrás de `?render=photo`),
+  U1 (guía de tono; los renombres de sistema esperan al usuario), el mock de U2 (`tools/hud-mock.html`, dirección
+  aprobada) y A5/M1 (`docs/PLAYTEST-1.md` y la regla de modelos en `DESIGN.md`). Suite completa en verde. De paso:
+  `ambience-fx.js` pedía más partículas que las que hay con partículas al 150 % y lluvia fuerte (error en cada
+  cuadro; lo destapó `test-settings`): acotado a `MAX`. `test-story` se colgó una vez por un timeout de Chrome con
+  la máquina cargada (el proceso no cierra: matarlo a mano) y pasó al reintentar.
+
+### Para integrar en la v66 (una sola suite)
+- **A3b** `claude/a3b-enganche-32ce5a` (`dadde79`; trae A3 `claude/a3-botin-b43392` adentro: Travesía + combate +
+  botín + árbol en una salida jugable). No mergear A3 sola.
+- **R2** `claude/r2-camara-4942b9` (`2b00151`; `src/cinema/` e intro).
+- **Piloto de M2** `claude/m2-piloto-76485d` (`619e3c5`; herramientas .vox y casa de Madera en el diorama).
+- **r1-pendientes** `claude/r1-pendientes-baa692` (`bc56381`; subida parcial del volumen y cielo físico; las franjas
+  del acantilado son sombra real del borde escalonado: decisión de arte).
+- Después: U2 completo sobre el mock, A5 (prueba con jugadores) y recién después A4 (sin relojes).
 
 ### A1: prototipo de la Travesía por nodos (rama `claude/a1-travesia-3e736a`, mergeada en la v64)
 **Qué quedó** (se juega de punta a punta con `?scene=voyage&seed=N` o con el botón provisorio "Travesía (prototipo)"
@@ -182,9 +189,9 @@ Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
   de los enemigos nuevos son cubos. En el worktree, `tools/node_modules` es un enlace al del checkout principal.
 
 ## Próximos pasos (ver "Orden" en el plan)
-1. v65: mergear A2, R1, U1 y el mock de U2; suite, bump, commit y push.
-2. Integrar A3 cuando entregue. Después U2 completo sobre el mock aprobado.
-3. A5: prueba con jugadores del prototipo con cubos. Recién después, arte.
+1. v66: mergear las cuatro ramas de arriba; suite, bump, commit y push.
+2. U2 completo sobre el mock aprobado. A5: prueba con jugadores del prototipo con cubos (`docs/PLAYTEST-1.md`).
+3. Después de la prueba: A4 (sin relojes) y arte (M2).
 
 ## Lo que hace el usuario
 - Trámites de Steam (verificación de identidad, pago y esperas) y confirmar en Steamworks qué uso de IA se declara.
@@ -209,4 +216,6 @@ Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
   suite completa, una vez por paso.
 - El checkout principal es compartido: stagear los archivos por nombre, nunca `git add -u`. `npm run bump` antes de
   cada commit que cambie archivos del juego. Las sesiones trabajan en worktrees; el orquestador mergea.
+- **Tope de uso semanal (regla del usuario)**: al llegar al 95 % se corta: las sesiones en curso hacen commit WIP,
+  anotan acá y terminan, y no se abre ni relanza nada. El chat coordinador controla el uso y avisa.
 - PushNotification al terminar un paso, en cada handoff y al quedar bloqueado.

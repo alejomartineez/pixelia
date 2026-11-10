@@ -76,6 +76,10 @@ M1. Regla de densidad (16 vóxeles por tile; 32 en protagonistas) y paleta del t
 M2. Kit modular de la época Madera, decorados de El Quiebre, la isla del Bosque (terreno, árboles, ruinas),
     enemigos y la Bestia, en `.vox` (`assets/models/`), ensamblados por código. Hoja de referencias en `docs/ref/`.
     Las piezas protagonistas, hechas a mano por el usuario o un artista; el resto, Claude con revisión por capturas.
+    Al arrancar M2 (decisión del usuario, 2026-11-10), sumar a `tools/make-vox.mjs`: espejar y rotar regiones para
+    piezas simétricas, y un chequeo automático de piezas sueltas (vóxeles desconectados) como control de calidad de
+    cada `.vox`; y una tabla de proporciones de personajes en la "Regla de modelos" de DESIGN.md. No se instala el
+    MCP de MagicaVoxel de terceros (github.com/Mahinika/magicavoxel-mcp): descartado.
 
 ## Orden
 1. A0 y cierre de R0. 2. A1, A2 y R1 en paralelo. 3. A3, U1 y el mock de U2. 4. A5 (prueba con cubos).

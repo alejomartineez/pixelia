@@ -48,7 +48,7 @@ export function createAmbience(r, opts = {}) {
   }
   function particles(dt, look, c) {
     const fx = look.fx;
-    const n = fx && !reducedMotion() ? Math.round(MAX * Math.min(1, fx.rate) * Math.min(1.5, graphics().particles ?? 1) * 0.8) : 0;
+    const n = fx && !reducedMotion() ? Math.min(MAX, Math.round(MAX * Math.min(1, fx.rate) * Math.min(1.5, graphics().particles ?? 1) * 0.8)) : 0;
     if (!n) { mesh.count = 0; kind = null; return; }
     const k = KINDS[fx.kind] || KINDS.rain;
     if (kind !== fx.kind) { kind = fx.kind; seeded = false; mat.color.set(k.color); mat.opacity = k.opacity; }
