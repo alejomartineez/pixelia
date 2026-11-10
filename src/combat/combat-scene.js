@@ -18,7 +18,7 @@ import { createPixelRenderer, addLights, setIsoCamera } from '../core/voxel.js';
 import { createAmbience } from '../core/ambience-fx.js';
 import { combatConditions, WEATHER } from '../core/ambience.js';
 import { actionFor } from '../core/keys.js';
-import { t } from '../core/i18n.js';
+import { t } from './combat-text.js';
 import { setSetting } from '../core/settings.js';
 import { voxelModel } from '../city/models.js';
 import { avatarModel, randomLook, classLook } from '../avatar/avatar.js';

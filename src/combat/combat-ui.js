@@ -6,7 +6,7 @@
 // Usa solo los tokens de la interfaz oscura (styles.css, plan §J6).
 import { icon } from '../core/icons.js';
 import { esc } from '../core/ui.js';
-import { t } from '../core/i18n.js';
+import { t } from './combat-text.js';
 import { ENEMIES, UNITS, TILES, COMBOS, COMBAT } from './combat-data.js';
 import { CLASSES } from './classes.js';
 import { accentCss } from './class-accent.js';

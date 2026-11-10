@@ -219,7 +219,7 @@ export const ENEMIES = {
   guardian: { id: 'guardian', name: 'Guardián de corteza', hp: 10, mv: 2, prefers: 'near', ai: 'guard', ward: true,
     attacks: [{ id: 'ramazo', name: 'Ramazo', pattern: 'arc', dmg: 3 }],
     text: 'Se planta al lado de otro y lo cubre: los enemigos pegados a él reciben 1 menos. Sacalo del medio primero o corrélo.' },
-  nido: { id: 'nido', name: 'Nido de larvas', hp: 9, mv: 1, prefers: 'near', ai: 'summon', summon: { kind: 'larva', every: 2, max: 3 }, attacks: [],
+  nido: { id: 'nido', name: 'Nido de larvas', hp: 8, mv: 1, prefers: 'near', ai: 'summon', summon: { kind: 'larva', every: 2, max: 3 }, attacks: [],
     text: 'No pega: cada dos turnos saca una larva al lado (se ve un turno antes). Mientras siga en pie, siguen saliendo.' },
   larva: { id: 'larva', name: 'Larva', hp: 3, mv: 3, prefers: 'near',
     attacks: [{ id: 'mordisco', name: 'Mordisco', pattern: 'front', dmg: 2 }], text: 'Chica y rápida. Sale del nido.' },
