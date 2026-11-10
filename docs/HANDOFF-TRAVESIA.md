@@ -60,6 +60,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
 | 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas, trav-4a2 | **hecho**: base en master; HUD y ciudad a claves en `claude/trav-4a2-ea2158` (sin bump) | master + rama |
+| 4b-0 | Preparar la traducción: glosario (9 idiomas), guías de tono por idioma, `tools/i18n-extract.mjs` → `docs/i18n/pendiente.md`, `tools/test-glossary.mjs` (en `npm test`) y `docs/i18n/plan-4b.md` | trav-4b0 | **hecho** (sin bump, sin tocar el juego ni `es/en/ja.js`): 2 textos ja con 旅 en vez de 航海 quedan en `KNOWN` para el 4b | rama `claude/recursing-dirac-5b1918` |
 | 4b | Extraer el texto, glosario, traducir a 8 idiomas y revisar | — | después del Bloque 3 | |
 
 ## Claves externas (nunca copiarlas al repo, a los logs ni a la salida de comandos)
