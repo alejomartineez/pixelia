@@ -1246,6 +1246,8 @@ export function enemyTurn(b) {
   const gone = b.walls.filter(w => w.turns <= 0);
   if (gone.length) { b.walls = b.walls.filter(w => w.turns > 0); ev.push({ type: 'wallGone', tiles: gone.map(w => [w.x, w.y]) }); }
   b.cover = {};
+  // paso A3, Brasa guardada: el grupo sigue cubierto los primeros 3 turnos enemigos
+  if (b.rules?.startCover > 0 && b.turn < 3) for (const a of b.units) if (a.side === 'ally' && onBoard(a) && !a.captive) b.cover[a.id] = b.rules.startCover;
   // 4. refuerzos
   for (const s of b.incoming) spawn(b, s, ev);
   b.incoming = [];

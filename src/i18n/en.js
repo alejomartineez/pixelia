@@ -817,7 +817,7 @@ export default {
   'tree.key.marea_adentro.text': "Enemies have a quarter more health. Every fight leaves a weapon, and it is more likely to be a good one.",
   'relic.title': "Relics of this voyage",
   'relic.brasa_guardada.name': "Banked ember",
-  'relic.brasa_guardada.text': "The party starts each fight covered: 2 less damage on the first enemy turn.",
+  'relic.brasa_guardada.text': "The party starts each fight covered: 2 less damage on the first 3 enemy turns.",
   'relic.cuerno_roto.name': "Broken horn",
   'relic.cuerno_roto.text': "Enemies arrive with less health.",
   'relic.piedra_de_afilar.name': "Whetstone",

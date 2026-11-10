@@ -197,7 +197,8 @@ export function loadout(state, { party = [], leaderCls = null, run = null, talen
     const m = emptyMods();
     const w = A.equippedOn(state, who);
     for (const e of affixesOf(w)) addFx(m, e);
-    for (const e of shared) if (e.who !== 'lider' || who === 'lider') addFx(m, e);
+    // lo del árbol y las reliquias vale para cada uno; lo que mejora el botín se cuenta una sola vez (con el líder)
+    for (const e of shared) if ((e.who !== 'lider' || who === 'lider') && (!FX[e.id]?.loot || who === 'lider')) addFx(m, e);
     const g = { ...base, hp: base.hp + m.hp, atk: base.atk + m.atk, armor: base.armor + m.armor, mv: m.mv, flags: { ...base.flags },
       affinity: [...new Set([...base.affinity, ...m.affinity])], abil: m.abil };
     for (const [k, n] of Object.entries(m.flags)) g.flags[k] = (g.flags[k] || 0) + n;

@@ -814,7 +814,7 @@ export default {
   'tree.key.marea_adentro.text': "敵の体力が4分の1増える。毎回の戦闘で武器が手に入り、良い物が出やすくなる。",
   'relic.title': "この航海の遺物",
   'relic.brasa_guardada.name': "埋み火",
-  'relic.brasa_guardada.text': "戦闘開始時に全員が守られる：最初の敵ターンのダメージ−2。",
+  'relic.brasa_guardada.text': "戦闘開始時に全員が守られる：最初の3回の敵ターンはダメージ−2。",
   'relic.cuerno_roto.name': "折れた角笛",
   'relic.cuerno_roto.text': "敵の体力が減った状態で始まる。",
   'relic.piedra_de_afilar.name': "砥石",
