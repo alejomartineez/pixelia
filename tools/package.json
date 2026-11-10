@@ -5,7 +5,9 @@
   "scripts": {
     "serve": "node serve.mjs",
     "serve:lan": "node serve.mjs --lan",
-    "test": "node test-icons.mjs && node test-e2e.mjs && node test-i18n.mjs --no-shots && node test-glossary.mjs && node test-migration.mjs && node test-place.mjs --no-shots && node test-stress.mjs && node test-visit.mjs && node test-mock.mjs && node test-social.mjs && node test-rank.mjs --no-shots && node test-works.mjs --no-shots && node test-expedition.mjs --no-shots && node test-cycle.mjs --no-shots && node test-threats.mjs --no-shots && node test-telemetry.mjs && node test-settings.mjs && node test-story.mjs --no-shots && node test-ambience.mjs && node test-audio.mjs && node test-combat.mjs && node test-combat-scene.mjs && node test-combat-exp.mjs && node test-arsenal.mjs && node test-classes.mjs && node test-people.mjs && node test-class-look.mjs && node test-gear-fit.mjs && node test-sprite2d.mjs && node test-cinema.mjs && node test-raiz.mjs && node test-act1.mjs && node test-sql.mjs",
+    "test": "node test-icons.mjs && node test-e2e.mjs && node test-i18n.mjs --no-shots && node test-glossary.mjs && node test-migration.mjs && node test-place.mjs --no-shots && node test-stress.mjs && node test-vox.mjs && node lookdev-shots.mjs --check && node test-visit.mjs && node test-mock.mjs && node test-social.mjs && node test-rank.mjs --no-shots && node test-works.mjs --no-shots && node test-expedition.mjs --no-shots && node test-cycle.mjs --no-shots && node test-threats.mjs --no-shots && node test-telemetry.mjs && node test-settings.mjs && node test-story.mjs --no-shots && node test-ambience.mjs && node test-audio.mjs && node test-combat.mjs && node test-combat-scene.mjs && node test-combat-exp.mjs && node test-arsenal.mjs && node test-classes.mjs && node test-people.mjs && node test-class-look.mjs && node test-gear-fit.mjs && node test-sprite2d.mjs && node test-cinema.mjs && node test-raiz.mjs && node test-act1.mjs && node test-sql.mjs",
+    "test:vox": "node test-vox.mjs",
+    "lookdev": "node lookdev-shots.mjs",
     "test:combat": "node test-combat.mjs",
     "test:glossary": "node test-glossary.mjs",
     "i18n:extract": "node i18n-extract.mjs",

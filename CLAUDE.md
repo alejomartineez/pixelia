@@ -45,6 +45,9 @@ adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
 - Cinemáticas (`src/cinema/`: línea de tiempo, poses, carteles 3D, reproductor y viñetas 2D en pixel art):
   `tools/cinema.html?v=forcejeo&view=strip` revisa una viñeta cuadro a cuadro; `npm run narrate -- --samples` arma
   muestras del narrador con Gemini TTS (la clave nunca se imprime ni se copia; ver DESIGN-AUDIO.md).
+- Lookdev (PLAN-FOTO): `tools/lookdev.html?hour=19.5&render=photo&cam=cine` es el diorama fijo para comparar el render;
+  `npm run lookdev` saca la serie en `shots/lookdev/` y `npm run test:vox` prueba el mallado y el lector de MagicaVoxel
+  (`src/core/vox-loader.js`; los modelos `.vox` van en `assets/models/`).
 - `npm run render:audio` → fragmentos `.wav` de cada lugar en `shots/audio/` (OfflineAudioContext, sin GPU).
 - `npm run sim:economy` → simula 60 días de economía (2 ratos por día) y chequea las metas de DESIGN-CORE.md §8.
 - `npm run desktop:dev` abre la ventana del juego de PC en vivo. `npm run desktop:build` arma el `.exe`, y

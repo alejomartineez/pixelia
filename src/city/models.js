@@ -90,59 +90,10 @@ function calmColors(v) {
 }
 
 // ---------- Mallado con oclusión en los rincones ----------
-// Igual que Voxels.toGeometry pero oscurece los vértices metidos en rincones (base de paredes,
-// bajo aleros, entre bloques): las formas se leen mucho mejor sin agregar ruido.
-const FACES = [
-  { n: [1, 0, 0], c: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] },
-  { n: [-1, 0, 0], c: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] },
-  { n: [0, 1, 0], c: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]] },
-  { n: [0, -1, 0], c: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]] },
-  { n: [0, 0, 1], c: [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]] },
-  { n: [0, 0, -1], c: [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]] },
-];
+// Voxels.toGeometry con una oclusión un poco más suave y menos jitter: las formas se leen sin agregar ruido.
 const AO = [0.6, 0.74, 0.88, 1];
 const JITTER = 0.01;
-function meshAO(v, scale) {
-  const pos = [], nor = [], col = [], idx = [];
-  const has = (x, y, z) => v.map.has(x + ',' + y + ',' + z);
-  const tmp = new THREE.Color();
-  const ao = [0, 0, 0, 0];
-  for (const [k, c] of v.map) {
-    const [x, y, z] = k.split(',').map(Number);
-    let h = (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
-    h = ((h >>> 0) % 1000) / 1000;
-    tmp.setHex(shade(c, (h - 0.5) * 2 * JITTER));
-    for (const f of FACES) {
-      const [nx, ny, nz] = f.n;
-      if (has(x + nx, y + ny, z + nz)) continue;
-      const ax = nx ? [1, 2] : ny ? [0, 2] : [0, 1]; // ejes tangentes
-      const base = pos.length / 3;
-      for (let i = 0; i < 4; i++) {
-        const cv = f.c[i];
-        const p = [x + nx, y + ny, z + nz];
-        const d1 = [0, 0, 0], d2 = [0, 0, 0];
-        d1[ax[0]] = cv[ax[0]] ? 1 : -1; d2[ax[1]] = cv[ax[1]] ? 1 : -1;
-        const s1 = has(p[0] + d1[0], p[1] + d1[1], p[2] + d1[2]) ? 1 : 0;
-        const s2 = has(p[0] + d2[0], p[1] + d2[1], p[2] + d2[2]) ? 1 : 0;
-        const cc = has(p[0] + d1[0] + d2[0], p[1] + d1[1] + d2[1], p[2] + d1[2] + d2[2]) ? 1 : 0;
-        ao[i] = s1 && s2 ? 0 : 3 - (s1 + s2 + cc);
-        const m = AO[ao[i]];
-        pos.push((x + cv[0]) * scale, (y + cv[1]) * scale, (z + cv[2]) * scale);
-        nor.push(nx, ny, nz);
-        col.push(tmp.r * m, tmp.g * m, tmp.b * m);
-      }
-      // diagonal del quad según la oclusión (evita "moños" en los degradés)
-      if (ao[0] + ao[2] >= ao[1] + ao[3]) idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
-      else idx.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-  g.setIndex(idx);
-  return g;
-}
+const meshAO = (v, scale) => v.toGeometry({ scale, jitter: JITTER, aoLevels: AO });
 
 // ---------- Compilación y caché ----------
 function compile(model, themeId = DEFAULT_THEME, o = {}) {

@@ -187,6 +187,33 @@ ok(c.styles <= a.styles, `<style> en el documento: ${a.styles} → ${c.styles}`)
 ok(c.modals === 0 && c.overlays === 0, `sin modales ni overlays colgados (${c.modals}/${c.overlays})`);
 ok(c.nodes <= a.nodes * 1.1, `nodos del DOM: ${a.nodes} → ${c.nodes}`);
 
+// Mallas: todos los edificios en todas las épocas, con y sin unir caras (greedy). Vértices y tiempo de armado.
+console.log('\n■ Mallas (greedy meshing)');
+const meshBench = async (greedy) => {
+  const pg = await browser.newPage();
+  await pg.goto(`${BASE}?scene=city&mock=1&mockuser=ana&reset&nosplash&nosw&greedy=${greedy ? 1 : 0}`, { waitUntil: 'load' });
+  await sleep(2500);
+  const r = await pg.evaluate(async () => {
+    const vx = await import('/src/core/voxel.js');
+    const { buildingModel } = await import('/src/city/models.js');
+    const { BUILDINGS } = await import('/src/core/data.js');
+    const s0 = { ...vx.meshStats }, t0 = performance.now();
+    for (const b of BUILDINGS) for (let lv = 1; lv <= 5; lv++) for (let era = 1; era <= 5; era++) {
+      try { buildingModel(b.id, lv, { era }); } catch { /* sin ese nivel */ }
+    }
+    const s = vx.meshStats;
+    return { builds: s.builds - s0.builds, verts: s.verts - s0.verts, faces: s.faces - s0.faces, meshMs: Math.round(s.ms - s0.ms), totalMs: Math.round(performance.now() - t0) };
+  });
+  await pg.close();
+  return r;
+};
+const m0 = await meshBench(false), m1 = await meshBench(true);
+console.log('    sin greedy:', JSON.stringify(m0));
+console.log('    con greedy:', JSON.stringify(m1));
+console.log(`    vértices ${m0.verts} → ${m1.verts} (${Math.round(100 - m1.verts / m0.verts * 100)} % menos); armado ${m0.meshMs} → ${m1.meshMs} ms`);
+ok(m1.builds === m0.builds && m1.faces === m0.faces, 'mismas mallas y mismas caras al aire en los dos modos');
+ok(m1.verts < m0.verts, 'greedy arma menos vértices');
+
 await browser.close();
 server.close();
 if (errors.length) console.log('\n=== ERRORES DE PÁGINA ===\n' + [...new Set(errors)].join('\n'));
