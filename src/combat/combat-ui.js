@@ -6,6 +6,7 @@
 // Usa solo los tokens de la interfaz oscura (styles.css, plan §J6).
 import { icon } from '../core/icons.js';
 import { esc } from '../core/ui.js';
+import { t } from '../core/i18n.js';
 import { ENEMIES, UNITS, TILES, COMBOS, COMBAT } from './combat-data.js';
 import { CLASSES } from './classes.js';
 import { accentCss } from './class-accent.js';
@@ -91,6 +92,9 @@ const CSS = `
 .scene-combat .cb-act.item { background:var(--wood-d); }
 .scene-combat .cb-end { min-height:58px; padding:6px 16px; font-size:19px; display:flex; flex-direction:column; align-items:center; line-height:1; }
 .scene-combat .cb-end small { font-size:12px; opacity:.85; margin-top:3px; }
+.scene-combat .cb-speed { min-height:58px; padding:6px 12px; font-size:19px; display:flex; flex-direction:column; align-items:center; line-height:1; }
+.scene-combat .cb-speed small { font-size:12px; opacity:.85; margin-top:3px; }
+.scene-combat .cb-tag .b .w { background:#2c6f8f; } .scene-combat .cb-tag .b .f { background:#b3501f; } .scene-combat .cb-tag .b .g { background:#4f6b3a; }
 .scene-combat .cb-keys { font-size:13px; color:var(--ink-l); background:var(--hud-glass); padding:1px 8px 2px; border-radius:6px; }
 .scene-combat .cb-hint { min-height:22px; padding:3px 12px; font-size:16px; text-align:center; transition:opacity .25s; }
 .scene-combat .cb-hint.gone { opacity:0; }
@@ -187,6 +191,9 @@ function traits(u) {
     else if (u.moved) out.push(['', 'Ya se movió']);
   } else {
     const d = ENEMIES[u.type] || {};
+    if (u.warded) out.push(['', t('combat.trait.warded')]);
+    if (d.ai) out.push(['bad', t('combat.ai.' + d.ai)]);
+    if (d.flies) out.push(['bad', t('combat.trait.flies')]);
     if (u.armor) out.push(['', `Coraza −${u.armor}`]);
     if (d.nip) out.push(['bad', `Acoso ${d.nip}`]);
     if (u.marked) out.push(['gold', `Marcado +${u.marked}`]);
@@ -196,6 +203,9 @@ function traits(u) {
     if (u.high) out.push(['bad', 'En lo alto']);
     if (u.boss) out.push(['bad', `Fase ${u.phase + 1}`]);
   }
+  if (u.wet) out.push(['', t('combat.status.wet')]);
+  if (u.burn) out.push(['bad', t('combat.status.burn')]);
+  if (u.cover) out.push(['good', t('combat.trait.cover')]);
   return out;
 }
 function cardHtml(u) {
@@ -204,6 +214,7 @@ function cardHtml(u) {
   const pct = Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100));
   let intent = '';
   if (u.side === 'enemy') intent = u.intent?.hidden ? '<div class="it">Su golpe no se ve (el Catalejo muestra más).</div>'
+    : u.intent?.heal ? `<div class="it">${esc(t('combat.intent.heal', { n: u.intent.heal }))}</div>`
     : u.intent ? `<div class="it">Va a pegar: ${esc(u.intent.name)} · ${u.intent.dmg}</div>` : '<div class="tx">Todavía no marcó su golpe.</div>';
   return `<div class="hd"><b>${esc(unitLabel(u))}</b><small>${u.hp}/${u.maxHp}</small></div>
     <div class="bar"><i style="width:${pct}%"></i></div>
@@ -212,10 +223,15 @@ function cardHtml(u) {
     <div class="tr">${traits(u).map(([c, t]) => `<span class="${c}">${esc(t)}</span>`).join('')}</div>
     ${role ? `<div class="tx">${esc(role)}</div>` : ''}`;
 }
+const tr = t;   // dentro de tileHtml, "t" es la casilla
 function tileHtml(t, b) {
   const def = TILES[t.t] || {};
   const bits = [];
-  if (t.t === 'agua') bits.push('Cuesta 2 moverse.');
+  if (t.water) bits.push(tr('combat.tile.water'));
+  if (t.flow) bits.push(tr('combat.tile.flow'));
+  if (t.cover) bits.push(tr('combat.tile.cover'));
+  if (t.fire) bits.push(tr(t.fire >= 90 ? 'combat.tile.bonfire' : 'combat.tile.fire', { n: COMBAT.fireDmg }));
+  if (t.steam) bits.push(tr('combat.tile.steam'));
   if (t.t === 'alto') {
     const lv = b ? (b.ropeItem ? 5 : Math.max(0, Math.min(5, b.tools?.cuerda || 0))) : 0;
     bits.push(`Subir cuesta ${COMBAT.climb[lv]}${lv ? ' (con la Cuerda)' : ''}. Desde acá se pega +1 y se tira más lejos.`);
@@ -248,7 +264,8 @@ export function buildCombatUi(root, ctx, h) {
     <div class="cb-bottom">
       <div class="cb-card cb-sel cb-panel"></div>
       <div class="cb-bar"><div class="cb-hint cb-panel gone"></div><div class="cb-acts cb-panel"></div>
-        <div class="cb-keys">Clic: elegir y mover · 1–9: habilidades · Tab: siguiente · Q/E: girar · Esc: menú</div></div>
+        <div class="cb-keys">Clic: elegir y mover · 1–9: habilidades · Tab: siguiente · Q/E: girar · Esc: menú · ${esc(t('combat.keys.extra'))}</div></div>
+      <button class="btn second cb-speed" data-tip="${esc(t('combat.speed.tip'))}" aria-label="${esc(t('combat.speed.label'))}">×1<small>+</small></button>
       <button class="btn second cb-end">Fin de turno<small>Espacio</small></button>
     </div>
     <div class="cb-banner cb-panel"></div>
@@ -258,7 +275,9 @@ export function buildCombatUi(root, ctx, h) {
   const acts = $('.cb-acts'), hintEl = $('.cb-hint'), endBtn = $('.cb-end'), banner = $('.cb-banner');
   const chipsEl = $('.cb-chips'), tagsEl = $('.cb-tags'), prevEl = $('.cb-prev'), fx = $('.cb-fx');
   $('.cb-menu').onclick = () => h.onMenu();
-  endBtn.onclick = () => h.onEnd();
+  const speedBtn = $('.cb-speed');
+  speedBtn.onclick = () => h.onSpeed?.();
+  endBtn.onclick = () => (last?.st?.busy ? h.onSkip?.() : h.onEnd());
   let barIds = [];
   let last = null;
   LBL.player = ctx?.store?.state?.player?.name || ctx?.state?.player?.name || '';
@@ -280,6 +299,7 @@ export function buildCombatUi(root, ctx, h) {
       ${extra.length ? `<span class="extra">${esc(extra.join(' · '))}</span>` : ''}`;
     const enemyPhase = v.phase === 'enemy';
     turnEl.classList.toggle('enemy', enemyPhase);
+    speedBtn.firstChild.textContent = '×' + (st.speed || 1);
     turnEl.innerHTML = `<small>Turno</small><b>${v.turn}</b><small>de ${v.maxTurns}</small>`;
     turnEl.dataset.tip = `Si se llega al turno ${v.maxTurns}, se hace de noche y hay que replegarse.`;
     // orden del turno
@@ -289,7 +309,7 @@ export function buildCombatUi(root, ctx, h) {
       const tag = u.captive && !u.freed ? 'atado' : u.acted ? 'listo' : u.moved ? 'se movió' : '';
       return `<div class="cb-o ally${done ? ' done' : ''}${u.id === st.sel ? ' sel' : ''}" data-id="${u.id}"><i class="dot" style="background:${accentCss(u)}"></i><span class="nm">${unitLabel(u, { html: true })}</span><span class="st">${tag}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`;
     }).join('')}<h4 class="e">${enemyPhase ? 'Juegan los enemigos' : 'Después, en orden'}</h4>${hiddenLine(en)}${en.map(u =>
-      `<div class="cb-o enemy" data-hover="${u.id}"><i class="dot"></i><span class="nm">${esc(u.name)}</span><span class="st">${u.intent?.hidden ? '?' : u.intent ? '−' + u.intent.dmg : ''}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`).join('') || '<div class="cb-o"><span class="nm">Ninguno en pie</span></div>'}`;
+      `<div class="cb-o enemy" data-hover="${u.id}"><i class="dot"></i><span class="nm">${esc(u.name)}</span><span class="st">${u.intent?.hidden ? '?' : u.intent?.heal ? '+' + u.intent.heal : u.intent ? '−' + u.intent.dmg : ''}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`).join('') || '<div class="cb-o"><span class="nm">Ninguno en pie</span></div>'}`;
     order.querySelectorAll('.cb-o.ally').forEach(el => { el.onclick = () => h.onSelect(el.dataset.id); });
     // ficha de la unidad elegida
     const su = v.units.find(u => u.id === st.sel);
@@ -314,7 +334,7 @@ export function buildCombatUi(root, ctx, h) {
       let el = tagsEl.querySelector(`[data-id="${u.id}"]`);
       if (!el) { el = document.createElement('div'); el.dataset.id = u.id; tagsEl.append(el); }
       const pct = Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100));
-      const badges = [u.marked ? `<span>+${u.marked}</span>` : '', u.root ? '<span class="r">frenado</span>' : '', u.intent?.hidden ? '<span class="q">?</span>' : ''].join('');
+      const badges = [u.marked ? `<span>+${u.marked}</span>` : '', u.root ? '<span class="r">frenado</span>' : '', u.wet ? `<span class="w">${esc(t('combat.status.wet'))}</span>` : '', u.burn ? `<span class="f">${esc(t('combat.status.burn'))}</span>` : '', u.warded ? `<span class="g">${esc(t('combat.trait.wardedShort'))}</span>` : '', u.intent?.hidden ? '<span class="q">?</span>' : ''].join('');
       const ac = accentCss(u);
       const html = `<span class="n">${u.boss ? esc(u.name) : ''}</span><div class="hpb"${ac ? ` style="border-left:4px solid ${ac}"` : ''}><i style="width:${pct}%"></i></div><div class="b">${badges}</div>`;
       if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
