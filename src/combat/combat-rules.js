@@ -67,6 +67,22 @@ function abilityDef(id) {
   if (id.startsWith('item:')) return ITEMS[id.slice(5)] || null;
   return ABILITIES[id] || null;
 }
+/**
+ * Paso A3: la habilidad como la usa esa unidad. u.am = { [id]: { plus, cd, range, heal, root, turns, cover, radius, dmg } }
+ * (lo que le cambian los rasgos del arma, el árbol y las reliquias; lo arma src/core/loot.js). Sin cambios, la de siempre.
+ */
+const AM_ADD = ['plus', 'heal', 'root', 'turns', 'cover', 'radius'];
+function unitDef(u, id) {
+  const base = abilityDef(id);
+  const p = base && u && u.am ? u.am[id] : null;
+  if (!p) return base;
+  const d = { ...base };
+  for (const k of AM_ADD) if (p[k] && (k === 'plus' || typeof base[k] === 'number')) d[k] = Math.max(k === 'plus' ? 0 : 1, (base[k] || 0) + p[k]);
+  if (p.dmg && typeof base.dmg === 'number' && base.dmg > 0) d.dmg = Math.max(1, base.dmg + p.dmg);
+  if (p.cd && base.cd > 0) d.cd = Math.max(1, base.cd + p.cd);
+  if (p.range && base.range[1] > 0) d.range = [base.range[0], Math.max(base.range[0], base.range[1] + p.range)];
+  return d;
+}
 function phaseIdx(u) {
   const ph = ENEMIES[u.type]?.phases;
   if (!ph) return 0;
@@ -164,9 +180,9 @@ function makeUnit(b, side, type, x, y, extra = {}) {
   // la Fuerza (paso 2a): b.foe escala la vida y el ataque de los enemigos cuando el grupo pasa la recomendada
   // paso A2: en el farmeo los enemigos de siempre traen menos vida (farmHp) y la Marea (I a III) los endurece
   const base = enc.farm && d.farmHp ? d.farmHp : d.hp;
-  const hp = side === 'enemy' ? Math.max(1, Math.round(base * (enc.foeHp || 1) * (d.boss ? enc.bossHp || 1 : 1) * (b.foe?.hp || 1) * (COMBAT.marea[b.marea || 1]?.hp || 1))) : d.hp;
+  const hp = side === 'enemy' ? Math.max(1, Math.round(base * (enc.foeHp || 1) * (d.boss ? enc.bossHp || 1 : 1) * (b.foe?.hp || 1) * (COMBAT.marea[b.marea || 1]?.hp || 1) * (b.rules?.foeHp || 1))) : d.hp;
   const u = {
-    id: 'u' + b.nextId++, side, type, x, y, hp, maxHp: hp, mv: d.mv, atk: (d.atk || 0) + (side === 'enemy' && d.atk ? b.foe?.atk || 0 : 0), armor: d.armor || 0,
+    id: 'u' + b.nextId++, side, type, x, y, hp, maxHp: hp, mv: d.mv, atk: (d.atk || 0) + (side === 'enemy' && d.atk ? (b.foe?.atk || 0) + (b.rules?.foeAtk || 0) : 0), armor: d.armor || 0,
     abilities: (d.abilities || []).slice(), cd: {}, moved: false, acted: false, alive: true, safe: false,
     root: 0, marked: 0, hurt: false, intent: null, dir: [0, side === 'ally' ? -1 : 1], phase: 0, ...extra,
   };
@@ -176,7 +192,7 @@ function makeUnit(b, side, type, x, y, extra = {}) {
 
 export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], level = 1, element = null, elements = null, leader = null,
   classLevel = null, picks = {}, roleLevel = null, tools = {}, equip = [], attempt = 1, gear = null, power = null, itemPlus = null, foeExtra = 0,
-  marea = 1, fragments = [] } = {}) {
+  marea = 1, fragments = [], rules = null } = {}) {
   const enc = ENCOUNTERS[encounter];
   if (!enc) throw new Error('encuentro desconocido: ' + encounter);
   const map = buildMap(enc, seed >>> 0);
@@ -185,12 +201,15 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
     v: 1, enc: enc.id, kind: enc.kind, seed: seed >>> 0, rs: (seed ^ 0x2545f491) | 0,
     w: map.w, h: map.h, tiles: map.tiles,
     marea: Math.max(1, Math.min(COMBAT.marea.length - 1, marea | 0 || 1)),
+    // paso A3: reglas que cambian el árbol (nodos clave) y las reliquias de la salida (src/core/loot.js, loadout):
+    // { foeHp ×, foeAtk +, maxTurns +, startCover, noHeal, closeRank, killHeal }
+    rules: { ...(rules || {}) },
     fire: new Array(N).fill(0), steam: new Array(N).fill(0),
     flood: new Array(N).fill(0), floodNext: [], walls: [], traps: [], cover: {},
     bridge: enc.bridge && map.bridge.length ? { hp: enc.bridge.hp, max: enc.bridge.hp, cut: false, tiles: map.bridge, count: 0 } : null,
     wavePoints: map.waves, exits: map.exits, incoming: [],
     units: [], nextId: 1, turn: 1, phase: 'player', ended: false, outcome: null, reason: null,
-    maxTurns: enc.maxTurns || (enc.farm ? COMBAT.maxTurns.farm : COMBAT.maxTurns[enc.kind]) || 14,
+    maxTurns: (enc.maxTurns || (enc.farm ? COMBAT.maxTurns.farm : COMBAT.maxTurns[enc.kind]) || 14) + Math.max(0, rules?.maxTurns | 0),
     objective: { ...enc.objective },
     tools: { catalejo: 0, martillo: 0, cuerda: 0, botiquin: 0, farol: 0, ...tools }, ropeItem: false,
     items: {}, level, element, attempt, intentPlus: 0, lootWin: 0,
@@ -236,6 +255,7 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
     if (ENEMIES[type].boss && fails) u.maxHp = u.hp = Math.round(u.hp * (1 - COMBAT.revancha.bossHp * fails));
   });
 
+  if (b.rules.startCover > 0) for (const a of b.units) if (a.side === 'ally' && !a.captive) b.cover[a.id] = b.rules.startCover;
   const ev = [];
   planIncoming(b, ev, true);
   return b;
@@ -268,6 +288,10 @@ function applyGear(b, u, g) {
   }
   if (g.affinity?.length) u.aff = g.affinity.slice();
   if (g.type) u.weapon = g.type;
+  // paso A3, "sos lo que llevás puesto": el arma define las habilidades activas (las de elemento del líder quedan)
+  if (g.skills?.length) u.abilities = [...new Set([...g.skills.filter(id => ABILITIES[id]), ...u.abilities.filter(id => ABILITIES[id]?.element)])];
+  if (g.mv) u.mv = Math.max(1, u.mv + g.mv);
+  if (g.abil) u.am = g.abil;
   return u;
 }
 const flag = (u, k) => (u && u.f ? u.f[k] || 0 : 0);
@@ -386,6 +410,9 @@ function hurt(b, t, amount, src, ev) {
   if (src.high) dmg += COMBAT.highDmg;
   if (t.armor && !src.pierce) dmg -= t.armor;
   if (t.side === 'ally' && src.side === 'enemy' && !src.nip) dmg -= guardFor(b, t) + (b.cover[t.id] || 0) + protectorFor(b, t);
+  // paso A3, Fila cerrada: con alguien del grupo pegado, 1 menos
+  if (b.rules?.closeRank && t.side === 'ally' && src.side === 'enemy' && !src.nip
+    && b.units.some(a => a !== t && a.side === 'ally' && onBoard(a) && !a.captive && man(a.x, a.y, t.x, t.y) === 1)) dmg -= b.rules.closeRank;
   // paso A2: el matorral tapa de los tiros; el guardián cubre a los enemigos que tiene pegados; Marea apaga a los de Brasa
   if (src.ranged && tileDef(b, t.x, t.y).cover) dmg -= COMBAT.coverDmg;
   if (t.side === 'enemy' && src.side === 'ally' && !src.react && wardedBy(b, t)) dmg -= COMBAT.wardDmg;
@@ -406,6 +433,7 @@ function kill(b, u, src, ev) {
   if (u.side === 'ally' && !u.captive) b.stats.downs++;
   if (u.side === 'enemy' && src.by) b.stats.kills[src.by] = (b.stats.kills[src.by] || 0) + 1;
   if (u.side === 'enemy' && (src.loot || flag(src.unit, 'lootKill'))) { b.stats.stolen++; ev.push({ type: 'stolen', id: u.id }); }
+  if (u.side === 'enemy' && b.rules?.killHeal && src.unit?.side === 'ally') heal(b, src.unit, b.rules.killHeal, ev);   // Sangre vieja
   // quien invocaba ya no trae a nadie
   if (u.side === 'enemy' && b.incoming.some(s => s.by === u.id)) b.incoming = b.incoming.filter(s => s.by !== u.id);
   if (u.side === 'enemy' && ENEMIES[u.type].explode) {
@@ -551,7 +579,7 @@ function landOn(b, o, src, ev) {
   if (onBoard(o) && o.captive && o.freed && b.tiles[I(b, o.x, o.y)] === 'salida') { o.safe = true; ev.push({ type: 'rescued', id: o.id }); }
 }
 function heal(b, t, amount, ev) {
-  if (!t || !onBoard(t)) return 0;
+  if (!t || !onBoard(t) || b.rules?.noHeal) return 0;   // Juramento de sangre: nadie se cura
   const n = Math.min(amount, t.maxHp - t.hp);
   if (n > 0) { t.hp += n; ev.push({ type: 'heal', id: t.id, amount: n, hp: t.hp }); }
   return n;
@@ -574,7 +602,7 @@ function cancelIntent(b, e, ev) {
 export function abilitiesOf(b, unitId) {
   const u = unitById(b, unitId);
   if (!u || u.side !== 'ally' || u.captive) return [];
-  const out = u.abilities.map(id => ({ id, def: ABILITIES[id], cd: u.cd[id] || 0 }));
+  const out = u.abilities.map(id => ({ id, def: unitDef(u, id), cd: u.cd[id] || 0 }));
   const c = captiveOf(b);
   if (c && !c.freed && onBoard(c)) out.push({ id: 'liberar', def: ABILITIES.liberar, cd: 0 });
   for (const [id, n] of Object.entries(b.items)) if (n > 0) out.push({ id: 'item:' + id, def: ITEMS[id], cd: 0, item: true });
@@ -620,7 +648,7 @@ function canTarget(b, u, def, x, y, fx = u.x, fy = u.y) {
 /** Casillas válidas para una habilidad, desde donde está la unidad o desde (fx, fy). */
 export function targets(b, unitId, abilityId, fx, fy) {
   const u = unitById(b, unitId);
-  const def = abilityDef(abilityId);
+  const def = u ? unitDef(u, abilityId) : null;
   if (!u || !def) return [];
   const sx = fx ?? u.x, sy = fy ?? u.y;
   const out = [];
@@ -1218,6 +1246,8 @@ export function enemyTurn(b) {
   const gone = b.walls.filter(w => w.turns <= 0);
   if (gone.length) { b.walls = b.walls.filter(w => w.turns > 0); ev.push({ type: 'wallGone', tiles: gone.map(w => [w.x, w.y]) }); }
   b.cover = {};
+  // paso A3, Rescoldo guardado: el grupo sigue cubierto los primeros 3 turnos enemigos
+  if (b.rules?.startCover > 0 && b.turn < 3) for (const a of b.units) if (a.side === 'ally' && onBoard(a) && !a.captive) b.cover[a.id] = b.rules.startCover;
   // 4. refuerzos
   for (const s of b.incoming) spawn(b, s, ev);
   b.incoming = [];

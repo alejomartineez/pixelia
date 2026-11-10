@@ -188,6 +188,75 @@ Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
   que ahí "Resolver rápido" da lo de antes; los comunes de la historia siguen en 8×8; el bot no usa reacciones; el arte
   de los enemigos nuevos son cubos. En el worktree, `tools/node_modules` es un enlace al del checkout principal.
 
+### A3: botín y construcción de personaje (rama `claude/a3-botin-b43392`, sale de A2 + master v63; sin bump ni push)
+Todo con cubos e interfaz mínima. Motores puros con semilla; nada de arte.
+- **Archivos nuevos**: `src/core/loot-data.js` (tablas: 31 efectos, 29 rasgos, habilidades por arma, botín por Marea, 15
+  reliquias), `src/core/loot.js` (motor), `src/core/tree-data.js` (27 nodos, 3 ramas, 3 nodos clave), `src/core/tree.js`
+  (puntos, requisitos, reinicio), `src/scenes/tree.js` (pantalla: `?scene=tree&veta=400`; flechas, Enter, R, Esc),
+  `tools/test-loot.mjs` (132), `tools/test-tree.mjs` (51) y `tools/sim-loot.mjs` (`npm run sim:loot`; con `--check` va en
+  `npm test`).
+- **Objetos**: `rollItem(rng, { source, marea })` da un arma con rareza y de 1 a 4 rasgos en `w.affixes: [{ id, v, skill? }]`
+  (común 1, poco común 1 a 2, rara 2 a 3, épica 3 a 4, reliquia 4). Van al arsenal de siempre; las armas viejas
+  (`w.traits`) siguen valiendo. Los rasgos cambian habilidades: daño, recarga, alcance, cura, freno, radio.
+- **"Sos lo que llevás puesto"**: `WEAPON_SKILLS` da a cada tipo de arma su golpe y 3 habilidades (2 al empezar, la tercera
+  con maestría 4; se llevan 2, `pickSkills`). Quien no equipó nada usa las del arma de su clase. Las de elemento del líder
+  y los fragmentos quedan.
+- **Árbol**: los puntos salen de la veta que deja cada pelea (`state.tree = { v, xp, nodes, resets }`; se completa solo, así
+  que no hizo falta migración ni subir la versión del guardado). Nodos clave: Juramento de sangre (todos +1 de ataque,
+  sin curas), Fila cerrada (1 menos de daño con alguien al lado, 1 menos de movimiento) y Marea adentro (enemigos con
+  25 % más de vida; cada pelea deja un arma, y mejor).
+- **Reliquias de salida**: `newRun`, `relicOffer` (3 a elegir), `takeRelic`, `skipRelic`; hasta 6 por salida. El objeto de
+  la salida lo guarda la Travesía.
+- **Enganche para la Travesía (A1, todavía no está en master)**; también está escrito arriba de `loot.js`:
+  `const L = loadout(state, { party, leaderCls, run })` y `newBattle({ ..., marea: run.marea, gear: L.gear, rules: L.rules })`.
+  Al ganar: `applyLoot(state, battleLoot({ result, source, marea, seed, mods: L.loot, luck: state.arsenal.luck, wins:
+  run.wins }))` (source: `'pelea'`, `'elite'` o `'jefe'`) y `noteWin(run, result)`. `battleLoot` acepta igual el resultado de
+  `autoResolve` (botín completo). Los materiales vuelven en `mats` para que los dé la economía.
+- **Combate** (`combat-rules.js`, cambios chicos): `newBattle({ rules })` con `foeHp`, `foeAtk`, `maxTurns`, `startCover`,
+  `noHeal`, `closeRank` y `killHeal`; `gear[quién]` acepta `skills`, `abil` (cambios por habilidad, `u.am`) y `mv`. Sin
+  esos campos todo es igual que antes (`test-combat` 100, `test-combat-farm` 65, `test-arsenal` 122, `test-i18n` 126).
+- **Simulador** (10 salidas, semilla 1, nivel del grupo fijo en el de la Marea I): fuerza media del arma puesta 48 → 166 →
+  190 (salidas 1, 5 y 10), rasgos por arma 2 → 3,5, rareza media 1,3 → 2,8, 14 puntos del árbol y 55 armas. Con lo
+  puesto gana 31 de 33 peleas jugadas; las mismas sin nada, 24 de 33 (en Marea III, 15 de 23).
+- **Pendiente**: enchufarlo en `src/voyage/` cuando A1 esté en master (nodos de pelea, élite, jefe y reliquia) y en la
+  expedición vieja (`gear.js` sigue con `fightMods` y `dropWeapon` del 2a). La ficha del objeto y la pantalla de equipo con
+  los rasgos nuevos (`itemLines`, `itemPower`) son de U2. La escena del combate muestra los números base de cada
+  habilidad, no los cambiados. El desarme por falta de lugar ordena por `weaponPower` (sin los rasgos nuevos). En el
+  simulador la Marea sube rápido (III en la salida 3): el balance fino queda para A5. Textos nuevos en es, en y ja.
+- Al mergear: `npm run bump` (5 archivos nuevos en `src/` para `sw.js`).
+
+### Enganche A1 + A2 + A3: la salida completa (rama `claude/a3b-enganche-32ce5a`, sale de A3 + master; sin bump ni push)
+- **Qué hay**: desde `?scene=voyage&seed=N` (`&marea=1..3` la fuerza) una salida se juega de punta a punta sin arte. El
+  muelle elige la Marea (la II se abre al vencer al jefe en la I, la III en la II). Peleas, élites y jefe son los
+  encuentros de farmeo del Arroyo (`FARM.arroyo`) en 6×6 con esa Marea. Al ganar cae el botín de A3: armas con rareza
+  y rasgos al arsenal, veta al árbol, maestría al arma usada. El panel **Equipo** (en el muelle y en la salida) compara
+  por fuerza y equipa; el arma define las habilidades de la pelea siguiente (si la pelea no empezó, se arma de nuevo).
+  Las reliquias salen de las dos tablas juntas (6 del viaje + 15 del combate y el botín): élites, recompensa y eventos.
+  **Resolver sola**: pelea común ya ganada con 3 estrellas en esa Marea, botín completo. Al terminar: materiales y
+  experiencia a la aldea, y el árbol se abre desde el resumen, el muelle y la ciudad (botón provisorio).
+- **Dónde**: `src/voyage/voyage-rules.js` (`env = { state }` en `enter`, `endCombat`, `leave`; `voyageState`,
+  `loadoutOf`, `refreshBattle`, `canAuto`, `autoFight`, `ALL_RELICS`; sin `env` la salida lleva su propia partida en
+  `run.bag`), `voyage-scene.js` (muelle, equipo, botín en la tarjeta), `voyage-data.js` (encuentros del Arroyo; la élite
+  ya no multiplica vida), `scenes/tree.js` (`backParams`), `scenes/city.js` (botón del árbol), 33 claves en `es.js`.
+- **Guardado**: `state.voyage = { runs, wins, active, best: { marea: { enc: estrellas } }, mareaMax, marea }`; `state.arsenal`
+  y `state.tree` se completan solos. Una partida vieja y una salida guardada antes del botín abren sin romperse.
+- **Decisiones**: las armas y la veta se guardan al ganar cada pelea (caer solo parte los materiales a la mitad). La vida
+  que da un arma es un resguardo por pelea, no se arrastra. La resolución automática vale solo en nodos de pelea.
+- **Pruebas**: `test-voyage-loop` 88 (41 en Node), `test-voyage` 82, `test-combat` 100, `test-combat-farm` 65,
+  `test-arsenal` 122, `test-loot` 132, `test-tree` 51, `test-i18n` 126, `test-glossary` 8, `sim-loot --check`. No se corrió
+  la suite completa. `test-i18n` falló una vez por el WebGL de SwiftShader y pasó al repetirla.
+- **Números** (`npm run sim:voyage`, bot prudente): sin equipo previo gana 90 % en Marea I, 80 % en la II y 10 % en la III,
+  con 4,3 / 5,2 / 6,1 turnos por pelea y unos 10 min por salida. Carrera de farmeo de 6 salidas por Marea: 8,6 / 6,8 / 6,9
+  min por salida; armas por salida 2,7 / 3,8 / 4,8 (raras o mejores 1,0 / 2,0 / 2,7); fuerza media 78 / 91 / 137; veta
+  77 / 145 / 221; materiales 16 / 30 / 51.
+- **Flojo (para A5)**: con 2 salidas de farmeo por Marea el bot ya gana 100 % en la III y las peleas bajan a 2,6 turnos:
+  el equipo y el árbol (un punto cada 30 a 40 de veta, 19 puntos en 18 salidas) le ganan a la Marea III, que es el
+  techo. Mirar muchas armas por salida (hasta 5) con un panel que solo ordena por fuerza cansa: falta "es mejor para
+  esto". La recompensa 1 de 3 sigue ofreciendo +1 de ataque y vida al lado del botín, y pesa poco. Los otros 8 idiomas
+  caen al español en las claves nuevas. Al mergear: `npm run bump`.
+
+2. Mergear el enganche A1 + A2 + A3 (rama `claude/a3b-enganche-32ce5a`, ya trae A3). Después U2 completo sobre el mock aprobado.
+
 ## Próximos pasos (ver "Orden" en el plan)
 1. v66: mergear las cuatro ramas de arriba; suite, bump, commit y push.
 2. U2 completo sobre el mock aprobado. A5: prueba con jugadores del prototipo con cubos (`docs/PLAYTEST-1.md`).

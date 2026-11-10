@@ -5,7 +5,7 @@
 // un puñado de modificadores (`mods`, se suman o multiplican en voyage-rules.js relicMods) y, si hace falta algo que
 // no entra en un modificador, funciones en `on` (voyage-rules.js fire: battle, fightWon, enter, finish). Para sumar
 // una reliquia o una recompensa nueva alcanza con agregar la entrada acá (o con registerRelic / registerReward).
-import { TUTORIAL_PARTY } from '../combat/combat-data.js';
+import { TUTORIAL_PARTY, FARM } from '../combat/combat-data.js';
 
 export const NODE_TYPES = ['pelea', 'elite', 'evento', 'campamento', 'jefe'];
 export const FIGHT_TYPES = ['pelea', 'elite', 'jefe'];
@@ -20,19 +20,20 @@ export const VOY = {
   // el grupo del prototipo (fijo hasta que A3 lo arme con lo que llevás puesto)
   party: TUTORIAL_PARTY, level: 4, classLevel: 2, element: 'raiz',
   downHp: 1,             // quien cayó en una pelea llega a la siguiente con esta vida
-  elite: { hp: 1.4 },    // la élite es el mismo encuentro con enemigos más duros
+  elite: { hp: 1 },      // las élites del Arroyo ya son encuentros propios (combat-data.js FARM.arroyo.elites)
   camp: { heal: 0.5, train: { maxHpAll: 2, atkLeader: 1 } },
   reward: { relicChance: 0.3 },
   loseLoot: 0.5,         // caer o retirarse: se vuelve con la mitad
 };
 
-/** La isla de la porción vertical: Bosque del Arroyo, con la Bestia del Bañado al final. */
+/** La isla de la porción vertical: Bosque del Arroyo (los encuentros de farmeo del paso A2), con la Bestia del Bañado al final. */
+const even = (ids) => Object.fromEntries(ids.map(id => [id, 10]));
 export const ISLANDS = {
   bosque: {
     id: 'bosque',
-    fights: { bosque_claro: 45, bosque_manada: 40, cerro_veta: 15 },
-    elites: { bosque_manada: 60, cerro_veta: 40 },
-    boss: 'banado_bestia',
+    fights: even(FARM.arroyo.comunes),
+    elites: even(FARM.arroyo.elites),
+    boss: FARM.arroyo.jefe,
     events: ['puente', 'herido', 'altar', 'nido', 'fogata'],
   },
 };

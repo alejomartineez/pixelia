@@ -99,6 +99,8 @@ const PASSED = {
   'src/core/gear.js': [],
   'src/core/power.js': [],
   'src/scenes/panels-arsenal.js': [],
+  // A3 (PLAN-FOTO): botín, árbol y reliquias
+  'src/core/loot.js': [], 'src/core/loot-data.js': [], 'src/core/tree.js': [], 'src/core/tree-data.js': [], 'src/scenes/tree.js': [],
 };
 console.log('Archivos pasados a claves');
 const stripComments = (code) => code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');

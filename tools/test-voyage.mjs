@@ -144,9 +144,9 @@ function runTo(seed, type) {
   if (re) {
     const node = R.nodeOf(re, re.pos), plain = C.newBattle({ encounter: node.enc, seed: R.activeBattle(re).seed, party: re.party, level: re.level, element: re.element, classLevel: Object.fromEntries(re.party.map(c => [c, re.classLevel])) });
     const hp = (b) => b.units.filter(u => u.side === 'enemy').reduce((a, u) => a + u.maxHp, 0);
-    check(hp(R.activeBattle(re)) > hp(plain) * 1.2, 'la élite es el encuentro con enemigos más duros', [hp(R.activeBattle(re)), hp(plain)]);
+    check((await imp('src/combat/combat-data.js')).FARM.arroyo.elites.includes(node.enc) && hp(R.activeBattle(re)) === Math.round(hp(plain) * D.VOY.elite.hp), 'la élite es un encuentro de élite del Arroyo', [node.enc, hp(R.activeBattle(re)), hp(plain)]);
     R.endCombat(re, winBattle(re));
-    check(re.pending.options[0].id === 'reliquia' && !!D.RELICS[re.pending.options[0].relic], 'y siempre ofrece una reliquia', re.pending.options);
+    check(re.pending.options[0].id === 'reliquia' && R.ALL_RELICS().includes(re.pending.options[0].relic), 'y siempre ofrece una reliquia', re.pending.options);
     R.choose(re, 'reliquia');
     check(re.relics.length === 1, 'la reliquia elegida queda en la salida');
   }
