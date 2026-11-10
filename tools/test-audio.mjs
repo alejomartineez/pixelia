@@ -89,7 +89,7 @@ const M = JSON.parse(readFileSync(join(ROOT, 'assets/audio/manifest.json'), 'utf
   ok(files.every(([, f]) => lic.includes(f.file)), 'LICENSES.md anota cada archivo con su origen');
   ok(ccby.every(c => lic.includes('- Atribución: ' + c.attribution)), 'LICENSES.md copia la atribución de cada pista CC BY');
   // fuera de las pistas grabadas, nada con atribución obligatoria, NC o ND
-  const licRest = lic.split('\n## ').filter(s => !/Licencia: CC BY 4\.0\n/.test(s)).join('\n## ').replace(/CC0/g, '').replace(/CC BY 4\.0 y el crédito es obligatorio/, '');
+  const licRest = lic.split('\n## ').filter(s => !/Licencia: CC BY 4\.0\r?\n/.test(s)).join('\n## ').replace(/CC0/g, '').replace(/CC BY 4\.0 y el crédito es obligatorio/, '');
   ok(!/sonniss/i.test(lic) && !/CC.BY|NC|ND/.test(licRest), 'no hay Sonniss ni otras licencias con atribución obligatoria, NC o ND');
   const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
   ok(sw.includes('./assets/audio/manifest.json') && sw.includes('./assets/audio/inst/piano_C4.m4a'), 'assets/ entra al precache del service worker');
