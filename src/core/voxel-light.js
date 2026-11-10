@@ -63,7 +63,27 @@ float shadowCone(vec3 o, vec3 d, float maxT, float ap) {
   }
   return T;
 }
-vec3 skyAt(vec3 d) { return mix(groundCol, skyCol, smoothstep(-0.6, 0.15, d.y)); }
+// Cielo físico (setEnv({ physSky })): dispersión simple de Rayleigh y Mie por dirección. El aire que atraviesa la
+// mirada (m) da el horizonte más claro; el que atraviesa el sol (ms) lo apaga y lo enrojece cuando baja; la fase de
+// Mie da el resplandor alrededor del sol. De noche queda skyNight. Bajo el horizonte, el suelo. El mismo cálculo está
+// en JS (skyRad) para la luz ambiente del rebote. skyP = (fuerza, Mie, nublado 0..1, prendido).
+uniform vec3 skySun; uniform vec4 skyP; uniform vec3 skyNight;
+vec3 skyAt(vec3 d) {
+  if (skyP.w < 0.5) return mix(groundCol, skyCol, smoothstep(-0.6, 0.15, d.y));
+  float y = max(d.y, 0.0);
+  vec3 bR = vec3(0.036, 0.086, 0.20); float bM = skyP.y;
+  vec3 ext = bR + bM;
+  float m = 1.0 / (y + 0.15);
+  float ms = mix(0.3, 1.0, pow(1.0 - y, 4.0)) / (max(skySun.y, 0.0) + 0.06);
+  float mu = dot(d, skySun);
+  float pR = 0.0597 * (1.0 + mu * mu), pM = 0.0509 / pow(1.36 - 1.2 * mu, 1.5);
+  vec3 L = skyP.x * exp(-ext * ms) * (bR * pR + bM * pM) / ext * (1.0 - exp(-ext * m));
+  L *= smoothstep(-0.14, 0.03, skySun.y);
+  L += skyNight * (0.7 + 0.3 * y);
+  L = mix(L, vec3(dot(L, vec3(0.2126, 0.7152, 0.0722))), skyP.z);
+  return mix(groundCol, L, smoothstep(-0.35, 0.0, d.y));
+}
+// fin del cielo
 // la luz que sale de una celda (emitida + rebote horneado): el rgb va premultiplicado por la ocupación y como raíz
 vec3 radiance(vec4 s) { return s.rgb * s.rgb * (${RAD_MAX.toFixed(1)} / max(s.a, 0.06)); }
 `;
@@ -72,7 +92,25 @@ const LIGHT_FS = VOL_GLSL + `
 uniform sampler2D tDepth; uniform sampler2D tNormal;
 uniform mat4 invProj; uniform mat4 camWorld;
 uniform vec3 sunDir; uniform float sunOn; uniform float sunAp;
-uniform float giGain; uniform float aoPow;
+uniform float giGain; uniform float aoPow; uniform int aoRef; uniform float gMin; uniform float gMix; uniform float aoFloor;
+// Referencia para diagnosticar (r.light.aoRef = 1): la oclusión del cielo por fuerza bruta, 48 rayos finos celda a celda
+vec3 skyRef(vec3 P, vec3 N, vec3 t1, vec3 t2) {
+  vec3 sum = vec3(0.0);
+  for (int i = 0; i < 48; i++) {
+    float u = (float(i) + 0.5) / 48.0, r = sqrt(u), ph = float(i) * 2.39996323;
+    vec3 d = normalize(t1 * (r * cos(ph)) + t2 * (r * sin(ph)) + N * sqrt(1.0 - u));
+    vec3 o = P + N * cell * 0.02;
+    float ex = min(exitT(o, d), 6.0), open = 1.0;
+    for (int k = 0; k < 96; k++) {
+      float t = (float(k) + 0.5) * cell * 0.5;
+      if (t >= ex) break;
+      vec3 q = (floor((o + d * t - volMin) / cell) + 0.5) * cell + volMin;
+      if (vol(q, 0.0).a > 0.5) { open = 0.0; break; }
+    }
+    sum += open * skyAt(d);
+  }
+  return sum / 48.0;
+}
 uniform vec4 pPos[${MAX_POINTS}]; uniform vec3 pCol[${MAX_POINTS}]; uniform int pCount;
 varying vec2 vUv;
 // Cono ancho: junta la luz de lo emisivo que encuentra y, con lo que queda libre, la del cielo.
@@ -89,9 +127,11 @@ vec3 gather(vec3 o, vec3 d, out float open) {
     vec4 s = vol(o + d * t, lod);
     float k = exp2(lod * 0.5);
     acc += T * s.rgb * s.rgb * (${(RAD_MAX * 0.64).toFixed(2)} * giGain) * min(k, 4.0);
+    // el mínimo lee la ocupación tal cual: una pared rasante tapa medio cono, y contarla inflada por el mipmap
+    // (o una vez por paso) era lo que dejaba las caras de los escalones más oscuras que la referencia (aoRef)
     float free = clamp(1.0 - s.a * mix(1.0, k, 0.25), 0.0, 1.0);
-    Tp *= pow(free, 0.64); Tm = min(Tm, free);
-    T = mix(Tm, Tp, 0.3);
+    Tp *= pow(free, 0.64); Tm = min(Tm, 1.0 - s.a * gMin);
+    T = mix(Tm, Tp, gMix);
     if (T < 0.02) { T = 0.0; break; }
     t += diam * 0.44;
   }
@@ -127,7 +167,8 @@ void main() {
   // piso de luz para lo que sigue enterrado: una franja negra pura se lee como un error, no como sombra
   if (ins > 0.6) E = max(E, skyAt(N) * 0.1);
   // y para las ranuras de un vóxel de ancho, donde los cinco conos chocan enseguida con la pared de enfrente
-  E += skyAt(N) * (0.24 * (1.0 - ao));
+  E += skyAt(N) * (aoFloor * (1.0 - ao));
+  if (aoRef > 0) E = skyRef(P, N, t1, t2);
 
   for (int i = 0; i < ${MAX_POINTS}; i++) {
     if (i >= pCount) break;
@@ -232,7 +273,7 @@ vec3 reflCone(vec3 o, vec3 d, float ap) {
     if (T < 0.03) { T = 0.0; break; }
     t += diam * 0.7;
   }
-  return acc + T * bgCol * smoothstep(-0.2, 0.1, d.y);
+  return acc + T * (skyP.w > 0.5 ? skyAt(d) : bgCol * smoothstep(-0.2, 0.1, d.y));
 }
 #endif
 varying vec3 vWorld;
@@ -300,10 +341,10 @@ export function createVoxelLight(renderer, opts = {}) {
   const classify = opts.classify || (() => null);
   // ---------- volumen ----------
   const min = new THREE.Vector3(-8, -2, -8), size = new THREE.Vector3(16, 6, 16);
-  let nx = 1, ny = 1, nz = 1, cov = null, alb = null, emi = null, data = null, tex = null;
+  let nx = 1, ny = 1, nz = 1, cov = null, alb = null, emi = null, data = null, tex = null, mips = [], bakeBox = null;
   const entries = new Map();
   let seq = 0, dirty = null, glow = 0, builtGlow = 0;
-  const stats = { cells: 0, entries: 0, builds: 0, buildMs: 0, splats: 0, bakes: 0, bakeMs: 0 };
+  const stats = { cells: 0, entries: 0, builds: 0, buildMs: 0, splats: 0, bakes: 0, bakeMs: 0, bakeCells: 0, uploads: 0, fullUploads: 0, uploadCells: 0, uploadMs: 0 };
   const uVol = { value: null };
   function alloc() {
     nx = Math.max(1, Math.ceil(size.x / cell - 1e-6)); ny = Math.max(1, Math.ceil(size.y / cell - 1e-6)); nz = Math.max(1, Math.ceil(size.z / cell - 1e-6));
@@ -318,8 +359,11 @@ export function createVoxelLight(renderer, opts = {}) {
     tex.wrapS = tex.wrapT = tex.wrapR = THREE.ClampToEdgeWrapping;
     tex.generateMipmaps = true; tex.unpackAlignment = 1;
     uVol.value = tex;
+    // los mipmaps se arman en CPU (mips[0] = data): así se puede subir solo la zona que cambió, en todos los niveles
+    mips = [{ d: data, x: nx, y: ny, z: nz }];
+    for (let x = nx, y = ny, z = nz; Math.max(x, y, z) > 1;) { x = Math.max(1, x >> 1); y = Math.max(1, y >> 1); z = Math.max(1, z >> 1); mips.push({ d: new Uint8Array(x * y * z * 4), x, y, z }); }
     stats.cells = n;
-    dirty = fullBox();
+    dirty = fullBox(); bakeBox = null; bakeDirty = true;
   }
   const fullBox = () => [0, 0, 0, nx - 1, ny - 1, nz - 1];
   const grow = (b, c) => b ? [Math.min(b[0], c[0]), Math.min(b[1], c[1]), Math.min(b[2], c[2]), Math.max(b[3], c[3]), Math.max(b[4], c[4]), Math.max(b[5], c[5])] : c.slice();
@@ -400,13 +444,14 @@ export function createVoxelLight(renderer, opts = {}) {
     for (const en of entries.values()) if (!en.box || en.fresh || touch(en.box, c)) { en.fresh = false; splatEntry(en); }
     dirty = null; clip = null; builtGlow = glow;
     stats.builds++; stats.buildMs = performance.now() - t0; stats.entries = entries.size;
-    bakeDirty = true;
+    // solo se rehornea (y se sube) la zona tocada, con una celda de margen: la normal de cada celda mira a sus vecinas
+    bakeBox = grow(bakeBox, c);
   }
   // Rebote difuso (hito 4): a cada celda de superficie se le hornea en CPU la luz que devuelve (sol con sombra y
   // algo de cielo, por su color), sumada a lo que emite. Los conos del pase de luz, la niebla y los reflejos leen
   // ese rgb, así que el rebote sale gratis en GPU. Se rehace todo el volumen cuando cambia la escena o el sol.
   const baked = { dir: new THREE.Vector3(), sun: new THREE.Color(), sky: new THREE.Color(), t: -1e9 };
-  let bakeDirty = true, bounce = opts.bounce ?? 0.7;
+  var bakeDirty = true; let bounce = opts.bounce ?? 0.7;
   function sunVis(x, y, z, dx, dy, dz) {
     let T = 1;
     for (let s = 0; s < 96; s++) {
@@ -418,11 +463,13 @@ export function createVoxelLight(renderer, opts = {}) {
     }
     return T;
   }
-  function bake() {
+  /** Hornea el rgba de una caja de celdas (default: todo el volumen), arma sus mipmaps y sube solo esa zona. */
+  function bake(box) {
     const t0 = performance.now();
+    const c = box ? [Math.max(0, box[0] - 1), Math.max(0, box[1] - 1), Math.max(0, box[2] - 1), Math.min(nx - 1, box[3] + 1), Math.min(ny - 1, box[4] + 1), Math.min(nz - 1, box[5] + 1)] : fullBox();
     const sd = env.sunDir, S = env.sun, K = env.sky, G = env.ground, sunOn = S.r + S.g + S.b > 1e-4;
     const FREE = 0.3, sxy = nx * ny;
-    for (let z = 0, i = 0; z < nz; z++) for (let y = 0; y < ny; y++) for (let x = 0; x < nx; x++, i++) {
+    for (let z = c[2]; z <= c[5]; z++) for (let y = c[1]; y <= c[4]; y++) for (let x = c[0], i = x + nx * (y + ny * z); x <= c[3]; x++, i++) {
       const o = i * 4, w = cov[i];
       if (w <= 0) { data[o] = data[o + 1] = data[o + 2] = data[o + 3] = 0; continue; }
       const a = Math.min(1, w), k = a / w / RAD_MAX;
@@ -448,10 +495,44 @@ export function createVoxelLight(renderer, opts = {}) {
       data[o + 2] = Math.min(255, Math.sqrt(b * k) * 255 + 0.5);
       data[o + 3] = a * 255 + 0.5;
     }
-    tex.needsUpdate = true;
-    bakeDirty = false;
-    baked.dir.copy(sd); baked.sun.copy(S); baked.sky.copy(K); baked.t = t0;
-    stats.bakes++; stats.bakeMs = performance.now() - t0;
+    if (!box) { bakeDirty = false; baked.dir.copy(sd); baked.sun.copy(S); baked.sky.copy(K); baked.t = t0; }
+    bakeBox = null;
+    stats.bakes++; stats.bakeCells = (c[3] - c[0] + 1) * (c[4] - c[1] + 1) * (c[5] - c[2] + 1);
+    upload(c);
+    stats.bakeMs = performance.now() - t0;
+  }
+  // Mipmaps de la caja c (promedio de 2×2×2, como el de la GPU) y subida de esa zona en cada nivel con texSubImage3D.
+  // La textura la crea three una sola vez (initTexture); después no se vuelve a tocar tex.needsUpdate.
+  function upload(c) {
+    const t0 = performance.now();
+    const gl = renderer.getContext(), props = renderer.properties.get(tex);
+    if (!props.__webglTexture) { tex.needsUpdate = true; renderer.initTexture(tex); c = fullBox(); stats.fullUploads++; }
+    else if (c[0] <= 0 && c[1] <= 0 && c[2] <= 0 && c[3] >= nx - 1 && c[4] >= ny - 1 && c[5] >= nz - 1) stats.fullUploads++;
+    renderer.state.bindTexture(gl.TEXTURE_3D, props.__webglTexture);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    let x0 = c[0], y0 = c[1], z0 = c[2], x1 = c[3], y1 = c[4], z1 = c[5], cells = 0;
+    for (let L = 0; L < mips.length; L++) {
+      const m = mips[L];
+      if (L > 0) {
+        const s = mips[L - 1], sd = s.d, md = m.d, sx = s.x, sxy = s.x * s.y;
+        x0 >>= 1; y0 >>= 1; z0 >>= 1; x1 = Math.min(m.x - 1, x1 >> 1); y1 = Math.min(m.y - 1, y1 >> 1); z1 = Math.min(m.z - 1, z1 >> 1);
+        if (x0 > x1 || y0 > y1 || z0 > z1) break;
+        for (let z = z0; z <= z1; z++) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+          const ax = 2 * x, bx = Math.min(s.x - 1, ax + 1), ay = 2 * y * sx, by = Math.min(s.y - 1, 2 * y + 1) * sx, az = 2 * z * sxy, bz = Math.min(s.z - 1, 2 * z + 1) * sxy;
+          const o = (x + m.x * (y + m.y * z)) * 4;
+          const i0 = (ax + ay + az) * 4, i1 = (bx + ay + az) * 4, i2 = (ax + by + az) * 4, i3 = (bx + by + az) * 4, i4 = (ax + ay + bz) * 4, i5 = (bx + ay + bz) * 4, i6 = (ax + by + bz) * 4, i7 = (bx + by + bz) * 4;
+          for (let k = 0; k < 4; k++) md[o + k] = (sd[i0 + k] + sd[i1 + k] + sd[i2 + k] + sd[i3 + k] + sd[i4 + k] + sd[i5 + k] + sd[i6 + k] + sd[i7 + k] + 4) >> 3;
+        }
+      }
+      // sin copiar: se le dice a GL de dónde leer la caja dentro del arreglo entero
+      gl.pixelStorei(gl.UNPACK_ROW_LENGTH, m.x); gl.pixelStorei(gl.UNPACK_IMAGE_HEIGHT, m.y);
+      gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, x0); gl.pixelStorei(gl.UNPACK_SKIP_ROWS, y0); gl.pixelStorei(gl.UNPACK_SKIP_IMAGES, z0);
+      gl.texSubImage3D(gl.TEXTURE_3D, L, x0, y0, z0, x1 - x0 + 1, y1 - y0 + 1, z1 - z0 + 1, gl.RGBA, gl.UNSIGNED_BYTE, m.d);
+      if (L === 0) cells = (x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1);
+    }
+    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0); gl.pixelStorei(gl.UNPACK_IMAGE_HEIGHT, 0);
+    gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0); gl.pixelStorei(gl.UNPACK_SKIP_ROWS, 0); gl.pixelStorei(gl.UNPACK_SKIP_IMAGES, 0);
+    stats.uploads++; stats.uploadCells = cells; stats.uploadMs = performance.now() - t0;
   }
   const far = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.g - b.g) + Math.abs(a.b - b.b) > 0.04 * (a.r + a.g + a.b + b.r + b.g + b.b) + 1e-4;
   // caja (en celdas) que va a ocupar una entrada, estimada desde su caja local: para saber qué zona rehacer
@@ -480,6 +561,38 @@ export function createVoxelLight(renderer, opts = {}) {
   const lRT = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
   const normalMat = new THREE.MeshNormalMaterial();
   const env = { sunDir: new THREE.Vector3(0.4, 0.8, 0.3).normalize(), sun: new THREE.Color(2, 1.9, 1.7), sky: new THREE.Color(0.4, 0.5, 0.7), ground: new THREE.Color(0.1, 0.09, 0.08) };
+  // cielo físico: el mismo cálculo que skyAt del shader, para sacar en CPU la luz ambiente y el color del sol
+  const sky = { dir: new THREE.Vector3(0, 1, 0), p: new THREE.Vector4(0, 0.05, 0, 0), night: new THREE.Color(0, 0, 0), albedo: new THREE.Color(0.22, 0.2, 0.17) };
+  const BR = [0.036, 0.086, 0.20], LUM = [0.2126, 0.7152, 0.0722];
+  const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  function skyRad(dx, dy, dz, out) {
+    const y = Math.max(dy, 0), bM = sky.p.y, s = sky.dir;
+    const m = 1 / (y + 0.15), ms = (0.3 + 0.7 * Math.pow(1 - y, 4)) / (Math.max(s.y, 0) + 0.06);
+    const mu = dx * s.x + dy * s.y + dz * s.z, pR = 0.0597 * (1 + mu * mu), pM = 0.0509 / Math.pow(1.36 - 1.2 * mu, 1.5);
+    const day = sky.p.x * sstep(-0.14, 0.03, s.y), nk = 0.7 + 0.3 * y, nt = [sky.night.r, sky.night.g, sky.night.b];
+    let lum = 0;
+    for (let i = 0; i < 3; i++) { const e = BR[i] + bM; out[i] = day * Math.exp(-e * ms) * (BR[i] * pR + bM * pM) / e * (1 - Math.exp(-e * m)) + nt[i] * nk; lum += out[i] * LUM[i]; }
+    for (let i = 0; i < 3; i++) out[i] += (lum - out[i]) * sky.p.z;
+    return out;
+  }
+  /** Color del sol después de cruzar el aire (más bajo = más rojo y más débil), en las unidades de env.sun. */
+  function skySun(target, strength = 1) {
+    const s = sky.dir, ms = 1 / (Math.max(s.y, 0) + 0.06), k = strength * sstep(-0.02, 0.06, s.y) * (1 - 0.85 * sky.p.z);
+    return target.setRGB(k * Math.exp(-(BR[0] + sky.p.y) * ms), k * Math.exp(-(BR[1] + sky.p.y) * ms), k * Math.exp(-(BR[2] + sky.p.y) * ms));
+  }
+  // luz ambiente del cielo físico: promedio de la semiesfera de arriba (pesado por el coseno) y lo que devuelve el suelo
+  const tmp3 = [0, 0, 0];
+  function skyAmbient() {
+    let r = 0, g = 0, b = 0; const n = 48;
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n, rr = Math.sqrt(u), ph = i * 2.39996323;
+      skyRad(rr * Math.cos(ph), Math.sqrt(1 - u), rr * Math.sin(ph), tmp3);
+      r += tmp3[0]; g += tmp3[1]; b += tmp3[2];
+    }
+    env.sky.setRGB(r / n, g / n, b / n);
+    const sy = Math.max(env.sunDir.y, 0);
+    env.ground.setRGB(sky.albedo.r * (env.sky.r + env.sun.r * sy), sky.albedo.g * (env.sky.g + env.sun.g * sy), sky.albedo.b * (env.sky.b + env.sun.b * sy));
+  }
   const pPos = Array.from({ length: MAX_POINTS }, () => new THREE.Vector4()), pCol = Array.from({ length: MAX_POINTS }, () => new THREE.Vector3());
   const lightMat = new THREE.ShaderMaterial({
     uniforms: {
@@ -487,7 +600,7 @@ export function createVoxelLight(renderer, opts = {}) {
       invProj: { value: new THREE.Matrix4() }, camWorld: { value: new THREE.Matrix4() },
       volMin: { value: min }, volSize: { value: size }, cell: { value: cell },
       sunDir: { value: env.sunDir }, sunOn: { value: 1 }, sunAp: { value: opts.sunAperture ?? 0.07 },
-      skyCol: { value: env.sky }, groundCol: { value: env.ground }, giGain: { value: 1 }, aoPow: { value: 1.3 },
+      skyCol: { value: env.sky }, groundCol: { value: env.ground }, skySun: { value: sky.dir }, skyP: { value: sky.p }, skyNight: { value: sky.night }, giGain: { value: 1 }, aoPow: { value: 1 }, aoRef: { value: 0 }, gMin: { value: 1 }, gMix: { value: 0.1 }, aoFloor: { value: 0 },
       pPos: { value: pPos }, pCol: { value: pCol }, pCount: { value: 0 },
     },
     vertexShader: QUAD_VS, fragmentShader: LIGHT_FS, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -497,7 +610,7 @@ export function createVoxelLight(renderer, opts = {}) {
   const fogMat = new THREE.ShaderMaterial({
     uniforms: {
       tDepth: lu.tDepth, tVol: uVol, invProj: lu.invProj, camWorld: lu.camWorld, volMin: lu.volMin, volSize: lu.volSize, cell: lu.cell,
-      sunDir: lu.sunDir, sunCol: { value: env.sun }, skyCol: lu.skyCol, groundCol: lu.groundCol,
+      sunDir: lu.sunDir, sunCol: { value: env.sun }, skyCol: lu.skyCol, groundCol: lu.groundCol, skySun: lu.skySun, skyP: lu.skyP, skyNight: lu.skyNight,
       fogP: { value: new THREE.Vector3(0, 0, 1) }, frame: { value: 0 }, fogGlow: { value: 0.6 },
       pPos: lu.pPos, pCol: lu.pCol, pCount: lu.pCount,
     },
@@ -513,7 +626,7 @@ export function createVoxelLight(renderer, opts = {}) {
     tLight: { value: lRT.texture }, tGN: { value: gRT.texture }, tGD: { value: gRT.depthTexture },
     halfSize: { value: new THREE.Vector2(1, 1) }, fullSize: { value: new THREE.Vector2(1, 1) },
     camNear: { value: 0.1 }, camFar: { value: 100 }, sunDir: { value: env.sunDir }, sunCol: { value: env.sun }, debugView: { value: 0 },
-    tVol: uVol, volMin: lu.volMin, volSize: lu.volSize, cell: lu.cell, skyCol: lu.skyCol, groundCol: lu.groundCol,
+    tVol: uVol, volMin: lu.volMin, volSize: lu.volSize, cell: lu.cell, skyCol: lu.skyCol, groundCol: lu.groundCol, skySun: lu.skySun, skyP: lu.skyP, skyNight: lu.skyNight,
     time: { value: 0 }, bgCol: { value: new THREE.Color(0.5, 0.6, 0.8) },
   };
   const mats = new Map();
@@ -553,6 +666,25 @@ export function createVoxelLight(renderer, opts = {}) {
     get fogTexture() { return fRT.texture; },
     get fogOn() { return fogOn; },
     get debug() { return shared.debugView.value; }, set debug(v) { shared.debugView.value = v | 0; },
+    /** Cielo físico: color del sol a través del aire (skySun(color, fuerza)) y radiancia del cielo en una dirección. */
+    skySun,
+    skyColor(dir, target) { skyRad(dir.x, dir.y, dir.z, tmp3); return target.setRGB(tmp3[0], tmp3[1], tmp3[2]); },
+    /** Fondo de cielo para cámaras en perspectiva: un plano al fondo que pinta skyAt por pixel (sumarlo a la escena). */
+    skyDome() {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+        uniforms: { skyCol: lu.skyCol, groundCol: lu.groundCol, skySun: lu.skySun, skyP: lu.skyP, skyNight: lu.skyNight, sunCol: { value: env.sun } },
+        vertexShader: `varying vec3 vDir; void main() { vec4 v = inverse(projectionMatrix) * vec4(position.xy, 1.0, 1.0); vDir = transpose(mat3(viewMatrix)) * (v.xyz / v.w); gl_Position = vec4(position.xy, 1.0, 1.0); }`,
+        fragmentShader: `precision highp float; uniform vec3 skyCol; uniform vec3 groundCol; uniform vec3 sunCol; varying vec3 vDir;
+          ${VOL_GLSL.slice(VOL_GLSL.indexOf('uniform vec3 skySun'), VOL_GLSL.indexOf('// fin del cielo'))}
+          void main() { vec3 d = normalize(vDir); vec3 c = skyAt(d);
+            if (skyP.w > 0.5) c += sunCol * (24.0 * smoothstep(0.99985, 0.99995, dot(d, skySun)) * smoothstep(-0.02, 0.01, d.y));
+            gl_FragColor = vec4(c, 1.0); }`,
+        depthWrite: false, depthFunc: THREE.LessEqualDepth,
+      }));
+      m.frustumCulled = false; m.renderOrder = -1000; m.userData.noLight = true;
+      return m;
+    },
+    get aoRef() { return lightMat.uniforms.aoRef.value; }, set aoRef(v) { lightMat.uniforms.aoRef.value = v | 0; },
     get bounds() { return { min: min.clone(), size: size.clone(), dims: [nx, ny, nz] }; },
     /** Caja del volumen en coordenadas de mundo. Tira lo armado: llamarla antes de agregar. */
     setBounds(mn, mx) {
@@ -622,9 +754,25 @@ export function createVoxelLight(renderer, opts = {}) {
       if (e.sun) env.sun.copy(e.sun);
       if (e.sky) env.sky.copy(e.sky);
       if (e.ground) env.ground.copy(e.ground);
+      // cielo físico: { sunDir (el sol de verdad, puede estar bajo el horizonte), strength, mie, cloud 0..1, night: Color }
+      // o null para volver al cielo plano. Pisa sky y ground con lo que da el modelo; el sol lo pone quien llama (skySun).
+      if (e.physSky !== undefined) {
+        const k = e.physSky;
+        sky.p.w = k ? 1 : 0;
+        if (k) {
+          if (k.sunDir) sky.dir.copy(k.sunDir).normalize();
+          if (k.strength != null) sky.p.x = k.strength;
+          if (k.mie != null) sky.p.y = k.mie;
+          sky.p.z = Math.max(0, Math.min(1, k.cloud || 0));
+          if (k.night) sky.night.copy(k.night);
+          if (k.ground) sky.albedo.copy(k.ground);
+        }
+      }
+      if (sky.p.w) skyAmbient();
       if (e.sunAperture != null) lightMat.uniforms.sunAp.value = e.sunAperture;
       if (e.giGain != null) lightMat.uniforms.giGain.value = e.giGain;
       if (e.aoPow != null) lightMat.uniforms.aoPow.value = e.aoPow;
+      for (const k of ['gMin', 'gMix', 'aoFloor']) if (e[k] != null) lightMat.uniforms[k].value = e[k];
       if (e.bounce != null && e.bounce !== bounce) { bounce = e.bounce; bakeDirty = true; }
       // niebla volumétrica: { density (por unidad de mundo; 0 = sin niebla), height (y donde empieza a aflojar), falloff, glow }
       if (e.fog !== undefined) {
@@ -662,7 +810,7 @@ export function createVoxelLight(renderer, opts = {}) {
     /** Antes del dibujo principal: rehace el volumen si hace falta, pre-pase de profundidad y normales, y pase de luz. */
     prepare(scene, camera) {
       rebuild();
-      if (bakeDirty && cov) bake();
+      if (cov) { if (bakeDirty) bake(); else if (bakeBox) bake(bakeBox); }
       frame++;
       shared.time.value = clock ?? performance.now() / 1000;
       if (scene.background?.isColor) shared.bgCol.value.copy(scene.background); else shared.bgCol.value.copy(env.sky);

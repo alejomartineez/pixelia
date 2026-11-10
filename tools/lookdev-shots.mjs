@@ -4,7 +4,7 @@
 //   node tools/lookdev-shots.mjs --check         → no saca la serie: compara greedy=0 contra greedy=1 pixel a pixel y
 //                                                  prueba el worker de mallas con su caché (sale con 1 si algo no da)
 //   node tools/lookdev-shots.mjs --bench         → costo por cuadro de classic, post y photo con la GPU de verdad (corrida corta)
-//   --out <carpeta> (default shots/lookdev) · --size 1366x800 · --tag <sufijo>
+//   --out <carpeta> (default shots/lookdev) · --size 1366x800 · --tag <sufijo> · --clip x,y,ancho,alto · --query a=1&b=2
 import http from 'node:http';
 import { readFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
 import { join, extname, resolve, dirname } from 'node:path';
@@ -23,6 +23,7 @@ const RENDERS = String(opt('renders', BENCH ? 'classic,post,photo' : 'classic,ph
 const OUT = resolve(ROOT, String(opt('out', 'shots/lookdev')));
 const [W, H] = String(opt('size', '1366x800')).split('x').map(Number);
 const TAG = opt('tag', '') ? '-' + opt('tag') : '';
+const CLIP = opt('clip', '') ? String(opt('clip')).split(',').map(Number) : null;   // --clip x,y,ancho,alto: solo ese recorte
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.woff2': 'font/woff2', '.vox': 'application/octet-stream' };
 const server = http.createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
@@ -69,7 +70,7 @@ if (BENCH) {
   for (const cam of CAMS) for (const h of HOURS) for (const render of RENDERS) {
     const page = await open(`cam=${cam}&hour=${h}&render=${render}${EXTRA}`);
     const f = join(OUT, `${cam}-h${String(h).replace('.', '_')}-${render}${TAG}.png`);
-    await page.screenshot({ path: f });
+    await page.screenshot(CLIP ? { path: f, clip: { x: CLIP[0], y: CLIP[1], width: CLIP[2], height: CLIP[3] } } : { path: f });
     const s = await stats(page);
     console.log('captura:', f, JSON.stringify({ postOn: s?.postOn, verts: s?.verts, faces: s?.faces, triangles: s?.triangles }));
     await page.close();
@@ -114,7 +115,21 @@ if (BENCH) {
   const shotS = await sync.screenshot({ encoding: 'base64' });
   const dA = await diff(shotA, shotS), dB = await diff(shotB, shotS);
   ok(dA.n === 0 && dB.n === 0, 'worker, caché y sincrónico dan la misma captura', { dA, dB });
-  await sync.close(); await cmp.close(); await page.close();
+  await sync.close(); await page.close();
+
+  console.log('\n■ Volumen de luz: subida parcial');
+  const ph = await open('cam=iso&hour=15&render=photo&still=1&taa=0&grain=0&dof=0');
+  const l0 = (await stats(ph)).light;
+  ok(l0 && l0.fullUploads === 1 && l0.uploadCells === l0.cells, `al armar se sube todo una vez (${l0?.cells} celdas)`, l0);
+  const built = (n) => ph.waitForFunction(`window.__lookdev.r.light.stats.builds >= ${n}`, { timeout: 60000 }).then(() => sleep(1500));
+  await ph.evaluate('window.__lookdev.poke()'); await built(l0.builds + 1);
+  const l1 = (await stats(ph)).light, part = await ph.screenshot({ encoding: 'base64' });
+  ok(l1.fullUploads === 1 && l1.uploads === l0.uploads + 1 && l1.uploadCells < l0.cells * 0.02, `un bloque nuevo sube solo su zona (${l1.uploadCells} celdas, ${(l1.uploadCells / l0.cells * 100).toFixed(2)} % del volumen, ${l1.uploadMs.toFixed(2)} ms)`, l1);
+  await ph.evaluate('window.__lookdev.full()'); await built(l1.builds + 1);
+  const l2 = (await stats(ph)).light, whole = await ph.screenshot({ encoding: 'base64' });
+  const dP = await diff(part, whole);
+  ok(l2.fullUploads === 2 && dP.n <= dP.total * 0.002, `la subida parcial da la misma imagen que rehacer todo (${dP.n} de ${dP.total} pixeles distintos, máxima ${dP.max})`, { l2, dP });
+  await ph.close(); await cmp.close();
 }
 
 await browser.close(); server.close();
