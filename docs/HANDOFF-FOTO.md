@@ -21,6 +21,42 @@ nuevo), cerca de una hora de juego, para probar con jugadores y como demo de Ste
   `tools/make-vox.mjs`, `tools/test-vox.mjs`, diorama de lookdev y el arreglo del glosario. Falta: suite completa,
   bump, commit final y merge a master.
 
+### R1: motor fotográfico (rama `claude/r1-render-024ec7`, sin bump ni push; 2026-11-10)
+Vive en el diorama detrás de `tools/lookdev.html?render=photo` (default). `?render=classic` es el render del juego y
+`?render=post` el classic con el acabado de la v62 (lo que antes se llamaba photo). No está integrado a la ciudad ni a
+las cinemáticas. Archivos: `src/core/voxel.js`, `src/core/voxel-light.js` (nuevo: falta en `sw.js` hasta el próximo
+`npm run bump`), `tools/lookdev.html`, `tools/lookdev-shots.mjs`.
+- **Hito 1, hecho**: `createPixelRenderer({ photo: true })` → target de escena float16 lineal, exposición
+  (`setPost({ exposure })`), AgX con contraste y saturación (`punch`, `agxSat`; `PHOTO_DEFAULT`), bloom sobre luz real
+  (umbral sobre el brillo expuesto; de noche ya no se infla con `bloomBoost`). En calidad baja o sin `photo`, el
+  código clásico no cambia (todo lo nuevo va detrás de `#ifdef HDR`).
+- **Hito 2, hecho**: volumen RGBA8 3D con mipmaps en mundo (`r.light`): alfa = ocupación, rgb = luz emitida. Celda de
+  1/8 (un vóxel de 8 por tile, dos de 16). `setBounds`, `add(voxels, matrix, { scale, emissive, fillBelow })`,
+  `addMesh`, `update(id, matrix)`, `remove(id)`, `adopt(object3D)` (cambia materiales y vuelca la cáscara de las mallas).
+  Se rehace solo la zona tocada en CPU, pero **la textura se sube entera** (falta la subida parcial).
+- **Hito 3, hecho**: pre-pase de profundidad y normales y pase de luz a media resolución (RGBA16F) con conos en el
+  volumen: sol con penumbra que se abre con la distancia, 5 conos anchos (oclusión, cielo y luz de lo emisivo) y hasta
+  8 luces puntuales con sombra (`setPoints`). Los materiales (`r.light.material('solid'|'glow'|'window'|'water')`) lo
+  leen con upsample bilateral (profundidad y normal). `r.light.debug = 1..4` (`?debug=`) muestra sol, luz sin sol,
+  normal y color.
+- **Costo medido** (`node tools/lookdev-shots.mjs --bench`, RTX 3060 Ti, buffer 2732×1600, `gl.finish` por cuadro):
+  iso classic 3,4 ms · post 2,4 ms · **photo 6,1 ms**; cine classic 1,3 ms · post 4,3 ms · **photo 5,1 ms**. Armar el
+  volumen del diorama (88×52×82 celdas, 25 entradas): 35 a 70 ms, una vez.
+- Pruebas en verde: `test-vox`, `lookdev-shots --check`, `test-stress`, `test-ambience`, `test-cinema`. La suite
+  completa no se corrió. Capturas en `shots/lookdev/` (no van al repo): `*-r0.png` antes, `*-h1.png` hito 1,
+  `*-photo-h3.png` hitos 2 y 3 (9, 15, 19.5 y 22.5 h; iso y cine).
+- **Problemas conocidos**: (1) franjas negras en algunos escalones del acantilado del frente (de día, sobre todo en
+  cine): se ven caras del interior hueco del terreno, que en el volumen quedan dentro del relleno (`fillBelow`) y no
+  reciben luz; arreglar tapando el hueco en el diorama o dando un piso de luz a lo que arranca dentro de un sólido.
+  (2) Las sombras propias son muy oscuras: falta el rebote (hito 4); hoy lo compensa `SKY_K` en el diorama.
+  (3) El agua usa el material fotográfico sin reflejo y toma la luz del fondo. (4) Las vetas casi no tiñen la roca
+  (están al ras de la pared). (5) El classic no se comparó pixel a pixel contra master, solo por pruebas y a ojo.
+  (6) `adopt` no cubre `InstancedMesh` ni materiales propios (`lightMaterial` de models.js queda como estaba).
+- **Sigue (hitos 4 y 5)**: rebote difuso (hornear en CPU la luz directa en el rgb del volumen: los conos ya lo leen),
+  material por vóxel con los flags de `vox-loader.js`, reflejo del cielo y agua; TAA con reproyección (permite
+  rotar los conos por cuadro), bokeh, grano, aberración, viñeteado físico y niebla volumétrica. Después, decidir con
+  las capturas si el diorama alcanza o se reevalúa Unreal 5.
+
 ### Pendiente de integrar (paso A0)
 - `claude/sweet-ramanujan-18bcd8` (sesión `local_8559c03b`, detenida a mitad de turno, **sin commit**): cambios en
   `src/combat/boss-models.js`, `combat-scene.js`, `combat-ui.js`, `enemy-models.js`, `tools/test-act1.mjs` y archivos

@@ -2,6 +2,7 @@
 // Todos los módulos 3D deben usar esto para que el juego se vea coherente.
 import * as THREE from 'three';
 import { frameCap, FPS_PARAM } from './frame-cap.js';
+import { createVoxelLight } from './voxel-light.js';
 
 import { hexToInt, shade, packVoxels, meshPacked, MESH_VERSION } from './voxel-mesh.js';
 export { hexToInt, shade, AO_LEVELS, packVoxels } from './voxel-mesh.js';
@@ -334,12 +335,19 @@ export function createPixelRenderer(container, opts = {}) {
   // opts.post: false apaga el acabado en esta escena (el render "classic" de tools/lookdev.html)
   if (photo && !renderer.capabilities.isWebGL2) photo = false;
   const wantPost = () => photo || (opts.post !== false && (postParam ? postParam === '1' : !low && GFX.post !== false) && renderer.capabilities.isWebGL2);
+  // luz con rayos en el volumen de la escena (voxel-light.js); solo con el render fotográfico
+  const light = photo ? createVoxelLight(renderer, {
+    cell: opts.lightCell,
+    classify: (m) => m === _mat ? 'solid' : m === _matEmissive ? 'glow' : m === _matWindow ? 'window'
+      : (m.isMeshLambertMaterial && m.vertexColors && !m.transparent ? 'solid' : null),
+  }) : null;
+  if (light) renderer.shadowMap.enabled = false;
   function buildOutline() {
     const lines = wantOutline(), n = samples(), pp = wantPost();
     const key = lines || n || grade || pp ? `${lines}|${n}|${pp}|${photo}|${JSON.stringify(sceneOutline ?? null)}` : '';
     if (key === outlineKey) return false;
     outline?.dispose(); outline = null; outlineKey = key;
-    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines, pp, photo);
+    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines, pp, photo, light);
     if (outline && grade) outline.setGrade(grade);
     outline?.setPost(post);
     return true;
@@ -438,7 +446,7 @@ export function createPixelRenderer(container, opts = {}) {
   function applyGfx() {
     if (level && !GFX.autoRes) level = 0;
     buildOutline();
-    const sh = shadows && GFX.shadows;
+    const sh = shadows && GFX.shadows && !light;
     if (sh !== shadowsOn) {
       shadowsOn = renderer.shadowMap.enabled = sh;
       scene.traverse(o => { const ms = Array.isArray(o.material) ? o.material : o.material ? [o.material] : []; for (const m of ms) m.needsUpdate = true; });
@@ -494,6 +502,8 @@ export function createPixelRenderer(container, opts = {}) {
     get postOn() { return !!outline?.post; },
     /** ¿Render fotográfico (cadena HDR)? */
     get photo() { return photo; },
+    /** Luz del render fotográfico (volumen, materiales, ambiente): ver voxel-light.js. null en el render clásico. */
+    light,
     /** ¿Se dibuja el contorno tinta? */
     get outline() { return !!outline && wantOutline(); },
     /** Muestras de antialias (0 = sin antialias). */
@@ -524,6 +534,7 @@ export function createPixelRenderer(container, opts = {}) {
       this.stop(); ro.disconnect(); loops.clear(); live.delete(applyGfx);
       mq?.removeEventListener?.('change', onDpr);
       outline?.dispose();
+      light?.dispose();
       disposeObject(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
@@ -539,7 +550,7 @@ export function createPixelRenderer(container, opts = {}) {
  * mide ≈1 px CSS a cualquier resolución y no hace escalones duros.
  * En perspectiva el umbral crece con la distancia para no rayar el piso lejano en ángulo rasante.
  */
-function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = false, hdr = false) {
+function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = false, hdr = false, light = null) {
   const cfg = typeof o === 'object' ? o : {};
   // RGBA8 en sRGB (no float16): la mitad de memoria y ancho de banda con MSAA, ~25% menos de GPU por
   // cuadro, y la imagen sale igual (la GPU guarda en sRGB y lee de vuelta en lineal, sin bandas).
@@ -726,6 +737,7 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
     get post() { return withPost; },
     setSize(w, h, scale = 2) {
       rt.setSize(w, h); mat.uniforms.texel.value.set(1 / w, 1 / h);
+      light?.setSize(w, h);
       mat.uniforms.lineW.value = Math.max(1, Math.round((cfg.width ?? 1.1) * scale));
       mat.uniforms.aspect.value = w / Math.max(1, h);
       if (pp) {
@@ -745,6 +757,7 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       }
       mat.uniforms.near.value = camera.near; mat.uniforms.far.value = camera.far;
       const prev = renderer.getRenderTarget();
+      light?.prepare(scene, camera);
       renderer.setRenderTarget(rt);
       renderer.render(scene, camera);
       const u = mat.uniforms;
@@ -772,7 +785,8 @@ function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = fa
       const f = g.fog || {};
       u.fogAmt.value = f.amt || 0; if (f.color != null) u.fogColor.value.set(f.color);
       u.fogNear.value = f.near ?? 50; u.fogFar.value = f.far ?? 90;
-      bloomBoost = g.bloomBoost || 0;
+      // en HDR lo emisivo ya brilla de verdad de noche: no hace falta inflar el halo
+      bloomBoost = hdr ? 0 : g.bloomBoost || 0;
     },
     setPost(p) {
       P = { ...POST_DEFAULT, ...(p || {}) };
