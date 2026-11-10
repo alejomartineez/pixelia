@@ -41,14 +41,15 @@ nuevo), cerca de una hora de juego, para probar con jugadores y como demo de Ste
   cuadro; lo destapó `test-settings`): acotado a `MAX`. `test-story` se colgó una vez por un timeout de Chrome con
   la máquina cargada (el proceso no cierra: matarlo a mano) y pasó al reintentar.
 
-### Para integrar en la v66 (una sola suite)
-- **A3b** `claude/a3b-enganche-32ce5a` (`dadde79`; trae A3 `claude/a3-botin-b43392` adentro: Travesía + combate +
-  botín + árbol en una salida jugable). No mergear A3 sola.
-- **R2** `claude/r2-camara-4942b9` (`2b00151`; `src/cinema/` e intro).
-- **Piloto de M2** `claude/m2-piloto-76485d` (`619e3c5`; herramientas .vox y casa de Madera en el diorama).
-- **r1-pendientes** `claude/r1-pendientes-baa692` (`bc56381`; subida parcial del volumen y cielo físico; las franjas
-  del acantilado son sombra real del borde escalonado: decisión de arte).
-- Después: U2 completo sobre el mock, A5 (prueba con jugadores) y recién después A4 (sin relojes).
+- **v66 en master**: A3 + A3b (`claude/a3b-enganche-32ce5a`: botín, árbol y reliquias enganchados a la Travesía y
+  al combate, salida completa jugable), R2 (`claude/r2-camara-4942b9`: cámara de cine), piloto de M2
+  (`claude/m2-piloto-76485d`: herramientas .vox y casa de Madera en el diorama, `?m2=1`) y los pendientes de R1
+  (`claude/r1-pendientes-baa692`: subida parcial del volumen y cielo físico; las franjas del acantilado son sombra
+  real del borde escalonado, decisión de arte). Suite completa en verde (42 pruebas, sin reintentos). Las secciones
+  de abajo que dicen "sin bump ni push" o "falta mergear" son las notas de cada sesión: todo eso ya está en master.
+
+### En curso
+- Nada. No hay ramas pendientes de integrar.
 
 ### A1: prototipo de la Travesía por nodos (rama `claude/a1-travesia-3e736a`, mergeada en la v64)
 **Qué quedó** (se juega de punta a punta con `?scene=voyage&seed=N` o con el botón provisorio "Travesía (prototipo)"
@@ -309,9 +310,9 @@ Todo con cubos e interfaz mínima. Motores puros con semilla; nada de arte.
   actual de 1 × 1, si se suma un alero de entrada o una leñera para la silueta). Falta la variante b de cada módulo.
 
 ## Próximos pasos (ver "Orden" en el plan)
-1. v66: mergear las cuatro ramas de arriba; suite, bump, commit y push.
-2. U2 completo sobre el mock aprobado. A5: prueba con jugadores del prototipo con cubos (`docs/PLAYTEST-1.md`).
-3. Después de la prueba: A4 (sin relojes) y arte (M2).
+1. U2 completo sobre el mock aprobado (`tools/hud-mock.html`).
+2. A5: prueba con jugadores del prototipo con cubos (`docs/PLAYTEST-1.md`).
+3. Después de la prueba: A4 (sin relojes), M2 (arte) y llevar el render fotográfico del diorama a las escenas del juego.
 
 ## Lo que hace el usuario
 - Trámites de Steam (verificación de identidad, pago y esperas) y confirmar en Steamworks qué uso de IA se declara.
