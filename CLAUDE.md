@@ -1,7 +1,8 @@
 # Pixelia
 
-PWA de ciudad vóxel en 3D: la ciudad es la base para salir de **expedición** (roguelite corto por turnos que trae materiales
-de región, planos, hallazgos y terreno) y para aguantar las **amenazas** de cada temporada (crecidas, incendios, tormentas…,
+Juego de PC de **farmeo** en 3D vóxel, oscuro: la aldea (la "ciudad" del código) es el refugio desde donde se sale a la
+**Travesía** (mapa de nodos con el combate táctico al centro, `src/voyage/`; reemplaza a la **expedición** por grilla, que
+sigue en el código hasta que se retire) para traer materiales de región, botín, planos y hallazgos, y para aguantar las **amenazas** de cada temporada (crecidas, incendios, tormentas…,
 con resolución automática si no estás). Los edificios cambian por **épocas** (Madera → Piedra → Ladrillo → Hierro →
 Vidrio y acero) según el rango. Además: rango con Encanto, monumentos, pase de temporada, personajes y temas, y
 online (cuentas, contactos, visitas) con Supabase, y los **Hallazgos** (la colección que se encuentra explorando). Los 4
@@ -9,10 +10,13 @@ minijuegos de antes **se retiraron** en la Fase 5: sus edificios, materiales, po
 abrir una partida vieja (guardado v3, `migrateV3` en `src/core/state.js`, DESIGN-CORE.md §7.2). **Mi Casa** también
 se retiró (La Travesía, paso 1c): el guardado v6 (`migrateV6`) devuelve lo gastado, pasa su Encanto a un bono fijo de la
 ciudad y los trofeos a Logros, en el Diario de la Bitácora (`src/core/achievements.js`).
-Para adultos que juegan ratos cortos. **Es un juego de PC para Windows y macOS, empaquetado con Tauri en `desktop/`.** La web de GitHub Pages sigue
-publicada pero ya no se mantiene para celular. En marcha: historia "El Quiebre", combate táctico, guías y logo Dezings.
-El plan está en [docs/PLAN-QUIEBRE.md](docs/PLAN-QUIEBRE.md) y el estado en [docs/HANDOFF-QUIEBRE.md](docs/HANDOFF-QUIEBRE.md). Textos en español rioplatense, tono cozy
-adulto: cálido y sobrio, sin diminutivos (ver la Guía de tono de DESIGN.md).
+Para adultos, en sesiones de 1 a 2 horas, sin relojes ni esperas. **Es un juego de PC para Windows y macOS, empaquetado con Tauri en `desktop/`.** La web de GitHub Pages sigue
+publicada pero ya no se mantiene para celular. **Plan vigente: [docs/PLAN-FOTO.md](docs/PLAN-FOTO.md)** (porción vertical: una isla
+con todo al nivel final, render de maqueta fotografiada y HUD de PC; primero solo Windows), con el estado en
+[docs/HANDOFF-FOTO.md](docs/HANDOFF-FOTO.md). La historia "El Quiebre", el combate táctico y las guías vienen de
+[docs/PLAN-QUIEBRE.md](docs/PLAN-QUIEBRE.md) ([estado](docs/HANDOFF-QUIEBRE.md)). Textos en español rioplatense, tono
+**refugio cálido, mundo oscuro**: la aldea es la única luz en un mundo roto; voz sobria y seca, sin diminutivos (ver la
+Guía de tono de DESIGN.md).
 
 - Ciclo nuevo (Expedición, Amenazas, Épocas, recursos, tutorial, migración v3, metas de balance y qué archivos toca cada
   fase): [DESIGN-CORE.md](DESIGN-CORE.md) · arquitectura, arte y guía de tono: [DESIGN.md](DESIGN.md) ·
