@@ -153,7 +153,31 @@ las cinemáticas. Archivos: `src/core/voxel.js`, `src/core/voxel-light.js` (nuev
   corto). **De día todavía no** es una maqueta fotografiada: las franjas del acantilado se ven, el fondo es un color
   plano (falta cielo), el rebote casi no se nota y los reflejos del agua son manchas. No alcanza para decidir sobre
   Unreal 5: falta una pasada más (franjas, cielo, y mirar el TAA en movimiento con la GPU, que acá solo se vio quieto).
-- **Sigue**: resolver (1); subida parcial del volumen; integrar a la ciudad y a las cinemáticas (hoy solo el diorama).
+- **Pendientes de R1, hechos** (rama `claude/r1-pendientes-baa692`, sin bump ni push; 2026-11-10):
+  - **Franjas del acantilado: no eran un error de los rayos.** Se agregó una referencia por fuerza bruta
+    (`r.light.aoRef = 1`, `?aoref=1&debug=2`: 48 rayos finos celda a celda) y da las mismas franjas. Son sombra de
+    verdad: el borde del diorama (`edge(x)`) sube y baja de a un vóxel, cada escalón deja una cara que le da la espalda
+    al sol y ranuras de un vóxel de ancho y 14 de alto. Lo que sí estaba mal era el nivel: los conos contaban la pared
+    rasante inflada por el mipmap y una vez por paso, y se tapaba con dos pisos de luz a ojo. Ahora el mínimo lee la
+    ocupación tal cual (`gMin`, `gMix` 0,1) y se sacaron el piso (`aoFloor` 0) y el apriete (`aoPow` 1): el nivel
+    coincide con la referencia sin trucos. Lo que la referencia tiene y los conos no: el degradé dentro de cada cara
+    (los mipmaps no ven menos de una celda). Para que las franjas desaparezcan hay que cambiar el terreno (sin ranuras
+    de un vóxel) o la luz (sol más de frente o más ancho, `sunAperture`): es decisión de arte, no del motor.
+  - **Subida parcial**: los mipmaps del volumen se arman en CPU y se sube solo la caja tocada en cada nivel
+    (`texSubImage3D` con `UNPACK_SKIP_*`, sin copiar). El horneado del rebote también es por caja. Un bloque de 4³
+    sube 729 celdas de 375.232 (0,19 %). `stats.uploads`, `fullUploads`, `uploadCells`, `uploadMs`, `bakeCells`.
+    Límite: la sombra de rebote que un cambio proyecta lejos de su caja se actualiza recién en el próximo horneado
+    entero (cuando cambia el sol o el cielo). Prueba en `lookdev-shots --check` (parcial = rehacer todo, pixel a pixel).
+  - **Cielo físico** (`setEnv({ physSky: { sunDir, strength, mie, cloud, night } })`): dispersión simple de Rayleigh
+    y Mie por dirección, igual en GLSL (`skyAt`) y en JS (`skyRad`). Alimenta los conos (cada cono lee el cielo en su
+    dirección), la niebla, los reflejos, el rebote (promedio de la semiesfera) y el suelo. `L.skySun(color, fuerza)`
+    da el sol ya teñido por el aire, `L.skyColor(dir, color)` un punto del cielo y `L.skyDome()` el fondo para
+    cámaras en perspectiva (en la isométrica el fondo es el color del horizonte). En el diorama: sol de 6 a 20 por la
+    hora de `ambience.js`, el clima (`WEATHER.dark`) nubla y apaga, de noche quedan la luna (`?moonk=`) y el cielo
+    nocturno (`?nightk=`). `?sky=flat` vuelve al cielo de antes. No hay estrellas ni nubes.
+  - El classic no cambió: capturas idénticas byte a byte antes y después (iso, 15 h y 22.5 h, `still=1`).
+  - En un worktree nuevo, `tools/node_modules` hay que enlazarlo al del checkout principal (junction).
+- **Sigue**: integrar a la ciudad y a las cinemáticas (hoy solo el diorama); mirar el TAA en movimiento.
 
 ### A2: combate apto para farmear (rama `claude/a2-combate-5384e9`, sin bump ni push; falta mergear)
 Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.

@@ -26,6 +26,8 @@
 //   lookdev.html?exposure=1.2           exposición del render fotográfico
 //   lookdev.html?post=0|1               fuerza el acabado, mande lo que mande ?render
 //   lookdev.html?cam=iso|cine           isométrica del juego (default) o cámara de cine baja con lente larga
+//   lookdev.html?sky=flat               cielo de color plano (default: cielo físico por hora; ?sune= sol · ?skye= cielo · ?nightk= · ?moonk=)
+//   lookdev.html?aoref=1                oclusión de referencia por fuerza bruta (lenta: solo para comparar con ?debug=2)
 //   lookdev.html?weather=lluvia         clima (ids de WEATHER en src/core/ambience.js)
 //   lookdev.html?greedy=0               mallas sin unir caras (para comparar con el greedy meshing)
 //   lookdev.html?still=1                sin animación (para comparar capturas pixel a pixel)
@@ -179,6 +181,9 @@ if (L) {
 }
 // luz del ambiente → render fotográfico. El sol manda sobre el cielo (sombras con contraste) y la noche es de verdad:
 // casi sin relleno, para que lo único que se vea bien sea lo que alumbran faroles y ventanas.
+const PHYS = !!L && q.get('sky') !== 'flat', SUN_E = num('sune', 2.2), SKY_E = num('skye', 24), NIGHT_K = num('nightk', 1.6), MOON_K = num('moonk', 0.12);
+const envTrue = new THREE.Vector3(), nightCol = new THREE.Color(), isoSky = new THREE.Vector3();
+if (PHYS && camId === 'cine') r.scene.add(L.skyDome());
 const envSun = new THREE.Color(), envSky = new THREE.Color(), envGround = new THREE.Color(), envDir = new THREE.Vector3();
 function syncEnv() {
   if (!L) return;
@@ -192,10 +197,29 @@ function syncEnv() {
   if (q.has('sun')) [az, el] = q.get('sun').split(',').map(Number);
   else if (amb.look?.night) { az = 150; el = 58; }
   else { const k = Math.sin(Math.PI * Math.max(0, Math.min(1, (hour - 5.5) / 14.5))); az = -62 + (hour - 12) * 7; el = 12 + 46 * k; }
+  // Cielo físico (default; ?sky=flat vuelve al color plano): el sol de verdad sale a las 6 y se pone a las 20, y de su
+  // altura salen el color del cielo, el del sol (más rojo y débil cuando baja) y la luz ambiente. Bajo el horizonte
+  // queda la luna, apenas, y el cielo de noche: lo que alumbra es la aldea. El clima de ambience.js lo nubla y lo apaga.
+  let phys;
+  if (PHYS) {
+    const D = Math.PI / 180, wd = WEATHER[weather].dark || 0, nn = amb.look?.phase?.night ?? n;
+    const elT = q.has('sun') ? el : 60 * Math.sin(Math.PI * (hour - 6) / 14), azT = q.has('sun') ? az : -62 + (hour - 12) * 7;
+    envTrue.set(Math.sin(azT * D) * Math.cos(elT * D), Math.sin(elT * D), Math.cos(azT * D) * Math.cos(elT * D));
+    phys = { sunDir: envTrue, strength: SKY_E * (1 - 0.55 * wd), mie: 0.05 + 0.12 * wd, cloud: Math.min(1, wd * 1.4), night: nightCol.setRGB(0.012, 0.02, 0.045).multiplyScalar(NIGHT_K * (1 - 0.5 * wd)) };
+    L.setEnv({ physSky: phys });
+    if (elT > 0.5) { az = azT; el = Math.max(elT, 3); L.skySun(envSun, SUN_E); }
+    else { az = 150; el = 58; envSun.setRGB(0.5, 0.62, 1).multiplyScalar(MOON_K * nn * (1 - 0.8 * wd)); }
+  }
   az *= Math.PI / 180; el *= Math.PI / 180;
   envDir.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+  if (PHYS) {
+    L.setEnv({ sunDir: envDir, sun: envSun, physSky: phys, glow: n, bounce: BOUNCE, gMin: num('gmin', 1), gMix: num('gmix', 0.1), aoFloor: num('aofloor', 0), aoPow: num('aopow', 1), fog: { density: FOG * (1 + 2.5 * n), height: -1.7, falloff: 0.9, glow: 0.6 } });
+    // el fondo: en la cámara de cine lo pinta el domo; en la isométrica (rayos paralelos) queda el color del horizonte
+    if (camId === 'iso' && r.scene.background?.isColor) L.skyColor(isoSky.set(-0.69, 0.2, -0.69).normalize(), r.scene.background);
+    return;
+  }
   // la niebla se queda abajo, sobre el agua y el pie del acantilado, y de noche espesa: la luz de los faroles se ve en el aire
-  L.setEnv({ sunDir: envDir, sun: envSun, sky: envSky, ground: envGround, glow: n, bounce: BOUNCE, gMin: num('gmin', 1), gMix: num('gmix', 0.3), aoFloor: num('aofloor', 0.24), aoPow: num('aopow', 1.3), fog: { density: FOG * (1 + 2.5 * n), height: -1.7, falloff: 0.9, glow: 0.6 } });
+  L.setEnv({ sunDir: envDir, sun: envSun, sky: envSky, ground: envGround, glow: n, bounce: BOUNCE, gMin: num('gmin', 1), gMix: num('gmix', 0.1), aoFloor: num('aofloor', 0), aoPow: num('aopow', 1), fog: { density: FOG * (1 + 2.5 * n), height: -1.7, falloff: 0.9, glow: 0.6 } });
 }
 
 // ---------- cámaras ----------

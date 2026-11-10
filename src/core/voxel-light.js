@@ -63,7 +63,27 @@ float shadowCone(vec3 o, vec3 d, float maxT, float ap) {
   }
   return T;
 }
-vec3 skyAt(vec3 d) { return mix(groundCol, skyCol, smoothstep(-0.6, 0.15, d.y)); }
+// Cielo físico (setEnv({ physSky })): dispersión simple de Rayleigh y Mie por dirección. El aire que atraviesa la
+// mirada (m) da el horizonte más claro; el que atraviesa el sol (ms) lo apaga y lo enrojece cuando baja; la fase de
+// Mie da el resplandor alrededor del sol. De noche queda skyNight. Bajo el horizonte, el suelo. El mismo cálculo está
+// en JS (skyRad) para la luz ambiente del rebote. skyP = (fuerza, Mie, nublado 0..1, prendido).
+uniform vec3 skySun; uniform vec4 skyP; uniform vec3 skyNight;
+vec3 skyAt(vec3 d) {
+  if (skyP.w < 0.5) return mix(groundCol, skyCol, smoothstep(-0.6, 0.15, d.y));
+  float y = max(d.y, 0.0);
+  vec3 bR = vec3(0.036, 0.086, 0.20); float bM = skyP.y;
+  vec3 ext = bR + bM;
+  float m = 1.0 / (y + 0.15);
+  float ms = mix(0.3, 1.0, pow(1.0 - y, 4.0)) / (max(skySun.y, 0.0) + 0.06);
+  float mu = dot(d, skySun);
+  float pR = 0.0597 * (1.0 + mu * mu), pM = 0.0509 / pow(1.36 - 1.2 * mu, 1.5);
+  vec3 L = skyP.x * exp(-ext * ms) * (bR * pR + bM * pM) / ext * (1.0 - exp(-ext * m));
+  L *= smoothstep(-0.14, 0.03, skySun.y);
+  L += skyNight * (0.7 + 0.3 * y);
+  L = mix(L, vec3(dot(L, vec3(0.2126, 0.7152, 0.0722))), skyP.z);
+  return mix(groundCol, L, smoothstep(-0.35, 0.0, d.y));
+}
+// fin del cielo
 // la luz que sale de una celda (emitida + rebote horneado): el rgb va premultiplicado por la ocupación y como raíz
 vec3 radiance(vec4 s) { return s.rgb * s.rgb * (${RAD_MAX.toFixed(1)} / max(s.a, 0.06)); }
 `;
@@ -253,7 +273,7 @@ vec3 reflCone(vec3 o, vec3 d, float ap) {
     if (T < 0.03) { T = 0.0; break; }
     t += diam * 0.7;
   }
-  return acc + T * bgCol * smoothstep(-0.2, 0.1, d.y);
+  return acc + T * (skyP.w > 0.5 ? skyAt(d) : bgCol * smoothstep(-0.2, 0.1, d.y));
 }
 #endif
 varying vec3 vWorld;
@@ -541,6 +561,38 @@ export function createVoxelLight(renderer, opts = {}) {
   const lRT = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false });
   const normalMat = new THREE.MeshNormalMaterial();
   const env = { sunDir: new THREE.Vector3(0.4, 0.8, 0.3).normalize(), sun: new THREE.Color(2, 1.9, 1.7), sky: new THREE.Color(0.4, 0.5, 0.7), ground: new THREE.Color(0.1, 0.09, 0.08) };
+  // cielo físico: el mismo cálculo que skyAt del shader, para sacar en CPU la luz ambiente y el color del sol
+  const sky = { dir: new THREE.Vector3(0, 1, 0), p: new THREE.Vector4(0, 0.05, 0, 0), night: new THREE.Color(0, 0, 0), albedo: new THREE.Color(0.22, 0.2, 0.17) };
+  const BR = [0.036, 0.086, 0.20], LUM = [0.2126, 0.7152, 0.0722];
+  const sstep = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  function skyRad(dx, dy, dz, out) {
+    const y = Math.max(dy, 0), bM = sky.p.y, s = sky.dir;
+    const m = 1 / (y + 0.15), ms = (0.3 + 0.7 * Math.pow(1 - y, 4)) / (Math.max(s.y, 0) + 0.06);
+    const mu = dx * s.x + dy * s.y + dz * s.z, pR = 0.0597 * (1 + mu * mu), pM = 0.0509 / Math.pow(1.36 - 1.2 * mu, 1.5);
+    const day = sky.p.x * sstep(-0.14, 0.03, s.y), nk = 0.7 + 0.3 * y, nt = [sky.night.r, sky.night.g, sky.night.b];
+    let lum = 0;
+    for (let i = 0; i < 3; i++) { const e = BR[i] + bM; out[i] = day * Math.exp(-e * ms) * (BR[i] * pR + bM * pM) / e * (1 - Math.exp(-e * m)) + nt[i] * nk; lum += out[i] * LUM[i]; }
+    for (let i = 0; i < 3; i++) out[i] += (lum - out[i]) * sky.p.z;
+    return out;
+  }
+  /** Color del sol después de cruzar el aire (más bajo = más rojo y más débil), en las unidades de env.sun. */
+  function skySun(target, strength = 1) {
+    const s = sky.dir, ms = 1 / (Math.max(s.y, 0) + 0.06), k = strength * sstep(-0.02, 0.06, s.y) * (1 - 0.85 * sky.p.z);
+    return target.setRGB(k * Math.exp(-(BR[0] + sky.p.y) * ms), k * Math.exp(-(BR[1] + sky.p.y) * ms), k * Math.exp(-(BR[2] + sky.p.y) * ms));
+  }
+  // luz ambiente del cielo físico: promedio de la semiesfera de arriba (pesado por el coseno) y lo que devuelve el suelo
+  const tmp3 = [0, 0, 0];
+  function skyAmbient() {
+    let r = 0, g = 0, b = 0; const n = 48;
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n, rr = Math.sqrt(u), ph = i * 2.39996323;
+      skyRad(rr * Math.cos(ph), Math.sqrt(1 - u), rr * Math.sin(ph), tmp3);
+      r += tmp3[0]; g += tmp3[1]; b += tmp3[2];
+    }
+    env.sky.setRGB(r / n, g / n, b / n);
+    const sy = Math.max(env.sunDir.y, 0);
+    env.ground.setRGB(sky.albedo.r * (env.sky.r + env.sun.r * sy), sky.albedo.g * (env.sky.g + env.sun.g * sy), sky.albedo.b * (env.sky.b + env.sun.b * sy));
+  }
   const pPos = Array.from({ length: MAX_POINTS }, () => new THREE.Vector4()), pCol = Array.from({ length: MAX_POINTS }, () => new THREE.Vector3());
   const lightMat = new THREE.ShaderMaterial({
     uniforms: {
@@ -548,7 +600,7 @@ export function createVoxelLight(renderer, opts = {}) {
       invProj: { value: new THREE.Matrix4() }, camWorld: { value: new THREE.Matrix4() },
       volMin: { value: min }, volSize: { value: size }, cell: { value: cell },
       sunDir: { value: env.sunDir }, sunOn: { value: 1 }, sunAp: { value: opts.sunAperture ?? 0.07 },
-      skyCol: { value: env.sky }, groundCol: { value: env.ground }, giGain: { value: 1 }, aoPow: { value: 1 }, aoRef: { value: 0 }, gMin: { value: 1 }, gMix: { value: 0.1 }, aoFloor: { value: 0 },
+      skyCol: { value: env.sky }, groundCol: { value: env.ground }, skySun: { value: sky.dir }, skyP: { value: sky.p }, skyNight: { value: sky.night }, giGain: { value: 1 }, aoPow: { value: 1 }, aoRef: { value: 0 }, gMin: { value: 1 }, gMix: { value: 0.1 }, aoFloor: { value: 0 },
       pPos: { value: pPos }, pCol: { value: pCol }, pCount: { value: 0 },
     },
     vertexShader: QUAD_VS, fragmentShader: LIGHT_FS, depthTest: false, depthWrite: false, blending: THREE.NoBlending,
@@ -558,7 +610,7 @@ export function createVoxelLight(renderer, opts = {}) {
   const fogMat = new THREE.ShaderMaterial({
     uniforms: {
       tDepth: lu.tDepth, tVol: uVol, invProj: lu.invProj, camWorld: lu.camWorld, volMin: lu.volMin, volSize: lu.volSize, cell: lu.cell,
-      sunDir: lu.sunDir, sunCol: { value: env.sun }, skyCol: lu.skyCol, groundCol: lu.groundCol,
+      sunDir: lu.sunDir, sunCol: { value: env.sun }, skyCol: lu.skyCol, groundCol: lu.groundCol, skySun: lu.skySun, skyP: lu.skyP, skyNight: lu.skyNight,
       fogP: { value: new THREE.Vector3(0, 0, 1) }, frame: { value: 0 }, fogGlow: { value: 0.6 },
       pPos: lu.pPos, pCol: lu.pCol, pCount: lu.pCount,
     },
@@ -574,7 +626,7 @@ export function createVoxelLight(renderer, opts = {}) {
     tLight: { value: lRT.texture }, tGN: { value: gRT.texture }, tGD: { value: gRT.depthTexture },
     halfSize: { value: new THREE.Vector2(1, 1) }, fullSize: { value: new THREE.Vector2(1, 1) },
     camNear: { value: 0.1 }, camFar: { value: 100 }, sunDir: { value: env.sunDir }, sunCol: { value: env.sun }, debugView: { value: 0 },
-    tVol: uVol, volMin: lu.volMin, volSize: lu.volSize, cell: lu.cell, skyCol: lu.skyCol, groundCol: lu.groundCol,
+    tVol: uVol, volMin: lu.volMin, volSize: lu.volSize, cell: lu.cell, skyCol: lu.skyCol, groundCol: lu.groundCol, skySun: lu.skySun, skyP: lu.skyP, skyNight: lu.skyNight,
     time: { value: 0 }, bgCol: { value: new THREE.Color(0.5, 0.6, 0.8) },
   };
   const mats = new Map();
@@ -614,6 +666,24 @@ export function createVoxelLight(renderer, opts = {}) {
     get fogTexture() { return fRT.texture; },
     get fogOn() { return fogOn; },
     get debug() { return shared.debugView.value; }, set debug(v) { shared.debugView.value = v | 0; },
+    /** Cielo físico: color del sol a través del aire (skySun(color, fuerza)) y radiancia del cielo en una dirección. */
+    skySun,
+    skyColor(dir, target) { skyRad(dir.x, dir.y, dir.z, tmp3); return target.setRGB(tmp3[0], tmp3[1], tmp3[2]); },
+    /** Fondo de cielo para cámaras en perspectiva: un plano al fondo que pinta skyAt por pixel (sumarlo a la escena). */
+    skyDome() {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+        uniforms: { skyCol: lu.skyCol, groundCol: lu.groundCol, skySun: lu.skySun, skyP: lu.skyP, skyNight: lu.skyNight, sunCol: { value: env.sun } },
+        vertexShader: `varying vec3 vDir; void main() { vec4 v = inverse(projectionMatrix) * vec4(position.xy, 1.0, 1.0); vDir = transpose(mat3(viewMatrix)) * (v.xyz / v.w); gl_Position = vec4(position.xy, 1.0, 1.0); }`,
+        fragmentShader: `precision highp float; uniform vec3 skyCol; uniform vec3 groundCol; uniform vec3 sunCol; varying vec3 vDir;
+          ${VOL_GLSL.slice(VOL_GLSL.indexOf('uniform vec3 skySun'), VOL_GLSL.indexOf('// fin del cielo'))}
+          void main() { vec3 d = normalize(vDir); vec3 c = skyAt(d);
+            if (skyP.w > 0.5) c += sunCol * (24.0 * smoothstep(0.99985, 0.99995, dot(d, skySun)) * smoothstep(-0.02, 0.01, d.y));
+            gl_FragColor = vec4(c, 1.0); }`,
+        depthWrite: false, depthFunc: THREE.LessEqualDepth,
+      }));
+      m.frustumCulled = false; m.renderOrder = -1000; m.userData.noLight = true;
+      return m;
+    },
     get aoRef() { return lightMat.uniforms.aoRef.value; }, set aoRef(v) { lightMat.uniforms.aoRef.value = v | 0; },
     get bounds() { return { min: min.clone(), size: size.clone(), dims: [nx, ny, nz] }; },
     /** Caja del volumen en coordenadas de mundo. Tira lo armado: llamarla antes de agregar. */
@@ -684,6 +754,21 @@ export function createVoxelLight(renderer, opts = {}) {
       if (e.sun) env.sun.copy(e.sun);
       if (e.sky) env.sky.copy(e.sky);
       if (e.ground) env.ground.copy(e.ground);
+      // cielo físico: { sunDir (el sol de verdad, puede estar bajo el horizonte), strength, mie, cloud 0..1, night: Color }
+      // o null para volver al cielo plano. Pisa sky y ground con lo que da el modelo; el sol lo pone quien llama (skySun).
+      if (e.physSky !== undefined) {
+        const k = e.physSky;
+        sky.p.w = k ? 1 : 0;
+        if (k) {
+          if (k.sunDir) sky.dir.copy(k.sunDir).normalize();
+          if (k.strength != null) sky.p.x = k.strength;
+          if (k.mie != null) sky.p.y = k.mie;
+          sky.p.z = Math.max(0, Math.min(1, k.cloud || 0));
+          if (k.night) sky.night.copy(k.night);
+          if (k.ground) sky.albedo.copy(k.ground);
+        }
+      }
+      if (sky.p.w) skyAmbient();
       if (e.sunAperture != null) lightMat.uniforms.sunAp.value = e.sunAperture;
       if (e.giGain != null) lightMat.uniforms.giGain.value = e.giGain;
       if (e.aoPow != null) lightMat.uniforms.aoPow.value = e.aoPow;
