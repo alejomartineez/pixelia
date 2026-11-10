@@ -20,6 +20,7 @@ import { skiffModel } from '../avatar/skiff.js';
 import { natureModel } from '../city/models.js';
 import { createCinema } from '../cinema/player.js';
 import { travel } from '../cinema/timeline.js';
+import { shotReverse } from '../cinema/camera.js';
 import { createVignette } from '../cinema/pixel2d.js';
 import { ORDEN, ROBO, CAIDA, COFRADIA } from '../cinema/vignettes-intro.js';
 import { applyPose, poseWeight } from '../cinema/poses.js';
@@ -503,19 +504,31 @@ export default function create(ctx) {
   // un punto sobre la veta i en el corte del frente (la misma curva que buildContinent), en la columna de vóxeles x
   const veinAt = (i, x) => { const y = Math.round(-3 - i * 2.2 + Math.sin(x * 0.11 + i * 1.7) * 1.6 + Math.sin(x * 0.045 + i) * 1.2); return [(x + 0.5) / 4 - 12, (y + 0.5) / 4, 7.55]; };
   const VEIN_COL = [30, 42, 54, 66];
+  // cámara de cine (src/cinema/camera.js): un sujeto que se resuelve al usarlo (los decorados se arman después) y las
+  // dos cámaras del diálogo del plano 11, del mismo lado del eje que une a tu personaje con Vera
+  const at = (of, h = 0) => ({ of, off: [0, h, 0] });
+  const WAKE_A = shotReverse(HERO.pos, VERA.pos, { side: 1, back: 1.5, shoulder: 0.7, height: 0.55, lookH: 0.8 });
+  const WAKE_B = shotReverse(HERO.pos, VERA.pos, { side: 1, back: 1.2, shoulder: 1.1, height: 1.1, lookH: 0.6 });
   const SHOTS = [
     // 1 · el mundo y las cuatro vetas: de lejos, y de frente al corte; cada veta con su cartel en su color
-    { set: 'world', dur: 21, light: L.world, shadow: 34, post: { dof: { focus: 'look', range: 9, amt: 0.75 } },
+    //     gran angular con todo en foco: el mundo entero, antes de romperse
+    { set: 'world', dur: 21, light: L.world, shadow: 34, lens: 'wide',
       cam: keys([0, [-3, 13, 26], [0, -0.5, 0]], [8.5, [0, 4.4, 21], [0, -0.8, 7]], [21, [0.8, 2.2, 18.4], [0.4, -1.3, 7.4]]),
       subs: [line(0.6, '01'), line(8.9, '02')],
       events: ['raiz', 'marea', 'brasa', 'cefiro'].map((id, i) => label(12.6 + i * 1.2, id, { pos: veinAt(i, VEIN_COL[i]) }, { color: VCOL[id], dur: 21 - 12.6 - i * 1.2 - 0.6 })) },
     // 2 · las torres de las Casas, con la noble en el balcón
-    { set: 'towers', dur: 9.8, light: L.towers, shadow: 22, post: { dof: { focus: 'look', range: 4, amt: 0.8 } },
+    //     el foco arranca abajo, en los que cavan, y sube a la noble cuando el cartel la presenta
+    { set: 'towers', dur: 9.8, light: L.towers, shadow: 22, lens: { preset: 'normal', f: 2.8 },
+      focus: [{ t: 1.6, on: at(() => sets.towers.userData.carts[0], 0.5) }, { t: 3.0, on: at(() => sets.towers.userData.noble, 0.6) }],
+      rig: { subject: at(() => sets.towers.userData.noble, 0.6), key: { az: 48, el: 34 }, fill: { az: -50 }, rim: { az: -150 } },
       cam: travel(9.8, [[-7.4, 1.6, 7.6], [-3.4, 1.4, 0.2]], [[4.6, 3.0, 9.6], [-1.6, 3.4, -2]]),
       subs: [line(0.6, '03')],
       events: [label(2.6, 'casas', { follow: () => sets.towers.userData.noble, off: [0, 1.0, 0] })] },
     // 3 · los enanos de la Veta empujando las vagonetas (mismo decorado, cámara baja)
-    { set: 'towers', dur: 10, light: L.towers, shadow: 22, post: { dof: { focus: 'look', range: 2.2, amt: 0.9 } },
+    //     retrato en mano, a la altura de ellos: el que empuja va en el tercio izquierdo, con el aire hacia donde va
+    { set: 'towers', dur: 10, light: L.towers, shadow: 22, lens: 'portrait', handheld: 0.45,
+      frame: { subject: at(() => sets.towers.userData.carts[1].userData.pusher, 0.55), third: 'auto', gaze: [1, 0, 0], line: 'mid' },
+      rig: { subject: at(() => sets.towers.userData.carts[1], 0.5), at: 5, key: { az: 50, el: 30 }, fill: { az: -45 }, rim: { az: -140, ratio: 0.7 } },
       cam: travel(10, [[-5.6, 1.8, 5.2], [-4.8, 0.5, 0.4]], [[-4.6, 1.6, 5.0], [-3.9, 0.5, 0.4]]),
       subs: [line(0.6, '04')],
       events: [label(2.2, 'enanos', { follow: () => sets.towers.userData.carts[1], off: [0, 1.1, 0] })] },
@@ -528,12 +541,16 @@ export default function create(ctx) {
     // 6 · el Quiebre (viñeta)
     { vig: 'caida', dur: 16.2, subs: [line(0.6, '08'), line(9.6, '09')] },
     // 7 · las islas que suben: desde abajo, mirando para arriba
-    { set: 'rise', dur: 8.6, light: L.rise, shadow: 30, post: { bloom: 0.8 },
+    //     gran angular desde el piso y la cámara que tiembla en la mano: el suelo se está yendo
+    { set: 'rise', dur: 8.6, light: L.rise, shadow: 30, post: { bloom: 0.8 }, lens: 'wide', handheld: 0.3,
       cam: travel(8.6, [[2.6, -4.2, 7.8], [0.8, -2.6, 0]], [[3.4, -3.4, 9.4], [0, 3.2, -1.5]]),
       subs: [line(0.6, '10')],
       events: [label(4.4, 'islas', { follow: () => sets.rise.userData.isles[1], off: [0, 0.5, 0] }, { color: VCOL.cefiro, dur: 3.8 })] },
     // 8 · el Bajo Mundo: orcos de la Brasa y un vaciado miran subir lo que se va
-    { set: 'rise', dur: 9.8, light: L.below, shadow: 20, post: { bloom: 0.8, dof: { focus: 'look', range: 1.6, amt: 0.9 } },
+    //     retrato: la lava de principal, relleno frío y contra; el foco pasa del orco al vaciado con su cartel
+    { set: 'rise', dur: 9.8, light: L.below, shadow: 20, post: { bloom: 0.8 }, lens: 'portrait', handheld: 0.25,
+      focus: [{ t: 5.6, on: at(() => sets.rise.userData.below[1], 0.8) }, { t: 6.8, on: at(() => sets.rise.userData.below[2], 0.8) }],
+      rig: { subject: at(() => sets.rise.userData.below[1], 0.7), key: { az: 40, el: 26, i: 3.0, color: 0xffa468 }, fill: { az: -50, ratio: 0.35, color: 0x7088b8 }, rim: { az: -150, el: 36, ratio: 0.8, color: 0xffb070 } },
       cam: travel(9.8, [[-0.2, -4.75, 0.3], [1.4, -5.05, 4.8]], [[2.6, -4.7, 0.9], [1.8, -5.0, 4.6]]),
       subs: [line(0.6, '11')],
       events: [label(0.9, 'bajo', { pos: [3.6, -5.0, 6.8] }, { dur: 3.2, color: VCOL.brasa }),
@@ -543,14 +560,25 @@ export default function create(ctx) {
     { vig: 'cofradia', dur: 11.8, subs: [line(0.8, '12')],
       events: [label(3.9, 'cofradia', { px: [90, COFRADIA.GROUND - 34] }, { dur: 3.6 })] },
     // 10 · Vera llega en su esquife a tu fragmento
-    { set: 'frag', mode: 'arrive', dur: 11.4, light: L.dusk, shadow: 18, post: { dof: { focus: 'look', range: 3.6, amt: 0.8 } },
+    //     el foco viaja con el esquife y pasa a tu personaje cuando Vera lo ve
+    { set: 'frag', mode: 'arrive', dur: 11.4, light: L.dusk, shadow: 18, lens: { preset: 'normal', f: 2.8 },
+      focus: [{ t: 7.0, on: at(() => sets.frag.userData.skiff, 0.6) }, { t: 8.2, on: at(() => sets.frag.userData.hero, 0.2) }],
       cam: travel(11.4, [[7.5, 3.2, 13.5], [0, 0.3, 0]], [[0.6, 1.5, 6.2], [-2.0, 0.3, 1.9]]),
       subs: [line(1.2, '13'), line(7.6, '14')],
       events: [label(2.4, 'vera', { follow: () => sets.frag.userData.skiff, off: [0, 1.7, 0] }, { dur: 3.8 }),
         label(7.8, 'fragmento', { follow: () => sets.frag.userData.hero, off: [0, 0.9, 0] }, { dur: 3.4 })] },
     // 11 · tu personaje despierta; Vera le tiende la mano. Título.
-    { set: 'frag', mode: 'wake', dur: 12.6, light: L.dusk, shadow: 14, title: true, hold: 1.4, post: { dof: { focus: 'look', range: 2.6, amt: 0.85 } },
-      cam: travel(12.6, [[HERO.pos[0] + 1.5, 1.25, HERO.pos[2] + 2.8], [HERO.pos[0] - 0.45, 0.4, HERO.pos[2] + 0.1]], [[HERO.pos[0] + 1.25, 1.1, HERO.pos[2] + 2.6], [HERO.pos[0] - 0.45, 0.8, HERO.pos[2] + 0.1]]),
+    //      Plano y contraplano sin saltar el eje: primero Vera, vista desde el suelo por sobre tu personaje (ella a la
+    //      izquierda); al arrodillarse, corte al contraplano por sobre el hombro de ella (tu personaje a la derecha).
+    { set: 'frag', mode: 'wake', dur: 12.6, light: L.dusk, shadow: 14, title: true, hold: 1.4, lens: { preset: 'normal', f: 2.8, match: false }, breath: 1,
+      cam: { segs: [
+        { from: 0, ease: 'smooth', curve: 'linear', keys: [{ t: 0, pos: WAKE_A.ab.pos, look: WAKE_A.ab.look }, { t: 6.2, pos: lerp3(WAKE_A.ab.pos, WAKE_A.ab.look, 0.1), look: WAKE_A.ab.look }],
+          frame: { subject: [VERA.pos[0], 0.95, VERA.pos[2]], third: 'left', line: 'top' },
+          rig: { subject: [VERA.pos[0], 0.8, VERA.pos[2]], key: { az: -48, el: 30 }, fill: { az: 55 }, rim: { az: 150 } } },
+        { from: 6.2, ease: 'smooth', curve: 'linear', keys: [{ t: 6.2, pos: WAKE_B.ba.pos, look: WAKE_B.ba.look }, { t: 14, pos: lerp3(WAKE_B.ba.pos, WAKE_B.ba.look, 0.08), look: WAKE_B.ba.look }],
+          frame: { subject: [HERO.pos[0], 0.95, HERO.pos[2]], third: 'right', line: 0.08 },
+          rig: { subject: [HERO.pos[0], 0.7, HERO.pos[2]], key: { az: 46, el: 32 }, fill: { az: -55 }, rim: { az: -150 } } },
+      ] },
       subs: [line(1.8, '15'), line(6.4, '16')] },
   ];
 
@@ -572,7 +600,8 @@ export default function create(ctx) {
       // los carteles que siguen algo: la función se resuelve al disparar (los decorados ya están armados)
       for (const e of out.events) if (e.label && typeof e.label.follow === 'function') { const fn = e.label.follow; e.label = { ...e.label, follow: undefined, followFn: fn }; }
       if (S.vig) out.vignette = () => createVignette(S.vig);
-      else Object.assign(out, { set: sets[S.set], cam: S.cam, light: S.light, shadow: S.shadow, title: !!S.title, hold: S.hold || 0, post: S.post });
+      else Object.assign(out, { set: sets[S.set], cam: S.cam, light: S.light, shadow: S.shadow, title: !!S.title, hold: S.hold || 0, post: S.post,
+        lens: S.lens, focus: S.focus, frame: S.frame, handheld: S.handheld, breath: S.breath, rig: S.rig });
       return out;
     });
   }
@@ -608,9 +637,12 @@ export default function create(ctx) {
       // caiga en el título del plano 11; tools/audio/sources.mjs → TRACKS). Una sola vez: después sigue su coda.
       // Si no está en el manifest, sigue el modo épico.
       try { ctx.audio?.track?.('intro', { loop: false }); } catch {}
-      cin = createCinema(ctx, container, { r, shots: cinemaShots(), prefix: 'in', title: t('intro.title'), applyLight, onShot, onFinish: finish, shake, advanceSfx: 'select', post: POST });
+      cin = createCinema(ctx, container, { r, shots: cinemaShots(), prefix: 'in', title: t('intro.title'), applyLight, onShot, onFinish: finish, shake, advanceSfx: 'select', post: POST, lights, guides: !!params.guides });
       cin.go(Math.max(0, Math.min(SHOTS.length - 1, Number(params.shot) || 0)));
-      offFrame = r.onFrame((dt, tt) => cin.frame(dt, tt));
+      // modo de revisión: ?scene=intro&shot=7&at=6.6&guides=1&freeze=1 deja un plano quieto en su segundo, con la guía
+      // de tercios, la marca del sujeto y los datos del lente encima
+      if (params.at) cin.seek(Number(params.at));
+      offFrame = r.onFrame((dt, tt) => cin.frame(params.freeze ? 0 : dt, tt));
       onKey = (e) => {
         if (cin.finished) return;
         if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); try { ctx.audio.sfx('close'); } catch {} cin.finish('skip'); return; }

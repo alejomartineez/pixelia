@@ -47,8 +47,20 @@ export function sampleKeys(keys, t, { curve = 'smooth', field = 'v' } = {}) {
   return A.map((x, k) => cr(P[k], x, B[k], Q[k], u));
 }
 
+/**
+ * Un plano puede cortar de cámara sin cambiar de plano (plano y contraplano): cam = { segs: [{ from, keys, … }, …] }.
+ * Devuelve el tramo que corre en t (o la pista misma si no hay tramos); cada tramo puede llevar además su lente,
+ * foco, encuadre y luz (ver player.js).
+ */
+export function camSeg(cam, t) {
+  if (!cam?.segs) return cam || null;
+  let s = cam.segs[0];
+  for (const x of cam.segs) if (t >= (x.from || 0)) s = x;
+  return s;
+}
 /** Cámara del plano en t: { pos, look, fov }. */
 export function camAt(cam, t, dur) {
+  if (cam?.segs) return camAt(camSeg(cam, t), t, dur);
   if (!cam?.keys?.length) return null;
   const keys = cam.keys;
   const t0 = keys[0].t, t1 = keys[keys.length - 1].t;

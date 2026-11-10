@@ -288,3 +288,24 @@ Todo con cubos e interfaz mínima. Motores puros con semilla; nada de arte.
 - **Tope de uso semanal (regla del usuario)**: al llegar al 95 % se corta: las sesiones en curso hacen commit WIP,
   anotan acá y terminan, y no se abre ni relanza nada. El chat coordinador controla el uso y avisa.
 - PushNotification al terminar un paso, en cada handoff y al quedar bloqueado.
+
+### R2: cámara de cine (rama `claude/r2-camara-4942b9`, lista para integrar)
+- `src/cinema/camera.js` (nuevo, matemática pura, se prueba en node): lentes (`LENSES`: wide, normal, portrait, tele,
+  macro; focal → campo de visión, apertura → profundidad de campo con `dofOf`), cambio de foco (`focusAt`), cámara en
+  mano y respiración con ruido coherente (`handheldAt`, `breathAt`), encuadre por tercios (`frameThirds`, con aire
+  hacia la mirada), plano y contraplano (`shotReverse`, `axisSide`), fundido de cámara (`blendCam`) y luz de tres
+  puntos (`threePoint`).
+- `src/cinema/player.js` lo aplica como datos del plano: `lens`, `focus`, `handheld`, `breath`, `frame`, `rig` y
+  `cam.segs` (cortes dentro de un plano; `camSeg` en `timeline.js`). Opciones nuevas de `createCinema`: `lights`
+  (`{ sun }`: el sol es la principal y el reproductor suma relleno y contra sin sombra), `camIn` / `camOut` (fundido
+  juego ↔ escena, con las barras que entran) y `guides`. No toca `voxel.js`: usa `r.setPost({ dof })`.
+- Intro de El Quiebre: los 7 planos 3D con lente; cambio de foco en el 2, el 8 y el 10; en mano en el 3, el 7 y el 8;
+  tercios en el 3 y el 11; tres puntos en el 2, el 3, el 8 y el 11; el 11 es plano y contraplano (corte a los 6,2 s).
+  Duraciones y textos iguales; las viñetas 2D no se tocaron.
+- Modo de revisión: `?scene=intro&shot=7&at=6.6&guides=1&freeze=1` (tercios entre las barras, marca del sujeto y
+  datos del lente en la barra de abajo). Capturas en `shots/r2/` (antes, después y con guía; `rev/` trae los 7).
+- `node test-cinema.mjs`: 91 ok (22 chequeos nuevos). La suite completa no se corrió. Sin bump.
+- Pendiente: `camIn` / `camOut` están probados con una cámara de mentira pero la intro no los usa (es escena propia,
+  sin cámara de juego detrás): estrenarlos en la llegada a la isla. La escala del lente (`scale` 0,2 m por unidad)
+  está puesta a ojo con el posproceso clásico; revisarla con `?render=photo`, que hace el bokeh en discos. El cartel
+  "Las Casas" del plano 2 roza la barra de arriba (ya pasaba antes).
