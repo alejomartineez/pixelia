@@ -31,6 +31,9 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
   antes de cerrar. Hay que aplicar la prueba de grises, la de silueta en negro y mirar a tamaño real.
 - **Modelo (pedido del usuario, 2026-11-09).** Todas las sesiones van con Opus 5.5 (`claude-opus-5-5`) y esfuerzo
   medio: se pasa en `start_session` y se ajusta con `set_session_model` y `set_session_effort`.
+- **Elementos con detalle y glow (pedido del usuario, 2026-11-10).** Todo lo que modele Raíz, Marea, Brasa o Céfiro
+  (vetas, fragmentos, Santuario, reacciones, viñetas): forma propia que se lea, material emisivo, halo/bloom suave con pulso
+  lento, luz de su color sobre el entorno, que se note de noche; en `?quality=low` versión simple. Lo hereda el 2d.
 - **Detalle en las animaciones (pedido del usuario, 2026-11-09).** En cada animación, cinemática, viñeta 2D, sprite o
   modelo con pose, los detalles van cuidados cuadro a cuadro:
   - nada sobrepuesto: armas, utilería, ropa y personajes no se atraviesan ni se tapan mal entre sí, tampoco en los

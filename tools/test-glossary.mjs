@@ -29,6 +29,12 @@ const KNOWN = new Set([
   // 2a: en ja la travesía salió como 旅; el glosario fija 航海 (combina con 航海日誌)
   'ja|Travesía|talents.branch.supervivencia.text',
   'ja|Travesía|talents.sup_animo.text',
+  // 3b (cinemática): se tradujo en paralelo al glosario; el 4b decide si corrige el texto o ajusta el glosario
+  'en|Quiebre|intro.title', 'en|Vaciados|intro.line.11', 'en|Enanos de la Veta|intro.label.enanos',
+  'en|Bajo Mundo|intro.label.bajo', 'en|Orcos de la Brasa|intro.label.orcos', 'en|Vaciados|intro.label.vaciados',
+  'en|Cofradía de la Veta|intro.label.cofradia',
+  'ja|Vaciados|intro.line.11', 'ja|Vaciados|intro.label.vaciados', 'ja|Cofradía de la Veta|intro.label.cofradia',
+  'ja|Vera|intro.label.vera',
 ]);
 
 let pass = 0, fail = 0;
