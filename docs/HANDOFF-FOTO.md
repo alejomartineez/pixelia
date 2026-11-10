@@ -89,6 +89,72 @@ de la ciudad):
 - Élite: hoy es el mismo encuentro con más vida. Hace falta una marca de élite en los encuentros o un modificador
   (comportamiento, no solo números).
 
+### R1: motor fotográfico (rama `claude/r1-render-024ec7`, sin bump ni push; 2026-11-10)
+Vive en el diorama detrás de `tools/lookdev.html?render=photo` (default). `?render=classic` es el render del juego y
+`?render=post` el classic con el acabado de la v62 (lo que antes se llamaba photo). No está integrado a la ciudad ni a
+las cinemáticas. Archivos: `src/core/voxel.js`, `src/core/voxel-light.js` (nuevo: falta en `sw.js` hasta el próximo
+`npm run bump`), `tools/lookdev.html`, `tools/lookdev-shots.mjs`.
+- **Hito 1, hecho**: `createPixelRenderer({ photo: true })` → target de escena float16 lineal, exposición
+  (`setPost({ exposure })`), AgX con contraste y saturación (`punch`, `agxSat`; `PHOTO_DEFAULT`), bloom sobre luz real
+  (umbral sobre el brillo expuesto; de noche ya no se infla con `bloomBoost`). En calidad baja o sin `photo`, el
+  código clásico no cambia (todo lo nuevo va detrás de `#ifdef HDR`).
+- **Hito 2, hecho**: volumen RGBA8 3D con mipmaps en mundo (`r.light`): alfa = ocupación, rgb = luz emitida. Celda de
+  1/8 (un vóxel de 8 por tile, dos de 16). `setBounds`, `add(voxels, matrix, { scale, emissive, fillBelow })`,
+  `addMesh`, `update(id, matrix)`, `remove(id)`, `adopt(object3D)` (cambia materiales y vuelca la cáscara de las mallas).
+  Se rehace solo la zona tocada en CPU, pero **la textura se sube entera** (falta la subida parcial).
+- **Hito 3, hecho**: pre-pase de profundidad y normales y pase de luz a media resolución (RGBA16F) con conos en el
+  volumen: sol con penumbra que se abre con la distancia, 5 conos anchos (oclusión, cielo y luz de lo emisivo) y hasta
+  8 luces puntuales con sombra (`setPoints`). Los materiales (`r.light.material('solid'|'glow'|'window'|'water')`) lo
+  leen con upsample bilateral (profundidad y normal). `r.light.debug = 1..4` (`?debug=`) muestra sol, luz sin sol,
+  normal y color.
+- **Costo medido** (`node tools/lookdev-shots.mjs --bench`, RTX 3060 Ti, buffer 2732×1600, `gl.finish` por cuadro):
+  iso classic 3,4 ms · post 2,4 ms · **photo 6,1 ms**; cine classic 1,3 ms · post 4,3 ms · **photo 5,1 ms**. Armar el
+  volumen del diorama (88×52×82 celdas, 25 entradas): 35 a 70 ms, una vez.
+- Pruebas en verde: `test-vox`, `lookdev-shots --check`, `test-stress`, `test-ambience`, `test-cinema`. La suite
+  completa no se corrió. Capturas en `shots/lookdev/` (no van al repo): `*-r0.png` antes, `*-h1.png` hito 1,
+  `*-photo-h3.png` hitos 2 y 3 (9, 15, 19.5 y 22.5 h; iso y cine).
+- **Hito 4, hecho en parte** (sesión `local` de la rama `claude/relaxed-goldstine-ad8744`, que parte de master v63 +
+  merge de `3675961`): **rebote difuso** horneado en CPU (`bake()` en `voxel-light.js`: a cada celda de superficie se
+  le suma al rgb lo que devuelve del sol, con sombra por rayo en la grilla, y algo de cielo; los conos, la niebla y
+  los reflejos lo leen; `setEnv({ bounce })`, se rehornea si cambia el sol o el cielo, a lo sumo 2 veces por segundo;
+  12 a 28 ms el diorama entero). **Reflejos**: materiales `water`, `metal`, `glass` y `window` con Fresnel, un cono
+  fino por el reflejo en el volumen (ve la escena iluminada y el color del fondo) y brillo del sol. El **agua** calcula
+  su propia luz (ya no toma la del fondo) y tiene ondas por vóxel (`L.time = 0` las congela). **Material por vóxel**:
+  `L.kindOf(materialDeVox)` pasa los flags de `vox-loader.js` al tipo de material; se usa con `vox.split` (una malla
+  por tipo; no hay atributo por vértice). **No se hizo**: la subida parcial de la textura del volumen, el rebote de
+  las luces puntuales y el cielo físico.
+- **Hito 5, hecho**: **TAA** con reproyección por profundidad y recorte de la historia al vecindario (la cámara se corre
+  con Halton de 8; reemplaza al MSAA en photo; `opts.taa: false` / `?taa=0`). **Lente de maqueta** en el pase final:
+  bokeh en discos (dos pasadas de 16 muestras a 1/4 de resolución; `dof.bokeh` = radio), grano (`grain`), aberración
+  cromática (`ca`) y caída de luz antes del AgX (`lensVig`); defaults en `PHOTO_DEFAULT`. **Niebla volumétrica** a
+  media resolución (`setEnv({ fog: { density, height, falloff, glow } })`): 10 pasos del ojo a la superficie, con sol
+  con sombra, cielo, luces puntuales y lo que brilla cerca; se suma en el pase de historia. **No se hizo**: rotar los
+  conos por cuadro (el recorte de la historia lo vuelve parpadeo: antes hace falta acumular el pase de luz aparte).
+- **Costo con hitos 4 y 5** (`--bench --hours 22.5`, RTX 3060 Ti, buffer 2732×1600): iso classic 1,3 ms · post 2,6 ms ·
+  **photo 6,5 ms**; cine classic 1,8 ms · post 2,7 ms · **photo 6,0 ms** (tope de 60 FPS = 16,6 ms).
+- Diorama: `?bounce=`, `?fog=`, `?taa=0`, `?dof=0`, `?lensvig=`, `?ca=`, `?grain=`. `SKY_K` bajó de 2,0 a 1,5 (el rebote
+  rellena). La cáscara del acantilado pasó de 2 a 4 vóxeles de espesor (tapaba huecos al interior).
+- **Problemas conocidos**: (1) **las franjas del acantilado quedaron atenuadas, no resueltas**: ya no son negras, pero
+  siguen siendo bandas oscuras. Causa (vista con `?debug=2`): son caras +x de escalones de un vóxel; los conos anchos
+  salen rasantes a la pared vecina y, al leer mipmaps, la toman como oclusión total. Se mitigó sacando el punto de
+  partida de adentro de los sólidos y con un piso de luz (`0.24 * (1 - ao)` del cielo), que aplana algo la oclusión
+  en todos lados. Arreglo de verdad: correr las muestras hacia la normal según el lod, u oclusión anisótropa.
+  (2) El rebote usa una normal por celda sacada de los vecinos libres y el cielo sin rayo: adentro de las casas entra
+  algo de luz de cielo que no debería. (3) Los reflejos leen el volumen a 1/8: son manchas de color, no espejos.
+  (4) El TAA no se probó con cámara en movimiento ni con el personaje animado más que en el diorama; los
+  transparentes no escriben profundidad y se reproyectan con la del fondo. (5) Las vetas casi no tiñen la roca.
+  (6) El classic no se comparó pixel a pixel contra master. (7) `adopt` no cubre `InstancedMesh` ni materiales
+  propios. (8) `voxel-light.js` falta en `sw.js` hasta el próximo `npm run bump`.
+- Pruebas en verde con hitos 4 y 5: `test-vox` (37), `lookdev-shots --check` (7), `test-stress` (17),
+  `test-ambience` (65), `test-cinema` (67). La suite completa no se corrió. Capturas en `shots/lookdev/` (sin
+  commitear): `*-photo-antes.png` (hitos 1 a 3) y `*-photo-h5.png` (hitos 4 y 5), iso y cine a las 9, 15, 19.5 y 22.5 h.
+- **Opinión sobre el nivel** (mirando `cine-h15` y `cine-h22_5`): **de noche se acerca** al tono buscado (negros
+  profundos, la luz de los faroles cae rápido y se ve en la niebla, ventanas y vetas cálidas y frías con halo, foco
+  corto). **De día todavía no** es una maqueta fotografiada: las franjas del acantilado se ven, el fondo es un color
+  plano (falta cielo), el rebote casi no se nota y los reflejos del agua son manchas. No alcanza para decidir sobre
+  Unreal 5: falta una pasada más (franjas, cielo, y mirar el TAA en movimiento con la GPU, que acá solo se vio quieto).
+- **Sigue**: resolver (1); subida parcial del volumen; integrar a la ciudad y a las cinemáticas (hoy solo el diorama).
+
 ## Próximos pasos (ver "Orden" en el plan)
 1. v65: mergear A2, R1, U1 y el mock de U2; suite, bump, commit y push.
 2. Integrar A3 cuando entregue. Después U2 completo sobre el mock aprobado.
