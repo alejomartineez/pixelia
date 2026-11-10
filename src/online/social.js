@@ -16,7 +16,7 @@
 import { net, friendLevel, isoWeek, isDefaultName } from './net.js';
 import * as sync from './sync.js';
 import { bus } from '../core/bus.js';
-import { store } from '../core/state.js';
+import { store, levelOf } from '../core/state.js';
 import { rewardScale, BUILDING_BY_ID } from '../core/data.js';
 import { ITEMS, addChest } from '../chests/chests.js';
 import * as album from '../album/album.js';
@@ -60,7 +60,7 @@ export const TRADE_ITEMS = Object.values(ITEMS).filter(i => i.kind === 'item').m
 // ---------- Utilidades ----------
 export const utcDay = (d = new Date()) => d.toISOString().slice(0, 10);
 const round5 = n => Math.max(5, Math.round(n / 5) * 5);
-const scale = () => rewardScale(store.state?.player?.level || 1);
+const scale = () => rewardScale(levelOf(store.state));
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 export const myName = () => store.state?.player?.name || 'Vos';
 /** ms hasta el lunes 00:00 UTC (fin de la semana ISO, igual que el servidor). */

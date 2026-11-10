@@ -2,7 +2,7 @@
 import { h, esc, toast } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
-import { store } from '../core/state.js';
+import { store, levelOf } from '../core/state.js';
 import { fmtNum, cityCharm } from '../core/economy.js';
 import { CHESTS } from '../chests/chests.js';
 import { chestIcon } from '../season/season-ui-common.js';
@@ -46,7 +46,7 @@ export async function renderRanking(api, tok) {
     const info = rankInfo();
     let charm = 0;
     try { charm = cityCharm(); } catch {}
-    const me = { id: 'me', name: myName(), level: store.state.player.level, week: { ...info.mine, charm }, me: true, look: store.state.avatar };
+    const me = { id: 'me', name: myName(), level: levelOf(store.state), week: { ...info.mine, charm }, me: true, look: store.state.avatar };
     let rows = net.user && board ? board.map(r => (r.me ? { ...me, id: r.id } : { ...r, look: lookOf(r.id) })) : [me];
     const val = r => (cat === 'level' ? r.level || 1 : r.week?.[cat] || 0);
     if (!RANK_CATS.some(k => k.id === cat)) cat = RANK_CATS[0].id;

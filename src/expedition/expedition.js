@@ -12,6 +12,7 @@ import {
 import * as E from '../core/economy.js';
 import { EXP, REGIONS, REGION_IDS, CLASSES, EQUIPMENT, HAZARDS, ringOf } from './exp-data.js';
 import * as K from '../core/classes.js';
+import * as G from '../core/gear.js';
 import * as PE from '../core/people.js';
 import { toolVision } from '../core/people-data.js';
 import { toClass } from '../combat/classes.js';
@@ -192,6 +193,8 @@ function cityMods(party, equip, state = S(), { region, kind, tutorial, daily } =
     combatWins: { ...cb.wins }, escort, elements: (state.story?.elements || []).slice(),
     bossLosses: { ...cb.losses },   // revancha contra los jefes (DESIGN-COMBAT §6): cada derrota de antes suma un intento
   };
+  // paso 2a: armas, maestría y talentos de cada uno, la Fuerza (escala a los enemigos) y el ánimo de los talentos
+  try { Object.assign(mods, G.fightMods(party, state, { tools: mods.tools })); } catch (err) { console.warn('[expedition] arsenal', err); }
   // la primera pelea es guiada: la de los lobos del Bosque del Arroyo, en la primera salida normal al Bosque (E6)
   if (kind === 'normal' && region === 'bosque' && !daily && !tutorial && !cb.guided && !cb.fights) mods.firstFight = FIRST_FIGHT;
   return mods;
@@ -229,6 +232,8 @@ export function creditFight(run, fight, state = S()) {
   cb.xp += fight.xp || 0;
   // la pelea da su experiencia al líder y a cada clase que peleó (paso 5b)
   try { K.creditFightXp(run ? R.fightParty(run) : [], fight.xp || 0, state); } catch (err) { console.warn('[expedition] xp de clase', err); }
+  // paso 2a: maestría de las armas y los objetos usados, y quizás un arma nueva
+  try { if (G.creditFightGear(run, fight, run ? R.fightParty(run) : [], state)?.drop) fight.dropped = true; } catch (err) { console.warn('[expedition] arsenal', err); }
   if (fight.quick) cb.quick++;
   cb.guided = true;   // la guía es una sola: la primera pelea, sea cual sea
   const bag = fight.outcome === 'win' ? cb.wins : fight.outcome === 'lose' ? cb.losses : cb.retreats;
@@ -395,6 +400,12 @@ export function finishExpedition(run, state = S()) {
   reward.xp = run.prototype ? 0 : EXP_XP.base + EXP_XP.perStar * res.starCount;
   if (run.kind === 'normal' && res.reason === 'volvio' && res.provLeft > 0) reward.prov = res.provLeft;
   const got = store.grant(reward, 'expedition');
+  // paso 2a: el arma del camino, si las peleas no dejaron ninguna (EXP.weaponFind)
+  let weapon = null;
+  const wf = EXP.weaponFind;
+  if (wf && run.kind === 'normal' && !run.prototype && res.starCount >= wf.minStars && !(run.fights || []).some(f => f.dropped) && Math.random() < wf.chance) {
+    try { weapon = G.dropWeapon({ source: 'camino', element: G.REGION_ELEMENT[run.region] || null }, state); } catch (err) { console.warn('[expedition] arma del camino', err); }
+  }
   // experiencia de clase y del líder (paso 5b): la de la salida, a quien fue y a quien lidera
   if (!run.prototype) { try { K.creditExpeditionXp(run.party, reward.xp, state); } catch (err) { console.warn('[expedition] xp de clase', err); } }
   const finds = [];
@@ -435,7 +446,7 @@ export function finishExpedition(run, state = S()) {
   const ex = E.expansionStatus(state);
   const summary = {
     daily,
-    ...res, provBack: got.prov || 0, finds, zoneExplored, regionDone, recorrido: !!run.city.recorrido,
+    ...res, provBack: got.prov || 0, finds, weapon, zoneExplored, regionDone, recorrido: !!run.city.recorrido,
     regionName: REGIONS[run.region]?.name, zonesTotal: E.zonesExplored(state),
     missingZones: ex ? ex.missingZones || 0 : 0, canExpand: !!ex?.ok, far,
   };
@@ -572,6 +583,7 @@ let inited = false;
 export function initExpedition() {
   expState();
   K.initClasses();
+  G.initGear();
   if (inited) return;
   inited = true;
   // primera cosecha: la primera Huerta arranca con dos tandas listas (el tutorial pide 4 provisiones enseguida)

@@ -2,18 +2,19 @@
 // Toda mutación de monedas/gemas/xp pasa por acá para que el HUD y las misiones se enteren.
 import { bus } from './bus.js';
 import {
-  CUSTOM_CATALOG, START_BUILDERS, MAX_LEVEL, xpForLevel, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
+  CUSTOM_CATALOG, START_BUILDERS, levelUpReward, MAP_SIZE, AVATAR_TYPE_BY_ID, avatarType, fitsType,
   LEGACY_TYPES, LEGACY_ITEMS, REGION_MATERIALS, PROV_START, RESERVE_CAP, LEGACY_MATS, LEGACY_BUILDINGS, LEGACY_BOOSTERS,
   TOWN_RANKS, eraOfRank, RETIRED_ITEMS, V5_TYPES, V5_ITEMS, v5Look, V5_CAR,
 } from './data.js';
 import { THEME_ALIASES } from '../city/themes.js';
 import { migrateClasses } from './classes-migrate.js';
+import { NIVEL, leaderXpFor, leaderLevelFromXp, leaderLevelV6, paragonPoints, LEADER } from '../combat/classes.js';
 
 const BASE_KEY = 'pixelia.save.v1';
 // 1: original · 2: sin realeza (tipos/piezas de princesa → gente) y tema por defecto "pueblo"
 // 3: sin minijuegos (materiales de región, edificios del ciclo, equipo, épocas; DESIGN-CORE.md §7.2)
 // 4: fuera lo tierno (El Quiebre, plan §J7): solo personas, piezas retiradas devueltas y estilos de ciudad nuevos
-export const VERSION = 6;
+export const VERSION = 7;
 
 /** Ajustes por defecto (src/core/settings.js los aplica y valida; los saves viejos los reciben por deepFill). */
 export const SETTINGS_DEFAULTS = {
@@ -73,7 +74,7 @@ export function defaultState() {
     v: VERSION,
     created: Date.now(),
     lastSeen: Date.now(),
-    player: { name: 'Pixelín', cityName: 'Pixelia', level: 1, xp: 0 },
+    player: { name: 'Pixelín', cityName: 'Pixelia' },
     onboarded: false, // la primera vez se elige personaje, nombre y ciudad (scenes/onboarding.js)
     coins: 600,
     gems: 15,
@@ -133,7 +134,7 @@ export function defaultState() {
  */
 /** Partida recién empezada (mismo criterio que isPristine de online/sync.js). */
 function isFreshGame(s) {
-  return (s.player?.level || 1) <= 1 && (s.player?.xp || 0) < 20 && (s.city?.buildings?.length || 0) <= 1 && !(s.stats?.coinsEarned > 200);
+  return levelOf(s) <= 1 && (s.classes?.leader?.xp || s.player?.xp || 0) < 20 && (s.city?.buildings?.length || 0) <= 1 && !(s.stats?.coinsEarned > 200);
 }
 function migrate(s) {
   if (!s || typeof s !== 'object') return s;
@@ -147,6 +148,7 @@ function migrate(s) {
   else migrateSkiff(s);   // las partidas v5 de antes del esquife (rama de prueba) también se traducen
   if ((s.v || 1) < 6) migrateV6(s);
   migrateClasses(s);   // roles de la expedición → clases (paso 5b; una sola vez, sin depender de s.v)
+  if ((s.v || 1) < 7) migrateV7(s);   // después de las clases: necesita state.classes.leader
   if (!AVATAR_TYPE_BY_ID[s.avatar.type]) s.avatar.type = 'humano';
   if (s.onboarded === undefined) s.onboarded = true;
   // el nombre por defecto viejo era 'Princesa': ahora el juego es neutro
@@ -448,6 +450,40 @@ function migrateV6(s) {
   s.v = 6;
 }
 /**
+ * El Nivel de una partida o de un perfil online. Desde el v7 es el de state.classes.leader (NIVEL); una partida o un
+ * perfil de antes (otra versión del juego, visitas) tiene player.level y la xp del líder en la escala vieja.
+ */
+export function levelOf(s) {
+  if (!s || typeof s !== 'object') return 1;
+  const xp = Math.max(0, Number(s.classes?.leader?.xp) || 0);
+  if ((s.v || 1) >= 7 || s.player?.level == null) return leaderLevelFromXp(xp);
+  return Math.max(1, Math.min(NIVEL.max, Math.max(Number(s.player.level) || 1, leaderLevelV6(xp))));
+}
+/**
+ * v6 → v7 (La Travesía, paso 2a: un solo Nivel). El nivel de la ciudad (player.level, tope 40) y el del líder
+ * (classes.leader, tope 30) pasan a ser uno, el Nivel (tope 50, la curva de la ciudad): se toma el más alto de los dos,
+ * con lo juntado dentro de ese nivel en la misma proporción, así nadie baja. player.level y player.xp se borran.
+ * Corre después de migrateClasses. Lo que pasó queda en s.v7 { player, leader, level }.
+ */
+function migrateV7(s) {
+  const p = (s.player && typeof s.player === 'object') ? s.player : (s.player = {});
+  if (!s.classes || typeof s.classes !== 'object') s.classes = {};
+  if (!s.classes.leader || typeof s.classes.leader !== 'object') s.classes.leader = {};
+  const L = s.classes.leader;
+  const pl = Math.max(1, Math.min(NIVEL.max, Math.round(num(p.level)) || 1));
+  const lxp = Math.max(0, num(L.xp));
+  const ll = leaderLevelV6(lxp);
+  let llBase = 0; for (let n = 1; n < ll; n++) llBase += LEADER.need(n);
+  const fracP = Math.min(0.999, Math.max(0, num(p.xp)) / NIVEL.need(pl));
+  const fracL = ll >= LEADER.max ? 0 : Math.min(0.999, (lxp - llBase) / LEADER.need(ll));
+  const level = Math.max(pl, ll);
+  const frac = level >= NIVEL.max ? 0 : Math.max(pl === level ? fracP : 0, ll === level ? fracL : 0);
+  L.xp = leaderXpFor(level) + Math.floor(frac * NIVEL.need(level));
+  s.v7 = { player: pl, leader: ll, level };
+  delete p.level; delete p.xp;
+  s.v = 7;
+}
+/**
  * El auto pasa a ser el esquife (plan §M5): state.car y las piezas compradas pasan a la pieza que ocupa su lugar (casco,
  * vela, proa; el color queda). Nada se pierde y es seguro de repetir: solo traduce ids viejos. Devuelve si cambió algo.
  */
@@ -645,29 +681,43 @@ export const store = {
     return out;
   },
 
-  // ---------- Experiencia / nivel ----------
-  addXp(n) {
+  // ---------- Experiencia / Nivel ----------
+  /**
+   * Suma experiencia al Nivel (state.classes.leader.xp; v7). Por cada Nivel nuevo: su premio (levelUpReward) y
+   * 'level:up' { level, reward }; al final 'leader:levelup' { level, from, source }. Pasado el 50 junta paragon
+   * ('paragon:up' { points }). Devuelve { from, to } si subió o null.
+   */
+  addXp(n, source = 'city') {
     n = Math.round(n);
-    if (n <= 0) return;
-    const p = state.player;
-    if (p.level >= MAX_LEVEL) return;
-    p.xp += n;
-    bus.emit('xp:changed', { xp: p.xp, level: p.level });
-    while (p.level < MAX_LEVEL && p.xp >= xpForLevel(p.level)) {
-      p.xp -= xpForLevel(p.level);
-      p.level++;
-      const reward = levelUpReward(p.level);
+    if (!(n > 0)) return null;
+    if (!state.classes || typeof state.classes !== 'object') state.classes = {};
+    const L = (state.classes.leader && typeof state.classes.leader === 'object') ? state.classes.leader : (state.classes.leader = { cls: null, sub: null, xp: 0, picks: [] });
+    L.xp = Math.max(0, Number(L.xp) || 0);
+    const from = leaderLevelFromXp(L.xp), pFrom = paragonPoints(L.xp);
+    L.xp += n;
+    const to = leaderLevelFromXp(L.xp), pTo = paragonPoints(L.xp);
+    bus.emit('xp:changed', { xp: L.xp, level: to, source });
+    for (let lv = from + 1; lv <= to; lv++) {
+      const reward = levelUpReward(lv);
       state.coins += reward.coins; state.gems += reward.gems;
       bus.emit('currency:changed', { coins: state.coins, gems: state.gems, delta: reward, reason: 'levelup' });
-      bus.emit('level:up', { level: p.level, reward });
+      bus.emit('level:up', { level: lv, reward });
     }
+    if (pTo > pFrom) bus.emit('paragon:up', { points: pTo, from: pFrom });
     dirty = true;
+    if (to > from) { bus.emit('leader:levelup', { level: to, from, source }); return { from, to }; }
+    return null;
   },
+  /** { level, xp (lo juntado en el nivel), need, pct } del Nivel. */
   xpProgress() {
-    const p = state.player;
-    const need = xpForLevel(p.level);
-    return { level: p.level, xp: p.xp, need, pct: p.level >= MAX_LEVEL ? 1 : p.xp / need };
+    const xp = Math.max(0, Number(state.classes?.leader?.xp) || 0);
+    const level = leaderLevelFromXp(xp);
+    if (level >= NIVEL.max) { const into = (xp - leaderXpFor(level)) % NIVEL.paragonStep; return { level, xp: into, need: NIVEL.paragonStep, pct: into / NIVEL.paragonStep, paragon: paragonPoints(xp) }; }
+    const need = NIVEL.need(level), into = xp - leaderXpFor(level);
+    return { level, xp: into, need, pct: into / need };
   },
+  /** El Nivel (1..50). */
+  level() { return leaderLevelFromXp(state.classes?.leader?.xp || 0); },
 
   // ---------- Estadísticas ----------
   inc(key, n = 1) {
@@ -685,7 +735,7 @@ export const store = {
   buyItem(kind, id) {
     const item = CUSTOM_CATALOG[kind]?.find(i => i.id === id);
     if (!item || store.owns(kind, id)) return false;
-    if ((item.unlock || 1) > state.player.level) return false;
+    if ((item.unlock || 1) > store.level()) return false;
     if (!store.spend(item.price || {}, 'buy:' + kind)) return false;
     state.owned[kind].push(id);
     store.inc('bought');

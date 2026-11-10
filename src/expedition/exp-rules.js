@@ -216,7 +216,7 @@ export function newRun({ region = 'bosque', zone = 1, kind = 'normal', seed = 1,
   const tierLv = Object.fromEntries(Object.entries({ ...(mods.roleLevel || {}), ...(mods.tier || {}) }).map(([k, v]) => [toClass(k), v]));
   const sanidad = party.includes('curandero');
   // quien lidera, cada 10 niveles, aguanta un poco más (L5: un bonus chico por nivel)
-  const leaderMorale = Math.floor((mods.leader?.level || 1) / LEADER.moraleEvery);
+  const leaderMorale = Math.floor((mods.leader?.level || 1) / LEADER.moraleEvery) + (mods.moraleBonus || 0);   // + talentos (2a)
   const moraleMax = mods.moraleMax ?? EXP.morale + (sanidad ? EXP.moraleSanidad : 0) + leaderMorale + toolMorale(mods.tools);
   // la salida corta va con la mochila chica: la mitad de la carga
   const cargoMax = Math.max(3, Math.ceil((mods.cargoMax ?? EXP.cargoBase + (equip.includes('carreta') ? EXP.carreta : 0)) * (K.cargoFactor || 1)));
@@ -500,6 +500,8 @@ export function makeBattle(run, enc, x, y) {
     element: elements.find(id => !!C_ELEMENTS[id]) || null, elements: elements.filter(id => !!C_ELEMENTS[id]),
     classLevel: fightClassLevels(run), picks: { ...(run.mods.picks || {}) },
     tools: { ...(run.mods.tools || {}) }, equip: fightItems(run), attempt: bossAttempt(run, enc),
+    // paso 2a: armas, maestría y talentos de cada uno, la Fuerza (escala a los enemigos) y la maestría de los objetos
+    gear: run.mods.gear || null, power: run.mods.power ?? null, itemPlus: run.mods.itemPlus || null,
   });
   if (tiredFight(run)) {
     // con el ánimo por el piso el grupo llega cansado: un poco menos de vida (se ve en la tarjeta antes de entrar)
@@ -533,7 +535,10 @@ function applyFight(run, c, res, pd, events) {
   const win = res.outcome === 'win';
   const f = { enc: res.enc, outcome: res.outcome, reason: res.reason, turns: res.turns, stars: res.stars, xp: res.xp, quick: !!res.quick,
     mats: { ...(res.loot?.mats || {}) }, page: res.page || null, flag: res.flag || null, guided: !!pd.guided, attempt: res.attempt || 1,
-    combos: res.comboCount || 0, downs: res.downs || 0 };
+    combos: res.comboCount || 0, downs: res.downs || 0,
+    // paso 2a: los objetos del Taller que se usaron (suman maestría) y la Fuerza con que se peleó
+    items: run.battle && !res.quick ? Object.entries(run.battle.items || {}).filter(([, n]) => n <= 0).map(([id]) => id) : [],
+    power: run.mods.power ?? null };
   (run.fights ||= []).push(f);
   events.push({ type: 'combatEnd', fight: { ...f } });
   if (win) {

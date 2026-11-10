@@ -113,6 +113,13 @@ try {
   // el grupo se arma con la Casa de Expediciones (y el Taller)
   r = await run(`S.city.buildings.push({ uid: 9901, id: 'casa_exp', x: 2, z: 2, level: 3 }, { uid: 9902, id: 'taller', x: 4, z: 2, level: 1 });
     K.grantLeaderXp(400); K.setLeaderPicks(['trampa'], S); return K.leaderInfo(S).level;`);
+  // desde el v7 la experiencia del líder es el Nivel: cada Nivel nuevo abre su panel «Subiste de nivel» (de a uno, cuando la
+  // ciudad está tranquila, y frenan los avisos): se cierran todos antes de seguir
+  for (let quiet = 0, k = 0; quiet < 6 && k < 80; k++) {
+    if (await page.evaluate(() => !!document.querySelector('.pnl-levelup'))) { quiet = 0; await run(`P.ctx.ui.closeAllModals(); return true;`); }
+    else quiet++;
+    await sleep(300);
+  }
   await run(`P.ctx.openPanel('expedition'); return true;`);
   ok(await waitFor(`!!document.querySelector('.pnl-ex [data-leader-class="forjador"]')`, 8000), 'la ficha de quien lidera muestra la clase');
   r = await page.evaluate(() => document.querySelector('.pnl-ex [data-leader-class]')?.textContent || '');

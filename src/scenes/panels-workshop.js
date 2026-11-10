@@ -4,6 +4,11 @@ import { icon } from '../core/icons.js';
 import { EQUIP_RECIPES, RESERVES, REGION_MATERIALS, RESERVES_RANK, RESERVE_CAP } from '../core/data.js';
 import { EQUIPMENT } from '../expedition/exp-data.js';
 import { openShell } from './panels-common.js';
+import { arsenalState } from '../core/arsenal.js';
+import { t } from '../core/i18n.js';
+
+/** Los textos nuevos juntos (paso 2a; el paso de idiomas los pasa a t()). */
+const TXT = { get arsenal() { return t('arsenal.title'); }, get arsenalHelp() { return t('arsenal.workshopHelp'); } };
 
 const CSS = `
 .pnl-ws .pnl-ws-sec { margin-top: 10px; }
@@ -22,6 +27,8 @@ const CSS = `
 .pnl-ws .pnl-ws-wallet { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 18px; }
 .pnl-ws .pnl-ws-wallet span { display: inline-flex; align-items: center; gap: 3px; }
 .pnl-ws .pnl-ws-tip { margin: 6px 0 0; font-size: 14px; color: var(--ink-l); display: flex; gap: 6px; }
+.pnl-ws .pnl-ws-ars { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.pnl-ws .pnl-ws-ars small { flex: 1; font-size: 14px; color: var(--ink-l); line-height: 1.2; }
 `;
 let styleEl = null;
 function injectStyle() {
@@ -68,6 +75,11 @@ export function openWorkshop(ctx) {
     const w = h('div.card');
     w.append(h('h4.pnl-ws-h', { html: `${icon('bag', 20)}<span>Materiales</span><small>${lvT ? `Taller nivel ${lvT} · ${X.equipSlots()} por salida` : 'Sin Taller'}</small>` }));
     w.append(h('div.pnl-ws-wallet', { html: REGION_MATERIALS.map(m => `<span title="${esc(m.name)}">${icon(m.icon, 20)}${fmt(mats[m.id] || 0)}</span>`).join('') + `<span>${icon('coin', 20)}${fmt(ctx.state.coins)}</span>` }));
+    // el Arsenal (paso 2a): las armas de las peleas se ven y se trabajan acá
+    const n = arsenalState(ctx.state).items.length;
+    const ab = h('button.btn.small.sky', { 'data-open-arsenal': '1', html: `${icon('sword', 18)} ${esc(TXT.arsenal)}${n ? ` (${n})` : ''}` });
+    ab.onclick = () => { audio.sfx('tap'); ctx.openPanel('arsenal'); };
+    w.append(h('div.pnl-ws-ars', {}, ab, h('small', {}, TXT.arsenalHelp)));
     body.append(w);
     const eq = h('div.card.pnl-ws-sec');
     eq.append(h('h4.pnl-ws-h', { html: `${icon('rope', 20)}<span>Equipo de expedición</span><small>1 uso por salida</small>` }));

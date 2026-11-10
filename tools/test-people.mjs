@@ -132,14 +132,14 @@ if (!QUICK) {
       const res = ex.startExpedition({ region: 'bosque', kind: 'normal' }); const t = res.run?.mods?.tools; const lead = res.run?.mods?.leader; S.expedition.active = null; return { err: res.error, t, lead };`);
     ok(r.t && r.t.catalejo === 2 && r.lead && r.lead.level >= 1, 'la salida lleva las herramientas y el nivel real del líder', r);
     // pestaña Progreso
-    await run(`K.grantLeaderXp(300); P.ctx.openPanel('story', { tab: 'progreso' }); return true;`);
+    const lvNow = await run(`K.grantLeaderXp(300); P.ctx.openPanel('story', { tab: 'progreso' }); return K.leaderInfo().level;`);
     ok(await waitFor(`!!document.querySelector('.pnl-story .pg [data-pg="lider"]')`, 8000), 'la Bitácora tiene la pestaña Progreso');
     r = await page.evaluate(() => {
       const q = (s) => document.querySelector('.pnl-story ' + s);
       return { tab: !!q('[data-tab="progreso"].active'), rango: !!q('[data-pg="rango"]'), lider: q('[data-pg="lider"]')?.dataset.level, vera: q('[data-person="vera"]')?.dataset.bond,
         locked: !!q('[data-person="ramiro"].locked'), els: !!q('[data-pg="elementos"]'), grieta: !!q('[data-pg="grieta"]'), pag: !!q('[data-pg="paginas"]'), txt: q('[data-pg="lider"]')?.textContent || '' };
     });
-    ok(r.tab && r.rango && r.lider === '3' && r.vera === '5' && r.locked && r.els && r.grieta && r.pag, 'rango, líder, gente, elementos, Grieta y páginas', r);
+    ok(r.tab && r.rango && lvNow > 1 && r.lider === String(lvNow) && r.vera === '5' && r.locked && r.els && r.grieta && r.pag, 'rango, líder, gente, elementos, Grieta y páginas', r);
     ok(/\d+\/\d+/.test(r.txt) && /nivel/.test(r.txt), 'cada fila dice qué falta para el próximo nivel', r.txt.slice(0, 120));
     if (process.argv.includes('--shots')) { await page.screenshot({ path: join(ROOT, 'shots', 'progreso.png') }); await page.evaluate(() => { const p = document.querySelector('.pnl-story .pnl-pane'); if (p) p.scrollTop = 520; }); await sleep(300); await page.screenshot({ path: join(ROOT, 'shots', 'progreso-gente.png') }); console.log('  capturas en shots/progreso*.png'); }
     r = await run(`S.materials.mineral = 30; S.coins = 5000; return true;`);
@@ -152,7 +152,7 @@ if (!QUICK) {
     await run(`P.ctx.openPanel('expedition'); return true;`);
     ok(await waitFor(`!!document.querySelector('.pnl-ex [data-leader-level]')`, 8000), 'el panel de Expedición muestra el nivel de quien lidera');
     r = await page.evaluate(() => document.querySelector('.pnl-ex [data-leader-level]')?.textContent || '');
-    ok(/nivel 3/.test(r), 'con su nivel', r);
+    ok(new RegExp('nivel ' + lvNow + '(?!\\d)').test(r), 'con su Nivel', { r, lvNow });
     ok(!errors.length, 'sin errores en la página', errors.slice(0, 3));
   } catch (e) { ok(false, 'el juego anduvo sin trabarse', String(e && e.stack || e)); }
   await browser.close();

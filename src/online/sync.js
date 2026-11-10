@@ -11,7 +11,7 @@
 //   'online:applied'  { payload, summary, source }   (después de acreditar un regalo)
 //   'online:speedup'  { uid, minutes }               (una ayuda adelantó una obra)
 import { net, isoWeek, isDefaultName } from './net.js';
-import { store } from '../core/state.js';
+import { store, levelOf } from '../core/state.js';
 import { bus } from '../core/bus.js';
 import { population, happiness, cityCharm, townRank } from '../core/economy.js';
 import { ITEMS, CHESTS, addChest, chestCount } from '../chests/chests.js';
@@ -62,8 +62,8 @@ function conflictInfo() { return pendingConflict ? { local: pendingConflict.loca
 function summary(s, at) {
   if (!s || typeof s !== 'object') return null;
   return {
-    level: s.player?.level || 1,
-    xp: s.player?.xp || 0,
+    level: levelOf(s),
+    xp: s.classes?.leader?.xp || s.player?.xp || 0,
     name: s.player?.name || '',
     cityName: s.player?.cityName || '',
     coins: s.coins || 0,
@@ -74,7 +74,7 @@ function summary(s, at) {
 }
 /** Partida recién empezada (no se pierde nada si se reemplaza). */
 function isPristine(s) {
-  return (s.player?.level || 1) <= 1 && (s.player?.xp || 0) < 20 && (s.city?.buildings?.length || 0) <= 1 && !(s.stats?.coinsEarned > 200);
+  return levelOf(s) <= 1 && (s.classes?.leader?.xp || s.player?.xp || 0) < 20 && (s.city?.buildings?.length || 0) <= 1 && !(s.stats?.coinsEarned > 200);
 }
 /** ¿Son "casi la misma" partida? */
 function similar(a, b) {
@@ -251,7 +251,7 @@ export function buildPublicProfile(s = store.state, now = Date.now()) {
   return {
     // con el nombre por defecto no se pisa el nombre de la cuenta (el que eligió al registrarse)
     name: s.player?.name && !isDefaultName(s.player.name) ? s.player.name : undefined,
-    cityName: s.player?.cityName, level: s.player?.level,
+    cityName: s.player?.cityName, level: levelOf(s),
     look: s.avatar, car: s.car,
     city: {
       buildings: (s.city?.buildings || []).map(b => {

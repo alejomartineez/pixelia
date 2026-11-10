@@ -50,7 +50,8 @@ section('Motor puro');
 {
   const src = readFileSync(join(ROOT, 'src/combat/combat-rules.js'), 'utf8') + readFileSync(join(ROOT, 'src/combat/combat-data.js'), 'utf8');
   ok(!/\b(document|window|localStorage|requestAnimationFrame)\b/.test(src.replace(/\/\/.*$/gm, '')), 'sin DOM ni navegador');
-  ok(!/from ['"]three|from ['"]\.\.\/core|Math\.random/.test(src), 'sin three.js, sin store y sin Math.random');
+  // la única de core que entra es la Fuerza (src/core/power.js, pura: test-arsenal.mjs lo revisa)
+  ok(!/from ['"]three|from ['"]\.\.\/core\/(?!power\.js['"])|Math\.random/.test(src), 'sin three.js, sin store y sin Math.random');
 }
 
 // ------------------------------------------------------------------ crear y ver

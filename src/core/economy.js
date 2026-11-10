@@ -1,7 +1,8 @@
 // Reglas de la ciudad: construir, producir, mejorar, expandir.
 // La escena de la ciudad y el HUD usan SOLO estas funciones para que los números siempre coincidan.
 import { bus } from './bus.js';
-import { store, todayStr } from './state.js';
+import { MASTERY_STEPS } from './data.js';
+import { store, todayStr, levelOf } from './state.js';
 import {
   BUILDING_BY_ID, MAP_SIZE, START_LAND, LAND_STEP, MAX_EXPANSIONS, MAX_BUILDING_LEVEL,
   CASTLE_BONUS_PER_LEVEL, MAX_BUILDERS, BUILDER_GEM_COST, TOWN_RANKS, MONUMENTS, MONUMENT_IDS, MATERIAL_BY_ID,
@@ -177,7 +178,7 @@ export function rankStatus(state = S(), now = Date.now()) {
   return {
     rank, def: cur, next, reqs, charm, stars,
     allOk: !!next && reqs.every(r => r.ok),
-    levelOk: !!next && state.player.level >= next.reqLevel,
+    levelOk: !!next && levelOf(state) >= next.reqLevel,
   };
 }
 const hasPlanos = (state) => typeof state.planos === 'number';
@@ -366,7 +367,7 @@ export function zonesExplored(state = S()) {
 // ---------- Maestría por tipo de edificio ----------
 // Monedas producidas (cobradas) por tipo → 1..5 estrellas, +3% de producción por estrella.
 // Umbrales: 500, 2k, 8k, 25k, 80k × (costo del edificio / 100).
-export const MASTERY_STEPS = [500, 2000, 8000, 25000, 80000];
+export { MASTERY_STEPS };   // vive en data.js: la usan también las maestrías de armas (arsenal.js)
 export const MASTERY_BONUS = 0.03;
 const masteryScale = (id) => Math.max(1, (def(id)?.cost?.coins || 100) / 100);
 /** {stars 0..5, total, next (total para la próxima estrella o null), progress 0..1, bonus 0..0.15, steps} */
@@ -431,7 +432,7 @@ export function canBuild(id, state = S(), now = Date.now()) {
   const d = def(id);
   if (!d) return { ok: false, reason: '???' };
   const free = freeBuildCount(id) > 0;
-  if (!free && d.unlock > state.player.level) return { ok: false, reason: `Nivel ${d.unlock}`, locked: true };
+  if (!free && d.unlock > levelOf(state)) return { ok: false, reason: `Nivel ${d.unlock}`, locked: true };
   if (!free && d.rank && townRank(state) < d.rank) return { ok: false, reason: `Rango ${rankName(d.rank)}`, locked: true, rank: d.rank };
   if (d.element === 'raiz' && !raizFound(state)) return { ok: false, reason: 'Hace falta el Núcleo de Raíz', locked: true, element: 'raiz' };
   if (d.max && countOf(id, state) >= d.max) return { ok: false, reason: 'Ya lo tenés' };
@@ -636,7 +637,7 @@ export function canUpgrade(b, state = S(), now = Date.now()) {
   if (!info) return { ok: false, reason: 'Nivel máximo' };
   if (isBusy(b, now)) return { ok: false, reason: 'Está en obra' };
   if (b.damaged) return { ok: false, reason: 'Primero hay que repararlo', damaged: true };
-  if (state.player.level < info.reqLevel) return { ok: false, reason: `Nivel ${info.reqLevel}`, locked: true };
+  if (levelOf(state) < info.reqLevel) return { ok: false, reason: `Nivel ${info.reqLevel}`, locked: true };
   if (info.rank && !rankStatus(state, now).allOk) return { ok: false, reason: 'Falta completar el expediente', locked: true, reqs: true };
   if (info.reqEra && cityEra(state) < info.reqEra) return { ok: false, reason: `Época ${eraDef(info.reqEra).name}`, locked: true, era: info.reqEra };
   if (buildersFree(state, now) <= 0) return { ok: false, reason: 'Constructoras ocupadas' };

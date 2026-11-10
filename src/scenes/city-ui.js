@@ -3,6 +3,7 @@
 import { infoBoxes as threatInfoBoxes } from '../threats/threat-ui.js';
 import { thumbnail } from '../city/models.js';
 import { CATEGORIES, BUILDINGS, MAP_SIZE, CASTLE_BONUS_PER_LEVEL, RANK_REQ_LABELS, MONUMENTS, ERAS } from '../core/data.js';
+import { levelOf } from '../core/state.js';
 import { cycleEffects, cycleUpgradeLines } from '../expedition/expedition.js';
 import * as RZ from '../core/raiz.js';
 import { icon } from '../core/icons.js';
@@ -407,7 +408,7 @@ export function openInfo(S, uid) {
   function signature() {
     const now = Date.now();
     const ps = E.producerStatus(b, now);
-    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, ctx.state.player.level, hammerCount(), masteryStars(), isCastle ? E.rankStatus().reqs.map(r => r.ok ? 1 : 0).join('') : '', b.era || 1, E.renovateInfo(b) ? E.canRenovate(b).ok : '-', b.damaged ? 1 : 0].join('|');
+    return [E.isConstructing(b, now), E.isUpgrading(b, now), b.level, ps.ready, ps.full, E.canUpgrade(b).ok, E.skipCost(b) === 0, E.buildersFree(), ctx.state.city.expansions, ctx.state.builders, levelOf(ctx.state), hammerCount(), masteryStars(), isCastle ? E.rankStatus().reqs.map(r => r.ok ? 1 : 0).join('') : '', b.era || 1, E.renovateInfo(b) ? E.canRenovate(b).ok : '-', b.damaged ? 1 : 0].join('|');
   }
   function mastery() {
     if (typeof E.masteryInfo !== 'function' || !d.prod) return null;

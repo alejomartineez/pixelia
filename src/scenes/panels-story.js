@@ -2,8 +2,9 @@
 //  - Historia: el acto y el capítulo, "Qué sigue" (el objetivo del capítulo y la misión actual con su botón), las escenas
 //    vistas (se vuelven a leer) y "Volver a ver el prólogo".
 //  - Diario: las páginas del diario del último intendente, los cuatro elementos y los Logros (core/achievements.js).
-//  - Progreso (paso 5b): rango y Época, nivel del líder, clases, la gente con su Vínculo y su herramienta, elementos,
-//    Grieta y páginas, con lo que falta para el próximo nivel (src/scenes/panels-progress.js).
+//  - Progreso (paso 5b; paso 2a): Nivel, Talentos, Maestrías y Fuerza (con el acceso al Arsenal); después rango y Época,
+//    clases, la gente con su Vínculo y su herramienta, elementos, Grieta y páginas (src/scenes/panels-progress.js).
+//    params.section abre Progreso en una sección ('talentos', …).
 //  - Manual: capítulos que se abren al llegar a cada sistema, con buscador. Reemplaza el "Cómo jugar" viejo.
 import { icon } from '../core/icons.js';
 import { isOpen as featureOpen } from '../core/unlocks.js';
@@ -94,6 +95,7 @@ export function openStory(ctx, params = {}) {
   const s = ctx.state;
   let tab = TABS.some(t => t.id === params.tab) ? params.tab : 'historia';
   let query = '';
+  let focus = params.section || null;   // sección de Progreso a la que ir al abrir (paso 2a: 'talentos' desde la subida de Nivel)
 
   const tabsEl = h('div.pnl-tabs', { role: 'tablist' });
   const pane = h('div.pnl-pane');
@@ -258,12 +260,13 @@ export function openStory(ctx, params = {}) {
     }
     renderTabs();
     pane.innerHTML = '';
-    pane.append(tab === 'historia' ? historiaPane() : tab === 'diario' ? diarioPane() : tab === 'progreso' ? progressPane(ctx, () => render()) : manualPane());
+    pane.append(tab === 'historia' ? historiaPane() : tab === 'diario' ? diarioPane() : tab === 'progreso' ? progressPane(ctx, () => render(), { focus: resetScroll ? focus : null }) : manualPane());
+    focus = null;
     pane.scrollTop = top;
   }
   sh.on(ctx.bus, 'quests:changed', () => { if (tab === 'historia') render(); });
   sh.on(ctx.bus, 'story:page', () => render());
-  for (const ev of ['people:bond', 'people:tool', 'people:arrived', 'leader:levelup']) sh.on(ctx.bus, ev, () => { if (tab === 'progreso') render(); });
+  for (const ev of ['people:bond', 'people:tool', 'people:arrived', 'leader:levelup', 'talents:changed', 'arsenal:changed', 'mastery:up']) sh.on(ctx.bus, ev, () => { if (tab === 'progreso') render(); });
   sh.keyHandler = (e) => {
     const i = TABS.findIndex(t => t.id === tab);
     let n = -1;

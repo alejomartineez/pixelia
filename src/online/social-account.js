@@ -3,7 +3,7 @@ import { h, esc, modal, toast, confirm } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
 import { bus } from '../core/bus.js';
-import { store } from '../core/state.js';
+import { store, levelOf } from '../core/state.js';
 import { fmtNum } from '../core/economy.js';
 import { net, isDefaultName, DEFAULT_PLAYER_NAME } from './net.js';
 import { getSyncStatus, pushNow, resolveConflict, publishProfileNow } from './sync.js';
@@ -114,7 +114,7 @@ export function openAccountUI(ctx, opts = {}) {
     if (net.mode === 'mock') body.append(h('span.soc-mock', { html: `${icon('gear', 14)} Modo simulado` }));
     body.append(h('div.soc-card.soc-row', {
       html: `${avatarHtml(s.avatar, s.player.name, 60, 'me')}<div class="soc-grow"><b style="font-size:20px">${esc(s.player.name)}</b>
-        <div class="soc-muted soc-ellip">${esc(net.user.email || '')}</div><div class="soc-muted">Nivel ${s.player.level} · ${esc(s.player.cityName || 'Pixelia')}</div></div>`,
+        <div class="soc-muted soc-ellip">${esc(net.user.email || '')}</div><div class="soc-muted">Nivel ${levelOf(s)} · ${esc(s.player.cityName || 'Pixelia')}</div></div>`,
     }));
     const online = st.online;
     let line;

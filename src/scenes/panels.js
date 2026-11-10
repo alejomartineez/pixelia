@@ -9,6 +9,7 @@ import { openRank } from './panels-rank.js';
 import { openWorks } from './panels-works.js';
 import { openExpedition } from './panels-expedition.js';
 import { openWorkshop } from './panels-workshop.js';
+import { openArsenal } from './panels-arsenal.js';
 import { getOpen } from './panels-common.js';
 
 const PANELS = {
@@ -23,6 +24,7 @@ const PANELS = {
   works: openWorks,
   expedition: openExpedition,
   workshop: openWorkshop,
+  arsenal: openArsenal,   // paso 2a: armas, equipar, rehacer rasgos y desarmar
 };
 
 export async function openPanel(ctx, name, params = {}) {

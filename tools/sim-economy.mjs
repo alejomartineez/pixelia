@@ -22,6 +22,10 @@
 //   node tools/sim-economy.mjs --raiz exprimir la extracción que se elige al encontrar el Núcleo de Raíz (sellar, medida
 //                                              o exprimir; por defecto medida). Sin --json corre además las tres opciones
 //                                              en procesos aparte y mide la meta de L1 (--no-raiz3 para saltearla)
+//   node tools/sim-economy.mjs --adv          (paso 2a) una línea con los avances de cada rato (Nivel, maestría, arma)
+//     diagnóstico: --no-gear (el bot no aprende talentos, no equipa ni desarma, y no farmea) · --no-farm (rodea las
+//     peleas como antes) · --farm-reach 4 (pasos que camina para ir a una pelea) · --enemies 0.07,0.13,2 (casillas
+//     enemigo por salida: chance en la banda media y en la lejana, y tope; para explorar)
 //   (desde tools/: npm run sim:economy)
 //
 // Cómo juega (una persona razonable en ratos cortos): al entrar cobra todo (login, cofre gratis, cofres, Pase, misiones,
@@ -162,6 +166,8 @@ if (opt('no-tool-city', false)) { TC.TOOL_CITY.martillo.discount = 0; TC.TOOL_CI
 // --no-tool-exp: sin los efectos de las herramientas en la expedición (para medir cuánto mueven la economía)
 if (opt('no-tool-exp', false)) { for (const t of Object.values(PD.TOOL_EXP)) { if (t.opt) for (const k of Object.keys(t.opt)) t.opt[k] = 0; t.vision = 99; t.morale = false; } }
 const BOTS = await import(pathToFileURL(path.join(HERE, 'exp-bots.mjs')).href);
+// --enemies 0.12,0.2,3: casillas enemigo por salida (chance en la banda media, en la lejana y tope; para explorar)
+{ const en = String(opt('enemies', '')); if (en) { const [a, b, m] = en.split(',').map(Number); XD.EXP.enemy.chance = [a, b]; if (m) XD.EXP.enemy.max = m; } }
 const D = data.BUILDING_BY_ID;
 // --k 0.5: escala la producción de monedas de todos los edificios (para explorar; 1 = los números del juego)
 const K = Number(opt('k', 1));
@@ -192,6 +198,94 @@ bus.on('town:rankup', ({ rank }) => {
   const lv = CL.leaderLevelFromXp(s.classes?.leader?.xp || 0);
   const cls = KC.cityClasses(s).map(r => r.classLevel || 1).sort((a, b) => b - a).slice(0, 3);
   progLog.push({ rank, day: dayOf() + 1, leader: lv, classLevel: cls, tools: NO_TOOLS ? {} : PE.toolLevels(s) });
+});
+
+// ---------------------------------------------------------------- arsenal, talentos y Fuerza (La Travesía, paso 2a)
+// Como lo usaría alguien: al subir de Nivel pone el punto en un orden razonable (lo que se ve en la pelea y lo que trae
+// armas primero), equipa la mejor arma (Fuerza del arma + lo que da su maestría) a quien la puede llevar (el líder y la
+// gente de la ciudad, que rota en la escuadra), desarma lo que sobra (se queda con 4 de repuesto) y, cuando todos
+// llevan algo mejor que una común, prende el filtro de comunes. --no-gear: no toca nada de eso (para comparar).
+const A = await imp('src/core/arsenal.js');
+const TL = await imp('src/core/talents.js');
+const G = await imp('src/core/gear.js');
+const PW = await imp('src/core/power.js');
+const CD = await imp('src/combat/combat-data.js');
+const NO_GEAR = !!opt('no-gear', false);
+const TALENT_PLAN = ['of_hallazgo', 'mando_vida', 'sup_animo', 'mando_maestria', 'of_hallazgo', 'sup_cuero', 'mando_vida', 'of_hallazgo',
+  'mando_maestria', 'sup_animo', 'mando_vida', 'sup_cuero', 'mando_voz', 'sup_cuero', 'sup_vigia', 'mando_voz', 'sup_curas', 'mando_voz',
+  'mando_filo', 'of_taller', 'sup_curas', 'sup_coraza', 'mando_maestria', 'of_desarme', 'sup_botin', 'mando_muro', 'of_jefe'];
+function learnTalents() {
+  if (NO_GEAR) return;
+  for (let g = 0; g < 60 && TL.talentPoints(s).free > 0; g++) {
+    const id = TALENT_PLAN.find(t => TL.canLearn(s, t).ok) || TL.TALENT_IDS.find(t => TL.canLearn(s, t).ok);
+    if (!id || !G.learn(id).ok) break;
+  }
+  for (let g = 0; g < 60 && TL.talentPoints(s).paragon.free > 0; g++) G.learnParagon(TL.BRANCH_IDS[g % TL.BRANCH_IDS.length]);
+}
+bus.on('level:up', learnTalents);
+/** Lo que vale la maestría de un tipo (con los pesos de la Fuerza). */
+const perkPower = (type) => { const m = A.masteryPerks(type, A.arsenalState(s).mastery[type] || 0); return 10 * m.hp + 30 * m.atk + 40 * m.armor + 15 * Object.values(m.flags).reduce((a, n) => a + n, 0); };
+const wScore = (w) => A.weaponPower(w) + perkPower(w.type);
+function gearUp() {
+  if (NO_GEAR) return;
+  learnTalents();
+  const a = A.arsenalState(s);
+  const L = s.classes?.leader || {};
+  const who = ['lider', ...KC.cityClasses(s).sort((x, y) => y.classLevel - x.classLevel).map(r => r.id)];
+  const taken = new Set();
+  for (const w of who) {
+    const cur = A.equippedOn(s, w);
+    const base = cur ? wScore(cur) : perkPower(A.wieldType(s, w, L.cls)) - 1;
+    const best = a.items.filter(x => !taken.has(x.uid) && A.canWield(w, x.type) && (!A.isEquipped(s, x.uid) || x.uid === cur?.uid))
+      .sort((x, y) => wScore(y) - wScore(x))[0];
+    if (best && best.uid !== cur?.uid && wScore(best) > base) G.equip(w, best.uid);
+    const now = A.equippedOn(s, w);
+    if (now) taken.add(now.uid);
+  }
+  // lo que sobra: se desarma (quedan 4 de repuesto, las de más Fuerza)
+  const loose = a.items.filter(x => !A.isEquipped(s, x.uid)).sort((x, y) => wScore(y) - wScore(x));
+  for (const w of loose.slice(4)) G.scrap(w.uid);
+  // todos los que pelean llevan algo mejor que una común: lo que caiga común se desarma solo
+  if (a.filter < 0 && who.every(w => (A.equippedOn(s, w)?.rarity || 0) >= 1)) G.setFilter(0);
+  rerollUp(who);
+}
+// Rehacer rasgos (PLAN-TRAVESIA: lo farmeado tiene dónde ir): en un arma equipada poco común o mejor, el rasgo que no
+// es de los que el bot busca se rehace. Una vez por día y hasta 3 por arma; paga con lo mismo que el monumento
+// (mineral y madera), como haría quien juega. --no-reroll lo apaga.
+const REROLL = !args.includes('--no-reroll');
+const REROLL_WANT = new Set(['temple', 'hallazgo', 'vida2', 'coraza', 'afinidad']);
+const rerollStats = { n: 0, coins: 0, mats: 0, day: -1, by: new Map() };
+function rerollUp(who) {
+  const day = Math.floor((T - day0) / DAY);
+  if (!REROLL || rerollStats.day === day) return;
+  for (const w of who) {
+    const x = A.equippedOn(s, w);
+    if (!x || x.rarity < 1 || (rerollStats.by.get(x.uid) || 0) >= 3) continue;
+    const idx = x.traits.findIndex(t => !REROLL_WANT.has(t.id));
+    if (idx < 0) continue;
+    const r = G.reroll(x.uid, idx);
+    if (!r.ok) continue;
+    rerollStats.n++; rerollStats.day = day; rerollStats.coins += r.cost.coins; rerollStats.mats += Object.values(r.cost.mats).reduce((p, n) => p + n, 0);
+    rerollStats.by.set(x.uid, (rerollStats.by.get(x.uid) || 0) + 1);
+    return;
+  }
+}
+// avances por rato (meta "al menos un avance por rato"): subir de Nivel, una maestría (arma u objeto) o un arma nueva
+const advLog = [];
+let adv = null;
+let weaponsIn = 0;
+bus.on('level:up', () => { if (adv) adv.level++; });
+bus.on('mastery:up', (p) => { if (adv) adv[p?.kind === 'objeto' ? 'item' : 'mastery']++; });
+bus.on('arsenal:drop', () => { weaponsIn++; if (adv) adv.drop++; });
+const masteryMax = () => { const m = A.arsenalState(s).mastery; return Math.max(1, ...Object.values(m).map(x => A.masteryLevel(x))); };
+const masteryLog = [];
+// Fuerza al llegar a cada rango contra la recomendada de los encuentros de la región que se abre (o la última abierta)
+const powerLog = [];
+bus.on('town:rankup', ({ rank }) => {
+  const party = X.expeditionStatus().party;
+  const reg = XD.REGION_IDS.map(id => XD.REGIONS[id]).filter(g => (g.rank || 1) <= rank && Object.values(CD.ENCOUNTERS).some(e => e.region === g.id)).sort((x, y) => y.rank - x.rank)[0];
+  const recs = reg ? Object.values(CD.ENCOUNTERS).filter(e => e.region === reg.id).map(e => PW.recPower(e.id)) : [];
+  powerLog.push({ rank, day: dayOf() + 1, power: G.currentPower(party).total, region: reg?.id || '-', rec: recs.length ? [Math.min(...recs), Math.max(...recs)] : null });
 });
 
 // ---------------------------------------------------------------- registro (bus)
@@ -455,7 +549,7 @@ const all = (id) => s.city.buildings.filter(b => b.id === id);
 const one = (id) => s.city.buildings.find(b => b.id === id) || null;
 const lvl = (id) => E.cycleLevel(id, s, T);
 const rank = () => E.townRank();
-const L = () => s.player.level;
+const L = () => store.level();   // el Nivel (v7: state.classes.leader)
 
 /** Provisiones por día que dan los productores con este ritmo de ratos (cada productor se llena entre rato y rato). */
 function provPerDay() {
@@ -737,6 +831,77 @@ function equipFor() {
     craft('equip', id);
   }
 }
+// Salida con farmeo (paso 2a): el bot "medio" de exp-bots, pero como alguien que junta armas y maestría. Una pelea que
+// ya ganó una vez la resuelve rápido (10 s) siempre que la encuentra, y va a buscarla si está a FARM_REACH pasos o menos
+// por casillas vistas y le alcanzan las provisiones para volver; una pelea nueva la juega si el rato tiene tiempo
+// (maxFights, como antes). --no-farm: el bot de antes (rodea casi todas las peleas).
+const XR = await imp('src/expedition/exp-rules.js');
+const XG = await imp('src/expedition/exp-gen.js');
+const CR = await imp('src/combat/combat-rules.js');
+const FARM = !args.includes('--no-farm') && !NO_GEAR;
+const FARM_REACH = Number(opt('farm-reach', 4));
+const PASS = new Set(['vacio', 'recurso', 'mirador']);
+function wantEnemy(run, mem, c) {
+  if (!c || !c.seen || c.done || c.content !== 'enemigo' || mem.blocked.has(c.x + ',' + c.y)) return false;
+  return CR.canQuickResolve(c.sub, XR.combatWins(run, c.sub)) || mem.maxFights == null || mem.fights < mem.maxFights;
+}
+/** Primer paso hacia la pelea más cercana que interesa (o null). */
+function enemyStep(run, mem) {
+  const v = XR.view(run);
+  if (v.morale <= 4) return null;
+  const N = v.w * v.h, s0 = v.pos[1] * v.w + v.pos[0], dist = new Array(N).fill(-1), prev = new Array(N).fill(-1);
+  dist[s0] = 0;
+  const q = [s0];
+  let target = -1;
+  while (q.length && target < 0) {
+    const u = q.shift();
+    if (dist[u] >= FARM_REACH) continue;
+    const ux = u % v.w, uy = (u / v.w) | 0;
+    for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+      const x = ux + dx, y = uy + dy;
+      if (x < 0 || y < 0 || x >= v.w || y >= v.h) continue;
+      const i = y * v.w + x, c = v.cells[i];
+      if (dist[i] >= 0 || !c.seen || mem.blocked.has(x + ',' + y)) continue;
+      dist[i] = dist[u] + 1; prev[i] = u;
+      if (wantEnemy(run, mem, c)) { target = i; break; }
+      if (c.done || !c.content || PASS.has(c.content)) q.push(i);
+    }
+  }
+  if (target < 0) return null;
+  let i = target;
+  while (prev[i] !== s0) i = prev[i];
+  const mv = v.moves.find(m => m.x === i % v.w && m.y === ((i / v.w) | 0));
+  // tiene que poder volver con la reserva del bot medio después de llegar y pelear
+  const left = v.prov - mv?.cost - (dist[target] - 1) * 2 - XD.EXP.enemy.fightProv;
+  if (!mv || !mv.ok || left < mv.returnAfter + dist[target] + 1) return null;
+  return [mv.x, mv.y];
+}
+function playFarm(run, seed, opts = {}) {
+  const bot = 'medio';
+  const r = XG.rng(seed ^ 0x5bd1e995);
+  const mem = { blocked: new Set(), party: run.party, wander: 0, bot, fights: 0, maxFights: opts.maxFights ?? null };
+  for (let guard = 0; !run.ended && guard < 400; guard++) {
+    if (run.pending?.kind === 'combate') { const pd = run.pending, res = BOTS.simFight(run, bot); mem.fights++; XR.endCombat(run, res); if (res.outcome !== 'win') mem.blocked.add(pd.x + ',' + pd.y); continue; }
+    if (run.pending?.kind === 'enemigo') {
+      const pd = run.pending;
+      const ret = XR.returnCostFrom(run, pd.x, pd.y, pd.y * run.w + pd.x);
+      const ok = (id) => pd.options.find(o => o.id === id && o.can && run.prov - pd.step - o.prov >= ret + 1);
+      const pick = ok('resolver') ? 'resolver' : ok('pelear') && (mem.maxFights == null || mem.fights < mem.maxFights) && run.morale >= 4 ? 'pelear' : null;
+      if (pick) { XR.choose(run, pick); continue; }
+      mem.blocked.add(pd.x + ',' + pd.y); XR.choose(run, 'retroceder'); continue;
+    }
+    if (run.pending) { XR.choose(run, BOTS.pickOption(run, bot, mem, r)); continue; }
+    const step = enemyStep(run, mem);
+    const a = step ? { move: step } : BOTS.decide(run, bot, mem, r);
+    if (a.home) { XR.goHome(run); break; }
+    const before = run.steps;
+    const res = XR.move(run, a.move[0], a.move[1]);
+    if (!res.ok) { mem.blocked.add(a.move.join(',')); if (mem.blocked.size > 30) { XR.goHome(run); break; } }
+    else if (run.steps === before && !run.pending) mem.blocked.add(a.move.join(','));
+  }
+  if (!run.ended) XR.goHome(run);
+  return XR.result(run);
+}
 let budget = 0;   // segundos que quedan en el rato
 const fightStats = { played: 0, quick: 0, won: 0, mats: 0 };   // peleas de la expedición en los 60 días
 let provUsed = 14; // provisiones netas por salida normal (lo que se lleva menos lo que vuelve), promedio móvil
@@ -751,10 +916,13 @@ function expedition(kind) {
   const prov0 = s.prov || 0;
   const r = X.startExpedition({ region, kind });
   if (r.error) return false;
-  const res = BOTS.play(r.run, 'medio', expSeed++, { maxFights: kind === 'normal' && budget >= 200 + FIGHT_SEC + 120 ? 1 : 0 });
+  // una pelea nueva por salida si el rato tiene tiempo (con farmeo alcanza con lo que dura una salida más la pelea)
+  const fopt = { maxFights: kind === 'normal' && budget >= 200 + FIGHT_SEC + (FARM ? 0 : 120) ? 1 : 0 };
+  const res = FARM ? playFarm(r.run, expSeed++, fopt) : BOTS.play(r.run, 'medio', expSeed++, fopt);
   X.finishExpedition(r.run);
   if (kind === 'normal') provUsed = 0.8 * provUsed + 0.2 * Math.max(0, prov0 - (s.prov || 0));   // lo que de verdad gasta una salida
   const played = (res.fights || []).filter(f => !f.quick).length, quick = (res.fights || []).filter(f => f.quick).length;
+  if (adv) { adv.fights = (adv.fights || 0) + played + quick; adv.ex = (adv.ex || '') + (kind === 'corta' ? 'c' : 'n'); }
   fightStats.played += played; fightStats.quick += quick; fightStats.won += (res.fights || []).filter(f => f.outcome === 'win' && !f.quick).length;
   for (const f of res.fights || []) for (const n of Object.values(f.mats || {})) fightStats.mats += n;
   const sec = res.steps * STEP_SEC + 40 + played * FIGHT_SEC + quick * QUICK_SEC;
@@ -820,12 +988,14 @@ async function session(day, hour) {
   sessionStart = T;
   budget = SESSION_MIN * 60;
   spaceTried.clear(); movedFor.clear(); roomWanted = null;
+  adv = { day, hour, level: 0, mastery: 0, item: 0, drop: 0 };
   const end = T + SESSION_MIN * 60e3;
   E.tick(); TH.tick();
   // el bot no fue al Cerro: a los 3 días del rango 5 encuentra el Núcleo igual
   if (!RZ.raizFound(s) && rankAt[5] && T - rankAt[5] >= 3 * DAY) { rz.how = 'forzado'; RZ.foundNucleo(s, T); }
   peopleCheck();
   claimAll();
+  gearUp();
   E.collectAll();
   const provFull = (s.prov || 0) >= E.provCap();
   const arrCoins = s.coins, prevBig = lastBig;
@@ -838,7 +1008,8 @@ async function session(day, hour) {
     spend();
     dailyHelpers();
     let went = expedition('corta');
-    if (!went) for (let k = 0; k < 2; k++) if (expedition('normal')) went = true; else break;
+    if (!went) for (let k = 0; k < 2; k++) if (expedition('normal')) { went = true; gearUp(); } else break;
+    if (went) gearUp();
     // "cobrar todo" se toca al entrar, al volver de una salida y antes de irse (no a cada minuto)
     if (went || T + 60e3 >= end) E.collectAll();
     spend();
@@ -849,6 +1020,8 @@ async function session(day, hour) {
     if (step > 40) break;
   }
   await flush();
+  gearUp();
+  advLog.push(adv); adv = null;
   const big = lastBig;
   // multiplicadores de producción (sumados con tope y temporales con tope): el mayor de cualquier edificio que produce monedas
   if (E.productionMult) for (const b of s.city.buildings) if (D[b.id].prod?.coins) { const m = E.productionMult(b.id, s, T); multMax.base = Math.max(multMax.base, m.base); multMax.boost = Math.max(multMax.boost, m.boost); multMax.sum = Math.max(multMax.sum, 1 + m.happy + m.rank + m.mastery + m.monuments); }
@@ -865,6 +1038,7 @@ for (let day = 0; day < DAYS; day++) {
   rz.grietaByDay[day] = Math.round(RZ.grieta(s, T) * 10) / 10;
   const p = P(day);
   if ([6, 24, 59].includes(day)) leaderLog.push(`día ${day + 1}: nivel ${CL.leaderLevelFromXp(s.classes?.leader?.xp || 0)}`);
+  if ([6, 24, 59].includes(day)) masteryLog.push(`día ${day + 1}: ${masteryMax()}`);
   const si = SE.seasonInfo(T);
   if (si.id === 1 && si.level >= 30 && !pass30Day) pass30Day = day + 1;
   const rs = E.rankStatus();
@@ -906,8 +1080,21 @@ const prepAvg = prepSeen.length ? prepSeen.reduce((a, x) => a + x.prep, 0) / pre
 const autoAvg = prepSeen.length ? prepSeen.reduce((a, x) => a + x.auto, 0) / prepSeen.length : null;
 const real = threatLog.filter(x => x.id !== 'sim');
 const dmgAvg = real.length ? real.reduce((a, x) => a + x.damaged, 0) / real.length : null;
+// avances por rato (paso 2a): días 1–60
+// La meta es por rato de 20 min (PLAN-TRAVESIA.md, 2a): los ratos seguidos se juntan hasta sumar 20 min (con 2 ratos de
+// 10 min, un bloque por día; con --min 20, cada rato). La tasa por rato suelto se muestra aparte.
+const ADV_MIN = 20;
+const ADV1 = advLog.filter(x => x.day < 60);
+const ADV = [];
+{ let cur = null; for (const x of ADV1) { if (!cur) cur = { day: x.day, min: 0, level: 0, mastery: 0, item: 0, drop: 0, fights: 0 }; for (const k of ['level', 'mastery', 'item', 'drop', 'fights']) cur[k] += x[k] || 0; cur.min += SESSION_MIN; if (cur.min >= ADV_MIN) { ADV.push(cur); cur = null; } } }
+const anyAdv = (x) => x.level + x.mastery + x.item + x.drop > 0;
+const advAny = ADV.filter(anyAdv).length;
+const advPct = pct(advAny, ADV.length);
+const adv1Pct = pct(ADV1.filter(anyAdv).length, ADV1.length);
+const advBy = (k) => f1(pct(ADV.filter(x => x[k] > 0).length, ADV.length));
+if (args.includes('--adv') && !JSON_OUT) { console.log(`avances por rato (+ con avance, − sin; peleas; c corta, n normal), ${advBy('fights')}% de los ratos con pelea:`, Array.from({ length: 60 }, (_, d) => ADV1.filter(x => x.day === d).map(x => (x.level + x.mastery + x.item + x.drop > 0 ? '+' : '-') + (x.fights || 0) + (x.ex || '')).join('/')).join(' ')); }
 const summary = {
-  seed: SEED, sessions: NSESS, days: DAYS,
+  seed: SEED, sessions: NSESS, days: DAYS, advPct,
   ratioPct: pct(ratioOk, S2.filter(x => x.ratio != null).length), ratioLow, ratioHigh,
   arrPct: pct(arrOk, A2.length), arrLow, arrHigh, endHighPct: pct(ratioHigh, S2.filter(x => x.ratio != null).length), tradeUnits, tradeCoins,
   pass30: seasonDay30, rankDays: Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map(r => [r, dayOfRank(r)])),
@@ -1001,6 +1188,7 @@ const goals = [
   // L1: exprimir sube la Grieta y con ella la fuerza o la cantidad de amenazas (Σ g de cada aviso, o más avisos). El daño
   // que queda depende de cómo se defiende quien juega (con el doble de bonus se defiende mejor): se muestra, no se pide.
   ['Raíz', raiz3 ? (() => { const [a, , c] = raiz3.map(x => x?.raiz); return !!(a && c && c.bonus > a.bonus && c.grieta > a.grieta && ((c.gSum || 0) > (a.gSum || 0) || c.threats > a.threats)); })() : null, `exprimir da más bonus y trae más Grieta y amenazas más fuertes o más seguido que sellar: ${raiz3 ? raiz3.map(x => `${x?.raiz?.mode} bonus ${x?.raiz?.bonus} · Grieta ${f1(x?.raiz?.grieta ?? 0)} · amenazas ${x?.raiz?.threats} (fuerza de la Grieta +${x?.raiz?.gSum || 0}, dañados ${x?.raiz?.damaged})`).join(' | ') : '(sin correr)'}`],
+  ['Avance', ADV.length ? advPct >= 90 : null, `al menos un avance cada ${ADV_MIN} min de juego (subir de Nivel, una maestría de arma u objeto o un arma nueva; días 1–60) en ≥ 90 %: ${f1(advPct)}% (${ADV.length - advAny} de ${ADV.length} sin nada · con Nivel ${advBy('level')}%, maestría de arma ${advBy('mastery')}%, de objeto ${advBy('item')}%, arma ${advBy('drop')}% · por rato de ${SESSION_MIN} min ${f1(adv1Pct)}%)`],
   ['Otros', eraAll.length ? planosRunPct <= 30 : null, `los planos son lo último que falta para un cambio de época en ≤ 30% de las corridas: ${f1(planosRunPct)}% de ${runsAll.length} corrida(s) (${eraAll.filter(e => e.planosLast).length} de ${eraAll.length} cambios)`],
 ];
 console.log(`\nMetas de balance (DESIGN-CORE.md §8) · ${HOURS.length} ratos/día · ${DAYS} días · semilla ${SEED}${RUNS ? ` (+${RUNS} corridas)` : ''}`);
@@ -1008,6 +1196,15 @@ for (const [g, ok, t] of goals) console.log(`  ${mark(ok)} ${g.padEnd(6)} ${t}`)
 if (others.length) console.log(`  corridas extra: ${others.map(o => `semilla ${o.seed}: rango 3 d${o.rankDays[3] ?? "—"} · 5 d${o.rankDays[5] ?? "—"} · 8 d${o.rankDays[8] ?? "—"} · monumento d${o.firstMonumentDay ?? "—"} · Pase d${o.pass30 ?? "> 28"} · monedas al llegar ${f1(o.arrPct)}% · cofres ${f1(o.chestsPerDay)} · gemas ${f1(o.gemsPerDay)}`).join(' | ')}`);
 console.log(`  (info) nivel del líder: ${leaderLog.join(' · ')} — meta del paso 7: 6 o 7 al llegar a la Costa`);
 console.log(`  (info) en cada rango (líder · clases · herramientas)${NO_TOOLS ? ' · sin herramientas' : ''}: ${progLog.map(p => `r${p.rank} d${p.day}: nv ${p.leader} · cl ${p.classLevel.join('/') || '-'} · ${Object.entries(p.tools).filter(([, n]) => n).map(([k, n]) => k.slice(0, 3) + n).join(' ') || '-'}`).join(' | ')}`);
+{
+  const a = A.arsenalState(s), eq = A.WIELDERS.map(w => [w, A.equippedOn(s, w)]).filter(([, w]) => w);
+  console.log(`  (info) armas: ${f1(weaponsIn / d60)} por día (${weaponsIn} en ${d60} días; ${fightStats.played} peleas jugadas y ${fightStats.quick} resueltas rápido) · en el arsenal ${a.items.length}, filtro ${a.filter} · equipadas: ${eq.map(([w, x]) => `${w} ${x.type} ${A.RARITIES[x.rarity].id}`).join(', ') || '-'}`);
+  console.log(`  (info) rasgos rehechos: ${rerollStats.n} (${f1(rerollStats.mats / d60)} materiales y ${Math.round(rerollStats.coins / d60)} monedas por día)`);
+  console.log(`  (info) maestría más alta: ${masteryLog.join(' · ')} · por tipo al final: ${Object.entries(a.mastery).map(([k, x]) => `${k} ${A.masteryLevel(x)}`).join(' · ')} · objetos: ${Object.entries(a.itemMastery).map(([k, x]) => `${k} ${A.masteryLevel(x, A.ITEM_MASTERY_MAX)}`).join(' · ') || '-'}`);
+  const tp = TL.talentPoints(s);
+  console.log(`  (info) talentos: ${tp.spent}/${tp.total} puntos (${Object.entries(tp.byBranch).map(([b, n]) => `${b} ${n}`).join(' · ')}), paragon ${tp.paragon.spent}`);
+  console.log(`  (info) Fuerza al llegar a cada rango (escuadra de la salida) contra la recomendada de la región: ${powerLog.map(p => `r${p.rank} d${p.day}: ${p.power} · ${p.region} ${p.rec ? p.rec.join('–') : '-'}${p.rec ? ` (×${(p.power / p.rec[1]).toFixed(2)}, enemigos ×${PW.foeScale(p.power, p.rec[1]).hp.toFixed(2)})` : ''}`).join(' | ')}`);
+}
 if (!NO_TOOLS) { const tl = PE.toolLevels(s); console.log(`  (info) herramientas al final: ${Object.entries(tl).map(([k, n]) => `${k} ${n}`).join(' · ')} · monedas gastadas en mejorarlas ${toolSpend}`); }
 if (args.includes('--goals-json')) {
   // para --seeds: la meta (grupo y texto hasta los dos puntos) y el valor medido (lo que sigue)

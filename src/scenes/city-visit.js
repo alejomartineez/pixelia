@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { createPixelRenderer, addLights } from '../core/voxel.js';
 import { buildingModel, constructionModel } from '../city/models.js';
 import { icon } from '../core/icons.js';
+import { levelOf } from '../core/state.js';
 import { rewardScale, MAX_EXPANSIONS, eraOfRank } from '../core/data.js';
 import { def, population, happiness, landBounds, fmtTime, fmtNum, townRank, rankDef, cityCharm, hasEra } from '../core/economy.js';
 import { HALF, footCenter, clamp, greeting } from './city-common.js';
@@ -355,7 +356,7 @@ export function createVisit(ctx) {
     const ms = HELP_MINUTES * 60e3;
     if (e.b.buildEnd > Date.now()) e.b.buildEnd -= ms; else if (e.b.upgradeEnd > Date.now()) e.b.upgradeEnd -= ms;
     // premio para quien ayuda (escalado con su nivel)
-    const coins = Math.round(40 * rewardScale(ctx.state.player.level || 1));
+    const coins = Math.round(40 * rewardScale(levelOf(ctx.state)));
     store.grant({ coins, xp: 5 }, 'social:help');
     bus.emit('social:helped', { to: host, uid: e.b.uid, kind: 'help', coins });
     const s = screenOf(topPos(e, 0.4));
@@ -478,7 +479,7 @@ export function createVisit(ctx) {
     try { pop = population(vstate); hp = happiness(vstate).pct; rk = rankDef(townRank(vstate)); charm = cityCharm(vstate); } catch {}
     const cityName = vstate.player.cityName && vstate.player.cityName !== 'Pixelia' ? `<span class="chip">${icon('flower', 14)}${ui.esc(vstate.player.cityName)}</span>` : '';
     topEl = ui.h('div.cv-top', { html: `<h2>${icon('castle', 24)}<span>Ciudad de ${ui.esc(hostName)}</span></h2>
-      <div class="cv-sub"><span class="chip gold">${icon('star', 14)}Nivel ${vstate.player.level}</span>${rk ? `<span class="chip second" title="Rango de la ciudad">${icon(rk.emoji, 14)}${ui.esc(rk.name)}</span><span class="chip gold" title="Encanto">${icon('sparkle', 14)}${fmtNum(charm)}</span>` : ''}${cityName}
+      <div class="cv-sub"><span class="chip gold">${icon('star', 14)}Nivel ${levelOf(vstate)}</span>${rk ? `<span class="chip second" title="Rango de la ciudad">${icon(rk.emoji, 14)}${ui.esc(rk.name)}</span><span class="chip gold" title="Encanto">${icon('sparkle', 14)}${fmtNum(charm)}</span>` : ''}${cityName}
       <span class="chip primary">${icon('people', 14)}${fmtNum(pop)}</span><span class="chip mint">${icon('smile', 14)}${hp}%</span></div>` });
     container.append(topEl);
   }

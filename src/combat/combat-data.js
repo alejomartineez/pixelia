@@ -127,7 +127,7 @@ export const ABILITIES = {
 
 // Elementos: cada uno suma habilidades al líder, en el orden en que se abren los espacios (COMBAT.leader.slots).
 export const ELEMENTS = {
-  raiz: { id: 'raiz', name: 'Raíz', abilities: ['enredar', 'muro_raiz'] },
+  raiz: { id: 'raiz', name: 'Raíz', abilities: ['enredar', 'muro_raiz'] },   // el nombre en pantalla: element.raiz (arsenal.js)
   // marea, brasa y céfiro llegan en los actos 2 a 4
 };
 

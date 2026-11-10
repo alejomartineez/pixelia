@@ -254,7 +254,7 @@ try {
   // conflicto: otro "dispositivo" sube una partida distinta
   const cf = await run(A, `
     const cur = await net.pullSave();
-    const other = JSON.parse(JSON.stringify(cur.data)); other.player.level = 30; other.coins = 99999;
+    const other = JSON.parse(JSON.stringify(cur.data)); const K = await import('/src/combat/classes.js'); other.classes.leader.xp = K.leaderXpFor(30); other.coins = 99999;
     await net.pushSave(other, cur.rev);
     const { store } = await import('/src/core/state.js');
     store.grant({ coins: 1 }); store.save();
@@ -262,7 +262,7 @@ try {
     return { r, status: sync.getSyncStatus() };
   `);
   ok(cf.r.conflict === true && cf.status.conflict && cf.status.conflictInfo.cloud.level === 30, 'si otro dispositivo guardó, pushNow detecta el conflicto', cf);
-  const rs = await run(A, `const r = await sync.resolveConflict('local'); return { r, st: sync.getSyncStatus(), cloud: (await net.pullSave()).data.player.level }`);
+  const rs = await run(A, `const r = await sync.resolveConflict('local'); return { r, st: sync.getSyncStatus(), cloud: (await import('/src/core/state.js')).levelOf((await net.pullSave()).data) }`);
   ok(rs.r.ok && !rs.st.conflict && rs.cloud !== 30, 'resolveConflict("local") pisa la nube');
 } catch (e) {
   fail++;

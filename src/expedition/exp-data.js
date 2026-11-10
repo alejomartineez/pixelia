@@ -55,6 +55,9 @@ export const EXP = {
   // arranca la pelea con tiredHp de vida menos. firstDepth: dónde cae la primera pelea (la guiada) del Bosque.
   enemy: { chance: [0.07, 0.13], max: 2, fightProv: 1, tiredMorale: 3, tiredHp: 2, firstDepth: [4, 5] },
   cargoStar: 1.0, moraleStar: 4,
+  // Arma del camino (paso 2a, "cada salida deja algo"): una salida normal que vuelve con al menos minStars y en la que
+  // ninguna pelea dejó un arma trae una con esta chance (rareza como la de una pelea común).
+  weaponFind: { chance: 0.3, minStars: 1 },
   gemsAt3: 1, chestAt3: 0.10,          // cofre de madera en una salida de 3★ (Fase 5b: era 0,25; §8 ≤ 1,5 cofres por día)
   // Prototipo (Fase 1): sin ciudad. 3 roles fijos en nivel 1 y lo que daría una ciudad con Casa nivel 3 y Establo 3.
   prototype: { party: ['cazador', 'forjador', 'curandero'], level: 1, prov: 24, cargoMax: 15, equip: [] },

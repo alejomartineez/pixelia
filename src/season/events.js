@@ -3,7 +3,7 @@
 // en un mismo slot dos semanas seguidas. La Semana Dorada ocupa el slot A la primera semana ISO de cada mes.
 // Todas las funciones aceptan `now` opcional (ms o Date) para pruebas.
 import { bus } from '../core/bus.js';
-import { store } from '../core/state.js';
+import { store, levelOf } from '../core/state.js';
 import { rewardScale } from '../core/data.js';
 import { toast } from '../core/ui.js';
 import { audio } from '../core/audio.js';
@@ -63,7 +63,7 @@ function raceFor(inst) {
   return e.race;
 }
 function scaledReward(r) {
-  return { ...r, coins: r.coins ? Math.round(r.coins * rewardScale(store.state.player.level)) : 0 };
+  return { ...r, coins: r.coins ? Math.round(r.coins * rewardScale(levelOf(store.state))) : 0 };
 }
 
 function describe(inst, t) {

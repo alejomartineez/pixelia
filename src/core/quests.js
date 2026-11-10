@@ -1,6 +1,6 @@
 // Misiones principales, diarias, logros y premio de login.
 import { bus } from './bus.js';
-import { store, todayStr } from './state.js';
+import { store, todayStr, levelOf } from './state.js';
 import { MAIN_QUESTS, DAILY_POOL, DAILY_BONUS_ALL, ACHIEVEMENTS, LOGIN_REWARDS, rewardScale } from './data.js';
 import { population, happinessPoints, castleLevel, cityCharm, def, zonesExplored } from './economy.js';
 import { streakWithShield, consumeStreakShield, seasonInfo } from '../season/season.js';
@@ -12,7 +12,7 @@ const changed = () => { store.markDirty(); bus.emit('quests:changed'); };
 function absoluteValue(goal) {
   const s = S();
   switch (goal.type) {
-    case 'level': return s.player.level;
+    case 'level': return levelOf(s);
     case 'pop': return population(s);
     case 'happy': return happinessPoints(s);
     case 'castle': return castleLevel(s);
@@ -159,12 +159,12 @@ export function ensureDaily() {
   const s = S();
   const today = todayStr();
   if (s.quests.daily?.date === today) return;
-  const pool = DAILY_POOL.filter(q => (q.minLevel || 1) <= s.player.level && dailyNeedsOk(q.needs, s));
+  const pool = DAILY_POOL.filter(q => (q.minLevel || 1) <= levelOf(s) && dailyNeedsOk(q.needs, s));
   // "Repará un edificio" solo existe si hay alguno dañado, y en ese caso sale siempre (DESIGN-CORE.md §6.1)
   const forced = pool.filter(q => q.needs === 'damaged');
   const picks = [...forced, ...seededPick(today + s.created, pool.filter(q => !forced.includes(q)), 3 - forced.length)];
   // el objetivo escalado se congela al elegirlo: si subís de nivel a mitad del día no se aleja una misión ya cumplida
-  s.quests.daily = { date: today, list: picks.map(q => ({ id: q.id, progress: 0, claimed: false, count: dailyCount(q, s.player.level) })), bonusClaimed: false };
+  s.quests.daily = { date: today, list: picks.map(q => ({ id: q.id, progress: 0, claimed: false, count: dailyCount(q, levelOf(s)) })), bonusClaimed: false };
   changed();
 }
 function dailyCount(q, level) {
@@ -173,11 +173,11 @@ function dailyCount(q, level) {
 export function dailyQuests() {
   ensureDaily();
   const s = S();
-  const scale = rewardScale(s.player.level);
+  const scale = rewardScale(levelOf(s));
   return s.quests.daily.list.map(entry => {
     const q = DAILY_POOL.find(d => d.id === entry.id);
     if (!q) return null;
-    const count = entry.count || dailyCount(q, s.player.level);
+    const count = entry.count || dailyCount(q, levelOf(s));
     const reward = { ...q.reward };
     if (reward.coins) reward.coins = Math.round(reward.coins * scale);
     return { ...q, goal: { ...q.goal, count }, reward, progress: Math.min(entry.progress, count), done: entry.progress >= count, claimed: entry.claimed };

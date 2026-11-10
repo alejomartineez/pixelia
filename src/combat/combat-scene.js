@@ -19,7 +19,8 @@ import { createAmbience } from '../core/ambience-fx.js';
 import { combatConditions, WEATHER } from '../core/ambience.js';
 import { actionFor } from '../core/keys.js';
 import { voxelModel } from '../city/models.js';
-import { avatarModel, randomLook } from '../avatar/avatar.js';
+import { avatarModel, randomLook, classLook } from '../avatar/avatar.js';
+import { heldGear } from '../core/gear.js';
 import * as C from './combat-rules.js';
 import { ENCOUNTERS, ENEMIES, ABILITIES, ITEMS, COMBAT, TUTORIAL_PARTY } from './combat-data.js';
 import { enemyModel } from './enemy-models.js';
@@ -357,7 +358,10 @@ export default function create(ctx) {
     if (u.side === 'ally') {
       // con el equipo de su clase (paso 5b, tercera parte): el líder con la de b.leader, el resto con la suya
       const cls = u.type === 'lider' ? (b?.leader?.cls || store.state.classes?.leader?.cls || null) : (u.cls || (u.type !== 'cautivo' ? u.type : null));
-      model = avatarModel(lookFor(u), u.type === 'lider' ? { player: true, cls } : { npc: true, cls });
+      // y el arma equipada del Arsenal (paso 2a), si tiene una: manda sobre la de su clase
+      const g = u.weapon ? heldGear(u.type === 'lider' ? 'lider' : cls, store.state) : null;
+      model = u.type === 'lider' ? avatarModel(lookFor(u), { player: true, cls, gear: g || undefined })
+        : g ? avatarModel({ ...classLook(lookFor(u), cls), acc: g }, { npc: true }) : avatarModel(lookFor(u), { npc: true, cls });
       const k = u.type === 'lider' ? 0.92 : 0.84;
       model.scale.setScalar(k);
       model.userData.height = (model.userData.height || 1) * k;

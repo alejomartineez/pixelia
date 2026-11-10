@@ -16,6 +16,8 @@
 //   el auto pasa a ser el esquife (M5): casco, pintura, vela y proa, con lo comprado traducido.
 //   v6 (La Travesía, paso 1c): Mi Casa sale del mapa, se devuelven muebles comprados y ampliaciones (con la que estaba en
 //   obra), el Encanto de la casa y su Confort pasa a un bono fijo, los trofeos van a Logros (Bitácora), aviso único, idempotente.
+//   v7 (La Travesía, paso 2a): el nivel de la ciudad y el del líder pasan a ser un solo Nivel (el más alto, con lo juntado
+//   dentro del nivel), player.level y player.xp se borran, s.v7 anota lo que pasó; levelOf de un perfil viejo; idempotente.
 //
 //   node tools/test-migration.mjs
 import http from 'node:http';
@@ -23,6 +25,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs';
 import { join, extname, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { LEADER, NIVEL, leaderXpFor, leaderLevelV6 } from '../src/combat/classes.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' };
@@ -118,7 +121,7 @@ const snapshot = (page) => run(page, `
     have: S.album.have, brillitos: S.album.brillitos, claimedSets: S.album.claimedSets, planos: S.planos, v3: S.v3, games: S.games,
     avatar: S.avatar, avatarLooks: S.avatarLooks, car: S.car, owned: S.owned, theme: S.city.theme, flag: S.city.flagColor,
     home: S.home, achievements: S.achievements, social: S.social && { giftDay: S.social.giftDay, coop: S.social.coop },
-    login: S.login, settings: S.settings, expansions: S.city.expansions, level: S.player.level, name: S.player.name, city: S.player.cityName,
+    login: S.login, settings: S.settings, expansions: S.city.expansions, level: P.store.level(), name: S.player.name, city: S.player.cityName,
     // una amenaza del calendario que cae justo hoy se resuelve sola al cargar y paga gemas: se descuenta para que no dependa del día
     threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) };`);
 /** Clave de semana ISO como isoWeek de src/online/net.js (en UTC: la usan Contactos y la Obra en Equipo). */
@@ -139,7 +142,7 @@ try {
   const V2 = saveV2();
   const { page, errors } = await openWithSave(V2);
   const s1 = await snapshot(page);
-  ok(s1.v === 6, 'la partida queda en v6 (pasa por la v3, la v4 y la v5)', s1.v);
+  ok(s1.v === 7, 'la partida queda en v7 (pasa por la v3, la v4, la v5 y la v6)', s1.v);
   ok(s1.name === 'Lu' && s1.city === 'Villa Sauce' && s1.level === 14 && s1.expansions === 2, 'nombre, ciudad, nivel y terreno intactos');
 
   // 1. materiales
@@ -241,7 +244,7 @@ try {
     const { page: p2, context } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
     const r = await run(p2, `const code = btoa(unescape(encodeURIComponent(JSON.stringify(args[0])))); P.store.importCode(code); E.tick(); const T = P.store.state;
       return { v: T.v, mats: T.materials, ids: T.city.buildings.map(b => b.id), gems: T.gems, eq: T.equipment, threatGems: Object.values(T.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) };`, V2);
-    ok(r.v === 6 && r.mats.mineral === 7 && r.ids.includes('casa_exp') && !r.ids.includes('mi_casa') && !r.ids.includes('pista') && r.gems === 40 + gems + r.threatGems && r.eq.cuerda === 2, 'importCode migra igual que la carga local', r);
+    ok(r.v === 7 && r.mats.mineral === 7 && r.ids.includes('casa_exp') && !r.ids.includes('mi_casa') && !r.ids.includes('pista') && r.gems === 40 + gems + r.threatGems && r.eq.cuerda === 2, 'importCode migra igual que la carga local', r);
     await context.close();
   }
 
@@ -280,7 +283,7 @@ try {
     const { page: p5, context, errors: e5 } = await openWithSave(V3);
     const r = await run(p5, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, theme: S.city.theme, v4: S.v4, v5: S.v5,
       threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
-    ok(r.v === 6, 'la partida queda en v6', r.v);
+    ok(r.v === 7, 'la partida queda en v7', r.v);
     ok(r.avatar.type === 'humano' && r.avatar.build === 'recio' && r.avatar.hairColor === 'castano' && r.avatar.dressColor === 'rojo', 'el oso pasa a ser un humano recio con el mismo color de pelo (el del pelaje) y de ropa', r.avatar);
     ok(r.avatar.hair !== 'medias' && r.avatar.dress !== 'capita' && r.avatar.crown !== 'orejitas' && r.avatar.acc === 'mochila', 'lo que no le sirve a una persona vuelve a lo de arranque; la mochila se queda', r.avatar);
     ok(!('gatito' in r.looks) && !('chica' in r.looks) && r.v5?.looks?.chica?.hair === 'trenzas', 'el look guardado del gato se va y el de la chica queda guardado (v5.looks)', { looks: r.looks, v5: r.v5 });
@@ -331,7 +334,7 @@ try {
     const { page: p6, context, errors: e6 } = await openWithSave(V4);
     const r = await run(p6, `return { v: S.v, avatar: S.avatar, looks: S.avatarLooks, owned: S.owned, coins: S.coins, gems: S.gems, v5: S.v5, car: S.car,
       threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
-    ok(r.v === 6, 'la partida queda en v6', r.v);
+    ok(r.v === 7, 'la partida queda en v7', r.v);
     const a = r.avatar;
     ok(a.type === 'humano' && a.build === 'recio' && a.face === 'barba_larga' && a.hair === 'cortito' && a.dress === 'capa_viaje' && a.crown === 'galera' && a.acc === 'buho',
       'el chico pasa a humano recio: la barba de sabio es su cara, la capa de gala es la capa de viaje y el gato, el cuervo', a);
@@ -399,7 +402,7 @@ try {
     const { page: p7, context, errors: e7 } = await openWithSave(V5);
     const r = await run(p7, `return { v: S.v, coins: S.coins, gems: S.gems, mats: S.materials, ids: S.city.buildings.map(b => b.id), home: S.home || null,
       v6: S.v6, ach: S.achievements, bonus: S.city.charmBonus || 0, charm: E.charmInfo(), threatGems: Object.values(S.threats?.results || {}).reduce((a, r) => a + (r.reward?.gems || 0), 0) }`);
-    ok(r.v === 6, 'la partida queda en v6', r.v);
+    ok(r.v === 7, 'la partida queda en v7', r.v);
     ok(!r.ids.includes('mi_casa') && !r.home, 'Mi Casa sale del mapa y state.home se borra', { ids: r.ids, home: r.home });
     // ampliaciones 2 y 3 hechas y la 4 en obra: 2500 + 7000 + 18000 · muebles: 2 sillones y la tele (el piano salió de un cofre)
     ok(r.v6.coins === 27500 + 2300 && r.coins >= 1000 + 29800, 'devuelve las ampliaciones (con la que estaba en obra) y los muebles comprados', { v6: r.v6, coins: r.coins });
@@ -422,9 +425,62 @@ try {
     await p7.waitForFunction(() => window.__pixelia?.store?.state && window.__pixelia.ctx.router.current === 'city', { timeout: 30000 });
     await sleep(1500);
     const r2 = await run(p7, 'return { coins: S.coins, bonus: S.city.charmBonus, mats: S.materials, v: S.v }');
-    ok(r2.v === 6 && r2.bonus === r.bonus && r2.mats.piedra === r.mats.piedra && r2.coins < r.coins + 2000, 'la segunda carga no devuelve de nuevo ni suma otro bono', { r2, coins: r.coins });
+    ok(r2.v === 7 && r2.bonus === r.bonus && r2.mats.piedra === r.mats.piedra && r2.coins < r.coins + 2000, 'la segunda carga no devuelve de nuevo ni suma otro bono', { r2, coins: r.coins });
     ok(!(await p7.evaluate(() => /Mi Casa cerró/.test(document.body.innerText))), 'el aviso no vuelve a salir');
     ok(e7.length === 0, 'sin errores de página', e7);
+    await context.close();
+  }
+
+  // ===================================================================
+  section('Guardado v6 con nivel de ciudad y nivel del líder → v7 (La Travesía, paso 2a: un solo Nivel)');
+  {
+    const { page: p0, context: c0 } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
+    const base = await run(p0, 'return JSON.parse(JSON.stringify(S))');
+    await c0.close();
+    // xp vieja del líder (100 + 50 por nivel): del 1 al 3 son 100 + 150 = 250; del 1 al 6, 1000
+    const oldXp = (lv) => { let a = 0; for (let n = 1; n < lv; n++) a += LEADER.need(n); return a; };
+    const v6Save = (cityLv, cityXp, leaderXp) => {
+      const V = { ...base, v: 6, v6: { shown: 1 }, onboarded: true, stats: { ...base.stats, coinsEarned: 30000 },
+        player: { ...base.player, level: cityLv, xp: cityXp },
+        classes: { ...base.classes, leader: { ...base.classes.leader, xp: leaderXp } } };
+      delete V.v7;
+      return V;
+    };
+    const readLv = `const L = S.classes.leader; return { v: S.v, v7: S.v7 || null, xp: L.xp, level: P.store.level(), pl: S.player.level, px: S.player.xp,
+      hasL: 'level' in S.player, hasX: 'xp' in S.player };`;
+    // (a) ciudad nivel 20 con 40 % del nivel juntado; líder viejo nivel 3 (60 de 200)
+    const cityXpA = Math.round(0.4 * NIVEL.need(20));
+    const VA = v6Save(20, cityXpA, oldXp(3) + 60);
+    ok(leaderLevelV6(VA.classes.leader.xp) === 3, 'el líder del guardado está en el nivel 3 de la curva vieja');
+    const { page: p8, context, errors: e8 } = await openWithSave(VA);
+    const a = await run(p8, readLv);
+    const minA = leaderXpFor(20) + Math.floor(cityXpA / NIVEL.need(20) * NIVEL.need(20));
+    ok(a.v === 7, 'la partida queda en v7', a.v);
+    ok(a.level === 20 && a.xp >= minA && a.xp < leaderXpFor(21), 'ciudad 20 y líder 3 → Nivel 20, con lo juntado dentro del nivel de la ciudad', { a, minA });
+    ok(!a.hasL && !a.hasX && a.pl === undefined && a.px === undefined, 'player.level y player.xp desaparecen', a);
+    ok(a.v7 && a.v7.player === 20 && a.v7.leader === 3 && a.v7.level === 20, 's.v7 anota los dos niveles de antes y el Nivel', a.v7);
+    // (b) ciudad nivel 2; líder viejo nivel 6 con la mitad del nivel juntado (175 de 350)
+    const VB = v6Save(2, 10, oldXp(6) + 175);
+    ok(leaderLevelV6(VB.classes.leader.xp) === 6, 'el otro líder está en el nivel 6 de la curva vieja');
+    const b = await run(p8, `const code = btoa(unescape(encodeURIComponent(JSON.stringify(args[0])))); P.store.importCode(code); const S = P.store.state; ${readLv}`, VB);
+    const minB = leaderXpFor(6) + Math.floor(0.5 * NIVEL.need(6));
+    ok(b.v === 7 && b.level === 6 && b.xp >= minB && b.xp < leaderXpFor(7), 'ciudad 2 y líder 6 → Nivel 6, con la mitad del nivel del líder', { b, minB });
+    ok(b.v7?.player === 2 && b.v7.leader === 6 && b.v7.level === 6 && !b.hasL && !b.hasX, 's.v7 anota el líder como el que mandaba', b.v7);
+    ok(a.level >= Math.max(a.v7.player, a.v7.leader) && b.level >= Math.max(b.v7.player, b.v7.leader), 'nadie baja: el Nivel es el más alto de los dos');
+    // un perfil online de antes del v7 (contacto con otra versión) muestra el más alto de los dos
+    const lv = await p8.evaluate(async () => {
+      const M = await import('/src/core/state.js');
+      return [M.levelOf({ v: 6, player: { level: 9 }, classes: { leader: { xp: 1000 } } }), M.levelOf({ v: 6, player: { level: 2 }, classes: { leader: { xp: 1000 } } }), M.levelOf({ v: 7, player: {}, classes: { leader: { xp: 0 } } })];
+    });
+    ok(lv.join() === '9,6,1', 'levelOf de un perfil v6: el más alto entre la ciudad y el líder viejo', lv);
+    // una segunda carga no vuelve a migrar
+    await run(p8, 'P.store.save(); return true;');
+    await p8.reload({ waitUntil: 'load' });
+    await p8.waitForFunction(() => window.__pixelia?.store?.state && window.__pixelia.ctx.router.current === 'city', { timeout: 30000 });
+    await sleep(800);
+    const b2 = await run(p8, readLv);
+    ok(b2.v === 7 && b2.level === b.level && b2.xp >= b.xp && JSON.stringify(b2.v7) === JSON.stringify(b.v7), 'la segunda carga no cambia el Nivel', { b2, b });
+    ok(e8.length === 0, 'sin errores de página', e8);
     await context.close();
   }
 
@@ -432,8 +488,8 @@ try {
   section('Partida nueva: sin aviso ni compensación');
   {
     const { page: p4, context } = await openWithSave(null, '?nosplash&nosw&reset&scene=city');
-    const r = await run(p4, `return { v: S.v, v3: S.v3 || null, v4: S.v4 || null, v5: S.v5 || null, v6: S.v6 || null, home: S.home || null, mats: Object.keys(S.materials), games: S.games || null }`);
-    ok(r.v === 6 && !r.v3 && !r.v4 && !r.v5 && !r.v6 && !r.home && !r.games && r.mats.join() === 'madera,piedra,mineral,hierbas', 'v6 de entrada, solo materiales de región, sin state.games ni Mi Casa', r);
+    const r = await run(p4, `return { v: S.v, v3: S.v3 || null, v4: S.v4 || null, v5: S.v5 || null, v6: S.v6 || null, v7: S.v7 || null, home: S.home || null, mats: Object.keys(S.materials), games: S.games || null }`);
+    ok(r.v === 7 && !r.v3 && !r.v4 && !r.v5 && !r.v6 && !r.v7 && !r.home && !r.games && r.mats.join() === 'madera,piedra,mineral,hierbas', 'v7 de entrada, solo materiales de región, sin state.games ni Mi Casa', r);
     await sleep(2500);
     ok(!(await p4.evaluate(() => !!document.querySelector('.modal.v3-notice'))), 'no ve el aviso de los minijuegos');
     await context.close();

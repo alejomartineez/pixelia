@@ -9,6 +9,7 @@ import { h, hasModal } from '../core/ui.js';
 import { icon } from '../core/icons.js';
 import { audio } from '../core/audio.js';
 import { track } from '../online/telemetry.js';
+import { levelOf } from '../core/state.js';
 
 const KEY = 'pixelia.install.v1';
 const WEEK = 7 * 864e5;
@@ -45,7 +46,7 @@ export function installEligible(now = Date.now()) {
   if (!st || isStandalone() || st.accepted || shownNow) return false;
   if (st.shows >= MAX_SHOWS) return false;
   if (st.shows > 0 && now - st.lastShown < WEEK) return false;
-  const level = ctx?.state?.player?.level || 1;
+  const level = levelOf(ctx?.state);
   if (level < MIN_LEVEL && st.opens < MIN_OPENS) return false;
   return !!platform();
 }
@@ -88,7 +89,7 @@ function show() {
   shownNow = true;
   prevShown = st.lastShown;
   st.shows++; st.lastShown = Date.now(); save(st);
-  track('install_prompt_shown', { platform: kind, shows: st.shows, level: ctx?.state?.player?.level || 1, opens: st.opens });
+  track('install_prompt_shown', { platform: kind, shows: st.shows, level: levelOf(ctx?.state), opens: st.opens });
 
   const close = h('button.icon-btn.inst-x', { 'aria-label': 'Ahora no', html: icon('close', 16) });
   close.onclick = () => {

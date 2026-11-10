@@ -1102,7 +1102,76 @@ Progreso; las 4 activas con las cerradas y el orden; la subclase y las pasivas; 
 "Listo" guarda activas y subclase; el Forjador en nivel 6 con las 4 abiertas y siempre 2; el selector de clase lleva
 a las habilidades. La captura es `shots/clase-habilidades.png`.
 
+## 18. Nivel único, talentos, arsenal, maestría y Fuerza (La Travesía, paso 2a)
+El juego es de farmeo (docs/PLAN-TRAVESIA.md §2a): cada rato tiene que dejar al menos un avance. Este paso pone las
+cuatro bases: un solo Nivel, talentos, armas como objetos con maestría, y la Fuerza que junta todo en un número.
+
+### 18.1 Un solo Nivel (`src/combat/classes.js` NIVEL, `src/core/state.js`)
+- El nivel de la ciudad (`state.player.level`, tope 40) y el del líder (`state.classes.leader`, tope 30) son uno solo,
+  **el Nivel**, tope **50**. Vive en `state.classes.leader.xp` y se ve en el HUD.
+- La curva sale de la de la ciudad de antes, un poco más larga (`NIVEL.need(n) = 40·n^1,58 + 20`; antes 1,55): los rangos piden su Nivel como antes y
+  `sim:economy` no cambia de ritmo (balance en DESIGN-CORE.md §8.v). Todo suma: la ciudad (`store.addXp`) y las peleas, salidas y amenazas
+  (`grantLeaderXp` × `NIVEL.fightRate`, porque venían en la escala chica del líder; `fightRate` **1,5**: con 1 el Nivel
+  iba lento y las compras quedaban bloqueadas, con 2 adelantaba monumento, Pase y rango 5).
+- **El combate no usa el Nivel crudo.** `combatLevel(nivel)` lo pasa a la escala del líder de antes (4 → 1, 18 → 5,
+  32 → 9, 50 → 14), así cada pelea del Acto 1 queda como estaba balanceada (§8). `leaderPerks`, `leaderKit` y
+  `newBattle({ level })` siguen en esa escala; la interfaz dice "abre en el Nivel N" con `nivelFor`.
+- Cada Nivel da su premio (`levelUpReward`), su cofre y el panel de subida, y **un punto de talento**. Pasado el 50, la
+  experiencia junta **puntos de paragon** (uno cada `NIVEL.paragonStep`).
+- Lo que pedía `player.level` (rangos, ropa, misiones, cofres, escala de premios, contactos) pide el Nivel con
+  `levelOf(state)`. Los perfiles online de versiones viejas se leen con el mismo `levelOf`.
+- Migración v7: §7.4 de DESIGN-CORE.md.
+
+### 18.2 Arsenal (`src/core/arsenal.js`, puro; `src/core/gear.js`, el pegamento)
+- `state.arsenal`: armas con **tipo** (espada, hacha, arco, bastón, martillo, lanza, escudo), **rareza** (común, poco
+  común, rara, épica, reliquia), **fuerza** (`weaponPower`) y **1 o 2 rasgos al azar**. La **afinidad elemental** es el
+  rasgo de rareza: sale en raras (50 %) y en épicas y reliquias (siempre), con preferencia por la veta de la isla, y
+  suma 1 de daño a las habilidades de su elemento (`elemPlus` en combat-rules). La reacción propia del arma con su
+  elemento es del 2d.
+- Lo que da un arma es chico y se ve: vida por rareza, +1 de ataque en épica y reliquia (el escudo lo da en coraza) y sus
+  rasgos (vida, coraza, una pasiva del combate, más maestría o más chance de arma).
+- Caen al ganar una pelea (`DROP_CHANCE`) y siempre de un jefe. Hay **contador de suerte** (`LUCK`): tras 12 peleas sin
+  una rara, la próxima es rara como mínimo. Tope de 40 armas: lo que sobra se desarma solo (lo de menos fuerza, nunca
+  lo equipado).
+- Acciones: **equipar** (el líder lleva cualquier tipo; cada clase, los suyos), **rehacer un rasgo** (monedas y
+  materiales), **desarmar** (materiales de región por rareza) y el **filtro de desarme automático** (comunes, hasta
+  poco comunes, hasta raras). El arma se ve en el modelo con el anclaje `GEAR` del paso 1a.
+
+### 18.3 Talentos (`src/core/talents.js`)
+- Un punto por Nivel ganado. Tres ramas cortas: **Mando** (vida y ataque de quien lidera, vida del grupo, más maestría,
+  paredes que duran más), **Supervivencia** (ánimo en la travesía, vida, intención de un enemigo más, curas, coraza,
+  botín) y **Oficio** (desarmar da más, más chance de arma, rehacer más barato, maestría del Taller, arma de jefe rara).
+- Cada talento pide puntos gastados antes en su rama (`need`). El árbol pide 36 puntos: lo que pasa de ahí y el paragon
+  van a una línea por rama (Temple, Aguante, Ojo de hallazgo) que sigue sumando sin techo duro.
+- Los puntos se pueden devolver en la ciudad (gratis en el 2a).
+
+### 18.4 Maestría y Fuerza (`arsenal.js`, `src/core/power.js`)
+- **Maestría por tipo de arma**, 1–20. Cada pelea da su xp al tipo de arma de cada uno que pelea (la resolución rápida,
+  la mitad). La curva sale de `MASTERY_STEPS` (data.js): sus 5 umbrales × 0,2 caen en los niveles 4, 8, 12, 16 y 20.
+  Abre +1 de vida en el 2, 5 y 8; una **técnica propia del tipo** en el 3, 6 y 10 (una pasiva o +1 de ataque, vida o
+  coraza); y **marcos** cosméticos del 4 en adelante (bronce, plata, oro, hoja grabada, brillo, estela, aura y nombre
+  propio en el 20).
+- **Maestría de los objetos del Taller** (`ITEMS`), 1–10 con la misma curva: +1 a su efecto en el 4 y en el 8.
+- **Fuerza** (`powerOf(state, squad)`, pura): suma cada unidad con los mismos pesos con que pega (vida 10, ataque 30,
+  coraza 40, habilidad 10, pasiva 15), las herramientas de la gente y 3 por Nivel. Cada encuentro tiene su **Fuerza
+  recomendada** (`recPower`: el grupo `expected`, promedio de las 6 clases).
+- **Escalado**: con `power`, `newBattle` escala a los enemigos (`foeScale`): por encima de la recomendada se les suma la
+  mitad de lo que sobra (vida ×, y +1 o +2 de ataque si pasa de ×1,35 o ×1,8); con menos, no se achican. Sin `power`
+  (pruebas, simuladores viejos) nada cambia. La Marea del 2c suma su parte con `foeExtra`.
+
+
+### 18.5 Balance final y la meta de Avance
+- **Avance por cada 20 min de juego** (PLAN-TRAVESIA §2a: "un rato de 20 min"): subir de Nivel, una maestría de arma u
+  objeto o un arma nueva. `sim:economy` junta los ratos seguidos hasta 20 min (con 2 ratos de 10, uno por día) y pide
+  ≥ 90 % de los días 1–60; la tasa por rato de 10 min se muestra aparte (~63–70 %).
+- **Arma del camino** (`EXP.weaponFind` en exp-data.js): una salida normal con ≥ 1★ en la que ninguna pelea dejó arma
+  trae una con 30 %, con la rareza de una pelea común (`source: 'camino'`, `summary.weapon`). Sin esto la meta daba ~51–63 %:
+  las armas y la maestría salían solo de peleas, y hay 0–2 por salida normal.
+- Números: `NIVEL.need = 40·n^1,58 + 20`, `fightRate` 1,5, desarme 1/2/4/7/12 por rareza. Con eso Avance pasa en 36 de 36
+  semillas. `sim:combat` (Fuerza, §8) no depende de `fightRate`: usa niveles fijos.
+
 ## Estado
+- **La Travesía, paso 2a** (Nivel único, talentos, arsenal, maestría y Fuerza, §18): rama `claude/trav-2a-e5cfa6`.
 - **Paso 5b, cuarta parte** (elegir las activas y la subclase en la ciudad, §17, y el balance de la curva de clase, el
   muelle, el abordaje y el líder cazador, §8): **hecha** en la rama `claude/clases-activas-5b4`, sin mergear. No toca la
   economía (`data.js`, `economy.js`, `tools-city.js`).
