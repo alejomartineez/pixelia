@@ -152,7 +152,7 @@ durante 1,5 s.
   - efectos: unos 0,6 MB.
 - `assets/audio/manifest.json` trae la duración, el loop, la categoría, la nota y los créditos.
 - `assets/audio/LICENSES.md` anota el origen, el autor y la licencia de cada archivo.
-- Las fuentes (todo CC0):
+- Las fuentes (todo CC0; la única excepción es la pista de la cinemática, ver "Pistas grabadas"):
   - Upright Piano KW de FreePats;
   - VSCO 2 Community Edition: flauta, pizzicato de violines y timbales;
   - Kenney: Interface Sounds, UI SFX y RPG Audio;
@@ -169,8 +169,18 @@ durante 1,5 s.
 - **`audio.track(id, { loop, fade, fallback })`** toca `track/<id>` del manifest (`.m4a`, categoría `music`) por el bus
   de música, en loop, y frena la música compuesta mientras suena. Se baja durante el splash junto con lo demás.
   `audio.track(null)` la corta con fundido y `audio.music(…)` vuelve a la compuesta. Si la pista todavía no existe,
-  devuelve `false` y toca el `fallback` (si se pasa). Así la música de Suno entra sin tocar código: se convierte con
-  `prepare.mjs` y se suma al manifest como `track/intro`.
+  devuelve `false` y toca el `fallback` (si se pasa).
+- **`track/intro`** es *The Illusionist* de Scott Buckley (CC BY 4.0, la única música que no es CC0). Se descarga de
+  su biblioteca a `tools/.cache/music/buckley/` (no entra al repo) y se arma con
+  `node tools/audio/prepare.mjs --tracks --src tools/.cache/music`. El tramo sale de `TRACKS` en `sources.mjs`:
+  - se saca una vuelta de la frase (≈34 s, de 104 a 137,9 s, empalmada donde coinciden el croma y los ataques), así el
+    cierre grande cae en el título del plano 11 (≈2:16) y después sigue la coda;
+  - queda en 2:59, a −20 LUFS sin compresión, estéreo, AAC 128 kbps (2,8 MB);
+  - `intro.js` la toca una sola vez (`loop: false`).
+  - La atribución es obligatoria y va tal cual la pide el autor: en `LICENSES.md` (línea "Atribución") y a la vista
+    en Ajustes → Partida → Créditos (`settings.credits.music`).
+  - Ojo con YouTube: si un video no lo acredita en la descripción, el autor puede hacer un reclamo. Un tráiler o un
+    stream que muestre la cinemática tiene que llevar el crédito.
 - **Narrador.** `tools/audio/narrate.mjs` pide cada línea de `src/cinema/narration.js` a Gemini TTS
   (`gemini-3.8-flash-tts`, con respaldo en los 2.5) con notas de dirección: voz grave, épica y misteriosa, que
   entusiasme, en rioplatense sobrio.

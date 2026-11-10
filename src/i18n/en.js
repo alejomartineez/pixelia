@@ -163,6 +163,7 @@ export default {
   'settings.credits.version': 'Version {v}',
   'settings.credits.by': 'A game by <b>Dezings</b>',
   'settings.credits.text': 'Design, code, voxel art and music: Dezings · The music is composed on the fly with recorded instruments · Jersey 10 and Fusion Pixel typefaces (OFL) · 3D graphics with three.js · PC game with Tauri',
+  'settings.credits.music': 'Music for The Breaking: {credit}',
   'settings.credits.sounds': 'Sounds and instruments',
   'settings.credits.manual': 'Manual',
   'settings.reset.btn': 'Delete save',

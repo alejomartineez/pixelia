@@ -811,6 +811,12 @@
    "cat": "voice",
    "dur": 3.3,
    "src": "gemini"
+  },
+  "track/intro": {
+   "file": "track/intro.m4a",
+   "cat": "music",
+   "dur": 179.031,
+   "src": "buckley:illusionist"
   }
  },
  "instruments": {
@@ -1102,6 +1108,13 @@
    "author": "Kenney",
    "license": "CC0 1.0",
    "url": "https://kenney.nl/assets/rpg-audio"
+  },
+  {
+   "name": "The Illusionist",
+   "author": "Scott Buckley",
+   "license": "CC BY 4.0",
+   "url": "https://www.scottbuckley.com.au/library/the-illusionist/",
+   "attribution": "'The Illusionist' by Scott Buckley – released under CC-BY 4.0. www.scottbuckley.com.au"
   },
   {
    "name": "Narrador",

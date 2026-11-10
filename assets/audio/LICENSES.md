@@ -1,6 +1,6 @@
 # Sonidos de Pixelia: origen y licencias
 
-Todo es de uso libre y sin regalías (CC0 1.0, dominio público). No hace falta atribución, pero los créditos del juego (Ajustes → Partida → Créditos) nombran a cada autor igual. Lo genera `tools/audio/prepare.mjs` a partir de `tools/audio/sources.mjs`; los archivos se recortaron, normalizaron y pasaron a AAC (.m4a).
+Los sonidos e instrumentos son de uso libre y sin regalías (CC0 1.0, dominio público): no hace falta atribución, pero los créditos del juego (Ajustes → Partida → Créditos) nombran a cada autor igual. Las pistas grabadas (`track/`) no son CC0: son CC BY 4.0 y el crédito es obligatorio, con la forma que pide su autor (línea "Atribución"); el juego la muestra en los créditos. Lo genera `tools/audio/prepare.mjs` a partir de `tools/audio/sources.mjs`; los archivos se recortaron, normalizaron y pasaron a AAC (.m4a).
 
 De Freesound se usaron las vistas previas en MP3 (`-hq`, se bajan sin cuenta); la licencia CC0 es la misma que la del original.
 
@@ -116,6 +116,14 @@ De Freesound se usaron las vistas previas en MP3 (`-hq`, se bajan sin cuenta); l
 - Fuente: https://kenney.nl/assets/rpg-audio
 - Descarga: https://opengameart.org/sites/default/files/RPGsounds_Kenney.zip
 - Archivos: `sfx/act_footstep00.m4a`, `sfx/act_footstep01.m4a`, `sfx/act_footstep02.m4a`, `sfx/act_footstep03.m4a`, `sfx/act_footstep04.m4a`, `sfx/act_footstep05.m4a`, `sfx/act_bookFlip1.m4a`, `sfx/act_bookFlip2.m4a`, `sfx/act_bookOpen.m4a`, `sfx/act_bookClose.m4a`, `sfx/act_cloth1.m4a`, `sfx/act_cloth3.m4a`, `sfx/act_creak1.m4a`, `sfx/act_creak2.m4a`, `sfx/act_chop.m4a`, `sfx/act_metalClick.m4a`, `sfx/act_metalLatch.m4a`, `sfx/act_handleCoins.m4a`, `sfx/act_handleCoins2.m4a`, `sfx/act_doorOpen1.m4a`, `sfx/act_doorClose1.m4a`, `sfx/act_dropLeather.m4a`, `sfx/act_metalPot1.m4a`, `sfx/act_knifeSlice.m4a`, `sfx/act_drawKnife1.m4a`
+
+## The Illusionist
+- Autor: Scott Buckley
+- Licencia: CC BY 4.0
+- Atribución: 'The Illusionist' by Scott Buckley – released under CC-BY 4.0. www.scottbuckley.com.au
+- Fuente: https://www.scottbuckley.com.au/library/the-illusionist/
+- Descarga: https://www.scottbuckley.com.au/library/wp-content/uploads/2019/07/sb_theillusionist.mp3
+- Archivos: `track/intro.m4a`
 
 ## Narrador
 - Autor: voz generada con Gemini TTS (Google) para Pixelia, con `tools/audio/narrate.mjs`

@@ -90,9 +90,10 @@ export const SCENES = [
   {
     id: 'llegada', who: 'cartografa', epic: true, see: true, chapter: 'prologo', title: 'Vera', grant: { page: 'p1' },
     lines: [
-      '{name}. Te vi venir desde el borde. Hace años que no llega nadie.',
+      // sigue al plano 11 de la cinemática: Vera llegó al fragmento y te encontró tirado (no llegaste vos)
+      'Así que te llamás {name}. Cuando te encontré no decías nada.',
       'Soy Vera. Hago los mapas de lo que queda, y tengo algo que arreglar acá.',
-      'Vos no viniste a mirar. Abajo alguien dijo tu nombre, y quiero saber quién.',
+      'No sé cómo terminaste en este pedazo. Abajo alguien dijo tu nombre, y quiero saber quién.',
       'Mientras tanto, {city} necesita techo. Tomá: lo escribió el último que lo intentó.',
     ],
   },

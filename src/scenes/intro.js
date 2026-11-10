@@ -10,7 +10,8 @@
 // Textos por t() (intro.line.NN, intro.label.*); voces en assets/audio/voice/intro/NN.m4a (src/cinema/narration.js).
 // Es la primera escena de una partida nueva (main.js, `!state.introSeen`) y se vuelve a ver desde la Bitácora
 // ({replay: 1, back: 'city'}). Clic, Enter o Espacio pasan al plano siguiente; Esc o "Saltar" la terminan.
-// Música: la pista grabada 'intro' (audio.track, la de Suno) si está en el manifest; si no, el modo épico de siempre.
+// Música: la pista grabada 'intro' (audio.track: The Illusionist, de Scott Buckley) si está en el manifest; si no,
+// el modo épico de siempre.
 // Calidad: el renderer respeta ?quality=low y los Ajustes (sombras, contorno, tope de FPS).
 import * as THREE from 'three';
 import { Voxels, createPixelRenderer, addLights, voxelMaterial } from '../core/voxel.js';
@@ -601,8 +602,10 @@ export default function create(ctx) {
       // faroles de la guardia y el brillo de lo robado (siempre en la escena: así no se recompilan los materiales)
       const BUILD = { world: buildContinent, towers: buildTowers, rise: buildRise, frag: buildFragment };
       for (const [k, fn] of Object.entries(BUILD)) { const g = fn(); g.visible = false; sets[k] = g; r.scene.add(g); }
-      // la pista grabada de El Quiebre (Suno), cuando esté en el manifest; si no, sigue el modo épico
-      try { ctx.audio?.track?.('intro'); } catch {}
+      // la pista grabada de El Quiebre ('The Illusionist' de Scott Buckley, CC BY 4.0, recortada para que el cierre
+      // caiga en el título del plano 11; tools/audio/sources.mjs → TRACKS). Una sola vez: después sigue su coda.
+      // Si no está en el manifest, sigue el modo épico.
+      try { ctx.audio?.track?.('intro', { loop: false }); } catch {}
       cin = createCinema(ctx, container, { r, shots: cinemaShots(), prefix: 'in', title: t('intro.title'), applyLight, onShot, onFinish: finish, shake, advanceSfx: 'select' });
       cin.go(Math.max(0, Math.min(SHOTS.length - 1, Number(params.shot) || 0)));
       offFrame = r.onFrame((dt, tt) => cin.frame(dt, tt));

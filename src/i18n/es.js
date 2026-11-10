@@ -169,6 +169,7 @@ export default {
   'settings.credits.version': 'Versión {v}',
   'settings.credits.by': 'Un juego de <b>Dezings</b>',
   'settings.credits.text': 'Diseño, código, arte vóxel y música: Dezings · La música se compone en el momento con instrumentos grabados · Tipografías Jersey 10 y Fusion Pixel (OFL) · Gráficos 3D con three.js · Juego de PC con Tauri',
+  'settings.credits.music': 'Música de El Quiebre: {credit}',
   'settings.credits.sounds': 'Sonidos e instrumentos',
   'settings.credits.manual': 'Manual',
   'settings.reset.btn': 'Borrar partida',

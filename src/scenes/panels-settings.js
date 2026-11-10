@@ -320,11 +320,22 @@ export function openSettings(ctx, p = {}) {
       h('b.pnl-credits-title', {}, 'Pixelia'),
       h('p', { html: t('settings.credits.by') }),
       h('p.small.muted', {}, t('settings.credits.text')),
+      musicCredits(),
       soundCredits(),
       h('button.btn.mint.small', { html: `${icon('info', 18)} ${t('settings.credits.manual')}`, onclick: () => { sh.close(); setTimeout(() => ctx.openPanel('story', { tab: 'manual' }), 240); } }),
       ver);
   }
-  // créditos de los sonidos (assets/audio/LICENSES.md, todo CC0): se arman desde el manifest
+  // pistas grabadas con atribución obligatoria (CC BY 4.0): la línea va tal cual la pide su autor, a la vista
+  function musicCredits() {
+    const box = h('p.small.set-music-credits', {});
+    audio.credits().then(list => {
+      const att = list.filter(c => c.attribution);
+      if (!att.length) { box.remove(); return; }
+      box.textContent = att.map(c => t('settings.credits.music', { credit: c.attribution })).join(' · ');
+    });
+    return box;
+  }
+  // créditos de los sonidos (assets/audio/LICENSES.md; CC0 salvo las pistas grabadas): se arman desde el manifest
   function soundCredits() {
     const box = h('details.set-sound-credits', {}, h('summary.small', {}, t('settings.credits.sounds')));
     audio.credits().then(list => {

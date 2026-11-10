@@ -163,6 +163,7 @@ export default {
   'settings.credits.version': 'バージョン {v}',
   'settings.credits.by': '<b>Dezings</b> のゲーム',
   'settings.credits.text': 'デザイン、プログラム、ボクセルアート、音楽：Dezings · 音楽は録音した楽器でその場で作曲されます · フォント Jersey 10 と Fusion Pixel（OFL）· 3Dグラフィック three.js · PC版 Tauri',
+  'settings.credits.music': '「大崩落」の音楽：{credit}',
   'settings.credits.sounds': '効果音と楽器',
   'settings.credits.manual': 'マニュアル',
   'settings.reset.btn': 'セーブデータを削除',

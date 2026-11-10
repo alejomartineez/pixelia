@@ -79,10 +79,18 @@ const M = JSON.parse(readFileSync(join(ROOT, 'assets/audio/manifest.json'), 'utf
   const pn = M.instruments.piano.map(s => s.note);
   ok(pn.every((n, i) => !i || n - pn[i - 1] <= 5), 'el piano tiene una muestra cada pocos semitonos', pn);
   // la voz del narrador (Gemini TTS, La Travesía 3a) se generó para el juego: no es CC0, pero lleva su crédito
-  ok(M.credits.length >= 10 && M.credits.every(c => (/CC0/.test(c.license) || c.name === 'Narrador') && c.author && c.author !== '?'), 'los créditos son todos CC0 (o la voz generada) y tienen autor', M.credits.length);
+  // las pistas grabadas (track/, categoría music) son CC BY 4.0: llevan la línea de atribución que pide su autor
+  const ccby = M.credits.filter(c => /CC BY 4\.0/.test(c.license));
+  ok(M.credits.length >= 10 && M.credits.every(c => (/CC0/.test(c.license) || c.name === 'Narrador' || (/^CC BY 4\.0$/.test(c.license) && c.attribution)) && c.author && c.author !== '?'),
+    'los créditos son CC0, la voz generada o CC BY 4.0 con su atribución, y tienen autor', M.credits.length);
+  const tracks = files.filter(([id]) => id.startsWith('track/'));
+  ok(tracks.every(([, f]) => f.cat === 'music') && ccby.length >= new Set(tracks.map(([, f]) => f.src)).size, 'cada pista grabada es música y tiene su crédito CC BY', tracks.map(x => x[0]));
   const lic = readFileSync(join(ROOT, 'assets/audio/LICENSES.md'), 'utf8');
   ok(files.every(([, f]) => lic.includes(f.file)), 'LICENSES.md anota cada archivo con su origen');
-  ok(!/sonniss/i.test(lic) && !/CC.BY|NC|ND/.test(lic.replace(/CC0/g, '')), 'no hay Sonniss ni licencias con atribución obligatoria, NC o ND');
+  ok(ccby.every(c => lic.includes('- Atribución: ' + c.attribution)), 'LICENSES.md copia la atribución de cada pista CC BY');
+  // fuera de las pistas grabadas, nada con atribución obligatoria, NC o ND
+  const licRest = lic.split('\n## ').filter(s => !/Licencia: CC BY 4\.0\n/.test(s)).join('\n## ').replace(/CC0/g, '').replace(/CC BY 4\.0 y el crédito es obligatorio/, '');
+  ok(!/sonniss/i.test(lic) && !/CC.BY|NC|ND/.test(licRest), 'no hay Sonniss ni otras licencias con atribución obligatoria, NC o ND');
   const sw = readFileSync(join(ROOT, 'sw.js'), 'utf8');
   ok(sw.includes('./assets/audio/manifest.json') && sw.includes('./assets/audio/inst/piano_C4.m4a'), 'assets/ entra al precache del service worker');
   ok(/'assets'/.test(readFileSync(join(ROOT, 'desktop/stage.mjs'), 'utf8')), 'assets/ entra al juego de PC (desktop/stage.mjs)');

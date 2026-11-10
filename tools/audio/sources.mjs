@@ -56,6 +56,15 @@ const sfx = [
 
 export const SOURCES = [...inst, ...amb, ...sfx];
 
+// Pistas grabadas (categoría music, audio.track): `prepare.mjs --tracks --src <carpeta>`. `keep` son los tramos del
+// original que quedan, empalmados con un fundido cruzado de `xfade` s centrado en cada corte (los cortes caen donde la
+// frase se repite: mismo croma y mismos ataques). No son CC0: llevan atribución en los créditos y en LICENSES.md.
+export const TRACKS = [
+  // El Quiebre (src/scenes/intro.js, ≈2 min 15 s): el tema crece sin parar hasta 2:52 y cae a una coda. Se saca una
+  // vuelta de la frase (≈34 s, 104 → 137,9) de la meseta, así el cierre grande cae en el título del plano 11.
+  { id: 'track/intro', src: 'buckley/sb_theillusionist.mp3', src0: 'buckley:illusionist', keep: [[0, 104], [137.9, null]], xfade: 1.5 },
+];
+
 // origen, autor y licencia de cada descarga (LICENSES.md)
 export const ORIGINS = {
   piano: { name: 'Upright Piano KW (small)', author: 'FreePats (Roberto y Gonzalo)', url: 'https://freepats.zenvoid.org/Piano/acoustic-grand-piano.html', file: 'https://freepats.zenvoid.org/Piano/UprightPianoKW/UprightPianoKW-small-SFZ+FLAC-20190703.7z', license: 'CC0 1.0' },
@@ -76,4 +85,6 @@ export const ORIGINS = {
   'fs:182502': { name: 'Birds Chirping 02', author: 'swiftoid', url: 'https://freesound.org/s/182502/', license: 'CC0 1.0' },
   'fs:363169': { name: 'Hammering on Anvil', author: 'SamsterBirdies', url: 'https://freesound.org/s/363169/', license: 'CC0 1.0' },
   'fs:211494': { name: 'choir_aah', author: 'Diboz', url: 'https://freesound.org/s/211494/', license: 'CC0 1.0' },
+  // pistas grabadas (CC BY 4.0: el crédito es obligatorio, con esta forma)
+  'buckley:illusionist': { name: 'The Illusionist', attribution: "'The Illusionist' by Scott Buckley – released under CC-BY 4.0. www.scottbuckley.com.au", author: 'Scott Buckley', url: 'https://www.scottbuckley.com.au/library/the-illusionist/', file: 'https://www.scottbuckley.com.au/library/wp-content/uploads/2019/07/sb_theillusionist.mp3', license: 'CC BY 4.0' },
 };
