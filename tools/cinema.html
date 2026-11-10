@@ -24,6 +24,7 @@
 //   cinema.html?v=forcejeo&t=3.2&k=4      → un instante a k×
 // Captura: GALLERY_PAGE=cinema.html node gallery-shot.mjs "v=forcejeo&view=strip&k=2" ../shots/vineta.png 1400 1200 600
 import { createVignette, VIGNETTES, W2D, H2D } from '../src/cinema/pixel2d.js';
+import '../src/cinema/vignettes-intro.js';   // las viñetas de El Quiebre (orden, robo, caida, cofradia)
 
 const q = new URLSearchParams(location.search);
 const id = q.get('v') || 'forcejeo', view = q.get('view') || (q.has('t') ? 'still' : 'play'), k = Math.max(1, Number(q.get('k')) || 2);

@@ -272,18 +272,16 @@ export function createVignette(id, o = {}) {
 // Cristal de veta (Céfiro): rombo que late, con halo. Lo usa la demostración del forcejeo.
 const CRYSTAL = ['..a..', '.abA.', 'abbcA', '.bcA.', '..A..'];
 const CRYSTAL_PAL = { a: 0xeaffff, b: 0xa8e4f4, c: 0x6cc0dc, A: 0x3e8aa8 };
-function crystalProp(v, x, y) {
+export function crystalProp(v, x, y) {
   return v.prop((g, X, Y, t) => pixels(g, X - 2, Y - 4 + Math.round(Math.sin(t * 5) * 0.6), CRYSTAL, CRYSTAL_PAL), {
     x, y, z: 6, glow: (g, X, Y, t) => halo(g, X, Y - 2, 12, 0x5fb4d0, 0.8 + 0.2 * Math.sin(t * 4)),
   });
 }
 
-/**
- * Demostración: el forcejeo del robo. De noche, frente al depósito de las Casas: alguien sale con un cristal de veta,
- * un guardia le cierra el paso, forcejean, el cristal cambia de mano y quien robaba cae. ~8 s.
- */
-defineVignette('forcejeo', (v) => {
-  const GROUND = 150;
+
+/** Fondo de noche frente al depósito de las Casas (cielo con luna, techos, muro, portón roto, farol). Lo usan el
+ * forcejeo y el robo de El Quiebre (src/cinema/vignettes-intro.js). */
+export function depotNight(v, GROUND = 150) {
   // cielo con luna
   v.layer(0, (g, W, H) => {
     skyBands(g, W, H, [0x05070d, 0x0a0f1d, 0x141c33, 0x223050, 0x2e3a58]);
@@ -333,6 +331,16 @@ defineVignette('forcejeo', (v) => {
     g.fillRect(8, 40, 7, H); g.fillRect(4, 40, 15, 4);
     g.fillRect(W - 60, 148, 22, 32); g.fillRect(W - 62, 152, 26, 4); g.fillRect(W - 62, 166, 26, 3);
   }, { width: 460 });
+
+}
+
+/**
+ * Demostración: el forcejeo del robo. De noche, frente al depósito de las Casas: alguien sale con un cristal de veta,
+ * un guardia le cierra el paso, forcejean, el cristal cambia de mano y quien robaba cae. ~8 s.
+ */
+defineVignette('forcejeo', (v) => {
+  const GROUND = 150;
+  depotNight(v, GROUND);
 
   // quien roba (capucha, con el cristal) y un guardia de las Casas (casco y tabardo rojo; sin espada: así no aparece y
   // desaparece un arma entre los gestos)

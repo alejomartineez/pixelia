@@ -11,7 +11,7 @@
 //   portrait(look, { sticker, full }) → canvas del busto (o del cuerpo entero) con borde de sticker opcional
 //   drawFrame(ctx, sheet, anim, i, x, y) dibuja un cuadro de la hoja (sin suavizado)
 // opts: { cls (clase de CLASS_KIT o rol), gear (arma que no está en el catálogo, ej. 'trabuco'), item ('caja', 'veta',
-// 'carta', 'bolsa': lo que levanta o entrega en los gestos) }.
+// 'carta', 'bolsa': lo que levanta o entrega en los gestos; 'nada': el gesto con la mano vacía) }.
 import { paletteOf, classLook } from '../avatar/figure.js';
 import { normalizeLook } from '../avatar/avatar.js';
 import { ramp, mix, hexToInt } from '../avatar/avatar-kit.js';
@@ -389,7 +389,7 @@ function figure(look, R, anim, f, opts) {
     if (r.fx === 'smoke' && res?.tip) rows(fxL, FX.smoke, res.tip[0], res.tip[1] - 3);
     if (r.fx === 'glow' && res?.tip) rows(fxL, FX.glow, res.tip[0] - 2, res.tip[1] - 3);
   }
-  if (r.item) {
+  if (r.item && opts.item !== 'nada') {   // opts.item 'nada': los brazos del gesto sin objeto (colgarse de un borde, tender la mano)
     const g = ITEMS[opts.item] || ITEMS.caja;
     const L = layer();
     // si el objeto queda a la altura de la cabeza, se corre afuera (sin soltarse de la mano) para no taparla

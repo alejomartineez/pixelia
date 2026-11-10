@@ -13,7 +13,9 @@ export function createLabels(container, r, { seen = new Set() } = {}) {
   const live = [];
 
   /** Muestra un cartel en pos (Vector3 o [x,y,z]). Si el id ya se presentó, no hace nada (devuelve null). */
-  function introduce(id, pos, name, line = '', { dur = 4.2, side = 'up', force = false } = {}) {
+  // color: borde y nombre del color de lo presentado (una veta). screen: () => ({ x, y }) en píxeles del contenedor, para
+  // carteles sobre una viñeta 2D (no hay punto 3D); host: dónde va ese cartel (encima del canvas 2D).
+  function introduce(id, pos, name, line = '', { dur = 4.2, side = 'up', force = false, color = null, screen = null, host = null } = {}) {
     if (id && seen.has(id) && !force) return null;
     if (id) seen.add(id);
     const el = document.createElement('div');
@@ -21,14 +23,28 @@ export function createLabels(container, r, { seen = new Set() } = {}) {
     el.innerHTML = `<b></b>${line ? '<span></span>' : ''}<i class="cn-tick"></i>`;
     el.querySelector('b').textContent = name;
     if (line) el.querySelector('span').textContent = line;
-    const p = Array.isArray(pos) ? new THREE.Vector3(...pos) : pos.clone();
-    const it = ov.add(el, p);
+    if (color) { el.style.borderColor = color; el.querySelector('b').style.color = color; el.querySelector('.cn-tick').style.background = color; }
+    let it;
+    if (screen) {
+      const wrap = document.createElement('div');
+      wrap.className = 'cx-ov';
+      wrap.append(el);
+      (host || ov.layer).append(wrap);
+      it = { wrap, el, screen, sx: -9999, sy: -9999, onScreen: true };
+      place(it);
+    } else it = ov.add(el, Array.isArray(pos) ? new THREE.Vector3(...pos) : pos.clone());
     const L = { id, it, el, t: 0, dur };
     live.push(L);
     requestAnimationFrame(() => el.classList.add('on'));
     return L;
   }
-  function drop(L) { const i = live.indexOf(L); if (i >= 0) live.splice(i, 1); ov.remove(L.it); }
+  function place(it) {
+    const p = it.screen();
+    if (!p) return;
+    it.sx = p.x; it.sy = p.y;
+    it.wrap.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0)`;
+  }
+  function drop(L) { const i = live.indexOf(L); if (i >= 0) live.splice(i, 1); if (L.it.screen) L.it.wrap.remove(); else ov.remove(L.it); }
   return {
     introduce,
     seen,
@@ -37,6 +53,7 @@ export function createLabels(container, r, { seen = new Set() } = {}) {
       for (const L of live.slice()) {
         L.t += dt;
         if (L.t > L.dur && !L.out) { L.out = true; L.el.classList.remove('on'); setTimeout(() => drop(L), 500); }
+        if (L.it.screen) place(L.it);
       }
       ov.update();
     },

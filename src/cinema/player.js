@@ -13,6 +13,7 @@
 import * as THREE from 'three';
 import { createTimeline, camAt, subAt, lightAt } from './timeline.js';
 import { createLabels } from './labels.js';
+import { t as tr } from '../core/i18n.js';
 
 export function createCinema(ctx, container, opts = {}) {
   const { r, shots, prefix = 'cn', title = '', applyLight = null, onShot = null, onFinish = null, labelsSeen, advanceSfx = null } = opts;
@@ -31,10 +32,11 @@ export function createCinema(ctx, container, opts = {}) {
   const fade = h(P('fade'));
   const sub = h(`p.${prefix}-sub`, { 'aria-live': 'polite' });
   const titleEl = h(P('title'), {}, title);
-  const skip = h(`button.btn.ghost.small.${prefix}-skip`, { html: 'Saltar <small>(Esc)</small>' });
+  const skip = h(`button.btn.ghost.small.${prefix}-skip`, { html: tr('cinema.skip') });
   const dots = h(P('dots'), { html: shots.map(() => '<i></i>').join('') });
   const stage2d = h(P('stage2d'));
-  el.append(stage2d, h(`${P('bar')}.top`), h(`${P('bar')}.bot`), fade, sub, titleEl, dots, skip);
+  const lab2d = h(`div.cn-labels.${prefix}-lab2d`);   // carteles sobre la viñeta 2D (encima del canvas)
+  el.append(stage2d, lab2d, h(`${P('bar')}.top`), h(`${P('bar')}.bot`), fade, sub, titleEl, dots, skip);
   container.append(el);
   skip.addEventListener('click', (e) => { e.stopPropagation(); try { audio.sfx?.('close'); } catch {} finish('skip'); });
   el.addEventListener('click', () => next());
@@ -54,7 +56,9 @@ export function createCinema(ctx, container, opts = {}) {
   function enter(i) {
     const S = tl.S;
     voice?.stop?.(); voice = null;
-    shots.forEach((s, k) => { if (s.set) s.set.visible = k === i; });
+    // un mismo decorado puede servir a dos planos seguidos (otra cámara): queda visible el del plano actual
+    for (const s of shots) if (s.set) s.set.visible = false;
+    if (S.set) S.set.visible = true;
     S.set?.userData.reset?.();
     if (applyLight && S.light) applyLight(S.light, S.shadow ?? 24);
     shake.amp = 0;
@@ -93,9 +97,24 @@ export function createCinema(ctx, container, opts = {}) {
       if (e.stinger) audio.stinger?.(e.stinger);
       if (e.voice) { voice?.stop?.(); voice = audio.voice?.(e.voice) || null; }
       if (e.shake) { shake.amp = e.shake; shake.decay = e.decay ?? 3; }
-      if (e.label && labels) labels.introduce(e.label.id, e.label.pos, e.label.name, e.label.line, e.label);
+      if (e.label && labels) {
+        const L = e.label, name = typeof L.name === 'function' ? L.name() : L.name, line = typeof L.line === 'function' ? L.line() : L.line;
+        // en una viñeta, px: [x, y] (o una función que lo da) en píxeles del mundo 2D
+        if (L.px && vignette) labels.introduce(L.id, null, name, line, { ...L, host: lab2d, screen: () => vigToScreen(typeof L.px === 'function' ? L.px(vignette) : L.px) });
+        else labels.introduce(L.id, L.pos, name, line, L);
+      }
       if (e.run) e.run(S, { labels, shake, vignette });
     } catch (err) { console.warn('[cine]', err); }
+  }
+
+  /** Punto del mundo de la viñeta → píxeles del contenedor (el canvas se estira con object-fit: contain). */
+  function vigToScreen(p) {
+    if (!vignette || !p) return null;
+    const cv = vignette.canvas, R = cv.getBoundingClientRect(), C = el.getBoundingClientRect();
+    const k = Math.min(R.width / cv.width, R.height / cv.height) || 1;
+    const z = Math.max(1, Math.round(vignette.cam.zoom));
+    const x = (p[0] - vignette.cam.x) * z + cv.width / 2, y = (p[1] - vignette.cam.y) * z + cv.height / 2;
+    return { x: R.left - C.left + (R.width - cv.width * k) / 2 + x * k, y: R.top - C.top + (R.height - cv.height * k) / 2 + y * k };
   }
 
   // ---------- bucle ----------
@@ -176,6 +195,7 @@ function ensureStyle(p) {
 .${p}-root.out { opacity: 0; }
 .${p}-stage2d { position: absolute; inset: 0; z-index: 0; display: none; background: #050506; }
 .${p}-root.is-2d .${p}-stage2d { display: flex; align-items: center; justify-content: center; }
+.${p}-lab2d { z-index: 1; }
 .${p}-stage2d canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }
 .${p}-bar { position: absolute; left: 0; right: 0; height: 9vh; background: #050506; z-index: 2; }
 .${p}-bar.top { top: 0; } .${p}-bar.bot { bottom: 0; }
