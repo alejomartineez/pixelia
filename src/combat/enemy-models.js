@@ -1,8 +1,9 @@
 // Enemigos del combate en el estilo "mezcla" (plan §M1, DESIGN-COMBAT.md §5):
 //   - gente (piratas del cielo, que son gente-zorro del Céfiro, y los Vaciados de la mina): vóxel detallado con
 //     avatarModel, igual que el grupo;
-//   - criaturas grandes, gólems y jefes (lobos, bichos de veta, la bestia del Bañado, el gólem de Raíz, el orco de
-//     la Brasa): low-poly facetado (src/avatar/lowpoly.js), con la misma luz y el mismo contorno tinta.
+//   - criaturas grandes y gólems (lobos, bichos de veta, el gólem de Raíz, el orco de la Brasa): low-poly facetado
+//     (src/avatar/lowpoly.js), con la misma luz y el mismo contorno tinta;
+//   - la bestia del Bañado (jefe): vóxel, en boss-models.js.
 //
 //   enemyModel(type, opts) -> THREE.Group   (origen en el centro de la casilla, base en y=0, mira a +Z)
 //     opts.broken: el bicho sin coraza (después de Romper)

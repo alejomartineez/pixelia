@@ -1,7 +1,7 @@
-// Jefes del Acto 1 en low-poly facetado (plan §M1 y §M2; paso 6b): la bestia del Bañado y la capitana pirata, gente-zorro
-// del Céfiro. Caras planas en ángulo para que se distingan de inmediato de las unidades vóxel y se sientan pesados. Usan
-// el mismo material que los vóxeles (voxelMaterial: luz plana y colores por vértice), así el contorno tinta de
-// createPixelRenderer sale solo. Los ojos y las vetas de Marea brillan (MeshBasicMaterial).
+// Jefes del Acto 1 (plan §M1 y §M2; paso 6b): la bestia del Bañado y la capitana pirata, gente-zorro del Céfiro.
+// La bestia es vóxel, con el mismo tamaño de vóxel que el grupo (pasada visual del combate: el facetado rompía el estilo);
+// la capitana sigue en low-poly facetado. Los dos usan voxelMaterial (luz plana y colores por vértice), así el contorno
+// tinta de createPixelRenderer sale solo. Los ojos y las vetas de Marea brillan (MeshBasicMaterial).
 //
 //   bossModel(type, { phase }) -> THREE.Group | null   (null si el tipo no es jefe: la escena usa enemyModel)
 //     origen en el centro de la casilla, base en y = 0, mira a +Z (mismo contrato que enemy-models.js)
@@ -9,10 +9,12 @@
 //     group.userData.setPhase(k)             fase 2 del jefe (≤ 50 % de vida): la bestia se enciende, la capitana alza el sable
 //     group.userData.height / .scale
 //
-// Se arma en "vóxeles" (8 por casilla, como el resto) y se escala al final, con el kit facetado del 4a
+// La capitana se arma en unidades de 1/8 de casilla y se escala al final, con el kit facetado del 4a
 // (src/avatar/lowpoly.js: rampa de tono por orientación y oclusión falsa abajo). enemyModel('bestia') devuelve esta misma.
 import * as THREE from 'three';
 import { Facets } from '../avatar/lowpoly.js';
+import { Voxels, voxelMaterial, hexToInt } from '../core/voxel.js';
+import { AVATAR_VOXEL, hash3 } from '../avatar/avatar-kit.js';
 
 const VOX = 1 / 8;
 
@@ -20,78 +22,121 @@ const VOX = 1 / 8;
 const P = {
   ink: '#16110e', bone: '#d8cfb8', bone_d: '#a89e86',
   moss: '#3d5236', moss_d: '#2b3a27', moss_l: '#55703f', mud: '#4a3b2a', mud_d: '#33281c', reed: '#7c7440', reed_l: '#9a8e52',
-  marea: '#7fe8d8', marea_hot: '#c8fff4', beast_eye: '#d8ff7a',
+  marea: '#7fe8d8', marea_hot: '#c8fff4', beast_eye: '#d8ff7a', maw: '#2a1712',
   fox: '#a8562c', fox_d: '#7d3d1f', fox_l: '#c47a45', cream: '#e2d6bd', coat: '#5a1c22', coat_d: '#3d1217', gold: '#c9a04a', gold_d: '#94732f',
   brass: '#a98a45', iron: '#7c8086', iron_d: '#4f5257', leather: '#3a2a20', boot: '#1f1814', shirt: '#2c2529', hat: '#231b1c',
   feather: '#d6cec0', fox_eye: '#ffc35a',
 };
 
-// ---------- la bestia del Bañado ----------
+// ---------- la bestia del Bañado (vóxel) ----------
 // La Madre del Agua de los Anuros: lomo encorvado de barro y musgo, juncos en la espalda, cuatro ojos y vetas de Marea
-// suelta que le corren por el lomo (en la fase 2 se encienden y le brilla la boca).
-function beast() {
-  const g = new THREE.Group();
-  const body = new Facets();
-  const skin = (y, x, z) => (y < 2.2 ? P.mud : (Math.abs(x) * 3 + z * 2 + y) % 7 < 1.4 ? P.moss_l : (Math.abs(x) + z) % 5 < 1.6 ? P.moss_d : P.moss);
-  body.blob(0, 4.4, -0.2, 5.4, 3.8, 6, skin, { seed: 3, flat: 0.95, jit: 0.16 });
-  body.blob(0, 6.9, -1.8, 4.2, 2.9, 4.2, skin, { seed: 7, jit: 0.18 });
-  // patas: adelante con garras de hueso, atrás más cortas
+// suelta que le corren por el lomo (en la fase 2 se encienden y le brilla la boca). Se arma en vóxeles del mismo tamaño
+// que los de la gente (AVATAR_VOXEL, 24 por casilla) con voxelMaterial: el contorno tinta y la oclusión salen iguales que
+// en el grupo. Las geometrías se arman una vez y se comparten; cada bestia tiene sus propios materiales que brillan.
+const BV = AVATAR_VOXEL;
+let beastGeo = null;
+function beastGeometry() {
+  if (beastGeo) return beastGeo;
+  const body = new Voxels(), head = new Voxels(), veins = new Voxels(), eyes = new Voxels(), maw = new Voxels();
+  const skin = (x, y, z) => {
+    if (y < 6) return hash3(x >> 1, y >> 1, z >> 1) < 0.5 ? P.mud : P.mud_d;
+    const h = hash3(x >> 2, y >> 2, z >> 2);
+    if (y > 27 && h < 0.35) return P.moss_d;
+    return h < 0.16 ? P.moss_l : h < 0.42 ? P.moss_d : P.moss;
+  };
+  const limb = (v, a, b, r0, r1, color) => {
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), n = Math.max(2, Math.ceil(L / 1.5));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n, r = r0 + (r1 - r0) * t;
+      v.sphere(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, r, r, r, color);
+    }
+  };
+  // cuerpo: panza ancha y baja, joroba atrás
+  body.sphere(0, 14, -1, 17, 11.5, 19, skin);
+  body.sphere(0, 22, -6, 13, 9.5, 13, skin);
+  // patas: adelante con garras de hueso, atrás más cortas y gruesas
   for (const s of [-1, 1]) {
-    body.limb([s * 3.9, 3.4, 3.2], [s * 4.9, 0.4, 5.4], 1.5, 1.0, P.moss_d, 6);
-    body.blob(s * 4.9, 0.6, 5.6, 1.3, 0.7, 1.4, P.mud_d, { seed: 11 + s, detail: 0 });
-    for (const k of [-1, 0, 1]) body.spike([s * 4.9 + k * 0.6, 0.5, 6.4], [s * 4.9 + k * 0.8, 0.1, 7.6], 0.28, P.bone);
-    body.limb([s * 3.6, 3.0, -3.6], [s * 4.3, 0.3, -4.2], 1.6, 1.1, P.moss_d, 6);
+    limb(body, [s * 13, 11, 10], [s * 16, 2, 17], 5, 3.4, skin);
+    body.sphere(s * 16, 2, 18.5, 4.5, 2.4, 4.8, (x, y, z) => (hash3(x, y, z) < 0.5 ? P.mud_d : P.mud));
+    body.clear(s * 16 - 6, -4, 12, 12, 4, 14);
+    for (const k of [-1, 0, 1]) { const x = Math.round(s * 16 + k * 2.4); body.box(x, 0, 22, 1, 2, 2, P.bone); body.set(x, 0, 24, P.bone_d); }
+    limb(body, [s * 12, 10, -12], [s * 14, 2, -14], 5.4, 3.8, skin);
+    body.sphere(s * 14, 2, -13.5, 4.4, 2.4, 4.4, P.mud_d);
   }
+  body.clear(-24, -6, -40, 48, 6, 70);
   // cola gruesa que se arrastra
-  body.limb([0, 3.0, -5.6], [0.6, 1.4, -8.6], 1.9, 1.0, P.moss_d, 6);
-  body.limb([0.6, 1.4, -8.6], [1.6, 0.6, -10.4], 1.0, 0.3, P.mud, 5);
-  // juncos que le crecen en el lomo
-  for (const [x, z, h, lean] of [[-1.8, -2.6, 4.2, -0.6], [0.6, -3.4, 5.0, 0.4], [2.2, -1.4, 3.4, 0.9], [-0.6, -0.2, 3.0, -0.3], [1.4, -4.6, 3.6, 0.2]]) {
-    body.limb([x, 8.4, z], [x + lean, 8.4 + h, z - 0.4], 0.2, 0.08, P.reed, 4);
-    body.spike([x + lean, 8.4 + h - 0.2, z - 0.4], [x + lean * 1.1, 8.4 + h + 0.9, z - 0.5], 0.26, P.reed_l);
+  limb(body, [0, 10, -18], [2, 4.5, -28], 6.2, 3.4, skin);
+  limb(body, [2, 4.5, -28], [5, 1.5, -34], 3.4, 1.2, P.mud);
+  // juncos que le crecen en el lomo (con la punta clara)
+  for (const [x, z, h, lean] of [[-6, -9, 13, -2], [2, -11, 16, 1], [7, -5, 11, 3], [-2, -1, 10, -1], [5, -15, 12, 1], [-9, -3, 8, -3]]) {
+    let y0 = 34; while (y0 > 0 && !body.has(x, y0, z)) y0--;
+    for (let i = 0; i < h; i++) {
+      const xx = x + Math.round(lean * i / h);
+      body.set(xx, y0 + 1 + i, z, i > h - 4 ? P.reed_l : P.reed);
+    }
+    body.set(x + lean + (lean >= 0 ? 1 : -1), y0 + h - 1, z, P.reed_l);
   }
-  const bodyMesh = body.mesh();
-  g.add(bodyMesh);
-  // vetas de Marea suelta sobre el lomo (brillan; en la fase 2, más)
-  const veins = new Facets({ ao: false, vary: 0, tone: false });
-  for (const [x, y, z, r] of [[-1.2, 9.2, -1.2, 0.42], [0.9, 9.4, -2.4, 0.5], [-0.4, 9.0, -3.8, 0.38], [2.6, 7.8, 0.2, 0.36], [-2.8, 7.6, -0.6, 0.34], [0.2, 8.4, 0.8, 0.3]])
-    veins.blob(x, y, z, r, r * 0.6, r * 1.6, '#ffffff', { detail: 0, seed: x * 3 + z, jit: 0.2 });
-  const veinMesh = new THREE.Mesh(veins.geometry(), new THREE.MeshBasicMaterial({ color: P.marea, transparent: true, opacity: 0.85 }));
-  g.add(veinMesh);
-  // cabeza: parte animada con la boca abierta y cuatro ojos
+  // vetas de Marea: se cavan en la superficie del lomo (la celda pasa del cuerpo a la malla que brilla)
+  const carveTop = (x, z) => { let y = 36; while (y > 4 && !body.has(x, y, z)) y--; if (y > 4 && body.get(x, y, z) !== hexToInt(P.reed) && body.get(x, y, z) !== hexToInt(P.reed_l)) { body.remove(x, y, z); veins.set(x, y, z, '#ffffff'); } };
+  for (const [x0, z0, dx, dz, n] of [[-4, 2, 0.5, -1, 12], [3, 0, -0.3, -1, 14], [8, -2, 0.6, -0.8, 8], [-9, -4, -0.6, -0.8, 8], [0, -16, 0.4, -1, 6]]) {
+    for (let i = 0; i < n; i++) { const x = Math.round(x0 + dx * i + Math.sin(i * 0.9) * 0.8), z = Math.round(z0 + dz * i); carveTop(x, z); if (i % 3 === 0) carveTop(x + 1, z); }
+  }
+  // cabeza (pivote en el cuello, mira a +Z): cráneo ancho, ceño pesado y la boca abierta con colmillos
+  const hs = (x, y, z) => (y > 3 ? (hash3(x >> 2, y >> 2, z >> 2) < 0.4 ? P.moss_d : P.moss) : P.moss);
+  head.sphere(0, 1, 5, 11, 6.5, 9.5, hs);
+  head.box(-8, 4, 10, 16, 3, 4, P.moss_d);   // ceño
+  head.sphere(0, -5, 8, 9.5, 3.2, 8, P.moss_d);   // mandíbula
+  // boca: la raja entre el cráneo y la mandíbula, oscura y con la lengua (que brilla en la fase 2)
+  for (let x = -7; x <= 7; x++) for (let z = 6; z <= 16; z++) for (let y = -3; y <= -1; y++) {
+    if (!head.has(x, y, z)) continue;
+    const inside = Math.abs(x) < 7 - (z > 13 ? (z - 13) : 0);
+    if (!inside) continue;
+    head.remove(x, y, z);
+    if (y === -3 && z < 14 && Math.abs(x) < 5) maw.set(x, y, z, '#ffffff'); else head.set(x, y, z, P.ink);
+  }
+  // colmillos: arriba bajan, abajo suben
+  for (const x of [-6, -3, 3, 6]) { head.set(x, -1, 15, P.bone); head.set(x, -2, 15, P.bone); }
+  for (const x of [-5, 5]) { head.set(x, -3, 15, P.bone_d); head.set(x, -2, 14, P.bone_d); }
+  // cuatro ojos: dos grandes al frente y dos chicos a los costados
+  for (const [x, y, z] of [[-4, 4, 13], [3, 4, 13], [-8, 2, 11], [7, 2, 11]]) for (let dx = 0; dx < 2; dx++) {
+    let zz = z + 4; while (zz > z - 4 && !head.has(x + dx, y, zz)) zz--;
+    head.remove(x + dx, y, zz); eyes.set(x + dx, y, zz, '#ffffff');
+  }
+  head.clear(-1, 7, 0, 2, 2, 4);   // muesca en la frente
+  const geo = (v, ao = true) => v.toGeometry({ scale: BV, ao, jitter: ao ? 0.02 : 0 });
+  beastGeo = { body: geo(body), veins: geo(veins, false), head: geo(head), eyes: geo(eyes, false), maw: geo(maw, false) };
+  return beastGeo;
+}
+function beast() {
+  const G = beastGeometry();
+  const g = new THREE.Group();
+  const mesh = (geo, mat) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; return m; };
+  const torso = new THREE.Group();
+  torso.add(mesh(G.body, voxelMaterial()));
+  const veinMat = new THREE.MeshBasicMaterial({ color: P.marea });
+  torso.add(mesh(G.veins, veinMat));
+  g.add(torso);
   const head = new THREE.Group();
-  head.position.set(0, 4.6, 4.6);
-  const hf = new Facets();
-  hf.blob(0, 0.2, 1.8, 3.3, 2.2, 2.9, (y, x, z) => (y > 1.2 ? P.moss_d : P.moss), { seed: 5, jit: 0.14 });
-  hf.box(0, -1.6, 2.9, 5.0, 1.0, 3.2, P.moss_d, { rot: [0.32, 0, 0] });   // mandíbula, abierta
-  hf.box(0, -0.75, 3.4, 4.2, 0.6, 2.4, P.ink, { rot: [0.16, 0, 0] });      // boca
-  for (const x of [-1.6, -0.6, 0.6, 1.6]) hf.spike([x, -0.4, 4.2], [x * 1.05, -1.4, 4.5], 0.26, P.bone);
-  for (const x of [-1.2, 1.2]) hf.spike([x, -1.4, 4.0], [x, -0.5, 4.3], 0.22, P.bone_d);
-  // ceño pesado sobre los ojos
-  hf.box(0, 1.5, 3.4, 4.8, 0.8, 1.2, P.moss_d, { rot: [-0.25, 0, 0] });
-  head.add(hf.mesh());
-  const eyes = new Facets({ ao: false, vary: 0, tone: false });
-  for (const [x, y, z] of [[-1.3, 0.95, 4.3], [1.3, 0.95, 4.3], [-2.2, 0.35, 3.8], [2.2, 0.35, 3.8]]) eyes.blob(x, y, z, 0.36, 0.3, 0.2, '#ffffff', { detail: 0, jit: 0 });
+  head.position.set(0, 15 * BV, 15 * BV);
+  head.add(mesh(G.head, voxelMaterial()));
   const eyeMat = new THREE.MeshBasicMaterial({ color: P.beast_eye });
-  head.add(new THREE.Mesh(eyes.geometry(), eyeMat));
-  // brillo de la boca en la fase 2
-  const maw = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.3, 1.6), new THREE.MeshBasicMaterial({ color: P.marea, transparent: true, opacity: 0 }));
-  maw.position.set(0, -0.6, 3.6); maw.rotation.x = 0.16;
-  head.add(maw);
+  head.add(mesh(G.eyes, eyeMat));
+  const mawMat = new THREE.MeshBasicMaterial({ color: P.maw });
+  head.add(mesh(G.maw, mawMat));
   g.add(head);
+  const cDim = new THREE.Color(P.marea), cHot = new THREE.Color(P.marea_hot), cMaw = new THREE.Color(P.maw), cVein = new THREE.Color();
   let phase = 0;
   g.userData.setPhase = (k) => { phase = k; };
   g.userData.update = (dt, moving, t) => {
-    const br = Math.sin(t * 1.1) * 0.025;
-    bodyMesh.scale.y = 1 + br;
-    head.rotation.x = -0.05 + Math.sin(t * 0.9) * 0.07 + (phase ? Math.sin(t * 3.2) * 0.04 : 0);
+    torso.scale.y = 1 + Math.sin(t * 1.1) * 0.02;
+    head.rotation.x = -0.04 + Math.sin(t * 0.9) * 0.06 + (phase ? Math.sin(t * 3.2) * 0.04 : 0);
     head.rotation.y = Math.sin(t * 0.5) * 0.1;
-    const glow = phase ? 0.75 + Math.sin(t * 4.0) * 0.25 : 0.55 + Math.sin(t * 1.6) * 0.15;
-    veinMesh.material.opacity = glow;
-    veinMesh.material.color.set(phase ? P.marea_hot : P.marea);
-    maw.material.opacity = phase ? 0.55 + Math.sin(t * 4.0) * 0.3 : 0;
+    const glow = phase ? 0.7 + Math.sin(t * 4.0) * 0.3 : 0.35 + Math.sin(t * 1.6) * 0.15;
+    cVein.copy(cMaw).lerp(phase ? cHot : cDim, Math.min(1, 0.45 + glow * 0.55));
+    veinMat.color.copy(cVein);
+    mawMat.color.copy(cMaw).lerp(cHot, phase ? glow : 0);
   };
-  return { g, height: 12.5, footprint: 13 };
+  return { g, height: 43, unit: BV };
 }
 
 // ---------- la capitana ----------
@@ -181,24 +226,25 @@ function captain() {
 }
 
 const BUILD = { bestia: beast, capitana: captain };
-/** Escala por jefe: la bestia ocupa más que su casilla (se sale un poco), la capitana como una persona alta. */
-const SCALE = { bestia: 1.12, capitana: 0.98 };
+/** Escala por jefe: la bestia ya viene a su tamaño (ocupa más que su casilla), la capitana como una persona alta. */
+const SCALE = { bestia: 1, capitana: 0.98 };
 export const BOSS_TYPES = Object.keys(BUILD);
 
-/** Modelo low-poly de un jefe, o null si `type` no es uno. */
+/** Modelo de un jefe (la bestia en vóxel, la capitana en low-poly), o null si `type` no es uno. */
 export function bossModel(type, { phase = 0 } = {}) {
   const build = BUILD[type];
   if (!build) return null;
-  const { g: inner, height } = build();
+  const { g: inner, height, unit } = build();
   const g = new THREE.Group();
-  inner.scale.setScalar(VOX);
+  const u = unit || VOX;
+  if (!unit) inner.scale.setScalar(VOX);   // la capitana se arma en 1/8 y se escala; la bestia ya viene en AVATAR_VOXEL
   g.add(inner);
   const s = SCALE[type] || 1;
   g.scale.setScalar(s);
   g.userData.scale = s;
-  g.userData.height = height * VOX * s;
+  g.userData.height = height * u * s;
   g.userData.type = type;
-  g.userData.lowpoly = true;
+  if (unit) g.userData.voxel = true; else g.userData.lowpoly = true;
   g.userData.update = (dt, moving, t) => inner.userData.update?.(dt, moving, t ?? performance.now() / 1000);
   g.userData.setPhase = (k) => inner.userData.setPhase?.(k);
   if (phase) inner.userData.setPhase(phase);

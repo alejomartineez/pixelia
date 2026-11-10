@@ -26,6 +26,8 @@ import { ENCOUNTERS, ENEMIES, ABILITIES, ITEMS, COMBAT, TUTORIAL_PARTY } from '.
 import { enemyModel } from './enemy-models.js';
 import { bossModel } from './boss-models.js';
 import { buildCombatUi } from './combat-ui.js';
+import { createBackdrop } from './combat-backdrop.js';
+import { accentOf } from './class-accent.js';
 import { SCENE_BY_ID } from '../story/story-data.js';
 import { markSeen } from '../story/story.js';
 
@@ -55,6 +57,9 @@ const REG = {
     tree: 'poste', plank: ['#5a3f2c', '#4c3525'], water: ['#24414a', '#2c4d57'], hemi: [0xb0b8cc, 0x24202a, 1.05], sun: [0xffd8b0, 1.45] },
 };
 const LIGHT_FLOOR = { hemi: 0.95, sun: 0.7 };
+// Legibilidad del grupo en el tablero: cada clase con un color propio (aro en el piso, ropa, barra de vida y lista del
+// turno: class-accent.js) y un poco más grandes que antes (0.92 y 0.84), sin pasarse de la casilla.
+const UNIT_SCALE = { lider: 1.08, grupo: 1.0 };
 const TOP = { llano: 2, salida: 2, pasarela: 2, roca: 2, arbol: 2, agua: 1, alto: 6, vacio: 0 };
 const topOf = (t) => (TOP[t] ?? 2) / 8;
 
@@ -234,6 +239,12 @@ export default function create(ctx) {
     enemy: new THREE.MeshBasicMaterial({ color: 0xc94a40, transparent: true, opacity: 0.8, depthWrite: false }),
     sel: new THREE.MeshBasicMaterial({ color: 0xf0c96e, transparent: true, opacity: 1, depthWrite: false }),
   };
+  const classRingGeo = new THREE.RingGeometry(0.4, 0.46, 32);
+  const classRingMats = new Map();
+  const classRingMat = (hex) => {
+    if (!classRingMats.has(hex)) classRingMats.set(hex, new THREE.MeshBasicMaterial({ color: hex, transparent: true, opacity: 0.95, depthWrite: false }));
+    return classRingMats.get(hex);
+  };
   const floodMat = new THREE.MeshLambertMaterial({ color: 0x2c5a66, transparent: true, opacity: 0.72, depthWrite: false });
   const floodGeo = new THREE.BoxGeometry(1, 0.12, 1);
   let overMats = {};
@@ -360,13 +371,16 @@ export default function create(ctx) {
       const cls = u.type === 'lider' ? (b?.leader?.cls || store.state.classes?.leader?.cls || null) : (u.cls || (u.type !== 'cautivo' ? u.type : null));
       // y el arma equipada del Arsenal (paso 2a), si tiene una: manda sobre la de su clase
       const g = u.weapon ? heldGear(u.type === 'lider' ? 'lider' : cls, store.state) : null;
-      model = u.type === 'lider' ? avatarModel(lookFor(u), { player: true, cls, gear: g || undefined })
-        : g ? avatarModel({ ...classLook(lookFor(u), cls), acc: g }, { npc: true }) : avatarModel(lookFor(u), { npc: true, cls });
-      const k = u.type === 'lider' ? 0.92 : 0.84;
+      // cada clase con su color de ropa (el líder conserva su look: lo distingue el aro y el tamaño)
+      const acc = accentOf(u, cls);
+      const look = u.type === 'lider' ? lookFor(u) : acc.dress ? { ...lookFor(u), dressColor: acc.dress } : lookFor(u);
+      model = u.type === 'lider' ? avatarModel(look, { player: true, cls, gear: g || undefined })
+        : g ? avatarModel({ ...classLook(look, cls), acc: g }, { npc: true }) : avatarModel(look, { npc: true, cls });
+      const k = u.type === 'lider' ? UNIT_SCALE.lider : UNIT_SCALE.grupo;
       model.scale.setScalar(k);
       model.userData.height = (model.userData.height || 1) * k;
     } else {
-      // los jefes en low-poly facetado (boss-models.js, plan §M1); el resto, vóxel
+      // los jefes salen de boss-models.js (la bestia en vóxel, la capitana facetada); el resto, de enemy-models.js
       model = bossModel(u.type, { phase: u.phase || 0 }) || enemyModel(u.type, { broken: u.type === 'bicho' && u.armor === 0 });
     }
     const obj = new THREE.Group();
@@ -376,6 +390,11 @@ export default function create(ctx) {
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.025; ring.renderOrder = 7;
     if (u.boss) ring.scale.setScalar(1.35);
     obj.add(ring);
+    if (u.side === 'ally') {   // aro de la clase, por fuera del de estado (azul, elegido o ya jugó)
+      const cr = new THREE.Mesh(classRingGeo, classRingMat(accentOf(u, u.type === 'lider' ? null : (u.cls || u.type)).ring));
+      cr.rotation.x = -Math.PI / 2; cr.position.y = 0.022; cr.renderOrder = 7;
+      obj.add(cr);
+    }
     const pick = new THREE.Mesh(pickBox, pickMat);
     pick.scale.set(0.7, Math.max(0.6, obj.userData.height), 0.7); pick.position.y = pick.scale.y / 2;
     pick.userData.unit = u.id;
@@ -966,6 +985,7 @@ export default function create(ctx) {
     const qs = new URLSearchParams(location.search);
     const qHour = qs.has('hour') ? Number(qs.get('hour')) : null, qWeather = WEATHER[qs.get('weather')] ? qs.get('weather') : null;
     amb.set({ hour: qHour ?? cond.hour, weather: qWeather ?? cond.weather, place: cond.place, region, light: store.state.world?.light ?? 1 }, { now: true });
+    backdrop?.setRegion(region);
     buildBoard();
     sel.id = null; hover = null; busy = false;
     autoSelect();
@@ -977,7 +997,7 @@ export default function create(ctx) {
     opts.onSave?.(b);
   }
 
-  let lights = null, amb = null, frameN = 0;
+  let lights = null, amb = null, backdrop = null, frameN = 0;
   return {
     hud: false,
     music: audio.songs?.includes?.('threat') ? 'threat' : 'game',
@@ -1003,6 +1023,7 @@ export default function create(ctx) {
       amb = createAmbience(r, { lights, sky: null, place: 'exp:cerca', fog: { near: 63, far: 95 },   // niebla detrás del campo, no encima
         onThunder: () => setTimeout(() => bus.emit('ambience:thunder', { place: 'combat' }), 300 + Math.random() * 900) });
       amb.setArea(6, 6, 6);
+      backdrop = createBackdrop(r.scene);   // degradé del bioma y terreno lejano en la bruma (combat-backdrop.js)
       r.scene.add(world);
       start(params);
       let tagT = 0;
@@ -1016,6 +1037,7 @@ export default function create(ctx) {
           if (k >= 1) { anims.delete(a); a.done?.(); }
         }
         for (const [, u] of units) u.model.userData.update?.(dt, !!u.moving, t);
+        backdrop?.update(r.camera, r.scene.background);
         if (amb) {
           amb.update(dt, { x: 0, z: 0 });
           // en el combate la lectura manda: de noche o con tormenta nunca baja de un piso de luz
@@ -1069,10 +1091,13 @@ export default function create(ctx) {
       anims.clear();
       modal?.close?.(); modal = null;
       amb?.dispose(); amb = null;
+      backdrop?.dispose(); backdrop = null;
       if (r) { r.stop(); r.dispose(); r = null; }
       for (const m of Object.values(overMats)) { m.map?.dispose(); m.dispose(); }
       overMats = {};
       for (const m of Object.values(ringMats)) m.dispose();
+      for (const m of classRingMats.values()) m.dispose();
+      classRingMats.clear(); classRingGeo.dispose();
       plane.dispose(); pickBox.dispose(); pickMat.dispose(); ringGeo.dispose(); floodGeo.dispose(); floodMat.dispose();
       units.clear(); tileObjs.length = 0;
       dom?.destroy(); dom = null;

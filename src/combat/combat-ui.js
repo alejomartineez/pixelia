@@ -8,6 +8,7 @@ import { icon } from '../core/icons.js';
 import { esc } from '../core/ui.js';
 import { ENEMIES, UNITS, TILES, COMBOS, COMBAT } from './combat-data.js';
 import { CLASSES } from './classes.js';
+import { accentCss } from './class-accent.js';
 import { MATERIALS, MAT_IDS } from '../expedition/exp-data.js';
 import { CHARACTERS } from '../story/story-data.js';
 import { portrait } from '../story/story-ui.js';
@@ -286,7 +287,7 @@ export function buildCombatUi(root, ctx, h) {
     order.innerHTML = `<h4>${enemyPhase ? 'Ya jugó el grupo' : 'Juega el grupo'}</h4>${al.map(u => {
       const done = u.acted || (u.captive && !u.freed);
       const tag = u.captive && !u.freed ? 'atado' : u.acted ? 'listo' : u.moved ? 'se movió' : '';
-      return `<div class="cb-o ally${done ? ' done' : ''}${u.id === st.sel ? ' sel' : ''}" data-id="${u.id}"><i class="dot"></i><span class="nm">${unitLabel(u, { html: true })}</span><span class="st">${tag}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`;
+      return `<div class="cb-o ally${done ? ' done' : ''}${u.id === st.sel ? ' sel' : ''}" data-id="${u.id}"><i class="dot" style="background:${accentCss(u)}"></i><span class="nm">${unitLabel(u, { html: true })}</span><span class="st">${tag}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`;
     }).join('')}<h4 class="e">${enemyPhase ? 'Juegan los enemigos' : 'Después, en orden'}</h4>${hiddenLine(en)}${en.map(u =>
       `<div class="cb-o enemy" data-hover="${u.id}"><i class="dot"></i><span class="nm">${esc(u.name)}</span><span class="st">${u.intent?.hidden ? '?' : u.intent ? '−' + u.intent.dmg : ''}</span><span class="hp">${u.hp}/${u.maxHp}</span></div>`).join('') || '<div class="cb-o"><span class="nm">Ninguno en pie</span></div>'}`;
     order.querySelectorAll('.cb-o.ally').forEach(el => { el.onclick = () => h.onSelect(el.dataset.id); });
@@ -314,7 +315,8 @@ export function buildCombatUi(root, ctx, h) {
       if (!el) { el = document.createElement('div'); el.dataset.id = u.id; tagsEl.append(el); }
       const pct = Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100));
       const badges = [u.marked ? `<span>+${u.marked}</span>` : '', u.root ? '<span class="r">frenado</span>' : '', u.intent?.hidden ? '<span class="q">?</span>' : ''].join('');
-      const html = `<span class="n">${u.boss ? esc(u.name) : ''}</span><div class="hpb"><i style="width:${pct}%"></i></div><div class="b">${badges}</div>`;
+      const ac = accentCss(u);
+      const html = `<span class="n">${u.boss ? esc(u.name) : ''}</span><div class="hpb"${ac ? ` style="border-left:4px solid ${ac}"` : ''}><i style="width:${pct}%"></i></div><div class="b">${badges}</div>`;
       if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
       el.className = `cb-tag ${u.side}${u.boss ? ' boss' : ''}${u.sel ? ' sel' : ''}`;
       el.style.left = (u.sx - ox) + 'px'; el.style.top = (u.sy - oy) + 'px';
