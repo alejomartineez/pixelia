@@ -8,7 +8,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { meshPacked, packVoxels } from '../src/core/voxel-mesh.js';
 import { parseVox, voxToVoxels, rotMatrix } from '../src/core/vox-loader.js';
-import { writeVox, farolModels } from './make-vox.mjs';
+import { existsSync } from 'node:fs';
+import { writeVox, farolModels, mirrorVoxels, rotateVoxels, looseParts, checkVox, Lienzo, kitFiles, loadKits, checkFiles, RULES } from './make-vox.mjs';
+import { assembleKit, kitKind, KIT_WINDOW } from '../src/core/vox-kit.js';
+import { MADERA_PARTS, CASA_MADERA_A } from '../src/city/kits/madera.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 let pass = 0, fail = 0;
@@ -135,6 +138,97 @@ sameLook(vx.data, { jitter: 0.015 }, 'farol');
 let bad = 0;
 for (const b of [new Uint8Array(4), Buffer.from('VOX \x96\0\0\0XXXX')]) { try { parseVox(b); } catch { bad++; } }
 ok(bad === 2, 'archivos que no son .vox tiran error');
+
+// ---------- 3) Herramientas de autor ----------
+console.log('\n■ Herramientas de autor (espejar, girar, piezas sueltas, regla)');
+const set = (v) => new Set(v.map(p => p.join(',')));
+const same = (a, b) => { const A = set(a), B = set(b); return A.size === B.size && [...A].every(k => B.has(k)); };
+{
+  // una L de 3 × 2 en planta, con dos colores
+  const Lv = [[0, 0, 0, 1], [1, 0, 0, 1], [2, 0, 0, 2], [0, 1, 0, 1]];
+  ok(same(mirrorVoxels(Lv, 'x'), [[2, 0, 0, 1], [1, 0, 0, 1], [0, 0, 0, 2], [2, 1, 0, 1]]), 'espejar en x dentro de la caja');
+  ok(same(mirrorVoxels(mirrorVoxels(Lv, 'x'), 'x'), Lv) && same(mirrorVoxels(mirrorVoxels(Lv, 'z'), 'z'), Lv), 'espejar dos veces devuelve lo mismo');
+  ok(same(mirrorVoxels(Lv, 'y'), [[0, 1, 0, 1], [1, 1, 0, 1], [2, 1, 0, 2], [0, 0, 0, 1]]), 'espejar en y');
+  const half = mirrorVoxels([[0, 0, 0, 1], [1, 0, 0, 2], [9, 5, 0, 3]], 'x', { region: { min: [0, 0, 0], max: [5, 0, 0] }, keep: true });
+  ok(same(half, [[0, 0, 0, 1], [1, 0, 0, 2], [5, 0, 0, 1], [4, 0, 0, 2], [9, 5, 0, 3]]), 'región con keep: copia la mitad y no toca lo de afuera', half);
+  const clash = mirrorVoxels([[0, 0, 0, 1], [2, 0, 0, 2]], 'x', { keep: true });
+  ok(same(clash, [[0, 0, 0, 1], [2, 0, 0, 2]]), 'keep: donde se pisan gana el original', clash);
+  let threw = 0; try { mirrorVoxels(Lv, 'w'); } catch { threw++; }
+  const r1 = rotateVoxels(Lv, 1), r2 = rotateVoxels(Lv, 2), r3 = rotateVoxels(Lv, 3);
+  ok(same(r1, [[1, 0, 0, 1], [1, 1, 0, 1], [1, 2, 0, 2], [0, 0, 0, 1]]), 'girar 90° (antihorario visto de arriba), apoyado en la misma esquina', r1);
+  ok(same(r2, [[2, 1, 0, 1], [1, 1, 0, 1], [0, 1, 0, 2], [2, 0, 0, 1]]), 'girar 180°', r2);
+  ok(same(rotateVoxels(r1, 1), r2) && same(rotateVoxels(r2, 1), r3) && same(rotateVoxels(r3, 1), Lv) && same(rotateVoxels(Lv, -1), r3), '90° cuatro veces da la vuelta; -1 = 270°');
+  ok(same(rotateVoxels(r1, 2), r3) && same(rotateVoxels(Lv, 4), Lv), '90° + 180° = 270°; 360° no cambia nada');
+  const reg = rotateVoxels([[0, 0, 0, 1], [1, 0, 0, 2], [7, 7, 3, 3]], 1, { region: { min: [0, 0, 0], max: [1, 1, 0] } });
+  ok(same(reg, [[1, 0, 0, 1], [1, 1, 0, 2], [7, 7, 3, 3]]), 'girar una región cuadrada: lo de afuera queda', reg);
+  try { rotateVoxels(Lv, 1, { region: { min: [0, 0, 0], max: [2, 1, 0] } }); } catch { threw++; }
+  try { rotateVoxels(Lv, 0.5); } catch { threw++; }
+  ok(threw === 3, 'eje desconocido, región no cuadrada a 90° y giro no entero tiran error', threw);
+  // piezas sueltas
+  const tower = new Lienzo().box(0, 0, 0, 3, 3, 4, 1);
+  ok(looseParts(tower.voxels()).parts.length === 1 && !looseParts(tower.voxels()).floating.length, 'un bloque: una pieza, nada suelto');
+  tower.set(1, 1, 6, 2).set(5, 0, 0, 3).set(3, 3, 4, 2);
+  const lp = looseParts(tower.voxels());
+  ok(lp.parts.length === 4 && lp.parts[0].size === 36 && lp.floating.length === 2, 'un vóxel flotando y otro unido solo en diagonal se avisan; uno apoyado aparte, no', lp);
+  ok(lp.floating.some(p => p.min.join() === '1,1,6') && lp.floating.some(p => p.min.join() === '3,3,4'), 'dice dónde están');
+  ok(looseParts([]).parts.length === 0, 'lista vacía: sin piezas');
+  ok(same(new Lienzo().set(-2, 3, 5, 1).set(0, 4, 5, 2).model().voxels, [[0, 0, 0, 1], [2, 1, 0, 2]]), 'Lienzo.model lleva la esquina mínima a 0');
+  // regla
+  const chk = (model, palette, o, materials) => checkVox(parseVox(writeVox({ models: [model], palette, materials })), o);
+  const cube = new Lienzo().box(0, 0, 0, 4, 4, 4, (x, y, z) => 1 + (z % 3));
+  const good = chk(cube.model(), { 1: 0xb89466, 2: 0xa07e58, 3: 0x7d6250 }, { kit: true });
+  ok(!good.errors.length && good.info.materials === 1 && good.info.colors === 3, 'modelo sano: sin errores', good);
+  const black = chk(cube.model(), { 1: 0x000000, 2: 0x1a1a1a, 3: 0xffffff }, { kit: true });
+  ok(black.errors.length === 3 && black.errors.some(e => e.includes('#000000')) && black.errors.some(e => e.includes('#ffffff')), 'negro puro, casi negro (10 %) y blanco puro son errores', black.errors);
+  const four = new Lienzo().box(0, 0, 0, 4, 4, 4, (x, y, z) => 1 + z).model();
+  const P4 = { 1: 0xb89466, 2: 0xa07e58, 3: 0x7d6250, 4: 0x8a6a50 };
+  ok(chk(four, P4, { kit: true }).errors.length === 1 && !chk(four, P4, { kit: true, hero: true }).errors.length && !chk(four, P4, {}).errors.length, '4 tonos en un material: error en el kit, vale en protagonistas y fuera del kit');
+  const six = new Lienzo().box(0, 0, 0, 6, 1, 1, (x) => 1 + x * 8).model();
+  ok(chk(six, Object.fromEntries([0, 1, 2, 3, 4, 5].map(i => [1 + i * 8, 0x808890])), { kit: true }).errors.some(e => e.includes('6 materiales')), 'más de 5 materiales: error');
+  const big = new Lienzo().box(0, 0, 0, 40, 2, 2, 1).model();
+  ok(chk(big, { 1: 0x808890 }, { kit: true }).errors.length === 1 && !chk(big, { 1: 0x808890 }, { kit: true, hero: true }).errors.length, 'módulo de kit de más de 32 en planta: error (protagonista, no)');
+  const huge = new Lienzo().box(0, 0, 0, 127, 1, 1, 1).model();
+  ok(chk(huge, { 1: 0x808890 }, { hero: true }).errors.some(e => e.includes(String(RULES.maxSide))), 'más de 126 por lado: error siempre');
+  const fly = new Lienzo().box(0, 0, 0, 2, 2, 2, 1).set(0, 0, 4, 1).model();
+  ok(chk(fly, { 1: 0x808890 }, {}).errors.some(e => e.includes('pieza suelta')), 'pieza suelta: error');
+  const emit = new Lienzo().box(0, 0, 0, 2, 2, 2, 1).set(0, 0, 2, 241).model();
+  ok(!chk(emit, { 1: 0x808890, 241: 0xffc46a }, { kit: true }, { 241: { _type: '_emit', _emit: '1' } }).errors.length, 'lo emisivo puede pasar de 90 % de valor');
+  ok(chk(new Lienzo().box(0, 0, 0, 2, 2, 2, 5).model(), { 5: 0xffc46a }, { kit: true }, { 5: { _type: '_emit', _emit: '1' } }).errors.length === 1, 'emisivo fuera de los índices reservados: error en el kit');
+}
+
+// ---------- 4) Kits ----------
+console.log('\n■ Kits (assets/models/<kit>/)');
+const kits = await loadKits();
+const parts = {};
+for (const kit of kits) {
+  const files = kitFiles(kit);
+  const stale = files.filter(f => !existsSync(f.path) || Buffer.compare(readFileSync(f.path), f.buf) !== 0).map(f => f.name);
+  ok(!stale.length, `${kit.folder}/: ${files.length} archivos al día con tools/kits/${kit.folder}.mjs`, stale);
+  if (kit.folder === 'madera') for (const f of files) parts[f.name] = parseVox(f.buf);
+}
+ok(checkFiles(undefined, { quiet: true }) === 0, 'todos los .vox de assets/models/ pasan la regla (npm run check:vox)');
+{
+  const bad = Object.entries(MADERA_PARTS).filter(([name, def]) => {
+    const p = parts[name], pad = def.pad || {};
+    return !p || p.size[0] !== def.size[0] + (pad.l || 0) + (pad.r || 0) || p.size[2] !== def.size[1] + (pad.b || 0) + (pad.f || 0);
+  }).map(([name]) => name);
+  ok(!bad.length && Object.keys(parts).every(n => MADERA_PARTS[n]), 'madera: el tamaño de cada archivo es su huella más lo que sobresale (MADERA_PARTS)', bad);
+  ok(Object.values(MADERA_PARTS).every(d => d.size[0] % 4 === 0 && d.size[1] % 4 === 0) && ['pared-a', 'pared-ventana-a', 'pared-puerta-a', 'techo-tramo-a'].every(n => MADERA_PARTS[n].size.every(s => s % 8 === 0)), 'madera: huellas en múltiplos de 8 (postes y cumbrera, de 4)');
+  const casa = assembleKit(parts, MADERA_PARTS, CASA_MADERA_A);
+  ok(casa.size.join('×') === '36×49×38' && casa.min.join() === '-2,0,-3', `casa de Madera: ${casa.size.join('×')} (32 × 32 más aleros y escalón; 42 a la cumbrera y 49 con la chimenea)`, { size: casa.size, min: casa.min });
+  const pts = []; for (let i = 0; i < casa.indices.length; i++) pts.push([casa.data[i * 4], casa.data[i * 4 + 1], casa.data[i * 4 + 2]]);
+  const lp = looseParts(pts, { up: 1 });
+  ok(lp.parts.length === 1, `casa de Madera: una sola pieza (${casa.indices.length} vóxeles), nada suelto`, lp.parts.slice(1));
+  const at = new Map(); for (let i = 0; i < casa.indices.length; i++) at.set(pts[i].join(','), casa.indices[i]);
+  const win = [...at].filter(([, ci]) => kitKind(ci, casa.materials) === 'window').map(([k]) => k.split(',').map(Number));
+  ok(win.length === 3 * 48 + 2 * 16 && win.every(p => p[1] >= 10), `ventanas: 3 de 6 × 8 y 2 del altillo de 4 × 4 (índice ${KIT_WINDOW}), del antepecho para arriba`, win.length);
+  ok(win.some(p => p[2] === 30) && win.some(p => p[0] === 30) && win.some(p => p[0] === 1), 'ventanas al frente y a los dos costados, hundidas 1 en la pared');
+  ok(kitKind(248, casa.materials) === 'metal' && kitKind(2, casa.materials) === 'solid', 'el hierro de la puerta sale como metal');
+  ok(at.get('5,10,30') === 9 && !at.has('5,10,31') && at.get('-1,10,31') === 10, 'la puerta está al frente a la izquierda, hundida, y el poste de esquina sobresale 1');
+  ok(!at.has('16,10,-2') && at.has('16,22,-1'), 'atrás: pared lisa girada 180° (la solera sobresale hacia -z)');
+  let threw = 0; try { assembleKit(parts, MADERA_PARTS, [{ part: 'no-existe', at: [0, 0, 0] }]); } catch { threw++; }
+  ok(threw === 1, 'una pieza que no está en el kit tira error');
+}
 
 console.log(`\n${fail ? '✘' : '✔'} ${pass} OK, ${fail} fallas`);
 process.exit(fail ? 1 : 0);
