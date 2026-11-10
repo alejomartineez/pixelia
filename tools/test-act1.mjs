@@ -193,16 +193,16 @@ try {
   await drainStory(3000);
 
   // ===================================================================
-  section('Los jefes en low-poly');
+  section('Los jefes (la bestia en vóxel, la capitana en low-poly)');
   const bm = await run(`const B = await import('/src/combat/boss-models.js');
     const a = B.bossModel('bestia'), c = B.bossModel('capitana'), n = B.bossModel('lobo');
     let tris = 0; a.traverse(o => { if (o.isMesh) tris += o.geometry.attributes.position.count / 3; });
     a.userData.update(0.016, false, 1); a.userData.setPhase(1); a.userData.update(0.016, false, 1.2); c.userData.setPhase(1); c.userData.update(0.5, false, 2);
-    return { lp: a.userData.lowpoly && c.userData.lowpoly, ha: a.userData.height, hc: c.userData.height, none: n === null, tris, types: B.BOSS_TYPES };`);
+    return { lp: a.userData.voxel && c.userData.lowpoly, ha: a.userData.height, hc: c.userData.height, none: n === null, tris, types: B.BOSS_TYPES };`);
   ok(bm.lp && bm.none && bm.types.join() === 'bestia,capitana', 'bossModel arma la bestia y la capitana (y nada para los demás)', bm);
-  const one = await run(`const EM = await import('/src/combat/enemy-models.js'); const g = EM.enemyModel('bestia'); return { lp: !!g.userData.lowpoly, name: g.name, types: EM.ENEMY_MODEL_TYPES.includes('bestia') };`);
+  const one = await run(`const EM = await import('/src/combat/enemy-models.js'); const g = EM.enemyModel('bestia'); return { lp: !!g.userData.voxel, name: g.name, types: EM.ENEMY_MODEL_TYPES.includes('bestia') };`);
   ok(one.lp && one.name === 'boss:bestia' && one.types, 'una sola bestia: enemyModel("bestia") entrega la de boss-models (la galería y el combate ven la misma)', one);
-  ok(bm.ha > 1.2 && bm.hc > 1.4 && bm.hc < 2.4 && bm.tris > 400, 'tienen tamaño de jefe y caras facetadas', bm);
+  ok(bm.ha > 1.2 && bm.hc > 1.4 && bm.hc < 2.4 && bm.tris > 400, 'tienen tamaño de jefe y volumen (vóxel la bestia, facetas la capitana)', bm);
   await page.goto(`${BASE}?scene=combat&enc=banado_bestia&seed=3&level=5&element=raiz&nosplash&nosw`, { waitUntil: 'load' });
   ok(await waitFor(`!!document.querySelector('.cb-top, .cb-hud, [class*="cb-"]')`, 25000), 'la pelea contra la bestia abre con el modelo nuevo');
   await sleep(2500);
