@@ -15,7 +15,7 @@ todo al nivel final, cerca de una hora de juego, que sirve para probar con jugad
 - **Se sacan los relojes y esperas** de celular y las gemas para saltear.
 - Modelos: más densidad, kit modular en `.vox`; las piezas protagonistas las hace una persona en MagicaVoxel.
 - Las viñetas 2D de El Quiebre siguen en 2D.
-- Sesiones: todas en Fable 5.2 con esfuerzo bajo, también R1. Al 35 % de contexto la
+- Sesiones: todas en Fable 5.2; esfuerzo bajo por defecto y medio en los pasos más difíciles (R1, A2, A4). Al 35 % de contexto la
   sesión cierra y sigue otra nueva.
 - **Permiso del usuario: sí a todo lo que haga falta para el plan**, sin preguntar (abrir sesiones desde cualquier
   chat, cambiar modelo y esfuerzo, mergear, bump y commits). Incluye publicar (push a GitHub y releases). Fuera: claves y pagos.
