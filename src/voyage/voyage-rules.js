@@ -14,10 +14,31 @@
 // La vida del grupo (run.squad) sigue de pelea en pelea. No hay provisiones ni relojes: se zarpa cuando se quiere.
 // El combate se usa por su interfaz (newBattle / result); lo que la Travesía le cambia a la pelea (vida que llega,
 // mejoras de la salida, enemigos de élite) se escribe sobre la pelea recién creada, como hace exp-rules con el cansancio.
-import { ENCOUNTERS, ITEMS } from '../combat/combat-data.js';
+import { ENCOUNTERS, ITEMS, MAREA_MAX } from '../combat/combat-data.js';
 import * as C from '../combat/combat-rules.js';
 import { VOY, ISLANDS, EVENTS, RELICS, REWARDS } from './voyage-data.js';
 import { generateMap, isFight } from './voyage-gen.js';
+import * as L from '../core/loot.js';
+import * as A from '../core/arsenal.js';
+import { RELIC_IDS as LOOT_RELIC_IDS } from '../core/loot-data.js';
+
+// ---------- la partida (botín, árbol, mejores marcas) ----------
+// env = { state }: el guardado del juego (store.state). Sin env (simuladores, pruebas) la salida lleva una partida
+// propia en run.bag: el botín y el árbol valen mientras dura.
+const stOf = (run, env) => env?.state || (run.bag ??= {});
+/** Lo de la Travesía que queda entre salidas: { best: { marea: { enc: estrellas } }, mareaMax, marea }. */
+export function voyageState(state) {
+  if (!state.voyage || typeof state.voyage !== 'object') state.voyage = {};
+  const v = state.voyage;
+  v.runs = Math.max(0, v.runs | 0); v.wins = Math.max(0, v.wins | 0); v.active ??= null;
+  if (!v.best || typeof v.best !== 'object') v.best = {};
+  v.mareaMax = Math.max(1, Math.min(MAREA_MAX, v.mareaMax | 0 || 1));
+  v.marea = Math.max(1, Math.min(v.mareaMax, v.marea | 0 || 1));
+  return v;
+}
+export const bestOf = (state, marea, enc) => voyageState(state).best[marea]?.[enc] || 0;
+/** Lo que lleva el grupo a la pelea: armas con sus rasgos, árbol y reliquias (src/core/loot.js loadout). */
+export const loadoutOf = (run, env) => L.loadout(stOf(run, env), { party: run.party, leaderCls: null, run });
 
 // ---------- azar de la salida (el estado va en run.rs) ----------
 function rnd(run) {
@@ -49,7 +70,9 @@ export function relicMods(run) {
 function fire(run, name, ctx) {
   for (const id of run.relics) { try { RELICS[id]?.on?.[name]?.(run, ctx); } catch (e) { console.error('[voyage] reliquia', id, name, e); } }
 }
-const relicsLeft = (run) => Object.keys(RELICS).filter(id => !run.relics.includes(id));
+/** Las reliquias de la salida salen de dos tablas: las del viaje (voyage-data.js) y las del combate y el botín (loot-data.js). */
+export const ALL_RELICS = () => [...Object.keys(RELICS), ...LOOT_RELIC_IDS];
+const relicsLeft = (run) => ALL_RELICS().filter(id => !run.relics.includes(id));
 
 // ---------- crear ----------
 const battleCfg = (run, enc, seed) => ({
@@ -59,10 +82,11 @@ const battleCfg = (run, enc, seed) => ({
 export const squadIds = (run) => Object.keys(run.squad);
 const members = (run) => Object.values(run.squad);
 
-export function newRun({ seed = 1, island = 'bosque' } = {}) {
+export function newRun({ seed = 1, island = 'bosque', marea = 1 } = {}) {
   const isl = ISLANDS[island] || ISLANDS.bosque;
   const run = {
     v: 1, seed: seed >>> 0, rs: (seed ^ 0x51ed270b) | 0, island: isl.id,
+    marea: Math.max(1, Math.min(MAREA_MAX, marea | 0 || 1)), wins: 0, offers: 0, best: {}, drops: [], veta: 0, xp: 0,
     map: generateMap({ seed, island: isl.id }),
     party: VOY.party.slice(), level: VOY.level, classLevel: VOY.classLevel, element: VOY.element,
     squad: {}, relics: [], items: [], loot: { mats: {} },
@@ -133,17 +157,21 @@ export function foeHpFor(run, node) {
   return (node.type === 'elite' ? VOY.elite.hp : 1) * relicMods(run).foeHp * (node.type === 'jefe' ? run.bossHp : run.nextFoe);
 }
 /** Arma la pelea de un nodo con el grupo tal como viene. */
-export function makeBattle(run, node) {
+export function makeBattle(run, node, env = null) {
   const m = relicMods(run);
+  const Ld = loadoutOf(run, env);
   const b = C.newBattle({
     ...battleCfg(run, node.enc, C.hashSeed(run.seed, node.id, run.fights.length, 'travesia')),
+    marea: run.marea || 1, gear: Ld.gear, rules: Ld.rules,
     equip: [...new Set([...run.items, ...m.equip])].filter(id => ITEMS[id]),
   });
   for (const u of b.units) {
     const s = u.side === 'ally' && !u.captive ? run.squad[u.type] : null;
     if (!s) continue;
-    u.maxHp = s.maxHp; u.atk += s.atk; u.armor = (u.armor || 0) + s.armor;
-    u.hp = Math.max(1, Math.min(u.maxHp, s.hp > 0 ? s.hp : VOY.downHp));
+    // la vida que da el arma es un resguardo de cada pelea: se suma al entrar y no se lleva a la siguiente
+    const extra = Math.max(0, Ld.gear[u.type]?.hp || 0);
+    u.maxHp = s.maxHp + extra; u.atk += s.atk; u.armor = (u.armor || 0) + s.armor;
+    u.hp = Math.max(1, Math.min(u.maxHp, s.hp > 0 ? s.hp + extra : VOY.downHp));
   }
   const k = foeHpFor(run, node);
   if (k !== 1) {
@@ -154,7 +182,7 @@ export function makeBattle(run, node) {
   fire(run, 'battle', { battle: b, node });
   return b;
 }
-export function enter(run, nodeId) {
+export function enter(run, nodeId, env = null) {
   const events = [];
   if (!choices(run).includes(nodeId)) return { ok: false, reason: 'unreachable', events };
   const node = nodeOf(run, nodeId);
@@ -162,7 +190,7 @@ export function enter(run, nodeId) {
   events.push({ type: 'enter', node: nodeId, kind: node.type });
   fire(run, 'enter', { node });
   if (isFight(node.type)) {
-    run.battle = makeBattle(run, node);
+    run.battle = makeBattle(run, node, env);
     run.pending = { kind: 'combate', node: nodeId, enc: node.enc };
   } else if (node.type === 'evento') run.pending = { kind: 'evento', node: nodeId, event: node.event };
   else run.pending = { kind: 'campamento', node: nodeId };
@@ -171,6 +199,25 @@ export function enter(run, nodeId) {
 
 // ---------- pelea ----------
 export const activeBattle = (run) => (run?.pending?.kind === 'combate' ? run.battle : null);
+const fresh = (b) => !!b && !b.ended && b.turn === 1 && b.units.every(u => !u.moved && !u.acted);
+/** Si la pelea pendiente todavía no empezó, la arma de nuevo (cambió el arma o el árbol antes de entrar). */
+export function refreshBattle(run, env = null) {
+  const pd = run.pending;
+  if (pd?.kind !== 'combate' || !fresh(run.battle)) return false;
+  run.battle = makeBattle(run, nodeOf(run, pd.node), env);
+  return true;
+}
+/** ¿La pelea pendiente se puede resolver sola? (común, sin empezar y ya ganada con 3 estrellas en esta Marea) */
+export function canAuto(run, env = null) {
+  const pd = run.pending;
+  if (pd?.kind !== 'combate' || run.ended || nodeOf(run, pd.node).type !== 'pelea' || !fresh(run.battle)) return false;
+  return C.canAutoResolve(pd.enc, bestOf(stOf(run, env), run.marea, pd.enc));
+}
+/** Resuelve sola la pelea pendiente: botín completo y la vida del grupo como estaba. */
+export function autoFight(run, env = null) {
+  if (!canAuto(run, env)) return { ok: false, reason: 'noauto', events: [] };
+  return endCombat(run, C.autoResolve({ encounter: run.pending.enc, best: 3, marea: run.marea }), [], env);
+}
 function rewardOptions(run, node, mats) {
   const out = [];
   const left = relicsLeft(run);
@@ -196,7 +243,7 @@ function finish(run, outcome, events) {
  * Cierra la pelea en curso con su resultado (combat-rules result(b)). Sin resultado (pelea sin terminar) cuenta
  * como retirada. Devuelve { ok, fight, events }.
  */
-export function endCombat(run, res = null, events = []) {
+export function endCombat(run, res = null, events = [], env = null) {
   const pd = run.pending;
   if (!pd || pd.kind !== 'combate') return { ok: false, reason: 'nofight', events };
   const b = run.battle, node = nodeOf(run, pd.node), m = relicMods(run);
@@ -210,8 +257,19 @@ export function endCombat(run, res = null, events = []) {
   if (b?.items) for (const [id, n] of Object.entries(b.items)) if (n <= 0 && !m.equip.includes(id)) { const i = run.items.indexOf(id); if (i >= 0) run.items.splice(i, 1); }
   const win = res.outcome === 'win';
   const mats = {};
-  if (win) for (const [k, n] of Object.entries(res.loot?.mats || {})) mats[k] = Math.max(1, Math.round(n * m.lootMult));
-  const f = { node: node.id, type: node.type, enc: res.enc || pd.enc, outcome: res.outcome, turns: res.turns || 0, stars: res.stars || 0, mats };
+  // botín (paso A3): materiales, armas con rasgos y veta para el árbol, mejores cuanto más alta la Marea
+  let loot = null, got = null, Ld = null;
+  const st = stOf(run, env);
+  if (win) {
+    Ld = loadoutOf(run, env);
+    loot = L.battleLoot({ result: res, source: node.type, marea: run.marea, seed: C.hashSeed(run.seed, node.id, run.fights.length, 'botin'),
+      mods: Ld.loot, luck: A.arsenalState(st).luck, wins: run.wins });
+    for (const [k, n] of Object.entries(loot.mats)) mats[k] = Math.max(1, Math.round(n * m.lootMult));
+    got = L.applyLoot(st, loot);
+    for (const [k, n] of Object.entries(got.scrapped || {})) mats[k] = (mats[k] || 0) + n;
+  }
+  const f = { node: node.id, type: node.type, enc: res.enc || pd.enc, outcome: res.outcome, turns: res.turns || 0, stars: res.stars || 0, mats,
+    auto: !!res.auto, items: got ? got.weapons.map(w => w.uid) : [], veta: loot?.veta || 0 };
   run.fights.push(f);
   events.push({ type: 'combatEnd', fight: { ...f } });
   run.battle = null;
@@ -220,7 +278,7 @@ export function endCombat(run, res = null, events = []) {
       // la reliquia levanta al grupo una vez: la pelea se repite desde el principio
       run.revived = true;
       for (const s of members(run)) s.hp = Math.max(s.hp, Math.ceil(s.maxHp * m.revive));
-      run.battle = makeBattle(run, node);
+      run.battle = makeBattle(run, node, env);
       events.push({ type: 'revive' });
       return { ok: true, fight: f, events };
     }
@@ -228,6 +286,19 @@ export function endCombat(run, res = null, events = []) {
     return { ok: true, fight: f, events };
   }
   addMats(run, mats, events, 'combate');
+  events.push({ type: 'loot', items: got.weapons.map(w => ({ ...w })), veta: loot.veta, points: got.points });
+  run.drops.push(...f.items); run.veta += loot.veta; run.xp += res.xp || 0;
+  L.noteWin(run, res);
+  { // las mejores estrellas de cada pelea por Marea (abren la resolución automática) y la maestría de las armas usadas
+    const v = voyageState(st), bm = (v.best[run.marea] ??= {});
+    bm[f.enc] = Math.max(bm[f.enc] || 0, f.stars);
+    const mx = Math.round((res.xp || 0) * (1 + (Ld.loot.mastery || 0) / 100));
+    for (const type of new Set(Object.values(Ld.gear).map(g => g.type).filter(Boolean))) {
+      const up = A.addMastery(st, type, mx);
+      if (up) events.push({ type: 'mastery', weapon: type, to: up.to });
+    }
+    if (node.type === 'jefe') v.mareaMax = Math.max(v.mareaMax, Math.min(MAREA_MAX, run.marea + 1));
+  }
   if (node.type !== 'jefe') run.nextFoe = 1;
   if (m.afterFightHeal) { let n = 0; for (const s of members(run)) if (s.hp > 0) n += heal(s, m.afterFightHeal); if (n) events.push({ type: 'heal', n, why: 'reliquia' }); }
   fire(run, 'fightWon', { fight: f, node });
@@ -274,10 +345,10 @@ export function skip(run) {
   return { ok: true, events: [] };
 }
 /** Volver a la aldea con todo lo juntado. En medio de una pelea cuenta como retirada. */
-export function leave(run) {
+export function leave(run, env = null) {
   const events = [];
   if (run.ended) return { ok: false, events };
-  if (run.pending?.kind === 'combate') return endCombat(run, null, events);
+  if (run.pending?.kind === 'combate') return endCombat(run, null, events, env);
   finish(run, 'leave', events);
   return { ok: true, events };
 }
@@ -285,7 +356,8 @@ export function leave(run) {
 // ---------- resumen ----------
 export function summary(run) {
   const fights = run.fights.filter(f => f.outcome === 'win').length;
-  return { outcome: run.outcome, nodes: run.path.length, fights, turns: run.fights.reduce((a, f) => a + f.turns, 0), relics: run.relics.slice(), haul: run.haul || { mats: { ...run.loot.mats } } };
+  return { outcome: run.outcome, nodes: run.path.length, fights, turns: run.fights.reduce((a, f) => a + f.turns, 0), relics: run.relics.slice(), haul: run.haul || { mats: { ...run.loot.mats } },
+    marea: run.marea || 1, items: (run.drops || []).length, veta: run.veta || 0, xp: run.xp || 0 };
 }
 /** Lo que se sabe del encuentro de un nodo, para la tarjeta. */
 export const encounterOf = (node) => (node?.enc ? ENCOUNTERS[node.enc] : null);
