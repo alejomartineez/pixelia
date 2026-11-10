@@ -94,7 +94,7 @@ export default function create(ctx) {
       const ex = n.x - a.x, ey = n.y - a.y;
       const along = ex * dx + ey * dy, side = Math.abs(ex * dy) + Math.abs(ey * dx);
       if (along <= 0) continue;
-      const d = along + side * 2;
+      const d = dy ? along * 2 + side : along + side * 3;   // arriba y abajo: la fila de al lado; a los costados: la misma fila
       if (d < bd) { bd = d; best = n.id; }
     }
     if (best) { sel = best; why = ''; render(); }

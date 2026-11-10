@@ -833,7 +833,7 @@ export default {
   'tree.key.marea_adentro.name': "Marea adentro",
   'tree.key.marea_adentro.text': "Los enemigos tienen un cuarto más de vida. Cada pelea deja un arma, y es más fácil que sea buena.",
   'relic.title': "Reliquias de la salida",
-  'relic.brasa_guardada.name': "Brasa guardada",
+  'relic.brasa_guardada.name': "Rescoldo guardado",
   'relic.brasa_guardada.text': "El grupo empieza cada pelea cubierto: 2 menos de daño en los primeros 3 turnos enemigos.",
   'relic.cuerno_roto.name': "Cuerno roto",
   'relic.cuerno_roto.text': "Los enemigos llegan con menos vida.",

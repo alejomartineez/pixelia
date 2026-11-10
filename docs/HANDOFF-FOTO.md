@@ -59,6 +59,43 @@ Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
   de los enemigos nuevos son cubos. En el worktree, `tools/node_modules` es un enlace al del checkout principal.
 
 
+### A3: botín y construcción de personaje (rama `claude/a3-botin-b43392`, sale de A2 + master v63; sin bump ni push)
+Todo con cubos e interfaz mínima. Motores puros con semilla; nada de arte.
+- **Archivos nuevos**: `src/core/loot-data.js` (tablas: 31 efectos, 29 rasgos, habilidades por arma, botín por Marea, 15
+  reliquias), `src/core/loot.js` (motor), `src/core/tree-data.js` (27 nodos, 3 ramas, 3 nodos clave), `src/core/tree.js`
+  (puntos, requisitos, reinicio), `src/scenes/tree.js` (pantalla: `?scene=tree&veta=400`; flechas, Enter, R, Esc),
+  `tools/test-loot.mjs` (132), `tools/test-tree.mjs` (51) y `tools/sim-loot.mjs` (`npm run sim:loot`; con `--check` va en
+  `npm test`).
+- **Objetos**: `rollItem(rng, { source, marea })` da un arma con rareza y de 1 a 4 rasgos en `w.affixes: [{ id, v, skill? }]`
+  (común 1, poco común 1 a 2, rara 2 a 3, épica 3 a 4, reliquia 4). Van al arsenal de siempre; las armas viejas
+  (`w.traits`) siguen valiendo. Los rasgos cambian habilidades: daño, recarga, alcance, cura, freno, radio.
+- **"Sos lo que llevás puesto"**: `WEAPON_SKILLS` da a cada tipo de arma su golpe y 3 habilidades (2 al empezar, la tercera
+  con maestría 4; se llevan 2, `pickSkills`). Quien no equipó nada usa las del arma de su clase. Las de elemento del líder
+  y los fragmentos quedan.
+- **Árbol**: los puntos salen de la veta que deja cada pelea (`state.tree = { v, xp, nodes, resets }`; se completa solo, así
+  que no hizo falta migración ni subir la versión del guardado). Nodos clave: Juramento de sangre (todos +1 de ataque,
+  sin curas), Fila cerrada (1 menos de daño con alguien al lado, 1 menos de movimiento) y Marea adentro (enemigos con
+  25 % más de vida; cada pelea deja un arma, y mejor).
+- **Reliquias de salida**: `newRun`, `relicOffer` (3 a elegir), `takeRelic`, `skipRelic`; hasta 6 por salida. El objeto de
+  la salida lo guarda la Travesía.
+- **Enganche para la Travesía (A1, todavía no está en master)**; también está escrito arriba de `loot.js`:
+  `const L = loadout(state, { party, leaderCls, run })` y `newBattle({ ..., marea: run.marea, gear: L.gear, rules: L.rules })`.
+  Al ganar: `applyLoot(state, battleLoot({ result, source, marea, seed, mods: L.loot, luck: state.arsenal.luck, wins:
+  run.wins }))` (source: `'pelea'`, `'elite'` o `'jefe'`) y `noteWin(run, result)`. `battleLoot` acepta igual el resultado de
+  `autoResolve` (botín completo). Los materiales vuelven en `mats` para que los dé la economía.
+- **Combate** (`combat-rules.js`, cambios chicos): `newBattle({ rules })` con `foeHp`, `foeAtk`, `maxTurns`, `startCover`,
+  `noHeal`, `closeRank` y `killHeal`; `gear[quién]` acepta `skills`, `abil` (cambios por habilidad, `u.am`) y `mv`. Sin
+  esos campos todo es igual que antes (`test-combat` 100, `test-combat-farm` 65, `test-arsenal` 122, `test-i18n` 126).
+- **Simulador** (10 salidas, semilla 1, nivel del grupo fijo en el de la Marea I): fuerza media del arma puesta 48 → 166 →
+  190 (salidas 1, 5 y 10), rasgos por arma 2 → 3,5, rareza media 1,3 → 2,8, 14 puntos del árbol y 55 armas. Con lo
+  puesto gana 31 de 33 peleas jugadas; las mismas sin nada, 24 de 33 (en Marea III, 15 de 23).
+- **Pendiente**: enchufarlo en `src/voyage/` cuando A1 esté en master (nodos de pelea, élite, jefe y reliquia) y en la
+  expedición vieja (`gear.js` sigue con `fightMods` y `dropWeapon` del 2a). La ficha del objeto y la pantalla de equipo con
+  los rasgos nuevos (`itemLines`, `itemPower`) son de U2. La escena del combate muestra los números base de cada
+  habilidad, no los cambiados. El desarme por falta de lugar ordena por `weaponPower` (sin los rasgos nuevos). En el
+  simulador la Marea sube rápido (III en la salida 3): el balance fino queda para A5. Textos nuevos en es, en y ja.
+- Al mergear: `npm run bump` (5 archivos nuevos en `src/` para `sw.js`).
+
 ### En curso (sesiones abiertas por el chat coordinador `local_377480f3`; el orquestador integra)
 - **A1** `local_2fe76e8b`, rama `claude/a1-travesia-3e736a`: terminó (commit `293aad4`; pasan `test-voyage` y
   `test-i18n`). Falta revisarla, mergearla y correr la suite.
@@ -69,7 +106,7 @@ Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
 
 ## Próximos pasos (ver "Orden" en el plan)
 1. Integrar A1; después A2, R1 y U1 a medida que entreguen (revisar diff, mergear, suite, bump, commit y push).
-2. Cuando A2 esté integrada, abrir A3 (botín, árbol, reliquias) sobre el arsenal y la maestría del 2a, que ya está en master.
+2. A3 (botín, árbol, reliquias) está hecho en su rama: mergearlo después de A2 y enchufarlo en la Travesía.
 3. A5: prueba con jugadores del prototipo con cubos. Recién después, arte.
 
 ## Lo que hace el usuario
