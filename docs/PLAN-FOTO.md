@@ -91,4 +91,4 @@ Las demás épocas de la ciudad, regiones de expedición, enemigos y llegadas a 
 - FPS y temperatura en el juego de PC (`npm run desktop:dev`), en corridas cortas: parar a 70 °C o 100 W.
 - `node test-desktop.mjs` con el `.exe` antes de publicar; `npm run bump` antes de cada commit; stagear los
   archivos por nombre.
-- Trabajo largo: pasado el 40 % de contexto, seguir en una sesión nueva con el estado anotado en el HANDOFF.
+- Trabajo largo: pasado el 35 % de contexto, seguir en una sesión nueva con el estado anotado en el HANDOFF.

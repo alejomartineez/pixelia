@@ -3,30 +3,9 @@
 import * as THREE from 'three';
 import { frameCap, FPS_PARAM } from './frame-cap.js';
 
-// ---------- Colores ----------
-export function hexToInt(c) { return typeof c === 'number' ? c : parseInt(c.replace('#', ''), 16); }
-/** Aclara (amt>0) u oscurece (amt<0) un color. amt en -1..1 */
-export function shade(c, amt) {
-  const n = hexToInt(c);
-  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  if (amt >= 0) { r += (255 - r) * amt; g += (255 - g) * amt; b += (255 - b) * amt; }
-  else { r *= 1 + amt; g *= 1 + amt; b *= 1 + amt; }
-  return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
-}
+import { hexToInt, shade, packVoxels, meshPacked, MESH_VERSION } from './voxel-mesh.js';
+export { hexToInt, shade, AO_LEVELS, packVoxels } from './voxel-mesh.js';
 
-// ---------- Constructor de vóxeles ----------
-const DIRS = [
-  { n: [1, 0, 0], c: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] },
-  { n: [-1, 0, 0], c: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] },
-  { n: [0, 1, 0], c: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]] },
-  { n: [0, -1, 0], c: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]] },
-  { n: [0, 0, 1], c: [[1, 0, 1], [1, 1, 1], [0, 1, 1], [0, 0, 1]] },
-  { n: [0, 0, -1], c: [[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0]] },
-];
-// ejes tangentes (u, w) de cada cara, para la oclusión ambiental por vértice
-for (const d of DIRS) { const ax = d.n.findIndex(v => v !== 0); [d.u, d.w] = [0, 1, 2].filter(i => i !== ax); }
-/** Brillo por esquina según cuántos vecinos la tapan (0 = rincón cerrado .. 3 = libre). En lineal. */
-const AO_LEVELS = [0.5, 0.66, 0.83, 1];
 const key = (x, y, z) => `${x},${y},${z}`;
 
 /**
@@ -109,60 +88,18 @@ export class Voxels {
    * opts.jitter: variación de brillo por vóxel (textura pixel), default 0.015 (con pixeles de render
    *   chicos, más variación se ve como estática)
    */
-  toGeometry({ scale = 1, center = false, jitter = 0.015, ao = true } = {}) {
-    const pos = [], nor = [], col = [], idx = [];
-    let off = [0, 0, 0];
-    if (center && this.map.size) {
-      const b = this.bounds();
-      off = [-(b.min[0] + b.max[0]) / 2, center === 'xyz' ? -(b.min[1] + b.max[1]) / 2 : -b.min[1], -(b.min[2] + b.max[2]) / 2];
-    }
-    const tmp = new THREE.Color();
-    const map = this.map;
-    const occ = (x, y, z) => map.has(key(x, y, z)) ? 1 : 0;
-    const p = [0, 0, 0], aoV = [3, 3, 3, 3];
-    for (const [k, c] of map) {
-      const [x, y, z] = k.split(',').map(Number);
-      let h = (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
-      h = ((h >>> 0) % 1000) / 1000;
-      const cc = jitter ? shade(c, (h - 0.5) * 2 * jitter) : c;
-      tmp.setHex(cc); // setHex ya convierte sRGB -> lineal
-      for (const d of DIRS) {
-        const nx = x + d.n[0], ny = y + d.n[1], nz = z + d.n[2];
-        if (map.has(key(nx, ny, nz))) continue;
-        const base = pos.length / 3;
-        // oclusión ambiental por vértice: cada esquina mira sus 3 vecinos en la capa de afuera de la cara
-        // (dos lados y la diagonal). Oscurece rincones, aleros y el pie de las paredes = volumen y lectura.
-        for (let i = 0; i < 4; i++) {
-          const v = d.c[i];
-          let a = 3;
-          if (ao) {
-            p[0] = nx; p[1] = ny; p[2] = nz;
-            const u = d.u, w = d.w;
-            const su = v[u] ? 1 : -1, sw = v[w] ? 1 : -1;
-            p[u] += su; const s1 = occ(p[0], p[1], p[2]); p[u] -= su;
-            p[w] += sw; const s2 = occ(p[0], p[1], p[2]);
-            p[u] += su; const cr = occ(p[0], p[1], p[2]);
-            a = s1 && s2 ? 0 : 3 - (s1 + s2 + cr);
-          }
-          aoV[i] = a;
-          const f = AO_LEVELS[a];
-          pos.push((x + v[0] + off[0]) * scale, (y + v[1] + off[1]) * scale, (z + v[2] + off[2]) * scale);
-          nor.push(d.n[0], d.n[1], d.n[2]);
-          col.push(tmp.r * f, tmp.g * f, tmp.b * f);
-        }
-        // partir el cuadrado por la diagonal más clara para que la sombra no se estire en diagonal
-        if (aoV[0] + aoV[2] < aoV[1] + aoV[3]) idx.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
-        else idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
-      }
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-    g.setIndex(idx);
-    g.computeBoundingSphere(); g.computeBoundingBox();
-    return g;
+  toGeometry(opts = {}) {
+    const t0 = performance.now();
+    const r = meshPacked(packVoxels(this.map), meshOpts(opts));
+    meshStats.ms += performance.now() - t0;
+    meshStats.builds++; meshStats.quads += r.quads; meshStats.faces += r.faces; meshStats.verts += r.verts;
+    return buildGeometry(r);
   }
+  /**
+   * Igual que toGeometry pero arma la malla en un Web Worker (voxel-worker.js) y la guarda en IndexedDB: la segunda
+   * vez que se pide la misma grilla con las mismas opciones sale del caché. Si no hay worker, la arma acá.
+   */
+  toGeometryAsync(opts = {}) { return geometryAsync(packVoxels(this.map), meshOpts(opts)); }
   toMesh(opts = {}) {
     const m = new THREE.Mesh(this.toGeometry(opts), opts.material || voxelMaterial());
     m.castShadow = opts.castShadow ?? true;
@@ -170,6 +107,115 @@ export class Voxels {
     return m;
   }
 }
+
+// ---------- Mallas: opciones, estadísticas, worker y caché ----------
+// ?greedy=0 apaga la unión de caras (para comparar capturas y medir)
+const greedyParam = typeof location !== 'undefined' ? (/[?&]greedy=([01])\b/.exec(location.search) || [])[1] : null;
+let GREEDY = greedyParam !== '0';
+/** Prende o apaga la unión de caras para las mallas que se armen desde ahora (lo usan las pruebas). */
+export function setGreedy(on) { GREEDY = !!on; }
+/** Cuántas mallas se armaron, cuántos rectángulos (quads) y vértices (verts) salieron de cuántas caras al aire (faces) y en cuántos ms. */
+export const meshStats = { builds: 0, quads: 0, faces: 0, verts: 0, ms: 0, cacheHits: 0, workerBuilds: 0 };
+function meshOpts(o) {
+  const { scale = 1, center = false, jitter = 0.015, ao = true, aoLevels, greedy = GREEDY } = o;
+  return aoLevels ? { scale, center, jitter, ao, aoLevels: [...aoLevels], greedy } : { scale, center, jitter, ao, greedy };
+}
+function buildGeometry(r) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(r.position, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(r.normal, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(r.color, 3));
+  g.setIndex(new THREE.BufferAttribute(r.index, 1));
+  g.computeBoundingSphere(); g.computeBoundingBox();
+  return g;
+}
+let worker = null, workerSeq = 0;
+const waiting = new Map();
+function getWorker() {
+  if (worker !== null) return worker || null;
+  try {
+    if (typeof Worker !== 'function') throw new Error('sin Worker');
+    worker = new Worker(new URL('./voxel-worker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = (e) => {
+      const w = waiting.get(e.data.id); if (!w) return;
+      waiting.delete(e.data.id);
+      e.data.error ? w.reject(new Error(e.data.error)) : w.resolve(e.data.r);
+    };
+    worker.onerror = (e) => {
+      console.warn('[voxel] worker de mallas no disponible, se arman en el hilo principal', e.message || e);
+      worker = false;
+      for (const w of waiting.values()) w.fallback();
+      waiting.clear();
+    };
+  } catch { worker = false; }
+  return worker || null;
+}
+function meshInWorker(data, o) {
+  const local = () => meshPacked(data, o);
+  const w = getWorker();
+  if (!w) return Promise.resolve(local());
+  return new Promise((resolve, reject) => {
+    const id = ++workerSeq;
+    // si el worker se cae, la copia local de los datos sigue acá para armarla sin él
+    const copy = data.slice();
+    waiting.set(id, { resolve: (r) => { meshStats.workerBuilds++; resolve(r); }, reject, fallback: () => resolve(meshPacked(copy, o)) });
+    w.postMessage({ id, data, opts: o }, [data.buffer]);
+  });
+}
+// caché en IndexedDB: clave = versión del mallado + opciones + huella de la grilla
+const IDB_NAME = 'pixelia-mesh', IDB_STORE = 'mesh', IDB_MAX = 600;
+let dbp = null;
+function db() {
+  if (dbp) return dbp;
+  dbp = new Promise((resolve) => {
+    try {
+      if (typeof indexedDB === 'undefined') return resolve(null);
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    } catch { resolve(null); }
+  });
+  return dbp;
+}
+const idb = (mode, fn) => db().then(d => d && new Promise((resolve) => {
+  try {
+    const tx = d.transaction(IDB_STORE, mode), st = tx.objectStore(IDB_STORE);
+    const req = fn(st);
+    tx.oncomplete = () => resolve(req && req.result);
+    tx.onerror = tx.onabort = () => resolve(null);
+  } catch { resolve(null); }
+}));
+/** Huella de la grilla (dos hash de 32 bits) más las opciones. */
+export function meshKey(data, o) {
+  let h1 = 0x811c9dc5, h2 = 0x9747b28c;
+  for (let i = 0; i < data.length; i++) {
+    const v = data[i];
+    h1 = Math.imul(h1 ^ v, 0x01000193);
+    h2 = Math.imul(h2 ^ (v + i), 0x5bd1e995); h2 ^= h2 >>> 15;
+  }
+  return `v${MESH_VERSION}|${JSON.stringify(o)}|${data.length}|${(h1 >>> 0).toString(36)}${(h2 >>> 0).toString(36)}`;
+}
+let idbCount = -1;
+async function geometryAsync(data, o) {
+  const k = meshKey(data, o);
+  const hit = await idb('readonly', st => st.get(k));
+  if (hit && hit.position) { meshStats.cacheHits++; return buildGeometry(hit); }
+  const r = await meshInWorker(data, o);
+  meshStats.builds++; meshStats.quads += r.quads; meshStats.faces += r.faces; meshStats.verts += r.verts;
+  const g = buildGeometry(r);
+  // guardar sin esperar; si se pasa del tope, se vacía entero (las mallas se vuelven a armar solas)
+  (async () => {
+    if (idbCount < 0) idbCount = (await idb('readonly', st => st.count())) || 0;
+    if (idbCount >= IDB_MAX) { await idb('readwrite', st => st.clear()); idbCount = 0; }
+    await idb('readwrite', st => st.put({ position: r.position, normal: r.normal, color: r.color, index: r.index }, k));
+    idbCount++;
+  })();
+  return g;
+}
+/** Borra el caché de mallas (pruebas, o al cambiar el mallado). */
+export function clearMeshCache() { idbCount = 0; return idb('readwrite', st => st.clear()); }
 
 let _mat = null, _matEmissive = null, _matWindow = null;
 /** Material compartido de vóxeles (colores por vértice, sombreado plano). */
@@ -276,7 +322,8 @@ export function createPixelRenderer(container, opts = {}) {
   let grade = null;
   // acabado de cámara (bloom, tonos, viñeteado, desenfoque): también en el pase final
   let post = { ...POST_DEFAULT, ...(opts.post || {}) };
-  const wantPost = () => (postParam ? postParam === '1' : !low && GFX.post !== false) && renderer.capabilities.isWebGL2;
+  // opts.post: false apaga el acabado en esta escena (el render "classic" de tools/lookdev.html)
+  const wantPost = () => opts.post !== false && (postParam ? postParam === '1' : !low && GFX.post !== false) && renderer.capabilities.isWebGL2;
   function buildOutline() {
     const lines = wantOutline(), n = samples(), pp = wantPost();
     const key = lines || n || grade || pp ? `${lines}|${n}|${pp}|${JSON.stringify(sceneOutline ?? null)}` : '';
