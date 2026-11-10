@@ -349,8 +349,8 @@ export default function create(ctx) {
         ${run.ended ? '' : toolsHtml()}
         ${run.ended || run.pending?.kind === 'combate' ? '' : `<button class="vy-btn plain inline" data-a="leave">${esc(t('voyage.leave'))}</button>`}</div>
       <div class="vy-main"><div class="vy-map">${mapHtml()}</div>
-      <div class="vy-side"><div class="vy-box"><h2>${esc(t('voyage.squad.title'))}</h2><div class="vy-sq">${squadHtml()}</div></div>
-        <div class="vy-box"><h2>${esc(t('voyage.pack.title'))}</h2>${packHtml()}</div>${cardHtml()}${showGear ? gearHtml() : ''}</div></div></div>`;
+      <div class="vy-side">${showGear ? gearHtml() : ''}<div class="vy-box"><h2>${esc(t('voyage.squad.title'))}</h2><div class="vy-sq">${squadHtml()}</div></div>
+        <div class="vy-box"><h2>${esc(t('voyage.pack.title'))}</h2>${packHtml()}</div>${cardHtml()}</div></div></div>`;
   }
   function onClick(ev) {
     const b = ev.target.closest('button');

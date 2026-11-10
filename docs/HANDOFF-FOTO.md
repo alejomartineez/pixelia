@@ -219,20 +219,39 @@ Todo con cubos e interfaz mínima. Motores puros con semilla; nada de arte.
   simulador la Marea sube rápido (III en la salida 3): el balance fino queda para A5. Textos nuevos en es, en y ja.
 - Al mergear: `npm run bump` (5 archivos nuevos en `src/` para `sw.js`).
 
-### En curso (sesiones abiertas por el chat coordinador `local_377480f3`; el orquestador integra)
-- **A1** `local_2fe76e8b`, rama `claude/a1-travesia-3e736a`: terminó (commit `293aad4`; pasan `test-voyage` y
-  `test-i18n`). Falta revisarla, mergearla y correr la suite.
-- **A2** `local_b3df4020`, rama `claude/a2-combate-5384e9` (esfuerzo medio). La sesión `local_a28fd135` no arrancó: ignorarla.
-- **R1** `local_c19fef5f`, rama `claude/r1-render-024ec7` (Fable 5.2 medio).
-- **U1** `local_6f56642d` (rama u1-tono) y **mock de U2** `local_d69a3fd1` (rama u2-mock-hud; espera la aprobación
-  del usuario antes de pasar pantallas).
+### Enganche A1 + A2 + A3: la salida completa (rama `claude/a3b-enganche-32ce5a`, sale de A3 + master; sin bump ni push)
+- **Qué hay**: desde `?scene=voyage&seed=N` (`&marea=1..3` la fuerza) una salida se juega de punta a punta sin arte. El
+  muelle elige la Marea (la II se abre al vencer al jefe en la I, la III en la II). Peleas, élites y jefe son los
+  encuentros de farmeo del Arroyo (`FARM.arroyo`) en 6×6 con esa Marea. Al ganar cae el botín de A3: armas con rareza
+  y rasgos al arsenal, veta al árbol, maestría al arma usada. El panel **Equipo** (en el muelle y en la salida) compara
+  por fuerza y equipa; el arma define las habilidades de la pelea siguiente (si la pelea no empezó, se arma de nuevo).
+  Las reliquias salen de las dos tablas juntas (6 del viaje + 15 del combate y el botín): élites, recompensa y eventos.
+  **Resolver sola**: pelea común ya ganada con 3 estrellas en esa Marea, botín completo. Al terminar: materiales y
+  experiencia a la aldea, y el árbol se abre desde el resumen, el muelle y la ciudad (botón provisorio).
+- **Dónde**: `src/voyage/voyage-rules.js` (`env = { state }` en `enter`, `endCombat`, `leave`; `voyageState`,
+  `loadoutOf`, `refreshBattle`, `canAuto`, `autoFight`, `ALL_RELICS`; sin `env` la salida lleva su propia partida en
+  `run.bag`), `voyage-scene.js` (muelle, equipo, botín en la tarjeta), `voyage-data.js` (encuentros del Arroyo; la élite
+  ya no multiplica vida), `scenes/tree.js` (`backParams`), `scenes/city.js` (botón del árbol), 33 claves en `es.js`.
+- **Guardado**: `state.voyage = { runs, wins, active, best: { marea: { enc: estrellas } }, mareaMax, marea }`; `state.arsenal`
+  y `state.tree` se completan solos. Una partida vieja y una salida guardada antes del botín abren sin romperse.
+- **Decisiones**: las armas y la veta se guardan al ganar cada pelea (caer solo parte los materiales a la mitad). La vida
+  que da un arma es un resguardo por pelea, no se arrastra. La resolución automática vale solo en nodos de pelea.
+- **Pruebas**: `test-voyage-loop` 88 (41 en Node), `test-voyage` 82, `test-combat` 100, `test-combat-farm` 65,
+  `test-arsenal` 122, `test-loot` 132, `test-tree` 51, `test-i18n` 126, `test-glossary` 8, `sim-loot --check`. No se corrió
+  la suite completa. `test-i18n` falló una vez por el WebGL de SwiftShader y pasó al repetirla.
+- **Números** (`npm run sim:voyage`, bot prudente): sin equipo previo gana 90 % en Marea I, 80 % en la II y 10 % en la III,
+  con 4,3 / 5,2 / 6,1 turnos por pelea y unos 10 min por salida. Carrera de farmeo de 6 salidas por Marea: 8,6 / 6,8 / 6,9
+  min por salida; armas por salida 2,7 / 3,8 / 4,8 (raras o mejores 1,0 / 2,0 / 2,7); fuerza media 78 / 91 / 137; veta
+  77 / 145 / 221; materiales 16 / 30 / 51.
+- **Flojo (para A5)**: con 2 salidas de farmeo por Marea el bot ya gana 100 % en la III y las peleas bajan a 2,6 turnos:
+  el equipo y el árbol (un punto cada 30 a 40 de veta, 19 puntos en 18 salidas) le ganan a la Marea III, que es el
+  techo. Mirar muchas armas por salida (hasta 5) con un panel que solo ordena por fuerza cansa: falta "es mejor para
+  esto". La recompensa 1 de 3 sigue ofreciendo +1 de ataque y vida al lado del botín, y pesa poco. Los otros 8 idiomas
+  caen al español en las claves nuevas. Al mergear: `npm run bump`.
 
 ## Próximos pasos (ver "Orden" en el plan)
-1. Integrar A1; después A2, R1 y U1 a medida que entreguen (revisar diff, mergear, suite, bump, commit y push).
-2. A3 (botín, árbol, reliquias) está hecho en su rama: mergearlo después de A2 y enchufarlo en la Travesía.
-## Próximos pasos (ver "Orden" en el plan)
 1. v65: mergear A2, R1, U1 y el mock de U2; suite, bump, commit y push.
-2. Integrar A3 cuando entregue. Después U2 completo sobre el mock aprobado.
+2. Mergear el enganche A1 + A2 + A3 (rama `claude/a3b-enganche-32ce5a`, ya trae A3). Después U2 completo sobre el mock aprobado.
 3. A5: prueba con jugadores del prototipo con cubos. Recién después, arte.
 
 ## Lo que hace el usuario

@@ -56,7 +56,8 @@ Guía de tono de DESIGN.md).
 - `npm run sim:loot` → 10 salidas con botín, árbol y reliquias (PLAN-FOTO A3: `src/core/loot.js` y `tree.js`); `node test-loot.mjs`
   y `node test-tree.mjs` prueban los motores. El árbol se abre con `?scene=tree&veta=400`.
 - Travesía por nodos (prototipo sin arte, PLAN-FOTO §A1; `src/voyage/`): `?scene=voyage&seed=N`; `npm run sim:voyage` juega
-  200 salidas con bots y `node test-voyage.mjs --node` prueba solo los motores.
+  200 salidas con bots y `node test-voyage.mjs --node` prueba solo los motores. La salida completa (Marea, botín, equipo,
+  reliquias y árbol enganchados): `node test-voyage-loop.mjs`; `sim:voyage` también reporta minutos y botín por salida en las 3 Mareas.
 - `npm run sim:economy` → simula 60 días de economía (2 ratos por día) y chequea las metas de DESIGN-CORE.md §8.
 - `npm run desktop:dev` abre la ventana del juego de PC en vivo. `npm run desktop:build` arma el `.exe`, y
   `node test-desktop.mjs` lo abre y lo revisa por CDP.

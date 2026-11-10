@@ -1084,6 +1084,14 @@ export default function create(ctx) {
         vb.style.cssText = 'position:fixed;left:50%;bottom:104px;transform:translateX(-50%);z-index:40;padding:8px 14px;border:2px solid #6b5a34;background:#2c2718;color:#f6edd2;font:inherit;cursor:pointer';
         vb.addEventListener('click', () => ctx.router.go('voyage', { resume: true }));
         container.append(vb);
+        // y el del árbol de habilidades (PLAN-FOTO §A3): los puntos salen de la veta de las peleas
+        const tb = document.createElement('button');
+        tb.className = 'tree-proto-btn';
+        tb.dataset.act = 'tree';
+        tb.textContent = t('tree.title');
+        tb.style.cssText = vb.style.cssText.replace('104px', '148px');
+        tb.addEventListener('click', () => ctx.router.go('tree', { back: 'city' }));
+        container.append(tb);
       }
       if (params.build) setTimeout(() => !disposed && openBuildMenu(S, typeof params.build === 'string' && E.def(params.build) ? params.build : null), 300);
     },

@@ -355,6 +355,8 @@ try {
   const skills = await VY((v, a) => v.gear.skills[a[0]] || [], eq.who);
   check(skills.length >= 2, 'el arma define las habilidades de quien la lleva', skills);
   check((await P((w) => document.querySelector(`[data-who="${w}"] [data-cur]`)?.dataset.cur, eq.who)) === String(eq.uid), 'el panel muestra el arma puesta');
+  await P(() => document.querySelector('[data-card="equipo"] [data-a="gear"]').click());
+  check(!(await P(() => document.querySelector('[data-card="equipo"]'))), 'Cerrar guarda el panel');
 
   console.log('  d. el jefe');
   const rest = PATH.slice(PATH.indexOf(await VY(v => v.run.pos)) + 1);
@@ -411,6 +413,7 @@ try {
   // se anota como ya ganada con tres estrellas y se vuelve a dibujar
   await P(() => { const s = window.__pixelia.store.state, r = s.voyage.active; (s.voyage.best[2] ??= {})[r.pending.enc] = 3; });
   await P(() => document.querySelector('[data-a="gear"]').click());
+  await P(() => document.querySelector('[data-card="equipo"] [data-a="gear"]').click());
   check(!!(await P(() => document.querySelector('[data-a="auto"]'))), 'con tres estrellas en esa Marea aparece Resolver sola');
   const hp0 = await VY(v => JSON.stringify(v.run.squad)), x0 = (await snap()).xp;
   await P(() => document.querySelector('[data-a="auto"]').click());
