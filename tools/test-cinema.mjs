@@ -53,6 +53,52 @@ const T = await import(pathToFileURL(join(ROOT, 'src/cinema/timeline.js')).href)
   ok(near(tl.total, 2.5 + 0.6 * 0, 0.7), 'duración total con la espera del último');
 }
 
+// ---------- cámara de cine (node; PLAN-FOTO §R2) ----------
+console.log('\nCámara de cine');
+const CAM = await import(pathToFileURL(join(ROOT, 'src/cinema/camera.js')).href);
+{
+  // 1 · lente
+  const wide = CAM.resolveLens('wide'), tele = CAM.resolveLens('tele'), mac = CAM.resolveLens('macro');
+  ok(near(CAM.fovOf(50), 26.99, 0.02) && wide.fov > CAM.resolveLens('normal').fov && CAM.resolveLens('normal').fov > tele.fov, 'la focal da el campo de visión: gran angular > normal > tele', [wide.fov, tele.fov]);
+  ok(near(CAM.matchDolly(tele.fov, 42) * Math.tan(tele.fov * Math.PI / 360), Math.tan(21 * Math.PI / 180)), 'al cambiar de lente la cámara se corre y el sujeto queda del mismo tamaño');
+  const open = CAM.dofOf(CAM.resolveLens({ preset: 'portrait', f: 2 }), 6), shut = CAM.dofOf(CAM.resolveLens({ preset: 'portrait', f: 11 }), 6);
+  ok(open.range < shut.range && open.amt > shut.amt && open.focus === 6, 'más apertura, menos profundidad de campo', { open, shut });
+  ok(CAM.dofOf(mac, 30).range < CAM.dofOf(CAM.resolveLens({ preset: 'macro', scale: 0.2 }), 30).range && CAM.dofOf(wide, 20).range > CAM.dofOf(tele, 20).range, 'el macro de maqueta enfoca más fino y el gran angular deja todo en foco');
+  // 2 · cambio de foco
+  const D = { a: 3, b: 9 }, fk = [{ t: 2, on: 'a' }, { t: 4, on: 'b' }], fa = (t) => CAM.focusAt(fk, t, (on) => D[on]);
+  ok(fa(0) === 3 && fa(9) === 9 && near(fa(3), 6) && fa(2.5) < 4.5 && fa(3.5) > 7.5, 'el foco viaja de un sujeto al otro con curva suave', [fa(2.5), fa(3), fa(3.5)]);
+  // 3 · cámara en mano
+  const h1 = CAM.handheldAt(3.21, 1, 4), h2 = CAM.handheldAt(3.21, 1, 4), h3 = CAM.handheldAt(3.24, 1, 4);
+  let big = 0, jump = 0, prev = null;
+  for (let t = 0; t < 20; t += 1 / 30) { const o = CAM.handheldAt(t, 1, 2); big = Math.max(big, Math.abs(o.yaw), Math.abs(o.dx)); if (prev) jump = Math.max(jump, Math.abs(o.yaw - prev.yaw)); prev = o; }
+  ok(h1.yaw === h2.yaw && Math.abs(h3.yaw - h1.yaw) < 0.002 && big > 0.004 && big < 0.04 && jump < big / 6, 'el temblor es coherente: mismo instante, mismo valor, y sin saltos de un cuadro al otro', { big, jump });
+  const b0 = CAM.breathAt(1.05, 1), b1 = CAM.breathAt(3.15, 1);
+  ok(Math.abs(b0.dy) < 0.02 && b0.dy * b1.dy < 0 && CAM.handheldAt(1, 0).dx === 0, 'la respiración sube y baja apenas; con intensidad 0 no hay temblor', [b0.dy, b1.dy]);
+  ok(CAM.camTravel({ keys: [{ pos: [0, 0, 0], look: [0, 0, 1] }, { pos: [0.1, 0, 0], look: [0, 0, 1] }] }) < 0.8 && CAM.camTravel({ keys: [{ pos: [0, 0, 0], look: [0, 0, 1] }, { pos: [4, 0, 0], look: [0, 0, 1] }] }) > 0.8, 'se sabe qué plano es quieto');
+  // 4 · tercios
+  const pos = [3, 1.6, 8], subject = [-1, 0.9, 0.5], fov = 38, aspect = 16 / 9;
+  const fl = CAM.frameThirds({ pos, subject, fov, aspect, third: 'left', line: 'top' });
+  const pl = CAM.project(pos, fl.look, fov, aspect, subject);
+  ok(near(pl[0], -1 / 3, 1e-3) && near(pl[1], CAM.SAFE / 3, 1e-3), 'el sujeto cae en el cruce del tercio izquierdo con la línea de arriba', pl);
+  const gz = CAM.frameThirds({ pos, subject, fov, aspect, gaze: [1, 0, 0] }), gz2 = CAM.frameThirds({ pos, subject, fov, aspect, gaze: [-1, 0, 0] });
+  ok(gz.nx < 0 && gz2.nx > 0, 'el aire queda hacia donde mira: mira a la derecha, va a la izquierda');
+  // 5 · plano y contraplano
+  const A = [0, 0, 0], B = [2, 0, 1], sr = CAM.shotReverse(A, B, { side: 1 }), sl = CAM.shotReverse(A, B, { side: -1 });
+  const xa1 = CAM.project(sr.ab.pos, sr.ab.look, 40, aspect, [A[0], 0.85, A[2]])[0], xb1 = CAM.project(sr.ab.pos, sr.ab.look, 40, aspect, [B[0], 0.85, B[2]])[0];
+  const xa2 = CAM.project(sr.ba.pos, sr.ba.look, 40, aspect, [A[0], 0.85, A[2]])[0], xb2 = CAM.project(sr.ba.pos, sr.ba.look, 40, aspect, [B[0], 0.85, B[2]])[0];
+  ok(CAM.axisSide(A, B, sr.ab.pos) === CAM.axisSide(A, B, sr.ba.pos) && CAM.axisSide(A, B, sl.ab.pos) === -CAM.axisSide(A, B, sr.ab.pos), 'plano y contraplano quedan del mismo lado del eje');
+  ok(Math.sign(xa1 - xb1) === Math.sign(xa2 - xb2), 'en los dos planos cada personaje queda del mismo lado de la pantalla', [xa1, xb1, xa2, xb2]);
+  // 6 · fundido
+  const bc = CAM.blendCam({ pos: [0, 0, 0], look: [0, 0, 1], fov: 30 }, { pos: [2, 4, 6], look: [1, 1, 1], fov: 50 }, 0.5);
+  ok(nearV(bc.pos, [1, 2, 3]) && near(bc.fov, 40) && nearV(CAM.blendCam({ pos: [1, 1, 1], look: [0, 0, 0] }, { pos: [2, 2, 2], look: [0, 0, 0], fov: 42 }, 0).pos, [1, 1, 1]), 'el fundido de cámara pasa por el medio y arranca en la del juego');
+  // 7 · luz de tres puntos
+  const tp = CAM.threePoint({ pos: [0, 1, 10], subject: [0, 1, 0], keyI: 2 });
+  ok(tp.key.pos[0] < 0 && tp.fill.pos[0] > 0 && tp.rim.pos[2] < 0 && tp.key.pos[1] > tp.fill.pos[1] && near(tp.fill.i, 0.6) && tp.rim.i > tp.fill.i, 'principal a un lado y arriba, relleno al otro y más débil, contra desde atrás', tp);
+  // cortes dentro de un plano
+  const segs = { segs: [{ from: 0, keys: [{ t: 0, pos: [0, 0, 0], look: [0, 0, 1] }] }, { from: 2, keys: [{ t: 2, pos: [9, 0, 0], look: [0, 0, 1] }] }] };
+  ok(T.camAt(segs, 1.99).pos[0] === 0 && T.camAt(segs, 2).pos[0] === 9 && T.camSeg(segs, 3) === segs.segs[1], 'un plano puede cortar de cámara sin fundir');
+}
+
 // ---------- en el navegador ----------
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.m4a': 'audio/mp4' };
 const server = http.createServer((req, res) => {
@@ -161,6 +207,63 @@ ok(thief0.anim === 'lift' && !thief0.flip && guard0.flip && guard0.anim === 'wal
 ok(vin.s25.props[0].visible && Math.abs(vin.s25.props[0].x - vin.s25.actors[0].x) < 20, 'el cristal está con quien lo robó', vin.s25);
 ok(!vin.s6.props[0].visible && vin.s6.actors[0].anim === 'fall' && vin.s6.actors[1].anim === 'lift', 'el cristal cambió de mano y quien robaba cayó', vin.s6);
 ok(vin.zoomMax >= 3, 'la cámara se acerca a 3× en el forcejeo', vin.zoomMax);
+
+console.log('\nReproductor con cámara de cine');
+const cc = await page.evaluate(async () => {
+  const THREE = await import('three');
+  const { createCinema } = await import('/src/cinema/player.js');
+  const { shotReverse, SAFE } = await import('/src/cinema/camera.js');
+  const { h } = await import('/src/core/ui.js');
+  const box = document.createElement('div'); box.style.cssText = 'position:fixed;inset:0;'; document.body.append(box);
+  const camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, 100);
+  camera.position.set(20, 20, 20); camera.lookAt(0, 0, 0);
+  const scene = new THREE.Scene(), sun = new THREE.DirectionalLight(0xffffff, 2); scene.add(sun, sun.target);
+  const dof = [];
+  const r = { camera, scene, setPost: (p) => { if (p?.dof) dof.push(p.dof); } };
+  const who = new THREE.Object3D(); who.position.set(1, 0, 0); scene.add(who);
+  const far = [0, 1, -12], A = [0, 0, 0], B = [2, 0, 0], SR = shotReverse(A, B);
+  const cin = createCinema({ ui: { h }, audio: {} }, box, {
+    r, prefix: 'cc', lights: { sun }, guides: true, camIn: true, camOut: true,
+    shots: [
+      { dur: 4, lens: 'portrait', handheld: 0.5, cam: { keys: [{ t: 0, pos: [0, 1, 6], look: [0, 1, 0] }, { t: 4, pos: [1, 1, 6], look: [0, 1, 0] }] },
+        frame: { subject: { of: () => who, off: [0, 0.9, 0] }, third: 'auto', gaze: [1, 0, 0], line: 'top' },
+        focus: [{ t: 2, on: { of: () => who, off: [0, 0.9, 0] } }, { t: 3, on: far }], rig: { subject: [1, 0.9, 0] } },
+      { dur: 4, lens: { preset: 'normal', match: false }, cam: { segs: [
+        { from: 0, keys: [{ t: 0, pos: SR.ab.pos, look: SR.ab.look }], rig: { subject: B } },
+        { from: 2, keys: [{ t: 2, pos: SR.ba.pos, look: SR.ba.look }] }] } },
+    ],
+  });
+  const step = (s) => { for (let i = 0; i < Math.round(s * 30); i++) cin.frame(1 / 30, 0); };
+  const ndc = (p) => { camera.updateMatrixWorld(); return new THREE.Vector3(...p).project(camera).toArray().map(v => +v.toFixed(3)); };
+  cin.frame(1e-4, 0);
+  const start = camera.position.toArray().map(v => +v.toFixed(1)), fov0 = +camera.fov.toFixed(1);
+  step(1.8);
+  const fovLens = +camera.fov.toFixed(2), at18 = ndc([1, 0.9, 0]), d18 = dof.at(-1), roll = Math.abs(camera.rotation.z) > 1e-5;
+  const rig = { key: sun.position.toArray(), fill: scene.children.filter(o => o.isDirectionalLight && o !== sun).map(l => +l.intensity.toFixed(2)) };
+  const mark = box.querySelector('.cc-guides b').style.display, info = box.querySelector('.cc-guides span').textContent;
+  step(1.5);
+  const d33 = dof.at(-1);
+  const p0 = camera.position.clone(); cin.seek(1.0); const pA = camera.position.toArray(); cin.seek(1.0); const same = camera.position.toArray().every((v, i) => Math.abs(v - pA[i]) < 1e-9); void p0;
+  cin.go(1); step(1);
+  const sideA = camera.position.z, fillOn = scene.children.filter(o => o.isDirectionalLight && o !== sun).some(l => l.intensity > 0);
+  step(1.2);
+  const sideB = camera.position.z, fillOff = scene.children.filter(o => o.isDirectionalLight && o !== sun).every(l => l.intensity === 0), fovN = +camera.fov.toFixed(1);
+  step(1.75);
+  const back = camera.position.toArray().map(v => +v.toFixed(0));
+  cin.dispose();
+  const left = scene.children.filter(o => o.isDirectionalLight).length;
+  box.remove();
+  return { start, fov0, fovLens, at18, d18, d33, roll, rig, mark, info, same, sideA, sideB, fillOn, fillOff, fovN, back, left, SAFE };
+});
+ok(nearV(cc.start, [20, 20, 20], 0.11) && cc.fov0 === 42, 'fundido de cámara: el primer cuadro es la cámara del juego', cc);
+ok(near(cc.fovLens, 26.99, 0.05) && cc.roll, 'el lente del plano pone su campo de visión y la cámara en mano inclina apenas', cc);
+ok(Math.abs(cc.at18[0] + 1 / 3) < 0.02 && Math.abs(cc.at18[1] - cc.SAFE / 3) < 0.02, 'el sujeto queda en su tercio aunque la cámara viaje y tiemble', cc.at18);
+ok(cc.d18.focus < 11 && cc.d33.focus > 15 && cc.d18.range > 0 && cc.d18.amt > 0, 'el foco arranca en el sujeto y pasa al fondo; la profundidad sale del lente', [cc.d18, cc.d33]);
+ok(cc.rig.fill.length === 2 && cc.rig.fill.every(i => i > 0) && cc.rig.key[1] > 5, 'luz de tres puntos: el sol de principal y dos luces más prendidas', cc.rig);
+ok(cc.mark === 'block' && /50 mm/.test(cc.info) && /f\/2\.8/.test(cc.info), 'modo de revisión: marca del sujeto y datos del lente', cc.info);
+ok(cc.same, 'el mismo segundo del plano da la misma cámara (temblor determinista)');
+ok(Math.sign(cc.sideA) === Math.sign(cc.sideB) && cc.fillOn && cc.fillOff && cc.fovN === 37.8, 'contraplano del mismo lado del eje; cada tramo con su luz', cc);
+ok(nearV(cc.back, [20, 20, 20], 1.01) && cc.left === 1, 'al final la cámara vuelve a la del juego y las luces de la escena se van', cc);
 
 console.log('\nReproductor, carteles y audio');
 const pl = await page.evaluate(async () => {
