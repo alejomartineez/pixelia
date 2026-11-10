@@ -179,6 +179,11 @@ durante 1,5 s.
   - La voz es **Fenrir** (la eligió el usuario). `--samples` deja muestras en `shots/voice/`; `--script intro` graba en
     `assets/audio/voice/` con `prepare.mjs --voice`: recorta silencios, normaliza a −18 LUFS, mono, AAC 96 kbps y
     entrada `voice/<id>` (categoría `voice`, con su duración) en el manifest.
+  - **El Quiebre (3b):** 16 líneas (`intro/01`–`16`, ≈115 s). El texto de cada una es su clave `intro.line.NN` de
+    `src/i18n/es.js`, así lo que se oye es lo que se lee. El narrador dice de la 01 a la 12; **Vera** (voz **Gacrux**,
+    dirección `VERA_STYLE`: mujer mayor, seca y práctica, rioplatense) dice de la 13 a la 16. En `narration.js` cada
+    línea puede llevar `voice` y `style`; `--skip intro/01` saltea las ya grabadas. En inglés o japonés la voz sigue en
+    español y el subtítulo va traducido.
   - La clave sale de `GEMINI_API_KEY` (entorno o la línea del `.env` de SignBoox) y va solo en el encabezado
     `x-goog-api-key`; nunca se imprime ni se guarda.
 - **`audio.voice(id)`** toca `voice/<id>` por el bus de voz (`volVoice`) y baja la música a 0,35 mientras habla.

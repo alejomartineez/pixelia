@@ -268,18 +268,27 @@ y de `expEchoSpots(run)` (ruinas ya pisadas, solo de noche: `__exp.echoSpots()`)
   que espera a la ciudad libre. **Cobro automático de t1–t20** con aviso y la línea de la cartógrafa.
 - `src/story/story-ui.js`: hoja de diálogo (no bloquea), líneas sueltas y pantalla completa épica. Con `see` (la
   llegada) la pantalla completa deja ver la ciudad detrás y el texto va abajo.
-- `src/scenes/intro.js`: la cinemática **El Quiebre** (plan §B y §M4), seis planos en vóxel de 7,5 a 9,5 s con un
-  subtítulo de una línea cada uno (`INTRO_LINES`):
-  1. el continente con las cuatro vetas latiendo en el corte;
-  2. las torres de las Casas, con enanos de la Veta empujando vagonetas de cristal, una noble en el balcón y la veta que
-     sube por la grúa;
-  3. de noche, un humano, una persona-zorro y otro humano roban cristales y la guardia los persigue con faroles;
-  4. la tierra se agrieta y se abre sobre la Brasa;
-  5. desde abajo, orcos de la Brasa y un vaciado miran subir los pedazos con Céfiro entre las nubes;
-  6. tu fragmento en ruinas al atardecer, un esquife que llega y el título.
+- `src/scenes/intro.js`: la cinemática **El Quiebre** (PLAN-TRAVESIA §3b), once planos (≈2 min 15 s) sobre el motor
+  `src/cinema/`. El narrador lleva del 1 al 9 y Vera habla en el 10 y el 11. Lo grande va en vóxel 3D; la acción entre
+  personajes, en viñetas 2D en pixel art (`src/cinema/vignettes-intro.js`). La primera vez que aparece cada cosa, un
+  cartel la presenta (nombre y una línea; las vetas, en su color). Textos: `intro.line.01`–`16` e `intro.label.*`.
+  1. (3D) el continente; las cuatro vetas en el corte: Raíz, Marea, Brasa y Céfiro, cada una con su cartel;
+  2. (3D) las torres de las Casas, con la noble en el balcón (cartel "Las Casas");
+  3. (3D) los enanos de la Veta empujando las vagonetas de cristal;
+  4. (2D) la orden: el capataz enano le muestra a una noble un cristal que se apaga; ella señala la mina; él baja;
+  5. (2D) el robo: forcejeo con un guardia, el cristal vuela a las manos del cómplice y la guardia los persigue;
+  6. (2D) el Quiebre: un enano golpea el suelo, la tierra se parte, cae gente; el enano queda colgado y el guardia que
+     le marcaba dónde cavar lo saca;
+  7. (3D) las islas con Céfiro suben entre las nubes;
+  8. (3D) el Bajo Mundo: orcos de la Brasa y un vaciado miran desde abajo;
+  9. (2D) la Cofradía mira desde un risco; dos se alarman, uno no se sorprende y se va (siembra del traidor);
+  10. (3D) Vera llega en su esquife a tu fragmento: "Hace años que cruzo estas nubes. Este pedazo no estaba en ningún
+      mapa." / "Y hay alguien.";
+  11. (3D) tu personaje se levanta; Vera: "Despacio. El golpe fue fuerte." / "Esto es lo que quedó. Y ahora es tuyo."
+      y el título.
   Es lo primero de una partida nueva (`main.js`: sin `onboarded` ni `introSeen`). Clic, Enter o Espacio pasan de plano;
   Esc o Saltar la terminan. Al terminar marca `introSeen` y sigue el onboarding. Se vuelve a ver desde la Bitácora
-  (`story.playIntro()`, `{replay: 1, back: 'city'}`): ahí el esquife lo lleva tu personaje. `?scene=intro&shot=N` abre
+  (`story.playIntro()`, `{replay: 1, back: 'city'}`): ahí quien despierta es tu personaje. `?scene=intro&shot=N` abre
   un plano (para capturas; `window.__pixelia.intro` tiene `go`, `seek`, `next` y `skip`).
 - **La llegada** (`llegada`, reemplaza al prólogo de texto `prologo_1`/`prologo_2`): `playPrologue()` la pasa entre el
   nombre y el estilo de la ciudad. Cuatro líneas de Vera con un gancho y la página 1. Las partidas viejas reciben el

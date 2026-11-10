@@ -56,7 +56,7 @@ actualiza al cerrar cada paso, en cada corte por contexto y en cada integración
 | 2c | Archipiélago, travesía por rutas, farmeo, "Zarpar" y la vuelta a casa | — | después del 2a | |
 | 2d | Elementos: reacciones, Santuario, fragmentos y nodos de veta | — | después del 2c | |
 | 3a | Motor de cinemáticas, viñetas 2D, narrador Gemini y `audio.track` (más retoques de sprites del 1d) | trav-3a-cinema | integrado (voz: Fenrir) | master |
-| 3b | Cinemática "El Quiebre" nueva | — | después del 3a | |
+| 3b | Cinemática "El Quiebre" nueva: 11 planos, viñetas 2D, carteles, narrador y Vera | trav-3b-quiebre | **hecho** (sin bump) | rama `claude/infallible-kilby-b91f61` |
 | 3c | Cinemáticas de llegada a cada isla | — | después del 3a | |
 | 3d | Guía interactiva de Vera (spotlight) | — | puede ir con el 2c | |
 | 4a | Base de idiomas: `t()`, selector, fuentes cirílico y CJK, `test-i18n` | trav-4a-idiomas, trav-4a2 | **hecho**: base en master; HUD y ciudad a claves en `claude/trav-4a2-ea2158` (sin bump) | master + rama |
@@ -573,3 +573,71 @@ Hecho:
   y correr de `test-social` en adelante.
 - Para el orquestador: `npm run bump` al integrar. El 2b y el 2c pueden partir de esta rama.
 
+
+### 3b · "El Quiebre" nueva (rama `claude/infallible-kilby-b91f61`, sin bump)
+Hecho:
+- **`src/scenes/intro.js`**: 11 planos, ≈2 min 15 s, sobre `src/cinema/`. 3D: el mundo y las vetas, las torres de las
+  Casas, los enanos con las vagonetas, las islas que suben, el Bajo Mundo, Vera en su esquife y el despertar. 2D:
+  la orden, el robo, la caída y la Cofradía. Detalle de cada plano en DESIGN-STORY §7.
+  - Salen los decorados 3D del robo y de la grieta, que pasan a viñetas. Un mismo decorado sirve a dos planos con
+    otra cámara (torres: 2 y 3; islas: 7 y 8; fragmento: 10 y 11). En el 10 llega Vera en el esquife; en el 11 el
+    esquife está amarrado, ella de pie, y tu personaje pasa de tirado a arrodillado y a parado.
+    - La primera vez, tu personaje es alguien con capucha; al volver a verla, el tuyo.
+    - Las poses vuelven al reposo en cada cuadro (`restOf`): si no, el que cae queda tirado.
+  - Música: sigue la `epic`. Al montar se pide `audio.track('intro')`: si no está en el manifest no hace nada. La
+    pista de Suno entra sola como `track/intro`. Al desmontar se corta.
+- **`src/cinema/vignettes-intro.js`**: cuatro viñetas.
+  - `orden`: el capataz muestra un cristal que se apaga, la noble señala la mina y él baja.
+  - `robo`: forcejeo; el cristal vuela al cómplice; dos guardias, uno con farol, los persiguen.
+  - `caida`: el enano golpea el suelo y la tierra se parte. Caen dos. El enano queda colgado y el guardia que le
+    marcaba dónde cavar lo saca.
+  - `cofradia`: las islas suben a lo lejos; dos se alarman; el que no se sorprende se da vuelta y se va.
+
+  Están en la galería: `tools/cinema.html?v=caida&view=strip&k=1&step=0.5`. Tiras en `shots/intro/strip-*.png`.
+- **Motor**:
+  - `pixel2d.js` exporta `depotNight` (el fondo del depósito, que usan el forcejeo y el robo) y `crystalProp`.
+  - `sprite2d` acepta `opts.item: 'nada'`: el gesto de levantar o señalar con la mano vacía, para colgarse o tender la
+    mano. Antes salía una caja.
+  - `labels.js` suma tres cosas a los carteles:
+    - `color`: borde y nombre, como en las vetas;
+    - `follow`/`off`: siguen algo que se mueve;
+    - `screen`/`host`: carteles sobre una viñeta 2D.
+  - `player.js`:
+    - "Saltar" va por `t('cinema.skip')`;
+    - eventos `label` con `px` en píxeles de la viñeta (o una función), o con `followFn`;
+    - la capa `.<prefijo>-lab2d`;
+    - el escenario 2D queda entre las barras y arriba del subtítulo, así no tapa a nadie;
+    - un decorado compartido queda visible en el plano que lo usa.
+- **Textos** (`t()`, es / en / ja): `cinema.skip`, `intro.title`, `intro.line.01`–`16` y `intro.label.*` (17 carteles).
+  Tono sobrio, sin diminutivos. `node subset-fonts.mjs` corrido: `fonts/pixel-ja.woff2` suma los caracteres nuevos.
+- **Voces** (`assets/audio/voice/intro/02`–`16.m4a`, ≈115 s en total; la 01 es la de antes):
+  - el narrador es **Fenrir** (líneas 01 a 12) y Vera es **Gacrux** (13 a 16, `VERA_STYLE` en `narrate.mjs`);
+  - `narration.js` toma el texto de `es.js` por clave, así la voz y el subtítulo dicen lo mismo;
+  - cada toma pasó el control de transcripción;
+  - LICENSES.md anota las voces.
+- **Capturas**:
+  - `tools/intro-shots.mjs` (SwiftShader, sin GPU) arma una hoja por plano en `shots/intro/plano-NN.png` (`--lang`,
+    `--at`, `--shots`, `--n`);
+  - revisadas una por una, también en ja y en;
+  - se corrigió:
+    - cámaras que tapaban a los enanos o perdían a la noble;
+    - carteles detrás de la barra;
+    - la caja que salía al colgarse;
+    - el guardia que atravesaba al enano;
+    - el que se va en la Cofradía, que cruzaba a otro;
+    - el enano de negro sobre la grieta negra.
+- **Pruebas**:
+  - `test-cinema` 67/0: guion, voces en el manifest, idiomas, las cuatro viñetas deterministas, nadie se pisa cada
+    0,25 s, y los momentos clave (la orden, el cristal que cambia de mano, el rescate, el que se va);
+  - `test-story` 109/0: 11 planos con voz, 16 o más carteles y las cuatro viñetas en 2D;
+  - `recorrido.mjs` saca las 11 capturas.
+  - **`npm test`**: todo bien hasta `test-social`, que falla en "ana manda la cuadrilla: premio en monedas y puntos de
+    equipo" (64/1; ya fallaba desde el 2a, no lo toca este paso). Las 23 pruebas que siguen, corridas aparte: todas
+    en 0 fallas (story 109, cinema 67, audio 72, sql 183…).
+
+Queda:
+- El bump (orquestador) suma al `sw.js` las voces nuevas y `src/cinema/vignettes-intro.js`.
+- La pista de Suno, cuando llegue la clave: `prepare.mjs` → `track/intro`.
+- En los planos 2D se sigue renderizando el 3D detrás (tapado). Se puede pausar si hace falta rendimiento.
+- El paso de tirado a arrodillado (plano 11) se entiende, pero en el medio de la mezcla el cuerpo queda en diagonal
+  un instante. Si molesta, hay que sumar una pose "incorporarse".
