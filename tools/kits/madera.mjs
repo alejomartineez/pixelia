@@ -12,10 +12,10 @@ import { Lienzo, mirrorVoxels } from '../make-vox.mjs';
 const T = { hi: 1, mid: 2, lo: 3 }, E = { hi: 9, mid: 10, lo: 11 }, P = { hi: 17, mid: 18, lo: 19 }, R = { hi: 25, mid: 26, lo: 27 }, M = { mid: 33, lo: 34 };
 const WIN = 245, IRON = 248;
 export const PALETTE = {
-  1: 0xb89466, 2: 0xa07e58, 3: 0x7d6250,
-  9: 0x7a5a42, 10: 0x644836, 11: 0x4a3833,
+  1: 0xb39368, 2: 0x9d7f5c, 3: 0x806853,
+  9: 0x86654a, 10: 0x70523d, 11: 0x523f38,
   17: 0x8f949b, 18: 0x787d87, 19: 0x5d6170,
-  25: 0x6e625a, 26: 0x5a504c, 27: 0x45404a,
+  25: 0x85786a, 26: 0x74685d, 27: 0x5a5153,
   33: 0x66735e, 34: 0x4f5c52,
   245: 0x55616c, 248: 0x4a4d55,
 };
@@ -48,15 +48,15 @@ function pared() {
 
 function ventana() {
   const out = 2, L = wall(out);
-  // vano de 6 × 8 con el antepecho a 10: el vidrio queda hundido 1
-  L.box(5, out, 10, 6, 1, 8, 0);
-  L.box(5, out + 1, 10, 6, 1, 8, WIN);
+  // vano de 6 × 8 con el antepecho a 8 (queda bajo el alero, a la vista de la cámara): el vidrio va hundido 1
+  L.box(5, out, 9, 6, 1, 8, 0);
+  L.box(5, out + 1, 9, 6, 1, 8, WIN);
   // marco de 1 que sobresale 1, con un travesaño
-  L.box(4, out - 1, 9, 8, 2, 10, (x, y, z) => x === 4 || x === 11 || z === 9 || z === 18 ? E.hi : null);
-  L.box(5, out, 14, 6, 1, 1, E.hi);
-  L.box(3, 0, 9, 10, 2, 1, E.mid);                          // alféizar: sobresale 2 (da sombra)
+  L.box(4, out - 1, 8, 8, 2, 10, (x, y, z) => x === 4 || x === 11 || z === 8 || z === 17 ? E.hi : null);
+  L.box(5, out, 13, 6, 1, 1, E.hi);
+  L.box(3, 0, 8, 10, 2, 1, E.mid);                          // alféizar: sobresale 2 (da sombra)
   // postigos: se dibuja el izquierdo y se espeja
-  const sh = new Lienzo().box(1, out - 1, 10, 3, 1, 8, (x, y, z) => z === 11 || z === 16 ? E.lo : E.mid).voxels();
+  const sh = new Lienzo().box(1, out - 1, 9, 3, 1, 8, (x, y, z) => z === 10 || z === 15 ? E.mid : T.lo).voxels();
   L.add(mirrorVoxels(sh, 'x', { region: { min: [0, 0, 0], max: [15, DEP + out, H] }, keep: true }));
   return L.model();
 }
@@ -87,14 +87,14 @@ function esquina() {
 }
 
 // tejuelas: hiladas de 3 a lo largo de la pendiente, piezas de 4 trabadas
-const SHAKES = [[26, 26, 25, 26, 27], [26, 27, 26, 26, 25], [25, 26, 26, 27, 26], [26, 26, 27, 25, 26]];
+const SHAKES = [[26, 26, 26, 25, 26], [25, 26, 26, 26, 26], [26, 26, 25, 26, 26], [26, 25, 26, 26, 26]];
 const shake = (x, j) => { const c = Math.floor(j / 3); return SHAKES[c % 4][Math.floor((x + (c % 2) * 2) / 4) % 5]; };
-const RUN = 19; // 3 de alero + 16 hasta la cumbrera; pendiente de 45°
-/** Un faldón (medio techo a dos aguas): techo de 2 de espesor, macizo por debajo desde el alto de la pared. */
-function slope(L, x0, w) {
+const EAVE = 2, RUN = EAVE + 16; // alero + 16 hasta la cumbrera; pendiente de 45°
+/** Un faldón (medio techo a dos aguas): techo de 2 de espesor; macizo por debajo desde el alto de la pared si fill. */
+function slope(L, x0, w, fill = true) {
   for (let j = 0; j < RUN; j++) for (let x = x0; x < x0 + w; x++) {
     L.set(x, j, j, shake(x, j)); L.set(x, j, j + 1, shake(x, j));
-    for (let z = 3; z < j; z++) L.set(x, j, z, E.lo);
+    if (fill) for (let z = EAVE; z < j; z++) L.set(x, j, z, E.lo);
   }
   return L;
 }
@@ -102,14 +102,15 @@ function techoTramo() { return slope(new Lienzo(), 0, 16).model(); }
 
 /** Remate izquierdo del techo: 8 sobre la casa, 2 de vuelo con la tabla de borde y el hastial de tablas con media ventana. */
 function techoRemate() {
-  const L = slope(new Lienzo(), 1, 9);
+  const L = slope(new Lienzo(), 2, 8);
+  slope(L, 1, 1, false);                                    // el vuelo es solo techo
   for (let j = 0; j < RUN; j++) for (let z = Math.max(0, j - 1); z <= j + 1; z++) L.set(0, j, z, E.mid); // tabla de borde
-  const BOARDS = [2, 2, 1, 2, 3, 2, 2, 1, 2, 2];
-  for (let j = 3; j < RUN; j++) for (let z = 3; z < j; z++) for (const x of [2, 3]) L.set(x, j, z, BOARDS[j >> 1]);
+  const BOARDS = [2, 2, 1, 2, 3, 2, 2, 1, 2];
+  for (let j = EAVE; j < RUN; j++) for (let z = EAVE; z < j; z++) for (const x of [2, 3]) L.set(x, j, z, BOARDS[j >> 1]);
   // media ventana del altillo (la otra mitad la pone el faldón de atrás)
-  L.box(2, 16, 8, 1, 3, 6, (x, y, z) => y === 16 || z === 8 || z === 13 ? E.hi : 0);
-  L.box(3, 17, 9, 1, 2, 4, WIN);
-  L.box(1, 15, 8, 1, 4, 1, E.mid); // alféizar
+  L.box(2, RUN - 3, 4, 1, 3, 6, (x, y, z) => y === RUN - 3 || z === 4 || z === 9 ? E.hi : 0);
+  L.box(3, RUN - 2, 5, 1, 2, 4, WIN);
+  L.box(1, RUN - 4, 4, 1, 4, 1, E.mid); // alféizar
   return L.model();
 }
 
@@ -123,7 +124,7 @@ function cumbrera() {
 
 function chimenea() {
   const L = new Lienzo();
-  const TONES = [18, 17, 18, 19, 18, 18, 17];
+  const TONES = [18, 17, 18, 18, 17, 18, 19];
   L.box(1, 1, 0, 6, 6, 16, (x, y, z) => { const c = z >> 1; return TONES[(Math.floor((x + y + (c % 2) * 2) / 3) + c) % 7]; });
   L.box(0, 0, 16, 8, 8, 2, P.hi);                            // sombrerete de losa
   L.box(2, 2, 17, 4, 4, 1, 0);                               // la boca

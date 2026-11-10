@@ -385,7 +385,7 @@ water, rough }`. El motor (`r.light.kindOf(material)` en `src/core/voxel-light.j
 
 | Índice | Uso |
 |---|---|
-| 1 a 240 | Colores `solid` del modelo |
+| 1 a 240 | Colores `solid` del modelo, **un material por bloque de 8 índices** (1 a 8, 9 a 16…): así `npm run check:vox` cuenta los tonos de cada material |
 | 241 a 244 | `glow`: llama, brasa, veta fría, veta cálida |
 | 245 | `window` (el código lo pasa a ventana) |
 | 246 | `water` |
@@ -410,7 +410,8 @@ water, rough }`. El motor (`r.light.kindOf(material)` en `src/core/voxel-light.j
   protagonista: hasta 126 × 126 × 126; si no entra, se parte en partes.
 - **Un modelo por archivo**, sin escena con varios objetos salvo que sean partes de la misma pieza ya ubicadas.
 - **Paleta:** la del archivo, con los índices reservados de arriba. Los colores que no se usan se borran.
-- **Revisión:** cada pieza nueva pasa por `npm run test:vox` y por una captura en `tools/lookdev.html` a las 15 h y
+- **Revisión:** cada pieza nueva pasa por `npm run check:vox` (piezas sueltas, tamaño, tonos por material, negro y
+  blanco puros; `tools/make-vox.mjs --check`), por `npm run test:vox` y por una captura en `tools/lookdev.html` a las 15 h y
   a las 22.5 h, con una persona al lado.
 
 ### Kit de la porción vertical

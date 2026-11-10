@@ -12,8 +12,8 @@ export const MADERA_PARTS = {
   'pared-ventana-a':  { size: [16, 8], pad: { f: 2 } },
   'pared-puerta-a':   { size: [16, 8], pad: { f: 3 } },
   'esquina-a':        { size: [4, 4], pad: { l: 1, f: 1 } },       // poste: pisa el encuentro de dos paredes
-  'techo-tramo-a':    { size: [16, 16], pad: { f: 3, d: 3 } },     // el alero vuela 3 y cuelga 3 bajo el alto de la pared
-  'techo-remate-a':   { size: [8, 16], pad: { l: 2, f: 3, d: 3 } }, // remate izquierdo; el derecho es este espejado
+  'techo-tramo-a':    { size: [16, 16], pad: { f: 2, d: 2 } },     // el alero vuela 2 y cuelga 2 bajo el alto de la pared
+  'techo-remate-a':   { size: [8, 16], pad: { l: 2, f: 2, d: 2 } }, // remate izquierdo; el derecho es este espejado
   'techo-cumbrera-a': { size: [16, 4], pad: { l: 2 } },
   'chimenea-a':       { size: [8, 8] },
 };

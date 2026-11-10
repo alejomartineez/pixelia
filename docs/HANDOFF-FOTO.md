@@ -181,6 +181,31 @@ Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
   que ahí "Resolver rápido" da lo de antes; los comunes de la historia siguen en 8×8; el bot no usa reacciones; el arte
   de los enemigos nuevos son cubos. En el worktree, `tools/node_modules` es un enlace al del checkout principal.
 
+### M2 piloto: herramientas de `.vox` y casa de Madera del kit (rama `claude/m2-piloto-76485d`, sin bump ni push; 2026-11-10)
+- **Herramientas** en `tools/make-vox.mjs`: `Lienzo` (grilla de autor), `mirrorVoxels`, `rotateVoxels` (90, 180, 270, por
+  región), `looseParts` (componentes conectados; lo que no toca el piso es error) y `checkVox` (tamaño 126 y módulo de
+  kit 32 × 32 × 64, 3 tonos por material y 4 en protagonistas, 5 materiales, valor entre 12 y 90 %, emisivos solo en
+  241 a 244). `npm run check:vox` revisa todo `assets/models/`; `--protagonista=a,b` marca las piezas de 32.
+  Convención nueva, anotada en DESIGN.md: **un material por bloque de 8 índices de la paleta**. `farol.vox` bajó el
+  vidrio a 89 % de valor para pasar la regla.
+- **Kit** `assets/models/madera/` (8 módulos, los escribe `tools/kits/madera.mjs` con `node tools/make-vox.mjs`):
+  pared, pared con ventana, pared con puerta, poste de esquina, tramo y remate de techo, cumbrera y chimenea.
+- **Armado por código**: `src/core/vox-kit.js` (`assembleKit` sin three.js, `loadKit`, `kitGroup`: una malla por tipo
+  de material; el índice 245 va a `window`) y `src/city/kits/madera.js` (tabla `MADERA_PARTS` con la huella de cada
+  módulo y lo que sobresale, y la receta `CASA_MADERA_A`). Los módulos son macizos de 8 de fondo; los postes pisan las
+  esquinas; el remate derecho es el izquierdo espejado.
+- **Diorama**: `tools/lookdev.html?m2=1` pone la casa del kit en el lugar de la de Piedra, al lado de la casa actual, con
+  una persona a escala 1. `?target=x,y,z&view=N` acerca la isométrica. Capturas en `shots/m2/` (ignorado por git):
+  `node lookdev-shots.mjs --hours 15,22.5 --out shots/m2 --query "m2=1"` y la de cerca con
+  `--tag cerca --query "m2=1&view=4.6&target=1.2,1.1,-1.0"`.
+- **Pruebas**: `node test-vox.mjs` 74 OK (herramientas, regla, archivos al día con el generador, encastre y casa armada
+  en una sola pieza). No corrí la suite completa ni `lookdev-shots --check`. Una corrida de capturas se cortó a la
+  primera sin mensaje y al repetirla salió bien; no encontré la causa.
+- **Al mergear**: `npm run bump` (2 archivos nuevos en `src/` y 8 `.vox`). No se reemplazó ningún modelo del juego.
+- **Pendiente / a decidir por el usuario**: ver el informe de la sesión (tono de la madera, peso de la estructura
+  oscura, ventanas que queman a blanco de noche con el render fotográfico, tamaño de 2 × 2 tiles contra la casa
+  actual de 1 × 1, si se suma un alero de entrada o una leñera para la silueta). Falta la variante b de cada módulo.
+
 ## Próximos pasos (ver "Orden" en el plan)
 1. v65: mergear A2, R1, U1 y el mock de U2; suite, bump, commit y push.
 2. Integrar A3 cuando entregue. Después U2 completo sobre el mock aprobado.

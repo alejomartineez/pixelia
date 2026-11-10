@@ -215,13 +215,13 @@ ok(checkFiles(undefined, { quiet: true }) === 0, 'todos los .vox de assets/model
   ok(!bad.length && Object.keys(parts).every(n => MADERA_PARTS[n]), 'madera: el tamaño de cada archivo es su huella más lo que sobresale (MADERA_PARTS)', bad);
   ok(Object.values(MADERA_PARTS).every(d => d.size[0] % 4 === 0 && d.size[1] % 4 === 0) && ['pared-a', 'pared-ventana-a', 'pared-puerta-a', 'techo-tramo-a'].every(n => MADERA_PARTS[n].size.every(s => s % 8 === 0)), 'madera: huellas en múltiplos de 8 (postes y cumbrera, de 4)');
   const casa = assembleKit(parts, MADERA_PARTS, CASA_MADERA_A);
-  ok(casa.size.join('×') === '36×49×38' && casa.min.join() === '-2,0,-3', `casa de Madera: ${casa.size.join('×')} (32 × 32 más aleros y escalón; 42 a la cumbrera y 49 con la chimenea)`, { size: casa.size, min: casa.min });
+  ok(casa.size.join('×') === '36×49×37' && casa.min.join() === '-2,0,-2', `casa de Madera: ${casa.size.join('×')} (32 × 32 más aleros y escalón; 42 a la cumbrera y 49 con la chimenea)`, { size: casa.size, min: casa.min });
   const pts = []; for (let i = 0; i < casa.indices.length; i++) pts.push([casa.data[i * 4], casa.data[i * 4 + 1], casa.data[i * 4 + 2]]);
   const lp = looseParts(pts, { up: 1 });
   ok(lp.parts.length === 1, `casa de Madera: una sola pieza (${casa.indices.length} vóxeles), nada suelto`, lp.parts.slice(1));
   const at = new Map(); for (let i = 0; i < casa.indices.length; i++) at.set(pts[i].join(','), casa.indices[i]);
   const win = [...at].filter(([, ci]) => kitKind(ci, casa.materials) === 'window').map(([k]) => k.split(',').map(Number));
-  ok(win.length === 3 * 48 + 2 * 16 && win.every(p => p[1] >= 10), `ventanas: 3 de 6 × 8 y 2 del altillo de 4 × 4 (índice ${KIT_WINDOW}), del antepecho para arriba`, win.length);
+  ok(win.length === 3 * 48 + 2 * 16 && win.every(p => p[1] >= 9), `ventanas: 3 de 6 × 8 y 2 del altillo de 4 × 4 (índice ${KIT_WINDOW}), del antepecho para arriba`, win.length);
   ok(win.some(p => p[2] === 30) && win.some(p => p[0] === 30) && win.some(p => p[0] === 1), 'ventanas al frente y a los dos costados, hundidas 1 en la pared');
   ok(kitKind(248, casa.materials) === 'metal' && kitKind(2, casa.materials) === 'solid', 'el hierro de la puerta sale como metal');
   ok(at.get('5,10,30') === 9 && !at.has('5,10,31') && at.get('-1,10,31') === 10, 'la puerta está al frente a la izquierda, hundida, y el poste de esquina sobresale 1');
