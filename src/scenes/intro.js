@@ -493,6 +493,8 @@ export default function create(ctx) {
     below: { bg: 0x120c0c, sky: 0x9a8a9e, ground: 0x5a2614, hemi: 1.3, sun: 0xffb080, sunI: 1.9, sunPos: [-4, 18, 14], fog: [0x120c0c, 8, 26] },
     dusk: { bg: 0x2a2028, sky: 0xe0a888, ground: 0x2e2430, hemi: 1.05, sun: 0xffa868, sunI: 2.3, sunPos: [-14, 8, 10], fog: [0x2a2028, 16, 34] },
   };
+  // acabado de cine de El Quiebre (voxel.js setPost): luces con halo, bordes oscuros y más contraste que en el juego
+  const POST = { bloom: 0.6, thr: 0.7, vignette: 0.42, contrast: 0.22, split: 0.22 };
   const line = (at, k) => ({ at, text: t('intro.line.' + k), voice: 'intro/' + k });
   const VCOL = { raiz: '#86c96a', marea: '#4f9fd6', brasa: '#e8703a', cefiro: '#d4ecf2' };
   /** Cartel: id de intro.label.<id>; where: { pos } (3D), { follow, off } (algo que se mueve) o { px } (viñeta 2D). */
@@ -503,17 +505,17 @@ export default function create(ctx) {
   const VEIN_COL = [30, 42, 54, 66];
   const SHOTS = [
     // 1 · el mundo y las cuatro vetas: de lejos, y de frente al corte; cada veta con su cartel en su color
-    { set: 'world', dur: 21, light: L.world, shadow: 34,
+    { set: 'world', dur: 21, light: L.world, shadow: 34, post: { dof: { focus: 'look', range: 9, amt: 0.75 } },
       cam: keys([0, [-3, 13, 26], [0, -0.5, 0]], [8.5, [0, 4.4, 21], [0, -0.8, 7]], [21, [0.8, 2.2, 18.4], [0.4, -1.3, 7.4]]),
       subs: [line(0.6, '01'), line(8.9, '02')],
       events: ['raiz', 'marea', 'brasa', 'cefiro'].map((id, i) => label(12.6 + i * 1.2, id, { pos: veinAt(i, VEIN_COL[i]) }, { color: VCOL[id], dur: 21 - 12.6 - i * 1.2 - 0.6 })) },
     // 2 · las torres de las Casas, con la noble en el balcón
-    { set: 'towers', dur: 9.8, light: L.towers, shadow: 22,
+    { set: 'towers', dur: 9.8, light: L.towers, shadow: 22, post: { dof: { focus: 'look', range: 4, amt: 0.8 } },
       cam: travel(9.8, [[-7.4, 1.6, 7.6], [-3.4, 1.4, 0.2]], [[4.6, 3.0, 9.6], [-1.6, 3.4, -2]]),
       subs: [line(0.6, '03')],
       events: [label(2.6, 'casas', { follow: () => sets.towers.userData.noble, off: [0, 1.0, 0] })] },
     // 3 · los enanos de la Veta empujando las vagonetas (mismo decorado, cámara baja)
-    { set: 'towers', dur: 10, light: L.towers, shadow: 22,
+    { set: 'towers', dur: 10, light: L.towers, shadow: 22, post: { dof: { focus: 'look', range: 2.2, amt: 0.9 } },
       cam: travel(10, [[-5.6, 1.8, 5.2], [-4.8, 0.5, 0.4]], [[-4.6, 1.6, 5.0], [-3.9, 0.5, 0.4]]),
       subs: [line(0.6, '04')],
       events: [label(2.2, 'enanos', { follow: () => sets.towers.userData.carts[1], off: [0, 1.1, 0] })] },
@@ -526,12 +528,12 @@ export default function create(ctx) {
     // 6 · el Quiebre (viñeta)
     { vig: 'caida', dur: 16.2, subs: [line(0.6, '08'), line(9.6, '09')] },
     // 7 · las islas que suben: desde abajo, mirando para arriba
-    { set: 'rise', dur: 8.6, light: L.rise, shadow: 30,
+    { set: 'rise', dur: 8.6, light: L.rise, shadow: 30, post: { bloom: 0.8 },
       cam: travel(8.6, [[2.6, -4.2, 7.8], [0.8, -2.6, 0]], [[3.4, -3.4, 9.4], [0, 3.2, -1.5]]),
       subs: [line(0.6, '10')],
       events: [label(4.4, 'islas', { follow: () => sets.rise.userData.isles[1], off: [0, 0.5, 0] }, { color: VCOL.cefiro, dur: 3.8 })] },
     // 8 · el Bajo Mundo: orcos de la Brasa y un vaciado miran subir lo que se va
-    { set: 'rise', dur: 9.8, light: L.below, shadow: 20,
+    { set: 'rise', dur: 9.8, light: L.below, shadow: 20, post: { bloom: 0.8, dof: { focus: 'look', range: 1.6, amt: 0.9 } },
       cam: travel(9.8, [[-0.2, -4.75, 0.3], [1.4, -5.05, 4.8]], [[2.6, -4.7, 0.9], [1.8, -5.0, 4.6]]),
       subs: [line(0.6, '11')],
       events: [label(0.9, 'bajo', { pos: [3.6, -5.0, 6.8] }, { dur: 3.2, color: VCOL.brasa }),
@@ -541,13 +543,13 @@ export default function create(ctx) {
     { vig: 'cofradia', dur: 11.8, subs: [line(0.8, '12')],
       events: [label(3.9, 'cofradia', { px: [90, COFRADIA.GROUND - 34] }, { dur: 3.6 })] },
     // 10 · Vera llega en su esquife a tu fragmento
-    { set: 'frag', mode: 'arrive', dur: 11.4, light: L.dusk, shadow: 18,
+    { set: 'frag', mode: 'arrive', dur: 11.4, light: L.dusk, shadow: 18, post: { dof: { focus: 'look', range: 3.6, amt: 0.8 } },
       cam: travel(11.4, [[7.5, 3.2, 13.5], [0, 0.3, 0]], [[0.6, 1.5, 6.2], [-2.0, 0.3, 1.9]]),
       subs: [line(1.2, '13'), line(7.6, '14')],
       events: [label(2.4, 'vera', { follow: () => sets.frag.userData.skiff, off: [0, 1.7, 0] }, { dur: 3.8 }),
         label(7.8, 'fragmento', { follow: () => sets.frag.userData.hero, off: [0, 0.9, 0] }, { dur: 3.4 })] },
     // 11 · tu personaje despierta; Vera le tiende la mano. Título.
-    { set: 'frag', mode: 'wake', dur: 12.6, light: L.dusk, shadow: 14, title: true, hold: 1.4,
+    { set: 'frag', mode: 'wake', dur: 12.6, light: L.dusk, shadow: 14, title: true, hold: 1.4, post: { dof: { focus: 'look', range: 2.6, amt: 0.85 } },
       cam: travel(12.6, [[HERO.pos[0] + 1.5, 1.25, HERO.pos[2] + 2.8], [HERO.pos[0] - 0.45, 0.4, HERO.pos[2] + 0.1]], [[HERO.pos[0] + 1.25, 1.1, HERO.pos[2] + 2.6], [HERO.pos[0] - 0.45, 0.8, HERO.pos[2] + 0.1]]),
       subs: [line(1.8, '15'), line(6.4, '16')] },
   ];
@@ -570,7 +572,7 @@ export default function create(ctx) {
       // los carteles que siguen algo: la función se resuelve al disparar (los decorados ya están armados)
       for (const e of out.events) if (e.label && typeof e.label.follow === 'function') { const fn = e.label.follow; e.label = { ...e.label, follow: undefined, followFn: fn }; }
       if (S.vig) out.vignette = () => createVignette(S.vig);
-      else Object.assign(out, { set: sets[S.set], cam: S.cam, light: S.light, shadow: S.shadow, title: !!S.title, hold: S.hold || 0 });
+      else Object.assign(out, { set: sets[S.set], cam: S.cam, light: S.light, shadow: S.shadow, title: !!S.title, hold: S.hold || 0, post: S.post });
       return out;
     });
   }
@@ -606,7 +608,7 @@ export default function create(ctx) {
       // caiga en el título del plano 11; tools/audio/sources.mjs → TRACKS). Una sola vez: después sigue su coda.
       // Si no está en el manifest, sigue el modo épico.
       try { ctx.audio?.track?.('intro', { loop: false }); } catch {}
-      cin = createCinema(ctx, container, { r, shots: cinemaShots(), prefix: 'in', title: t('intro.title'), applyLight, onShot, onFinish: finish, shake, advanceSfx: 'select' });
+      cin = createCinema(ctx, container, { r, shots: cinemaShots(), prefix: 'in', title: t('intro.title'), applyLight, onShot, onFinish: finish, shake, advanceSfx: 'select', post: POST });
       cin.go(Math.max(0, Math.min(SHOTS.length - 1, Number(params.shot) || 0)));
       offFrame = r.onFrame((dt, tt) => cin.frame(dt, tt));
       onKey = (e) => {

@@ -96,7 +96,8 @@ export function createAmbience(r, opts = {}) {
       s.position.set(b0.x * cs - b0.z * sn, b0.y * (look.night ? 1 : 0.86 + 0.14 * (1 - Math.abs(look.sunTurn))), b0.x * sn + b0.z * cs);
     }
     const g = 1 + flash * 0.5;
-    r.setGrade({ sat: look.sat, tint: look.tint.map(v => v * g), fog: { amt: look.fog.amt, color: look.fog.color, near: fogNF.near, far: fogNF.far } });
+    // de noche las luces brillan más (bloom)
+    r.setGrade({ sat: look.sat, tint: look.tint.map(v => v * g), bloomBoost: (look.glow || 0) * 1.6, fog: { amt: look.fog.amt, color: look.fog.color, near: fogNF.near, far: fogNF.far } });
     setNightGlow(look.glow);
     if (skyEl) {
       const css = skyCss(look.sky);

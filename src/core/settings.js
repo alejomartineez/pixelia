@@ -66,6 +66,8 @@ export function graphicsFrom(s) {
     // con 'auto' (todavía sin medir) o un preset, si los cuadros vienen lentos la resolución baja sola
     autoRes: s.gfxPreset !== 'custom',
     uiZoom: s.uiScale / 100,
+    // bloom, tonos y desenfoque: fuera en el preset bajo (las compus que más sufren)
+    post: s.gfxPreset !== 'low',
   };
 }
 

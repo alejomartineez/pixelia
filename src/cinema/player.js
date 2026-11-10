@@ -9,7 +9,9 @@
 // Un plano: { dur, set (THREE.Group con userData.update(dt, tt, t) y reset) | vignette (pixel2d: createVignette),
 //   cam (timeline: keys o travel), camFn(t, cam, u) (ajuste fino: seguir a alguien), light (base), lights (fundidos),
 //   subs [{ at, text | lines, voice }], events [{ at, sfx | stinger | voice | shake | label | run }], title, hold,
-//   fadeIn (0,6 s), fadeOut (0,5 s; 0 = sin fundido de salida) }
+//   fadeIn (0,6 s), fadeOut (0,5 s; 0 = sin fundido de salida),
+//   post (acabado de cámara, voxel.js setPost; dof.focus 'look' = enfoca lo que mira la cámara) }
+// opts.post: el acabado de toda la cinemática (cada plano lo pisa con el suyo).
 import * as THREE from 'three';
 import { createTimeline, camAt, subAt, lightAt } from './timeline.js';
 import { createLabels } from './labels.js';
@@ -61,6 +63,8 @@ export function createCinema(ctx, container, opts = {}) {
     if (S.set) S.set.visible = true;
     S.set?.userData.reset?.();
     if (applyLight && S.light) applyLight(S.light, S.shadow ?? 24);
+    // acabado de cámara del plano (voxel.js setPost): el de la cinemática y encima el del plano
+    if (r?.setPost) { r.setPost(null); r.setPost({ ...(opts.post || {}), ...(S.post || {}) }); }
     shake.amp = 0;
     const first = S.subs[0];
     setSub(first ? (first.lines ? first.lines.join('\n') : first.text) : '');
@@ -147,6 +151,11 @@ export function createCinema(ctx, container, opts = {}) {
       r.camera.position.copy(camPos);
       r.camera.lookAt(camLook);
       if (c.fov && r.camera.fov !== c.fov) { r.camera.fov = c.fov; r.camera.updateProjectionMatrix(); }
+      // foco que sigue a la cámara: 'look' = el punto que mira; focusFn(t) = distancia a mano
+      const d = S.post?.dof;
+      if (d && r.setPost && (d.focus === 'look' || d.focusFn)) {
+        r.setPost({ dof: { amt: d.amt ?? 1, range: d.range ?? 3, focus: d.focusFn ? d.focusFn(t, camPos) : camPos.distanceTo(camLook) } });
+      }
     }
     if (vignette) { vignette.update(dt, t); vignette.draw(); }
     // fundido a negro entre planos

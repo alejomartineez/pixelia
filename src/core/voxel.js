@@ -220,7 +220,17 @@ const MAX_BUFFER_PX = 4.6e6;
 //   scale: pixeles de render por px CSS (0,5–2) · aa: MSAA · shadows · outline: contorno tinta · particles: multiplicador
 //   maxFps (0 = sin tope) · bgFps: tope con la ventana sin foco · autoRes: bajar la resolución sola si va lento
 //   uiZoom: zoom de la interfaz del juego de PC (el WebView agranda los px CSS; se compensa para no perder nitidez)
-let GFX = { scale: 2, aa: true, shadows: true, outline: true, particles: 1, maxFps: 60, bgFps: 30, autoRes: true, uiZoom: 1 };
+//   post: bloom, curva de tonos, viñeteado y desenfoque de profundidad (se apaga en calidad baja)
+let GFX = { scale: 2, aa: true, shadows: true, outline: true, particles: 1, maxFps: 60, bgFps: 30, autoRes: true, uiZoom: 1, post: true };
+// ?post=0 / ?post=1 lo fuerza en todas las escenas (para comparar)
+const postParam = typeof location !== 'undefined' ? (/[?&]post=([01])\b/.exec(location.search) || [])[1] : null;
+/**
+ * Acabado de cámara por defecto (setPost lo cambia por escena o por plano):
+ *   bloom: cuánto brillan las luces (0 = nada) · thr: desde qué brillo (0..1) · vignette: bordes oscuros (0..1)
+ *   contrast: curva en S (0..1) · split: sombras frías y luces cálidas (0..1) · dof: { focus, range, amt } o null
+ *   (focus = distancia a la cámara en unidades de mundo, range = cuánto alrededor queda nítido).
+ */
+export const POST_DEFAULT = { bloom: 0.32, thr: 0.8, vignette: 0.1, contrast: 0.1, split: 0.12, dof: null };
 const live = new Set();
 /** Cuadros dibujados en total por todos los renderers (lo usa el contador de FPS de Ajustes). */
 export const frameStats = { frames: 0 };
@@ -264,13 +274,17 @@ export function createPixelRenderer(container, opts = {}) {
   let outline = null, outlineKey = '';
   // corrección de color del ambiente (saturación, tono y niebla por profundidad): va en el mismo pase final
   let grade = null;
+  // acabado de cámara (bloom, tonos, viñeteado, desenfoque): también en el pase final
+  let post = { ...POST_DEFAULT, ...(opts.post || {}) };
+  const wantPost = () => (postParam ? postParam === '1' : !low && GFX.post !== false) && renderer.capabilities.isWebGL2;
   function buildOutline() {
-    const lines = wantOutline(), n = samples();
-    const key = lines || n || grade ? `${lines}|${n}|${JSON.stringify(sceneOutline ?? null)}` : '';
+    const lines = wantOutline(), n = samples(), pp = wantPost();
+    const key = lines || n || grade || pp ? `${lines}|${n}|${pp}|${JSON.stringify(sceneOutline ?? null)}` : '';
     if (key === outlineKey) return false;
     outline?.dispose(); outline = null; outlineKey = key;
-    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines);
+    if (key) outline = createOutlinePass(renderer, typeof sceneOutline === 'object' ? sceneOutline : true, n, lines, pp);
     if (outline && grade) outline.setGrade(grade);
+    outline?.setPost(post);
     return true;
   }
   buildOutline();
@@ -410,6 +424,17 @@ export function createPixelRenderer(container, opts = {}) {
       if (grade) outline?.setGrade(grade);
     },
     get grade() { return grade; },
+    /**
+     * Acabado de cámara (ver POST_DEFAULT): mezcla lo que se pasa con lo de ahora. setPost(null) vuelve a lo de la escena.
+     * dof: { focus, range, amt } o null.
+     */
+    setPost(p) {
+      post = p === null ? { ...POST_DEFAULT, ...(opts.post || {}) } : { ...post, ...p };
+      outline?.setPost(post);
+    },
+    get post() { return { ...post }; },
+    /** ¿Hay bloom y demás (no en calidad baja)? */
+    get postOn() { return !!outline?.post; },
     /** ¿Se dibuja el contorno tinta? */
     get outline() { return !!outline && wantOutline(); },
     /** Muestras de antialias (0 = sin antialias). */
@@ -455,7 +480,7 @@ export function createPixelRenderer(container, opts = {}) {
  * mide ≈1 px CSS a cualquier resolución y no hace escalones duros.
  * En perspectiva el umbral crece con la distancia para no rayar el piso lejano en ángulo rasante.
  */
-function createOutlinePass(renderer, o, samples = 0, lines = true) {
+function createOutlinePass(renderer, o, samples = 0, lines = true, withPost = false) {
   const cfg = typeof o === 'object' ? o : {};
   // RGBA8 en sRGB (no float16): la mitad de memoria y ancho de banda con MSAA, ~25% menos de GPU por
   // cuadro, y la imagen sale igual (la GPU guarda en sRGB y lee de vuelta en lineal, sin bandas).
@@ -465,21 +490,67 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
   });
   rt.depthTexture = new THREE.DepthTexture(1, 1);
   rt.depthTexture.type = THREE.UnsignedIntType;
+  // ---------- acabado de cámara: bloom y desenfoque a 1/4 de resolución (float16, sin bandas en el halo) ----------
+  const small = () => new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false });
+  const pp = withPost ? { a: small(), b: small(), c: small(), d: small() } : null;
+  const quadVS = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`;
+  // extracción: promedia 4×4 pixeles de la imagen completa y se queda con lo que pasa el umbral (thr < 0 = todo)
+  const extract = withPost ? new THREE.ShaderMaterial({
+    uniforms: { tColor: { value: rt.texture }, texel: { value: new THREE.Vector2(1, 1) }, thr: { value: 0.8 } },
+    vertexShader: quadVS,
+    fragmentShader: `
+      uniform sampler2D tColor; uniform vec2 texel; uniform float thr; varying vec2 vUv;
+      void main() {
+        vec3 s = vec3(0.0);
+        for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) {
+          vec4 c = texture2D(tColor, vUv + vec2(float(i) - 1.5, float(j) - 1.5) * texel);
+          if (thr >= 0.0) {
+            vec3 u = c.a > 0.0 ? c.rgb / c.a : vec3(0.0);
+            float b = max(u.r, max(u.g, u.b));
+            c.rgb *= smoothstep(thr, thr + 0.2, b);
+          }
+          s += c.rgb;
+        }
+        gl_FragColor = vec4(s / 16.0, 1.0);
+      }`,
+    depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+  }) : null;
+  const blur = withPost ? new THREE.ShaderMaterial({
+    uniforms: { tSrc: { value: null }, dir: { value: new THREE.Vector2(1, 0) } },
+    vertexShader: quadVS,
+    fragmentShader: `
+      uniform sampler2D tSrc; uniform vec2 dir; varying vec2 vUv;
+      void main() {
+        vec3 s = texture2D(tSrc, vUv).rgb * 0.227;
+        s += (texture2D(tSrc, vUv + dir * 1.385).rgb + texture2D(tSrc, vUv - dir * 1.385).rgb) * 0.316;
+        s += (texture2D(tSrc, vUv + dir * 3.231).rgb + texture2D(tSrc, vUv - dir * 3.231).rgb) * 0.070;
+        gl_FragColor = vec4(s, 1.0);
+      }`,
+    depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+  }) : null;
   const mat = new THREE.ShaderMaterial({
+    defines: withPost ? { POST: '' } : {},
     uniforms: {
       tColor: { value: rt.texture }, tDepth: { value: rt.depthTexture }, texel: { value: new THREE.Vector2(1, 1) },
       near: { value: 0.1 }, far: { value: 100 }, ink: { value: new THREE.Color(0x3d2f2a) }, lineW: { value: 2 },
       strength: { value: cfg.strength ?? 0.85 }, lines: { value: lines ? 1 : 0 }, thrAbs: { value: 0.3 }, thrLin: { value: 0 }, thrSq: { value: 0 },
       sat: { value: 1 }, tint: { value: new THREE.Vector3(1, 1, 1) }, fogColor: { value: new THREE.Color(0xc8c2b4) },
       fogAmt: { value: 0 }, fogNear: { value: 50 }, fogFar: { value: 90 },
+      tBloom: { value: pp?.a.texture ?? null }, bloomAmt: { value: 0 }, tBlur: { value: pp?.c.texture ?? null },
+      dofAmt: { value: 0 }, dofFocus: { value: 10 }, dofRange: { value: 4 }, vig: { value: 0 }, aspect: { value: 1 },
+      contrast: { value: 0 }, splitAmt: { value: 0 },
+      splitLo: { value: new THREE.Vector3(0.9, 0.97, 1.12) }, splitHi: { value: new THREE.Vector3(1.08, 1.0, 0.9) },
     },
-    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    vertexShader: quadVS,
     fragmentShader: `
       #include <packing>
       uniform sampler2D tColor; uniform sampler2D tDepth; uniform vec2 texel; uniform float lineW;
       uniform float near; uniform float far; uniform vec3 ink; uniform float strength; uniform float lines;
       uniform float thrAbs; uniform float thrLin; uniform float thrSq;
       uniform float sat; uniform vec3 tint; uniform vec3 fogColor; uniform float fogAmt; uniform float fogNear; uniform float fogFar;
+      uniform sampler2D tBloom; uniform float bloomAmt; uniform sampler2D tBlur;
+      uniform float dofAmt; uniform float dofFocus; uniform float dofRange; uniform float vig; uniform float aspect;
+      uniform float contrast; uniform float splitAmt; uniform vec3 splitLo; uniform vec3 splitHi;
       varying vec2 vUv;
       float dist(vec2 uv) {
         float d = texture2D(tDepth, uv).x;
@@ -499,23 +570,52 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
       void main() {
         vec4 c = texture2D(tColor, vUv);
         float dc = dist(vUv);
+        float coc = 0.0;
+        #ifdef POST
+        // desenfoque de profundidad: lo que está lejos del foco se mezcla con la versión borrosa (y pierde la tinta)
+        if (dofAmt > 0.0) {
+          coc = dofAmt * smoothstep(dofRange * 0.5, dofRange * 1.6, abs(dc - dofFocus));
+          c = mix(c, vec4(texture2D(tBlur, vUv).rgb, 1.0), coc);
+        }
+        #endif
         float thr = thrAbs + dc * thrLin + dc * dc * thrSq;
         float k = 0.0;
         if (dc - nearest(vUv, 1.0) > thr) k = 1.0;
         else if (lineW > 1.5 && dc - nearest(vUv, lineW) > thr) k = 1.0;
         else if (dc - nearest(vUv, lineW + 1.0) > thr) k = 0.4;
-        k *= (c.a > 0.99 ? strength : 1.0) * lines;
+        k *= (c.a > 0.99 ? strength : 1.0) * lines * (1.0 - coc);
         // c viene premultiplicado (fondo transparente): tinta encima y de vuelta a sRGB sin premultiplicar
         vec4 o = vec4(mix(c.rgb, ink, k), mix(c.a, 1.0, k));
         vec3 rgb = o.a > 0.0 ? o.rgb / o.a : vec3(0.0);
         // ambiente: niebla por profundidad (lo lejano se pierde), saturación y tono (noche, clima, la isla gris)
         float f = fogAmt * smoothstep(fogNear, fogFar, dc) * (1.0 - k);
         rgb = mix(rgb, fogColor, f);
+        float a = o.a;
+        #ifdef POST
+        // bloom: el halo de las luces se suma (sobre el cielo transparente de la ciudad también se ve)
+        if (bloomAmt > 0.0) {
+          vec3 bl = texture2D(tBloom, vUv).rgb * bloomAmt;
+          vec3 lin = rgb * a + bl;
+          a = clamp(a + max(bl.r, max(bl.g, bl.b)), 0.0, 1.0);
+          rgb = a > 0.0 ? lin / a : vec3(0.0);
+        }
+        #endif
         float lum = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
         rgb = max(mix(vec3(lum), rgb, sat) * tint, 0.0);
+        #ifdef POST
+        // curva en S (en un espacio cercano al perceptual) y sombras frías / luces cálidas
+        vec3 pc = sqrt(clamp(rgb, 0.0, 1.0));
+        pc = mix(pc, pc * pc * (3.0 - 2.0 * pc), contrast);
+        rgb = max(rgb - 1.0, 0.0) + pc * pc;
+        float l2 = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+        rgb = mix(rgb, rgb * mix(splitLo, splitHi, smoothstep(0.03, 0.45, l2)), splitAmt);
+        vec2 q = (vUv - 0.5) * vec2(aspect, 1.0);
+        float vd = length(q) / length(vec2(aspect, 1.0) * 0.5);
+        rgb *= 1.0 - vig * smoothstep(0.4, 1.05, vd);
+        #endif
         gl_FragColor = vec4(rgb, 1.0);
         #include <colorspace_fragment>
-        gl_FragColor = vec4(gl_FragColor.rgb * o.a, o.a);
+        gl_FragColor = vec4(gl_FragColor.rgb * a, a);
       }`,
     depthTest: false, depthWrite: false, transparent: true, blending: THREE.NoBlending,
   });
@@ -523,16 +623,30 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
   quad.frustumCulled = false;
   const postScene = new THREE.Scene(); postScene.add(quad);
   const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  let ortho = null;
+  let ortho = null, P = { ...POST_DEFAULT }, bloomBoost = 0, sw = 1, sh = 1;
+  function pass(material, target) { quad.material = material; renderer.setRenderTarget(target); renderer.render(postScene, postCam); }
+  function blurInto(src, tmp, spread) {
+    blur.uniforms.tSrc.value = src.texture; blur.uniforms.dir.value.set(spread / sw, 0); pass(blur, tmp);
+    blur.uniforms.tSrc.value = tmp.texture; blur.uniforms.dir.value.set(0, spread / sh); pass(blur, src);
+  }
+  const bloomOn = () => P.bloom * (1 + bloomBoost) > 0.001;
+  const dofOn = () => !!(P.dof && (P.dof.amt ?? 1) > 0);
   return {
+    get post() { return withPost; },
     setSize(w, h, scale = 2) {
       rt.setSize(w, h); mat.uniforms.texel.value.set(1 / w, 1 / h);
       mat.uniforms.lineW.value = Math.max(1, Math.round((cfg.width ?? 1.1) * scale));
+      mat.uniforms.aspect.value = w / Math.max(1, h);
+      if (pp) {
+        sw = Math.max(1, Math.round(w / 4)); sh = Math.max(1, Math.round(h / 4));
+        for (const t of Object.values(pp)) t.setSize(sw, sh);
+        extract.uniforms.texel.value.set(1 / w, 1 / h);
+      }
     },
     render(scene, camera) {
       if (ortho !== !!camera.isOrthographicCamera) {
         ortho = !!camera.isOrthographicCamera;
-        mat.defines = ortho ? { ORTHO: '' } : {};
+        mat.defines = { ...(withPost ? { POST: '' } : {}), ...(ortho ? { ORTHO: '' } : {}) };
         mat.needsUpdate = true;
         const u = mat.uniforms;
         if (ortho) { u.thrAbs.value = cfg.threshold ?? 0.3; u.thrLin.value = 0; u.thrSq.value = 0; }
@@ -542,6 +656,21 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
       const prev = renderer.getRenderTarget();
       renderer.setRenderTarget(rt);
       renderer.render(scene, camera);
+      const u = mat.uniforms;
+      u.bloomAmt.value = 0; u.dofAmt.value = 0;
+      if (pp && bloomOn()) {
+        extract.uniforms.thr.value = P.thr ?? 0.8;
+        pass(extract, pp.a);
+        blurInto(pp.a, pp.b, 1); blurInto(pp.a, pp.b, 2.2);
+        u.bloomAmt.value = P.bloom * (1 + bloomBoost);
+      }
+      if (pp && dofOn()) {
+        extract.uniforms.thr.value = -1;
+        pass(extract, pp.c);
+        blurInto(pp.c, pp.d, 1); blurInto(pp.c, pp.d, 1.8);
+        u.dofAmt.value = Math.min(1, P.dof.amt ?? 1); u.dofFocus.value = P.dof.focus ?? 10; u.dofRange.value = Math.max(0.05, P.dof.range ?? 4);
+      }
+      quad.material = mat;
       renderer.setRenderTarget(prev);
       renderer.render(postScene, postCam);
     },
@@ -552,8 +681,17 @@ function createOutlinePass(renderer, o, samples = 0, lines = true) {
       const f = g.fog || {};
       u.fogAmt.value = f.amt || 0; if (f.color != null) u.fogColor.value.set(f.color);
       u.fogNear.value = f.near ?? 50; u.fogFar.value = f.far ?? 90;
+      bloomBoost = g.bloomBoost || 0;
     },
-    dispose() { rt.depthTexture.dispose(); rt.dispose(); quad.geometry.dispose(); mat.dispose(); },
+    setPost(p) {
+      P = { ...POST_DEFAULT, ...(p || {}) };
+      const u = mat.uniforms;
+      u.vig.value = P.vignette || 0; u.contrast.value = P.contrast || 0; u.splitAmt.value = P.split || 0;
+    },
+    dispose() {
+      rt.depthTexture.dispose(); rt.dispose(); quad.geometry.dispose(); mat.dispose();
+      if (pp) { for (const t of Object.values(pp)) t.dispose(); extract.dispose(); blur.dispose(); }
+    },
   };
 }
 
