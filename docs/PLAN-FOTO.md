@@ -17,6 +17,8 @@ todo al nivel final, cerca de una hora de juego, que sirve para probar con jugad
 - Las viñetas 2D de El Quiebre siguen en 2D.
 - Sesiones: Fable 5.2 con esfuerzo bajo; **Etapa R1 (motor de render) en Opus 5.5 medio**. Al 35 % de contexto la
   sesión cierra y sigue otra nueva.
+- **Permiso del usuario: sí a todo lo que haga falta para el plan**, sin preguntar (abrir sesiones desde cualquier
+  chat, cambiar modelo y esfuerzo, mergear, bump y commits). Fuera: push y releases, claves y pagos.
 - Hecho: v62 con el posproceso (bloom, tonos, viñeteado, DOF) en master. En curso: Etapa R0 en la rama
   `claude/foto-etapa0-b25a35` (greedy meshing, worker, lector `.vox`; commit WIP `238ed1d`).
 - Pendiente de integrar: rama 2a de la Travesía (`claude/nifty-nightingale-01cb64`: nivel 50, talentos, arsenal con
