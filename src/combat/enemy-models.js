@@ -147,11 +147,43 @@ function orc() {
   return assemble({ parts: { body: { f: body, glow }, head: { f: head, glow: eyes, at: [0, 1.2, 0.08] } } });
 }
 
+// ---------- paso A2: los comunes del farmeo, con cubos (el arte viene después: PLAN-FOTO, pista M) ----------
+// Cada uno con una silueta y un color que no se confunden: lo que importa por ahora es leer quién es quién.
+// spec: { body: [[x, y, z, w, h, d, color]], head: [...], eyes: [[x, y, z]], eye: color, headAt: [x, y, z] }
+function blocky(spec) {
+  const body = new Facets(), head = new Facets(), eyes = new Facets({ ao: false, vary: 0 });
+  for (const [x, y, z, w, h, d, c] of spec.body) body.box(x, y, z, w, h, d, c);
+  for (const [x, y, z, w, h, d, c] of spec.head || []) head.box(x, y, z, w, h, d, c);
+  for (const [x, y, z] of spec.eyes || []) eyes.box(x, y, z, 0.05, 0.04, 0.03, spec.eye || '#ffd56a');
+  return assemble({ parts: { body: { f: body }, head: { f: head, glow: eyes, at: spec.headAt || [0, 0.5, 0.2] } } });
+}
+const BLOCKS = {
+  // nido: montículo ancho y bajo, con bocas que brillan
+  nido: { body: [[0, 0.14, 0, 0.7, 0.28, 0.7, '#5b4a3a'], [0, 0.36, 0, 0.5, 0.2, 0.5, '#6f5a44'], [0, 0.52, 0, 0.28, 0.14, 0.28, '#8a7150']],
+    head: [[0, 0, 0, 0.16, 0.1, 0.16, '#3a2d22']], eyes: [[-0.12, -0.16, 0.2], [0.12, -0.16, 0.2], [0, -0.3, 0.3]], eye: '#b8f06a', headAt: [0, 0.62, 0] },
+  // hongo: pie claro y sombrero rojo
+  hongo: { body: [[0, 0.2, 0, 0.2, 0.4, 0.2, '#d8cdb4']], head: [[0, 0.02, 0, 0.56, 0.2, 0.56, '#b3402f'], [0, 0.16, 0, 0.36, 0.12, 0.36, '#c9543c'], [0.14, 0.14, 0.14, 0.1, 0.1, 0.1, '#f0e6d0'], [-0.16, 0.14, -0.06, 0.1, 0.1, 0.1, '#f0e6d0']],
+    eyes: [[-0.06, -0.22, 0.11], [0.06, -0.22, 0.11]], eye: '#ffd56a', headAt: [0, 0.5, 0] },
+  // musgo viejo: bulto verde, alto, con brotes claros
+  musgo: { body: [[0, 0.3, 0, 0.44, 0.6, 0.4, '#4f6b3a'], [0, 0.1, 0, 0.56, 0.2, 0.5, '#3d5530'], [-0.26, 0.38, 0, 0.12, 0.3, 0.12, '#6e8a4a'], [0.26, 0.38, 0, 0.12, 0.3, 0.12, '#6e8a4a']],
+    head: [[0, 0, 0, 0.34, 0.24, 0.32, '#6e8a4a'], [0, 0.16, 0, 0.14, 0.12, 0.14, '#a9c77a']], eyes: [[-0.08, 0, 0.17], [0.08, 0, 0.17]], eye: '#d8f5a8', headAt: [0, 0.7, 0.04] },
+  // ascua errante: brasa que flota, toda luz
+  ascua_errante: { body: [[0, 0.34, 0, 0.3, 0.3, 0.3, '#5a2a1c'], [0, 0.1, 0, 0.14, 0.14, 0.14, '#3a1c14']],
+    head: [[0, 0, 0, 0.22, 0.22, 0.22, '#b8502a']], eyes: [[-0.1, -0.2, 0.16], [0.1, -0.2, 0.16], [0, 0.02, 0.12], [0, -0.34, 0.1]], eye: '#ff8a3a', headAt: [0, 0.62, 0] },
+  // sapo de marea: chato, ancho, verde agua
+  sapo: { body: [[0, 0.15, 0, 0.6, 0.3, 0.52, '#2f6f72'], [0, 0.08, 0.02, 0.44, 0.14, 0.44, '#7fb8a8'], [-0.3, 0.08, -0.14, 0.16, 0.16, 0.26, '#255a5e'], [0.3, 0.08, -0.14, 0.16, 0.16, 0.26, '#255a5e']],
+    head: [[0, 0, 0, 0.46, 0.2, 0.3, '#3a8588'], [-0.14, 0.13, 0, 0.12, 0.1, 0.12, '#3a8588'], [0.14, 0.13, 0, 0.12, 0.1, 0.12, '#3a8588']], eyes: [[-0.14, 0.14, 0.07], [0.14, 0.14, 0.07]], eye: '#bfe9ff', headAt: [0, 0.34, 0.18] },
+  // cuervo de céfiro: chico, oscuro, en el aire, con alas abiertas
+  cuervo: { body: [[0, 0.62, 0, 0.18, 0.18, 0.34, '#2a2c38'], [-0.24, 0.66, 0, 0.3, 0.05, 0.22, '#3b3e52'], [0.24, 0.66, 0, 0.3, 0.05, 0.22, '#3b3e52'], [0, 0.62, -0.22, 0.12, 0.04, 0.16, '#1e2029']],
+    head: [[0, 0, 0, 0.16, 0.16, 0.16, '#2a2c38'], [0, -0.03, 0.12, 0.06, 0.05, 0.12, '#c9b458']], eyes: [[-0.06, 0.02, 0.085], [0.06, 0.02, 0.085]], eye: '#b9a8ff', headAt: [0, 0.74, 0.2] },
+};
+
 // ---------- gente (vóxel detallado) ----------
 const PEOPLE = {
   grumete: { look: { type: 'zorro', build: 'esbelto', skin: 1, hair: 'corto', hairColor: 'negro', face: 'cicatriz', dress: 'cuero', dressColor: 'rojo', crown: 'bandana', acc: 'espada' }, k: 0.86 },
   tirador: { look: { type: 'zorro', build: 'recio', skin: 3, hair: 'cortito', hairColor: 'gris', face: 'ninguna', dress: 'abrigo', dressColor: 'verde', crown: 'galera', acc: 'ninguno' }, gear: 'trabuco', k: 0.88 },
   capitana: { look: { type: 'zorro', build: 'esbelto', skin: 0, hair: 'trenzas', hairColor: 'blanco', face: 'parche', dress: 'abrigo', dressColor: 'fucsia', crown: 'galera', acc: 'espada' }, k: 0.98 },
+  hondero: { look: { type: 'vaciado', build: 'esbelto', skin: 2, hair: 'cortito', hairColor: 'gris', face: 'ninguna', dress: 'cuero', dressColor: 'verde', crown: 'bandana', acc: 'ninguno' }, k: 0.8 },
   vaciado: { look: { type: 'vaciado', build: 'esbelto', skin: 0, hair: 'despeinado', hairColor: 'negro', face: 'cicatriz', dress: 'cuero', dressColor: 'negro', crown: 'ninguna', acc: 'ninguno' }, k: 0.88 },
 };
 
@@ -162,8 +194,13 @@ const BEASTS = {
   bicho: (o) => bug(!!o.broken),
   golem: () => golem(),
   orco: () => orc(),
+  // paso A2: variaciones de lo que ya hay y cubos
+  guardian: () => golem(),
+  larva: () => bug(true),
+  jabali: () => wolf({ base: '#6b4a34', d: '#3f2c20', l: '#a58a6a', eye: '#ff6a4a' }, { k: 1.12, mane: true }),
+  ...Object.fromEntries(Object.entries(BLOCKS).map(([k, spec]) => [k, () => blocky(spec)])),
 };
-const SCALE = { lobo: 1, lobo_viejo: 1, bicho: 0.95, golem: 0.9, orco: 0.92 };
+const SCALE = { lobo: 1, lobo_viejo: 1, bicho: 0.95, golem: 0.9, orco: 0.92, guardian: 0.82, larva: 0.55, jabali: 1 };
 const cache = new Map();
 
 /** Modelo de un enemigo (types de ENEMIES en combat-data.js, más los que vienen: vaciado, golem, orco). */
@@ -211,4 +248,5 @@ export function enemyModel(type, opts = {}) {
   return g;
 }
 
-export const ENEMY_MODEL_TYPES = ['lobo', 'lobo_viejo', 'bicho', 'grumete', 'tirador', 'capitana', 'bestia', 'vaciado', 'golem', 'orco'];
+export const ENEMY_MODEL_TYPES = ['lobo', 'lobo_viejo', 'bicho', 'grumete', 'tirador', 'capitana', 'bestia', 'vaciado', 'golem', 'orco',
+  'hondero', 'guardian', 'nido', 'larva', 'jabali', 'hongo', 'musgo', 'ascua_errante', 'sapo', 'cuervo'];

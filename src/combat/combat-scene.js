@@ -18,11 +18,13 @@ import { createPixelRenderer, addLights, setIsoCamera } from '../core/voxel.js';
 import { createAmbience } from '../core/ambience-fx.js';
 import { combatConditions, WEATHER } from '../core/ambience.js';
 import { actionFor } from '../core/keys.js';
+import { t } from './combat-text.js';
+import { setSetting } from '../core/settings.js';
 import { voxelModel } from '../city/models.js';
 import { avatarModel, randomLook, classLook } from '../avatar/avatar.js';
 import { heldGear } from '../core/gear.js';
 import * as C from './combat-rules.js';
-import { ENCOUNTERS, ENEMIES, ABILITIES, ITEMS, COMBAT, TUTORIAL_PARTY } from './combat-data.js';
+import { ENCOUNTERS, ENEMIES, ABILITIES, ITEMS, COMBAT, COMBOS, TUTORIAL_PARTY } from './combat-data.js';
 import { enemyModel } from './enemy-models.js';
 import { bossModel } from './boss-models.js';
 import { buildCombatUi } from './combat-ui.js';
@@ -60,7 +62,8 @@ const LIGHT_FLOOR = { hemi: 0.95, sun: 0.7 };
 // Legibilidad del grupo en el tablero: cada clase con un color propio (aro en el piso, ropa, barra de vida y lista del
 // turno: class-accent.js) y un poco más grandes que antes (0.92 y 0.84), sin pasarse de la casilla.
 const UNIT_SCALE = { lider: 1.08, grupo: 1.0 };
-const TOP = { llano: 2, salida: 2, pasarela: 2, roca: 2, arbol: 2, agua: 1, alto: 6, vacio: 0 };
+const TOP = { llano: 2, salida: 2, pasarela: 2, roca: 2, arbol: 2, agua: 1, alto: 6, vacio: 0, mata: 2, corr_n: 1, corr_e: 1, corr_s: 1, corr_o: 1 };
+const FLOW = { corr_n: [0, -1], corr_e: [1, 0], corr_s: [0, 1], corr_o: [-1, 0] };
 const topOf = (t) => (TOP[t] ?? 2) / 8;
 
 function drawTile(m, reg, t, variant) {
@@ -70,6 +73,16 @@ function drawTile(m, reg, t, variant) {
   if (t === 'vacio') {   // la pasarela cortada: astillas en los bordes
     for (const x of [0, 7]) for (let z = 1; z < 7; z += 2) v.set(x, 0, z, R.dirt_d);
     v.set(1, 0, 2, R.plank?.[1] || R.dirt); v.set(6, 0, 5, R.plank?.[1] || R.dirt);
+    m.height = 1; return;
+  }
+  if (FLOW[t]) {   // corriente: agua con una flecha de espuma hacia donde arrastra
+    const [fx, fz] = FLOW[t];
+    for (let x = 0; x < 8; x++) for (let z = 0; z < 8; z++) v.set(x, 0, z, R.water[(x * 5 + z * 3 + variant) % 7 === 0 ? 1 : 0]);
+    const foam = '#b9d9e6';
+    for (let k = 1; k <= 6; k++) v.set(fx ? k : 3, 0, fx ? 3 : k, foam), v.set(fx ? k : 4, 0, fx ? 4 : k, foam);
+    const tip = fx > 0 || fz > 0 ? 6 : 1, back = fx > 0 || fz > 0 ? 5 : 2;
+    for (const s of [2, 5]) v.set(fx ? back : s, 0, fx ? s : back, foam);
+    for (const s of [1, 6]) v.set(fx ? (back + (tip > back ? -1 : 1)) : s, 0, fx ? s : (back + (tip > back ? -1 : 1)), foam);
     m.height = 1; return;
   }
   if (t === 'agua') {
@@ -97,6 +110,13 @@ function drawTile(m, reg, t, variant) {
   if (t === 'salida') {   // camino de piedras y dos faroles que marcan por dónde se sale
     for (const [x, z] of [[3, 1], [4, 2], [3, 3], [4, 4], [3, 5], [4, 6]]) v.set(x, 1, z, '#8f8676');
     for (const x of [0, 7]) { v.box(x, 2, 0, 1, 4, 1, '#3a2a1e'); m.light.set(x, 6, 0, '#ffc466'); }
+  }
+  if (t === 'mata') {   // matorral: cobertura (arde)
+    for (let x = 1; x < 7; x++) for (let z = 1; z < 7; z++) {
+      const hh = 2 + ((x * 5 + z * 7 + variant) % 3);
+      if ((x + z * 3 + variant) % 5 === 0) continue;
+      for (let y = 2; y < 2 + hh; y++) v.set(x, y, z, (x + y + z) % 3 ? '#4d6a35' : '#6f8a45');
+    }
   }
   if (t === 'roca') {
     v.sphere(3.5, 3, 3.5, 3, 2.6, 2.8, (x, y, z) => R.rock[(x * 3 + y + z * 5) % 4 === 0 ? 1 : 0]);
@@ -168,13 +188,17 @@ function overlayTexture(kind, hc) {
       break;
     case 'flood': stripes('#6fa7cc', hc ? 0.95 : 0.6, 6); border('#9dcbe9', hc ? 3 : 1, 0.9); break;
     case 'incoming': fill('#e2564c', 0.18); border('#e2564c', 1); stripes('#e2564c', 0.35, 8); break;
+    // paso A2: fuego y vapor sobre la casilla (con cubos; las partículas vienen con el arte)
+    case 'fire': fill('#ff7a2a', hc ? 0.75 : 0.5); stripes('#ffd166', 0.9, 4); border('#ff4a1c', hc ? 3 : 2); break;
+    case 'steam': fill('#e8eef2', hc ? 0.8 : 0.55); stripes('#ffffff', 0.5, 6); border('#ffffff', 1, 0.8); break;
+    case 'healMark': fill('#58c26a', 0.3); border('#8be09a', 2); break;
     default: fill('#ffffff', 0.2);
   }
   const tex = new THREE.CanvasTexture(c);
   tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
-const LIFT = { flood: 0.02, incoming: 0.022, danger: 0.026, dangerHot: 0.027, range: 0.03, move: 0.032, target: 0.034, sel: 0.036, hover: 0.04 };
+const LIFT = { fire: 0.016, steam: 0.018, healMark: 0.024, flood: 0.02, incoming: 0.022, danger: 0.026, dangerHot: 0.027, range: 0.03, move: 0.032, target: 0.034, sel: 0.036, hover: 0.04 };
 
 // ---------------------------------------------------------------- escena
 export default function create(ctx) {
@@ -195,12 +219,34 @@ export default function create(ctx) {
   let region = 'bosque';
 
   const settings = () => store.state.settings || {};
-  const speed = () => Math.max(1, Math.min(3, Number(settings().combatSpeed) || 1)) * (ctx.ui?.reducedMotion?.() ? 3 : 1);
+  // Velocidad ×1, ×2 o ×3 (Ajustes → Juego, o el botón de la pelea) para todo lo que se anima, también el turno enemigo.
+  // Saltear (paso A2): con Espacio o Enter mientras se anima, lo que queda de esa tanda pasa de golpe.
+  let skipping = false;
+  const waits = new Set();
+  const speed = () => (skipping ? 60 : Math.max(1, Math.min(3, Number(settings().combatSpeed) || 1)) * (ctx.ui?.reducedMotion?.() ? 3 : 1));
   const hc = () => !!settings().hiContrast;
   const D = (ms) => ms / speed();
-  const wait = (ms) => new Promise(res => setTimeout(res, D(ms)));
+  const wait = (ms) => new Promise(res => {
+    if (skipping) return res();
+    const w = { res, id: setTimeout(() => { waits.delete(w); res(); }, D(ms)) };
+    waits.add(w);
+  });
+  function skipAnims() {
+    if (!busy || skipping) return false;
+    skipping = true;
+    for (const w of waits) { clearTimeout(w.id); w.res(); }
+    waits.clear();
+    for (const a of anims) a.dur = 0.001;
+    return true;
+  }
+  function cycleSpeed() {
+    const cur = Math.max(1, Math.min(3, Number(settings().combatSpeed) || 1));
+    setSetting({ combatSpeed: cur >= 3 ? 1 : cur + 1 });
+    dom.update(lastView, uiState());
+  }
   function tween(ms, fn) {
     // con tiempo real (no el dt del cuadro): si la máquina va lenta, la animación salta pero termina a tiempo
+    if (skipping) { fn(1); return Promise.resolve(); }
     return new Promise(res => { const a = { t0: performance.now(), t: 0, dur: Math.max(0.001, D(ms) / 1000), fn, done: res }; anims.add(a); fn(0); });
   }
 
@@ -465,7 +511,7 @@ export default function create(ctx) {
     placeTags();
   }
   function uiState() {
-    return { sel: sel.id, mode: sel.mode, ability: sel.ability, busy, hover, battle: b, hc: hc() };
+    return { sel: sel.id, mode: sel.mode, ability: sel.ability, busy, hover, battle: b, hc: hc(), speed: Math.max(1, Math.min(3, Number(settings().combatSpeed) || 1)) };
   }
   function drawOverlays() {
     overG.clear();
@@ -475,10 +521,14 @@ export default function create(ctx) {
     const hotIntent = hu && hu.side === 'enemy' ? (unitView(hu.id)?.intent?.tiles || []) : [];
     const hot = new Set(hotIntent.map(([x, y]) => x + ',' + y));
     for (const t of v.tiles) {
+      if (t.fire) overlay('fire', t.x, t.y);
+      if (t.steam) overlay('steam', t.x, t.y);
       if (t.incoming) overlay('incoming', t.x, t.y);
       if (t.floodNext) overlay('flood', t.x, t.y);
       if (t.danger > 0) overlay(hot.has(t.x + ',' + t.y) ? 'dangerHot' : 'danger', t.x, t.y);
     }
+    // a quién va a curar el musgo
+    for (const e of v.units) if (e.side === 'enemy' && e.intent?.heal) for (const [x, y] of e.intent.tiles) overlay('healMark', x, y);
     const u = C.unitById(b, sel.id);
     if (u && !busy && !b.ended) {
       overlay('sel', u.x, u.y);
@@ -638,7 +688,19 @@ export default function create(ctx) {
       case 'root': floatAt(e.id, 'Frenado', 'mark', 0.7); break;
       case 'cancel': floatAt(e.id, 'Sin golpe', 'act', 0.7); break;
       case 'stolen': floatAt(e.id, 'Robado', 'heal', 0.95); audio.sfx('coin'); break;
-      case 'explode': audio.sfx('crash'); floatTile(e.at[0], e.at[1], '¡Revienta!', 'dmg'); flashTiles([[e.at[0] - 1, e.at[1]], [e.at[0] + 1, e.at[1]], [e.at[0], e.at[1] - 1], [e.at[0], e.at[1] + 1]]); await wait(160); break;
+      case 'explode': audio.sfx('crash'); floatTile(e.at[0], e.at[1], '¡Revienta!', 'dmg'); flashTiles(e.tiles || [[e.at[0] - 1, e.at[1]], [e.at[0] + 1, e.at[1]], [e.at[0], e.at[1] - 1], [e.at[0], e.at[1] + 1]]); await wait(160); break;
+      // paso A2: carga, corriente, estados y reacciones
+      case 'charge': case 'drift': {
+        if (e.type === 'charge') audio.sfx('swoosh');
+        const a = standPos(e.from[0], e.from[1]), z = standPos(e.to[0], e.to[1]);
+        if (rec) { rec.moving = true; await tween(e.type === 'charge' ? 260 : 220, (t) => rec.obj.position.lerpVectors(a, z, t)); rec.moving = false; }
+        break;
+      }
+      case 'crash': audio.sfx('crash'); floatAt(e.id, t('combat.fx.crash'), 'mark'); await wait(200); break;
+      case 'status': if (e.on) floatAt(e.id, t('combat.status.' + e.status), e.status === 'burn' ? 'dmg env' : 'act'); break;
+      case 'fire': floatTile(e.tiles[0][0], e.tiles[0][1], t('combat.fx.fire'), 'dmg env'); await wait(120); break;
+      case 'steam': floatTile(e.tiles[0][0], e.tiles[0][1], t('combat.fx.steam'), 'act'); await wait(120); break;
+      case 'react': audio.sfx('combo', 1); floatTile(e.at[0], e.at[1], comboName(e.id), 'mark'); await wait(240); break;
       case 'nip': floatAt(e.id, 'Acoso', 'act', 0.6); break;
       case 'wall': syncProps(); audio.sfx('build'); break;
       case 'wallGone': syncProps(); break;
@@ -672,7 +734,7 @@ export default function create(ctx) {
       default: break;
     }
   }
-  const comboName = (id) => ({ marca: 'Marcar y pegar', empuje_trampa: 'A la trampa', empuje_choque: 'Contra la pared', fuego_amigo: 'Entre ellos', reventon: 'Reventón', desde_alto: 'Desde arriba', sin_coraza: 'Sin coraza' }[id] || id);
+  const comboName = (id) => COMBOS[id]?.react || ['estrellado', 'a_las_brasas'].includes(id) ? t('combat.combo.' + id) : ({ marca: 'Marcar y pegar', empuje_trampa: 'A la trampa', empuje_choque: 'Contra la pared', fuego_amigo: 'Entre ellos', reventon: 'Reventón', desde_alto: 'Desde arriba', sin_coraza: 'Sin coraza' }[id] || id);
   const flashMeshes = new Set();
   function flashTiles(list) {
     for (const [x, y] of list) {
@@ -692,7 +754,7 @@ export default function create(ctx) {
       await playOne(e);
       if (e.type !== 'intent' && e.type !== 'incoming' && e.type !== 'floodNext') await wait(50);
     }
-    busy = false; playing = null;
+    busy = false; playing = null; skipping = false;
     if (!alive) return;
     if (b.ended) { refresh(); opts.onSave?.(b); showResult(); return; }
     if (!C.unitById(b, sel.id) || !canAct(C.unitById(b, sel.id))) autoSelect();
@@ -905,8 +967,9 @@ export default function create(ctx) {
       return;
     }
     if (modal) { if (k === 'Enter' || (k === ' ' && modal.space)) { e.preventDefault(); modal.ok?.(); } return; }
-    if (busy) return;
+    if (busy) { if (k === ' ' || e.code === 'Space' || k === 'Enter') { e.preventDefault(); skipAnims(); } return; }
     if (k === ' ' || e.code === 'Space') { e.preventDefault(); endTurn(); return; }
+    if (k === '+' || k === '=') { e.preventDefault(); cycleSpeed(); return; }
     if (/^[1-9]$/.test(k)) {
       e.preventDefault();
       const list = dom.barIds();
@@ -966,6 +1029,8 @@ export default function create(ctx) {
       tools: typeof p.tools === 'string' ? toolsParam(p.tools) : p.tools || {},
       equip: Array.isArray(p.equip) ? p.equip : listParam(p.equip),
       roleLevel: p.roleLevel || {}, attempt: Math.max(1, Number(p.attempt) || 1),
+      marea: Math.max(1, Number(p.marea) || 1), fragments: Array.isArray(p.fragments) ? p.fragments : listParam(p.fragments),
+      gear: p.gear || null, power: p.power ?? null, itemPlus: p.itemPlus || null,
       // clases (paso 5b): la del líder viene de la partida si no la manda quien abre la pelea
       leader: p.leader || (() => { const L = store.state.classes?.leader; return L?.cls ? { cls: L.cls, sub: L.sub || null, picks: L.picks || [] } : null; })(),
       classLevel: p.classLevel || null, picks: p.picks || {},
@@ -975,6 +1040,7 @@ export default function create(ctx) {
     opts = p;
     b = p.battle && p.battle.v === 1 ? p.battle : newFromParams(p);
     region = ENCOUNTERS[b.enc]?.region || 'bosque';
+    if (!REG[region]) region = 'bosque';        // el Bosque del Arroyo (farmeo) usa el arte del bosque
     for (const rec of units.values()) unitsG.remove(rec.obj);
     units.clear(); overG.clear(); propsG.clear();
     const R = REG[region] || REG.bosque;
@@ -1005,12 +1071,14 @@ export default function create(ctx) {
       alive = true;
       const params = { ...(p || {}) };
       const qs = new URLSearchParams(location.search);
-      const map = { enc: 'encounter', seed: 'seed', party: 'party', level: 'level', element: 'element', tools: 'tools', equip: 'equip', attempt: 'attempt' };
+      const map = { enc: 'encounter', seed: 'seed', party: 'party', level: 'level', element: 'element', tools: 'tools', equip: 'equip', attempt: 'attempt', marea: 'marea', frag: 'fragments' };
       for (const [q, k] of Object.entries(map)) if (params[k] == null && qs.has(q)) params[k] = qs.get(q);
       root = container;
       dom = buildCombatUi(root, ctx, {
         onAbility: (id) => chooseAbility(id),
         onEnd: () => endTurn(),
+        onSpeed: () => cycleSpeed(),
+        onSkip: () => skipAnims(),
         onMenu: () => openEscMenu(),
         onSelect: (id) => { if (!busy && !modal) select(id); },
         onRotate: (d) => rotate(d),
@@ -1078,6 +1146,16 @@ export default function create(ctx) {
         ability(id) { chooseAbility(id); },
         endTurn(force = false) { return endTurn(force); },
         rules: C,
+        skip() { return skipAnims(); },
+        get skipping() { return skipping; },
+        cycleSpeed() { cycleSpeed(); },
+        /** Para el bot de tools/test-combat-farm-scene.mjs: una jugada entera (mover y actuar) con sus animaciones. */
+        async step(id, mx, my, ab, tx, ty) {
+          select(id);
+          if (mx != null) { const r1 = C.move(b, id, mx, my); if (r1.ok) await play(r1.events); }
+          if (ab && !b.ended) { const r2 = C.act(b, id, ab, tx, ty); if (r2.ok) await play(r2.events); }
+          return !!b;
+        },
         get guided() { return !!opts.guided; },
         get guide() { const el = root?.querySelector('.cb-guide'); return el && !el.classList.contains('gone') ? el.querySelector('p')?.textContent || '' : ''; },
         get expedition() { return !!opts.expedition; },

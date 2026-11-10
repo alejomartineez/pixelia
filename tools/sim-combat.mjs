@@ -190,7 +190,9 @@ export function botTurn(b, opt = {}, rnd = Math.random) {
     }
     if (!pick) break;
     const { u, plan } = pick;
-    if (plan.tile.x !== u.x || plan.tile.y !== u.y) R.move(b, u.id, plan.tile.x, plan.tile.y);
+    const moved = plan.tile.x !== u.x || plan.tile.y !== u.y;
+    if (opt.onAct) opt.onAct({ id: u.id, move: moved ? [plan.tile.x, plan.tile.y] : null, ab: plan.ab || null, at: plan.ab ? [plan.t.x, plan.t.y] : null });
+    if (moved) R.move(b, u.id, plan.tile.x, plan.tile.y);
     if (plan.ab) R.act(b, u.id, plan.ab, plan.t.x, plan.t.y);
     done.add(u.id);
   }

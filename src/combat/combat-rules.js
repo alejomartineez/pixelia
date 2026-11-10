@@ -19,7 +19,7 @@
 // que marcaron el turno anterior (las casillas marcadas pegan a quien esté ahí, amigo o enemigo), sube el agua,
 // llegan refuerzos, y cada enemigo se mueve y marca su próximo golpe. Las marcas son relativas a quien ataca: si lo
 // empujan, su golpe se corre con él.
-import { COMBAT, TILES, MAP_CHARS, ABILITIES, ITEMS, UNITS, ENEMIES, CHALLENGES, ENCOUNTERS } from './combat-data.js';
+import { COMBAT, TILES, MAP_CHARS, ABILITIES, ITEMS, UNITS, ENEMIES, CHALLENGES, ENCOUNTERS, FRAGMENTS, COMBOS, FARM } from './combat-data.js';
 import { memberKit, leaderKit, toClass } from './classes.js';
 import { recPower, foeScale } from '../core/power.js';
 
@@ -84,19 +84,35 @@ function climbCost(b) {
 }
 function addCombo(b, id, ev) {
   b.stats.combos.push(id);
+  if (COMBOS[id]?.react) b.stats.reacts = (b.stats.reacts || 0) + 1;
   ev.push({ type: 'combo', id });
 }
+/** Una pelea guardada antes del paso A2 no trae fuego ni vapor: se completan al tocarla. */
+function ensure(b) {
+  if (!b.fire) b.fire = new Array(b.w * b.h).fill(0);
+  if (!b.steam) b.steam = new Array(b.w * b.h).fill(0);
+  return b;
+}
+const waterAt = (b, x, y) => inB(b, x, y) && (!!tileDef(b, x, y).water || b.flood[I(b, x, y)] > 0);
+/** Mojado: por un golpe de Marea o por estar parado en el agua. */
+const isWet = (b, u) => (u.wet || 0) > 0 || waterAt(b, u.x, u.y);
+const fireAt = (b, x, y) => !!b.fire && inB(b, x, y) && b.fire[I(b, x, y)] > 0;
+const steamAt = (b, x, y) => !!b.steam && inB(b, x, y) && b.steam[I(b, x, y)] > 0;
+const fireproof = (u) => u.side === 'enemy' && !!ENEMIES[u.type].fireproof;
 
 // ---------- mapa ----------
 function buildMap(enc, seed) {
   const r = localRng(hashSeed(enc.id, seed));
   const mirror = !enc.noMirrorJitter && r() < 0.5;
-  const rows = enc.map.map(s => (mirror ? [...s].reverse().join('') : s));
-  const w = COMBAT.w, h = COMBAT.h;
-  const out = { tiles: [], lead: null, allies: [], foes: [], waves: [], captive: null, exits: [], bridge: [] };
+  const flip = { '<': '>', '>': '<' };   // la corriente se espeja con el mapa
+  const rows = enc.map.map(s => (mirror ? [...s].reverse().map(ch => flip[ch] || ch).join('') : s));
+  // el tamaño sale del mapa: 6×6 los comunes del farmeo (paso A2), 8×8 la historia y los jefes
+  const w = rows[0].length, h = rows.length;
+  const out = { w, h, tiles: [], lead: null, allies: [], foes: [], waves: [], captive: null, exits: [], bridge: [], fires: [] };
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const ch = rows[y][x];
     let t = 'llano';
+    if (ch === 'F') out.fires.push([x, y]);
     if (ch === 'L') out.lead = [x, y];
     else if (ch === 'a') out.allies.push([x, y]);
     else if (ch === 'e') out.foes.push([x, y]);
@@ -109,10 +125,10 @@ function buildMap(enc, seed) {
   }
   // Variación por semilla: 0 a 2 obstáculos más, sin cortar caminos ni tapar lugares de salida
   if (!enc.noMirrorJitter) {
-    const special = [out.lead, ...out.allies, ...out.foes, ...out.waves, ...(out.captive ? [out.captive] : []), ...out.exits];
+    const special = [out.lead, ...out.allies, ...out.foes, ...out.waves, ...(out.captive ? [out.captive] : []), ...out.exits, ...out.fires];
     const near = (x, y) => special.some(([sx, sy]) => man(x, y, sx, sy) <= 1);
-    const n = Math.floor(r() * 3);
-    const obst = enc.region === 'bosque' || enc.region === 'banado' ? 'arbol' : 'roca';
+    const n = enc.farm ? Math.floor(r() * 2) : Math.floor(r() * 3);
+    const obst = enc.region === 'bosque' || enc.region === 'banado' || enc.region === 'arroyo' ? 'arbol' : 'roca';
     for (let k = 0, tries = 0; k < n && tries < 30; tries++) {
       const x = Math.floor(r() * w), y = Math.floor(r() * h);
       const i = y * w + x;
@@ -125,7 +141,7 @@ function buildMap(enc, seed) {
   return out;
 }
 function connected(m, points) {
-  const w = COMBAT.w, h = COMBAT.h;
+  const w = m.w, h = m.h;
   const seen = new Set([m.lead[1] * w + m.lead[0]]);
   const q = [m.lead];
   while (q.length) {
@@ -146,7 +162,9 @@ function makeUnit(b, side, type, x, y, extra = {}) {
   // enc.foeHp multiplica la vida de todos y enc.bossHp la del jefe (encima de foeHp)
   const enc = ENCOUNTERS[b.enc] || {};
   // la Fuerza (paso 2a): b.foe escala la vida y el ataque de los enemigos cuando el grupo pasa la recomendada
-  const hp = side === 'enemy' ? Math.round(d.hp * (enc.foeHp || 1) * (d.boss ? enc.bossHp || 1 : 1) * (b.foe?.hp || 1)) : d.hp;
+  // paso A2: en el farmeo los enemigos de siempre traen menos vida (farmHp) y la Marea (I a III) los endurece
+  const base = enc.farm && d.farmHp ? d.farmHp : d.hp;
+  const hp = side === 'enemy' ? Math.max(1, Math.round(base * (enc.foeHp || 1) * (d.boss ? enc.bossHp || 1 : 1) * (b.foe?.hp || 1) * (COMBAT.marea[b.marea || 1]?.hp || 1))) : d.hp;
   const u = {
     id: 'u' + b.nextId++, side, type, x, y, hp, maxHp: hp, mv: d.mv, atk: (d.atk || 0) + (side === 'enemy' && d.atk ? b.foe?.atk || 0 : 0), armor: d.armor || 0,
     abilities: (d.abilities || []).slice(), cd: {}, moved: false, acted: false, alive: true, safe: false,
@@ -157,18 +175,22 @@ function makeUnit(b, side, type, x, y, extra = {}) {
 }
 
 export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], level = 1, element = null, elements = null, leader = null,
-  classLevel = null, picks = {}, roleLevel = null, tools = {}, equip = [], attempt = 1, gear = null, power = null, itemPlus = null, foeExtra = 0 } = {}) {
+  classLevel = null, picks = {}, roleLevel = null, tools = {}, equip = [], attempt = 1, gear = null, power = null, itemPlus = null, foeExtra = 0,
+  marea = 1, fragments = [] } = {}) {
   const enc = ENCOUNTERS[encounter];
   if (!enc) throw new Error('encuentro desconocido: ' + encounter);
   const map = buildMap(enc, seed >>> 0);
+  const N = map.w * map.h;
   const b = {
     v: 1, enc: enc.id, kind: enc.kind, seed: seed >>> 0, rs: (seed ^ 0x2545f491) | 0,
-    w: COMBAT.w, h: COMBAT.h, tiles: map.tiles,
-    flood: new Array(COMBAT.w * COMBAT.h).fill(0), floodNext: [], walls: [], traps: [], cover: {},
+    w: map.w, h: map.h, tiles: map.tiles,
+    marea: Math.max(1, Math.min(COMBAT.marea.length - 1, marea | 0 || 1)),
+    fire: new Array(N).fill(0), steam: new Array(N).fill(0),
+    flood: new Array(N).fill(0), floodNext: [], walls: [], traps: [], cover: {},
     bridge: enc.bridge && map.bridge.length ? { hp: enc.bridge.hp, max: enc.bridge.hp, cut: false, tiles: map.bridge, count: 0 } : null,
     wavePoints: map.waves, exits: map.exits, incoming: [],
     units: [], nextId: 1, turn: 1, phase: 'player', ended: false, outcome: null, reason: null,
-    maxTurns: enc.maxTurns || COMBAT.maxTurns[enc.kind] || 14,
+    maxTurns: enc.maxTurns || (enc.farm ? COMBAT.maxTurns.farm : COMBAT.maxTurns[enc.kind]) || 14,
     objective: { ...enc.objective },
     tools: { catalejo: 0, martillo: 0, cuerda: 0, botiquin: 0, farol: 0, ...tools }, ropeItem: false,
     items: {}, level, element, attempt, intentPlus: 0, lootWin: 0,
@@ -185,7 +207,10 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
   const els = elements || (element ? [element] : []);
   const lk = leaderKit({ cls: leader?.cls || null, sub: leader?.sub || null, picks: leader?.picks || [], level, elements: els });
   b.leader = { cls: lk.cls, sub: lk.sub, classLevel: lk.classLevel };
-  applyGear(b, applyKit(b, makeUnit(b, 'ally', 'lider', map.lead[0], map.lead[1]), lk, revHp), gear?.lider);
+  const L0 = applyGear(b, applyKit(b, makeUnit(b, 'ally', 'lider', map.lead[0], map.lead[1]), lk, revHp), gear?.lider);
+  // fragmentos de veta (paso A2): una habilidad prestada de Marea, Brasa o Céfiro por esta pelea
+  for (const el of fragments || []) if (FRAGMENTS[el] && !L0.abilities.includes(FRAGMENTS[el])) L0.abilities.push(FRAGMENTS[el]);
+  for (const [x, y] of map.fires) b.fire[I(b, x, y)] = 99;
   // nivel de clase de cada integrante; un roleLevel viejo (1..5, nivel del edificio) vale 2 × nivel − 1
   const cl = { ...Object.fromEntries(Object.entries(roleLevel || {}).map(([k, v]) => [toClass(k), 2 * Math.max(1, v | 0) - 1])), ...(classLevel || {}) };
   party.map(toClass).slice(0, 3).forEach((cls, i) => {
@@ -198,11 +223,13 @@ export function newBattle({ encounter = 'bosque_claro', seed = 1, party = [], le
 
   // enemigos
   const r = localRng(hashSeed(enc.id, seed, 'foes'));
-  enc.enemies.forEach((type, i) => {
+  // Marea III: se suma uno más (enc.extra; si no hay, repite el primero)
+  const extra = Array.from({ length: COMBAT.marea[b.marea].extra }, (_, k) => (enc.extra || enc.enemies)[k % (enc.extra || enc.enemies).length]);
+  [...enc.enemies, ...extra].forEach((type, i) => {
     let p = map.foes[i];
     for (let tries = 0; !p && tries < 50; tries++) {
       const x = Math.floor(r() * b.w), y = Math.floor(r() * 3);
-      if (!blocked(b, x, y) && !unitAt(b, x, y)) p = [x, y];
+      if (!blocked(b, x, y) && !unitAt(b, x, y) && !waterAt(b, x, y)) p = [x, y];
     }
     if (!p) return;
     const u = makeUnit(b, 'enemy', type, p[0], p[1]);
@@ -254,10 +281,11 @@ function enterCost(b, u, x, y) {
   const o = unitAt(b, x, y);
   if (o && o.side !== u.side) return Infinity;
   const t = tileDef(b, x, y);
+  if (u.side === 'enemy' && ENEMIES[u.type].flies) return 1;          // vuela: ni el agua ni lo alto lo frenan
   const swims = u.side === 'enemy' && ENEMIES[u.type].swims;
   let c;
   if (t.high) c = swims ? Infinity : (u.side === 'ally' ? climbCost(b) : COMBAT.climb[0]);
-  else if (t.id === 'agua') c = swims ? 1 : COMBAT.waterCost;
+  else if (t.water) c = swims ? 1 : COMBAT.waterCost;
   else c = t.cost || 1;
   if (b.flood[I(b, x, y)] > 0 && !swims) c += COMBAT.floodExtra;
   return c;
@@ -358,9 +386,14 @@ function hurt(b, t, amount, src, ev) {
   if (src.high) dmg += COMBAT.highDmg;
   if (t.armor && !src.pierce) dmg -= t.armor;
   if (t.side === 'ally' && src.side === 'enemy' && !src.nip) dmg -= guardFor(b, t) + (b.cover[t.id] || 0) + protectorFor(b, t);
+  // paso A2: el matorral tapa de los tiros; el guardián cubre a los enemigos que tiene pegados; Marea apaga a los de Brasa
+  if (src.ranged && tileDef(b, t.x, t.y).cover) dmg -= COMBAT.coverDmg;
+  if (t.side === 'enemy' && src.side === 'ally' && !src.react && wardedBy(b, t)) dmg -= COMBAT.wardDmg;
+  if (src.element === 'marea' && t.side === 'enemy' && ENEMIES[t.type].element === 'brasa') dmg += 2;
   dmg = Math.max(1, dmg);
   const dealt = Math.min(dmg, t.hp);
   t.hp -= dealt;
+  if (src.react) b.stats.reactDmg = (b.stats.reactDmg || 0) + (t.side === 'enemy' ? dealt : 0);
   if (t.side === 'ally') t.hurt = true;
   if (src.by && t.side === 'enemy') b.stats.dmg[src.by] = (b.stats.dmg[src.by] || 0) + dealt;
   ev.push({ type: 'dmg', id: t.id, amount: dealt, hp: t.hp, src: src.unit?.id || src.side });
@@ -373,15 +406,149 @@ function kill(b, u, src, ev) {
   if (u.side === 'ally' && !u.captive) b.stats.downs++;
   if (u.side === 'enemy' && src.by) b.stats.kills[src.by] = (b.stats.kills[src.by] || 0) + 1;
   if (u.side === 'enemy' && (src.loot || flag(src.unit, 'lootKill'))) { b.stats.stolen++; ev.push({ type: 'stolen', id: u.id }); }
+  // quien invocaba ya no trae a nadie
+  if (u.side === 'enemy' && b.incoming.some(s => s.by === u.id)) b.incoming = b.incoming.filter(s => s.by !== u.id);
   if (u.side === 'enemy' && ENEMIES[u.type].explode) {
-    ev.push({ type: 'explode', id: u.id, at: [u.x, u.y] });
-    for (const [dx, dy] of DIRS) {
-      const n = unitAt(b, u.x + dx, u.y + dy);
+    const d = ENEMIES[u.type];
+    const ring = d.explodeRing8 ? RING8 : DIRS;
+    ev.push({ type: 'explode', id: u.id, at: [u.x, u.y], tiles: ring.map(([dx, dy]) => [u.x + dx, u.y + dy]).filter(([x, y]) => inB(b, x, y)) });
+    for (const [dx, dy] of ring) {
+      const n = inB(b, u.x + dx, u.y + dy) ? unitAt(b, u.x + dx, u.y + dy) : null;
       if (!n) continue;
       if (n.side === 'enemy') addCombo(b, 'reventon', ev);
-      hurt(b, n, COMBAT.explodeDmg, { side: 'env', by: n.side === 'enemy' ? src.by : null }, ev);
+      hurt(b, n, d.explodeDmg || COMBAT.explodeDmg, { side: 'env', by: n.side === 'enemy' ? src.by : null }, ev);
     }
   }
+}
+/** ¿Lo cubre un guardián de corteza? (otro enemigo con ward, pegado a él) */
+function wardedBy(b, t) {
+  if (ENEMIES[t.type].ward) return false;
+  return foes(b).some(g => g !== t && ENEMIES[g.type].ward && man(g.x, g.y, t.x, t.y) === 1);
+}
+
+// ---------- elementos y reacciones (paso A2; PLAN-TRAVESIA "Los elementos", recortado) ----------
+// Estados: mojado (u.wet o parado en agua), quemado (u.burn), enredado (u.root); casillas: fuego (b.fire) y vapor
+// (b.steam). Reacciones: vapor (Marea + Brasa), descarga (Céfiro + mojado, en cadena), incendio (Brasa + raíz, matorral
+// o enredado; se corre), fuego que salta (Céfiro + fuego), brote (Raíz + mojado) y despeje (Céfiro + vapor).
+// src: el mismo de hurt(); los combos solo se anotan si la provoca el grupo.
+function react(b, id, x, y, src, ev) {
+  ev.push({ type: 'react', id, at: [x, y] });
+  if (src.side === 'ally') addCombo(b, id, ev);
+}
+function setStatus(u, k, n, ev) {
+  u[k] = Math.max(u[k] || 0, n);
+  ev.push({ type: 'status', id: u.id, status: k, on: true });
+}
+function steamOn(b, x, y, ev) {
+  b.steam = b.steam.slice(); b.steam[I(b, x, y)] = COMBAT.steamTurns;
+  ev.push({ type: 'steam', tiles: [[x, y]] });
+}
+function fireOff(b, x, y) { if (b.fire[I(b, x, y)] < 90) { b.fire = b.fire.slice(); b.fire[I(b, x, y)] = 0; } }
+/** Prende una casilla. El matorral y las paredes de raíz arden y pasan el fuego a lo que tengan pegado. */
+function ignite(b, x, y, src, ev, depth = 0) {
+  if (!inB(b, x, y) || tileDef(b, x, y).block || waterAt(b, x, y)) return false;
+  const i = I(b, x, y);
+  const w = wallAt(b, x, y);
+  const fuel = (w && w.root) || tileDef(b, x, y).burns;
+  if (w && !w.root) return false;
+  if (w) { b.walls = b.walls.filter(k => k !== w); ev.push({ type: 'wallGone', tiles: [[x, y]] }); }
+  if (tileDef(b, x, y).burns) setTile(b, x, y, 'llano');
+  if (b.fire[i] < 90) { b.fire = b.fire.slice(); b.fire[i] = COMBAT.fireTurns; }
+  ev.push({ type: 'fire', tiles: [[x, y]] });
+  if (fuel && depth < 8) {
+    if (!depth) react(b, 'incendio', x, y, src, ev);
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (!inB(b, nx, ny) || fireAt(b, nx, ny)) continue;
+      if (wallAt(b, nx, ny)?.root || tileDef(b, nx, ny).burns) ignite(b, nx, ny, src, ev, depth + 1);
+    }
+  }
+  return true;
+}
+function burn(b, o, src, ev) {
+  if (!o || !onBoard(o) || fireproof(o)) return;
+  setStatus(o, 'burn', COMBAT.burnTurns, ev);
+}
+/** Aplica un elemento en una casilla (y a quien esté parado ahí). dir: hacia dónde iba el golpe. */
+function applyElement(b, el, x, y, src, dir, ev) {
+  if (!el || !inB(b, x, y)) return;
+  ensure(b);
+  const o = unitAt(b, x, y);
+  const rsrc = { ...src, react: true, high: false, pierce: true, unit: src.unit };
+  if (el === 'marea') {
+    if (fireAt(b, x, y)) { fireOff(b, x, y); steamOn(b, x, y, ev); react(b, 'vapor', x, y, src, ev); }
+    if (o && onBoard(o)) {
+      if (o.burn) { o.burn = 0; if (!steamAt(b, x, y)) { steamOn(b, x, y, ev); react(b, 'vapor', x, y, src, ev); } }
+      setStatus(o, 'wet', COMBAT.wetTurns, ev);
+    }
+  } else if (el === 'brasa') {
+    if (waterAt(b, x, y) || (o && onBoard(o) && isWet(b, o))) {
+      if (o) o.wet = 0;
+      steamOn(b, x, y, ev); react(b, 'vapor', x, y, src, ev);
+    } else if (o && onBoard(o)) {
+      if (o.root > 0 && !fireproof(o)) { react(b, 'incendio', x, y, src, ev); hurt(b, o, COMBAT.igniteDmg, rsrc, ev); }
+      burn(b, o, src, ev);
+    } else ignite(b, x, y, src, ev);
+  } else if (el === 'cefiro') {
+    if (steamAt(b, x, y)) {
+      b.steam = b.steam.slice();
+      for (const [dx, dy] of [[0, 0], ...DIRS]) if (inB(b, x + dx, y + dy)) b.steam[I(b, x + dx, y + dy)] = 0;
+      react(b, 'despeje', x, y, src, ev);
+    }
+    if (fireAt(b, x, y) || (o && o.burn > 0)) {
+      let any = false;
+      for (let k = 1; k <= 2; k++) {
+        const nx = x + dir[0] * k, ny = y + dir[1] * k;
+        if (!inB(b, nx, ny) || tileDef(b, nx, ny).block) break;
+        const n = unitAt(b, nx, ny);
+        if (n) { burn(b, n, src, ev); any = true; } else if (ignite(b, nx, ny, src, ev, 1)) any = true;
+      }
+      if (any) react(b, 'fuego_salta', x, y, src, ev);
+    }
+    if (o && onBoard(o) && isWet(b, o)) {
+      react(b, 'descarga', x, y, src, ev);
+      // en cadena: salta a los mojados de al lado, del bando que sean
+      const seen = new Set([o.id]), q = [o];
+      hurt(b, o, COMBAT.shockDmg, rsrc, ev);
+      while (q.length) {
+        const c = q.shift();
+        for (const [dx, dy] of DIRS) {
+          const n = inB(b, c.x + dx, c.y + dy) ? unitAt(b, c.x + dx, c.y + dy) : null;
+          if (!n || seen.has(n.id) || !isWet(b, n)) continue;
+          seen.add(n.id); q.push(n);
+          hurt(b, n, COMBAT.chainDmg, rsrc, ev);
+        }
+      }
+    }
+  } else if (el === 'raiz') {
+    if (o && onBoard(o) && o.root > 0 && isWet(b, o) && !(o.side === 'enemy' && ENEMIES[o.type].heavy)) { o.root++; react(b, 'brote', x, y, src, ev); }
+  }
+}
+/** Corre a alguien una casilla (chorro del sapo, carga del jabalí, corriente). Devuelve si se movió. */
+function shove(b, o, dir, src, ev, collide = COMBAT.collideDmg) {
+  if (!o || !onBoard(o) || (o.side === 'enemy' && ENEMIES[o.type].heavy)) return false;
+  const nx = o.x + dir[0], ny = o.y + dir[1];
+  const other = inB(b, nx, ny) ? unitAt(b, nx, ny) : null;
+  if (blocked(b, nx, ny) || other) {
+    ev.push({ type: 'push', id: o.id, from: [o.x, o.y], to: [o.x, o.y], blocked: true });
+    if (collide) hurt(b, o, collide, { ...src, nip: true }, ev);
+    return false;
+  }
+  ev.push({ type: 'push', id: o.id, from: [o.x, o.y], to: [nx, ny] });
+  o.x = nx; o.y = ny;
+  landOn(b, o, src, ev);
+  return true;
+}
+/** Lo que pasa al caer empujado en una casilla: trampa (los enemigos), fuego, salida (el rescatado). */
+function landOn(b, o, src, ev) {
+  const tr = trapAt(b, o.x, o.y);
+  if (tr && o.side === 'enemy') { if (src.side === 'ally') addCombo(b, 'empuje_trampa', ev); triggerTrap(b, o, tr, ev); }
+  if (onBoard(o) && fireAt(b, o.x, o.y) && !fireproof(o)) {
+    if (src.side === 'ally' && o.side === 'enemy') addCombo(b, 'a_las_brasas', ev);
+    hurt(b, o, COMBAT.fireDmg, { side: src.side === 'ally' ? 'ally' : 'env', by: src.by, react: true, pierce: true }, ev);
+    burn(b, o, src, ev);
+  }
+  if (onBoard(o) && o.captive && o.freed && b.tiles[I(b, o.x, o.y)] === 'salida') { o.safe = true; ev.push({ type: 'rescued', id: o.id }); }
 }
 function heal(b, t, amount, ev) {
   if (!t || !onBoard(t)) return 0;
@@ -425,12 +592,16 @@ function emptyPassable(b, x, y) {
 /** ¿Se puede apuntar ahí? (sin chequear recarga ni turno). */
 function canTarget(b, u, def, x, y, fx = u.x, fy = u.y) {
   if (!inB(b, x, y) || !inRange(b, def, fx, fy, x, y)) return false;
+  if (def.line && x !== fx && y !== fy) return false;                 // en línea recta
+  // el vapor tapa la vista: de lejos no se apunta hacia adentro ni desde adentro
+  if (def.ranged && man(fx, fy, x, y) > 1 && (steamAt(b, x, y) || steamAt(b, fx, fy))) return false;
   const o = unitAt(b, x, y);
   const other = o && o !== u ? o : null;
   switch (def.kind) {
     case 'attack':
       if (def.ranged && stuckAt(b, u, fx, fy)) return false;          // con un enemigo encima no se puede apuntar
       if (other && other.side === 'enemy') return true;
+      if (!other && def.ground && !tileDef(b, x, y).block && !(x === fx && y === fy)) return true;   // Ascua: al piso, al matorral o a una raíz
       if (!other && b.bridge && !b.bridge.cut && b.tiles[I(b, x, y)] === 'pasarela') return true;
       if (!other && def.breaks && b.tiles[I(b, x, y)] === 'roca') return true;
       return false;
@@ -474,7 +645,17 @@ export function act(b, unitId, abilityId, x, y) {
   if (!canTarget(b, u, def, x, y)) return { ok: false, why: 'No se puede ahí', events: [] };
   const ev = [{ type: 'act', id: u.id, ability: abilityId, at: [x, y] }];
   if (x !== u.x || y !== u.y) u.dir = Math.abs(x - u.x) >= Math.abs(y - u.y) ? [Math.sign(x - u.x), 0] : [0, Math.sign(y - u.y)];
+  const tgt = unitAt(b, x, y);
   resolve(b, u, def, x, y, ev);
+  // paso A2: la habilidad deja su elemento donde cayó (o donde quedó el blanco, si lo corrieron)
+  if (def.element && (def.kind === 'attack' || def.kind === 'push' || def.kind === 'root' || def.kind === 'disarm')) {
+    const at = tgt && tgt !== u && onBoard(tgt) ? [tgt.x, tgt.y] : [x, y];
+    const dir = Math.abs(x - u.x) >= Math.abs(y - u.y) ? [Math.sign(x - u.x), 0] : [0, Math.sign(y - u.y)];
+    const src = { side: 'ally', unit: u, by: u.type };
+    // si lo corrieron, el viento y el agua pasan igual por donde estaba (fuego y vapor de esa casilla)
+    if (!b.ended && (at[0] !== x || at[1] !== y) && (fireAt(b, x, y) || steamAt(b, x, y))) applyElement(b, def.element, x, y, src, dir, ev);
+    if (!b.ended && (!tgt || tgt === u || onBoard(tgt) || def.ground)) applyElement(b, def.element, at[0], at[1], src, dir, ev);
+  }
   u.acted = true; u.moved = true;
   if (av.item) b.items[abilityId.slice(5)]--;
   else if (def.cd) u.cd[abilityId] = def.cd + 1;
@@ -503,7 +684,7 @@ function resolve(b, u, def, x, y, ev) {
       if (o && o.side === 'enemy') {
         if (high) addCombo(b, 'desde_alto', ev);
         if (def.breaks && o.armor) { o.armor = 0; addCombo(b, 'sin_coraza', ev); }
-        hurt(b, o, dmg, { side: 'ally', unit: u, by, high, pierce: !!def.pierce, loot: !!def.lootKill }, ev);
+        hurt(b, o, dmg, { side: 'ally', unit: u, by, high, pierce: !!def.pierce, loot: !!def.lootKill, ranged: !!def.ranged, element: def.element }, ev);
         if (def.rootHit && onBoard(o)) { o.root = Math.max(o.root, def.rootHit); ev.push({ type: 'root', id: o.id }); }
         if (def.cleave) {
           // los dos costados del blanco, mirando desde quien pega
@@ -612,22 +793,23 @@ function resolve(b, u, def, x, y, ev) {
 }
 function push(b, u, o, def, ev) {
   const by = u.type;
-  hurt(b, o, def.dmg, { side: 'ally', unit: u, by }, ev);
-  if (!onBoard(o)) return;
+  hurt(b, o, def.dmg + elemPlus(u, def), { side: 'ally', unit: u, by, ranged: !!def.ranged, element: def.element }, ev);
   const dx = Math.sign(o.x - u.x), dy = Math.sign(o.y - u.y);
-  const nx = o.x + dx, ny = o.y + dy;
-  const other = inB(b, nx, ny) ? unitAt(b, nx, ny) : null;
-  if (blocked(b, nx, ny) || other) {
-    ev.push({ type: 'push', id: o.id, from: [o.x, o.y], to: [o.x, o.y], blocked: true });
-    addCombo(b, 'empuje_choque', ev);
-    hurt(b, o, COMBAT.collideDmg, { side: 'ally', by }, ev);
-    if (other) hurt(b, other, COMBAT.collideDmg - 1, { side: other.side === 'enemy' ? 'ally' : 'env', by: other.side === 'enemy' ? by : null }, ev);
-    return;
+  for (let k = 0; k < (def.pushN || 1); k++) {
+    if (!onBoard(o) || b.ended) return;
+    const nx = o.x + dx, ny = o.y + dy;
+    const other = inB(b, nx, ny) ? unitAt(b, nx, ny) : null;
+    if (blocked(b, nx, ny) || other) {
+      ev.push({ type: 'push', id: o.id, from: [o.x, o.y], to: [o.x, o.y], blocked: true });
+      addCombo(b, 'empuje_choque', ev);
+      hurt(b, o, COMBAT.collideDmg, { side: 'ally', by }, ev);
+      if (other) hurt(b, other, COMBAT.collideDmg - 1, { side: other.side === 'enemy' ? 'ally' : 'env', by: other.side === 'enemy' ? by : null }, ev);
+      return;
+    }
+    ev.push({ type: 'push', id: o.id, from: [o.x, o.y], to: [nx, ny] });
+    o.x = nx; o.y = ny;                    // su golpe marcado se corre con él (es relativo)
+    landOn(b, o, { side: 'ally', unit: u, by }, ev);
   }
-  ev.push({ type: 'push', id: o.id, from: [o.x, o.y], to: [nx, ny] });
-  o.x = nx; o.y = ny;                    // su golpe marcado se corre con él (es relativo)
-  const tr = trapAt(b, nx, ny);
-  if (tr) { addCombo(b, 'empuje_trampa', ev); triggerTrap(b, o, tr, ev); }
 }
 function hitBridge(b, dmg, by, ev) {
   const br = b.bridge;
@@ -653,11 +835,14 @@ function patternTiles(b, self, pattern, x, y, dir, len) {
     case 'arc': rel = [[dx, dy], [dx + px, dy + py], [dx - px, dy - py]]; break;
     case 'line2': rel = [[dx, dy], [2 * dx, 2 * dy]]; break;
     case 'line3': rel = [[dx, dy], [2 * dx, 2 * dy], [3 * dx, 3 * dy]]; break;
+    case 'front': rel = [[dx, dy]]; break;
+    case 'charge':        // la carga corre hasta lo primero que encuentra (y pega ahí)
     case 'shot': {
       const out = [];
       for (let k = 1; k <= len; k++) {
         const tx = x + dx * k, ty = y + dy * k;
         if (!inB(b, tx, ty) || tileDef(b, tx, ty).block) break;
+        if (pattern === 'shot' && steamAt(b, tx, ty)) break;           // el vapor para los tiros
         out.push([tx, ty]);
         if (wallAt(b, tx, ty)) break;
         const o = unitAt(b, tx, ty);
@@ -672,6 +857,7 @@ function patternTiles(b, self, pattern, x, y, dir, len) {
 /** Casillas que va a golpear un enemigo (desde donde está ahora). */
 export function intentTiles(b, e) {
   if (!e.intent || !onBoard(e)) return [];
+  if (e.intent.pattern === 'heal') { const t = unitById(b, e.intent.target); return t && onBoard(t) ? [[t.x, t.y]] : []; }
   return patternTiles(b, e, e.intent.pattern, e.x, e.y, e.intent.dir, e.intent.len);
 }
 function strike(b, e, ev) {
@@ -679,14 +865,59 @@ function strike(b, e, ev) {
   const tiles = intentTiles(b, e);
   e.intent = null;
   ev.push({ type: 'strike', id: e.id, attack: it.id, tiles });
+  const src = { side: 'enemy', unit: e, ranged: it.pattern === 'shot', element: it.element };
+  if (it.pattern === 'heal') {          // el musgo cura al que marcó, esté donde esté
+    const t = unitById(b, it.target);
+    if (t && onBoard(t)) heal(b, t, it.heal, ev);
+    return;
+  }
+  if (it.pattern === 'charge') return chargeStrike(b, e, it, tiles, src, ev);
   for (const [x, y] of tiles) {
-    if (wallAt(b, x, y)) continue;
+    if (wallAt(b, x, y)) { if (it.element === 'brasa' && wallAt(b, x, y).root) applyElement(b, 'brasa', x, y, src, it.dir, ev); continue; }
     const t = unitAt(b, x, y);
-    if (!t || t === e) continue;
-    if (t.side === 'enemy') addCombo(b, 'fuego_amigo', ev);
-    const high = isHigh(b, e) && !isHigh(b, t);
-    hurt(b, t, it.dmg, { side: 'enemy', unit: e, high }, ev);
+    if (t === e) continue;
+    if (t) {
+      if (t.side === 'enemy') addCombo(b, 'fuego_amigo', ev);
+      const high = isHigh(b, e) && !isHigh(b, t);
+      hurt(b, t, it.dmg, { ...src, high }, ev);
+      if (b.ended) return;
+    }
+    if (it.element && (t || it.element === 'brasa')) applyElement(b, it.element, x, y, src, it.dir, ev);
+    if (t && it.push && onBoard(t)) shove(b, t, it.dir, src, ev);
     if (b.ended) return;
+  }
+}
+/** La carga del jabalí: corre por la línea, pega y empuja a lo primero que encuentra; si no hay nadie, se estrella. */
+function chargeStrike(b, e, it, tiles, src, ev) {
+  let last = [e.x, e.y], hit = null, crashed = false;
+  for (const [x, y] of tiles) {
+    if (wallAt(b, x, y)) { crashed = true; break; }
+    const t = unitAt(b, x, y);
+    if (t) { hit = t; break; }
+    last = [x, y];
+    if (trapAt(b, x, y)) break;
+  }
+  if (!hit && !crashed) {
+    // ¿qué hay después del final de la línea? un árbol, una roca o el borde: se estrella
+    const nx = last[0] + it.dir[0], ny = last[1] + it.dir[1];
+    crashed = tiles.length < it.len || !inB(b, nx, ny) || blocked(b, nx, ny);
+  }
+  if (last[0] !== e.x || last[1] !== e.y) {
+    const from = [e.x, e.y];
+    e.x = last[0]; e.y = last[1]; e.dir = it.dir;
+    ev.push({ type: 'charge', id: e.id, from, to: last });
+    landOn(b, e, { side: 'env' }, ev);
+    if (!onBoard(e)) return;
+  }
+  if (hit) {
+    if (hit.side === 'enemy') addCombo(b, 'fuego_amigo', ev);
+    hurt(b, hit, it.dmg, src, ev);
+    if (!b.ended && onBoard(hit) && it.push) shove(b, hit, it.dir, src, ev);
+  } else if (crashed) {
+    addCombo(b, 'estrellado', ev);
+    ev.push({ type: 'crash', id: e.id });
+    hurt(b, e, COMBAT.crashDmg, { side: 'env' }, ev);
+    if (onBoard(e)) { e.root = Math.max(e.root, 1); ev.push({ type: 'root', id: e.id }); }
   }
 }
 
@@ -698,6 +929,7 @@ function chooseTarget(b, e) {
   const near = (a) => man(a.x, a.y, e.x, e.y);
   if (pref === 'captive') { const c = list.find(a => a.captive); if (c) return c; }
   if (pref === 'leader') { const L = list.find(a => a.type === 'lider'); if (L) return L; }
+  if (pref === 'wet') { const w = list.filter(a => isWet(b, a)).sort((a, c) => near(a) - near(c))[0]; if (w) return w; }
   if (pref === 'weak') return list.slice().sort((a, c) => (a.hp / a.maxHp) - (c.hp / c.maxHp) || near(a) - near(c))[0];
   return list.slice().sort((a, c) => near(a) - near(c) || a.hp - c.hp)[0];
 }
@@ -714,6 +946,8 @@ function hitValue(b, e, atk, tiles) {
     if (t.type === 'lider') v += pref === 'leader' ? 4 : 1.5;
     if (t.captive) v += pref === 'captive' ? 5 : 2;
     if (pref === 'weak') v += 2 * (1 - t.hp / t.maxHp);
+    if (pref === 'wet' && isWet(b, t)) v += 3;
+    if (atk.element === 'cefiro' && isWet(b, t)) v += COMBAT.shockDmg;
   }
   return v;
 }
@@ -737,7 +971,9 @@ function bestAttackFrom(b, e, x, y) {
 }
 function setIntent(b, e, best, ev) {
   // enc.foeDmg: golpe extra de los enemigos de ese encuentro (paso 7)
-  e.intent = { id: best.atk.id, name: best.atk.name, pattern: best.atk.pattern, dmg: best.atk.dmg + (ENCOUNTERS[b.enc]?.foeDmg || 0), dir: best.dir, len: best.atk.len || 0 };
+  e.intent = { id: best.atk.id, name: best.atk.name, pattern: best.atk.pattern, dmg: best.atk.dmg + (ENCOUNTERS[b.enc]?.foeDmg || 0) + (COMBAT.marea[b.marea || 1]?.dmg || 0), dir: best.dir, len: best.atk.len || 0 };
+  if (best.atk.element) e.intent.element = best.atk.element;
+  if (best.atk.push) e.intent.push = best.atk.push;
   e.dir = best.dir;
   ev.push({ type: 'intent', id: e.id, attack: best.atk.id, tiles: intentTiles(b, e) });
 }
@@ -756,7 +992,7 @@ function distField(b, e, tx, ty) {
       const nx = x + dx, ny = y + dy;
       if (blocked(b, nx, ny)) continue;
       const t = tileDef(b, nx, ny);
-      const c = t.high ? (swims ? INF : COMBAT.climb[0]) : t.id === 'agua' ? (swims ? 1 : COMBAT.waterCost) : 1;
+      const c = ENEMIES[e.type].flies ? 1 : t.high ? (swims ? INF : COMBAT.climb[0]) : t.water ? (swims ? 1 : COMBAT.waterCost) : 1;
       if (base + c < d[I(b, nx, ny)]) { d[I(b, nx, ny)] = base + c; q.push([nx, ny]); }
     }
   }
@@ -766,8 +1002,24 @@ function distField(b, e, tx, ty) {
 function planEnemy(b, e, ev, canMove = true) {
   if (!onBoard(e)) return;
   e.intent = null;
-  const swims = ENEMIES[e.type].swims;
-  const wet = (x, y) => !swims && (b.flood[I(b, x, y)] > 1 || b.floodNext.includes(I(b, x, y)));
+  ensure(b);
+  const def = ENEMIES[e.type], ai = def.ai || null;
+  const swims = def.swims;
+  // lo que no quiere pisar: el agua que sube y el fuego
+  const wet = (x, y) => (!swims && !def.flies && (b.flood[I(b, x, y)] > 1 || b.floodNext.includes(I(b, x, y)))) || (!def.fireproof && fireAt(b, x, y));
+  const al = allies(b).filter(a => !(a.captive && !a.freed));
+  const nearAlly = (x, y) => Math.min(99, ...al.map(a => man(a.x, a.y, x, y)));
+  // a quién cuida el guardián: el más frágil de los otros (el que cura, el nido, el que tira)
+  const ward = ai === 'guard' ? foes(b).filter(f => f !== e && !ENEMIES[f.type].ward).sort((a, c) => a.maxHp - c.maxHp || man(a.x, a.y, e.x, e.y) - man(c.x, c.y, e.x, e.y))[0] || null : null;
+  // lo que suma cada casilla según el arquetipo (se ve en cómo se mueve; el golpe sigue marcado como siempre)
+  const posBonus = (x, y) => {
+    const d = nearAlly(x, y);
+    if (ai === 'kite') return d <= 1 ? -3 : d === 2 ? 0.5 : 1;                  // tira y se aleja
+    if (ai === 'charge') return d >= 2 ? 1 : 0;                                // toma carrera
+    if (ai === 'guard' && ward) return man(x, y, ward.x, ward.y) === 1 ? 4 - d * 0.1 : -man(x, y, ward.x, ward.y) * 0.5;
+    if (ai === 'summon' || ai === 'heal') return Math.min(d, 4) * 0.6;         // se queda atrás
+    return 0;
+  };
   let dest = null, destBest = null;
   const reach = canMove && !e.root ? dijkstra(b, e, e.mv) : new Map([[I(b, e.x, e.y), { cost: 0, prev: -1 }]]);
   if (e.root) e.root--;
@@ -782,8 +1034,30 @@ function planEnemy(b, e, ev, canMove = true) {
   for (const c of free) {
     const best = bestAttackFrom(b, e, c.x, c.y);
     if (!best) continue;
-    const s = best.v - c.cost * 0.05 - (wet(c.x, c.y) ? 1.5 : 0) + rand(b) * 0.01;
+    const s = best.v - c.cost * 0.05 - (wet(c.x, c.y) ? 1.5 : 0) + rand(b) * 0.01 + (ai ? posBonus(c.x, c.y) : 0);
     if (s > bestScore) { bestScore = s; dest = c; destBest = best; }
+  }
+  // el musgo: si hay un enemigo lastimado a su alcance, lo cura en vez de pegar (y se ve a quién)
+  let healPlan = null;
+  if (ai === 'heal') {
+    const hurtOnes = foes(b).filter(f => f !== e && f.hp < f.maxHp).sort((a, c) => (c.maxHp - c.hp) - (a.maxHp - a.hp) || a.id.localeCompare(c.id));
+    const val = (c) => posBonus(c.x, c.y) - (wet(c.x, c.y) ? 1.5 : 0);
+    for (const t of hurtOnes) {
+      const spots = free.filter(c => man(c.x, c.y, t.x, t.y) <= def.heal.range);
+      if (!spots.length) continue;
+      healPlan = { t, spot: spots.sort((a, c) => val(c) - val(a) || a.cost - c.cost || a.i - c.i)[0] };
+      break;
+    }
+    if (healPlan) { dest = healPlan.spot; destBest = null; }
+  }
+  if (!dest && (ai === 'guard' || ai === 'summon' || ai === 'heal')) {
+    // sin golpe a tiro: el guardián se pega a quien cuida; el nido y el musgo se quedan atrás
+    let bs = -Infinity;
+    for (const c of free) {
+      const s = posBonus(c.x, c.y) - (wet(c.x, c.y) ? 1.5 : 0) - c.cost * 0.01 + rand(b) * 0.001;
+      if (s > bs) { bs = s; dest = c; }
+    }
+    if (ai === 'guard' && !ward) dest = null;       // quedó solo: va al frente como cualquiera
   }
   if (!dest) {
     // nadie a tiro: se acerca a su presa
@@ -813,9 +1087,13 @@ function planEnemy(b, e, ev, canMove = true) {
       triggerTrap(b, e, trap, ev);
       if (!onBoard(e)) return;
       destBest = bestAttackFrom(b, e, e.x, e.y);
-    } else if (!destBest) destBest = bestAttackFrom(b, e, e.x, e.y);
+      healPlan = null;
+    } else if (!destBest && !healPlan) destBest = bestAttackFrom(b, e, e.x, e.y);
   }
-  if (destBest) setIntent(b, e, destBest, ev);
+  if (healPlan && onBoard(healPlan.t)) {
+    e.intent = { id: 'curar', name: 'Curar', pattern: 'heal', dmg: 0, heal: def.heal.amount, target: healPlan.t.id, dir: e.dir, len: 0 };
+    ev.push({ type: 'intent', id: e.id, attack: 'curar', tiles: intentTiles(b, e), heal: true });
+  } else if (destBest) setIntent(b, e, destBest, ev);
   // acoso: al terminar de moverse muerde un poco al más débil que tenga al lado (no se marca: es la regla del bicho)
   const nip = ENEMIES[e.type].nip || 0;
   if (nip && onBoard(e)) {
@@ -868,6 +1146,18 @@ function planIncoming(b, ev, start = false) {
       b.incoming.push({ kind: kinds[b.bridge.count % kinds.length], x, y, from: 'bridge' });
     }
   }
+  // el nido saca una larva al lado cada tantos turnos (se ve un turno antes, como los refuerzos)
+  for (const e of foes(b)) {
+    const sm = ENEMIES[e.type].summon;
+    if (!sm || start || (next - (e.born || 1)) % sm.every !== 0) continue;
+    if (foes(b).filter(f => f.type === sm.kind).length >= sm.max) continue;
+    const spots = DIRS.map(([dx, dy]) => [e.x + dx, e.y + dy]).filter(([x, y]) => inB(b, x, y) && !blocked(b, x, y) && !unitAt(b, x, y) && !b.incoming.some(s => s.x === x && s.y === y));
+    if (!spots.length) continue;
+    const al = allies(b);
+    const near = ([x, y]) => Math.min(99, ...al.map(a => man(a.x, a.y, x, y)));
+    spots.sort((p, q) => near(p) - near(q));
+    b.incoming.push({ kind: sm.kind, x: spots[0][0], y: spots[0][1], from: 'summon', by: e.id });
+  }
   if (start) b.floodNext = []; else planFlood(b, ev);
   if (b.incoming.length) ev.push({ type: 'incoming', list: b.incoming.map(s => ({ ...s })) });
 }
@@ -885,7 +1175,8 @@ function spawn(b, s, ev) {
     }
   }
   if (!at) return;
-  const u = makeUnit(b, 'enemy', s.kind, at[0], at[1]);
+  if (s.from === 'summon' && !b.units.some(k => k.id === s.by && onBoard(k))) return;
+  const u = makeUnit(b, 'enemy', s.kind, at[0], at[1], { born: b.turn });
   if (s.from === 'bridge') b.bridge.count++;
   ev.push({ type: 'spawn', id: u.id, kind: s.kind, at, from: s.from });
 }
@@ -920,6 +1211,8 @@ export function enemyTurn(b) {
     hurt(b, u, COMBAT.floodDmg[floodLv], { side: u.side === 'ally' ? 'enemy' : 'env' }, ev);
   }
   if (checkEnd(b, ev)) return { ok: true, events: ev };
+  // 2b. (paso A2) el fuego quema, la corriente arrastra, y se van el vapor, lo mojado y lo quemado
+  if (elementTick(b, ev)) return { ok: true, events: ev };
   // 3. paredes
   for (const w of b.walls) w.turns--;
   const gone = b.walls.filter(w => w.turns <= 0);
@@ -934,7 +1227,9 @@ export function enemyTurn(b) {
     if (k !== e.phase) { e.phase = k; ev.push({ type: 'phase', id: e.id, phase: k, text: ENEMIES[e.type].phases[k].text }); }
   }
   // 6. se mueven y marcan
-  for (const e of foes(b)) { planEnemy(b, e, ev, true); if (checkEnd(b, ev)) return { ok: true, events: ev }; }
+  // (los guardianes al final: se acomodan al lado de quien cuidan, ya movido)
+  const order = foes(b); order.sort((a, c) => (ENEMIES[a.type].ai === 'guard') - (ENEMIES[c.type].ai === 'guard'));
+  for (const e of order) { planEnemy(b, e, ev, true); if (checkEnd(b, ev)) return { ok: true, events: ev }; }
   // 7. objetivo de aguante
   if (b.objective.type === 'survive' && b.turn >= b.objective.turns) {
     end(b, 'win', 'aguante', ev);
@@ -952,6 +1247,40 @@ export function enemyTurn(b) {
   b.phase = 'player';
   ev.push({ type: 'turn', turn: b.turn });
   return { ok: true, events: ev };
+}
+
+function elementTick(b, ev) {
+  ensure(b);
+  if (!b.fire.some(n => n > 0) && !b.steam.some(n => n > 0) && !b.units.some(u => onBoard(u) && (u.burn || u.wet)) && !b.tiles.some(t => TILES[t].flow)) return false;
+  for (const u of b.units.slice()) {
+    if (!onBoard(u)) continue;
+    const src = { side: u.side === 'ally' ? 'enemy' : 'env', nip: true, pierce: true };
+    if (fireAt(b, u.x, u.y) && !fireproof(u)) { hurt(b, u, COMBAT.fireDmg, src, ev); if (onBoard(u)) burn(b, u, src, ev); }
+    else if (u.burn > 0) {
+      if (isWet(b, u)) u.burn = 0;
+      else { hurt(b, u, COMBAT.burnDmg, src, ev); u.burn--; }
+      if (onBoard(u) && !u.burn) ev.push({ type: 'status', id: u.id, status: 'burn', on: false });
+    }
+    if (onBoard(u) && u.wet > 0 && !--u.wet) ev.push({ type: 'status', id: u.id, status: 'wet', on: false });
+  }
+  if (checkEnd(b, ev)) return true;
+  // la corriente
+  for (const u of b.units.slice()) {
+    if (!onBoard(u)) continue;
+    const flow = tileDef(b, u.x, u.y).flow;
+    if (!flow || (u.side === 'enemy' && (ENEMIES[u.type].flies || ENEMIES[u.type].heavy))) continue;
+    const nx = u.x + flow[0], ny = u.y + flow[1];
+    if (blocked(b, nx, ny) || unitAt(b, nx, ny)) continue;
+    ev.push({ type: 'drift', id: u.id, from: [u.x, u.y], to: [nx, ny] });
+    u.x = nx; u.y = ny;
+    landOn(b, u, { side: 'env' }, ev);
+  }
+  const out = [], clear = [];
+  b.fire = b.fire.map((n, i) => { if (n === 1) out.push([i % b.w, (i / b.w) | 0]); return n > 0 && n < 90 ? n - 1 : n; });
+  b.steam = b.steam.map((n, i) => { if (n === 1) clear.push([i % b.w, (i / b.w) | 0]); return n > 0 ? n - 1 : 0; });
+  if (out.length) ev.push({ type: 'fireOut', tiles: out });
+  if (clear.length) ev.push({ type: 'steamGone', tiles: clear });
+  return checkEnd(b, ev);
 }
 
 function end(b, outcome, reason, ev) {
@@ -1004,10 +1333,12 @@ export function dangerMap(b) {
   const bs = bossOf(b);
   const lv = bs && onBoard(bs) ? phaseIdx(bs) : 0;
   for (let i = 0; i < d.length; i++) if (b.flood[i] > 1 || b.floodNext.includes(i)) d[i] += COMBAT.floodDmg[lv];
+  if (b.fire) for (let i = 0; i < d.length; i++) if (b.fire[i] > 0) d[i] += COMBAT.fireDmg;
   return d;
 }
 
 export function view(b) {
+  ensure(b);
   const vis = visibleIntentIds(b);
   const danger = dangerMap(b);
   const tiles = [];
@@ -1017,13 +1348,14 @@ export function view(b) {
       x, y, t: b.tiles[i], high: b.tiles[i] === 'alto', flood: b.flood[i], floodNext: b.floodNext.includes(i),
       wall: w ? w.turns : 0, rootWall: !!w?.root, trap: !!trapAt(b, x, y), exit: b.tiles[i] === 'salida',
       bridge: b.tiles[i] === 'pasarela', danger: danger[i],
+      fire: b.fire[i], steam: b.steam[i], cover: !!TILES[b.tiles[i]].cover, water: !!TILES[b.tiles[i]].water, flow: TILES[b.tiles[i]].flow || null,
       incoming: b.incoming.find(s => s.x === x && s.y === y)?.kind || null,
     });
   }
   const units = b.units.filter(onBoard).map(u => {
     const d = u.side === 'ally' ? UNITS[u.type] : ENEMIES[u.type];
     let intent = null;
-    if (u.side === 'enemy' && u.intent) intent = vis.has(u.id) ? { name: u.intent.name, dmg: u.intent.dmg, tiles: intentTiles(b, u) } : { hidden: true };
+    if (u.side === 'enemy' && u.intent) intent = vis.has(u.id) ? { name: u.intent.name, dmg: u.intent.dmg, tiles: intentTiles(b, u), heal: u.intent.heal || 0, element: u.intent.element || null, pattern: u.intent.pattern } : { hidden: true };
     return {
       id: u.id, side: u.side, type: u.type, cls: u.cls || null, name: d.name, x: u.x, y: u.y, hp: u.hp, maxHp: u.maxHp, mv: u.mv, atk: u.atk,
       armor: u.armor, stuck: isStuck(b, u), moved: u.moved, acted: u.acted, root: u.root, marked: u.marked, high: isHigh(b, u),
@@ -1031,6 +1363,10 @@ export function view(b) {
       heavy: !!(u.side === 'enemy' && ENEMIES[u.type].heavy), explode: !!(u.side === 'enemy' && ENEMIES[u.type].explode),
       abilities: u.side === 'ally' ? abilitiesOf(b, u.id).map(a => ({ id: a.id, name: a.def.name, kind: a.def.kind, cd: a.cd, ready: a.ready, text: a.def.text, item: !!a.item })) : [],
       intent,
+      // paso A2: estados y lo que hace distinto a cada enemigo
+      wet: isWet(b, u), burn: u.burn || 0, ai: u.side === 'enemy' ? ENEMIES[u.type].ai || null : null,
+      warded: u.side === 'enemy' && wardedBy(b, u), cover: !!tileDef(b, u.x, u.y).cover,
+      element: u.side === 'enemy' ? ENEMIES[u.type].element || null : null,
     };
   });
   const enc = ENCOUNTERS[b.enc];
@@ -1040,7 +1376,7 @@ export function view(b) {
     : o.boss ? `Vencé a ${ENEMIES[bossOf(b)?.type]?.name.toLowerCase() || 'el jefe'}` : 'Vencé a todos';
   return {
     enc: b.enc, name: enc.name, text: enc.text, kind: b.kind, turn: b.turn, maxTurns: b.maxTurns, phase: b.phase,
-    ended: b.ended, outcome: b.outcome, reason: b.reason, w: b.w, h: b.h, tiles, units, leader: { cls: b.leader?.cls || null },
+    ended: b.ended, outcome: b.outcome, reason: b.reason, w: b.w, h: b.h, tiles, units, marea: b.marea || 1, farm: !!enc.farm, leader: { cls: b.leader?.cls || null },
     objective: { type: o.type, text: objText, turns: o.turns || 0 },
     challenges: (enc.challenges || []).map(c => ({ id: c.id, name: CHALLENGES[c.id].name, text: CHALLENGES[c.id].text(c), done: challengeDone(b, c) })),
     items: { ...b.items }, bridge: b.bridge ? { hp: b.bridge.hp, max: b.bridge.max, cut: b.bridge.cut } : null,
@@ -1054,6 +1390,7 @@ function challengeDone(b, c) {
     case 'sinBajas': return b.stats.downs === 0;
     case 'turnos': return b.turn <= c.n;
     case 'combo': return b.stats.combos.length >= c.n;
+    case 'reaccion': return (b.stats.reacts || 0) > 0;
     case 'pasarela': return !!b.bridge?.cut;
     case 'rescateLimpio': return !captiveOf(b)?.hurt;
     case 'liderIntacto': return !leaderOf(b)?.hurt;
@@ -1065,7 +1402,8 @@ export function result(b) {
   const win = b.outcome === 'win';
   const challenges = (enc.challenges || []).map(c => ({ id: c.id, name: CHALLENGES[c.id].name, done: win && challengeDone(b, c) }));
   const stars = win ? Math.min(3, 1 + challenges.filter(c => c.done).length) : 0;
-  const f = COMBAT.lootByStars[stars];
+  const M = COMBAT.marea[b.marea || 1];
+  const f = COMBAT.lootByStars[stars] * M.loot;
   const mats = {};
   if (win) {
     for (const [k, n] of Object.entries(enc.reward.mats || {})) mats[k] = Math.max(1, Math.round(n * f));
@@ -1073,12 +1411,12 @@ export function result(b) {
     const extra = b.stats.stolen + (b.lootWin || 0);
     if (keys.length) for (let k = 0; k < extra; k++) mats[keys[k % keys.length]] = (mats[keys[k % keys.length]] || 0) + 1;
   }
-  const xp = Math.round((enc.reward.xp || 0) * (win ? 1 : b.outcome === 'lose' ? 0.3 : b.outcome === 'retreat' ? 0.2 : 0));
+  const xp = Math.round((enc.reward.xp || 0) * M.xp * (win ? 1 : b.outcome === 'lose' ? 0.3 : b.outcome === 'retreat' ? 0.2 : 0));
   return {
     enc: b.enc, kind: b.kind, outcome: b.outcome, reason: b.reason, turns: b.turn, stars, challenges,
     loot: { mats }, xp, morale: b.outcome === 'lose' ? COMBAT.morale.lose : b.outcome === 'retreat' ? COMBAT.morale.retreat : 0,
     combos: [...new Set(b.stats.combos)], comboCount: b.stats.combos.length, downs: b.stats.downs,
-    dmg: { ...b.stats.dmg }, kills: { ...b.stats.kills },
+    dmg: { ...b.stats.dmg }, kills: { ...b.stats.kills }, marea: b.marea || 1, reacts: b.stats.reacts || 0, reactDmg: b.stats.reactDmg || 0,
     page: win ? enc.reward.page || null : null, flag: win ? enc.reward.flag || null : null, attempt: b.attempt,
   };
 }
@@ -1088,7 +1426,34 @@ export function canQuickResolve(encounter, wins = 0) {
   const enc = ENCOUNTERS[encounter];
   return !!enc && enc.kind === 'comun' && wins > 0;
 }
-export function quickResolve({ encounter, wins = 1 } = {}) {
+/**
+ * Resolución automática (paso A2): una pelea común ya ganada con 3 estrellas en esa Marea se resuelve sola, con el botín
+ * y la XP completos (los de 3 estrellas). best: las estrellas del mejor resultado en esa Marea.
+ */
+export function canAutoResolve(encounter, best = 0) {
+  const enc = ENCOUNTERS[encounter];
+  return !!enc && enc.kind === 'comun' && best >= 3;
+}
+/** → el mismo formato que result(), con auto: true y un resumen corto en summary: { mats, xp, stars }. */
+export function autoResolve({ encounter, best = 3, marea = 1, lootWin = 0 } = {}) {
+  if (!canAutoResolve(encounter, best)) return null;
+  const enc = ENCOUNTERS[encounter];
+  const M = COMBAT.marea[Math.max(1, Math.min(COMBAT.marea.length - 1, marea | 0 || 1))];
+  const mats = {};
+  for (const [k, n] of Object.entries(enc.reward.mats || {})) mats[k] = Math.max(1, Math.round(n * COMBAT.lootByStars[3] * M.loot));
+  const keys = Object.keys(mats);
+  for (let k = 0; k < lootWin && keys.length; k++) mats[keys[k % keys.length]]++;
+  const xp = Math.round((enc.reward.xp || 0) * M.xp);
+  return {
+    enc: enc.id, kind: enc.kind, outcome: 'win', reason: 'auto', quick: true, auto: true, turns: 0, stars: 3,
+    challenges: (enc.challenges || []).map(c => ({ id: c.id, name: CHALLENGES[c.id].name, done: true })),
+    loot: { mats }, xp, morale: 0, combos: [], comboCount: 0, downs: 0, dmg: {}, kills: {}, marea: M === COMBAT.marea[1] ? 1 : COMBAT.marea.indexOf(M),
+    reacts: 0, reactDmg: 0, page: null, flag: null, attempt: 1, summary: { name: enc.name, mats: { ...mats }, xp, stars: 3 },
+  };
+}
+/** Con stars: 3 (las mejores estrellas en esa pelea) es la resolución automática completa; si no, la rápida de siempre. */
+export function quickResolve({ encounter, wins = 1, stars = 0, marea = 1, lootWin = 0 } = {}) {
+  if (stars >= 3 && canAutoResolve(encounter, stars)) return autoResolve({ encounter, best: stars, marea, lootWin });
   if (!canQuickResolve(encounter, wins)) return null;
   const enc = ENCOUNTERS[encounter];
   const mats = {};
@@ -1101,6 +1466,19 @@ export function quickResolve({ encounter, wins = 1 } = {}) {
   };
 }
 
+/**
+ * Elige un encuentro del farmeo de una isla (paso A2). Misma semilla = mismo encuentro. avoid: ids que ya salieron en
+ * esta salida (no repite hasta agotar la lista).
+ */
+export function pickEncounter({ island = 'arroyo', seed = 1, elite = false, avoid = [] } = {}) {
+  const f = FARM[island];
+  if (!f) return null;
+  const all = elite ? f.elites : f.comunes;
+  const list = all.filter(id => !avoid.includes(id));
+  const from = list.length ? list : all;
+  return from[Math.floor(localRng(hashSeed(island, seed, elite ? 'elite' : 'comun'))() * from.length)];
+}
+
 // ---------- copia y previsualización ----------
 /** Copia rápida (las casillas se comparten y se copian al escribir; las intenciones nunca se mutan). */
 export function cloneBattle(b) {
@@ -1108,6 +1486,7 @@ export function cloneBattle(b) {
     ...b,
     units: b.units.map(u => ({ ...u, cd: { ...u.cd } })),
     walls: b.walls.map(w => ({ ...w })), traps: b.traps.map(t => ({ ...t })),
+    fire: b.fire ? b.fire.slice() : undefined, steam: b.steam ? b.steam.slice() : undefined,
     flood: b.flood.slice(), floodNext: b.floodNext.slice(), incoming: b.incoming.map(s => ({ ...s })),
     cover: { ...b.cover }, items: { ...b.items }, objective: { ...b.objective }, tools: { ...b.tools },
     bridge: b.bridge ? { ...b.bridge } : null,

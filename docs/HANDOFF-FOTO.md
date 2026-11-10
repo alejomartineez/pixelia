@@ -155,6 +155,32 @@ las cinemáticas. Archivos: `src/core/voxel.js`, `src/core/voxel-light.js` (nuev
   Unreal 5: falta una pasada más (franjas, cielo, y mirar el TAA en movimiento con la GPU, que acá solo se vio quieto).
 - **Sigue**: resolver (1); subida parcial del volumen; integrar a la ciudad y a las cinemáticas (hoy solo el diorama).
 
+### A2: combate apto para farmear (rama `claude/a2-combate-5384e9`, sin bump ni push; falta mergear)
+Diseño y números en DESIGN-COMBAT.md §19. Solo toca `src/combat/` y `tools/`.
+- **Medido**: una pelea común dura **66 a 69 s a ×1** y 53 s a ×2 en la escena real (bot + 2,5 s por jugada;
+  `node test-combat-farm-scene.mjs`), y **3,6 / 4,3 / 4,4 turnos** en Marea I / II / III (`npm run sim:farm`).
+- Tablero 6×6 para el farmeo (el tamaño sale del mapa; la historia y los jefes siguen en 8×8), 18 encuentros del Bosque
+  del Arroyo (16 comunes y 2 élites), Marea I a III, 10 enemigos nuevos con 5 arquetipos de IA, matorral, fuego,
+  corriente, 6 reacciones de elementos, fragmentos de veta, velocidad ×1/×2/×3 con botón, salteo con Espacio y
+  resolución automática con botín y XP completos.
+- Pruebas: `test-combat-farm` 65, `test-combat-farm-scene` 19, `test-combat` 100, `test-combat-scene` 29,
+  `test-combat-exp` 75, `test-act1` 84, `test-i18n` 116. Las dos nuevas están en `npm test`.
+- **Interfaz para A1 (`src/voyage/`) y A3**; lo de antes no cambió de firma:
+  - `FARM.arroyo = { comunes, elites, jefe }` y `MAREA_MAX` (combat-data.js); `pickEncounter({ island: 'arroyo', seed,
+    elite, avoid })` (combat-rules.js).
+  - `newBattle({ ..., marea: 1..3, fragments: ['marea' | 'brasa' | 'cefiro'] })`. Por la URL: `&marea=2&frag=brasa`.
+  - `canAutoResolve(encounter, best)` y `autoResolve({ encounter, best, marea, lootWin })`: quien llama guarda las
+    mejores estrellas por encuentro y Marea. `quickResolve({ encounter, wins, stars, marea })` acepta `stars`.
+  - `result()` suma `marea`, `reacts` y `reactDmg`; el botín y la XP ya vienen multiplicados por la Marea.
+  - `view()` suma `w`/`h` variables, `marea`, `farm`, y por casilla `fire`, `steam`, `cover`, `water`, `flow`; por
+    unidad `wet`, `burn`, `warded`, `ai`, `element`. Eventos nuevos: `react`, `status`, `fire`, `fireOut`, `steam`,
+    `steamGone`, `charge`, `crash`, `drift`.
+  - Nadie debe asumir 8×8: usar `b.w` y `b.h`. `COMBAT.w`/`COMBAT.h` quedan solo como el tamaño de la historia.
+- Al mergear: `npm run bump` (hay un archivo nuevo, `src/combat/combat-text.js`, que tiene que entrar en `sw.js`).
+- Pendiente (para A3 o un A2b): la expedición vieja (`src/expedition/`) sigue llamando `quickResolve` sin `stars`, así
+  que ahí "Resolver rápido" da lo de antes; los comunes de la historia siguen en 8×8; el bot no usa reacciones; el arte
+  de los enemigos nuevos son cubos. En el worktree, `tools/node_modules` es un enlace al del checkout principal.
+
 ## Próximos pasos (ver "Orden" en el plan)
 1. v65: mergear A2, R1, U1 y el mock de U2; suite, bump, commit y push.
 2. Integrar A3 cuando entregue. Después U2 completo sobre el mock aprobado.

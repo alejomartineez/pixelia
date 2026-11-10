@@ -1170,7 +1170,83 @@ cuatro bases: un solo Nivel, talentos, armas como objetos con maestría, y la Fu
 - Números: `NIVEL.need = 40·n^1,58 + 20`, `fightRate` 1,5, desarme 1/2/4/7/12 por rareza. Con eso Avance pasa en 36 de 36
   semillas. `sim:combat` (Fuerza, §8) no depende de `fightRate`: usa niveles fijos.
 
+## 19. Combate apto para farmear (PLAN-FOTO, paso A2)
+Objetivo: que una pelea común dure de 3 a 5 turnos y de 1 a 2 minutos, y que repetirla no aburra.
+
+### 19.1 Tablero y encuentros
+- **El tamaño sale del mapa** (`buildMap`): 6×6 los encuentros del farmeo, 8×8 la historia (`ACT1`) y los jefes.
+- **18 encuentros del Bosque del Arroyo** (`FARM.arroyo`: 16 comunes y 2 élites; el jefe es `banado_bestia`), con
+  `farm: true`, región `arroyo` (usa el arte del bosque) y tope de 8 turnos (10 los élites).
+  `pickEncounter({ island, seed, elite, avoid })` elige uno sin repetir.
+- En el farmeo los enemigos de siempre traen menos vida (`farmHp`: lobo 7, lobo viejo 10, bicho 5).
+- **Marea I a III** (`newBattle({ marea })`, `COMBAT.marea`): vida ×1 / ×1,3 / ×1,4, golpe +0 / +1 / +1, un enemigo más
+  en la III (`enc.extra`), botín ×1 / ×1,5 / ×2 y XP ×1 / ×1,3 / ×1,6. Cada Marea se calibra con un grupo esperado
+  (`COMBAT.marea[m].expected`: líder 3/6/9, clases 2/4/6).
+
+### 19.2 Enemigos y arquetipos de IA (`ENEMIES[x].ai`, `planEnemy`)
+| Enemigo | Qué hace | Cómo se le gana |
+|---|---|---|
+| Hondero del monte (`kite`) | tira en línea y se aleja de quien tiene encima | acorralarlo, taparle el tiro, el matorral |
+| Guardián de corteza (`guard`) | se pega al más frágil de los suyos; los pegados a él reciben 1 menos | correrlo o bajarlo primero |
+| Nido de larvas (`summon`) | no pega; cada 2 turnos saca una larva (se ve un turno antes) | ir por el nido: si cae, la larva que venía no sale |
+| Jabalí de colmillo (`charge`) | carga en línea hasta chocar: 4 y empuja | esquivar: si se estrella recibe 2 y queda aturdido |
+| Hongo hinchado | al morir revienta en las 8 de alrededor (3), también a los suyos | matarlo de lejos o entre ellos |
+| Musgo viejo (`heal`) | cura 4 al enemigo más lastimado (se ve a quién) | cortarle el golpe o bajarlo primero |
+| Ascua errante (Brasa) | su llamarada quema y deja fuego; no se quema | mojarla: Marea le pega 2 más |
+| Sapo de marea (Marea) | nada; su chorro moja y empuja | cuidar dónde te deja parado |
+| Cuervo de céfiro (Céfiro) | vuela; busca a los mojados y les suelta una descarga | no quedarse en el agua ni juntos |
+| Larva | chica y rápida | — |
+
+La intención sigue a la vista: el golpe marcado, la casilla donde llega la larva, a quién va a curar el musgo (verde) y
+la línea de la carga. Los guardianes planean al final, con los demás ya movidos.
+
+### 19.3 Terreno
+- **Lo alto**: +1 de daño y +1 de alcance (ya estaba).
+- **Matorral** (`mata`, `M`): quien esté ahí recibe 1 menos de los tiros (de cualquier bando). Arde.
+- **Fuego** (`b.fire`): quien esté en la casilla cuando pasa la fase enemiga recibe 2 y queda quemado (1 por turno, 2
+  turnos). Dura 3 turnos; la fogata del mapa (`F`) arde toda la pelea. Empujar a un enemigo al fuego es un combo.
+- **Agua**: cuesta 2 y deja mojado a quien esté ahí. **Corriente** (`^ > v <`): arrastra una casilla a quien se quede.
+
+### 19.4 Elementos, estados y reacciones (`applyElement`)
+Estados: mojado (`u.wet` o parado en agua), quemado (`u.burn`), enredado (`u.root`). Casillas: fuego y vapor.
+El líder tiene la Raíz; los otros tres llegan como **fragmentos de veta** (`newBattle({ fragments: ['brasa'] })`), una
+habilidad prestada por la salida: Oleada (Marea), Ascua (Brasa) y Ráfaga (Céfiro).
+| Reacción | Cómo | Qué pasa |
+|---|---|---|
+| Vapor | Marea + Brasa (en cualquier orden) | apaga; 2 turnos sin apuntar de lejos hacia adentro ni desde adentro; para los tiros |
+| Descarga | Céfiro sobre un mojado | 2 de daño y salta a los mojados de al lado (también del grupo) |
+| Incendio | Brasa sobre raíz, matorral o un enredado | arde y se corre a lo pegado; al enredado, 2 más |
+| Fuego que salta | Céfiro sobre el fuego | las llamas saltan 2 casillas en esa dirección |
+| Brote | Raíz sobre un mojado | lo frena un turno más (no a los jefes) |
+| Despeje | Céfiro sobre el vapor | lo limpia |
+
+Las que provoca el grupo se anotan como combos (`COMBOS[x].react`), cuentan para el desafío `reaccion` y su daño va a
+`result().reactDmg` (tope de diseño: 35 % del daño; hoy el bot casi no las usa).
+
+### 19.5 Velocidad, salteo y resolución automática
+- `combatSpeed` (×1, ×2, ×3) divide todas las esperas y animaciones de la escena, también el turno enemigo. Botón en la
+  pelea y tecla `+`.
+- **Espacio o Enter mientras se anima**: saltea lo que queda de esa tanda (el motor ya resolvió; solo se corta el dibujo).
+- `canAutoResolve(encounter, best)` y `autoResolve({ encounter, best, marea, lootWin })`: una pelea común ya ganada con
+  3 estrellas en esa Marea se resuelve sola, con el botín y la XP de 3 estrellas. Devuelve lo mismo que `result()` más
+  `auto: true` y `summary: { name, mats, xp, stars }`. `quickResolve({ wins, stars, marea })` con `stars: 3` es eso
+  mismo; sin las 3 estrellas sigue como antes (0,75 de botín, media XP).
+
+### 19.6 Números (2026-11-10)
+- `npm run sim:farm` (24 peleas por encuentro y Marea, bot con ruido): comunes en **3,6 / 4,3 / 4,4 turnos** en Marea
+  I / II / III; se gana 100 / 99 / 100 %.
+- `test-combat-farm-scene` (la escena de verdad, el bot decide y se esperan 2,5 s por jugada): **66 y 69 s** una pelea
+  común a ×1 (4 turnos, 14 jugadas, 9,5 s de turnos enemigos) y 53 s a ×2. El turno enemigo: 2,4 s a ×1, 1,2 s a ×2 y
+  0,6 s salteado.
+
+### 19.7 Pendiente
+- Los encuentros comunes de la historia (`ACT1`) siguen en 8×8: achicarlos pide recalibrar `sim:combat` y `test-act1`.
+- El bot del simulador no busca reacciones: falta enseñarle para medir el tope del 35 %.
+- Arte: los enemigos nuevos son cubos (`BLOCKS` en enemy-models.js); el fuego y el vapor son marcas planas.
+- Textos nuevos en `src/combat/combat-text.js` (el combate todavía no usa `core/i18n.js`).
+
 ## Estado
+- **PLAN-FOTO, paso A2** (combate apto para farmear, §19): rama `claude/a2-combate-5384e9`.
 - **La Travesía, paso 2a** (Nivel único, talentos, arsenal, maestría y Fuerza, §18): rama `claude/trav-2a-e5cfa6`.
 - **Paso 5b, cuarta parte** (elegir las activas y la subclase en la ciudad, §17, y el balance de la curva de clase, el
   muelle, el abordaje y el líder cazador, §8): **hecha** en la rama `claude/clases-activas-5b4`, sin mergear. No toca la
